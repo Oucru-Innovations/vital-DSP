@@ -1,5 +1,5 @@
 import numpy as np
-from utils.mother_wavelets import Wavelet
+
 class ArtifactRemoval:
     """
     A class for removing various types of artifacts from signals.
@@ -12,7 +12,7 @@ class ArtifactRemoval:
     - adaptive_filtering: Uses an adaptive filter to remove artifacts correlated with reference signals.
     - notch_filter: Removes powerline interference using a notch filter.
     - pca_artifact_removal: Uses Principal Component Analysis (PCA) to remove artifacts.
-    - ica_artifact_removal: Uses Independent Component Analysis (ICA) to remove artifacts.
+    - ica_artifact_removal: Uses Independent Component Analysis (ICA) to remove artifacts using NumPy.
     """
 
     def __init__(self, signal):
@@ -189,20 +189,54 @@ class ArtifactRemoval:
         reconstructed_signal = np.dot(centered_signal, selected_components).dot(selected_components.T) + signal_mean
         return reconstructed_signal
 
-    def ica_artifact_removal(self, num_components=1):
+    def ica_artifact_removal(self, num_components=1, max_iterations=1000, tol=1e-5, seed=23):
         """
-        Use Independent Component Analysis (ICA) to remove artifacts.
+        Use Independent Component Analysis (ICA) to remove artifacts using NumPy.
 
         This method separates the signal into independent components and allows for the removal of specific components identified as artifacts.
 
         Parameters:
         num_components (int): The number of independent components to retain.
+        max_iterations (int): The maximum number of iterations for convergence.
+        tol (float): The tolerance level for convergence.
 
         Returns:
         numpy.ndarray: The artifact-removed signal.
+
+        Example:
+        >>> signal = np.array([1, 2, 3, 4, 5, 6, 7, 8])
+        >>> ar = ArtifactRemoval(signal)
+        >>> clean_signal = ar.ica_artifact_removal(num_components=1)
+        >>> print(clean_signal)
         """
-        from sklearn.decomposition import FastICA
-        ica = FastICA(n_components=num_components)
-        components = ica.fit_transform(self.signal.reshape(-1, 1))
-        reconstructed_signal = ica.inverse_transform(components).flatten()
+        # Center the signal
+        signal_centered = self.signal - np.mean(self.signal, axis=0)
+
+        # Whitening (PCA step)
+        cov_matrix = np.cov(signal_centered, rowvar=False)
+        eigenvalues, eigenvectors = np.linalg.eigh(cov_matrix)
+        whitening_matrix = eigenvectors.dot(np.diag(1.0 / np.sqrt(eigenvalues))).dot(eigenvectors.T)
+        X_whitened = signal_centered.dot(whitening_matrix.T)
+
+        # Initialize weights randomly
+        np.random.seed(seed)
+        W = np.random.rand(num_components, X_whitened.shape[1])
+
+        for i in range(max_iterations):
+            # Update the weights using the FastICA algorithm
+            W_new = np.dot(X_whitened.T, np.tanh(np.dot(X_whitened, W.T))) / X_whitened.shape[0] - np.mean(1 - np.tanh(np.dot(X_whitened, W.T)) ** 2, axis=0) * W
+            W_new /= np.linalg.norm(W_new, axis=1)[:, np.newaxis]  # Normalize the weights
+
+            # Check for convergence
+            if np.max(np.abs(np.abs(np.diag(np.dot(W_new, W.T))) - 1)) < tol:
+                W = W_new
+                break
+            W = W_new
+
+        # Separate the independent components
+        S = np.dot(W, X_whitened.T).T
+
+        # Reconstruct the signal from the components
+        reconstructed_signal = np.dot(S, np.linalg.pinv(W)).dot(whitening_matrix) + np.mean(self.signal, axis=0)
+
         return reconstructed_signal
