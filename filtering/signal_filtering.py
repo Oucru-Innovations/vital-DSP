@@ -22,6 +22,35 @@ class SignalFiltering:
             signal = np.array(signal)
         self.signal = signal
 
+    @staticmethod
+    def savgol_filter(signal, window_length, polyorder):
+        """
+        Custom implementation of the Savitzky-Golay filter.
+
+        Parameters:
+        - signal (numpy.ndarray): The input signal.
+        - window_length (int): The length of the filter window (must be odd).
+        - polyorder (int): The order of the polynomial to fit.
+
+        Returns:
+        - smoothed_signal (numpy.ndarray): The smoothed signal.
+        """
+        if window_length % 2 == 0 or window_length < 1:
+            raise ValueError("window_length must be a positive odd integer")
+        if window_length < polyorder + 2:
+            raise ValueError("window_length is too small for the polynomials order")
+
+        half_window = (window_length - 1) // 2
+        # Precompute coefficients
+        b = np.mat([[k**i for i in range(polyorder + 1)] for k in range(-half_window, half_window + 1)])
+        m = np.linalg.pinv(b).A[0]
+        # Pad the signal at the extremes with values taken from the signal itself
+        firstvals = signal[0] - np.abs(signal[1:half_window+1][::-1] - signal[0])
+        lastvals = signal[-1] + np.abs(signal[-half_window-1:-1][::-1] - signal[-1])
+        signal = np.concatenate((firstvals, signal, lastvals))
+        smoothed_signal = np.convolve(m, signal, mode='valid')
+        return smoothed_signal
+    
     def moving_average(self, window_size):
         """
         Apply a moving average filter to the signal.
@@ -43,6 +72,7 @@ class SignalFiltering:
         """
         return np.convolve(self.signal, np.ones(window_size) / window_size, mode='valid')
 
+    @staticmethod
     def gaussian(self, sigma=1.0):
         """
         Apply a Gaussian filter to the signal.
@@ -65,6 +95,25 @@ class SignalFiltering:
         size = int(6 * sigma + 1) if int(6 * sigma + 1) % 2 != 0 else int(6 * sigma + 2)
         kernel = self.gaussian_kernel(size, sigma)
         return np.convolve(self.signal, kernel, mode='same')
+    
+    @staticmethod
+    def gaussian_filter1d(signal, sigma):
+        """
+        Custom implementation of a 1D Gaussian filter.
+
+        Parameters:
+        - signal (numpy.ndarray): The input signal.
+        - sigma (float): The standard deviation of the Gaussian kernel.
+
+        Returns:
+        - smoothed_signal (numpy.ndarray): The smoothed signal.
+        """
+        radius = int(4 * sigma + 0.5)
+        x = np.arange(-radius, radius + 1)
+        gaussian_kernel = np.exp(-0.5 * (x / sigma) ** 2)
+        gaussian_kernel /= gaussian_kernel.sum()
+        smoothed_signal = np.convolve(signal, gaussian_kernel, mode='same')
+        return smoothed_signal
 
     @staticmethod
     def gaussian_kernel(size, sigma):
@@ -130,6 +179,43 @@ class SignalFiltering:
 
         return filtered_signal
 
+    def butter(order, cutoff, btype='low', fs=1.0):
+        """
+        Custom implementation of the Butterworth filter design.
+        Butterworth filter using bilinear transformation
+        
+        Parameters:
+        - order (int): The order of the filter.
+        - cutoff (float or list of float): The critical frequency or frequencies.
+        - btype (str): The type of filter ('low', 'high', 'band').
+        - fs (float): The sampling frequency.
+
+        Returns:
+        - b, a (tuple): Numerator (b) and denominator (a) polynomials of the IIR filter.
+        """
+        nyquist = 0.5 * fs
+        normalized_cutoff = np.array(cutoff) / nyquist
+        if btype == 'low':
+            poles = np.exp(1j * np.pi * (np.arange(1, 2 * order + 1, 2) + order - 1) / (2 * order))
+            poles = poles[np.real(poles) < 0]
+            z, p = np.zeros(0), poles
+        elif btype == 'high':
+            z, p = butter(order, cutoff, btype='low', fs=fs)
+            z, p = -z, -p
+        elif btype == 'band':
+            low = np.min(normalized_cutoff)
+            high = np.max(normalized_cutoff)
+            z_low, p_low = butter(order, low, btype='high', fs=fs)
+            z_high, p_high = butter(order, high, btype='low', fs=fs)
+            z = np.concatenate([z_low, z_high])
+            p = np.concatenate([p_low, p_high])
+        else:
+            raise ValueError("Invalid btype. Must be 'low', 'high', or 'band'.")
+        
+        b, a = np.poly(z), np.poly(p)
+        b /= np.abs(np.sum(a))
+        return b, a
+    
     def median(self, kernel_size=3):
         """
         Apply a median filter to the signal.
