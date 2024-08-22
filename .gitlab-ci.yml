@@ -1,0 +1,40 @@
+stages:
+  - test
+  - coverage
+  - lint
+  - documentation
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  DOCS_DIR: "docs"
+
+before_script:
+  - python -m pip install --upgrade pip
+  - pip install pytest pytest-cov flake8 pandoc
+  - pip install -r requirements.txt
+
+test:
+  stage: test
+  script:
+    - make test
+
+coverage:
+  stage: coverage
+  script:
+    - make coverage
+  artifacts:
+    paths:
+      - cov_html
+
+lint:
+  stage: lint
+  script:
+    - make lint
+
+documentation:
+  stage: documentation
+  script:
+    - make pandoc
+  artifacts:
+    paths:
+      - "$DOCS_DIR"
