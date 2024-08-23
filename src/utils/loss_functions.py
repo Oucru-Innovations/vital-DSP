@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class LossFunctions:
     """
     A class that provides a collection of common loss functions for signal processing.
@@ -74,7 +75,7 @@ class LossFunctions:
         """
         error = signal - target
         is_small_error = np.abs(error) <= delta
-        squared_loss = 0.5 * error ** 2
+        squared_loss = 0.5 * error**2
         linear_loss = delta * (np.abs(error) - 0.5 * delta)
         return np.mean(np.where(is_small_error, squared_loss, linear_loss))
 
@@ -99,7 +100,7 @@ class LossFunctions:
         >>> print(lf.smooth_l1(signal, target, beta=1.0))
         """
         error = np.abs(signal - target)
-        loss = np.where(error < beta, 0.5 * (error ** 2) / beta, error - 0.5 * beta)
+        loss = np.where(error < beta, 0.5 * (error**2) / beta, error - 0.5 * beta)
         return np.mean(loss)
 
     def log_cosh(self, signal, target):

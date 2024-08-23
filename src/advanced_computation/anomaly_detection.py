@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class AnomalyDetection:
     """
     Comprehensive Anomaly Detection for detecting anomalies in real-time from streaming data.
@@ -34,15 +35,17 @@ class AnomalyDetection:
         numpy.ndarray: Indices of the detected anomalies.
         """
         if method == "z_score":
-            return self._z_score_anomaly_detection(kwargs.get('threshold', 3.0))
+            return self._z_score_anomaly_detection(kwargs.get("threshold", 3.0))
         elif method == "moving_average":
-            return self._moving_average_anomaly_detection(kwargs.get('window_size', 5), kwargs.get('threshold', 1.0))
+            return self._moving_average_anomaly_detection(
+                kwargs.get("window_size", 5), kwargs.get("threshold", 1.0)
+            )
         elif method == "lof":
-            return self._lof_anomaly_detection(kwargs.get('n_neighbors', 20))
+            return self._lof_anomaly_detection(kwargs.get("n_neighbors", 20))
         elif method == "fft":
-            return self._fft_anomaly_detection(kwargs.get('threshold', 1.5))
+            return self._fft_anomaly_detection(kwargs.get("threshold", 1.5))
         elif method == "threshold":
-            return self._threshold_anomaly_detection(kwargs.get('threshold', 1.0))
+            return self._threshold_anomaly_detection(kwargs.get("threshold", 1.0))
         else:
             raise ValueError("Unknown method: {}".format(method))
 
@@ -73,8 +76,10 @@ class AnomalyDetection:
         Returns:
         numpy.ndarray: Indices of the detected anomalies.
         """
-        moving_avg = np.convolve(self.signal, np.ones(window_size) / window_size, mode='valid')
-        residuals = np.abs(self.signal[window_size - 1:] - moving_avg)
+        moving_avg = np.convolve(
+            self.signal, np.ones(window_size) / window_size, mode="valid"
+        )
+        residuals = np.abs(self.signal[window_size - 1 :] - moving_avg)
         anomalies = np.where(residuals > threshold)[0] + window_size - 1
         return anomalies
 
@@ -90,7 +95,6 @@ class AnomalyDetection:
         """
         n_points = len(self.signal)
         distances = np.zeros((n_points, n_points))
-        
         # Compute distance matrix
         for i in range(n_points):
             for j in range(i + 1, n_points):
@@ -101,12 +105,19 @@ class AnomalyDetection:
         sorted_distances = np.sort(distances, axis=1)
         reachability_distances = np.zeros_like(distances)
         for i in range(n_points):
-            reachability_distances[i, :] = np.maximum(distances[i, :], sorted_distances[i, n_neighbors])
+            reachability_distances[i, :] = np.maximum(
+                distances[i, :], sorted_distances[i, n_neighbors]
+            )
 
         # Compute local reachability density (LRD)
         lrd = np.zeros(n_points)
         for i in range(n_points):
-            lrd[i] = 1 / (np.mean(reachability_distances[i, np.argsort(distances[i, :])[:n_neighbors]]) + 1e-10)
+            lrd[i] = 1 / (
+                np.mean(
+                    reachability_distances[i, np.argsort(distances[i, :])[:n_neighbors]]
+                )
+                + 1e-10
+            )
 
         # Compute LOF
         lof = np.zeros(n_points)

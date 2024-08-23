@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class MultimodalFusion:
     """
     Multimodal Fusion for combining multiple signals to improve health assessments.
@@ -48,11 +49,11 @@ class MultimodalFusion:
         numpy.ndarray: The fused signal.
         """
         if strategy == "weighted_sum":
-            return self._weighted_sum_fusion(kwargs.get('weights'))
+            return self._weighted_sum_fusion(kwargs.get("weights"))
         elif strategy == "concatenation":
             return self._concatenation_fusion()
         elif strategy == "pca":
-            return self._pca_fusion(kwargs.get('n_components', 1))
+            return self._pca_fusion(kwargs.get("n_components", 1))
         elif strategy == "maximum":
             return self._maximum_fusion()
         elif strategy == "minimum":
@@ -71,7 +72,9 @@ class MultimodalFusion:
         numpy.ndarray: The fused signal.
         """
         if weights is None or len(weights) != len(self.signals):
-            raise ValueError("Weights must be provided and must match the number of signals.")
+            raise ValueError(
+                "Weights must be provided and must match the number of signals."
+            )
 
         fused_signal = np.zeros_like(self.signals[0])
         for signal, weight in zip(self.signals, weights):
@@ -105,14 +108,14 @@ class MultimodalFusion:
         # Sort the eigenvalues and eigenvectors
         sorted_indices = np.argsort(eigenvalues)[::-1]
         sorted_eigenvectors = eigenvectors[:, sorted_indices]
-        sorted_eigenvalues = eigenvalues[sorted_indices]
+        # sorted_eigenvalues = eigenvalues[sorted_indices]
 
         # Select the top n_components
         selected_eigenvectors = sorted_eigenvectors[:, :n_components]
 
         # Project the signals onto the selected eigenvectors
         pca_fused = np.dot(mean_centered, selected_eigenvectors)
-        
+
         return pca_fused[:, 0] if n_components == 1 else pca_fused
 
     def _maximum_fusion(self):

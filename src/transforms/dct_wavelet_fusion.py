@@ -1,6 +1,6 @@
-import numpy as np
 from transforms.discrete_cosine_transform import DiscreteCosineTransform
 from transforms.wavelet_transform import WaveletTransform
+
 
 class DCTWaveletFusion:
     """
@@ -10,7 +10,7 @@ class DCTWaveletFusion:
     - compute_fusion: Computes the fusion of DCT and wavelet for the signal.
     """
 
-    def __init__(self, signal, wavelet_type='db', order=4, **kwargs):
+    def __init__(self, signal, wavelet_type="db", order=4, **kwargs):
         """
         Initialize the DCTWaveletFusion class with the signal.
 
@@ -40,8 +40,12 @@ class DCTWaveletFusion:
         """
         dct = DiscreteCosineTransform(self.signal)
         dct_coeffs = dct.compute_dct()
-        wavelet_transform = WaveletTransform(self.signal,wavelet_name=self.wavelet_type)
-        wavelet_coeffs = wavelet_transform.perform_wavelet_transform(level=self.order, **self.kwargs)
+        wavelet_transform = WaveletTransform(
+            self.signal, wavelet_name=self.wavelet_type
+        )
+        wavelet_coeffs = wavelet_transform.perform_wavelet_transform(
+            level=self.order, **self.kwargs
+        )
         # wavelet_transform = WaveletTransform(self.signal)
         # wavelet_coeffs = wavelet_transform.compute_wavelet_transform(wavelet_type=self.wavelet_type, order=self.order, **self.kwargs)
         fusion_result = [d * w for d, w in zip(dct_coeffs, wavelet_coeffs)]

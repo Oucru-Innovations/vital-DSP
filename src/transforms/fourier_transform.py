@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class FourierTransform:
     """
     A class to perform Fourier Transform to analyze frequency content in signals like ECG/EEG.

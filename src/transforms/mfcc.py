@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class MFCC:
     """
     A class to compute Mel-Frequency Cepstral Coefficients (MFCC) for audio signals.
@@ -22,8 +23,8 @@ class MFCC:
         self.sample_rate = sample_rate
         self.num_filters = num_filters
         self.num_coefficients = num_coefficients
-        
-    def dct(self,signal):
+
+    def dct(self, signal):
         """
         Compute the Discrete Cosine Transform (DCT) of the input signal.
 
@@ -38,9 +39,12 @@ class MFCC:
         result = np.zeros((signal.shape[0], self.num_coefficients))
 
         for k in range(1, self.num_coefficients + 1):
-            result[:, k - 1] = np.sum(signal * np.cos(np.pi * (np.arange(n) + 0.5) * k / n), axis=1)
+            result[:, k - 1] = np.sum(
+                signal * np.cos(np.pi * (np.arange(n) + 0.5) * k / n), axis=1
+            )
 
         return result * np.sqrt(2 / n)
+
     def compute_mfcc(self):
         """
         Compute the Mel-Frequency Cepstral Coefficients (MFCC) of the signal.
@@ -55,33 +59,45 @@ class MFCC:
         >>> print(mfcc_result)
         """
         # Pre-emphasis
-        emphasized_signal = np.append(self.signal[0], self.signal[1:] - 0.97 * self.signal[:-1])
+        emphasized_signal = np.append(
+            self.signal[0], self.signal[1:] - 0.97 * self.signal[:-1]
+        )
 
         # Frame the signal into overlapping frames
         frame_size = 0.025
         frame_stride = 0.01
-        frame_length, frame_step = frame_size * self.sample_rate, frame_stride * self.sample_rate
+        frame_length, frame_step = (
+            frame_size * self.sample_rate,
+            frame_stride * self.sample_rate,
+        )
         signal_length = len(emphasized_signal)
         frame_length = int(round(frame_length))
         frame_step = int(round(frame_step))
-        num_frames = int(np.ceil(float(np.abs(signal_length - frame_length)) / frame_step)) + 1
+        num_frames = (
+            int(np.ceil(float(np.abs(signal_length - frame_length)) / frame_step)) + 1
+        )
         pad_signal_length = num_frames * frame_step + frame_length
         z = np.zeros((pad_signal_length - signal_length))
         pad_signal = np.append(emphasized_signal, z)
-        indices = np.tile(np.arange(0, frame_length), (num_frames, 1)) + np.tile(np.arange(0, num_frames * frame_step, frame_step), (frame_length, 1)).T
+        indices = (
+            np.tile(np.arange(0, frame_length), (num_frames, 1))
+            + np.tile(
+                np.arange(0, num_frames * frame_step, frame_step), (frame_length, 1)
+            ).T
+        )
         frames = pad_signal[indices.astype(np.int32, copy=False)]
         frames *= np.hamming(frame_length)
 
         # Fourier-Transform and Power Spectrum
         NFFT = 512
         mag_frames = np.absolute(np.fft.rfft(frames, NFFT))
-        pow_frames = ((1.0 / NFFT) * (mag_frames ** 2))
+        pow_frames = (1.0 / NFFT) * (mag_frames**2)
 
         # Filter Banks
         low_freq_mel = 0
-        high_freq_mel = (2595 * np.log10(1 + (self.sample_rate / 2) / 700))
+        high_freq_mel = 2595 * np.log10(1 + (self.sample_rate / 2) / 700)
         mel_points = np.linspace(low_freq_mel, high_freq_mel, self.num_filters + 2)
-        hz_points = (700 * (10**(mel_points / 2595) - 1))
+        hz_points = 700 * (10 ** (mel_points / 2595) - 1)
         bin = np.floor((NFFT + 1) * hz_points / self.sample_rate)
         fbank = np.zeros((self.num_filters, int(np.floor(NFFT / 2 + 1))))
         for m in range(1, self.num_filters + 1):

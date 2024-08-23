@@ -1,6 +1,7 @@
 import numpy as np
 import random
 
+
 class ReinforcementLearningFilter:
     """
     Comprehensive Reinforcement Learning Filter for adaptive signal processing.
@@ -15,24 +16,24 @@ class ReinforcementLearningFilter:
     --------------
     signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
     rl_filter = ReinforcementLearningFilter(signal, action_space=[-1, 0, 1])
-    
+
     # Train Q-learning based filter
     rl_filter.train_q_learning(episodes=500, alpha=0.1, gamma=0.99, epsilon=0.1)
-    
+
     # Apply the trained filter
     filtered_signal = rl_filter.apply_filter()
     print("Filtered Signal (Q-Learning):", filtered_signal)
-    
+
     # Train DQN-based filter
     rl_filter.train_dqn(episodes=500, batch_size=32, gamma=0.99, epsilon=0.1, target_update=10)
-    
+
     # Apply the trained filter
     filtered_signal_dqn = rl_filter.apply_filter()
     print("Filtered Signal (DQN):", filtered_signal_dqn)
-    
+
     # Train PPO-based filter
     rl_filter.train_ppo(epochs=500, gamma=0.99, lambda_=0.95, clip_ratio=0.2)
-    
+
     # Apply the trained filter
     filtered_signal_ppo = rl_filter.apply_filter()
     print("Filtered Signal (PPO):", filtered_signal_ppo)
@@ -74,11 +75,16 @@ class ReinforcementLearningFilter:
                 best_next_action = np.argmax(self.q_table[next_state])
 
                 self.q_table[state, action] = self.q_table[state, action] + alpha * (
-                    reward + gamma * self.q_table[next_state, best_next_action] - self.q_table[state, action])
+                    reward
+                    + gamma * self.q_table[next_state, best_next_action]
+                    - self.q_table[state, action]
+                )
 
                 state = next_state
 
-    def train_dqn(self, episodes=1000, batch_size=32, gamma=0.99, epsilon=0.1, target_update=10):
+    def train_dqn(
+        self, episodes=1000, batch_size=32, gamma=0.99, epsilon=0.1, target_update=10
+    ):
         """
         Train the filter using Deep Q-Networks (DQN).
 
@@ -127,7 +133,9 @@ class ReinforcementLearningFilter:
         value_network = self._initialize_value_network()
 
         for epoch in range(epochs):
-            trajectories = self._collect_trajectories(policy_network, value_network, gamma, lambda_)
+            trajectories = self._collect_trajectories(
+                policy_network, value_network, gamma, lambda_
+            )
             self._update_policy_network(policy_network, trajectories, clip_ratio)
             self._update_value_network(value_network, trajectories)
 
@@ -201,15 +209,27 @@ class ReinforcementLearningFilter:
         for t in range(len(self.signal)):
             action = policy_network.sample_action(state)
             next_state, reward = self._take_action(state, action)
-            advantage = self._calculate_advantage(state, action, reward, next_state, value_network, gamma, lambda_)
+            advantage = self._calculate_advantage(
+                state, action, reward, next_state, value_network, gamma, lambda_
+            )
             trajectories.append((state, action, reward, advantage))
             state = next_state
         return trajectories
 
-    def _calculate_advantage(self, state, action, reward, next_state, value_network, gamma, lambda_):
+    def _calculate_advantage(
+        self, state, action, reward, next_state, value_network, gamma, lambda_
+    ):
         """Calculate the advantage estimate for PPO."""
-        td_error = reward + gamma * value_network.predict(next_state) - value_network.predict(state)
-        advantage = td_error + lambda_ * (reward + gamma * value_network.predict(next_state) - value_network.predict(state))
+        td_error = (
+            reward
+            + gamma * value_network.predict(next_state)
+            - value_network.predict(state)
+        )
+        advantage = td_error + lambda_ * (
+            reward
+            + gamma * value_network.predict(next_state)
+            - value_network.predict(state)
+        )
         return advantage
 
     def _update_policy_network(self, policy_network, trajectories, clip_ratio):
@@ -219,14 +239,18 @@ class ReinforcementLearningFilter:
             new_prob = policy_network.train(state, action, advantage)
             ratio = new_prob / old_prob
             clipped_ratio = np.clip(ratio, 1 - clip_ratio, 1 + clip_ratio)
-            policy_network.update(state, action, np.minimum(ratio * advantage, clipped_ratio * advantage))
+            policy_network.update(
+                state, action, np.minimum(ratio * advantage, clipped_ratio * advantage)
+            )
 
     def _update_value_network(self, value_network, trajectories):
         """Update the value network using PPO."""
         for state, _, reward, _ in trajectories:
             value_network.train(state, reward)
 
+
 # Simple Neural Network Class for DQN (Placeholder)
+
 
 class SimpleNeuralNetwork:
     def __init__(self, input_size, output_size):
@@ -244,7 +268,9 @@ class SimpleNeuralNetwork:
     def set_weights(self, weights):
         self.weights = weights
 
+
 # Simple Policy Network Class for PPO (Placeholder)
+
 
 class SimplePolicyNetwork:
     def __init__(self, input_size, output_size):
@@ -255,7 +281,9 @@ class SimplePolicyNetwork:
 
     def sample_action(self, state):
         probabilities = self.predict(state)
-        return np.argmax(np.random.multinomial(1, probabilities / np.sum(probabilities)))
+        return np.argmax(
+            np.random.multinomial(1, probabilities / np.sum(probabilities))
+        )
 
     def train(self, state, action, advantage):
         self.weights[:, action] += 0.01 * advantage * state
@@ -264,7 +292,9 @@ class SimplePolicyNetwork:
     def update(self, state, action, objective):
         self.weights[:, action] += 0.01 * objective * state
 
+
 # Simple Value Network Class for PPO (Placeholder)
+
 
 class SimpleValueNetwork:
     def __init__(self, input_size):

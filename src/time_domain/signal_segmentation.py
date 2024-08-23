@@ -3,6 +3,7 @@ from sklearn.mixture import GaussianMixture
 from sklearn.tree import DecisionTreeClassifier
 import numpy as np
 
+
 class SignalSegmentation:
     """
     A comprehensive class for segmenting physiological signals.
@@ -36,7 +37,10 @@ class SignalSegmentation:
         Returns:
         list: A list of fixed-size segments.
         """
-        segments = [self.signal[i:i + segment_size] for i in range(0, len(self.signal), segment_size)]
+        segments = [
+            self.signal[i : i + segment_size]
+            for i in range(0, len(self.signal), segment_size)
+        ]
         return segments
 
     def adaptive_segmentation(self, adaptive_fn):
@@ -53,7 +57,7 @@ class SignalSegmentation:
         start_idx = 0
         while start_idx < len(self.signal):
             end_idx = adaptive_fn(self.signal[start_idx:])
-            segments.append(self.signal[start_idx:start_idx + end_idx])
+            segments.append(self.signal[start_idx : start_idx + end_idx])
             start_idx += end_idx
         return segments
 
@@ -92,12 +96,20 @@ class SignalSegmentation:
         Returns:
         list: A list of segments based on local variance.
         """
-        variances = np.array([np.var(self.signal[i:i + window_size]) for i in range(len(self.signal) - window_size)])
+        variances = np.array(
+            [
+                np.var(self.signal[i : i + window_size])
+                for i in range(len(self.signal) - window_size)
+            ]
+        )
         segments = []
         start_idx = 0
         for i in range(1, len(variances)):
-            if variances[i] > variance_threshold and variances[i - 1] <= variance_threshold:
-                segments.append(self.signal[start_idx:i + window_size])
+            if (
+                variances[i] > variance_threshold
+                and variances[i - 1] <= variance_threshold
+            ):
+                segments.append(self.signal[start_idx : i + window_size])
                 start_idx = i + window_size
         if start_idx < len(self.signal):
             segments.append(self.signal[start_idx:])
@@ -114,15 +126,21 @@ class SignalSegmentation:
         Returns:
         list: A list of segments around detected peaks.
         """
-        peaks = np.where((self.signal[1:-1] > self.signal[:-2]) & (self.signal[1:-1] > self.signal[2:]))[0] + 1
+        peaks = (
+            np.where(
+                (self.signal[1:-1] > self.signal[:-2])
+                & (self.signal[1:-1] > self.signal[2:])
+            )[0]
+            + 1
+        )
         if height is not None:
             peaks = peaks[self.signal[peaks] > height]
         if min_distance > 1:
             peaks = peaks[np.diff(peaks, prepend=0) > min_distance]
-        
+
         segments = []
         for i in range(len(peaks) - 1):
-            segments.append(self.signal[peaks[i]:peaks[i+1]])
+            segments.append(self.signal[peaks[i] : peaks[i + 1]])
         return segments
 
     def ml_based_segmentation(self, model="change_detection"):
@@ -130,14 +148,16 @@ class SignalSegmentation:
         Segment the signal using a machine learning-based approach.
 
         Parameters:
-        model (str): The name of the default model to use. Options include "change_detection", "kmeans", "gmm", 
+        model (str): The name of the default model to use. Options include "change_detection", "kmeans", "gmm",
                      "decision_tree", "dtw", "spectral", "autoencoder".
 
         Returns:
         list: A list of segments predicted by the model.
         """
         if model == "change_detection":
-            change_points = np.where(np.abs(np.diff(self.signal)) > np.std(self.signal))[0] + 1
+            change_points = (
+                np.where(np.abs(np.diff(self.signal)) > np.std(self.signal))[0] + 1
+            )
         elif model == "kmeans":
             n_clusters = 5
             kmeans = KMeans(n_clusters=n_clusters)
@@ -151,7 +171,7 @@ class SignalSegmentation:
             change_points = np.where(np.diff(hidden_states))[0] + 1
         elif model == "decision_tree":
             labels = np.zeros(len(self.signal))
-            labels[:len(labels) // 2] = 1
+            labels[: len(labels) // 2] = 1
             dt = DecisionTreeClassifier()
             dt.fit(self.signal.reshape(-1, 1), labels)
             predictions = dt.predict(self.signal.reshape(-1, 1))
@@ -160,7 +180,7 @@ class SignalSegmentation:
             # Placeholder for a more complex DTW implementation
             change_points = np.array([len(self.signal) // 2])
         elif model == "spectral":
-            spectral = SpectralClustering(n_clusters=5, affinity='nearest_neighbors')
+            spectral = SpectralClustering(n_clusters=5, affinity="nearest_neighbors")
             labels = spectral.fit_predict(self.signal.reshape(-1, 1))
             change_points = np.where(np.diff(labels))[0] + 1
         elif model == "autoencoder":
@@ -168,8 +188,11 @@ class SignalSegmentation:
             change_points = np.array([len(self.signal) // 2])
         else:
             raise ValueError("Unknown model type specified.")
-        
-        segments = [self.signal[change_points[i]:change_points[i+1]] for i in range(len(change_points) - 1)]
+
+        segments = [
+            self.signal[change_points[i] : change_points[i + 1]]
+            for i in range(len(change_points) - 1)
+        ]
         return segments
 
     def custom_segmentation(self, custom_fn):
@@ -183,5 +206,8 @@ class SignalSegmentation:
         list: A list of segments based on custom criteria.
         """
         segment_boundaries = custom_fn(self.signal)
-        segments = [self.signal[segment_boundaries[i]:segment_boundaries[i+1]] for i in range(len(segment_boundaries)-1)]
+        segments = [
+            self.signal[segment_boundaries[i] : segment_boundaries[i + 1]]
+            for i in range(len(segment_boundaries) - 1)
+        ]
         return segments

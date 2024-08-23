@@ -3,6 +3,7 @@ from utils.loss_functions import LossFunctions
 from utils.convolutional_kernels import ConvolutionKernels
 from utils.attention_weights import AttentionWeights
 
+
 class AdvancedSignalFiltering:
     """
     A class for applying advanced filtering techniques to signals.
@@ -54,8 +55,8 @@ class AdvancedSignalFiltering:
 
         for k in range(1, n):
             # Prediction update
-            xhatminus = xhat[k-1]
-            Pminus = P[k-1] + Q
+            xhatminus = xhat[k - 1]
+            Pminus = P[k - 1] + Q
 
             # Measurement update
             K = Pminus / (Pminus + R)
@@ -64,7 +65,15 @@ class AdvancedSignalFiltering:
 
         return xhat
 
-    def optimization_based_filtering(self, target, loss_type='mse', custom_loss_func=None, initial_guess=0, learning_rate=0.01, iterations=100):
+    def optimization_based_filtering(
+        self,
+        target,
+        loss_type="mse",
+        custom_loss_func=None,
+        initial_guess=0,
+        learning_rate=0.01,
+        iterations=100,
+    ):
         """
         Apply an optimization-based filter using a custom or predefined loss function.
 
@@ -88,26 +97,31 @@ class AdvancedSignalFiltering:
         """
         lf = LossFunctions()
 
-        if loss_type == 'mse':
+        if loss_type == "mse":
             loss_func = lf.mse
-        elif loss_type == 'mae':
+        elif loss_type == "mae":
             loss_func = lf.mae
-        elif loss_type == 'huber':
+        elif loss_type == "huber":
             loss_func = lambda signal, target: lf.huber(signal, target, delta=1.0)
-        elif loss_type == 'smooth_l1':
+        elif loss_type == "smooth_l1":
             loss_func = lambda signal, target: lf.smooth_l1(signal, target, beta=1.0)
-        elif loss_type == 'log_cosh':
+        elif loss_type == "log_cosh":
             loss_func = lf.log_cosh
-        elif loss_type == 'quantile':
+        elif loss_type == "quantile":
             loss_func = lambda signal, target: lf.quantile(signal, target, quantile=0.5)
-        elif loss_type == 'custom' and custom_loss_func is not None:
+        elif loss_type == "custom" and custom_loss_func is not None:
             loss_func = lf.custom_loss(custom_loss_func)
         else:
-            raise ValueError("Invalid loss_type. Must be 'mse', 'mae', 'huber', 'smooth_l1', 'log_cosh', 'quantile', or 'custom' with a custom_loss_func provided.")
+            raise ValueError(
+                "Invalid loss_type. Must be 'mse', 'mae', 'huber', 'smooth_l1', 'log_cosh', 'quantile', or 'custom' with a custom_loss_func provided."
+            )
 
         x = initial_guess
         for i in range(iterations):
-            grad = (loss_func(self.signal - x, target + 1e-5) - loss_func(self.signal - x, target)) / 1e-5
+            grad = (
+                loss_func(self.signal - x, target + 1e-5)
+                - loss_func(self.signal - x, target)
+            ) / 1e-5
             x -= learning_rate * grad
 
         return self.signal - x
@@ -131,20 +145,27 @@ class AdvancedSignalFiltering:
         >>> filtered_signal = af.gradient_descent_filter(target, learning_rate=0.1, iterations=50)
         >>> print(filtered_signal)
         """
-        
+
         if target is None:
             target = np.zeros_like(target, dtype=np.float64)
-        
+
         # Ensure signal is of float64 type to avoid casting issues
         signal = self.signal.astype(np.float64)
         filtered_signal = signal.copy()
-        
+
         for i in range(iterations):
             grad = np.sign(filtered_signal - target)
             filtered_signal -= learning_rate * grad
         return filtered_signal
 
-    def ensemble_filtering(self, filters, method='mean', weights=None, num_iterations=10, learning_rate=0.01):
+    def ensemble_filtering(
+        self,
+        filters,
+        method="mean",
+        weights=None,
+        num_iterations=10,
+        learning_rate=0.01,
+    ):
         """
         Apply ensemble filtering by combining the results of multiple filters using various ensemble techniques.
 
@@ -165,26 +186,30 @@ class AdvancedSignalFiltering:
         >>> filtered_signal = af.ensemble_filtering(filters, method='mean')
         >>> print(filtered_signal)
         """
-        if method == 'mean':
+        if method == "mean":
             filtered_signals = np.array([f() for f in filters])
             return np.mean(filtered_signals, axis=0)
 
-        elif method == 'weighted_mean':
+        elif method == "weighted_mean":
             if weights is None or len(weights) != len(filters):
-                raise ValueError("Weights must be provided and match the number of filters for weighted_mean.")
+                raise ValueError(
+                    "Weights must be provided and match the number of filters for weighted_mean."
+                )
             filtered_signals = np.array([f() for f in filters])
             return np.average(filtered_signals, axis=0, weights=weights)
 
-        elif method == 'bagging':
+        elif method == "bagging":
             aggregated_signal = np.zeros_like(self.signal)
             for _ in range(num_iterations):
-                sampled_indices = np.random.choice(len(self.signal), size=len(self.signal), replace=True)
+                sampled_indices = np.random.choice(
+                    len(self.signal), size=len(self.signal), replace=True
+                )
                 sampled_signal = self.signal[sampled_indices]
                 for filter_func in filters:
                     aggregated_signal += filter_func(sampled_signal)
             return aggregated_signal / (len(filters) * num_iterations)
 
-        elif method == 'boosting':
+        elif method == "boosting":
             boosted_signal = np.zeros_like(self.signal)
             residual = self.signal.copy()
             for _ in range(num_iterations):
@@ -195,9 +220,13 @@ class AdvancedSignalFiltering:
             return boosted_signal / num_iterations
 
         else:
-            raise ValueError("Invalid method. Must be 'mean', 'weighted_mean', 'bagging', or 'boosting'.")
+            raise ValueError(
+                "Invalid method. Must be 'mean', 'weighted_mean', 'bagging', or 'boosting'."
+            )
 
-    def convolution_based_filter(self, kernel_type='smoothing', custom_kernel=None, kernel_size=3):
+    def convolution_based_filter(
+        self, kernel_type="smoothing", custom_kernel=None, kernel_size=3
+    ):
         """
         Apply a convolution-based filter to the signal using predefined or custom kernels.
 
@@ -217,21 +246,24 @@ class AdvancedSignalFiltering:
         """
         ck = ConvolutionKernels()
 
-        if kernel_type == 'smoothing':
+        if kernel_type == "smoothing":
             kernel = ck.smoothing(size=kernel_size)
-        elif kernel_type == 'sharpening':
+        elif kernel_type == "sharpening":
             kernel = ck.sharpening()
-        elif kernel_type == 'edge_detection':
+        elif kernel_type == "edge_detection":
             kernel = ck.edge_detection()
-        elif kernel_type == 'custom' and custom_kernel is not None:
+        elif kernel_type == "custom" and custom_kernel is not None:
             kernel = ck.custom_kernel(custom_kernel)
         else:
-            raise ValueError("Invalid kernel_type. Must be 'smoothing', 'sharpening', 'edge_detection', or 'custom' with a custom_kernel provided.")
+            raise ValueError(
+                "Invalid kernel_type. Must be 'smoothing', 'sharpening', 'edge_detection', or 'custom' with a custom_kernel provided."
+            )
 
-        return np.convolve(self.signal, kernel, mode='same')
+        return np.convolve(self.signal, kernel, mode="same")
 
-
-    def attention_based_filter(self, attention_type='uniform', custom_weights=None, size=5, **kwargs):
+    def attention_based_filter(
+        self, attention_type="uniform", custom_weights=None, size=5, **kwargs
+    ):
         """
         Apply an attention-based filter to the signal using predefined or custom attention weights.
 
@@ -252,17 +284,23 @@ class AdvancedSignalFiltering:
         """
         aw = AttentionWeights()
 
-        if attention_type == 'uniform':
+        if attention_type == "uniform":
             weights = aw.uniform(size)
-        elif attention_type == 'linear':
-            weights = aw.linear(size, ascending=kwargs.get('ascending', True))
-        elif attention_type == 'gaussian':
-            weights = aw.gaussian(size, sigma=kwargs.get('sigma', 1.0))
-        elif attention_type == 'exponential':
-            weights = aw.exponential(size, ascending=kwargs.get('ascending', True), base=kwargs.get('base', 2.0))
-        elif attention_type == 'custom' and custom_weights is not None:
+        elif attention_type == "linear":
+            weights = aw.linear(size, ascending=kwargs.get("ascending", True))
+        elif attention_type == "gaussian":
+            weights = aw.gaussian(size, sigma=kwargs.get("sigma", 1.0))
+        elif attention_type == "exponential":
+            weights = aw.exponential(
+                size,
+                ascending=kwargs.get("ascending", True),
+                base=kwargs.get("base", 2.0),
+            )
+        elif attention_type == "custom" and custom_weights is not None:
             weights = aw.custom_weights(custom_weights)
         else:
-            raise ValueError("Invalid attention_type. Must be 'uniform', 'linear', 'gaussian', 'exponential', or 'custom' with custom_weights provided.")
+            raise ValueError(
+                "Invalid attention_type. Must be 'uniform', 'linear', 'gaussian', 'exponential', or 'custom' with custom_weights provided."
+            )
 
-        return np.convolve(self.signal, weights, mode='same')
+        return np.convolve(self.signal, weights, mode="same")

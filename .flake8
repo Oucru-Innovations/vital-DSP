@@ -21,13 +21,17 @@ exclude =
 # E203: Whitespace before ':'
 # E266: Too many leading '#' for block comments
 # E501: Line length
+# E302: Ignore the expected 2 blank lines error
+# E731: Do not assign a lambda expression, use a def
 # W503: Line break before binary operator
 # F403: Import * used
 # F405: Name may be undefined or defined from import * used
 ignore =
     E203,
     E266,
+    E302,  
     E501,
+    E731,
     W503,
     F403,
     F405

@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.optimize import minimize
 
+
 class GaussianProcess:
     """
     Gaussian Process for Bayesian Optimization.
@@ -38,8 +39,10 @@ class GaussianProcess:
         Returns:
         numpy.ndarray: Kernel matrix.
         """
-        sqdist = np.sum(X1 ** 2, 1).reshape(-1, 1) + np.sum(X2 ** 2, 1) - 2 * np.dot(X1, X2.T)
-        return np.exp(-0.5 / self.length_scale ** 2 * sqdist)
+        sqdist = (
+            np.sum(X1**2, 1).reshape(-1, 1) + np.sum(X2**2, 1) - 2 * np.dot(X1, X2.T)
+        )
+        return np.exp(-0.5 / self.length_scale**2 * sqdist)
 
     def predict(self, X):
         """
@@ -52,11 +55,12 @@ class GaussianProcess:
         tuple: Predicted mean and variance.
         """
         if self.X_train is None or self.y_train is None:
-            raise ValueError("The GP model has not been updated with any training data.")
-        
+            raise ValueError(
+                "The GP model has not been updated with any training data."
+            )
         K_s = self._rbf_kernel(self.X_train, X)
         K_ss = self._rbf_kernel(X, X)
-        K_inv = np.linalg.inv(self.K + self.noise ** 2 * np.eye(len(self.X_train)))
+        K_inv = np.linalg.inv(self.K + self.noise**2 * np.eye(len(self.X_train)))
 
         mu_s = K_s.T.dot(K_inv).dot(self.y_train)
         cov_s = K_ss - K_s.T.dot(K_inv).dot(K_s)
@@ -123,7 +127,6 @@ class BayesianOptimization:
         """
         mu, sigma = self.gp.predict(X)
         mu_sample = np.max(self.Y_samples)
-        
         imp = mu - mu_sample - xi
         Z = imp / sigma
         ei = imp * self._cdf(Z) + sigma * self._pdf(Z)
@@ -153,7 +156,7 @@ class BayesianOptimization:
         Returns:
         numpy.ndarray: PDF values.
         """
-        return np.exp(-0.5 * x ** 2) / np.sqrt(2 * np.pi)
+        return np.exp(-0.5 * x**2) / np.sqrt(2 * np.pi)
 
     def propose_location(self, n_restarts=10):
         """
@@ -167,10 +170,14 @@ class BayesianOptimization:
         """
         best_value = None
         best_x = None
-        
+
         for _ in range(n_restarts):
             x_init = np.random.uniform(self.bounds[0], self.bounds[1], size=(1, 1))
-            res = minimize(lambda x: -self.acquisition(np.atleast_2d(x)), x_init, bounds=[self.bounds])
+            res = minimize(
+                lambda x: -self.acquisition(np.atleast_2d(x)),
+                x_init,
+                bounds=[self.bounds],
+            )
             if best_value is None or res.fun < best_value:
                 best_value = res.fun
                 best_x = res.x

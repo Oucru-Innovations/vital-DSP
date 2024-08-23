@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class ChromaSTFT:
     """
     A class to compute Chroma Short-Time Fourier Transform (Chroma STFT) to analyze harmonic content in speech.
@@ -36,7 +37,11 @@ class ChromaSTFT:
         >>> chroma_stft_result = chroma_stft.compute_chroma_stft()
         >>> print(chroma_stft_result)
         """
-        stft_matrix = np.abs(np.fft.fft(self.signal, n=self.n_fft))[:self.n_fft//2+1]
-        chroma_filter = np.random.rand(self.n_chroma, self.n_fft//2+1)  # Simulated chroma filter banks
+        stft_matrix = np.abs(np.fft.fft(self.signal, n=self.n_fft))[
+            : self.n_fft // 2 + 1
+        ]
+        chroma_filter = np.random.rand(
+            self.n_chroma, self.n_fft // 2 + 1
+        )  # Simulated chroma filter banks
         chroma_stft = np.dot(chroma_filter, stft_matrix)
         return chroma_stft

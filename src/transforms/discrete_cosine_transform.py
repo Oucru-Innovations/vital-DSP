@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class DiscreteCosineTransform:
     """
     A class to perform Discrete Cosine Transform (DCT) used in compression and feature extraction.
@@ -63,6 +64,8 @@ class DiscreteCosineTransform:
         for n in range(N):
             sum_value = dct_coefficients[0] / np.sqrt(2)
             for k in range(1, N):
-                sum_value += dct_coefficients[k] * np.cos(np.pi * k * (2 * n + 1) / (2 * N))
+                sum_value += dct_coefficients[k] * np.cos(
+                    np.pi * k * (2 * n + 1) / (2 * N)
+                )
             signal_reconstructed[n] = sum_value * np.sqrt(2 / N)
         return signal_reconstructed

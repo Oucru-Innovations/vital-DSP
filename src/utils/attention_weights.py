@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class AttentionWeights:
     """
     A class that provides a collection of predefined attention weights for signal processing.

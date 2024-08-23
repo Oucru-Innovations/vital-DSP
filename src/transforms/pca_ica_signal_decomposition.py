@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class PCASignalDecomposition:
     """
     A class to perform PCA for signal decomposition.
@@ -34,7 +35,9 @@ class PCASignalDecomposition:
         """
         # Check if the input is at least 2D
         if self.signals.ndim != 2:
-            raise ValueError("Input signals must be a 2D array with shape (n_samples, n_features).")
+            raise ValueError(
+                "Input signals must be a 2D array with shape (n_samples, n_features)."
+            )
 
         # Step 1: Center the data (subtract the mean)
         mean_signal = np.mean(self.signals, axis=0)
@@ -53,11 +56,12 @@ class PCASignalDecomposition:
         # Step 5: Select the top n_components eigenvectors (principal components)
         if self.n_components is None or self.n_components > self.signals.shape[1]:
             self.n_components = self.signals.shape[1]
-        principal_components = np.dot(centered_signals, eigenvectors[:, :self.n_components])
+        principal_components = np.dot(
+            centered_signals, eigenvectors[:, : self.n_components]
+        )
 
         return principal_components
 
-import numpy as np
 
 class ICASignalDecomposition:
     """
@@ -94,7 +98,9 @@ class ICASignalDecomposition:
         >>> print(ica_result)
         """
         if self.signals.ndim != 2:
-            raise ValueError("Input signals must be a 2D array with shape (n_samples, n_features).")
+            raise ValueError(
+                "Input signals must be a 2D array with shape (n_samples, n_features)."
+            )
 
         # Center and whiten the data
         mean_signal = np.mean(self.signals, axis=0)
@@ -111,7 +117,11 @@ class ICASignalDecomposition:
         # Perform ICA using the FastICA algorithm
         for i in range(self.max_iter):
             W_old = W.copy()
-            W = np.dot(np.tanh(np.dot(W, whitened_signals)).dot(whitened_signals.T) / n_samples, W)
+            W = np.dot(
+                np.tanh(np.dot(W, whitened_signals)).dot(whitened_signals.T)
+                / n_samples,
+                W,
+            )
             W = W / np.linalg.norm(W, axis=1, keepdims=True)
 
             # Check for convergence

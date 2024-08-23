@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class TrendAnalysis:
     """
     A comprehensive class to track and analyze long-term trends in physiological signals.
@@ -56,7 +57,7 @@ class TrendAnalysis:
             weights = np.array(weights)
             weights /= np.sum(weights)
 
-        weighted_avg = np.convolve(self.signal, weights, mode='valid')
+        weighted_avg = np.convolve(self.signal, weights, mode="valid")
         return weighted_avg
 
     def compute_exponential_smoothing(self, alpha):
@@ -72,7 +73,9 @@ class TrendAnalysis:
         smoothed_signal = np.zeros_like(self.signal)
         smoothed_signal[0] = self.signal[0]
         for t in range(1, len(self.signal)):
-            smoothed_signal[t] = alpha * self.signal[t] + (1 - alpha) * smoothed_signal[t-1]
+            smoothed_signal[t] = (
+                alpha * self.signal[t] + (1 - alpha) * smoothed_signal[t - 1]
+            )
         return smoothed_signal
 
     def compute_linear_trend(self):
@@ -128,11 +131,11 @@ class TrendAnalysis:
         dict: A dictionary containing 'trend', 'seasonal', and 'residual' components.
         """
         trend = self.compute_moving_average(period)
-        detrended = self.signal[:len(trend)] - trend
+        detrended = self.signal[: len(trend)] - trend
         seasonal = np.array([np.mean(detrended[i::period]) for i in range(period)])
-        seasonal = np.tile(seasonal, len(detrended) // period + 1)[:len(detrended)]
+        seasonal = np.tile(seasonal, len(detrended) // period + 1)[: len(detrended)]
         residual = detrended - seasonal
-        return {'trend': trend, 'seasonal': seasonal, 'residual': residual}
+        return {"trend": trend, "seasonal": seasonal, "residual": residual}
 
     def compute_trend_strength(self):
         """

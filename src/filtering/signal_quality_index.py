@@ -1,9 +1,10 @@
 import numpy as np
 
+
 class SignalQualityIndex:
     """
     A class to compute various Signal Quality Index (SQI) metrics for assessing the quality of vital signals.
-    
+
     Methods:
     - amplitude_variability_sqi: Evaluates the variability in signal amplitude.
     - baseline_wander_sqi: Measures baseline wander in ECG/PPG signals.
@@ -64,8 +65,10 @@ class SignalQualityIndex:
         >>> sqi = SignalQualityIndex(signal)
         >>> print(sqi.baseline_wander_sqi())
         """
-        moving_average = np.convolve(self.signal, np.ones(window_size) / window_size, mode='valid')
-        wander = np.mean(np.abs(self.signal[:len(moving_average)] - moving_average))
+        moving_average = np.convolve(
+            self.signal, np.ones(window_size) / window_size, mode="valid"
+        )
+        wander = np.mean(np.abs(self.signal[: len(moving_average)] - moving_average))
         max_signal = np.max(self.signal)
         sqi_value = 1 - (wander / max_signal)
         return max(0, min(1, sqi_value))
@@ -125,7 +128,9 @@ class SignalQualityIndex:
         >>> print(sqi.signal_entropy_sqi())
         """
         probability_distribution = np.histogram(self.signal, bins=10, density=True)[0]
-        entropy = -np.sum(probability_distribution * np.log2(probability_distribution + 1e-8))
+        entropy = -np.sum(
+            probability_distribution * np.log2(probability_distribution + 1e-8)
+        )
         normalized_entropy = entropy / np.log2(len(self.signal))
         return max(0, min(1, normalized_entropy))
 

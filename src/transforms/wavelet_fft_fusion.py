@@ -1,6 +1,7 @@
 import numpy as np
 from transforms.wavelet_transform import WaveletTransform
 
+
 class WaveletFFTfusion:
     """
     A class to perform fusion of Wavelet Transform and FFT.
@@ -9,7 +10,7 @@ class WaveletFFTfusion:
     - compute_fusion: Computes the fusion of wavelet and FFT for the signal.
     """
 
-    def __init__(self, signal, wavelet_type='db', order=4, **kwargs):
+    def __init__(self, signal, wavelet_type="db", order=4, **kwargs):
         """
         Initialize the WaveletFFTfusion class with the signal.
 
@@ -37,7 +38,9 @@ class WaveletFFTfusion:
         >>> fusion_result = fusion.compute_fusion()
         >>> print(fusion_result)
         """
-        wavelet_transform = WaveletTransform(self.signal,wavelet_name=self.wavelet_type)
+        wavelet_transform = WaveletTransform(
+            self.signal, wavelet_name=self.wavelet_type
+        )
         wavelet_coeffs = wavelet_transform.perform_wavelet_transform(level=self.order)
         fft_coeffs = np.fft.fft(self.signal)
         fusion_result = [w * f for w, f in zip(wavelet_coeffs, fft_coeffs)]

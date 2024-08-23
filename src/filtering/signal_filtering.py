@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class SignalFiltering:
     """
     A class for applying various filtering techniques to signals.
@@ -42,15 +43,20 @@ class SignalFiltering:
 
         half_window = (window_length - 1) // 2
         # Precompute coefficients
-        b = np.asmatrix([[k**i for i in range(polyorder + 1)] for k in range(-half_window, half_window + 1)])
+        b = np.asmatrix(
+            [
+                [k**i for i in range(polyorder + 1)]
+                for k in range(-half_window, half_window + 1)
+            ]
+        )
         m = np.linalg.pinv(b).A[0]
         # Pad the signal at the extremes with values taken from the signal itself
-        firstvals = signal[0] - np.abs(signal[1:half_window+1][::-1] - signal[0])
-        lastvals = signal[-1] + np.abs(signal[-half_window-1:-1][::-1] - signal[-1])
+        firstvals = signal[0] - np.abs(signal[1 : half_window + 1][::-1] - signal[0])
+        lastvals = signal[-1] + np.abs(signal[-half_window - 1 : -1][::-1] - signal[-1])
         signal = np.concatenate((firstvals, signal, lastvals))
-        smoothed_signal = np.convolve(m, signal, mode='valid')
+        smoothed_signal = np.convolve(m, signal, mode="valid")
         return smoothed_signal
-    
+
     def moving_average(self, window_size):
         """
         Apply a moving average filter to the signal.
@@ -71,13 +77,19 @@ class SignalFiltering:
         [2. 3. 4. 5. 6. 7. 8. 9.]
         """
         # Apply padding to the signal
-        padded_signal = np.pad(self.signal, (window_size // 2, window_size - 1 - window_size // 2), mode='edge')
-        
+        padded_signal = np.pad(
+            self.signal,
+            (window_size // 2, window_size - 1 - window_size // 2),
+            mode="edge",
+        )
+
         # Calculate the moving average
-        filtered_signal = np.convolve(padded_signal, np.ones(window_size) / window_size, mode='valid')
-        
+        filtered_signal = np.convolve(
+            padded_signal, np.ones(window_size) / window_size, mode="valid"
+        )
+
         return filtered_signal
-    
+
     def gaussian(self, sigma=1.0):
         """
         Apply a Gaussian filter to the signal.
@@ -99,8 +111,8 @@ class SignalFiltering:
         """
         size = int(6 * sigma + 1) if int(6 * sigma + 1) % 2 != 0 else int(6 * sigma + 2)
         kernel = self.gaussian_kernel(size, sigma)
-        return np.convolve(self.signal, kernel, mode='same')
-    
+        return np.convolve(self.signal, kernel, mode="same")
+
     @staticmethod
     def gaussian_filter1d(signal, sigma):
         """
@@ -117,7 +129,7 @@ class SignalFiltering:
         x = np.arange(-radius, radius + 1)
         gaussian_kernel = np.exp(-0.5 * (x / sigma) ** 2)
         gaussian_kernel /= gaussian_kernel.sum()
-        smoothed_signal = np.convolve(signal, gaussian_kernel, mode='same')
+        smoothed_signal = np.convolve(signal, gaussian_kernel, mode="same")
         return smoothed_signal
 
     @staticmethod
@@ -141,7 +153,7 @@ class SignalFiltering:
         kernel = kernel / np.sum(kernel)
         return kernel
 
-    def butterworth(self, cutoff, fs, order=4, btype='low'):
+    def butterworth(self, cutoff, fs, order=4, btype="low"):
         """
         Apply a Butterworth filter to the signal.
 
@@ -168,27 +180,33 @@ class SignalFiltering:
         normal_cutoff = cutoff / nyquist
 
         # Calculate the poles of the Butterworth filter
-        poles = np.exp(1j * (np.pi * (np.arange(1, 2*order, 2) + order - 1) / (2*order)))
+        poles = np.exp(
+            1j * (np.pi * (np.arange(1, 2 * order, 2) + order - 1) / (2 * order))
+        )
         poles = poles[np.real(poles) < 0]
-        
-        if btype == 'low':
+
+        if btype == "low":
             poles = poles * normal_cutoff
-        elif btype == 'high':
+        elif btype == "high":
             poles = poles / normal_cutoff
 
         z = np.exp(-poles)
 
         filtered_signal = self.signal.copy()
         for p in z:
-            filtered_signal = filtered_signal - 2*np.real(p)*np.roll(filtered_signal, 1) + np.abs(p)**2*np.roll(filtered_signal, 2)
+            filtered_signal = (
+                filtered_signal
+                - 2 * np.real(p) * np.roll(filtered_signal, 1)
+                + np.abs(p) ** 2 * np.roll(filtered_signal, 2)
+            )
 
         return filtered_signal
 
-    def butter(self, order, cutoff, btype='low', fs=1.0):
+    def butter(self, order, cutoff, btype="low", fs=1.0):
         """
         Custom implementation of the Butterworth filter design.
         Butterworth filter using bilinear transformation
-        
+
         Parameters:
         - order (int): The order of the filter.
         - cutoff (float or list of float): The critical frequency or frequencies.
@@ -200,27 +218,29 @@ class SignalFiltering:
         """
         nyquist = 0.5 * fs
         normalized_cutoff = np.array(cutoff) / nyquist
-        if btype == 'low':
-            poles = np.exp(1j * np.pi * (np.arange(1, 2 * order + 1, 2) + order - 1) / (2 * order))
+        if btype == "low":
+            poles = np.exp(
+                1j * np.pi * (np.arange(1, 2 * order + 1, 2) + order - 1) / (2 * order)
+            )
             poles = poles[np.real(poles) < 0]
             z, p = np.zeros(0), poles
-        elif btype == 'high':
-            z, p = self.butter(order, cutoff, btype='low', fs=fs)
+        elif btype == "high":
+            z, p = self.butter(order, cutoff, btype="low", fs=fs)
             z, p = -z, -p
-        elif btype == 'band':
+        elif btype == "band":
             low = np.min(normalized_cutoff)
             high = np.max(normalized_cutoff)
-            z_low, p_low = self.butter(order, low, btype='high', fs=fs)
-            z_high, p_high = self.butter(order, high, btype='low', fs=fs)
+            z_low, p_low = self.butter(order, low, btype="high", fs=fs)
+            z_high, p_high = self.butter(order, high, btype="low", fs=fs)
             z = np.concatenate([z_low, z_high])
             p = np.concatenate([p_low, p_high])
         else:
             raise ValueError("Invalid btype. Must be 'low', 'high', or 'band'.")
-        
+
         b, a = np.poly(z), np.poly(p)
         b /= np.abs(np.sum(a))
         return b, a
-    
+
     def median(self, kernel_size=3):
         """
         Apply a median filter to the signal.
@@ -241,12 +261,18 @@ class SignalFiltering:
         [1 2 3 5 5 6 7 8 9 9]
         """
         # Apply padding to the signal
-        padded_signal = np.pad(self.signal, (kernel_size // 2, kernel_size - 1 - kernel_size // 2), mode='edge')
-        
+        padded_signal = np.pad(
+            self.signal,
+            (kernel_size // 2, kernel_size - 1 - kernel_size // 2),
+            mode="edge",
+        )
+
         # Calculate the median filter
-        filtered_signal = np.array([
-            np.median(padded_signal[i:i + kernel_size]) 
-            for i in range(len(self.signal))
-        ])
-        
+        filtered_signal = np.array(
+            [
+                np.median(padded_signal[i : i + kernel_size])
+                for i in range(len(self.signal))
+            ]
+        )
+
         return filtered_signal

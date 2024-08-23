@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def argrelextrema(signal, comparator=np.greater, order=1):
     """
     Custom implementation of finding relative extrema (maxima or minima) in a signal.
@@ -13,15 +14,23 @@ def argrelextrema(signal, comparator=np.greater, order=1):
     - extrema (numpy.ndarray): Indices of the relative extrema.
     """
     if order < 1:
-        raise ValueError('Order must be an int >= 1')
+        raise ValueError("Order must be an int >= 1")
     if signal.size < order * 2 + 1:
-        raise ValueError('Input signal is too small')
+        raise ValueError("Input signal is too small")
 
-    extrema = np.where(comparator(signal[order:-order], signal[:-2*order]) &
-                       comparator(signal[order:-order], signal[2*order:]))[0] + order
+    extrema = (
+        np.where(
+            comparator(signal[order:-order], signal[: -2 * order])
+            & comparator(signal[order:-order], signal[2 * order :])
+        )[0]
+        + order
+    )
     return extrema
 
-def find_peaks(signal, height=None, distance=None, threshold=None, prominence=None, width=None):
+
+def find_peaks(
+    signal, height=None, distance=None, threshold=None, prominence=None, width=None
+):
     """
     Custom utility to find peaks in a 1D signal.
 
@@ -38,19 +47,22 @@ def find_peaks(signal, height=None, distance=None, threshold=None, prominence=No
     """
     peaks = []
     signal_len = len(signal)
-    
+
     # Iterate over the signal to find peaks
     for i in range(1, signal_len - 1):
-        if signal[i] > signal[i-1] and signal[i] > signal[i+1]:  # Peak condition
+        if signal[i] > signal[i - 1] and signal[i] > signal[i + 1]:  # Peak condition
             if height is not None and signal[i] < height:
                 continue
-            if threshold is not None and (signal[i] - signal[i-1] < threshold or signal[i] - signal[i+1] < threshold):
+            if threshold is not None and (
+                signal[i] - signal[i - 1] < threshold
+                or signal[i] - signal[i + 1] < threshold
+            ):
                 continue
             if peaks and distance is not None and i - peaks[-1] < distance:
                 continue
             if prominence is not None:
-                left_base = np.min(signal[max(0, i-int(distance/2)):i])
-                right_base = np.min(signal[i:min(signal_len, i+int(distance/2))])
+                left_base = np.min(signal[max(0, i - int(distance / 2)) : i])
+                right_base = np.min(signal[i : min(signal_len, i + int(distance / 2))])
                 if signal[i] - max(left_base, right_base) < prominence:
                     continue
             if width is not None:
@@ -64,6 +76,7 @@ def find_peaks(signal, height=None, distance=None, threshold=None, prominence=No
             peaks.append(i)
     return np.array(peaks)
 
+
 def filtfilt(b, a, signal):
     """
     Custom implementation of the forward-backward filter (filtfilt).
@@ -76,8 +89,8 @@ def filtfilt(b, a, signal):
     Returns:
     - y (numpy.ndarray): The filtered signal.
     """
-    y = np.convolve(signal, b, mode='same')
-    y = np.convolve(y[::-1], b, mode='same')
+    y = np.convolve(signal, b, mode="same")
+    y = np.convolve(y[::-1], b, mode="same")
     return y[::-1]
 
 
@@ -94,17 +107,16 @@ def pearsonr(x, y):
     """
     if len(x) != len(y):
         raise ValueError("Input arrays must have the same length.")
-    
+
     mean_x = np.mean(x)
     mean_y = np.mean(y)
     cov_xy = np.sum((x - mean_x) * (y - mean_y))
     std_x = np.sqrt(np.sum((x - mean_x) ** 2))
     std_y = np.sqrt(np.sum((y - mean_y) ** 2))
-    
+
     correlation = cov_xy / (std_x * std_y)
     return correlation
 
-import numpy as np
 
 def coherence(x, y, fs=1.0, nperseg=256):
     """
@@ -120,8 +132,9 @@ def coherence(x, y, fs=1.0, nperseg=256):
     numpy.ndarray: Frequency array.
     numpy.ndarray: Coherence values.
     """
+
     def periodogram(signal):
-        freqs = np.fft.rfftfreq(len(signal), d=1/fs)
+        freqs = np.fft.rfftfreq(len(signal), d=1 / fs)
         psd = np.abs(np.fft.rfft(signal)) ** 2 / len(signal)
         return freqs, psd
 
@@ -132,10 +145,9 @@ def coherence(x, y, fs=1.0, nperseg=256):
     _, psd_y = periodogram(y)
     csd_xy = cross_spectrum(x, y)
     coherence = np.abs(csd_xy) ** 2 / (psd_x * psd_y)
-    
+
     return freqs, coherence
 
-import numpy as np
 
 def grangercausalitytests(data, max_lag, verbose=False):
     """
@@ -148,20 +160,21 @@ def grangercausalitytests(data, max_lag, verbose=False):
     Returns:
     dict: Granger causality test results with F-test statistics.
     """
+
     def lag_matrix(signal, max_lag):
         n = len(signal)
         lagged_data = np.zeros((n - max_lag, max_lag + 1))
         for i in range(max_lag + 1):
-            lagged_data[:, i] = signal[max_lag - i:n - i]
+            lagged_data[:, i] = signal[max_lag - i : n - i]
         return lagged_data
 
     n = len(data)
     results = {}
-    
+
     for lag in range(1, max_lag + 1):
         x_lagged = lag_matrix(data[:, 0], lag)
         y_lagged = lag_matrix(data[:, 1], lag)
-        
+
         # Perform linear regression on the lagged data
         beta_y = np.linalg.lstsq(y_lagged, data[lag:, 0], rcond=None)[0]
         beta_x = np.linalg.lstsq(x_lagged, data[lag:, 1], rcond=None)[0]
@@ -170,13 +183,11 @@ def grangercausalitytests(data, max_lag, verbose=False):
         ssr_reduced = np.sum((data[lag:, 0] - x_lagged @ beta_x) ** 2)
 
         df_full = n - 2 * lag - 1
-        df_reduced = n - lag - 1
+        # df_reduced = n - lag - 1
         f_statistic = ((ssr_reduced - ssr_full) / lag) / (ssr_full / df_full)
 
-        results[lag] = {
-            'ssr_ftest': f_statistic
-        }
-        
+        results[lag] = {"ssr_ftest": f_statistic}
+
         if verbose:
             print(f"Lag: {lag}, F-statistic: {f_statistic}")
 

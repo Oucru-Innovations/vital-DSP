@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class HarmonicPercussiveSeparation:
     """
     Harmonic-Percussive Separation for separating vocal and noise components in respiratory analysis.
@@ -64,10 +65,10 @@ class HarmonicPercussiveSeparation:
         Returns:
         numpy.ndarray: The filtered array.
         """
-        padded_arr = np.pad(arr, (kernel_size // 2, kernel_size // 2), mode='edge')
+        padded_arr = np.pad(arr, (kernel_size // 2, kernel_size // 2), mode="edge")
         filtered_arr = np.zeros_like(arr)
 
         for i in range(len(arr)):
-            filtered_arr[i] = np.median(padded_arr[i:i + kernel_size])
+            filtered_arr[i] = np.median(padded_arr[i : i + kernel_size])
 
         return filtered_arr

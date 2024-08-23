@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class EventRelatedPotential:
     """
     A class to compute Event-Related Potentials (ERP) for detecting brain responses to stimuli in EEG.
@@ -8,7 +9,14 @@ class EventRelatedPotential:
     - compute_erp: Computes the ERP of the signal.
     """
 
-    def __init__(self, signal, stimulus_times, pre_stimulus=0.1, post_stimulus=0.4, sample_rate=1000):
+    def __init__(
+        self,
+        signal,
+        stimulus_times,
+        pre_stimulus=0.1,
+        post_stimulus=0.4,
+        sample_rate=1000,
+    ):
         """
         Initialize the EventRelatedPotential class with the signal.
 

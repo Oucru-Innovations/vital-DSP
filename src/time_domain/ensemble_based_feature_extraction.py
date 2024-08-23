@@ -1,5 +1,6 @@
 import numpy as np
-from collections import Counter
+# from collections import Counter
+
 
 class EnsembleBasedFeatureExtraction:
     """
@@ -51,8 +52,13 @@ class EnsembleBasedFeatureExtraction:
         Returns:
         numpy.ndarray: The extracted features from the Bagging ensemble.
         """
-        bagged_models = [self._build_tree(X[np.random.choice(len(X), len(X), replace=True)], y) for _ in range(self.n_estimators)]
-        predictions = np.array([self._predict_tree(tree, X) for tree in bagged_models]).T
+        bagged_models = [
+            self._build_tree(X[np.random.choice(len(X), len(X), replace=True)], y)
+            for _ in range(self.n_estimators)
+        ]
+        predictions = np.array(
+            [self._predict_tree(tree, X) for tree in bagged_models]
+        ).T
         aggregated_predictions = np.mean(predictions, axis=1)
         return aggregated_predictions
 
@@ -89,14 +95,18 @@ class EnsembleBasedFeatureExtraction:
         numpy.ndarray: The extracted features from the Stacking ensemble.
         """
         base_models = [self._build_tree(X, y) for _ in range(self.n_estimators)]
-        base_predictions = np.array([self._predict_tree(tree, X) for tree in base_models]).T
+        base_predictions = np.array(
+            [self._predict_tree(tree, X) for tree in base_models]
+        ).T
         if meta_model is None:
             meta_model = lambda preds: np.mean(preds, axis=1)
         stacked_features = meta_model(base_predictions)
         return stacked_features
 
     def _build_tree(self, X, y, depth=0):
-        if len(y) <= self.min_samples_split or (self.max_depth and depth >= self.max_depth):
+        if len(y) <= self.min_samples_split or (
+            self.max_depth and depth >= self.max_depth
+        ):
             return np.mean(y)
         feature, threshold = self._best_split(X, y)
         left_indices = X[:, feature] < threshold
@@ -106,15 +116,19 @@ class EnsembleBasedFeatureExtraction:
         return (feature, threshold, left_tree, right_tree)
 
     def _best_split(self, X, y):
-        best_feature, best_threshold, best_score = None, None, float('inf')
+        best_feature, best_threshold, best_score = None, None, float("inf")
         for feature in range(X.shape[1]):
             thresholds = np.unique(X[:, feature])
             for threshold in thresholds:
                 left_indices = X[:, feature] < threshold
                 right_indices = ~left_indices
                 left_score = np.mean((y[left_indices] - np.mean(y[left_indices])) ** 2)
-                right_score = np.mean((y[right_indices] - np.mean(y[right_indices])) ** 2)
-                score = left_score * np.sum(left_indices) + right_score * np.sum(right_indices)
+                right_score = np.mean(
+                    (y[right_indices] - np.mean(y[right_indices])) ** 2
+                )
+                score = left_score * np.sum(left_indices) + right_score * np.sum(
+                    right_indices
+                )
                 if score < best_score:
                     best_feature, best_threshold, best_score = feature, threshold, score
         return best_feature, best_threshold

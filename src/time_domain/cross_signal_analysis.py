@@ -1,5 +1,7 @@
 import numpy as np
-from utils.common import pearsonr,coherence,grangercausalitytests
+from utils.common import pearsonr, coherence, grangercausalitytests
+
+
 class CrossSignalAnalysis:
     """
     A comprehensive class to analyze interactions between two physiological signals, such as ECG and respiration.
@@ -47,9 +49,18 @@ class CrossSignalAnalysis:
         """
         if max_lag is None:
             max_lag = len(self.signal1) - 1
-        cross_corr = np.correlate(self.signal1 - np.mean(self.signal1), self.signal2 - np.mean(self.signal2), mode='full')
+        cross_corr = np.correlate(
+            self.signal1 - np.mean(self.signal1),
+            self.signal2 - np.mean(self.signal2),
+            mode="full",
+        )
         lags = np.arange(-max_lag, max_lag + 1)
-        return lags, cross_corr[len(cross_corr) // 2 - max_lag : len(cross_corr) // 2 + max_lag + 1]
+        return (
+            lags,
+            cross_corr[
+                len(cross_corr) // 2 - max_lag : len(cross_corr) // 2 + max_lag + 1
+            ],
+        )
 
     def compute_coherence(self, nperseg=256):
         """
@@ -72,7 +83,15 @@ class CrossSignalAnalysis:
         Returns:
         float: The phase synchronization index between the two signals.
         """
-        phase_diff = np.angle(np.exp(1j * (np.unwrap(np.angle(self.signal1)) - np.unwrap(np.angle(self.signal2)))))
+        phase_diff = np.angle(
+            np.exp(
+                1j
+                * (
+                    np.unwrap(np.angle(self.signal1))
+                    - np.unwrap(np.angle(self.signal2))
+                )
+            )
+        )
         psi = np.abs(np.mean(np.exp(1j * phase_diff)))
         return psi
 
@@ -108,7 +127,7 @@ class CrossSignalAnalysis:
         data = np.vstack([self.signal1, self.signal2]).T
         gc_test = grangercausalitytests(data, max_lag, verbose=False)
         gc_result = {
-            'signal1->signal2': gc_test[max_lag]['ssr_ftest'],
-            'signal2->signal1': gc_test[max_lag]['ssr_ftest']
+            "signal1->signal2": gc_test[max_lag]["ssr_ftest"],
+            "signal2->signal1": gc_test[max_lag]["ssr_ftest"],
         }
         return gc_result

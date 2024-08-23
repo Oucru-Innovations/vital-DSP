@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class ConvolutionKernels:
     """
     A class that provides a collection of common convolution kernels for signal processing.

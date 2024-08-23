@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class STFT:
     """
     A class to perform Short-Time Fourier Transform (STFT) to analyze time-varying signals.
@@ -29,7 +30,9 @@ class STFT:
         Validate and adjust parameters to prevent negative dimensions.
         """
         if self.window_size <= 0 or self.hop_size <= 0 or self.n_fft <= 0:
-            raise ValueError("Window size, hop size, and n_fft must be positive integers.")
+            raise ValueError(
+                "Window size, hop size, and n_fft must be positive integers."
+            )
         if self.window_size > len(self.signal):
             raise ValueError("Window size cannot be larger than the signal length.")
 
@@ -47,11 +50,15 @@ class STFT:
             start = i * self.hop_size
             end = start + self.window_size
             windowed_signal = self.signal[start:end] * np.hanning(self.window_size)
-            
+
             # Ensure the windowed signal length matches n_fft for FFT computation
             if len(windowed_signal) < self.n_fft:
-                windowed_signal = np.pad(windowed_signal, (0, self.n_fft - len(windowed_signal)), mode='constant')
-            
+                windowed_signal = np.pad(
+                    windowed_signal,
+                    (0, self.n_fft - len(windowed_signal)),
+                    mode="constant",
+                )
+
             fft_result = np.fft.rfft(windowed_signal, n=self.n_fft)
             stft_matrix[:, i] = fft_result
         return stft_matrix

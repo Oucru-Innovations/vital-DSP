@@ -1,6 +1,8 @@
-import numpy as np
 import plotly.graph_objs as go
-from filtering import SignalFiltering  # Assuming SignalFiltering class has been implemented
+from filtering import (
+    SignalFiltering,
+)  # Assuming SignalFiltering class has been implemented
+
 
 class FilteringVisualization:
     """
@@ -37,7 +39,9 @@ class FilteringVisualization:
         >>> fv.visualize_moving_average(window_size=5)
         """
         filtered_signal = self.filtering.moving_average(window_size)
-        self._plot_signal(filtered_signal, title=f"Moving Average Filter (Window Size: {window_size})")
+        self._plot_signal(
+            filtered_signal, title=f"Moving Average Filter (Window Size: {window_size})"
+        )
 
     def visualize_gaussian_filter(self, sigma=1.0):
         """
@@ -69,7 +73,10 @@ class FilteringVisualization:
         >>> fv.visualize_butterworth_filter(cutoff=0.3, order=2, fs=100)
         """
         filtered_signal = self.filtering.butterworth_filter(cutoff, order, fs)
-        self._plot_signal(filtered_signal, title=f"Butterworth Filter (Cutoff: {cutoff} Hz, Order: {order})")
+        self._plot_signal(
+            filtered_signal,
+            title=f"Butterworth Filter (Cutoff: {cutoff} Hz, Order: {order})",
+        )
 
     def visualize_median_filter(self, kernel_size=3):
         """
@@ -84,9 +91,13 @@ class FilteringVisualization:
         >>> fv.visualize_median_filter(kernel_size=5)
         """
         filtered_signal = self.filtering.median_filter(kernel_size)
-        self._plot_signal(filtered_signal, title=f"Median Filter (Kernel Size: {kernel_size})")
+        self._plot_signal(
+            filtered_signal, title=f"Median Filter (Kernel Size: {kernel_size})"
+        )
 
-    def visualize_all_filters(self, window_size=3, sigma=1.0, cutoff=0.5, order=2, fs=1000, kernel_size=3):
+    def visualize_all_filters(
+        self, window_size=3, sigma=1.0, cutoff=0.5, order=2, fs=1000, kernel_size=3
+    ):
         """
         Visualize all implemented filters in a single plot for comparison.
 
@@ -109,17 +120,33 @@ class FilteringVisualization:
         median_signal = self.filtering.median_filter(kernel_size)
 
         traces = [
-            go.Scatter(y=self.signal, mode='lines', name='Original Signal'),
-            go.Scatter(y=moving_avg_signal, mode='lines', name=f'Moving Average (Window Size: {window_size})'),
-            go.Scatter(y=gaussian_signal, mode='lines', name=f'Gaussian Filter (Sigma: {sigma})'),
-            go.Scatter(y=butterworth_signal, mode='lines', name=f'Butterworth Filter (Cutoff: {cutoff} Hz, Order: {order})'),
-            go.Scatter(y=median_signal, mode='lines', name=f'Median Filter (Kernel Size: {kernel_size})')
+            go.Scatter(y=self.signal, mode="lines", name="Original Signal"),
+            go.Scatter(
+                y=moving_avg_signal,
+                mode="lines",
+                name=f"Moving Average (Window Size: {window_size})",
+            ),
+            go.Scatter(
+                y=gaussian_signal,
+                mode="lines",
+                name=f"Gaussian Filter (Sigma: {sigma})",
+            ),
+            go.Scatter(
+                y=butterworth_signal,
+                mode="lines",
+                name=f"Butterworth Filter (Cutoff: {cutoff} Hz, Order: {order})",
+            ),
+            go.Scatter(
+                y=median_signal,
+                mode="lines",
+                name=f"Median Filter (Kernel Size: {kernel_size})",
+            ),
         ]
 
         layout = go.Layout(
             title="Comparison of Different Filtering Methods",
-            xaxis=dict(title='Sample Index'),
-            yaxis=dict(title='Amplitude'),
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
         )
 
         fig = go.Figure(data=traces, layout=layout)
@@ -133,13 +160,13 @@ class FilteringVisualization:
         filtered_signal (numpy.ndarray): The filtered signal.
         title (str): The title of the plot.
         """
-        trace1 = go.Scatter(y=self.signal, mode='lines', name='Original Signal')
-        trace2 = go.Scatter(y=filtered_signal, mode='lines', name='Filtered Signal')
+        trace1 = go.Scatter(y=self.signal, mode="lines", name="Original Signal")
+        trace2 = go.Scatter(y=filtered_signal, mode="lines", name="Filtered Signal")
 
         layout = go.Layout(
             title=title,
-            xaxis=dict(title='Sample Index'),
-            yaxis=dict(title='Amplitude'),
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
         )
 
         fig = go.Figure(data=[trace1, trace2], layout=layout)

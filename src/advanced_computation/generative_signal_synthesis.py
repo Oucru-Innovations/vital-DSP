@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class GenerativeSignalSynthesis:
     """
     Generative Signal Synthesis for creating synthetic signal data using various methods.
@@ -10,23 +11,23 @@ class GenerativeSignalSynthesis:
     Example Usage:
     --------------
     signal_synthesizer = GenerativeSignalSynthesis()
-    
+
     # Generate random noise
     random_signal = signal_synthesizer.generate(method="random_noise", length=100)
     print("Random Noise Signal:", random_signal)
-    
+
     # Generate Gaussian process
     gp_signal = signal_synthesizer.generate(method="gaussian_process", length=100, mean=0, std_dev=1, correlation=0.9)
     print("Gaussian Process Signal:", gp_signal)
-    
+
     # Generate AR model signal
     ar_signal = signal_synthesizer.generate(method="autoregressive", length=100, coeffs=[0.9, -0.5])
     print("AR Model Signal:", ar_signal)
-    
+
     # Generate Markov chain signal
     markov_signal = signal_synthesizer.generate(method="markov_chain", length=100, states=[-1, 1], transition_matrix=[[0.9, 0.1], [0.1, 0.9]])
     print("Markov Chain Signal:", markov_signal)
-    
+
     # Generate custom function signal
     custom_signal = signal_synthesizer.generate(method="custom_function", length=100, func=lambda x: np.sin(x))
     print("Custom Function Signal:", custom_signal)
@@ -91,7 +92,7 @@ class GenerativeSignalSynthesis:
         signal[0] = np.random.normal(mean, std_dev)
 
         for i in range(1, length):
-            signal[i] = correlation * signal[i-1] + np.random.normal(mean, std_dev)
+            signal[i] = correlation * signal[i - 1] + np.random.normal(mean, std_dev)
 
         return signal
 
@@ -113,7 +114,9 @@ class GenerativeSignalSynthesis:
         signal[:p] = np.random.normal(0, 1, p)
 
         for i in range(p, length):
-            signal[i] = np.sum([coeffs[j] * signal[i-j-1] for j in range(p)]) + np.random.normal(0, 1)
+            signal[i] = np.sum(
+                [coeffs[j] * signal[i - j - 1] for j in range(p)]
+            ) + np.random.normal(0, 1)
 
         return signal
 
@@ -134,7 +137,7 @@ class GenerativeSignalSynthesis:
         signal[0] = np.random.choice(n_states)
 
         for i in range(1, length):
-            signal[i] = np.random.choice(n_states, p=transition_matrix[signal[i-1]])
+            signal[i] = np.random.choice(n_states, p=transition_matrix[signal[i - 1]])
 
         return np.array([states[s] for s in signal])
 

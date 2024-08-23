@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class EnvelopeDetection:
     """
     A comprehensive class for detecting the envelope of physiological signals.
@@ -30,7 +31,9 @@ class EnvelopeDetection:
         Returns:
         numpy.ndarray: The envelope of the signal.
         """
-        analytic_signal = self.signal + 1j * np.imag(np.fft.ifft(np.fft.fft(self.signal) * 2))
+        analytic_signal = self.signal + 1j * np.imag(
+            np.fft.ifft(np.fft.fft(self.signal) * 2)
+        )
         envelope = np.abs(analytic_signal)
         return envelope
 
@@ -62,10 +65,12 @@ class EnvelopeDetection:
         smoothed_signal = np.zeros_like(absolute_signal)
         smoothed_signal[0] = absolute_signal[0]
         for i in range(1, len(absolute_signal)):
-            smoothed_signal[i] = (1 - smoothing_factor) * smoothed_signal[i-1] + smoothing_factor * absolute_signal[i]
+            smoothed_signal[i] = (1 - smoothing_factor) * smoothed_signal[
+                i - 1
+            ] + smoothing_factor * absolute_signal[i]
         return smoothed_signal
 
-    def peak_envelope(self, interpolation_method='linear'):
+    def peak_envelope(self, interpolation_method="linear"):
         """
         Compute the envelope by connecting peaks in the signal.
 
@@ -75,11 +80,23 @@ class EnvelopeDetection:
         Returns:
         numpy.ndarray: The envelope of the signal.
         """
-        peaks = np.where((self.signal[1:-1] > self.signal[:-2]) & (self.signal[1:-1] > self.signal[2:]))[0] + 1
-        envelope = np.interp(np.arange(len(self.signal)), peaks, self.signal[peaks], left=self.signal[0], right=self.signal[-1])
+        peaks = (
+            np.where(
+                (self.signal[1:-1] > self.signal[:-2])
+                & (self.signal[1:-1] > self.signal[2:])
+            )[0]
+            + 1
+        )
+        envelope = np.interp(
+            np.arange(len(self.signal)),
+            peaks,
+            self.signal[peaks],
+            left=self.signal[0],
+            right=self.signal[-1],
+        )
         return envelope
 
-    def wavelet_envelope(self, wavelet='db4', level=1):
+    def wavelet_envelope(self, wavelet="db4", level=1):
         """
         Compute the envelope using wavelet transform.
 
@@ -110,7 +127,7 @@ class EnvelopeDetection:
         y = np.zeros_like(self.signal)
         w = np.zeros(filter_order)
         for i in range(filter_order, len(self.signal)):
-            x = self.signal[i-filter_order:i][::-1]
+            x = self.signal[i - filter_order : i][::-1]
             y[i] = np.dot(w, x)
             e = self.signal[i] - y[i]
             w += step_size * e * x
@@ -128,7 +145,7 @@ class EnvelopeDetection:
         """
         if model is None:
             # Example simple model: predict next value as a weighted sum of previous values
-            model = lambda x: np.convolve(x, np.ones(5) / 5, mode='same')
-        
+            model = lambda x: np.convolve(x, np.ones(5) / 5, mode="same")
+
         envelope = model(np.abs(self.signal))
         return envelope

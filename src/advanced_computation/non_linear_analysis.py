@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 class NonlinearAnalysis:
     """
     Nonlinear Analysis for analyzing chaotic signals like Heart Rate Variability (HRV).
@@ -39,7 +40,7 @@ class NonlinearAnalysis:
         n = len(self.signal)
         distances = []
         for i in range(n - max_iter):
-            dist = np.abs(self.signal[i + 1:i + max_iter] - self.signal[i])
+            dist = np.abs(self.signal[i + 1 : i + max_iter] - self.signal[i])
             dist[dist < epsilon] = epsilon  # Avoid log(0)
             distances.append(np.log(np.abs(dist / dist[0])))
 
@@ -53,14 +54,13 @@ class NonlinearAnalysis:
         Returns:
         matplotlib.figure.Figure: The generated Poincaré plot.
         """
-        
 
         x = self.signal[:-1]
         y = self.signal[1:]
 
         plt.scatter(x, y)
-        plt.xlabel(r'$x_{n}$')
-        plt.ylabel(r'$x_{n+1}$')
+        plt.xlabel(r"$x_{n}$")
+        plt.ylabel(r"$x_{n+1}$")
         plt.title("Poincaré Plot")
         plt.show()
 

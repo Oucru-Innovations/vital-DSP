@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class StandardScaler:
     """
     Custom implementation of the Standard Scaler.

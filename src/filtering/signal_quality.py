@@ -1,9 +1,10 @@
 import numpy as np
 
+
 class SignalQuality:
     """
     A class to assess the quality of signals using various metrics.
-    
+
     Methods:
     - snr: Computes the Signal-to-Noise Ratio.
     - psnr: Computes the Peak Signal-to-Noise Ratio.
@@ -48,7 +49,7 @@ class SignalQuality:
         if self.processed_signal is None:
             raise ValueError("Processed signal is required to compute SNR.")
 
-        signal_power = np.mean(self.original_signal ** 2)
+        signal_power = np.mean(self.original_signal**2)
         noise_power = np.mean((self.original_signal - self.processed_signal) ** 2)
         snr_value = 10 * np.log10(signal_power / noise_power)
         return snr_value
@@ -74,7 +75,7 @@ class SignalQuality:
 
         mse_value = np.mean((self.original_signal - self.processed_signal) ** 2)
         max_signal = np.max(self.original_signal)
-        psnr_value = 10 * np.log10(max_signal ** 2 / mse_value)
+        psnr_value = 10 * np.log10(max_signal**2 / mse_value)
         return psnr_value
 
     def mse(self):
@@ -118,7 +119,7 @@ class SignalQuality:
         if not isinstance(noise_signal, np.ndarray):
             noise_signal = np.array(noise_signal)
 
-        signal_power = np.mean(self.original_signal ** 2)
-        noise_power = np.mean(noise_signal ** 2)
+        signal_power = np.mean(self.original_signal**2)
+        noise_power = np.mean(noise_signal**2)
         snr_value = 10 * np.log10(signal_power / noise_power)
         return snr_value

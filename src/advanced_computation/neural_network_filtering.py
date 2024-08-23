@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class NeuralNetworkFiltering:
     """
     Comprehensive Neural Network Filtering for adaptive signal processing.
@@ -16,22 +17,32 @@ class NeuralNetworkFiltering:
     --------------
     signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
     nn_filter = NeuralNetworkFiltering(signal, network_type='feedforward', hidden_layers=[64, 64], epochs=100)
-    
+
     # Train the neural network filter
     nn_filter.train()
-    
+
     # Apply the trained filter
     filtered_signal = nn_filter.apply_filter()
     print("Filtered Signal:", filtered_signal)
-    
+
     # Evaluate the filter on a test signal
     test_signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
     mse = nn_filter.evaluate(test_signal)
     print("Mean Squared Error on Test Signal:", mse)
     """
 
-    def __init__(self, signal, network_type='feedforward', hidden_layers=[64, 64], learning_rate=0.001, epochs=100,
-                 batch_size=32, dropout_rate=0.5, batch_norm=True, recurrent_type='lstm'):
+    def __init__(
+        self,
+        signal,
+        network_type="feedforward",
+        hidden_layers=[64, 64],
+        learning_rate=0.001,
+        epochs=100,
+        batch_size=32,
+        dropout_rate=0.5,
+        batch_norm=True,
+        recurrent_type="lstm",
+    ):
         """
         Initialize the NeuralNetworkFiltering class with the signal and network configuration.
 
@@ -65,12 +76,16 @@ class NeuralNetworkFiltering:
         Returns:
         NeuralNetwork: The constructed neural network model.
         """
-        if self.network_type == 'feedforward':
-            return FeedforwardNetwork(self.hidden_layers, self.dropout_rate, self.batch_norm)
-        elif self.network_type == 'convolutional':
+        if self.network_type == "feedforward":
+            return FeedforwardNetwork(
+                self.hidden_layers, self.dropout_rate, self.batch_norm
+            )
+        elif self.network_type == "convolutional":
             return ConvolutionalNetwork(self.dropout_rate, self.batch_norm)
-        elif self.network_type == 'recurrent':
-            return RecurrentNetwork(self.recurrent_type, self.dropout_rate, self.batch_norm)
+        elif self.network_type == "recurrent":
+            return RecurrentNetwork(
+                self.recurrent_type, self.dropout_rate, self.batch_norm
+            )
         else:
             raise ValueError(f"Unknown network type: {self.network_type}")
 
@@ -81,7 +96,9 @@ class NeuralNetworkFiltering:
         The signal is divided into input-output pairs for supervised training.
         """
         X_train, y_train = self._prepare_data(self.signal)
-        self.network.train(X_train, y_train, self.learning_rate, self.epochs, self.batch_size)
+        self.network.train(
+            X_train, y_train, self.learning_rate, self.epochs, self.batch_size
+        )
 
     def apply_filter(self):
         """
@@ -142,12 +159,16 @@ class NeuralNetworkFiltering:
 
 # Simple Feedforward Network Implementation (Placeholder)
 
+
 class FeedforwardNetwork:
     def __init__(self, hidden_layers, dropout_rate, batch_norm):
         self.hidden_layers = hidden_layers
         self.dropout_rate = dropout_rate
         self.batch_norm = batch_norm
-        self.weights = [np.random.randn(n_in, n_out) for n_in, n_out in zip(hidden_layers[:-1], hidden_layers[1:])]
+        self.weights = [
+            np.random.randn(n_in, n_out)
+            for n_in, n_out in zip(hidden_layers[:-1], hidden_layers[1:])
+        ]
         self.biases = [np.random.randn(n_out) for n_out in hidden_layers[1:]]
 
     def train(self, X, y, learning_rate, epochs, batch_size):
@@ -181,7 +202,9 @@ class FeedforwardNetwork:
         for i in reversed(range(len(self.weights))):
             dW = np.dot(activations[i].T, delta)
             db = np.sum(delta, axis=0)
-            delta = np.dot(delta, self.weights[i].T) * self._relu_derivative(activations[i])
+            delta = np.dot(delta, self.weights[i].T) * self._relu_derivative(
+                activations[i]
+            )
             self.weights[i] -= learning_rate * dW
             self.biases[i] -= learning_rate * db
 
@@ -211,6 +234,7 @@ class FeedforwardNetwork:
 
 
 # Simple Convolutional Network Implementation (Placeholder)
+
 
 class ConvolutionalNetwork:
     def __init__(self, dropout_rate, batch_norm):
@@ -253,7 +277,9 @@ class ConvolutionalNetwork:
         for i in reversed(range(len(self.weights))):
             dW = np.dot(activations[i].T, delta)
             db = np.sum(delta, axis=0)
-            delta = np.dot(delta, self.weights[i].T) * self._relu_derivative(activations[i])
+            delta = np.dot(delta, self.weights[i].T) * self._relu_derivative(
+                activations[i]
+            )
             self.weights[i] -= learning_rate * dW
             self.biases[i] -= learning_rate * db
 
@@ -268,11 +294,15 @@ class ConvolutionalNetwork:
         return A
 
     def _convolution(self, X):
-        output = np.zeros((X.shape[0], X.shape[1] - 2, X.shape[2] - 2, len(self.filters)))
+        output = np.zeros(
+            (X.shape[0], X.shape[1] - 2, X.shape[2] - 2, len(self.filters))
+        )
         for i, f in enumerate(self.filters):
             for j in range(output.shape[1]):
                 for k in range(output.shape[2]):
-                    output[:, j, k, i] = np.sum(X[:, j:j+3, k:k+3] * f, axis=(1, 2))
+                    output[:, j, k, i] = np.sum(
+                        X[:, j : j + 3, k : k + 3] * f, axis=(1, 2)
+                    )
         return output
 
     def _batch_normalization(self, Z):
@@ -293,8 +323,9 @@ class ConvolutionalNetwork:
 
 # Simple Recurrent Network Implementation (Placeholder)
 
+
 class RecurrentNetwork:
-    def __init__(self, recurrent_type='lstm', dropout_rate=0.5, batch_norm=True):
+    def __init__(self, recurrent_type="lstm", dropout_rate=0.5, batch_norm=True):
         self.recurrent_type = recurrent_type
         self.dropout_rate = dropout_rate
         self.batch_norm = batch_norm
@@ -320,9 +351,9 @@ class RecurrentNetwork:
 
     def _forward(self, X):
         h = np.zeros((X.shape[0], 64))
-        if self.recurrent_type == 'lstm':
+        if self.recurrent_type == "lstm":
             h, _ = self._lstm(X, h)
-        elif self.recurrent_type == 'gru':
+        elif self.recurrent_type == "gru":
             h = self._gru(X, h)
         Z = np.dot(h, self.Wy) + self.by
         return [h, Z]
@@ -336,9 +367,9 @@ class RecurrentNetwork:
 
     def predict(self, X):
         h = np.zeros((X.shape[0], 64))
-        if self.recurrent_type == 'lstm':
+        if self.recurrent_type == "lstm":
             h, _ = self._lstm(X, h)
-        elif self.recurrent_type == 'gru':
+        elif self.recurrent_type == "gru":
             h = self._gru(X, h)
         Z = np.dot(h, self.Wy) + self.by
         return Z
@@ -357,7 +388,9 @@ class RecurrentNetwork:
         for t in range(X.shape[1]):
             z = self._sigmoid(np.dot(X[:, t], self.Wx) + np.dot(h, self.Wh) + self.b)
             r = self._sigmoid(np.dot(X[:, t], self.Wx) + np.dot(h, self.Wh) + self.b)
-            h_tilde = np.tanh(np.dot(X[:, t], self.Wx) + np.dot(r * h, self.Wh) + self.b)
+            h_tilde = np.tanh(
+                np.dot(X[:, t], self.Wx) + np.dot(r * h, self.Wh) + self.b
+            )
             h = (1 - z) * h + z * h_tilde
         return h
 

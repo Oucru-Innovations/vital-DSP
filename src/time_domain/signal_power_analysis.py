@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class SignalPowerAnalysis:
     """
     A comprehensive class for measuring the power of physiological signals.
@@ -29,7 +30,7 @@ class SignalPowerAnalysis:
         Returns:
         float: The RMSE of the signal.
         """
-        rmse = np.sqrt(np.mean(self.signal ** 2))
+        rmse = np.sqrt(np.mean(self.signal**2))
         return rmse
 
     def compute_mean_square(self):
@@ -39,7 +40,7 @@ class SignalPowerAnalysis:
         Returns:
         float: The mean square value of the signal.
         """
-        mean_square = np.mean(self.signal ** 2)
+        mean_square = np.mean(self.signal**2)
         return mean_square
 
     def compute_total_power(self):
@@ -49,7 +50,7 @@ class SignalPowerAnalysis:
         Returns:
         float: The total power of the signal.
         """
-        total_power = np.sum(self.signal ** 2) / len(self.signal)
+        total_power = np.sum(self.signal**2) / len(self.signal)
         return total_power
 
     def compute_peak_power(self):
@@ -59,7 +60,7 @@ class SignalPowerAnalysis:
         Returns:
         float: The peak power of the signal.
         """
-        peak_power = np.max(self.signal ** 2)
+        peak_power = np.max(self.signal**2)
         return peak_power
 
     def compute_snr(self, noise_signal):
@@ -72,8 +73,8 @@ class SignalPowerAnalysis:
         Returns:
         float: The SNR of the signal in decibels (dB).
         """
-        signal_power = np.mean(self.signal ** 2)
-        noise_power = np.mean(noise_signal ** 2)
+        signal_power = np.mean(self.signal**2)
+        noise_power = np.mean(noise_signal**2)
         snr = 10 * np.log10(signal_power / noise_power)
         return snr
 
@@ -89,7 +90,7 @@ class SignalPowerAnalysis:
         numpy.ndarray: Frequency array.
         numpy.ndarray: Power Spectral Density values.
         """
-        freqs = np.fft.rfftfreq(len(self.signal), d=1/fs)
+        freqs = np.fft.rfftfreq(len(self.signal), d=1 / fs)
         psd = np.abs(np.fft.rfft(self.signal)) ** 2 / len(self.signal)
         return freqs, psd
 
@@ -105,7 +106,10 @@ class SignalPowerAnalysis:
         float: The power within the specified band.
         """
         freqs, psd = self.compute_psd(fs)
-        band_power = np.trapz(psd[(freqs >= band[0]) & (freqs <= band[1])], freqs[(freqs >= band[0]) & (freqs <= band[1])])
+        band_power = np.trapz(
+            psd[(freqs >= band[0]) & (freqs <= band[1])],
+            freqs[(freqs >= band[0]) & (freqs <= band[1])],
+        )
         return band_power
 
     def compute_energy(self):
@@ -115,5 +119,5 @@ class SignalPowerAnalysis:
         Returns:
         float: The total energy of the signal.
         """
-        energy = np.sum(self.signal ** 2)
+        energy = np.sum(self.signal**2)
         return energy

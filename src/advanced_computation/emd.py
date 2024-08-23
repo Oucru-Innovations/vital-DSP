@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class EMD:
     """
     Empirical Mode Decomposition (EMD) for decomposing non-linear and non-stationary signals into IMFs.
@@ -42,7 +43,7 @@ class EMD:
                 lower_env = self._interpolate(valleys, h[valleys])
                 mean_env = (upper_env + lower_env) / 2
                 h_new = h - mean_env
-                sd = np.sum((h - h_new) ** 2) / np.sum(h ** 2)
+                sd = np.sum((h - h_new) ** 2) / np.sum(h**2)
                 h = h_new
 
             imfs.append(h)
@@ -56,7 +57,9 @@ class EMD:
         return imfs
 
     def _find_peaks(self, signal):
-        peaks = np.where((signal[1:-1] > signal[:-2]) & (signal[1:-1] > signal[2:]))[0] + 1
+        peaks = (
+            np.where((signal[1:-1] > signal[:-2]) & (signal[1:-1] > signal[2:]))[0] + 1
+        )
         return peaks
 
     def _interpolate(self, x, y):

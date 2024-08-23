@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class SignalChangeDetection:
     """
     A comprehensive class for detecting changes in physiological signals.
@@ -53,7 +54,12 @@ class SignalChangeDetection:
         Returns:
         numpy.ndarray: The local variance of the signal.
         """
-        variances = np.array([np.var(self.signal[i:i + window_size]) for i in range(len(self.signal) - window_size)])
+        variances = np.array(
+            [
+                np.var(self.signal[i : i + window_size])
+                for i in range(len(self.signal) - window_size)
+            ]
+        )
         return variances
 
     def energy_based_detection(self, window_size):
@@ -66,7 +72,12 @@ class SignalChangeDetection:
         Returns:
         numpy.ndarray: The local energy of the signal.
         """
-        energies = np.array([np.sum(self.signal[i:i + window_size] ** 2) for i in range(len(self.signal) - window_size)])
+        energies = np.array(
+            [
+                np.sum(self.signal[i : i + window_size] ** 2)
+                for i in range(len(self.signal) - window_size)
+            ]
+        )
         return energies
 
     def adaptive_threshold_detection(self, threshold_factor=1.5, window_size=10):
@@ -80,10 +91,25 @@ class SignalChangeDetection:
         Returns:
         numpy.ndarray: Indices of detected signal changes.
         """
-        local_means = np.array([np.mean(self.signal[i:i + window_size]) for i in range(len(self.signal) - window_size)])
-        local_stds = np.array([np.std(self.signal[i:i + window_size]) for i in range(len(self.signal) - window_size)])
+        local_means = np.array(
+            [
+                np.mean(self.signal[i : i + window_size])
+                for i in range(len(self.signal) - window_size)
+            ]
+        )
+        local_stds = np.array(
+            [
+                np.std(self.signal[i : i + window_size])
+                for i in range(len(self.signal) - window_size)
+            ]
+        )
         adaptive_thresholds = local_means + threshold_factor * local_stds
-        signal_changes = np.where(np.abs(self.signal[window_size:] - local_means) > adaptive_thresholds)[0] + window_size
+        signal_changes = (
+            np.where(
+                np.abs(self.signal[window_size:] - local_means) > adaptive_thresholds
+            )[0]
+            + window_size
+        )
         return signal_changes
 
     def ml_based_change_detection(self, model=None):
@@ -98,7 +124,10 @@ class SignalChangeDetection:
         """
         if model is None:
             # Example simple model: predict changes based on thresholding the absolute difference
-            model = lambda x: np.where(np.abs(np.diff(x)) > np.mean(np.abs(np.diff(x))))[0] + 1
-        
+            model = (
+                lambda x: np.where(np.abs(np.diff(x)) > np.mean(np.abs(np.diff(x))))[0]
+                + 1
+            )
+
         change_points = model(self.signal)
         return change_points

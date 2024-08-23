@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class PitchShift:
     """
     Pitch Shift analysis for analyzing vocal pitch, useful in diagnosing speech disorders.
@@ -45,8 +46,8 @@ class PitchShift:
         Returns:
         float: The detected pitch in Hz.
         """
-        autocorr = np.correlate(self.signal, self.signal, mode='full')
-        autocorr = autocorr[len(autocorr) // 2:]
+        autocorr = np.correlate(self.signal, self.signal, mode="full")
+        autocorr = autocorr[len(autocorr) // 2 :]
         d = np.diff(autocorr)
         start = np.where(d > 0)[0][0]
         peak = np.argmax(autocorr[start:]) + start

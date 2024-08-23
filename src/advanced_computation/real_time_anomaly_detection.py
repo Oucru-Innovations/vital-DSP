@@ -1,6 +1,7 @@
 import numpy as np
 from collections import deque
 
+
 class RealTimeAnomalyDetection:
     """
     Comprehensive Real-Time Anomaly Detection for detecting anomalies in streaming data.
@@ -21,12 +22,12 @@ class RealTimeAnomalyDetection:
     --------------
     data_stream = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
     anomaly_detector = RealTimeAnomalyDetection(window_size=10)
-    
+
     # Detect anomalies using Z-score
     for data_point in data_stream:
         anomaly = anomaly_detector.detect_statistical(data_point, method='z_score', threshold=2.0)
         print("Anomaly (Z-Score):", anomaly)
-    
+
     # Train and detect anomalies using k-NN
     anomaly_detector.train_knn(data_stream[:50])
     for data_point in data_stream[50:]:
@@ -45,7 +46,7 @@ class RealTimeAnomalyDetection:
         self.data_window = deque(maxlen=window_size)
         self.models = {}
 
-    def detect_statistical(self, data_point, method='z_score', threshold=2.0, **kwargs):
+    def detect_statistical(self, data_point, method="z_score", threshold=2.0, **kwargs):
         """
         Detect anomalies using statistical methods like Z-score, moving average, etc.
 
@@ -61,9 +62,9 @@ class RealTimeAnomalyDetection:
         if len(self.data_window) < self.window_size:
             return False  # Not enough data to detect anomalies
 
-        if method == 'z_score':
+        if method == "z_score":
             return self._z_score_detection(data_point, threshold)
-        elif method == 'moving_average':
+        elif method == "moving_average":
             return self._moving_average_detection(data_point, threshold)
         else:
             raise ValueError(f"Unknown statistical method: {method}")
@@ -91,10 +92,7 @@ class RealTimeAnomalyDetection:
         Returns:
         None
         """
-        self.models['knn'] = {
-            'training_data': np.array(training_data),
-            'k': k
-        }
+        self.models["knn"] = {"training_data": np.array(training_data), "k": k}
 
     def detect_knn(self, data_point):
         """
@@ -106,17 +104,19 @@ class RealTimeAnomalyDetection:
         Returns:
         bool: True if the data point is an anomaly, False otherwise.
         """
-        if 'knn' not in self.models:
+        if "knn" not in self.models:
             raise ValueError("k-NN model has not been trained. Call train_knn() first.")
-        
-        training_data = self.models['knn']['training_data']
-        k = self.models['knn']['k']
+
+        training_data = self.models["knn"]["training_data"]
+        k = self.models["knn"]["k"]
         distances = np.abs(training_data - data_point)
         nearest_neighbors = np.sort(distances)[:k]
         mean_distance = np.mean(nearest_neighbors)
-        return mean_distance > np.std(training_data)  # Anomaly if distance is larger than standard deviation
+        return mean_distance > np.std(
+            training_data
+        )  # Anomaly if distance is larger than standard deviation
 
-    def train_svm(self, training_data, kernel='rbf'):
+    def train_svm(self, training_data, kernel="rbf"):
         """
         Train a Support Vector Machine (SVM) model on the training data.
 
@@ -127,7 +127,7 @@ class RealTimeAnomalyDetection:
         Returns:
         None
         """
-        self.models['svm'] = SimpleSVM(training_data, kernel)
+        self.models["svm"] = SimpleSVM(training_data, kernel)
 
     def detect_svm(self, data_point):
         """
@@ -139,10 +139,10 @@ class RealTimeAnomalyDetection:
         Returns:
         bool: True if the data point is an anomaly, False otherwise.
         """
-        if 'svm' not in self.models:
+        if "svm" not in self.models:
             raise ValueError("SVM model has not been trained. Call train_svm() first.")
-        
-        return self.models['svm'].predict(data_point)
+
+        return self.models["svm"].predict(data_point)
 
     def train_autoencoder(self, training_data, encoding_dim=3):
         """
@@ -155,7 +155,7 @@ class RealTimeAnomalyDetection:
         Returns:
         None
         """
-        self.models['autoencoder'] = SimpleAutoencoder(training_data, encoding_dim)
+        self.models["autoencoder"] = SimpleAutoencoder(training_data, encoding_dim)
 
     def detect_autoencoder(self, data_point, threshold=0.1):
         """
@@ -168,10 +168,14 @@ class RealTimeAnomalyDetection:
         Returns:
         bool: True if the data point is an anomaly, False otherwise.
         """
-        if 'autoencoder' not in self.models:
-            raise ValueError("Autoencoder model has not been trained. Call train_autoencoder() first.")
-        
-        reconstruction_error = self.models['autoencoder'].reconstruction_error(data_point)
+        if "autoencoder" not in self.models:
+            raise ValueError(
+                "Autoencoder model has not been trained. Call train_autoencoder() first."
+            )
+
+        reconstruction_error = self.models["autoencoder"].reconstruction_error(
+            data_point
+        )
         return reconstruction_error > threshold
 
     def train_lstm(self, training_data, hidden_units=50):
@@ -185,7 +189,7 @@ class RealTimeAnomalyDetection:
         Returns:
         None
         """
-        self.models['lstm'] = SimpleLSTM(training_data, hidden_units)
+        self.models["lstm"] = SimpleLSTM(training_data, hidden_units)
 
     def detect_lstm(self, data_point, threshold=0.1):
         """
@@ -198,13 +202,15 @@ class RealTimeAnomalyDetection:
         Returns:
         bool: True if the data point is an anomaly, False otherwise.
         """
-        if 'lstm' not in self.models:
-            raise ValueError("LSTM model has not been trained. Call train_lstm() first.")
-        
-        prediction_error = self.models['lstm'].prediction_error(data_point)
+        if "lstm" not in self.models:
+            raise ValueError(
+                "LSTM model has not been trained. Call train_lstm() first."
+            )
+
+        prediction_error = self.models["lstm"].prediction_error(data_point)
         return prediction_error > threshold
 
-    def update_model(self, data_point, model_type='knn'):
+    def update_model(self, data_point, model_type="knn"):
         """
         Update the model with new data for online learning.
 
@@ -215,18 +221,20 @@ class RealTimeAnomalyDetection:
         Returns:
         None
         """
-        if model_type == 'knn':
-            self.models['knn']['training_data'] = np.append(self.models['knn']['training_data'], data_point)
-        elif model_type == 'svm':
-            self.models['svm'].update(data_point)
-        elif model_type == 'autoencoder':
-            self.models['autoencoder'].update(data_point)
-        elif model_type == 'lstm':
-            self.models['lstm'].update(data_point)
+        if model_type == "knn":
+            self.models["knn"]["training_data"] = np.append(
+                self.models["knn"]["training_data"], data_point
+            )
+        elif model_type == "svm":
+            self.models["svm"].update(data_point)
+        elif model_type == "autoencoder":
+            self.models["autoencoder"].update(data_point)
+        elif model_type == "lstm":
+            self.models["lstm"].update(data_point)
         else:
             raise ValueError(f"Unknown model type: {model_type}")
 
-    def evaluate(self, test_data, model_type='knn'):
+    def evaluate(self, test_data, model_type="knn"):
         """
         Evaluate the performance of the anomaly detection method on a test dataset.
 
@@ -239,29 +247,33 @@ class RealTimeAnomalyDetection:
         """
         correct = 0
         for data_point in test_data:
-            if model_type == 'knn':
+            if model_type == "knn":
                 prediction = self.detect_knn(data_point)
-            elif model_type == 'svm':
+            elif model_type == "svm":
                 prediction = self.detect_svm(data_point)
-            elif model_type == 'autoencoder':
+            elif model_type == "autoencoder":
                 prediction = self.detect_autoencoder(data_point)
-            elif model_type == 'lstm':
+            elif model_type == "lstm":
                 prediction = self.detect_lstm(data_point)
             else:
                 raise ValueError(f"Unknown model type: {model_type}")
 
             correct += int(prediction == self._is_anomaly(data_point))
-        
+
         return correct / len(test_data)
 
     def _is_anomaly(self, data_point):
         """Placeholder method to determine if a data point is an anomaly (for evaluation)."""
-        return False  # This should be implemented based on the ground truth of the dataset
+        return (
+            False  # This should be implemented based on the ground truth of the dataset
+        )
+
 
 # Simple SVM Implementation (Placeholder)
 
+
 class SimpleSVM:
-    def __init__(self, training_data, kernel='rbf'):
+    def __init__(self, training_data, kernel="rbf"):
         self.training_data = training_data
         self.kernel = kernel
         self.support_vectors = self._train(training_data)
@@ -280,7 +292,9 @@ class SimpleSVM:
         self.training_data = np.append(self.training_data, data_point)
         self.support_vectors = self._train(self.training_data)
 
+
 # Simple Autoencoder Implementation (Placeholder)
+
 
 class SimpleAutoencoder:
     def __init__(self, training_data, encoding_dim=3):
@@ -298,7 +312,9 @@ class SimpleAutoencoder:
         self.training_data = np.append(self.training_data, [data_point], axis=0)
         self.weights += np.random.randn(*self.weights.shape) * 0.01
 
+
 # Simple LSTM Implementation (Placeholder)
+
 
 class SimpleLSTM:
     def __init__(self, training_data, hidden_units=50):

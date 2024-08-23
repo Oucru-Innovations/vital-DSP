@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class KalmanFilter:
     """
     Kalman Filter for real-time filtering and continuous monitoring of signals.
@@ -22,13 +23,26 @@ class KalmanFilter:
     print("Filtered Signal:", filtered_signal)
     """
 
-    def __init__(self, initial_state, initial_covariance, process_covariance, measurement_covariance):
+    def __init__(
+        self,
+        initial_state,
+        initial_covariance,
+        process_covariance,
+        measurement_covariance,
+    ):
         self.state = initial_state
         self.covariance = initial_covariance
         self.process_covariance = process_covariance
         self.measurement_covariance = measurement_covariance
 
-    def filter(self, signal, measurement_matrix, transition_matrix, control_input=None, control_matrix=None):
+    def filter(
+        self,
+        signal,
+        measurement_matrix,
+        transition_matrix,
+        control_input=None,
+        control_matrix=None,
+    ):
         """
         Apply the Kalman filter to the signal.
 
@@ -49,14 +63,26 @@ class KalmanFilter:
             self.state = transition_matrix @ self.state
             if control_input is not None and control_matrix is not None:
                 self.state += control_matrix @ control_input
-            self.covariance = transition_matrix @ self.covariance @ transition_matrix.T + self.process_covariance
+            self.covariance = (
+                transition_matrix @ self.covariance @ transition_matrix.T
+                + self.process_covariance
+            )
 
             # Update
             innovation = measurement - measurement_matrix @ self.state
-            innovation_covariance = measurement_matrix @ self.covariance @ measurement_matrix.T + self.measurement_covariance
-            kalman_gain = self.covariance @ measurement_matrix.T @ np.linalg.inv(innovation_covariance)
+            innovation_covariance = (
+                measurement_matrix @ self.covariance @ measurement_matrix.T
+                + self.measurement_covariance
+            )
+            kalman_gain = (
+                self.covariance
+                @ measurement_matrix.T
+                @ np.linalg.inv(innovation_covariance)
+            )
             self.state = self.state + kalman_gain @ innovation
-            self.covariance = (np.eye(len(self.state)) - kalman_gain @ measurement_matrix) @ self.covariance
+            self.covariance = (
+                np.eye(len(self.state)) - kalman_gain @ measurement_matrix
+            ) @ self.covariance
 
             filtered_signal.append(self.state.copy())
 

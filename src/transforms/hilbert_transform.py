@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class HilbertTransform:
     """
     A class to perform the Hilbert Transform to generate analytic signals, useful for QRS detection in ECG.
@@ -34,11 +35,11 @@ class HilbertTransform:
         H = np.zeros(N)
         if N % 2 == 0:
             H[0] = 1
-            H[N//2] = 1
-            H[1:N//2] = 2
+            H[N // 2] = 1
+            H[1 : N // 2] = 2
         else:
             H[0] = 1
-            H[1:(N+1)//2] = 2
+            H[1 : (N + 1) // 2] = 2
 
         hilbert_signal = np.fft.ifft(np.fft.fft(self.signal) * H)
         return hilbert_signal

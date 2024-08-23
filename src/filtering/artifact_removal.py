@@ -1,6 +1,7 @@
 import numpy as np
 from utils.mother_wavelets import Wavelet
 
+
 class ArtifactRemoval:
     """
     A class for removing various types of artifacts from signals.
@@ -54,8 +55,8 @@ class ArtifactRemoval:
         nyquist = 0.5 * fs
         normal_cutoff = cutoff / nyquist
         b = [1, -1]
-        a = [1, -normal_cutoff]
-        clean_signal = np.convolve(self.signal, b, mode='same') / (1 - normal_cutoff)
+        # a = [1, -normal_cutoff]
+        clean_signal = np.convolve(self.signal, b, mode="same") / (1 - normal_cutoff)
         return clean_signal
 
     def median_filter_removal(self, kernel_size=3):
@@ -70,13 +71,15 @@ class ArtifactRemoval:
         Returns:
         numpy.ndarray: The artifact-removed signal.
         """
-        padded_signal = np.pad(self.signal, (kernel_size // 2, kernel_size // 2), mode='edge')
+        padded_signal = np.pad(
+            self.signal, (kernel_size // 2, kernel_size // 2), mode="edge"
+        )
         clean_signal = np.zeros_like(self.signal)
         for i in range(len(self.signal)):
-            clean_signal[i] = np.median(padded_signal[i:i + kernel_size])
+            clean_signal[i] = np.median(padded_signal[i : i + kernel_size])
         return clean_signal
 
-    def wavelet_denoising(self, wavelet_type='db', level=1, order=4):
+    def wavelet_denoising(self, wavelet_type="db", level=1, order=4):
         """
         Remove noise using wavelet-based denoising with various mother wavelets.
 
@@ -92,18 +95,20 @@ class ArtifactRemoval:
         """
         wavelet = Wavelet()
 
-        if wavelet_type == 'haar':
+        if wavelet_type == "haar":
             mother_wavelet = wavelet.haar()
-        elif wavelet_type == 'db':
+        elif wavelet_type == "db":
             mother_wavelet = wavelet.db(order)
-        elif wavelet_type == 'sym':
+        elif wavelet_type == "sym":
             mother_wavelet = wavelet.sym(order)
-        elif wavelet_type == 'coif':
+        elif wavelet_type == "coif":
             mother_wavelet = wavelet.coif(order)
-        elif wavelet_type == 'custom':
+        elif wavelet_type == "custom":
             raise ValueError("Use 'custom_wavelet' method for custom wavelets.")
         else:
-            raise ValueError("Invalid wavelet_type. Must be 'haar', 'db', 'sym', 'coif', or 'custom'.")
+            raise ValueError(
+                "Invalid wavelet_type. Must be 'haar', 'db', 'sym', 'coif', or 'custom'."
+            )
 
         # Wavelet decomposition
         approx_coeffs = self.signal.copy()
@@ -111,24 +116,36 @@ class ArtifactRemoval:
 
         for _ in range(level):
             # Convolution with the low-pass and high-pass filters (approximation and detail coefficients)
-            approx = np.convolve(approx_coeffs, mother_wavelet, mode='full')[::2]
-            detail = np.convolve(approx_coeffs, mother_wavelet[::-1], mode='full')[::2]
+            approx = np.convolve(approx_coeffs, mother_wavelet, mode="full")[::2]
+            detail = np.convolve(approx_coeffs, mother_wavelet[::-1], mode="full")[::2]
             approx_coeffs = approx
             detail_coeffs.append(detail)
 
         # Thresholding detail coefficients
-        threshold = np.sqrt(2 * np.log(len(self.signal))) * np.median(np.abs(detail_coeffs[-1])) / 0.6745
+        threshold = (
+            np.sqrt(2 * np.log(len(self.signal)))
+            * np.median(np.abs(detail_coeffs[-1]))
+            / 0.6745
+        )
         for i in range(len(detail_coeffs)):
-            detail_coeffs[i] = np.sign(detail_coeffs[i]) * np.maximum(np.abs(detail_coeffs[i]) - threshold, 0)
+            detail_coeffs[i] = np.sign(detail_coeffs[i]) * np.maximum(
+                np.abs(detail_coeffs[i]) - threshold, 0
+            )
 
         # Wavelet reconstruction
         for i in reversed(range(level)):
-            approx_coeffs = np.convolve(np.repeat(approx_coeffs, 2), mother_wavelet, mode='full')[:len(detail_coeffs[i])]
-            approx_coeffs += np.convolve(np.repeat(detail_coeffs[i], 2), mother_wavelet[::-1], mode='full')[:len(detail_coeffs[i])]
+            approx_coeffs = np.convolve(
+                np.repeat(approx_coeffs, 2), mother_wavelet, mode="full"
+            )[: len(detail_coeffs[i])]
+            approx_coeffs += np.convolve(
+                np.repeat(detail_coeffs[i], 2), mother_wavelet[::-1], mode="full"
+            )[: len(detail_coeffs[i])]
 
-        return approx_coeffs[:len(self.signal)]
+        return approx_coeffs[: len(self.signal)]
 
-    def adaptive_filtering(self, reference_signal, learning_rate=0.01, num_iterations=100):
+    def adaptive_filtering(
+        self, reference_signal, learning_rate=0.01, num_iterations=100
+    ):
         """
         Use an adaptive filter to remove artifacts correlated with a reference signal.
 
@@ -165,8 +182,10 @@ class ArtifactRemoval:
         nyquist = 0.5 * fs
         w0 = freq / nyquist
         b = [1, -2 * np.cos(2 * np.pi * w0), 1]
-        a = [1, -2 * np.cos(2 * np.pi * w0) / Q, 1 / (Q ** 2)]
-        clean_signal = np.convolve(self.signal, b, mode='same') / np.convolve(self.signal, a, mode='same')
+        a = [1, -2 * np.cos(2 * np.pi * w0) / Q, 1 / (Q**2)]
+        clean_signal = np.convolve(self.signal, b, mode="same") / np.convolve(
+            self.signal, a, mode="same"
+        )
         return clean_signal
 
     def pca_artifact_removal(self, num_components=1):
@@ -187,10 +206,15 @@ class ArtifactRemoval:
         eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
         sorted_indices = np.argsort(eigenvalues)[::-1]
         selected_components = eigenvectors[:, sorted_indices[:num_components]]
-        reconstructed_signal = np.dot(centered_signal, selected_components).dot(selected_components.T) + signal_mean
+        reconstructed_signal = (
+            np.dot(centered_signal, selected_components).dot(selected_components.T)
+            + signal_mean
+        )
         return reconstructed_signal
 
-    def ica_artifact_removal(self, num_components=1, max_iterations=1000, tol=1e-5, seed=23):
+    def ica_artifact_removal(
+        self, num_components=1, max_iterations=1000, tol=1e-5, seed=23
+    ):
         """
         Use Independent Component Analysis (ICA) to remove artifacts using NumPy.
 
@@ -216,7 +240,9 @@ class ArtifactRemoval:
         # Whitening (PCA step)
         cov_matrix = np.cov(signal_centered, rowvar=False)
         eigenvalues, eigenvectors = np.linalg.eigh(cov_matrix)
-        whitening_matrix = eigenvectors.dot(np.diag(1.0 / np.sqrt(eigenvalues))).dot(eigenvectors.T)
+        whitening_matrix = eigenvectors.dot(np.diag(1.0 / np.sqrt(eigenvalues))).dot(
+            eigenvectors.T
+        )
         X_whitened = signal_centered.dot(whitening_matrix.T)
 
         # Initialize weights randomly
@@ -225,8 +251,14 @@ class ArtifactRemoval:
 
         for i in range(max_iterations):
             # Update the weights using the FastICA algorithm
-            W_new = np.dot(X_whitened.T, np.tanh(np.dot(X_whitened, W.T))) / X_whitened.shape[0] - np.mean(1 - np.tanh(np.dot(X_whitened, W.T)) ** 2, axis=0) * W
-            W_new /= np.linalg.norm(W_new, axis=1)[:, np.newaxis]  # Normalize the weights
+            W_new = (
+                np.dot(X_whitened.T, np.tanh(np.dot(X_whitened, W.T)))
+                / X_whitened.shape[0]
+                - np.mean(1 - np.tanh(np.dot(X_whitened, W.T)) ** 2, axis=0) * W
+            )
+            W_new /= np.linalg.norm(W_new, axis=1)[
+                :, np.newaxis
+            ]  # Normalize the weights
 
             # Check for convergence
             if np.max(np.abs(np.abs(np.diag(np.dot(W_new, W.T))) - 1)) < tol:
@@ -238,6 +270,8 @@ class ArtifactRemoval:
         S = np.dot(W, X_whitened.T).T
 
         # Reconstruct the signal from the components
-        reconstructed_signal = np.dot(S, np.linalg.pinv(W)).dot(whitening_matrix) + np.mean(self.signal, axis=0)
+        reconstructed_signal = np.dot(S, np.linalg.pinv(W)).dot(
+            whitening_matrix
+        ) + np.mean(self.signal, axis=0)
 
         return reconstructed_signal
