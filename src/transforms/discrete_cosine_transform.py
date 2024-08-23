@@ -31,7 +31,15 @@ class DiscreteCosineTransform:
         >>> dct_coefficients = dct.compute_dct()
         >>> print(dct_coefficients)
         """
-        return np.real(np.fft.fft(self.signal * 2))[:len(self.signal)//2]
+        N = len(self.signal)
+        result = np.zeros(N, dtype=np.float64)
+        for k in range(N):
+            sum_value = 0
+            for n in range(N):
+                sum_value += self.signal[n] * np.cos(np.pi * k * (2 * n + 1) / (2 * N))
+            result[k] = sum_value * np.sqrt(2 / N)
+        result[0] /= np.sqrt(2)
+        return result
 
     def compute_idct(self, dct_coefficients):
         """
@@ -50,5 +58,11 @@ class DiscreteCosineTransform:
         >>> reconstructed_signal = dct.compute_idct(dct_coefficients)
         >>> print(reconstructed_signal)
         """
-        full_spectrum = np.concatenate((dct_coefficients, dct_coefficients[::-1]))
-        return np.real(np.fft.ifft(full_spectrum)) / 2
+        N = len(dct_coefficients)
+        signal_reconstructed = np.zeros(N, dtype=np.float64)
+        for n in range(N):
+            sum_value = dct_coefficients[0] / np.sqrt(2)
+            for k in range(1, N):
+                sum_value += dct_coefficients[k] * np.cos(np.pi * k * (2 * n + 1) / (2 * N))
+            signal_reconstructed[n] = sum_value * np.sqrt(2 / N)
+        return signal_reconstructed
