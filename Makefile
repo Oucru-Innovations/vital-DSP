@@ -2,7 +2,8 @@
 TEST_DIR=tests
 COV_DIR=cov_html
 DOCS_DIR=docs
-SRC_DIR=.
+SRC_DIR=src
+PYTHONPATH=$(SRC_DIR):$(PYTHONPATH)
 PANDOC_FILE=$(DOCS_DIR)/Documentation.md
 PANDOC_OUTPUT=$(DOCS_DIR)/Documentation.pdf
 
@@ -11,7 +12,7 @@ all: test coverage lint pandoc
 
 # Run tests with pytest
 test:
-	pytest $(TEST_DIR) -v
+	PYTHONPATH=$(PYTHONPATH) pytest $(TEST_DIR) -v
 
 # Generate code coverage report
 coverage:
