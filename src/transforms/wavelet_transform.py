@@ -1,114 +1,148 @@
 import numpy as np
-from utils.wavelet import Wavelet
+from utils.mother_wavelets import Wavelet
 
 class WaveletTransform:
-    # No change in structure, only in added wavelets
-    ...
+    """
+    A class to perform Discrete Wavelet Transform (DWT) on signals using different mother wavelets.
+    
+    Methods:
+    - perform_wavelet_transform: Computes the DWT of the signal.
+    - perform_inverse_wavelet_transform: Reconstructs the signal using the inverse DWT.
+    """
 
-    def compute_wavelet_transform(self, wavelet_type='haar', order=4, **kwargs):
+    def __init__(self, signal, wavelet_name='haar'):
         """
-        Compute the Wavelet Transform of the signal using the specified wavelet type and order.
+        Initialize the WaveletTransform class with the signal and select the mother wavelet.
 
         Parameters:
-        wavelet_type (str): The type of wavelet to use ('haar', 'db', 'sym', 'coif', 'gauchy', 'mexican_hat', 'morlet', 'meyer', 'biorthogonal', 'reverse_biorthogonal', 'complex_gaussian', 'shannon', 'cmor', 'fbsp', 'mhat', 'custom').
-        order (int): The order of the wavelet (used for 'db', 'sym', and 'coif').
-        kwargs: Additional parameters for specific wavelets.
+        signal (numpy.ndarray): The input signal to be transformed.
+        wavelet_name (str): Name of the wavelet to be used (e.g., 'haar', 'db4').
+        """
+        self.signal = signal
+        self.original_length = len(signal)  # Store the original length of the signal
+        self.wavelet_name = wavelet_name
+        
+        # Retrieve the wavelet filters (low_pass, high_pass) from MotherWavelets
+        wavelet_class = Wavelet()
+        wavelet_method = getattr(wavelet_class, wavelet_name, None)
+        
+        if wavelet_method is None:
+            raise ValueError(f"Wavelet '{wavelet_name}' not found in MotherWavelets.")
+        
+        # Call the wavelet method to get the wavelet coefficients
+        filters = wavelet_method()
+        
+        if isinstance(filters, tuple) and len(filters) == 2:
+            self.low_pass, self.high_pass = filters
+        else:
+            # If only one filter is returned, assume it's a low-pass filter
+            self.low_pass = filters
+            self.high_pass = np.array([1, -1])  # Use a default or dummy high-pass filter
+
+        # Ensure the wavelet filters are numpy arrays
+        if isinstance(self.low_pass, (float, int)):
+            self.low_pass = np.array([self.low_pass])
+        if isinstance(self.high_pass, (float, int)):
+            self.high_pass = np.array([self.high_pass])
+
+    def _wavelet_decompose(self, data):
+        """
+        Perform a single-level wavelet transform on the data using the specified wavelet function.
+
+        Parameters:
+        data (numpy.ndarray): The input data to be transformed.
 
         Returns:
-        list of numpy.ndarray: The wavelet coefficients at different scales.
+        tuple: (approximation coefficients, detail coefficients)
         """
-        wavelet = Wavelet()
-        if wavelet_type == 'haar':
-            mother_wavelet = wavelet.haar()
-        elif wavelet_type == 'db':
-            mother_wavelet = wavelet.db(order)
-        elif wavelet_type == 'sym':
-            mother_wavelet = wavelet.sym(order)
-        elif wavelet_type == 'coif':
-            mother_wavelet = wavelet.coif(order)
-        elif wavelet_type == 'gauchy':
-            mother_wavelet = wavelet.gauchy(**kwargs)
-        elif wavelet_type == 'mexican_hat':
-            mother_wavelet = wavelet.mexican_hat(**kwargs)
-        elif wavelet_type == 'morlet':
-            mother_wavelet = wavelet.morlet(**kwargs)
-        elif wavelet_type == 'meyer':
-            mother_wavelet = wavelet.meyer(**kwargs)
-        elif wavelet_type == 'biorthogonal':
-            mother_wavelet = wavelet.biorthogonal(**kwargs)
-        elif wavelet_type == 'reverse_biorthogonal':
-            mother_wavelet = wavelet.reverse_biorthogonal(**kwargs)
-        elif wavelet_type == 'complex_gaussian':
-            mother_wavelet = wavelet.complex_gaussian(**kwargs)
-        elif wavelet_type == 'shannon':
-            mother_wavelet = wavelet.shannon(**kwargs)
-        elif wavelet_type == 'cmor':
-            mother_wavelet = wavelet.cmor(**kwargs)
-        elif wavelet_type == 'fbsp':
-            mother_wavelet = wavelet.fbsp(**kwargs)
-        elif wavelet_type == 'mhat':
-            mother_wavelet = wavelet.mhat(**kwargs)
-        else:
-            raise ValueError("Invalid wavelet_type. Must be 'haar', 'db', 'sym', 'coif', 'gauchy', 'mexican_hat', 'morlet', 'meyer', 'biorthogonal', 'reverse_biorthogonal', 'complex_gaussian', 'shannon', 'cmor', 'fbsp', 'mhat', or 'custom'.")
+        output_length = len(data) // 2
+        approximation = np.zeros(output_length)
+        detail = np.zeros(output_length)
 
+        filter_len = len(self.low_pass)
+
+        for i in range(output_length):
+            data_segment = data[2 * i:2 * i + filter_len]
+            
+            # If the data segment is shorter than the filter, pad it with zeros
+            if len(data_segment) < filter_len:
+                data_segment = np.pad(data_segment, (0, filter_len - len(data_segment)), 'constant')
+
+            approximation[i] = np.dot(self.low_pass, data_segment)
+            detail[i] = np.dot(self.high_pass, data_segment)
+
+        return approximation, detail
+
+    def perform_wavelet_transform(self, level=1):
+        """
+        Perform the Discrete Wavelet Transform (DWT) on the signal.
+
+        Parameters:
+        level (int): The number of decomposition levels.
+
+        Returns:
+        list: Wavelet coefficients, where each element corresponds to one level of decomposition.
+        
+        Example Usage:
+        >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
+        >>> wavelet_transform = WaveletTransform(signal, wavelet_name='db4')
+        >>> coeffs = wavelet_transform.perform_wavelet_transform(level=3)
+        >>> print(coeffs)
+        """
         coeffs = []
-        current_signal = self.signal.copy()
-        while len(current_signal) >= len(mother_wavelet):
-            coeff = np.convolve(current_signal, mother_wavelet, mode='valid')[::2]
-            coeffs.append(coeff)
-            current_signal = np.convolve(current_signal, mother_wavelet[::-1], mode='valid')[::2]
+        data = self.signal.copy()
+        for _ in range(level):
+            if len(data) % 2 != 0:  # Ensure even length by padding with zero
+                data = np.append(data, 0)
+            approximation, detail = self._wavelet_decompose(data)
+            coeffs.append(detail)
+            data = approximation
+        coeffs.append(data)  # Final approximation at the highest level
         return coeffs
 
-    def inverse_wavelet_transform(self, coeffs, wavelet_type='haar', order=4, **kwargs):
+    def _wavelet_reconstruct(self, approximation, detail):
         """
-        Reconstruct the signal from its wavelet coefficients.
+        Perform a single-level inverse wavelet transform using the specified wavelet function.
 
         Parameters:
-        coeffs (list of numpy.ndarray): The wavelet coefficients at different scales.
-        wavelet_type (str): The type of wavelet used for the transformation.
-        order (int): The order of the wavelet used.
-        kwargs: Additional parameters for specific wavelets.
+        approximation (numpy.ndarray): Approximation coefficients.
+        detail (numpy.ndarray): Detail coefficients.
 
         Returns:
-        numpy.ndarray: The reconstructed time-domain signal.
+        numpy.ndarray: Reconstructed data at this level.
         """
-        wavelet = Wavelet()
-        if wavelet_type == 'haar':
-            mother_wavelet = wavelet.haar()
-        elif wavelet_type == 'db':
-            mother_wavelet = wavelet.db(order)
-        elif wavelet_type == 'sym':
-            mother_wavelet = wavelet.sym(order)
-        elif wavelet_type == 'coif':
-            mother_wavelet = wavelet.coif(order)
-        elif wavelet_type == 'gauchy':
-            mother_wavelet = wavelet.gauchy(**kwargs)
-        elif wavelet_type == 'mexican_hat':
-            mother_wavelet = wavelet.mexican_hat(**kwargs)
-        elif wavelet_type == 'morlet':
-            mother_wavelet = wavelet.morlet(**kwargs)
-        elif wavelet_type == 'meyer':
-            mother_wavelet = wavelet.meyer(**kwargs)
-        elif wavelet_type == 'biorthogonal':
-            mother_wavelet = wavelet.biorthogonal(**kwargs)
-        elif wavelet_type == 'reverse_biorthogonal':
-            mother_wavelet = wavelet.reverse_biorthogonal(**kwargs)
-        elif wavelet_type == 'complex_gaussian':
-            mother_wavelet = wavelet.complex_gaussian(**kwargs)
-        elif wavelet_type == 'shannon':
-            mother_wavelet = wavelet.shannon(**kwargs)
-        elif wavelet_type == 'cmor':
-            mother_wavelet = wavelet.cmor(**kwargs)
-        elif wavelet_type == 'fbsp':
-            mother_wavelet = wavelet.fbsp(**kwargs)
-        elif wavelet_type == 'mhat':
-            mother_wavelet = wavelet.mhat(**kwargs)
-        else:
-            raise ValueError("Invalid wavelet_type. Must be 'haar', 'db', 'sym', 'coif', 'gauchy', 'mexican_hat', 'morlet', 'meyer', 'biorthogonal', 'reverse_biorthogonal', 'complex_gaussian', 'shannon', 'cmor', 'fbsp', 'mhat', or 'custom'.")
+        output_length = len(approximation) * 2
+        data = np.zeros(output_length)
 
-        reconstructed_signal = coeffs[-1]
-        for coeff in reversed(coeffs[:-1]):
-            expanded_coeff = np.repeat(reconstructed_signal, 2)
-            reconstructed_signal = np.convolve(expanded_coeff, mother_wavelet[::-1], mode='full')[:len(coeff)]
-            reconstructed_signal += coeff
-        return reconstructed_signal
+        filter_len = len(self.low_pass)
+
+        for i in range(len(approximation)):
+            for j in range(filter_len):
+                index = 2 * i + j
+                if index < output_length:
+                    data[index] += (approximation[i] * self.low_pass[j] +
+                                    detail[i] * self.high_pass[j]) / np.sqrt(2)
+
+        return data
+
+    def perform_inverse_wavelet_transform(self, coeffs):
+        """
+        Perform the Inverse Discrete Wavelet Transform (IDWT) to reconstruct the signal.
+
+        Parameters:
+        coeffs (list): Wavelet coefficients from the wavelet transform.
+
+        Returns:
+        numpy.ndarray: Reconstructed signal from the wavelet coefficients.
+        
+        Example Usage:
+        >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
+        >>> wavelet_transform = WaveletTransform(signal, wavelet_name='db4')
+        >>> coeffs = wavelet_transform.perform_wavelet_transform(level=3)
+        >>> reconstructed_signal = wavelet_transform.perform_inverse_wavelet_transform(coeffs)
+        >>> print(reconstructed_signal)
+        """
+        data = coeffs[-1]  # Start with the final approximation
+        for detail in reversed(coeffs[:-1]):
+            data = self._wavelet_reconstruct(data, detail)
+        return data[:self.original_length]  # Trim to the original length of the signal

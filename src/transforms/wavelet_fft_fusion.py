@@ -37,8 +37,8 @@ class WaveletFFTfusion:
         >>> fusion_result = fusion.compute_fusion()
         >>> print(fusion_result)
         """
-        wavelet_transform = WaveletTransform(self.signal)
-        wavelet_coeffs = wavelet_transform.compute_wavelet_transform(wavelet_type=self.wavelet_type, order=self.order, **self.kwargs)
+        wavelet_transform = WaveletTransform(self.signal,wavelet_name=self.wavelet_type)
+        wavelet_coeffs = wavelet_transform.perform_wavelet_transform(level=self.order)
         fft_coeffs = np.fft.fft(self.signal)
         fusion_result = [w * f for w, f in zip(wavelet_coeffs, fft_coeffs)]
         return fusion_result

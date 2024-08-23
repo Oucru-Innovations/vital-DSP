@@ -131,7 +131,14 @@ class AdvancedSignalFiltering:
         >>> filtered_signal = af.gradient_descent_filter(target, learning_rate=0.1, iterations=50)
         >>> print(filtered_signal)
         """
-        filtered_signal = self.signal.copy()
+        
+        if target is None:
+            target = np.zeros_like(target, dtype=np.float64)
+        
+        # Ensure signal is of float64 type to avoid casting issues
+        signal = self.signal.astype(np.float64)
+        filtered_signal = signal.copy()
+        
         for i in range(iterations):
             grad = np.sign(filtered_signal - target)
             filtered_signal -= learning_rate * grad

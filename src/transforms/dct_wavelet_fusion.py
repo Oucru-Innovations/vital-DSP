@@ -40,7 +40,9 @@ class DCTWaveletFusion:
         """
         dct = DiscreteCosineTransform(self.signal)
         dct_coeffs = dct.compute_dct()
-        wavelet_transform = WaveletTransform(self.signal)
-        wavelet_coeffs = wavelet_transform.compute_wavelet_transform(wavelet_type=self.wavelet_type, order=self.order, **self.kwargs)
+        wavelet_transform = WaveletTransform(self.signal,wavelet_name=self.wavelet_type)
+        wavelet_coeffs = wavelet_transform.perform_wavelet_transform(level=self.order, **self.kwargs)
+        # wavelet_transform = WaveletTransform(self.signal)
+        # wavelet_coeffs = wavelet_transform.compute_wavelet_transform(wavelet_type=self.wavelet_type, order=self.order, **self.kwargs)
         fusion_result = [d * w for d, w in zip(dct_coeffs, wavelet_coeffs)]
         return fusion_result

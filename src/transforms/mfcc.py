@@ -22,7 +22,25 @@ class MFCC:
         self.sample_rate = sample_rate
         self.num_filters = num_filters
         self.num_coefficients = num_coefficients
+        
+    def dct(self,signal):
+        """
+        Compute the Discrete Cosine Transform (DCT) of the input signal.
 
+        Parameters:
+        signal (numpy.ndarray): The input signal or filter banks matrix.
+        num_coefficients (int): The number of coefficients to retain in the MFCC.
+
+        Returns:
+        numpy.ndarray: The DCT coefficients.
+        """
+        n = signal.shape[1]
+        result = np.zeros((signal.shape[0], self.num_coefficients))
+
+        for k in range(1, self.num_coefficients + 1):
+            result[:, k - 1] = np.sum(signal * np.cos(np.pi * (np.arange(n) + 0.5) * k / n), axis=1)
+
+        return result * np.sqrt(2 / n)
     def compute_mfcc(self):
         """
         Compute the Mel-Frequency Cepstral Coefficients (MFCC) of the signal.
@@ -79,5 +97,5 @@ class MFCC:
         filter_banks = 20 * np.log10(filter_banks)
 
         # Mel-frequency Cepstral Coefficients (MFCCs)
-        mfcc = np.fft.dct(filter_banks, type=2, axis=1, norm='ortho')[:, 1:(self.num_coefficients + 1)]
+        mfcc = self.dct(filter_banks)
         return mfcc
