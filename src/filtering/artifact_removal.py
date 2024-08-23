@@ -1,4 +1,5 @@
 import numpy as np
+from utils.mother_wavelets import Wavelet
 
 class ArtifactRemoval:
     """
