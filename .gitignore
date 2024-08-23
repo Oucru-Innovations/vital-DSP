@@ -96,7 +96,7 @@ $RECYCLE.BIN/
 *.temp
 
 # CI/CD
-.github/workflows/
+# .github/workflows/
 
 # Sphinx documentation
 docs/_build/
