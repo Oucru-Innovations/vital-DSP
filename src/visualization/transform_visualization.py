@@ -7,7 +7,11 @@ from transforms.event_related_potential import EventRelatedPotential
 from transforms.time_freq_representation import TimeFreqRepresentation
 from transforms.wavelet_fft_fusion import WaveletFFTfusion
 from transforms.dct_wavelet_fusion import DCTWaveletFusion
-from transforms.pca_ica_signal_decomposition import PCASignalDecomposition, ICASignalDecomposition
+from transforms.pca_ica_signal_decomposition import (
+    PCASignalDecomposition,
+    ICASignalDecomposition,
+)
+
 
 class SignalDecompositionVisualization:
     """
@@ -41,10 +45,17 @@ class SignalDecompositionVisualization:
         >>> sd_viz.plot_pca()
         """
         pca_result = self.pca.compute_pca()
-        time_axis = np.arange(pca_result.shape[1])
+        # time_axis = np.arange(pca_result.shape[1])
 
-        traces = [go.Scatter(y=pca_result[i], mode='lines', name=f'PC{i+1}') for i in range(pca_result.shape[0])]
-        layout = go.Layout(title='PCA of Signals', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
+        traces = [
+            go.Scatter(y=pca_result[i], mode="lines", name=f"PC{i+1}")
+            for i in range(pca_result.shape[0])
+        ]
+        layout = go.Layout(
+            title="PCA of Signals",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
         fig = go.Figure(data=traces, layout=layout)
         fig.show()
 
@@ -58,10 +69,17 @@ class SignalDecompositionVisualization:
         >>> sd_viz.plot_ica()
         """
         ica_result = self.ica.compute_ica()
-        time_axis = np.arange(ica_result.shape[1])
+        # time_axis = np.arange(ica_result.shape[1])
 
-        traces = [go.Scatter(y=ica_result[i], mode='lines', name=f'IC{i+1}') for i in range(ica_result.shape[0])]
-        layout = go.Layout(title='ICA of Signals', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
+        traces = [
+            go.Scatter(y=ica_result[i], mode="lines", name=f"IC{i+1}")
+            for i in range(ica_result.shape[0])
+        ]
+        layout = go.Layout(
+            title="ICA of Signals",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
         fig = go.Figure(data=traces, layout=layout)
         fig.show()
 
@@ -75,13 +93,27 @@ class SignalDecompositionVisualization:
         >>> sd_viz.compare_original_pca()
         """
         pca_result = self.pca.compute_pca()
-        time_axis = np.arange(pca_result.shape[1])
+        # time_axis = np.arange(pca_result.shape[1])
 
-        trace_orig = [go.Scatter(y=self.signals[i], mode='lines', name=f'Original Signal {i+1}') for i in range(self.signals.shape[0])]
-        trace_pca = [go.Scatter(y=pca_result[i], mode='lines', name=f'PC{i+1}') for i in range(pca_result.shape[0])]
+        trace_orig = [
+            go.Scatter(y=self.signals[i], mode="lines", name=f"Original Signal {i+1}")
+            for i in range(self.signals.shape[0])
+        ]
+        trace_pca = [
+            go.Scatter(y=pca_result[i], mode="lines", name=f"PC{i+1}")
+            for i in range(pca_result.shape[0])
+        ]
 
-        layout_orig = go.Layout(title='Original Signals', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
-        layout_pca = go.Layout(title='PCA of Signals', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
+        layout_orig = go.Layout(
+            title="Original Signals",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
+        layout_pca = go.Layout(
+            title="PCA of Signals",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
 
         fig_orig = go.Figure(data=trace_orig, layout=layout_orig)
         fig_pca = go.Figure(data=trace_pca, layout=layout_pca)
@@ -99,19 +131,34 @@ class SignalDecompositionVisualization:
         >>> sd_viz.compare_original_ica()
         """
         ica_result = self.ica.compute_ica()
-        time_axis = np.arange(ica_result.shape[1])
+        # time_axis = np.arange(ica_result.shape[1])
 
-        trace_orig = [go.Scatter(y=self.signals[i], mode='lines', name=f'Original Signal {i+1}') for i in range(self.signals.shape[0])]
-        trace_ica = [go.Scatter(y=ica_result[i], mode='lines', name=f'IC{i+1}') for i in range(ica_result.shape[0])]
+        trace_orig = [
+            go.Scatter(y=self.signals[i], mode="lines", name=f"Original Signal {i+1}")
+            for i in range(self.signals.shape[0])
+        ]
+        trace_ica = [
+            go.Scatter(y=ica_result[i], mode="lines", name=f"IC{i+1}")
+            for i in range(ica_result.shape[0])
+        ]
 
-        layout_orig = go.Layout(title='Original Signals', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
-        layout_ica = go.Layout(title='ICA of Signals', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
+        layout_orig = go.Layout(
+            title="Original Signals",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
+        layout_ica = go.Layout(
+            title="ICA of Signals",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
 
         fig_orig = go.Figure(data=trace_orig, layout=layout_orig)
         fig_ica = go.Figure(data=trace_ica, layout=layout_ica)
 
         fig_orig.show()
         fig_ica.show()
+
 
 class DCTWaveletFusionVisualization:
     """
@@ -122,7 +169,7 @@ class DCTWaveletFusionVisualization:
     - compare_original_fusion: Compares the original signal and its DCT-Wavelet fusion.
     """
 
-    def __init__(self, signal, wavelet_type='db', order=4, **kwargs):
+    def __init__(self, signal, wavelet_type="db", order=4, **kwargs):
         """
         Initialize the DCTWaveletFusionVisualization class with the signal.
 
@@ -145,10 +192,16 @@ class DCTWaveletFusionVisualization:
         >>> fusion_viz.plot_fusion()
         """
         fusion_result = self.fusion.compute_fusion()
-        time_axis = np.arange(len(self.signal))
+        # time_axis = np.arange(len(self.signal))
 
-        trace = go.Scatter(y=np.abs(fusion_result), mode='lines', name='DCT-Wavelet Fusion')
-        layout = go.Layout(title='DCT-Wavelet Fusion', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
+        trace = go.Scatter(
+            y=np.abs(fusion_result), mode="lines", name="DCT-Wavelet Fusion"
+        )
+        layout = go.Layout(
+            title="DCT-Wavelet Fusion",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
         fig = go.Figure(data=[trace], layout=layout)
         fig.show()
 
@@ -162,19 +215,30 @@ class DCTWaveletFusionVisualization:
         >>> fusion_viz.compare_original_fusion()
         """
         fusion_result = self.fusion.compute_fusion()
-        time_axis = np.arange(len(self.signal))
+        # time_axis = np.arange(len(self.signal))
 
-        trace1 = go.Scatter(y=self.signal, mode='lines', name='Original Signal')
-        trace2 = go.Scatter(y=np.abs(fusion_result), mode='lines', name='DCT-Wavelet Fusion')
+        trace1 = go.Scatter(y=self.signal, mode="lines", name="Original Signal")
+        trace2 = go.Scatter(
+            y=np.abs(fusion_result), mode="lines", name="DCT-Wavelet Fusion"
+        )
 
-        layout1 = go.Layout(title='Original Signal', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
-        layout2 = go.Layout(title='DCT-Wavelet Fusion', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
+        layout1 = go.Layout(
+            title="Original Signal",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
+        layout2 = go.Layout(
+            title="DCT-Wavelet Fusion",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
 
         fig1 = go.Figure(data=[trace1], layout=layout1)
         fig2 = go.Figure(data=[trace2], layout=layout2)
 
         fig1.show()
         fig2.show()
+
 
 class WaveletFFTfusionVisualization:
     """
@@ -185,7 +249,7 @@ class WaveletFFTfusionVisualization:
     - compare_original_fusion: Compares the original signal and its Wavelet-FFT fusion.
     """
 
-    def __init__(self, signal, wavelet_type='db', order=4, **kwargs):
+    def __init__(self, signal, wavelet_type="db", order=4, **kwargs):
         """
         Initialize the WaveletFFTfusionVisualization class with the signal.
 
@@ -208,10 +272,16 @@ class WaveletFFTfusionVisualization:
         >>> fusion_viz.plot_fusion()
         """
         fusion_result = self.fusion.compute_fusion()
-        time_axis = np.arange(len(self.signal))
+        # time_axis = np.arange(len(self.signal))
 
-        trace = go.Scatter(y=np.abs(fusion_result), mode='lines', name='Wavelet-FFT Fusion')
-        layout = go.Layout(title='Wavelet-FFT Fusion', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
+        trace = go.Scatter(
+            y=np.abs(fusion_result), mode="lines", name="Wavelet-FFT Fusion"
+        )
+        layout = go.Layout(
+            title="Wavelet-FFT Fusion",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
         fig = go.Figure(data=[trace], layout=layout)
         fig.show()
 
@@ -225,19 +295,30 @@ class WaveletFFTfusionVisualization:
         >>> fusion_viz.compare_original_fusion()
         """
         fusion_result = self.fusion.compute_fusion()
-        time_axis = np.arange(len(self.signal))
+        # time_axis = np.arange(len(self.signal))
 
-        trace1 = go.Scatter(y=self.signal, mode='lines', name='Original Signal')
-        trace2 = go.Scatter(y=np.abs(fusion_result), mode='lines', name='Wavelet-FFT Fusion')
+        trace1 = go.Scatter(y=self.signal, mode="lines", name="Original Signal")
+        trace2 = go.Scatter(
+            y=np.abs(fusion_result), mode="lines", name="Wavelet-FFT Fusion"
+        )
 
-        layout1 = go.Layout(title='Original Signal', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
-        layout2 = go.Layout(title='Wavelet-FFT Fusion', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
+        layout1 = go.Layout(
+            title="Original Signal",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
+        layout2 = go.Layout(
+            title="Wavelet-FFT Fusion",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
 
         fig1 = go.Figure(data=[trace1], layout=layout1)
         fig2 = go.Figure(data=[trace2], layout=layout2)
 
         fig1.show()
         fig2.show()
+
 
 class TFRVisualization:
     """
@@ -248,7 +329,7 @@ class TFRVisualization:
     - compare_original_tfr: Compares the original signal and its Time-Frequency Representation.
     """
 
-    def __init__(self, signal, method='stft', **kwargs):
+    def __init__(self, signal, method="stft", **kwargs):
         """
         Initialize the TFRVisualization class with the signal.
 
@@ -273,8 +354,14 @@ class TFRVisualization:
         time_axis = np.arange(tfr_result.shape[1])
         freq_axis = np.arange(tfr_result.shape[0])
 
-        trace = go.Heatmap(z=np.abs(tfr_result), x=time_axis, y=freq_axis, colorscale='Viridis')
-        layout = go.Layout(title='Time-Frequency Representation', xaxis=dict(title='Time'), yaxis=dict(title='Frequency'))
+        trace = go.Heatmap(
+            z=np.abs(tfr_result), x=time_axis, y=freq_axis, colorscale="Viridis"
+        )
+        layout = go.Layout(
+            title="Time-Frequency Representation",
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="Frequency"),
+        )
         fig = go.Figure(data=[trace], layout=layout)
         fig.show()
 
@@ -291,17 +378,32 @@ class TFRVisualization:
         time_axis = np.arange(tfr_result.shape[1])
         freq_axis = np.arange(tfr_result.shape[0])
 
-        trace1 = go.Scatter(y=self.signal, mode='lines', name='Original Signal')
-        trace2 = go.Heatmap(z=np.abs(tfr_result), x=time_axis, y=freq_axis, colorscale='Viridis', name='TFR')
+        trace1 = go.Scatter(y=self.signal, mode="lines", name="Original Signal")
+        trace2 = go.Heatmap(
+            z=np.abs(tfr_result),
+            x=time_axis,
+            y=freq_axis,
+            colorscale="Viridis",
+            name="TFR",
+        )
 
-        layout1 = go.Layout(title='Original Signal', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
-        layout2 = go.Layout(title='Time-Frequency Representation', xaxis=dict(title='Time'), yaxis=dict(title='Frequency'))
+        layout1 = go.Layout(
+            title="Original Signal",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
+        layout2 = go.Layout(
+            title="Time-Frequency Representation",
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="Frequency"),
+        )
 
         fig1 = go.Figure(data=[trace1], layout=layout1)
         fig2 = go.Figure(data=[trace2], layout=layout2)
 
         fig1.show()
         fig2.show()
+
 
 class ERPVisualization:
     """
@@ -312,7 +414,14 @@ class ERPVisualization:
     - compare_original_erp: Compares the original signal and its ERP.
     """
 
-    def __init__(self, signal, stimulus_times, pre_stimulus=0.1, post_stimulus=0.4, sample_rate=1000):
+    def __init__(
+        self,
+        signal,
+        stimulus_times,
+        pre_stimulus=0.1,
+        post_stimulus=0.4,
+        sample_rate=1000,
+    ):
         """
         Initialize the ERPVisualization class with the signal.
 
@@ -324,7 +433,9 @@ class ERPVisualization:
         sample_rate (int): The sample rate of the signal.
         """
         self.signal = signal
-        self.erp = EventRelatedPotential(signal, stimulus_times, pre_stimulus, post_stimulus, sample_rate)
+        self.erp = EventRelatedPotential(
+            signal, stimulus_times, pre_stimulus, post_stimulus, sample_rate
+        )
 
     def plot_erp(self):
         """
@@ -337,10 +448,17 @@ class ERPVisualization:
         >>> erp_viz.plot_erp()
         """
         erp_result = self.erp.compute_erp()
-        time_axis = np.arange(-self.erp.pre_stimulus, self.erp.post_stimulus) / self.erp.sample_rate
+        time_axis = (
+            np.arange(-self.erp.pre_stimulus, self.erp.post_stimulus)
+            / self.erp.sample_rate
+        )
 
-        trace = go.Scatter(x=time_axis, y=erp_result, mode='lines', name='ERP')
-        layout = go.Layout(title='Event-Related Potential', xaxis=dict(title='Time (s)'), yaxis=dict(title='Amplitude'))
+        trace = go.Scatter(x=time_axis, y=erp_result, mode="lines", name="ERP")
+        layout = go.Layout(
+            title="Event-Related Potential",
+            xaxis=dict(title="Time (s)"),
+            yaxis=dict(title="Amplitude"),
+        )
         fig = go.Figure(data=[trace], layout=layout)
         fig.show()
 
@@ -355,19 +473,31 @@ class ERPVisualization:
         >>> erp_viz.compare_original_erp()
         """
         erp_result = self.erp.compute_erp()
-        time_axis = np.arange(-self.erp.pre_stimulus, self.erp.post_stimulus) / self.erp.sample_rate
+        time_axis = (
+            np.arange(-self.erp.pre_stimulus, self.erp.post_stimulus)
+            / self.erp.sample_rate
+        )
 
-        trace1 = go.Scatter(y=self.signal, mode='lines', name='Original Signal')
-        trace2 = go.Scatter(x=time_axis, y=erp_result, mode='lines', name='ERP')
+        trace1 = go.Scatter(y=self.signal, mode="lines", name="Original Signal")
+        trace2 = go.Scatter(x=time_axis, y=erp_result, mode="lines", name="ERP")
 
-        layout1 = go.Layout(title='Original Signal', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
-        layout2 = go.Layout(title='Event-Related Potential', xaxis=dict(title='Time (s)'), yaxis=dict(title='Amplitude'))
+        layout1 = go.Layout(
+            title="Original Signal",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
+        layout2 = go.Layout(
+            title="Event-Related Potential",
+            xaxis=dict(title="Time (s)"),
+            yaxis=dict(title="Amplitude"),
+        )
 
         fig1 = go.Figure(data=[trace1], layout=layout1)
         fig2 = go.Figure(data=[trace2], layout=layout2)
 
         fig1.show()
         fig2.show()
+
 
 class ChromaSTFTVisualization:
     """
@@ -404,8 +534,14 @@ class ChromaSTFTVisualization:
         time_axis = np.arange(chroma_stft_result.shape[1])
         chroma_axis = np.arange(chroma_stft_result.shape[0])
 
-        trace = go.Heatmap(z=chroma_stft_result, x=time_axis, y=chroma_axis, colorscale='Viridis')
-        layout = go.Layout(title='Chroma STFT', xaxis=dict(title='Time'), yaxis=dict(title='Chroma Bins'))
+        trace = go.Heatmap(
+            z=chroma_stft_result, x=time_axis, y=chroma_axis, colorscale="Viridis"
+        )
+        layout = go.Layout(
+            title="Chroma STFT",
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="Chroma Bins"),
+        )
         fig = go.Figure(data=[trace], layout=layout)
         fig.show()
 
@@ -422,17 +558,32 @@ class ChromaSTFTVisualization:
         time_axis = np.arange(chroma_stft_result.shape[1])
         chroma_axis = np.arange(chroma_stft_result.shape[0])
 
-        trace1 = go.Scatter(y=self.signal, mode='lines', name='Original Signal')
-        trace2 = go.Heatmap(z=chroma_stft_result, x=time_axis, y=chroma_axis, colorscale='Viridis', name='Chroma STFT')
+        trace1 = go.Scatter(y=self.signal, mode="lines", name="Original Signal")
+        trace2 = go.Heatmap(
+            z=chroma_stft_result,
+            x=time_axis,
+            y=chroma_axis,
+            colorscale="Viridis",
+            name="Chroma STFT",
+        )
 
-        layout1 = go.Layout(title='Original Signal', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
-        layout2 = go.Layout(title='Chroma STFT', xaxis=dict(title='Time'), yaxis=dict(title='Chroma Bins'))
+        layout1 = go.Layout(
+            title="Original Signal",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
+        layout2 = go.Layout(
+            title="Chroma STFT",
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="Chroma Bins"),
+        )
 
         fig1 = go.Figure(data=[trace1], layout=layout1)
         fig2 = go.Figure(data=[trace2], layout=layout2)
 
         fig1.show()
         fig2.show()
+
 
 class MFCCVisualization:
     """
@@ -469,8 +620,12 @@ class MFCCVisualization:
         time_axis = np.arange(mfcc_result.shape[0])
         coefficient_axis = np.arange(mfcc_result.shape[1])
 
-        trace = go.Heatmap(z=mfcc_result.T, x=time_axis, y=coefficient_axis, colorscale='Viridis')
-        layout = go.Layout(title='MFCC', xaxis=dict(title='Time'), yaxis=dict(title='MFCC Coefficient'))
+        trace = go.Heatmap(
+            z=mfcc_result.T, x=time_axis, y=coefficient_axis, colorscale="Viridis"
+        )
+        layout = go.Layout(
+            title="MFCC", xaxis=dict(title="Time"), yaxis=dict(title="MFCC Coefficient")
+        )
         fig = go.Figure(data=[trace], layout=layout)
         fig.show()
 
@@ -487,17 +642,30 @@ class MFCCVisualization:
         time_axis = np.arange(mfcc_result.shape[0])
         coefficient_axis = np.arange(mfcc_result.shape[1])
 
-        trace1 = go.Scatter(y=self.signal, mode='lines', name='Original Signal')
-        trace2 = go.Heatmap(z=mfcc_result.T, x=time_axis, y=coefficient_axis, colorscale='Viridis', name='MFCC')
+        trace1 = go.Scatter(y=self.signal, mode="lines", name="Original Signal")
+        trace2 = go.Heatmap(
+            z=mfcc_result.T,
+            x=time_axis,
+            y=coefficient_axis,
+            colorscale="Viridis",
+            name="MFCC",
+        )
 
-        layout1 = go.Layout(title='Original Signal', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
-        layout2 = go.Layout(title='MFCC', xaxis=dict(title='Time'), yaxis=dict(title='MFCC Coefficient'))
+        layout1 = go.Layout(
+            title="Original Signal",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
+        layout2 = go.Layout(
+            title="MFCC", xaxis=dict(title="Time"), yaxis=dict(title="MFCC Coefficient")
+        )
 
         fig1 = go.Figure(data=[trace1], layout=layout1)
         fig2 = go.Figure(data=[trace2], layout=layout2)
 
         fig1.show()
         fig2.show()
+
 
 class STFTVisualization:
     """
@@ -534,7 +702,11 @@ class STFTVisualization:
         freq_axis = np.arange(stft_result.shape[0])
 
         trace = go.Heatmap(z=np.abs(stft_result), x=time_axis, y=freq_axis)
-        layout = go.Layout(title='STFT Magnitude', xaxis=dict(title='Time'), yaxis=dict(title='Frequency'))
+        layout = go.Layout(
+            title="STFT Magnitude",
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="Frequency"),
+        )
         fig = go.Figure(data=[trace], layout=layout)
         fig.show()
 
@@ -551,11 +723,25 @@ class STFTVisualization:
         time_axis = np.arange(stft_result.shape[1])
         freq_axis = np.arange(stft_result.shape[0])
 
-        trace1 = go.Scatter(y=self.signal, mode='lines', name='Original Signal')
-        trace2 = go.Heatmap(z=np.abs(stft_result), x=time_axis, y=freq_axis, colorscale='Viridis', name='STFT Magnitude')
+        trace1 = go.Scatter(y=self.signal, mode="lines", name="Original Signal")
+        trace2 = go.Heatmap(
+            z=np.abs(stft_result),
+            x=time_axis,
+            y=freq_axis,
+            colorscale="Viridis",
+            name="STFT Magnitude",
+        )
 
-        layout1 = go.Layout(title='Original Signal', xaxis=dict(title='Sample Index'), yaxis=dict(title='Amplitude'))
-        layout2 = go.Layout(title='STFT Magnitude', xaxis=dict(title='Time'), yaxis=dict(title='Frequency'))
+        layout1 = go.Layout(
+            title="Original Signal",
+            xaxis=dict(title="Sample Index"),
+            yaxis=dict(title="Amplitude"),
+        )
+        layout2 = go.Layout(
+            title="STFT Magnitude",
+            xaxis=dict(title="Time"),
+            yaxis=dict(title="Frequency"),
+        )
 
         fig1 = go.Figure(data=[trace1], layout=layout1)
         fig2 = go.Figure(data=[trace2], layout=layout2)

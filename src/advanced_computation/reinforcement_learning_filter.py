@@ -3,36 +3,44 @@ import random
 
 class ReinforcementLearningFilter:
     """
-    Comprehensive Reinforcement Learning Filter for adaptive signal processing.
+    A comprehensive Reinforcement Learning Filter for adaptive signal processing.
+    This class provides methods to train filters using various reinforcement learning algorithms such as
+    Q-learning, Deep Q-Networks (DQN), and Proximal Policy Optimization (PPO), and to apply these trained
+    filters to signals.
 
-    Methods:
-    - train_q_learning: Trains a filter using Q-learning.
-    - train_dqn: Trains a filter using Deep Q-Networks (DQN).
-    - train_ppo: Trains a filter using Proximal Policy Optimization (PPO).
-    - apply_filter: Applies the trained filter to a signal.
+    Methods
+    -------
+    train_q_learning(episodes=1000, alpha=0.1, gamma=0.99, epsilon=0.1)
+        Trains a filter using Q-learning.
+    train_dqn(episodes=1000, batch_size=32, gamma=0.99, epsilon=0.1, target_update=10)
+        Trains a filter using Deep Q-Networks (DQN).
+    train_ppo(epochs=1000, gamma=0.99, lambda_=0.95, clip_ratio=0.2)
+        Trains a filter using Proximal Policy Optimization (PPO).
+    apply_filter()
+        Applies the trained filter to the signal.
 
-    Example Usage:
-    --------------
+    Example Usage
+    -------------
     signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
     rl_filter = ReinforcementLearningFilter(signal, action_space=[-1, 0, 1])
-    
+
     # Train Q-learning based filter
     rl_filter.train_q_learning(episodes=500, alpha=0.1, gamma=0.99, epsilon=0.1)
-    
+
     # Apply the trained filter
     filtered_signal = rl_filter.apply_filter()
     print("Filtered Signal (Q-Learning):", filtered_signal)
-    
+
     # Train DQN-based filter
     rl_filter.train_dqn(episodes=500, batch_size=32, gamma=0.99, epsilon=0.1, target_update=10)
-    
+
     # Apply the trained filter
     filtered_signal_dqn = rl_filter.apply_filter()
     print("Filtered Signal (DQN):", filtered_signal_dqn)
-    
+
     # Train PPO-based filter
     rl_filter.train_ppo(epochs=500, gamma=0.99, lambda_=0.95, clip_ratio=0.2)
-    
+
     # Apply the trained filter
     filtered_signal_ppo = rl_filter.apply_filter()
     print("Filtered Signal (PPO):", filtered_signal_ppo)
@@ -42,10 +50,14 @@ class ReinforcementLearningFilter:
         """
         Initialize the ReinforcementLearningFilter class with the signal and action space.
 
-        Parameters:
-        signal (numpy.ndarray): The signal to be processed.
-        action_space (list): The set of possible actions (e.g., filter adjustments).
-        state_space (int or None): The dimensionality of the state space, if applicable.
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The signal to be processed.
+        action_space : list
+            The set of possible actions (e.g., filter adjustments).
+        state_space : int or None, optional
+            The dimensionality of the state space, if applicable. If None, defaults to the length of the signal.
         """
         self.signal = signal
         self.action_space = action_space
@@ -56,11 +68,16 @@ class ReinforcementLearningFilter:
         """
         Train the filter using Q-learning.
 
-        Parameters:
-        episodes (int): The number of training episodes.
-        alpha (float): The learning rate.
-        gamma (float): The discount factor.
-        epsilon (float): The exploration rate for epsilon-greedy policy.
+        Parameters
+        ----------
+        episodes : int, optional
+            The number of training episodes (default is 1000).
+        alpha : float, optional
+            The learning rate (default is 0.1).
+        gamma : float, optional
+            The discount factor (default is 0.99).
+        epsilon : float, optional
+            The exploration rate for epsilon-greedy policy (default is 0.1).
         """
         for episode in range(episodes):
             state = self._initialize_state()
@@ -74,7 +91,10 @@ class ReinforcementLearningFilter:
                 best_next_action = np.argmax(self.q_table[next_state])
 
                 self.q_table[state, action] = self.q_table[state, action] + alpha * (
-                    reward + gamma * self.q_table[next_state, best_next_action] - self.q_table[state, action])
+                    reward
+                    + gamma * self.q_table[next_state, best_next_action]
+                    - self.q_table[state, action]
+                )
 
                 state = next_state
 
@@ -82,12 +102,18 @@ class ReinforcementLearningFilter:
         """
         Train the filter using Deep Q-Networks (DQN).
 
-        Parameters:
-        episodes (int): The number of training episodes.
-        batch_size (int): The batch size for experience replay.
-        gamma (float): The discount factor.
-        epsilon (float): The exploration rate for epsilon-greedy policy.
-        target_update (int): The frequency of updating the target network.
+        Parameters
+        ----------
+        episodes : int, optional
+            The number of training episodes (default is 1000).
+        batch_size : int, optional
+            The batch size for experience replay (default is 32).
+        gamma : float, optional
+            The discount factor (default is 0.99).
+        epsilon : float, optional
+            The exploration rate for epsilon-greedy policy (default is 0.1).
+        target_update : int, optional
+            The frequency of updating the target network (default is 10 episodes).
         """
         memory = []
         q_network = self._initialize_neural_network()
@@ -117,17 +143,24 @@ class ReinforcementLearningFilter:
         """
         Train the filter using Proximal Policy Optimization (PPO).
 
-        Parameters:
-        epochs (int): The number of training epochs.
-        gamma (float): The discount factor.
-        lambda_ (float): The GAE-lambda parameter.
-        clip_ratio (float): The clipping parameter for PPO.
+        Parameters
+        ----------
+        epochs : int, optional
+            The number of training epochs (default is 1000).
+        gamma : float, optional
+            The discount factor (default is 0.99).
+        lambda_ : float, optional
+            The GAE-lambda parameter (default is 0.95).
+        clip_ratio : float, optional
+            The clipping parameter for PPO (default is 0.2).
         """
         policy_network = self._initialize_policy_network()
         value_network = self._initialize_value_network()
 
         for epoch in range(epochs):
-            trajectories = self._collect_trajectories(policy_network, value_network, gamma, lambda_)
+            trajectories = self._collect_trajectories(
+                policy_network, value_network, gamma, lambda_
+            )
             self._update_policy_network(policy_network, trajectories, clip_ratio)
             self._update_value_network(value_network, trajectories)
 
@@ -135,8 +168,10 @@ class ReinforcementLearningFilter:
         """
         Apply the trained filter to the signal.
 
-        Returns:
-        numpy.ndarray: The filtered signal.
+        Returns
+        -------
+        numpy.ndarray
+            The filtered signal.
         """
         filtered_signal = np.zeros_like(self.signal)
         state = self._initialize_state()
@@ -201,15 +236,27 @@ class ReinforcementLearningFilter:
         for t in range(len(self.signal)):
             action = policy_network.sample_action(state)
             next_state, reward = self._take_action(state, action)
-            advantage = self._calculate_advantage(state, action, reward, next_state, value_network, gamma, lambda_)
+            advantage = self._calculate_advantage(
+                state, action, reward, next_state, value_network, gamma, lambda_
+            )
             trajectories.append((state, action, reward, advantage))
             state = next_state
         return trajectories
 
-    def _calculate_advantage(self, state, action, reward, next_state, value_network, gamma, lambda_):
+    def _calculate_advantage(
+        self, state, action, reward, next_state, value_network, gamma, lambda_
+    ):
         """Calculate the advantage estimate for PPO."""
-        td_error = reward + gamma * value_network.predict(next_state) - value_network.predict(state)
-        advantage = td_error + lambda_ * (reward + gamma * value_network.predict(next_state) - value_network.predict(state))
+        td_error = (
+            reward
+            + gamma * value_network.predict(next_state)
+            - value_network.predict(state)
+        )
+        advantage = td_error + lambda_ * (
+            reward
+            + gamma * value_network.predict(next_state)
+            - value_network.predict(state)
+        )
         return advantage
 
     def _update_policy_network(self, policy_network, trajectories, clip_ratio):
@@ -219,7 +266,9 @@ class ReinforcementLearningFilter:
             new_prob = policy_network.train(state, action, advantage)
             ratio = new_prob / old_prob
             clipped_ratio = np.clip(ratio, 1 - clip_ratio, 1 + clip_ratio)
-            policy_network.update(state, action, np.minimum(ratio * advantage, clipped_ratio * advantage))
+            policy_network.update(
+                state, action, np.minimum(ratio * advantage, clipped_ratio * advantage)
+            )
 
     def _update_value_network(self, value_network, trajectories):
         """Update the value network using PPO."""
@@ -255,7 +304,9 @@ class SimplePolicyNetwork:
 
     def sample_action(self, state):
         probabilities = self.predict(state)
-        return np.argmax(np.random.multinomial(1, probabilities / np.sum(probabilities)))
+        return np.argmax(
+            np.random.multinomial(1, probabilities / np.sum(probabilities))
+        )
 
     def train(self, state, action, advantage):
         self.weights[:, action] += 0.01 * advantage * state

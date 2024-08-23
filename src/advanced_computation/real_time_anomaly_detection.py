@@ -1,5 +1,6 @@
 import numpy as np
 from collections import deque
+from utils.wavelet_transform import WaveletTransform  # Assuming WaveletTransform is in utils
 
 class RealTimeAnomalyDetection:
     """
@@ -8,25 +9,35 @@ class RealTimeAnomalyDetection:
     This class supports multiple anomaly detection techniques including statistical methods, machine learning models, and deep learning models.
     It is designed for use in real-time environments with online learning capabilities.
 
-    Methods:
-    - detect_statistical: Detects anomalies using statistical methods like Z-score and moving average.
-    - detect_knn: Detects anomalies using k-Nearest Neighbors (k-NN).
-    - detect_svm: Detects anomalies using Support Vector Machine (SVM).
-    - detect_autoencoder: Detects anomalies using Autoencoders.
-    - detect_lstm: Detects anomalies using LSTM-based models.
-    - update_model: Updates the model with new data for online learning.
-    - evaluate: Evaluates the performance of the anomaly detection method on a test dataset.
+    Methods
+    -------
+    detect_statistical : method
+        Detects anomalies using statistical methods like Z-score and moving average.
+    detect_knn : method
+        Detects anomalies using k-Nearest Neighbors (k-NN).
+    detect_svm : method
+        Detects anomalies using Support Vector Machine (SVM).
+    detect_autoencoder : method
+        Detects anomalies using Autoencoders.
+    detect_lstm : method
+        Detects anomalies using LSTM-based models.
+    detect_wavelet : method
+        Detects anomalies using wavelet transforms.
+    update_model : method
+        Updates the model with new data for online learning.
+    evaluate : method
+        Evaluates the performance of the anomaly detection method on a test dataset.
 
-    Example Usage:
-    --------------
+    Example Usage
+    -------------
     data_stream = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
     anomaly_detector = RealTimeAnomalyDetection(window_size=10)
-    
+
     # Detect anomalies using Z-score
     for data_point in data_stream:
         anomaly = anomaly_detector.detect_statistical(data_point, method='z_score', threshold=2.0)
         print("Anomaly (Z-Score):", anomaly)
-    
+
     # Train and detect anomalies using k-NN
     anomaly_detector.train_knn(data_stream[:50])
     for data_point in data_stream[50:]:
@@ -38,32 +49,40 @@ class RealTimeAnomalyDetection:
         """
         Initialize the RealTimeAnomalyDetection class with a specified window size.
 
-        Parameters:
-        window_size (int): The number of data points to consider for detecting anomalies.
+        Parameters
+        ----------
+        window_size : int
+            The number of data points to consider for detecting anomalies.
         """
         self.window_size = window_size
         self.data_window = deque(maxlen=window_size)
         self.models = {}
 
-    def detect_statistical(self, data_point, method='z_score', threshold=2.0, **kwargs):
+    def detect_statistical(self, data_point, method="z_score", threshold=2.0, **kwargs):
         """
         Detect anomalies using statistical methods like Z-score, moving average, etc.
 
-        Parameters:
-        data_point (float): The new data point to be analyzed.
-        method (str): The statistical method to use ('z_score' or 'moving_average').
-        threshold (float): The threshold value for detecting anomalies.
+        Parameters
+        ----------
+        data_point : float
+            The new data point to be analyzed.
+        method : str, optional
+            The statistical method to use ('z_score' or 'moving_average'). Default is 'z_score'.
+        threshold : float, optional
+            The threshold value for detecting anomalies. Default is 2.0.
 
-        Returns:
-        bool: True if the data point is an anomaly, False otherwise.
+        Returns
+        -------
+        bool
+            True if the data point is an anomaly, False otherwise.
         """
         self.data_window.append(data_point)
         if len(self.data_window) < self.window_size:
             return False  # Not enough data to detect anomalies
 
-        if method == 'z_score':
+        if method == "z_score":
             return self._z_score_detection(data_point, threshold)
-        elif method == 'moving_average':
+        elif method == "moving_average":
             return self._moving_average_detection(data_point, threshold)
         else:
             raise ValueError(f"Unknown statistical method: {method}")
@@ -84,184 +103,264 @@ class RealTimeAnomalyDetection:
         """
         Train a k-Nearest Neighbors (k-NN) model on the training data.
 
-        Parameters:
-        training_data (numpy.ndarray): The training dataset.
-        k (int): The number of nearest neighbors to consider.
+        Parameters
+        ----------
+        training_data : numpy.ndarray
+            The training dataset.
+        k : int, optional
+            The number of nearest neighbors to consider. Default is 5.
 
-        Returns:
+        Returns
+        -------
         None
         """
-        self.models['knn'] = {
-            'training_data': np.array(training_data),
-            'k': k
-        }
+        self.models["knn"] = {"training_data": np.array(training_data), "k": k}
 
     def detect_knn(self, data_point):
         """
         Detect anomalies using the k-Nearest Neighbors (k-NN) method.
 
-        Parameters:
-        data_point (float): The new data point to be analyzed.
+        Parameters
+        ----------
+        data_point : float
+            The new data point to be analyzed.
 
-        Returns:
-        bool: True if the data point is an anomaly, False otherwise.
+        Returns
+        -------
+        bool
+            True if the data point is an anomaly, False otherwise.
         """
-        if 'knn' not in self.models:
+        if "knn" not in self.models:
             raise ValueError("k-NN model has not been trained. Call train_knn() first.")
-        
-        training_data = self.models['knn']['training_data']
-        k = self.models['knn']['k']
+
+        training_data = self.models["knn"]["training_data"]
+        k = self.models["knn"]["k"]
         distances = np.abs(training_data - data_point)
         nearest_neighbors = np.sort(distances)[:k]
         mean_distance = np.mean(nearest_neighbors)
-        return mean_distance > np.std(training_data)  # Anomaly if distance is larger than standard deviation
+        return mean_distance > np.std(
+            training_data
+        )  # Anomaly if distance is larger than standard deviation
 
-    def train_svm(self, training_data, kernel='rbf'):
+    def train_svm(self, training_data, kernel="rbf"):
         """
         Train a Support Vector Machine (SVM) model on the training data.
 
-        Parameters:
-        training_data (numpy.ndarray): The training dataset.
-        kernel (str): The kernel type for SVM ('linear', 'poly', 'rbf').
+        Parameters
+        ----------
+        training_data : numpy.ndarray
+            The training dataset.
+        kernel : str, optional
+            The kernel type for SVM ('linear', 'poly', 'rbf'). Default is 'rbf'.
 
-        Returns:
+        Returns
+        -------
         None
         """
-        self.models['svm'] = SimpleSVM(training_data, kernel)
+        self.models["svm"] = SimpleSVM(training_data, kernel)
 
     def detect_svm(self, data_point):
         """
         Detect anomalies using the Support Vector Machine (SVM) method.
 
-        Parameters:
-        data_point (float): The new data point to be analyzed.
+        Parameters
+        ----------
+        data_point : float
+            The new data point to be analyzed.
 
-        Returns:
-        bool: True if the data point is an anomaly, False otherwise.
+        Returns
+        -------
+        bool
+            True if the data point is an anomaly, False otherwise.
         """
-        if 'svm' not in self.models:
+        if "svm" not in self.models:
             raise ValueError("SVM model has not been trained. Call train_svm() first.")
-        
-        return self.models['svm'].predict(data_point)
+
+        return self.models["svm"].predict(data_point)
 
     def train_autoencoder(self, training_data, encoding_dim=3):
         """
         Train an Autoencoder model on the training data.
 
-        Parameters:
-        training_data (numpy.ndarray): The training dataset.
-        encoding_dim (int): The dimension of the encoding layer.
+        Parameters
+        ----------
+        training_data : numpy.ndarray
+            The training dataset.
+        encoding_dim : int, optional
+            The dimension of the encoding layer. Default is 3.
 
-        Returns:
+        Returns
+        -------
         None
         """
-        self.models['autoencoder'] = SimpleAutoencoder(training_data, encoding_dim)
+        self.models["autoencoder"] = SimpleAutoencoder(training_data, encoding_dim)
 
     def detect_autoencoder(self, data_point, threshold=0.1):
         """
         Detect anomalies using the Autoencoder method.
 
-        Parameters:
-        data_point (float): The new data point to be analyzed.
-        threshold (float): The reconstruction error threshold for detecting anomalies.
+        Parameters
+        ----------
+        data_point : float
+            The new data point to be analyzed.
+        threshold : float, optional
+            The reconstruction error threshold for detecting anomalies. Default is 0.1.
 
-        Returns:
-        bool: True if the data point is an anomaly, False otherwise.
+        Returns
+        -------
+        bool
+            True if the data point is an anomaly, False otherwise.
         """
-        if 'autoencoder' not in self.models:
-            raise ValueError("Autoencoder model has not been trained. Call train_autoencoder() first.")
-        
-        reconstruction_error = self.models['autoencoder'].reconstruction_error(data_point)
+        if "autoencoder" not in self.models:
+            raise ValueError(
+                "Autoencoder model has not been trained. Call train_autoencoder() first."
+            )
+
+        reconstruction_error = self.models["autoencoder"].reconstruction_error(
+            data_point
+        )
         return reconstruction_error > threshold
 
     def train_lstm(self, training_data, hidden_units=50):
         """
         Train an LSTM-based model on the training data.
 
-        Parameters:
-        training_data (numpy.ndarray): The training dataset.
-        hidden_units (int): The number of hidden units in the LSTM.
+        Parameters
+        ----------
+        training_data : numpy.ndarray
+            The training dataset.
+        hidden_units : int, optional
+            The number of hidden units in the LSTM. Default is 50.
 
-        Returns:
+        Returns
+        -------
         None
         """
-        self.models['lstm'] = SimpleLSTM(training_data, hidden_units)
+        self.models["lstm"] = SimpleLSTM(training_data, hidden_units)
 
     def detect_lstm(self, data_point, threshold=0.1):
         """
         Detect anomalies using the LSTM-based model.
 
-        Parameters:
-        data_point (float): The new data point to be analyzed.
-        threshold (float): The prediction error threshold for detecting anomalies.
+        Parameters
+        ----------
+        data_point : float
+            The new data point to be analyzed.
+        threshold : float, optional
+            The prediction error threshold for detecting anomalies. Default is 0.1.
 
-        Returns:
-        bool: True if the data point is an anomaly, False otherwise.
+        Returns
+        -------
+        bool
+            True if the data point is an anomaly, False otherwise.
         """
-        if 'lstm' not in self.models:
-            raise ValueError("LSTM model has not been trained. Call train_lstm() first.")
-        
-        prediction_error = self.models['lstm'].prediction_error(data_point)
+        if "lstm" not in self.models:
+            raise ValueError(
+                "LSTM model has not been trained. Call train_lstm() first."
+            )
+
+        prediction_error = self.models["lstm"].prediction_error(data_point)
         return prediction_error > threshold
 
-    def update_model(self, data_point, model_type='knn'):
+    def detect_wavelet(self, data_point, wavelet_name="haar", level=1, threshold=0.1):
+        """
+        Detect anomalies using Wavelet Transform.
+
+        Parameters
+        ----------
+        data_point : float
+            The new data point to be analyzed.
+        wavelet_name : str, optional
+            The name of the wavelet to use for the transform (default is 'haar').
+        level : int, optional
+            The number of decomposition levels in the wavelet transform (default is 1).
+        threshold : float, optional
+            The threshold for detecting anomalies in the wavelet coefficients (default is 0.1).
+
+        Returns
+        -------
+        bool
+            True if the data point is an anomaly, False otherwise.
+        """
+        self.data_window.append(data_point)
+        if len(self.data_window) < self.window_size:
+            return False  # Not enough data to detect anomalies
+
+        wavelet_transform = WaveletTransform(np.array(self.data_window), wavelet_name)
+        coeffs = wavelet_transform.perform_wavelet_transform(level)
+        detail_coeffs = np.concatenate(coeffs[:-1])
+
+        return np.any(np.abs(detail_coeffs) > threshold)
+
+    def update_model(self, data_point, model_type="knn"):
         """
         Update the model with new data for online learning.
 
-        Parameters:
-        data_point (float): The new data point to update the model.
-        model_type (str): The type of model to update ('knn', 'svm', 'autoencoder', 'lstm').
+        Parameters
+        ----------
+        data_point : float
+            The new data point to update the model.
+        model_type : str, optional
+            The type of model to update ('knn', 'svm', 'autoencoder', 'lstm'). Default is 'knn'.
 
-        Returns:
+        Returns
+        -------
         None
         """
-        if model_type == 'knn':
-            self.models['knn']['training_data'] = np.append(self.models['knn']['training_data'], data_point)
-        elif model_type == 'svm':
-            self.models['svm'].update(data_point)
-        elif model_type == 'autoencoder':
-            self.models['autoencoder'].update(data_point)
-        elif model_type == 'lstm':
-            self.models['lstm'].update(data_point)
+        if model_type == "knn":
+            self.models["knn"]["training_data"] = np.append(
+                self.models["knn"]["training_data"], data_point
+            )
+        elif model_type == "svm":
+            self.models["svm"].update(data_point)
+        elif model_type == "autoencoder":
+            self.models["autoencoder"].update(data_point)
+        elif model_type == "lstm":
+            self.models["lstm"].update(data_point)
         else:
             raise ValueError(f"Unknown model type: {model_type}")
 
-    def evaluate(self, test_data, model_type='knn'):
+    def evaluate(self, test_data, model_type="knn"):
         """
         Evaluate the performance of the anomaly detection method on a test dataset.
 
-        Parameters:
-        test_data (numpy.ndarray): The test dataset.
-        model_type (str): The type of model to evaluate ('knn', 'svm', 'autoencoder', 'lstm').
+        Parameters
+        ----------
+        test_data : numpy.ndarray
+            The test dataset.
+        model_type : str, optional
+            The type of model to evaluate ('knn', 'svm', 'autoencoder', 'lstm'). Default is 'knn'.
 
-        Returns:
-        float: The accuracy of the anomaly detection method on the test dataset.
+        Returns
+        -------
+        float
+            The accuracy of the anomaly detection method on the test dataset.
         """
         correct = 0
         for data_point in test_data:
-            if model_type == 'knn':
+            if model_type == "knn":
                 prediction = self.detect_knn(data_point)
-            elif model_type == 'svm':
+            elif model_type == "svm":
                 prediction = self.detect_svm(data_point)
-            elif model_type == 'autoencoder':
+            elif model_type == "autoencoder":
                 prediction = self.detect_autoencoder(data_point)
-            elif model_type == 'lstm':
+            elif model_type == "lstm":
                 prediction = self.detect_lstm(data_point)
             else:
                 raise ValueError(f"Unknown model type: {model_type}")
 
             correct += int(prediction == self._is_anomaly(data_point))
-        
+
         return correct / len(test_data)
 
     def _is_anomaly(self, data_point):
         """Placeholder method to determine if a data point is an anomaly (for evaluation)."""
         return False  # This should be implemented based on the ground truth of the dataset
 
-# Simple SVM Implementation (Placeholder)
 
+# Simple SVM Implementation (Placeholder)
 class SimpleSVM:
-    def __init__(self, training_data, kernel='rbf'):
+    def __init__(self, training_data, kernel="rbf"):
         self.training_data = training_data
         self.kernel = kernel
         self.support_vectors = self._train(training_data)
@@ -280,8 +379,8 @@ class SimpleSVM:
         self.training_data = np.append(self.training_data, data_point)
         self.support_vectors = self._train(self.training_data)
 
-# Simple Autoencoder Implementation (Placeholder)
 
+# Simple Autoencoder Implementation (Placeholder)
 class SimpleAutoencoder:
     def __init__(self, training_data, encoding_dim=3):
         self.encoding_dim = encoding_dim
@@ -298,8 +397,8 @@ class SimpleAutoencoder:
         self.training_data = np.append(self.training_data, [data_point], axis=0)
         self.weights += np.random.randn(*self.weights.shape) * 0.01
 
-# Simple LSTM Implementation (Placeholder)
 
+# Simple LSTM Implementation (Placeholder)
 class SimpleLSTM:
     def __init__(self, training_data, hidden_units=50):
         self.hidden_units = hidden_units
