@@ -1,5 +1,6 @@
 import numpy as np
 from utils.mother_wavelets import Wavelet
+
 class WaveletTransform:
     """
     A class to perform Discrete Wavelet Transform (DWT) on signals using different mother wavelets.
@@ -29,7 +30,14 @@ class WaveletTransform:
             raise ValueError(f"Wavelet '{wavelet_name}' not found in MotherWavelets.")
         
         # Call the wavelet method to get the wavelet coefficients
-        self.low_pass, self.high_pass = wavelet_method()
+        filters = wavelet_method()
+        
+        if isinstance(filters, tuple) and len(filters) == 2:
+            self.low_pass, self.high_pass = filters
+        else:
+            # If only one filter is returned, assume it's a low-pass filter
+            self.low_pass = filters
+            self.high_pass = np.array([1, -1])  # Use a default or dummy high-pass filter
 
         # Ensure the wavelet filters are numpy arrays
         if isinstance(self.low_pass, (float, int)):
@@ -54,8 +62,14 @@ class WaveletTransform:
         filter_len = len(self.low_pass)
 
         for i in range(output_length):
-            approximation[i] = np.dot(self.low_pass, data[2 * i:2 * i + filter_len])
-            detail[i] = np.dot(self.high_pass, data[2 * i:2 * i + filter_len])
+            data_segment = data[2 * i:2 * i + filter_len]
+            
+            # If the data segment is shorter than the filter, pad it with zeros
+            if len(data_segment) < filter_len:
+                data_segment = np.pad(data_segment, (0, filter_len - len(data_segment)), 'constant')
+
+            approximation[i] = np.dot(self.low_pass, data_segment)
+            detail[i] = np.dot(self.high_pass, data_segment)
 
         return approximation, detail
 
@@ -104,7 +118,9 @@ class WaveletTransform:
 
         for i in range(len(approximation)):
             for j in range(filter_len):
-                data[2 * i + j] += (approximation[i] * self.low_pass[j] +
+                index = 2 * i + j
+                if index < output_length:
+                    data[index] += (approximation[i] * self.low_pass[j] +
                                     detail[i] * self.high_pass[j]) / np.sqrt(2)
 
         return data
