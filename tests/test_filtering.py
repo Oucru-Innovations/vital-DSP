@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from filtering.signal_filtering import SignalFiltering
+from src.filtering.signal_filtering import SignalFiltering
 
 @pytest.fixture
 def sample_signal():
