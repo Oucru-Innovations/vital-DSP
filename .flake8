@@ -19,6 +19,7 @@ exclude =
 
 # Ignore specific error codes
 # E203: Whitespace before ':'
+# E226 : Missing whitespace around arithmetic operator
 # E266: Too many leading '#' for block comments
 # E501: Line length
 # E302: Ignore the expected 2 blank lines error
@@ -28,6 +29,7 @@ exclude =
 # F405: Name may be undefined or defined from import * used
 ignore =
     E203,
+    E226,
     E266,
     E302,  
     E501,
