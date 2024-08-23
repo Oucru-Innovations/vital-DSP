@@ -23,7 +23,11 @@ lint:
 
 # Generate documentation using pandoc
 pandoc:
-	pandoc $(PANDOC_FILE) -o $(PANDOC_OUTPUT)
+	if [ -s $(PANDOC_FILE) ]; then \
+		pandoc $(PANDOC_FILE) -o $(PANDOC_OUTPUT); \
+	else \
+		echo "Documentation.md is empty. Skipping PDF generation."; \
+	fi
 
 # Clean up the generated files
 clean:
