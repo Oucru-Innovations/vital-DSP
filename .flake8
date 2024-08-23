@@ -18,13 +18,19 @@ exclude =
     cov_html
 
 # Ignore specific error codes
+# E203: Whitespace before ':'
+# E266: Too many leading '#' for block comments
+# E501: Line length
+# W503: Line break before binary operator
+# F403: Import * used
+# F405: Name may be undefined or defined from import * used
 ignore =
-    E203,  # Whitespace before ':', often clashes with black's formatting
-    E266,  # Too many leading '#' for block comments
-    E501,  # Line length, already set by max-line-length
-    W503,  # Line break before binary operator, PEP8 change
-    F403,  # Import * used; can be ignored in certain contexts
-    F405,  # Name may be undefined, or defined from import * used
+    E203,
+    E266,
+    E501,
+    W503,
+    F403,
+    F405
 
 # Select specific error codes (Optional, if you want to enforce certain checks only)
 # select =

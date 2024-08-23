@@ -42,7 +42,7 @@ class SignalFiltering:
 
         half_window = (window_length - 1) // 2
         # Precompute coefficients
-        b = np.mat([[k**i for i in range(polyorder + 1)] for k in range(-half_window, half_window + 1)])
+        b = np.asmatrix([[k**i for i in range(polyorder + 1)] for k in range(-half_window, half_window + 1)])
         m = np.linalg.pinv(b).A[0]
         # Pad the signal at the extremes with values taken from the signal itself
         firstvals = signal[0] - np.abs(signal[1:half_window+1][::-1] - signal[0])
