@@ -3,7 +3,6 @@ TEST_DIR=tests
 COV_DIR=cov_html
 DOCS_DIR=docs
 SRC_DIR=src
-PYTHONPATH=$(SRC_DIR):$(PYTHONPATH)
 PANDOC_FILE=$(DOCS_DIR)/Documentation.md
 PANDOC_OUTPUT=$(DOCS_DIR)/Documentation.pdf
 
@@ -12,11 +11,11 @@ all: test coverage lint pandoc
 
 # Run tests with pytest
 test:
-	PYTHONPATH=$(PYTHONPATH) pytest $(TEST_DIR) -v
+	PYTHONPATH=$(SRC_DIR) pytest $(TEST_DIR) -v
 
 # Generate code coverage report
 coverage:
-	pytest --cov=$(SRC_DIR) --cov-report=html:$(COV_DIR)
+	PYTHONPATH=$(SRC_DIR) pytest --cov=$(SRC_DIR) --cov-report=html:$(COV_DIR)
 
 # Lint the code using flake8 with custom config
 lint:
