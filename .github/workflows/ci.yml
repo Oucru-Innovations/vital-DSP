@@ -31,6 +31,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov flake8 pandoc
+          pip install setuptools wheel twine sphinx
 
       - name: Run Tests
         run: make test
@@ -55,3 +56,13 @@ jobs:
         with:
           name: documentation
           path: $(DOCS_DIR)
+      
+      - name: Build package
+        run: make build
+    
+      - name: Deploy to PyPI
+        if: github.ref == 'refs/heads/main'
+        run: make upload
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
