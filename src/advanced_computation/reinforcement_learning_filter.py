@@ -1,19 +1,26 @@
 import numpy as np
 import random
 
-
 class ReinforcementLearningFilter:
     """
-    Comprehensive Reinforcement Learning Filter for adaptive signal processing.
+    A comprehensive Reinforcement Learning Filter for adaptive signal processing.
+    This class provides methods to train filters using various reinforcement learning algorithms such as
+    Q-learning, Deep Q-Networks (DQN), and Proximal Policy Optimization (PPO), and to apply these trained
+    filters to signals.
 
-    Methods:
-    - train_q_learning: Trains a filter using Q-learning.
-    - train_dqn: Trains a filter using Deep Q-Networks (DQN).
-    - train_ppo: Trains a filter using Proximal Policy Optimization (PPO).
-    - apply_filter: Applies the trained filter to a signal.
+    Methods
+    -------
+    train_q_learning(episodes=1000, alpha=0.1, gamma=0.99, epsilon=0.1)
+        Trains a filter using Q-learning.
+    train_dqn(episodes=1000, batch_size=32, gamma=0.99, epsilon=0.1, target_update=10)
+        Trains a filter using Deep Q-Networks (DQN).
+    train_ppo(epochs=1000, gamma=0.99, lambda_=0.95, clip_ratio=0.2)
+        Trains a filter using Proximal Policy Optimization (PPO).
+    apply_filter()
+        Applies the trained filter to the signal.
 
-    Example Usage:
-    --------------
+    Example Usage
+    -------------
     signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
     rl_filter = ReinforcementLearningFilter(signal, action_space=[-1, 0, 1])
 
@@ -43,10 +50,14 @@ class ReinforcementLearningFilter:
         """
         Initialize the ReinforcementLearningFilter class with the signal and action space.
 
-        Parameters:
-        signal (numpy.ndarray): The signal to be processed.
-        action_space (list): The set of possible actions (e.g., filter adjustments).
-        state_space (int or None): The dimensionality of the state space, if applicable.
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The signal to be processed.
+        action_space : list
+            The set of possible actions (e.g., filter adjustments).
+        state_space : int or None, optional
+            The dimensionality of the state space, if applicable. If None, defaults to the length of the signal.
         """
         self.signal = signal
         self.action_space = action_space
@@ -57,11 +68,16 @@ class ReinforcementLearningFilter:
         """
         Train the filter using Q-learning.
 
-        Parameters:
-        episodes (int): The number of training episodes.
-        alpha (float): The learning rate.
-        gamma (float): The discount factor.
-        epsilon (float): The exploration rate for epsilon-greedy policy.
+        Parameters
+        ----------
+        episodes : int, optional
+            The number of training episodes (default is 1000).
+        alpha : float, optional
+            The learning rate (default is 0.1).
+        gamma : float, optional
+            The discount factor (default is 0.99).
+        epsilon : float, optional
+            The exploration rate for epsilon-greedy policy (default is 0.1).
         """
         for episode in range(episodes):
             state = self._initialize_state()
@@ -82,18 +98,22 @@ class ReinforcementLearningFilter:
 
                 state = next_state
 
-    def train_dqn(
-        self, episodes=1000, batch_size=32, gamma=0.99, epsilon=0.1, target_update=10
-    ):
+    def train_dqn(self, episodes=1000, batch_size=32, gamma=0.99, epsilon=0.1, target_update=10):
         """
         Train the filter using Deep Q-Networks (DQN).
 
-        Parameters:
-        episodes (int): The number of training episodes.
-        batch_size (int): The batch size for experience replay.
-        gamma (float): The discount factor.
-        epsilon (float): The exploration rate for epsilon-greedy policy.
-        target_update (int): The frequency of updating the target network.
+        Parameters
+        ----------
+        episodes : int, optional
+            The number of training episodes (default is 1000).
+        batch_size : int, optional
+            The batch size for experience replay (default is 32).
+        gamma : float, optional
+            The discount factor (default is 0.99).
+        epsilon : float, optional
+            The exploration rate for epsilon-greedy policy (default is 0.1).
+        target_update : int, optional
+            The frequency of updating the target network (default is 10 episodes).
         """
         memory = []
         q_network = self._initialize_neural_network()
@@ -123,11 +143,16 @@ class ReinforcementLearningFilter:
         """
         Train the filter using Proximal Policy Optimization (PPO).
 
-        Parameters:
-        epochs (int): The number of training epochs.
-        gamma (float): The discount factor.
-        lambda_ (float): The GAE-lambda parameter.
-        clip_ratio (float): The clipping parameter for PPO.
+        Parameters
+        ----------
+        epochs : int, optional
+            The number of training epochs (default is 1000).
+        gamma : float, optional
+            The discount factor (default is 0.99).
+        lambda_ : float, optional
+            The GAE-lambda parameter (default is 0.95).
+        clip_ratio : float, optional
+            The clipping parameter for PPO (default is 0.2).
         """
         policy_network = self._initialize_policy_network()
         value_network = self._initialize_value_network()
@@ -143,8 +168,10 @@ class ReinforcementLearningFilter:
         """
         Apply the trained filter to the signal.
 
-        Returns:
-        numpy.ndarray: The filtered signal.
+        Returns
+        -------
+        numpy.ndarray
+            The filtered signal.
         """
         filtered_signal = np.zeros_like(self.signal)
         state = self._initialize_state()
@@ -248,9 +275,7 @@ class ReinforcementLearningFilter:
         for state, _, reward, _ in trajectories:
             value_network.train(state, reward)
 
-
 # Simple Neural Network Class for DQN (Placeholder)
-
 
 class SimpleNeuralNetwork:
     def __init__(self, input_size, output_size):
@@ -268,9 +293,7 @@ class SimpleNeuralNetwork:
     def set_weights(self, weights):
         self.weights = weights
 
-
 # Simple Policy Network Class for PPO (Placeholder)
-
 
 class SimplePolicyNetwork:
     def __init__(self, input_size, output_size):
@@ -292,9 +315,7 @@ class SimplePolicyNetwork:
     def update(self, state, action, objective):
         self.weights[:, action] += 0.01 * objective * state
 
-
 # Simple Value Network Class for PPO (Placeholder)
-
 
 class SimpleValueNetwork:
     def __init__(self, input_size):

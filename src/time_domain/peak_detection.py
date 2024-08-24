@@ -2,7 +2,6 @@ import numpy as np
 from utils.common import find_peaks, filtfilt, argrelextrema, StandardScaler
 from filtering.signal_filtering import SignalFiltering
 
-
 class PeakDetection:
     """
     A class to detect peaks in various physiological signals like ECG, PPG, EEG, respiratory, and arterial blood pressure (ABP) signals.
@@ -52,7 +51,7 @@ class PeakDetection:
 
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             The indices of the detected peaks.
 
         Raises
@@ -106,14 +105,17 @@ class PeakDetection:
         """
         Detect peaks using a simple thresholding approach.
 
+        This method identifies peaks in the signal that exceed a specified threshold and are separated by a minimum distance.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of peaks detected based on the threshold.
 
         Examples
         --------
-        >>> detector = PeakDetection(signal, method="threshold", threshold=0.5, distance=50)
+        >>> signal = np.array([1, 2, 3, 4, 5, 4, 3, 2, 1])
+        >>> detector = PeakDetection(signal, method="threshold", threshold=4, distance=50)
         >>> peaks = detector._threshold_based_detection()
         >>> print(peaks)
         """
@@ -125,13 +127,16 @@ class PeakDetection:
         """
         Detect peaks using the Savitzky-Golay filter to smooth the signal.
 
+        The Savitzky-Golay filter is applied to the signal to reduce noise and highlight peaks, which are then detected.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of peaks detected after smoothing with the Savitzky-Golay filter.
 
         Examples
         --------
+        >>> signal = np.array([1, 2, 3, 4, 5, 4, 3, 2, 1])
         >>> detector = PeakDetection(signal, method="savgol", window_length=11, polyorder=2)
         >>> peaks = detector._savgol_based_detection()
         >>> print(peaks)
@@ -147,13 +152,16 @@ class PeakDetection:
         """
         Detect peaks by smoothing the signal with a Gaussian filter.
 
+        Gaussian filtering is applied to smooth the signal, making it easier to identify peaks.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of peaks detected after Gaussian filtering.
 
         Examples
         --------
+        >>> signal = np.array([1, 2, 3, 4, 5, 4, 3, 2, 1])
         >>> detector = PeakDetection(signal, method="gaussian", sigma=1)
         >>> peaks = detector._gaussian_based_detection()
         >>> print(peaks)
@@ -166,13 +174,16 @@ class PeakDetection:
         """
         Detect relative extrema (peaks) in the signal using the specified order.
 
+        This method identifies peaks by finding points that are higher than their neighboring values within a defined window.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of peaks detected as relative extrema.
 
         Examples
         --------
+        >>> signal = np.array([1, 3, 2, 4, 3, 5, 4])
         >>> detector = PeakDetection(signal, method="rel_extrema", order=1)
         >>> peaks = detector._relative_extrema_detection()
         >>> print(peaks)
@@ -185,13 +196,16 @@ class PeakDetection:
         """
         Detect peaks after scaling the signal and applying a threshold.
 
+        The signal is standardized using a scaler, and peaks are detected based on the standardized values exceeding a threshold.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of peaks detected after scaling and thresholding.
 
         Examples
         --------
+        >>> signal = np.array([1, 2, 3, 4, 5, 4, 3, 2, 1])
         >>> detector = PeakDetection(signal, method="scaler_threshold", threshold=1, distance=50)
         >>> peaks = detector._scaler_threshold_based_detection()
         >>> print(peaks)
@@ -206,13 +220,16 @@ class PeakDetection:
         """
         Detect R-peaks in ECG signals using the derivative and squared signal method.
 
+        This method enhances the R-peaks by taking the derivative of the ECG signal, squaring it, and applying a moving window integrator.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of R-peaks detected in the ECG signal.
 
         Examples
         --------
+        >>> signal = np.array([1, 2, 1, 2, 1, 2])
         >>> detector = PeakDetection(signal, method="ecg_r_peak")
         >>> peaks = detector._ecg_r_peak_detection()
         >>> print(peaks)
@@ -226,13 +243,16 @@ class PeakDetection:
         """
         Detect peaks in the ECG signal based on the absolute derivative.
 
+        Peaks are identified by calculating the absolute value of the signal's derivative and detecting significant increases.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of peaks detected in the ECG signal.
 
         Examples
         --------
+        >>> signal = np.array([1, 2, 1, 2, 1, 2])
         >>> detector = PeakDetection(signal, method="ecg_derivative")
         >>> peaks = detector._ecg_derivative_detection()
         >>> print(peaks)
@@ -244,13 +264,16 @@ class PeakDetection:
         """
         Detect peaks in PPG signals using the first derivative.
 
+        This method identifies peaks by calculating the first derivative of the PPG signal and detecting points of significant positive change.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of peaks detected in the first derivative of the PPG signal.
 
         Examples
         --------
+        >>> signal = np.array([1, 2, 3, 4, 5, 4, 3, 2, 1])
         >>> detector = PeakDetection(signal, method="ppg_first_derivative")
         >>> peaks = detector._ppg_first_derivative_detection()
         >>> print(peaks)
@@ -262,13 +285,16 @@ class PeakDetection:
         """
         Detect peaks in PPG signals using the second derivative.
 
+        This method enhances the detection of peaks by calculating the second derivative of the PPG signal, which highlights inflection points.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of peaks detected in the second derivative of the PPG signal.
 
         Examples
         --------
+        >>> signal = np.array([1, 2, 3, 4, 5, 4, 3, 2, 1])
         >>> detector = PeakDetection(signal, method="ppg_second_derivative")
         >>> peaks = detector._ppg_second_derivative_detection()
         >>> print(peaks)
@@ -280,13 +306,16 @@ class PeakDetection:
         """
         Detect peaks in EEG signals using wavelet transformation.
 
+        The signal is transformed using wavelets, and peaks are detected based on the transformed coefficients.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of peaks detected in the wavelet-transformed EEG signal.
 
         Examples
         --------
+        >>> signal = np.array([1, 2, 1, 2, 1, 2])
         >>> detector = PeakDetection(signal, method="eeg_wavelet")
         >>> peaks = detector._eeg_wavelet_detection()
         >>> print(peaks)
@@ -298,13 +327,16 @@ class PeakDetection:
         """
         Detect peaks in EEG signals after applying a bandpass filter.
 
+        A bandpass filter is applied to the signal to isolate specific frequency ranges before peak detection.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of peaks detected in the bandpass-filtered EEG signal.
 
         Examples
         --------
+        >>> signal = np.array([1, 2, 1, 2, 1, 2])
         >>> detector = PeakDetection(signal, method="eeg_bandpass", lowcut=0.5, highcut=50, fs=100)
         >>> peaks = detector._eeg_bandpass_detection()
         >>> print(peaks)
@@ -320,13 +352,16 @@ class PeakDetection:
         """
         Detect peaks in respiratory signals using autocorrelation.
 
+        Autocorrelation is used to find repeating patterns in the signal, with peaks representing periodic components.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of peaks detected in the autocorrelated respiratory signal.
 
         Examples
         --------
+        >>> signal = np.array([1, 2, 1, 2, 1, 2])
         >>> detector = PeakDetection(signal, method="resp_autocorrelation")
         >>> peaks = detector._resp_autocorrelation_detection()
         >>> print(peaks)
@@ -338,13 +373,16 @@ class PeakDetection:
         """
         Detect peaks in respiratory signals using zero-crossing method.
 
+        Peaks are detected by finding zero crossings in the signal, which correspond to points where the signal changes direction.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of peaks detected by finding zero crossings.
 
         Examples
         --------
+        >>> signal = np.array([1, -1, 1, -1, 1, -1])
         >>> detector = PeakDetection(signal, method="resp_zero_crossing")
         >>> peaks = detector._resp_zero_crossing_detection()
         >>> print(peaks)
@@ -357,13 +395,16 @@ class PeakDetection:
         """
         Detect systolic peaks in ABP signals using Savitzky-Golay smoothing.
 
+        Systolic peaks are identified in arterial blood pressure (ABP) signals by smoothing the signal and detecting peaks.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of systolic peaks detected in the ABP signal.
 
         Examples
         --------
+        >>> signal = np.array([1, 2, 3, 4, 3, 2, 1])
         >>> detector = PeakDetection(signal, method="abp_systolic")
         >>> peaks = detector._abp_systolic_peak_detection()
         >>> print(peaks)
@@ -377,13 +418,16 @@ class PeakDetection:
         """
         Detect diastolic peaks in ABP signals by inverting and smoothing the signal.
 
+        Diastolic peaks are identified by inverting the arterial blood pressure (ABP) signal, smoothing it, and detecting peaks.
+
         Returns
         -------
-        numpy.ndarray
+        peaks : numpy.ndarray
             Indices of diastolic peaks detected in the ABP signal.
 
         Examples
         --------
+        >>> signal = np.array([3, 2, 1, 2, 3, 4, 3])
         >>> detector = PeakDetection(signal, method="abp_diastolic")
         >>> peaks = detector._abp_diastolic_peak_detection()
         >>> print(peaks)

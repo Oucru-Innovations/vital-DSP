@@ -4,47 +4,50 @@ class Wavelet:
     """
     A class for generating different types of mother wavelets based on their mathematical formulas.
 
+    Wavelets are used in various signal processing applications, particularly in analyzing non-stationary signals where both time and frequency localization is important. This class provides methods to generate common wavelets used in discrete wavelet transforms (DWT).
+
     Methods
     -------
-    haar : static method
-        Generates a Haar wavelet.
-    db : static method
-        Generates a Daubechies wavelet.
-    sym : static method
-        Generates a Symlet wavelet.
-    coif : static method
-        Generates a Coiflet wavelet.
-    gauchy : static method
-        Generates a Gaussian wavelet.
-    mexican_hat : static method
-        Generates a Mexican Hat wavelet.
-    morlet : static method
-        Generates a Morlet wavelet.
-    meyer : static method
-        Generates a Meyer wavelet.
-    biorthogonal : static method
-        Generates a Biorthogonal wavelet.
-    reverse_biorthogonal : static method
-        Generates a Reverse Biorthogonal wavelet.
-    complex_gaussian : static method
-        Generates a Complex Gaussian wavelet.
-    shannon : static method
-        Generates a Shannon wavelet.
-    cmor : static method
-        Generates a Complex Morlet wavelet.
-    fbsp : static method
-        Generates a Frequency B-Spline wavelet.
-    mhat : static method
-        Generates a Modified Mexican Hat wavelet.
-    custom_wavelet : static method
-        Generates a custom wavelet provided by the user.
+    haar() -> numpy.ndarray
+        Generates a Haar wavelet, best for detecting sudden changes in signals.
+    db(order=4) -> numpy.ndarray
+        Generates a Daubechies wavelet, suitable for analyzing smooth signals with sharp discontinuities.
+    sym(order=4) -> numpy.ndarray
+        Generates a Symlet wavelet, ideal for symmetric analysis and minimizing edge effects.
+    coif(order=1) -> numpy.ndarray
+        Generates a Coiflet wavelet, providing near-symmetry and smoothness, ideal for subtle signal variations.
+    gauchy(sigma=1.0, N=6) -> numpy.ndarray
+        Generates a Gaussian wavelet, excellent for isolating features with a Gaussian shape in the time domain.
+    mexican_hat(sigma=1.0, N=6) -> numpy.ndarray
+        Generates a Mexican Hat wavelet, commonly used for detecting peaks and ridges.
+    morlet(sigma=1.0, N=6, f=1.0) -> numpy.ndarray
+        Generates a Morlet wavelet, useful for time-frequency analysis.
+    meyer(N=6) -> numpy.ndarray
+        Generates a Meyer wavelet, suitable for analyzing slowly varying signals without sharp edges.
+    biorthogonal(N=6, p=2, q=2) -> numpy.ndarray
+        Generates a Biorthogonal wavelet, useful in image compression and providing exact reconstruction with linear phase.
+    reverse_biorthogonal(N=6, p=2, q=2) -> numpy.ndarray
+        Generates a Reverse Biorthogonal wavelet, useful in de-noising applications.
+    complex_gaussian(sigma=1.0, N=6) -> numpy.ndarray
+        Generates a Complex Gaussian wavelet, applied in phase and frequency modulation.
+    shannon(N=6) -> numpy.ndarray
+        Generates a Shannon wavelet, ideal for signals with sharp time-frequency localization.
+    cmor(sigma=1.0, N=6, f=1.0) -> numpy.ndarray
+        Generates a Complex Morlet wavelet, used for time-frequency localization in non-stationary signals.
+    fbsp(N=6, m=5, s=0.5) -> numpy.ndarray
+        Generates a Frequency B-Spline wavelet, useful for analyzing frequency-modulated signals.
+    mhat(sigma=1.0, N=6) -> numpy.ndarray
+        Generates a Modified Mexican Hat wavelet, applied in edge detection in images and other signals.
+    custom_wavelet(wavelet: numpy.ndarray) -> numpy.ndarray
+        Use a custom wavelet provided by the user.
     """
 
     @staticmethod
     def haar():
         """
         Generate a Haar wavelet.
-        Best for detecting sudden changes in signals (e.g., step functions).
+
+        The Haar wavelet is the simplest wavelet, best suited for detecting sudden changes in a signal, such as step functions or sharp transitions.
 
         Returns
         -------
@@ -63,12 +66,13 @@ class Wavelet:
     def db(order=4):
         """
         Generate a Daubechies wavelet of a given order using the wavelet formula.
-        Suitable for analyzing smooth signals with sharp discontinuities like ECG signals.
+
+        Daubechies wavelets are used for analyzing signals with sharp discontinuities, such as ECG signals. They provide a good balance between compact support and smoothness.
 
         Parameters
         ----------
-        order : int
-            The order of the Daubechies wavelet.
+        order : int, optional
+            The order of the Daubechies wavelet (default is 4).
 
         Returns
         -------
@@ -96,12 +100,13 @@ class Wavelet:
     def sym(order=4):
         """
         Generate a Symlet wavelet of a given order using the wavelet formula.
-        Ideal for symmetric analysis, minimizing edge effects in signal processing.
+
+        Symlet wavelets are nearly symmetric, minimizing edge effects in signal processing. They are particularly useful when symmetric analysis is required.
 
         Parameters
         ----------
-        order : int
-            The order of the Symlet wavelet.
+        order : int, optional
+            The order of the Symlet wavelet (default is 4).
 
         Returns
         -------
@@ -129,12 +134,13 @@ class Wavelet:
     def coif(order=1):
         """
         Generate a Coiflet wavelet of a given order using the wavelet formula.
-        Provides near-symmetry and smoothness, making it ideal for subtle signal variations.
+
+        Coiflet wavelets are nearly symmetric and provide smooth waveforms, making them ideal for analyzing subtle variations in signals.
 
         Parameters
         ----------
-        order : int
-            The order of the Coiflet wavelet.
+        order : int, optional
+            The order of the Coiflet wavelet (default is 1).
 
         Returns
         -------
@@ -162,14 +168,15 @@ class Wavelet:
     def gauchy(sigma=1.0, N=6):
         """
         Generate a Gaussian wavelet.
-        Excellent for isolating specific features with a Gaussian shape in the time domain, such as spikes in EEG signals.
+
+        Gaussian wavelets are ideal for isolating specific features with a Gaussian shape in the time domain, such as spikes in EEG signals.
 
         Parameters
         ----------
-        sigma : float
-            The standard deviation of the Gaussian function.
-        N : int
-            The number of points in the wavelet.
+        sigma : float, optional
+            The standard deviation of the Gaussian function (default is 1.0).
+        N : int, optional
+            The number of points in the wavelet (default is 6).
 
         Returns
         -------
@@ -188,14 +195,15 @@ class Wavelet:
     def mexican_hat(sigma=1.0, N=6):
         """
         Generate a Mexican Hat wavelet (also known as the Ricker wavelet).
-        Commonly used in detecting peaks and ridges, particularly in EEG spike detection.
+
+        The Mexican Hat wavelet is commonly used in detecting peaks and ridges in signals, particularly useful in EEG spike detection.
 
         Parameters
         ----------
-        sigma : float
-            The standard deviation of the Gaussian function.
-        N : int
-            The number of points in the wavelet.
+        sigma : float, optional
+            The standard deviation of the Gaussian function (default is 1.0).
+        N : int, optional
+            The number of points in the wavelet (default is 6).
 
         Returns
         -------
@@ -214,16 +222,17 @@ class Wavelet:
     def morlet(sigma=1.0, N=6, f=1.0):
         """
         Generate a Morlet wavelet.
-        Useful for time-frequency analysis, frequently applied in EEG and seismic signal analysis.
+
+        Morlet wavelets are particularly useful for time-frequency analysis and are frequently applied in EEG and seismic signal analysis.
 
         Parameters
         ----------
-        sigma : float
-            The standard deviation of the Gaussian function.
-        N : int
-            The number of points in the wavelet.
-        f : float
-            The central frequency of the Morlet wavelet.
+        sigma : float, optional
+            The standard deviation of the Gaussian function (default is 1.0).
+        N : int, optional
+            The number of points in the wavelet (default is 6).
+        f : float, optional
+            The central frequency of the Morlet wavelet (default is 1.0).
 
         Returns
         -------
@@ -242,12 +251,13 @@ class Wavelet:
     def meyer(N=6):
         """
         Generate a Meyer wavelet.
-        Smooth wavelet, suitable for analyzing slowly varying signals without sharp edges.
+
+        Meyer wavelets are smooth and suitable for analyzing slowly varying signals without sharp edges.
 
         Parameters
         ----------
-        N : int
-            The number of points in the wavelet.
+        N : int, optional
+            The number of points in the wavelet (default is 6).
 
         Returns
         -------
@@ -266,16 +276,17 @@ class Wavelet:
     def biorthogonal(N=6, p=2, q=2):
         """
         Generate a Biorthogonal wavelet.
-        Provides exact reconstruction with linear phase, useful in image compression (e.g., JPEG 2000).
+
+        Biorthogonal wavelets provide exact reconstruction with linear phase, making them useful in image compression (e.g., JPEG 2000).
 
         Parameters
         ----------
-        N : int
-            The number of points in the wavelet.
-        p : int
-            The order of the Biorthogonal wavelet.
-        q : int
-            The order of the Reverse Biorthogonal wavelet.
+        N : int, optional
+            The number of points in the wavelet (default is 6).
+        p : int, optional
+            The order of the Biorthogonal wavelet (default is 2).
+        q : int, optional
+            The order of the Reverse Biorthogonal wavelet (default is 2).
 
         Returns
         -------
@@ -294,16 +305,17 @@ class Wavelet:
     def reverse_biorthogonal(N=6, p=2, q=2):
         """
         Generate a Reverse Biorthogonal wavelet.
-        Similar to Biorthogonal but reversed, useful in de-noising applications.
+
+        Reverse Biorthogonal wavelets are similar to Biorthogonal wavelets but with reversed reconstruction properties, making them useful in de-noising applications.
 
         Parameters
         ----------
-        N : int
-            The number of points in the wavelet.
-        p : int
-            The order of the Biorthogonal wavelet.
-        q : int
-            The order of the Reverse Biorthogonal wavelet.
+        N : int, optional
+            The number of points in the wavelet (default is 6).
+        p : int, optional
+            The order of the Biorthogonal wavelet (default is 2).
+        q : int, optional
+            The order of the Reverse Biorthogonal wavelet (default is 2).
 
         Returns
         -------
@@ -322,14 +334,15 @@ class Wavelet:
     def complex_gaussian(sigma=1.0, N=6):
         """
         Generate a Complex Gaussian wavelet.
-        Applied in phase and frequency modulation, suitable for radar and communication signals.
+
+        Complex Gaussian wavelets are applied in phase and frequency modulation, making them suitable for radar and communication signals.
 
         Parameters
         ----------
-        sigma : float
-            The standard deviation of the Gaussian function.
-        N : int
-            The number of points in the wavelet.
+        sigma : float, optional
+            The standard deviation of the Gaussian function (default is 1.0).
+        N : int, optional
+            The number of points in the wavelet (default is 6).
 
         Returns
         -------
@@ -348,12 +361,13 @@ class Wavelet:
     def shannon(N=6):
         """
         Generate a Shannon wavelet.
-        Ideal for signals with sharp time-frequency localization, such as short pulses.
+
+        Shannon wavelets are ideal for signals with sharp time-frequency localization, such as short pulses.
 
         Parameters
         ----------
-        N : int
-            The number of points in the wavelet.
+        N : int, optional
+            The number of points in the wavelet (default is 6).
 
         Returns
         -------
@@ -372,16 +386,17 @@ class Wavelet:
     def cmor(sigma=1.0, N=6, f=1.0):
         """
         Generate a Complex Morlet wavelet.
-        Used for time-frequency localization, particularly in non-stationary signal analysis.
+
+        Complex Morlet wavelets are used for time-frequency localization, particularly in non-stationary signal analysis.
 
         Parameters
         ----------
-        sigma : float
-            The standard deviation of the Gaussian function.
-        N : int
-            The number of points in the wavelet.
-        f : float
-            The central frequency of the Complex Morlet wavelet.
+        sigma : float, optional
+            The standard deviation of the Gaussian function (default is 1.0).
+        N : int, optional
+            The number of points in the wavelet (default is 6).
+        f : float, optional
+            The central frequency of the Complex Morlet wavelet (default is 1.0).
 
         Returns
         -------
@@ -400,16 +415,17 @@ class Wavelet:
     def fbsp(N=6, m=5, s=0.5):
         """
         Generate a Frequency B-Spline wavelet.
-        Useful for analyzing frequency-modulated signals, often applied in audio signal processing.
+
+        Frequency B-Spline wavelets are useful for analyzing frequency-modulated signals, often applied in audio signal processing.
 
         Parameters
         ----------
-        N : int
-            The number of points in the wavelet.
-        m : int
-            The order of the B-spline.
-        s : float
-            The scaling factor.
+        N : int, optional
+            The number of points in the wavelet (default is 6).
+        m : int, optional
+            The order of the B-spline (default is 5).
+        s : float, optional
+            The scaling factor (default is 0.5).
 
         Returns
         -------
@@ -428,14 +444,15 @@ class Wavelet:
     def mhat(sigma=1.0, N=6):
         """
         Generate a Modified Mexican Hat wavelet.
-        Applied in edge detection in images and other signals with sharp transitions.
+
+        Modified Mexican Hat wavelets are applied in edge detection in images and other signals with sharp transitions.
 
         Parameters
         ----------
-        sigma : float
-            The standard deviation of the Gaussian function.
-        N : int
-            The number of points in the wavelet.
+        sigma : float, optional
+            The standard deviation of the Gaussian function (default is 1.0).
+        N : int, optional
+            The number of points in the wavelet (default is 6).
 
         Returns
         -------
@@ -455,10 +472,12 @@ class Wavelet:
         """
         Use a custom wavelet provided by the user.
 
+        This method allows the use of a custom wavelet defined by the user, which can be applied in specific or novel signal processing tasks.
+
         Parameters
         ----------
         wavelet : numpy.ndarray
-            The custom wavelet coefficients.
+            The custom wavelet coefficients provided by the user.
 
         Returns
         -------

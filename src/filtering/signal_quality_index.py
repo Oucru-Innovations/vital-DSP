@@ -1,9 +1,10 @@
 import numpy as np
 
-
 class SignalQualityIndex:
     """
     A class to compute various Signal Quality Index (SQI) metrics for assessing the quality of vital signals.
+
+    This class includes methods to evaluate signal quality based on different characteristics such as amplitude variability, baseline wander, zero-crossing consistency, waveform similarity, entropy, and more. These metrics are useful in ensuring that physiological signals like ECG, PPG, EEG, and respiratory signals are of high quality and reliable for further analysis.
 
     Methods
     -------
@@ -26,6 +27,7 @@ class SignalQualityIndex:
     respiratory_signal_quality_sqi : function
         Evaluates the quality of respiratory signals.
     """
+
     def __init__(self, signal):
         """
         Initialize the SignalQualityIndex class with the signal.
@@ -33,7 +35,12 @@ class SignalQualityIndex:
         Parameters
         ----------
         signal : numpy.ndarray
-            The input signal to assess.
+            The input signal to assess for quality.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> sqi = SignalQualityIndex(signal)
         """
         if not isinstance(signal, np.ndarray):
             signal = np.array(signal)
@@ -43,7 +50,7 @@ class SignalQualityIndex:
         """
         Compute the amplitude variability SQI.
 
-        This metric assesses the variability in the amplitude of the signal, which should be minimal for high-quality signals.
+        This metric assesses the variability in the amplitude of the signal, which should be minimal for high-quality signals. High variability often indicates noise or artifacts in the signal.
 
         Returns
         -------
@@ -67,12 +74,12 @@ class SignalQualityIndex:
         """
         Compute the baseline wander SQI.
 
-        This metric evaluates the amount of baseline wander in the signal, which is unwanted low-frequency noise.
+        This metric evaluates the amount of baseline wander in the signal, which is unwanted low-frequency noise that can distort the true signal. Baseline wander is particularly important in ECG and PPG signals.
 
         Parameters
         ----------
-        window_size : int
-            Size of the window for calculating moving average.
+        window_size : int, optional
+            Size of the window for calculating the moving average, by default 50.
 
         Returns
         -------
@@ -98,7 +105,7 @@ class SignalQualityIndex:
         """
         Compute the zero-crossing SQI.
 
-        This metric assesses the number of zero crossings in the signal, which should be consistent in high-quality signals.
+        This metric assesses the number of zero crossings in the signal, which should be consistent in high-quality signals. Irregular zero crossings can indicate noise or instability in the signal.
 
         Returns
         -------
@@ -121,7 +128,7 @@ class SignalQualityIndex:
         """
         Compute the waveform similarity SQI.
 
-        This metric compares the similarity between consecutive waveforms in the signal.
+        This metric compares the similarity between consecutive waveforms in the signal. High similarity indicates that the signal is stable and free from significant artifacts.
 
         Parameters
         ----------
@@ -148,7 +155,7 @@ class SignalQualityIndex:
         """
         Compute the signal entropy SQI.
 
-        This metric measures the entropy of the signal, which indicates the complexity or predictability of the signal.
+        This metric measures the entropy of the signal, which indicates the complexity or predictability of the signal. Lower entropy generally indicates a more regular and stable signal, while higher entropy suggests more randomness.
 
         Returns
         -------
@@ -173,7 +180,7 @@ class SignalQualityIndex:
         """
         Compute the heart rate variability (HRV) SQI.
 
-        This metric assesses the variability in RR intervals of ECG, which should be within a certain range for a healthy signal.
+        This metric assesses the variability in RR intervals of ECG, which should be within a certain range for a healthy signal. Abnormal HRV can indicate issues with heart health or signal quality.
 
         Parameters
         ----------
@@ -200,7 +207,7 @@ class SignalQualityIndex:
         """
         Compute the PPG signal quality SQI.
 
-        This metric evaluates the overall quality of PPG signals based on amplitude variability and noise.
+        This metric evaluates the overall quality of PPG signals based on amplitude variability and baseline wander. High-quality PPG signals should have minimal noise and stable amplitude.
 
         Returns
         -------
@@ -222,7 +229,7 @@ class SignalQualityIndex:
         """
         Compute the EEG band power SQI.
 
-        This metric assesses the consistency of EEG band power, which is important for ensuring signal quality.
+        This metric assesses the consistency of EEG band power, which is important for ensuring signal quality. Stable band power indicates a high-quality EEG signal.
 
         Parameters
         ----------
@@ -249,7 +256,7 @@ class SignalQualityIndex:
         """
         Compute the respiratory signal quality SQI.
 
-        This metric evaluates the quality of respiratory signals, considering factors like consistency in breathing cycles.
+        This metric evaluates the quality of respiratory signals, considering factors like consistency in breathing cycles and stability of the amplitude.
 
         Returns
         -------

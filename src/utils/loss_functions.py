@@ -1,36 +1,54 @@
 import numpy as np
 
-
 class LossFunctions:
     """
     A class that provides a collection of common loss functions for signal processing.
 
-    Methods:
-    - mse: Mean Square Error loss.
-    - mae: Mean Absolute Error loss.
-    - huber: Huber loss, a combination of MSE and MAE.
-    - smooth_l1: Smooth L1 loss, similar to Huber but with a different formulation.
-    - log_cosh: Log-Cosh loss, a smooth approximation to the absolute error.
-    - quantile: Quantile loss, useful for predicting quantiles.
-    - custom_loss: Accepts a custom loss function provided by the user.
+    This class includes various loss functions commonly used in regression tasks and signal processing. These loss functions measure the discrepancy between predicted and actual values, helping to optimize models during training.
+
+    Methods
+    -------
+    mse(signal, target)
+        Compute the Mean Square Error (MSE) loss.
+    mae(signal, target)
+        Compute the Mean Absolute Error (MAE) loss.
+    huber(signal, target, delta=1.0)
+        Compute the Huber loss, combining MSE and MAE.
+    smooth_l1(signal, target, beta=1.0)
+        Compute the Smooth L1 loss, similar to Huber loss with a different formulation.
+    log_cosh(signal, target)
+        Compute the Log-Cosh loss, a smooth approximation to the absolute error.
+    quantile(signal, target, quantile=0.5)
+        Compute the Quantile loss, useful for quantile regression.
+    custom_loss(loss_func)
+        Use a custom loss function provided by the user.
     """
 
     def mse(self, signal, target):
         """
         Compute the Mean Square Error (MSE) between the signal and target.
 
-        Parameters:
-        signal (numpy.ndarray): The input signal.
-        target (numpy.ndarray): The target signal.
+        The MSE loss is a commonly used loss function for regression tasks, penalizing larger errors more heavily by squaring the difference between the predicted and actual values.
 
-        Returns:
-        float: The computed MSE value.
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The input signal or predictions.
+        target : numpy.ndarray
+            The target signal or true values.
 
-        Example:
+        Returns
+        -------
+        float
+            The computed MSE value.
+
+        Examples
+        --------
         >>> lf = LossFunctions()
         >>> signal = np.array([1, 2, 3])
         >>> target = np.array([1.5, 2.5, 3.5])
         >>> print(lf.mse(signal, target))
+        0.25
         """
         return np.mean((signal - target) ** 2)
 
@@ -38,18 +56,27 @@ class LossFunctions:
         """
         Compute the Mean Absolute Error (MAE) between the signal and target.
 
-        Parameters:
-        signal (numpy.ndarray): The input signal.
-        target (numpy.ndarray): The target signal.
+        The MAE loss is a robust measure of the average magnitude of errors in a set of predictions, without considering their direction.
 
-        Returns:
-        float: The computed MAE value.
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The input signal or predictions.
+        target : numpy.ndarray
+            The target signal or true values.
 
-        Example:
+        Returns
+        -------
+        float
+            The computed MAE value.
+
+        Examples
+        --------
         >>> lf = LossFunctions()
         >>> signal = np.array([1, 2, 3])
         >>> target = np.array([1.5, 2.5, 3.5])
         >>> print(lf.mae(signal, target))
+        0.5
         """
         return np.mean(np.abs(signal - target))
 
@@ -57,21 +84,29 @@ class LossFunctions:
         """
         Compute the Huber loss between the signal and target.
 
-        Huber loss is less sensitive to outliers than MSE but behaves similarly to MSE for small errors.
+        Huber loss is a combination of MSE and MAE, being quadratic for small errors and linear for large errors. It is less sensitive to outliers compared to MSE.
 
-        Parameters:
-        signal (numpy.ndarray): The input signal.
-        target (numpy.ndarray): The target signal.
-        delta (float): The threshold where the loss transitions from MSE to MAE. Default is 1.0.
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The input signal or predictions.
+        target : numpy.ndarray
+            The target signal or true values.
+        delta : float, optional
+            The threshold at which to switch from MSE to MAE (default is 1.0).
 
-        Returns:
-        float: The computed Huber loss value.
+        Returns
+        -------
+        float
+            The computed Huber loss value.
 
-        Example:
+        Examples
+        --------
         >>> lf = LossFunctions()
         >>> signal = np.array([1, 2, 3])
         >>> target = np.array([1.5, 2.5, 3.5])
         >>> print(lf.huber(signal, target, delta=1.0))
+        0.125
         """
         error = signal - target
         is_small_error = np.abs(error) <= delta
@@ -83,21 +118,29 @@ class LossFunctions:
         """
         Compute the Smooth L1 loss between the signal and target.
 
-        Similar to Huber loss but with a different transition formula.
+        Smooth L1 loss, also known as the Huber loss in object detection, is less sensitive to outliers than MSE and provides a smooth transition between L1 and L2 losses.
 
-        Parameters:
-        signal (numpy.ndarray): The input signal.
-        target (numpy.ndarray): The target signal.
-        beta (float): Transition point from quadratic to linear. Default is 1.0.
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The input signal or predictions.
+        target : numpy.ndarray
+            The target signal or true values.
+        beta : float, optional
+            The transition point between quadratic and linear loss (default is 1.0).
 
-        Returns:
-        float: The computed Smooth L1 loss value.
+        Returns
+        -------
+        float
+            The computed Smooth L1 loss value.
 
-        Example:
+        Examples
+        --------
         >>> lf = LossFunctions()
         >>> signal = np.array([1, 2, 3])
         >>> target = np.array([1.5, 2.5, 3.5])
         >>> print(lf.smooth_l1(signal, target, beta=1.0))
+        0.125
         """
         error = np.abs(signal - target)
         loss = np.where(error < beta, 0.5 * (error**2) / beta, error - 0.5 * beta)
@@ -107,20 +150,27 @@ class LossFunctions:
         """
         Compute the Log-Cosh loss between the signal and target.
 
-        Log-Cosh is a smooth approximation to the absolute error and is less sensitive to outliers.
+        Log-Cosh loss is the logarithm of the hyperbolic cosine of the prediction error. It behaves similarly to MAE but is smoother near zero, which makes it less sensitive to outliers than MAE.
 
-        Parameters:
-        signal (numpy.ndarray): The input signal.
-        target (numpy.ndarray): The target signal.
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The input signal or predictions.
+        target : numpy.ndarray
+            The target signal or true values.
 
-        Returns:
-        float: The computed Log-Cosh loss value.
+        Returns
+        -------
+        float
+            The computed Log-Cosh loss value.
 
-        Example:
+        Examples
+        --------
         >>> lf = LossFunctions()
         >>> signal = np.array([1, 2, 3])
         >>> target = np.array([1.5, 2.5, 3.5])
         >>> print(lf.log_cosh(signal, target))
+        0.120114
         """
         return np.mean(np.log(np.cosh(signal - target)))
 
@@ -128,21 +178,29 @@ class LossFunctions:
         """
         Compute the Quantile loss between the signal and target.
 
-        Quantile loss is useful for quantile regression, where the goal is to predict a particular quantile.
+        Quantile loss is used in quantile regression to predict the quantiles of the target variable. The loss is asymmetric and assigns different penalties to overestimates and underestimates.
 
-        Parameters:
-        signal (numpy.ndarray): The input signal.
-        target (numpy.ndarray): The target signal.
-        quantile (float): The quantile to predict (0 < quantile < 1).
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The input signal or predictions.
+        target : numpy.ndarray
+            The target signal or true values.
+        quantile : float, optional
+            The quantile to predict (0 < quantile < 1) (default is 0.5).
 
-        Returns:
-        float: The computed Quantile loss value.
+        Returns
+        -------
+        float
+            The computed Quantile loss value.
 
-        Example:
+        Examples
+        --------
         >>> lf = LossFunctions()
         >>> signal = np.array([1, 2, 3])
         >>> target = np.array([1.5, 2.5, 3.5])
         >>> print(lf.quantile(signal, target, quantile=0.5))
+        0.25
         """
         error = target - signal
         return np.mean(np.maximum(quantile * error, (quantile - 1) * error))
@@ -151,18 +209,26 @@ class LossFunctions:
         """
         Use a custom loss function provided by the user.
 
-        Parameters:
-        loss_func (callable): The custom loss function.
+        This method allows the user to define their own loss function, which can be passed as a callable to this method.
 
-        Returns:
-        callable: The custom loss function itself.
+        Parameters
+        ----------
+        loss_func : callable
+            The custom loss function provided by the user.
 
-        Example:
+        Returns
+        -------
+        callable
+            The custom loss function itself, which can be applied to a signal and target.
+
+        Examples
+        --------
         >>> def custom_lf(signal, target): return np.sum((signal - target) ** 2)
         >>> lf = LossFunctions()
         >>> loss = lf.custom_loss(custom_lf)
         >>> signal = np.array([1, 2, 3])
         >>> target = np.array([1.5, 2.5, 3.5])
         >>> print(loss(signal, target))
+        0.75
         """
         return loss_func

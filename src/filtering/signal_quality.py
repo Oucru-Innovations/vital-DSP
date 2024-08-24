@@ -4,6 +4,10 @@ class SignalQuality:
     """
     A class to assess the quality of signals using various metrics.
 
+    This class provides methods to compute commonly used signal quality metrics such as
+    Signal-to-Noise Ratio (SNR), Peak Signal-to-Noise Ratio (PSNR), and Mean Square Error (MSE).
+    It can be used to evaluate the impact of noise or other processing on the original signal.
+
     Methods
     -------
     snr : function
@@ -23,9 +27,15 @@ class SignalQuality:
         Parameters
         ----------
         original_signal : numpy.ndarray
-            The original signal.
+            The original, clean signal.
         processed_signal : numpy.ndarray, optional
-            The processed or noisy signal for comparison.
+            The processed or noisy signal for comparison. If not provided, some methods will
+            require an alternative signal to compare against.
+
+        Notes
+        -----
+        The original_signal is required for all computations, while processed_signal is optional
+        and only needed for some metrics like SNR, PSNR, and MSE.
         """
         if not isinstance(original_signal, np.ndarray):
             original_signal = np.array(original_signal)
@@ -42,13 +52,19 @@ class SignalQuality:
         """
         Compute the Signal-to-Noise Ratio (SNR) of the signal.
 
-        SNR is a measure of signal quality that compares the level of the signal to the level of noise.
-        A higher SNR indicates a cleaner signal with less noise.
+        SNR is a measure of signal quality that compares the level of the desired signal
+        to the level of background noise. A higher SNR indicates a cleaner signal with
+        less noise.
 
         Returns
         -------
         snr_value : float
             The SNR value in decibels (dB).
+
+        Raises
+        ------
+        ValueError
+            If processed_signal is not provided during initialization.
 
         Examples
         --------
@@ -71,13 +87,19 @@ class SignalQuality:
         """
         Compute the Peak Signal-to-Noise Ratio (PSNR) of the signal.
 
-        PSNR compares the maximum possible signal power to the noise power.
-        It is widely used in image and signal processing to assess the quality of reconstruction.
+        PSNR compares the maximum possible signal power to the noise power. It is commonly
+        used in image and signal processing to assess the quality of signal reconstruction
+        or compression techniques.
 
         Returns
         -------
         psnr_value : float
             The PSNR value in decibels (dB).
+
+        Raises
+        ------
+        ValueError
+            If processed_signal is not provided during initialization.
 
         Examples
         --------
@@ -101,12 +123,17 @@ class SignalQuality:
         Compute the Mean Square Error (MSE) between the original and processed signals.
 
         MSE measures the average squared difference between the original and processed signals.
-        It is often used to quantify the error introduced by noise or signal processing.
+        It is commonly used to quantify the error introduced by noise or signal processing.
 
         Returns
         -------
         mse_value : float
             The MSE value.
+
+        Raises
+        ------
+        ValueError
+            If processed_signal is not provided during initialization.
 
         Examples
         --------
@@ -128,7 +155,7 @@ class SignalQuality:
         Compute the Signal-to-Noise Ratio (SNR) given a noise signal.
 
         This method calculates the SNR by comparing the power of the original signal
-        to the power of the provided noise signal.
+        to the power of the provided noise signal, without needing a processed signal.
 
         Parameters
         ----------

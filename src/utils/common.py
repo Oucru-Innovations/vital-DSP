@@ -1,17 +1,38 @@
 import numpy as np
 
-
 def argrelextrema(signal, comparator=np.greater, order=1):
     """
-    Custom implementation of finding relative extrema (maxima or minima) in a signal.
+    Find the relative extrema (maxima or minima) in a 1D signal.
 
-    Parameters:
-    - signal (numpy.ndarray): The input signal.
-    - comparator (function): Comparison function (np.greater for maxima, np.less for minima).
-    - order (int): How many points on each side to consider.
+    This function identifies local maxima or minima in a signal by comparing each point with its neighbors.
 
-    Returns:
-    - extrema (numpy.ndarray): Indices of the relative extrema.
+    Parameters
+    ----------
+    signal : numpy.ndarray
+        The input signal in which to find the extrema.
+    comparator : function, optional
+        The comparison function to use (e.g., np.greater for maxima, np.less for minima).
+        Defaults to np.greater.
+    order : int, optional
+        The number of points on each side to use for comparison. Must be a positive integer.
+        Defaults to 1.
+
+    Returns
+    -------
+    extrema : numpy.ndarray
+        Indices of the relative extrema in the signal.
+
+    Raises
+    ------
+    ValueError
+        If the `order` is less than 1 or if the signal is too short to find extrema with the given order.
+
+    Examples
+    --------
+    >>> signal = np.array([1, 3, 2, 4, 3, 5, 4])
+    >>> maxima = argrelextrema(signal, comparator=np.greater, order=1)
+    >>> print(maxima)
+    [1, 3, 5]
     """
     if order < 1:
         raise ValueError("Order must be an int >= 1")
@@ -20,42 +41,54 @@ def argrelextrema(signal, comparator=np.greater, order=1):
 
     extrema = (
         np.where(
-            comparator(signal[order:-order], signal[: -2 * order])
-            & comparator(signal[order:-order], signal[2 * order :])
-        )[0]
-        + order
+            comparator(signal[order:-order], signal[:-2 * order])
+            & comparator(signal[order:-order], signal[2 * order:])
+        )[0] + order
     )
     return extrema
 
-
-def find_peaks(
-    signal, height=None, distance=None, threshold=None, prominence=None, width=None
-):
+def find_peaks(signal, height=None, distance=None, threshold=None, prominence=None, width=None):
     """
-    Custom utility to find peaks in a 1D signal.
+    Identify peaks in a 1D signal.
 
-    Parameters:
-    - signal (numpy.ndarray): The input signal.
-    - height (float or None): Required height of peaks.
-    - distance (int or None): Required minimum horizontal distance (in number of samples) between neighboring peaks.
-    - threshold (float or None): Required threshold between adjacent points to consider a peak.
-    - prominence (float or None): Required prominence of peaks.
-    - width (int or None): Required width of peaks.
+    This function finds local maxima in a signal that meet specific criteria such as minimum height, distance, and prominence.
 
-    Returns:
-    - peaks (numpy.ndarray): Indices of peaks in the signal.
+    Parameters
+    ----------
+    signal : numpy.ndarray
+        The input signal in which to find peaks.
+    height : float or None, optional
+        Minimum height required for a peak. Peaks below this value are ignored.
+    distance : int or None, optional
+        Minimum number of samples required between neighboring peaks.
+    threshold : float or None, optional
+        Minimum difference between a peak and its neighboring points.
+    prominence : float or None, optional
+        Minimum prominence of peaks, which measures how much a peak stands out relative to its surroundings.
+    width : int or None, optional
+        Minimum width required for a peak, measured as the number of samples.
+
+    Returns
+    -------
+    peaks : numpy.ndarray
+        Indices of the peaks in the signal that meet the specified criteria.
+
+    Examples
+    --------
+    >>> signal = np.array([0, 1, 0, 2, 0, 3, 0])
+    >>> peaks = find_peaks(signal, height=1)
+    >>> print(peaks)
+    [1, 3, 5]
     """
     peaks = []
     signal_len = len(signal)
 
-    # Iterate over the signal to find peaks
     for i in range(1, signal_len - 1):
         if signal[i] > signal[i - 1] and signal[i] > signal[i + 1]:  # Peak condition
             if height is not None and signal[i] < height:
                 continue
             if threshold is not None and (
-                signal[i] - signal[i - 1] < threshold
-                or signal[i] - signal[i + 1] < threshold
+                signal[i] - signal[i - 1] < threshold or signal[i] - signal[i + 1] < threshold
             ):
                 continue
             if peaks and distance is not None and i - peaks[-1] < distance:
@@ -76,34 +109,68 @@ def find_peaks(
             peaks.append(i)
     return np.array(peaks)
 
-
 def filtfilt(b, a, signal):
     """
-    Custom implementation of the forward-backward filter (filtfilt).
+    Apply a forward-backward filter to a signal.
 
-    Parameters:
-    - b (numpy.ndarray): Numerator (b) of the filter.
-    - a (numpy.ndarray): Denominator (a) of the filter.
-    - signal (numpy.ndarray): The input signal to filter.
+    This function applies a linear filter twice, once forward and once backward, to eliminate phase distortion.
 
-    Returns:
-    - y (numpy.ndarray): The filtered signal.
+    Parameters
+    ----------
+    b : numpy.ndarray
+        Numerator coefficients of the filter (the feedforward part).
+    a : numpy.ndarray
+        Denominator coefficients of the filter (the feedback part).
+    signal : numpy.ndarray
+        The input signal to be filtered.
+
+    Returns
+    -------
+    y : numpy.ndarray
+        The filtered signal.
+
+    Examples
+    --------
+    >>> b = np.array([0.0675, 0.1349, 0.0675])
+    >>> a = np.array([1.0000, -1.1430, 0.4128])
+    >>> signal = np.array([0.0, 0.5, 1.0, 0.5, 0.0])
+    >>> filtered_signal = filtfilt(b, a, signal)
+    >>> print(filtered_signal)
     """
     y = np.convolve(signal, b, mode="same")
     y = np.convolve(y[::-1], b, mode="same")
     return y[::-1]
 
-
 def pearsonr(x, y):
     """
     Compute the Pearson correlation coefficient between two signals.
 
-    Parameters:
-    - x (numpy.ndarray): First signal.
-    - y (numpy.ndarray): Second signal.
+    The Pearson correlation coefficient is a measure of linear correlation between two signals, with a value between -1 and 1.
 
-    Returns:
-    float: Pearson correlation coefficient.
+    Parameters
+    ----------
+    x : numpy.ndarray
+        First input signal.
+    y : numpy.ndarray
+        Second input signal.
+
+    Returns
+    -------
+    float
+        Pearson correlation coefficient.
+
+    Raises
+    ------
+    ValueError
+        If the input arrays do not have the same length.
+
+    Examples
+    --------
+    >>> x = np.array([1, 2, 3, 4])
+    >>> y = np.array([1, 2, 3, 5])
+    >>> corr = pearsonr(x, y)
+    >>> print(corr)
+    0.98
     """
     if len(x) != len(y):
         raise ValueError("Input arrays must have the same length.")
@@ -117,22 +184,37 @@ def pearsonr(x, y):
     correlation = cov_xy / (std_x * std_y)
     return correlation
 
-
 def coherence(x, y, fs=1.0, nperseg=256):
     """
     Compute the coherence between two signals.
 
-    Parameters:
-    - x (numpy.ndarray): First signal.
-    - y (numpy.ndarray): Second signal.
-    - fs (float): Sampling frequency of the signals.
-    - nperseg (int): Length of each segment for coherence computation.
+    Coherence measures the degree of correlation between two signals in the frequency domain.
 
-    Returns:
-    numpy.ndarray: Frequency array.
-    numpy.ndarray: Coherence values.
+    Parameters
+    ----------
+    x : numpy.ndarray
+        First input signal.
+    y : numpy.ndarray
+        Second input signal.
+    fs : float, optional
+        Sampling frequency of the signals (default is 1.0).
+    nperseg : int, optional
+        Length of each segment for coherence computation (default is 256).
+
+    Returns
+    -------
+    numpy.ndarray
+        Frequency array.
+    numpy.ndarray
+        Coherence values.
+
+    Examples
+    --------
+    >>> x = np.sin(2 * np.pi * np.linspace(0, 1, 500))
+    >>> y = np.sin(2 * np.pi * np.linspace(0, 1, 500) + np.pi / 4)
+    >>> freqs, coh = coherence(x, y, fs=500)
+    >>> print(freqs, coh)
     """
-
     def periodogram(signal):
         freqs = np.fft.rfftfreq(len(signal), d=1 / fs)
         psd = np.abs(np.fft.rfft(signal)) ** 2 / len(signal)
@@ -148,19 +230,32 @@ def coherence(x, y, fs=1.0, nperseg=256):
 
     return freqs, coherence
 
-
 def grangercausalitytests(data, max_lag, verbose=False):
     """
     Perform Granger causality tests to determine if one time series can predict another.
 
-    Parameters:
-    - data (numpy.ndarray): The input data array with shape (n_samples, 2), where the first column is the dependent variable.
-    - max_lag (int): Maximum lag to consider for causality.
+    The Granger causality test evaluates whether the past values of one time series can provide statistically significant information about the future values of another time series.
 
-    Returns:
-    dict: Granger causality test results with F-test statistics.
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The input data array with shape (n_samples, 2), where the first column is the dependent variable.
+    max_lag : int
+        Maximum lag to consider for causality.
+    verbose : bool, optional
+        If True, prints out detailed test statistics (default is False).
+
+    Returns
+    -------
+    dict
+        Granger causality test results, including F-test statistics for each lag.
+
+    Examples
+    --------
+    >>> data = np.random.rand(100, 2)
+    >>> results = grangercausalitytests(data, max_lag=4, verbose=True)
+    >>> print(results)
     """
-
     def lag_matrix(signal, max_lag):
         n = len(signal)
         lagged_data = np.zeros((n - max_lag, max_lag + 1))
@@ -175,7 +270,6 @@ def grangercausalitytests(data, max_lag, verbose=False):
         x_lagged = lag_matrix(data[:, 0], lag)
         y_lagged = lag_matrix(data[:, 1], lag)
 
-        # Perform linear regression on the lagged data
         beta_y = np.linalg.lstsq(y_lagged, data[lag:, 0], rcond=None)[0]
         beta_x = np.linalg.lstsq(x_lagged, data[lag:, 1], rcond=None)[0]
 
@@ -183,7 +277,6 @@ def grangercausalitytests(data, max_lag, verbose=False):
         ssr_reduced = np.sum((data[lag:, 0] - x_lagged @ beta_x) ** 2)
 
         df_full = n - 2 * lag - 1
-        # df_reduced = n - lag - 1
         f_statistic = ((ssr_reduced - ssr_full) / lag) / (ssr_full / df_full)
 
         results[lag] = {"ssr_ftest": f_statistic}

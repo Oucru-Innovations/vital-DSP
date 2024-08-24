@@ -4,8 +4,8 @@ class SignalFiltering:
     """
     A class for applying various filtering techniques to signals.
 
-    This class provides methods for common signal filtering tasks, such as applying moving averages, 
-    Gaussian filters, Butterworth filters, and median filters. These techniques are essential for 
+    This class provides methods for common signal filtering tasks, such as applying moving averages,
+    Gaussian filters, Butterworth filters, and median filters. These techniques are essential for
     preprocessing signals in various fields, including biomedical signal processing (e.g., ECG, EEG).
 
     Methods
@@ -43,8 +43,8 @@ class SignalFiltering:
         """
         Apply a Savitzky-Golay filter to smooth the signal.
 
-        The Savitzky-Golay filter fits successive polynomials to sections of the signal and smooths it 
-        while preserving higher moments (such as peak height and width). This is particularly useful 
+        The Savitzky-Golay filter fits successive polynomials to sections of the signal and smooths it
+        while preserving higher moments (such as peak height and width). This is particularly useful
         in spectral signal processing.
 
         Parameters
@@ -140,8 +140,8 @@ class SignalFiltering:
         """
         Applies a Gaussian filter to the signal.
 
-        The Gaussian filter is a linear filter that applies a Gaussian kernel to the signal, effectively 
-        smoothing it while preserving the signal's general shape. It is particularly useful for reducing 
+        The Gaussian filter is a linear filter that applies a Gaussian kernel to the signal, effectively
+        smoothing it while preserving the signal's general shape. It is particularly useful for reducing
         noise and softening sharp edges.
 
         Parameters
@@ -171,8 +171,8 @@ class SignalFiltering:
         """
         Custom implementation of a 1D Gaussian filter.
 
-        This method applies a 1D Gaussian filter to the signal, smoothing the data by weighting 
-        the points according to the Gaussian distribution. The result is a smoother signal with 
+        This method applies a 1D Gaussian filter to the signal, smoothing the data by weighting
+        the points according to the Gaussian distribution. The result is a smoother signal with
         reduced noise.
 
         Parameters
@@ -207,7 +207,7 @@ class SignalFiltering:
         """
         Generate a Gaussian kernel.
 
-        The Gaussian kernel is used in Gaussian filtering, where the kernel weights are 
+        The Gaussian kernel is used in Gaussian filtering, where the kernel weights are
         determined by the Gaussian function. This method generates a 1D Gaussian kernel.
 
         Parameters
@@ -237,7 +237,7 @@ class SignalFiltering:
         """
         Apply a Butterworth filter to the signal.
 
-        The Butterworth filter is a type of signal processing filter designed to have a flat frequency response 
+        The Butterworth filter is a type of signal processing filter designed to have a flat frequency response
         in the passband. It is used for removing baseline wander and low-frequency noise from signals such as ECG and PPG.
 
         Parameters
@@ -296,8 +296,8 @@ class SignalFiltering:
         """
         Custom implementation of the Butterworth filter design using bilinear transformation.
 
-        This method designs a Butterworth filter by calculating the filter coefficients 
-        based on the desired order and cutoff frequency. The resulting filter can be used 
+        This method designs a Butterworth filter by calculating the filter coefficients
+        based on the desired order and cutoff frequency. The resulting filter can be used
         for low-pass, high-pass, or band-pass filtering.
 
         Parameters
@@ -351,8 +351,8 @@ class SignalFiltering:
         """
         Apply a median filter to the signal.
 
-        The median filter is a non-linear filter used to remove spikes and outliers 
-        from signals. It is particularly effective for removing motion artifacts 
+        The median filter is a non-linear filter used to remove spikes and outliers
+        from signals. It is particularly effective for removing motion artifacts
         in PPG and ECG signals, where abrupt changes may be caused by noise rather than the signal itself.
 
         Parameters

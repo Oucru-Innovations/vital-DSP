@@ -1,32 +1,49 @@
 import numpy as np
 
-
 class FourierTransform:
     """
-    A class to perform Fourier Transform to analyze frequency content in signals like ECG/EEG.
+    A class to perform Fourier Transform for analyzing the frequency content in signals such as ECG/EEG.
 
-    Methods:
-    - compute_dft: Computes the Discrete Fourier Transform (DFT) of the signal.
-    - compute_idft: Computes the Inverse Discrete Fourier Transform (IDFT) to reconstruct the signal.
+    The Fourier Transform is a mathematical technique that transforms a time-domain signal into its constituent frequencies, providing insights into the signal's frequency content. This class allows for both the computation of the Discrete Fourier Transform (DFT) and the Inverse Discrete Fourier Transform (IDFT), making it possible to analyze and reconstruct signals.
+
+    Methods
+    -------
+    compute_dft : method
+        Computes the Discrete Fourier Transform (DFT) of the signal.
+    compute_idft : method
+        Computes the Inverse Discrete Fourier Transform (IDFT) to reconstruct the signal.
     """
 
     def __init__(self, signal):
         """
-        Initialize the FourierTransform class with the signal.
+        Initialize the FourierTransform class with the input signal.
 
-        Parameters:
-        signal (numpy.ndarray): The input signal to be transformed.
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The input signal to be transformed. The signal should be a 1D array representing time-domain data, such as an ECG or EEG signal.
+
+        Examples
+        --------
+        >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
+        >>> ft = FourierTransform(signal)
+        >>> print(ft.signal)
         """
         self.signal = signal
 
     def compute_dft(self):
         """
-        Compute the Discrete Fourier Transform (DFT) of the signal.
+        Compute the Discrete Fourier Transform (DFT) of the input signal.
 
-        Returns:
-        numpy.ndarray: The frequency domain representation of the signal.
+        The DFT converts the time-domain signal into the frequency domain, allowing for the analysis of its frequency components. This is particularly useful in identifying periodicities, filtering, and spectral analysis of biomedical signals like ECG and EEG.
 
-        Example Usage:
+        Returns
+        -------
+        numpy.ndarray
+            The frequency domain representation of the signal, where each element corresponds to a specific frequency component.
+
+        Examples
+        --------
         >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
         >>> ft = FourierTransform(signal)
         >>> frequency_content = ft.compute_dft()
@@ -42,15 +59,22 @@ class FourierTransform:
 
     def compute_idft(self, frequency_content):
         """
-        Compute the Inverse Discrete Fourier Transform (IDFT) to reconstruct the signal.
+        Compute the Inverse Discrete Fourier Transform (IDFT) to reconstruct the time-domain signal.
 
-        Parameters:
-        frequency_content (numpy.ndarray): The frequency domain representation of the signal.
+        The IDFT converts the frequency-domain data back into the time domain, reconstructing the original signal from its frequency components. This is useful for understanding how different frequency components contribute to the overall signal and for signal reconstruction after processing in the frequency domain.
 
-        Returns:
-        numpy.ndarray: The time-domain signal reconstructed from its frequency components.
+        Parameters
+        ----------
+        frequency_content : numpy.ndarray
+            The frequency domain representation of the signal, as obtained from the DFT.
 
-        Example Usage:
+        Returns
+        -------
+        numpy.ndarray
+            The time-domain signal reconstructed from its frequency components.
+
+        Examples
+        --------
         >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
         >>> ft = FourierTransform(signal)
         >>> frequency_content = ft.compute_dft()

@@ -1,23 +1,25 @@
 import numpy as np
 from utils.common import pearsonr, coherence, grangercausalitytests
 
-
 class CrossSignalAnalysis:
     """
     A comprehensive class to analyze interactions between two physiological signals, such as ECG and respiration.
 
+    The class provides several methods to compute various metrics that describe the relationships between the two signals,
+    such as correlation, coherence, phase synchronization, mutual information, and Granger causality.
+
     Methods
     -------
     compute_correlation : function
-        Computes the correlation between two signals.
+        Computes the Pearson correlation coefficient between two signals.
     compute_cross_correlation : function
         Computes the cross-correlation between two signals.
     compute_coherence : function
         Computes the coherence between two signals.
     compute_phase_synchronization : function
-        Computes phase synchronization between two signals.
+        Computes the phase synchronization index between two signals.
     compute_mutual_information : function
-        Computes mutual information between two signals.
+        Computes the mutual information between two signals.
     compute_granger_causality : function
         Computes Granger causality between two signals.
     """
@@ -29,11 +31,15 @@ class CrossSignalAnalysis:
         Parameters
         ----------
         signal1 : numpy.ndarray
-            The first input signal (e.g., ECG).
+            The first input signal, such as ECG.
         signal2 : numpy.ndarray
-            The second input signal (e.g., respiration).
+            The second input signal, such as respiration.
         fs : float, optional
             The sampling frequency of the signals. Default is 1.0.
+
+        Notes
+        -----
+        Both signals should be of the same length and sampled at the same frequency.
         """
         self.signal1 = signal1
         self.signal2 = signal2
@@ -43,10 +49,13 @@ class CrossSignalAnalysis:
         """
         Compute the Pearson correlation coefficient between the two signals.
 
+        The Pearson correlation coefficient is a measure of the linear relationship between two signals.
+
         Returns
         -------
         correlation_coefficient : float
-            The Pearson correlation coefficient between the two signals.
+            The Pearson correlation coefficient between the two signals. A value close to 1 indicates a strong positive correlation,
+            while a value close to -1 indicates a strong negative correlation.
 
         Examples
         --------
@@ -59,6 +68,9 @@ class CrossSignalAnalysis:
     def compute_cross_correlation(self, max_lag=None):
         """
         Compute the cross-correlation between the two signals.
+
+        Cross-correlation measures the similarity between two signals as a function of the time-lag applied to one of them.
+        It is useful for identifying time delays between the signals.
 
         Parameters
         ----------
@@ -97,6 +109,9 @@ class CrossSignalAnalysis:
         """
         Compute the coherence between the two signals.
 
+        Coherence is a measure of the degree of synchronization between two signals in the frequency domain.
+        It is often used to determine how much one signal corresponds to another at different frequencies.
+
         Parameters
         ----------
         nperseg : int, optional
@@ -107,7 +122,7 @@ class CrossSignalAnalysis:
         freqs : numpy.ndarray
             Frequency array.
         coherence : numpy.ndarray
-            Coherence between the two signals.
+            Coherence between the two signals. Values range from 0 (no coherence) to 1 (complete coherence).
 
         Examples
         --------
@@ -122,10 +137,13 @@ class CrossSignalAnalysis:
         """
         Compute the phase synchronization index between the two signals.
 
+        Phase synchronization measures the degree to which the phases of the two signals are synchronized over time,
+        regardless of their amplitude. It is useful for analyzing coupling between oscillatory signals.
+
         Returns
         -------
         psi : float
-            The phase synchronization index between the two signals.
+            The phase synchronization index (PSI) between the two signals. Values close to 1 indicate strong synchronization.
 
         Examples
         --------
@@ -149,6 +167,9 @@ class CrossSignalAnalysis:
         """
         Compute the mutual information between the two signals.
 
+        Mutual information is a measure of the amount of information obtained about one signal through the other.
+        It captures both linear and non-linear dependencies between the signals.
+
         Parameters
         ----------
         bins : int, optional
@@ -157,7 +178,7 @@ class CrossSignalAnalysis:
         Returns
         -------
         mutual_info : float
-            The mutual information between the two signals.
+            The mutual information between the two signals. Higher values indicate greater dependency between the signals.
 
         Examples
         --------
@@ -178,6 +199,9 @@ class CrossSignalAnalysis:
         """
         Compute the Granger causality between the two signals.
 
+        Granger causality is a statistical hypothesis test to determine whether one time series can predict another.
+        It does not imply true causality but can indicate predictive relationships between signals.
+
         Parameters
         ----------
         max_lag : int, optional
@@ -187,6 +211,7 @@ class CrossSignalAnalysis:
         -------
         gc_result : dict
             Granger causality results with keys 'signal1->signal2' and 'signal2->signal1'.
+            Each key contains the test statistic and p-value indicating whether one signal Granger-causes the other.
 
         Examples
         --------

@@ -1,38 +1,66 @@
 import numpy as np
 
-
 class AnomalyDetection:
     """
     Comprehensive Anomaly Detection for detecting anomalies in real-time from streaming data.
 
-    Methods:
-    - detect_anomalies: Detects anomalies using various methods including z-score, moving average, custom LOF, and more.
+    This class offers multiple methods to detect anomalies in a given signal, including statistical methods,
+    moving averages, Local Outlier Factor (LOF), and Fourier-based methods.
 
-    Example Usage:
-    --------------
-    signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
-    anomaly_detector = AnomalyDetection(signal)
-    anomalies_z_score = anomaly_detector.detect_anomalies(method="z_score", threshold=2.0)
-    anomalies_moving_avg = anomaly_detector.detect_anomalies(method="moving_average", window_size=5, threshold=0.5)
-    anomalies_lof = anomaly_detector.detect_anomalies(method="lof", n_neighbors=20)
-    print("Anomalies (Z-Score):", anomalies_z_score)
-    print("Anomalies (Moving Average):", anomalies_moving_avg)
-    print("Anomalies (LOF):", anomalies_lof)
+    Methods
+    -------
+    detect_anomalies : function
+        Detects anomalies using various methods including z-score, moving average, custom LOF, and more.
+
+    Example Usage
+    -------------
+    >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
+    >>> anomaly_detector = AnomalyDetection(signal)
+    >>> anomalies_z_score = anomaly_detector.detect_anomalies(method="z_score", threshold=2.0)
+    >>> anomalies_moving_avg = anomaly_detector.detect_anomalies(method="moving_average", window_size=5, threshold=0.5)
+    >>> anomalies_lof = anomaly_detector.detect_anomalies(method="lof", n_neighbors=20)
+    >>> print("Anomalies (Z-Score):", anomalies_z_score)
+    >>> print("Anomalies (Moving Average):", anomalies_moving_avg)
+    >>> print("Anomalies (LOF):", anomalies_lof)
     """
 
     def __init__(self, signal):
+        """
+        Initialize the AnomalyDetection class with the given signal.
+
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The input signal on which anomaly detection is to be performed.
+        """
         self.signal = signal
 
     def detect_anomalies(self, method="z_score", **kwargs):
         """
         Detect anomalies in the signal using the specified method.
 
-        Parameters:
-        method (str): The method to use for detecting anomalies. Options include "z_score", "moving_average", "lof", "fft", "threshold".
-        kwargs: Additional parameters depending on the method.
+        Parameters
+        ----------
+        method : str, optional
+            The method to use for detecting anomalies. Options include "z_score", "moving_average", "lof", "fft", "threshold".
+            Default is "z_score".
+        **kwargs : additional arguments
+            Additional parameters depending on the chosen method.
 
-        Returns:
-        numpy.ndarray: Indices of the detected anomalies.
+        Returns
+        -------
+        numpy.ndarray
+            Indices of the detected anomalies.
+
+        Raises
+        ------
+        ValueError
+            If the specified method is unknown.
+
+        Examples
+        --------
+        >>> anomalies_z_score = anomaly_detector.detect_anomalies(method="z_score", threshold=2.0)
+        >>> anomalies_moving_avg = anomaly_detector.detect_anomalies(method="moving_average", window_size=5, threshold=0.5)
         """
         if method == "z_score":
             return self._z_score_anomaly_detection(kwargs.get("threshold", 3.0))
@@ -47,17 +75,29 @@ class AnomalyDetection:
         elif method == "threshold":
             return self._threshold_anomaly_detection(kwargs.get("threshold", 1.0))
         else:
-            raise ValueError("Unknown method: {}".format(method))
+            raise ValueError(f"Unknown method: {method}")
 
     def _z_score_anomaly_detection(self, threshold):
         """
         Z-Score based anomaly detection.
 
-        Parameters:
-        threshold (float): The z-score threshold for anomaly detection.
+        Anomalies are detected by calculating the z-score for each data point and identifying those
+        that exceed the specified threshold.
 
-        Returns:
-        numpy.ndarray: Indices of the detected anomalies.
+        Parameters
+        ----------
+        threshold : float
+            The z-score threshold for anomaly detection.
+
+        Returns
+        -------
+        numpy.ndarray
+            Indices of the detected anomalies.
+
+        Examples
+        --------
+        >>> anomalies = anomaly_detector._z_score_anomaly_detection(threshold=2.0)
+        >>> print(anomalies)
         """
         mean = np.mean(self.signal)
         std = np.std(self.signal)
@@ -69,12 +109,25 @@ class AnomalyDetection:
         """
         Moving average based anomaly detection.
 
-        Parameters:
-        window_size (int): The window size for the moving average.
-        threshold (float): The threshold for detecting anomalies based on the deviation from the moving average.
+        Anomalies are detected by calculating the moving average of the signal and identifying points
+        where the deviation from the moving average exceeds the specified threshold.
 
-        Returns:
-        numpy.ndarray: Indices of the detected anomalies.
+        Parameters
+        ----------
+        window_size : int
+            The window size for the moving average.
+        threshold : float
+            The threshold for detecting anomalies based on the deviation from the moving average.
+
+        Returns
+        -------
+        numpy.ndarray
+            Indices of the detected anomalies.
+
+        Examples
+        --------
+        >>> anomalies = anomaly_detector._moving_average_anomaly_detection(window_size=5, threshold=0.5)
+        >>> print(anomalies)
         """
         moving_avg = np.convolve(
             self.signal, np.ones(window_size) / window_size, mode="valid"
@@ -87,11 +140,23 @@ class AnomalyDetection:
         """
         Local Outlier Factor (LOF) based anomaly detection.
 
-        Parameters:
-        n_neighbors (int): Number of neighbors to use for LOF.
+        LOF identifies anomalies by comparing the local density of a data point to that of its neighbors.
+        Points with significantly lower density are considered anomalies.
 
-        Returns:
-        numpy.ndarray: Indices of the detected anomalies.
+        Parameters
+        ----------
+        n_neighbors : int
+            Number of neighbors to use for LOF.
+
+        Returns
+        -------
+        numpy.ndarray
+            Indices of the detected anomalies.
+
+        Examples
+        --------
+        >>> anomalies = anomaly_detector._lof_anomaly_detection(n_neighbors=20)
+        >>> print(anomalies)
         """
         n_points = len(self.signal)
         distances = np.zeros((n_points, n_points))
@@ -132,11 +197,23 @@ class AnomalyDetection:
         """
         FFT based anomaly detection by analyzing the frequency domain.
 
-        Parameters:
-        threshold (float): The threshold for detecting anomalies based on frequency domain components.
+        Anomalies are detected by transforming the signal to the frequency domain using FFT and
+        identifying components whose magnitude exceeds the specified threshold.
 
-        Returns:
-        numpy.ndarray: Indices of the detected anomalies.
+        Parameters
+        ----------
+        threshold : float
+            The threshold for detecting anomalies based on frequency domain components.
+
+        Returns
+        -------
+        numpy.ndarray
+            Indices of the detected anomalies.
+
+        Examples
+        --------
+        >>> anomalies = anomaly_detector._fft_anomaly_detection(threshold=1.5)
+        >>> print(anomalies)
         """
         fft_result = np.fft.fft(self.signal)
         magnitude = np.abs(fft_result)
@@ -147,11 +224,22 @@ class AnomalyDetection:
         """
         Simple threshold based anomaly detection.
 
-        Parameters:
-        threshold (float): The threshold value for detecting anomalies.
+        Anomalies are detected by identifying points in the signal that exceed the specified threshold.
 
-        Returns:
-        numpy.ndarray: Indices of the detected anomalies.
+        Parameters
+        ----------
+        threshold : float
+            The threshold value for detecting anomalies.
+
+        Returns
+        -------
+        numpy.ndarray
+            Indices of the detected anomalies.
+
+        Examples
+        --------
+        >>> anomalies = anomaly_detector._threshold_anomaly_detection(threshold=1.0)
+        >>> print(anomalies)
         """
         anomalies = np.where(self.signal > threshold)[0]
         return anomalies

@@ -1,20 +1,24 @@
 import numpy as np
 
-
 class NeuralNetworkFiltering:
     """
-    Comprehensive Neural Network Filtering for adaptive signal processing.
+    A comprehensive neural network-based filtering approach for adaptive signal processing.
 
-    This class supports multiple neural network architectures including feedforward, convolutional, and recurrent networks.
-    It includes features like dropout, batch normalization, and customizable training options.
+    This class supports various neural network architectures, including feedforward, convolutional, and recurrent networks.
+    It includes advanced features such as dropout for regularization, batch normalization for faster convergence,
+    and customizable training options.
 
-    Methods:
-    - train: Trains the neural network on the given signal.
-    - apply_filter: Applies the trained neural network to filter the signal.
-    - evaluate: Evaluates the performance of the neural network on a test signal.
+    Methods
+    -------
+    train : method
+        Trains the neural network on the given signal.
+    apply_filter : method
+        Applies the trained neural network to filter the signal.
+    evaluate : method
+        Evaluates the performance of the neural network on a test signal.
 
-    Example Usage:
-    --------------
+    Example Usage
+    -------------
     signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
     nn_filter = NeuralNetworkFiltering(signal, network_type='feedforward', hidden_layers=[64, 64], epochs=100)
 
@@ -44,18 +48,28 @@ class NeuralNetworkFiltering:
         recurrent_type="lstm",
     ):
         """
-        Initialize the NeuralNetworkFiltering class with the signal and network configuration.
+        Initialize the NeuralNetworkFiltering class with the signal and neural network configuration.
 
-        Parameters:
-        signal (numpy.ndarray): The signal to be processed.
-        network_type (str): The type of neural network ('feedforward', 'convolutional', 'recurrent').
-        hidden_layers (list of int): The number of neurons in each hidden layer (for feedforward network).
-        learning_rate (float): The learning rate for training.
-        epochs (int): The number of training epochs.
-        batch_size (int): The batch size for training.
-        dropout_rate (float): The dropout rate for regularization.
-        batch_norm (bool): Whether to apply batch normalization.
-        recurrent_type (str): The type of recurrent network ('lstm' or 'gru').
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The signal to be processed.
+        network_type : str, optional
+            The type of neural network to use ('feedforward', 'convolutional', 'recurrent'), default is 'feedforward'.
+        hidden_layers : list of int, optional
+            The number of neurons in each hidden layer (applicable for feedforward network), default is [64, 64].
+        learning_rate : float, optional
+            The learning rate for training, default is 0.001.
+        epochs : int, optional
+            The number of training epochs, default is 100.
+        batch_size : int, optional
+            The batch size for training, default is 32.
+        dropout_rate : float, optional
+            The dropout rate for regularization, default is 0.5.
+        batch_norm : bool, optional
+            Whether to apply batch normalization, default is True.
+        recurrent_type : str, optional
+            The type of recurrent network ('lstm' or 'gru'), applicable for recurrent networks, default is 'lstm'.
         """
         self.signal = signal
         self.network_type = network_type
@@ -73,8 +87,15 @@ class NeuralNetworkFiltering:
         """
         Build the neural network based on the specified configuration.
 
-        Returns:
-        NeuralNetwork: The constructed neural network model.
+        Returns
+        -------
+        NeuralNetwork
+            The constructed neural network model.
+
+        Raises
+        ------
+        ValueError
+            If the specified network type is unknown.
         """
         if self.network_type == "feedforward":
             return FeedforwardNetwork(
@@ -94,6 +115,8 @@ class NeuralNetworkFiltering:
         Train the neural network on the given signal.
 
         The signal is divided into input-output pairs for supervised training.
+        This method prepares the data, then trains the network using the specified learning rate,
+        number of epochs, and batch size.
         """
         X_train, y_train = self._prepare_data(self.signal)
         self.network.train(
@@ -104,8 +127,12 @@ class NeuralNetworkFiltering:
         """
         Apply the trained neural network to filter the signal.
 
-        Returns:
-        numpy.ndarray: The filtered signal.
+        The trained neural network is used to predict and filter the input signal.
+
+        Returns
+        -------
+        numpy.ndarray
+            The filtered signal after applying the neural network.
         """
         X = self._prepare_input(self.signal)
         return self.network.predict(X)
@@ -114,11 +141,17 @@ class NeuralNetworkFiltering:
         """
         Evaluate the performance of the neural network on a test signal.
 
-        Parameters:
-        test_signal (numpy.ndarray): The test signal to evaluate.
+        The method calculates the Mean Squared Error (MSE) between the predicted and actual values of the test signal.
 
-        Returns:
-        float: The mean squared error of the neural network on the test signal.
+        Parameters
+        ----------
+        test_signal : numpy.ndarray
+            The test signal to evaluate the neural network's performance.
+
+        Returns
+        -------
+        float
+            The mean squared error (MSE) of the neural network on the test signal.
         """
         X_test, y_test = self._prepare_data(test_signal)
         predictions = self.network.predict(X_test)
@@ -129,11 +162,15 @@ class NeuralNetworkFiltering:
         """
         Prepare input-output pairs from the signal for training.
 
-        Parameters:
-        signal (numpy.ndarray): The signal to be processed.
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The signal to be processed.
 
-        Returns:
-        tuple: Input features and corresponding outputs for training.
+        Returns
+        -------
+        tuple
+            Input features (X) and corresponding outputs (y) for training.
         """
         X, y = [], []
         for i in range(len(signal) - 1):
@@ -145,11 +182,15 @@ class NeuralNetworkFiltering:
         """
         Prepare input features from the signal for prediction.
 
-        Parameters:
-        signal (numpy.ndarray): The signal to be processed.
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The signal to be processed.
 
-        Returns:
-        numpy.ndarray: Input features for prediction.
+        Returns
+        -------
+        numpy.ndarray
+            Input features (X) for prediction.
         """
         X = []
         for i in range(len(signal) - 1):

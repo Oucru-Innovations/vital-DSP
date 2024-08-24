@@ -4,6 +4,10 @@ class SignalChangeDetection:
     """
     A comprehensive class for detecting changes in physiological signals.
 
+    This class provides multiple methods to analyze physiological signals and detect
+    significant changes based on various criteria such as zero crossings, variance,
+    energy levels, adaptive thresholds, and machine learning-inspired techniques.
+
     Methods
     -------
     zero_crossing_rate : function
@@ -28,6 +32,11 @@ class SignalChangeDetection:
         ----------
         signal : numpy.ndarray
             The input physiological signal to be analyzed for changes.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> scd = SignalChangeDetection(signal)
         """
         self.signal = signal
 
@@ -37,6 +46,8 @@ class SignalChangeDetection:
 
         The Zero Crossing Rate is the rate at which the signal changes sign,
         which can indicate changes in the signal's behavior or underlying processes.
+        This metric is often used in speech and audio signal processing to detect
+        changes in frequency or amplitude.
 
         Returns
         -------
@@ -60,7 +71,8 @@ class SignalChangeDetection:
         Compute the absolute difference between consecutive samples.
 
         This method highlights changes between successive signal values, which can
-        be useful for detecting sudden changes or anomalies.
+        be useful for detecting sudden changes or anomalies. It is a simple yet
+        effective technique to measure the magnitude of change in the signal.
 
         Returns
         -------
@@ -83,7 +95,8 @@ class SignalChangeDetection:
         Detect signal changes based on local variance.
 
         This method computes the variance within a sliding window over the signal.
-        High variance may indicate areas of the signal with significant changes or noise.
+        High variance may indicate areas of the signal with significant changes or noise,
+        which is useful in detecting regions with high activity or instability.
 
         Parameters
         ----------
@@ -116,7 +129,9 @@ class SignalChangeDetection:
         Detect signal changes based on local energy.
 
         This method calculates the energy within a sliding window over the signal.
-        High energy may indicate periods of significant activity or events in the signal.
+        Energy is calculated as the sum of the squares of the signal values within the window.
+        High energy may indicate periods of significant activity or events in the signal,
+        making this method useful in detecting bursts of activity.
 
         Parameters
         ----------
@@ -150,7 +165,8 @@ class SignalChangeDetection:
 
         This method calculates local statistics (mean and standard deviation) over a sliding
         window and identifies signal changes where the deviation from the local mean exceeds
-        an adaptive threshold.
+        an adaptive threshold. This approach is effective for detecting outliers or anomalies
+        in signals with varying baseline levels.
 
         Parameters
         ----------
@@ -200,7 +216,9 @@ class SignalChangeDetection:
 
         This method allows the use of a custom model or function to detect change points in the signal.
         If no model is provided, a simple thresholding method based on the absolute difference between
-        consecutive samples is used by default.
+        consecutive samples is used by default. This approach is flexible and can be extended with
+        sophisticated models like decision trees, neural networks, or clustering algorithms for more
+        complex change detection tasks.
 
         Parameters
         ----------
