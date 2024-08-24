@@ -268,28 +268,8 @@ class SignalFiltering:
         """
         nyquist = 0.5 * fs
         normal_cutoff = cutoff / nyquist
-
-        # Calculate the poles of the Butterworth filter
-        poles = np.exp(
-            1j * (np.pi * (np.arange(1, 2 * order, 2) + order - 1) / (2 * order))
-        )
-        poles = poles[np.real(poles) < 0]
-
-        if btype == "low":
-            poles = poles * normal_cutoff
-        elif btype == "high":
-            poles = poles / normal_cutoff
-
-        z = np.exp(-poles)
-
-        filtered_signal = self.signal.copy()
-        for p in z:
-            filtered_signal = (
-                filtered_signal
-                - 2 * np.real(p) * np.roll(filtered_signal, 1)
-                + np.abs(p) ** 2 * np.roll(filtered_signal, 2)
-            )
-
+        b, a = self.butter(order, normal_cutoff, btype=btype)
+        filtered_signal = self._apply_iir_filter(b, a)
         return filtered_signal
 
     def butter(self, order, cutoff, btype="low", fs=1.0):
@@ -322,7 +302,7 @@ class SignalFiltering:
         >>> b, a = SignalFiltering().butter(4, 0.3, btype='low', fs=1.0)
         >>> print(b, a)
         """
-        nyquist = 0.5 * fs
+        nyquist = 0.5
         normalized_cutoff = np.array(cutoff) / nyquist
         if btype == "low":
             poles = np.exp(
@@ -331,21 +311,140 @@ class SignalFiltering:
             poles = poles[np.real(poles) < 0]
             z, p = np.zeros(0), poles
         elif btype == "high":
-            z, p = self.butter(order, cutoff, btype="low", fs=fs)
+            z, p = self.butter(order, cutoff, btype="low")
             z, p = -z, -p
         elif btype == "band":
             low = np.min(normalized_cutoff)
             high = np.max(normalized_cutoff)
-            z_low, p_low = self.butter(order, low, btype="high", fs=fs)
-            z_high, p_high = self.butter(order, high, btype="low", fs=fs)
+            z_low, p_low = self.butter(order, low, btype="high")
+            z_high, p_high = self.butter(order, high, btype="low")
             z = np.concatenate([z_low, z_high])
             p = np.concatenate([p_low, p_high])
         else:
             raise ValueError("Invalid btype. Must be 'low', 'high', or 'band'.")
 
         b, a = np.poly(z), np.poly(p)
+        b = np.atleast_1d(b)  # Ensure b is at least 1D
+        a = np.atleast_1d(a)  # Ensure a is at least 1D
         b /= np.abs(np.sum(a))
         return b, a
+
+    def chebyshev(self, cutoff, fs, order=4, btype="low", ripple=0.05):
+        """
+        Custom implementation of the Chebyshev Type I filter.
+
+        Parameters
+        ----------
+        cutoff : float
+            Cutoff frequency of the filter.
+        fs : float
+            Sampling frequency of the signal.
+        order : int, optional
+            Order of the Chebyshev filter. Default is 4.
+        btype : str, optional
+            Type of filter - 'low' or 'high'. Default is 'low'.
+        ripple : float, optional
+            The maximum ripple allowed in the passband. Default is 0.05.
+
+        Returns
+        -------
+        filtered_signal : numpy.ndarray
+            The filtered signal.
+        """
+        nyquist = 0.5 * fs
+        normal_cutoff = cutoff / nyquist
+        eps = np.sqrt(10 ** (ripple / 10) - 1)
+        k = np.arange(1, 2 * order, 2)
+        poles = np.exp(1j * np.pi * (k + order - 1) / (2 * order))
+        poles = poles[np.real(poles) < 0]
+        poles = np.concatenate([poles, -poles.conj()])
+        poles /= eps ** (1 / order)
+        if btype == "low":
+            poles = poles * normal_cutoff
+        elif btype == "high":
+            poles = normal_cutoff / poles
+        z = np.zeros(0)
+        b, a = np.poly(z), np.poly(poles)
+        b = np.atleast_1d(b)  # Ensure b is at least 1D
+        a = np.atleast_1d(a)  # Ensure a is at least 1D
+        b = b / np.abs(np.polyval(b, 1))
+        a = a / np.abs(np.polyval(a, 1))
+        filtered_signal = self._apply_iir_filter(b, a)
+        return filtered_signal
+
+    def elliptic(self, cutoff, fs, order=4, btype="low", ripple=0.05, stopband_attenuation=40):
+        """
+        Custom implementation of the Elliptic filter.
+
+        Parameters
+        ----------
+        cutoff : float
+            Cutoff frequency of the filter.
+        fs : float
+            Sampling frequency of the signal.
+        order : int, optional
+            Order of the Elliptic filter. Default is 4.
+        btype : str, optional
+            Type of filter - 'low' or 'high'. Default is 'low'.
+        ripple : float, optional
+            The maximum ripple allowed in the passband. Default is 0.05.
+        stopband_attenuation : float, optional
+            Minimum attenuation in the stopband. Default is 40 dB.
+
+        Returns
+        -------
+        filtered_signal : numpy.ndarray
+            The filtered signal.
+        """
+        nyquist = 0.5 * fs
+        normal_cutoff = cutoff / nyquist
+
+        eps = np.sqrt(10 ** (ripple / 10) - 1)
+        # k1 = np.sqrt(1 - 10 ** (-stopband_attenuation / 10))
+        k = eps / np.sqrt(1 + eps ** 2)
+
+        poles = []
+        for i in range(1, order + 1):
+            beta = np.arcsin(k)
+            theta = (2 * i - 1) * np.pi / (2 * order)
+            # phi = np.arcsin(k1 * np.sin(theta)) + beta
+            poles.append(np.exp(1j * (theta + beta)))
+            poles.append(np.exp(1j * (theta - beta)))
+
+        poles = np.array(poles)
+        poles = poles[np.real(poles) < 0]
+
+        if btype == "low":
+            poles = poles * normal_cutoff
+        elif btype == "high":
+            poles = normal_cutoff / poles
+
+        z = np.zeros(0)
+        b, a = np.poly(z), np.poly(poles)
+        b = np.atleast_1d(b)  # Ensure b is at least 1D
+        a = np.atleast_1d(a)  # Ensure a is at least 1D
+        b = b / np.abs(np.polyval(b, 1))
+        a = a / np.abs(np.polyval(a, 1))
+
+        filtered_signal = self._apply_iir_filter(b, a)
+        return filtered_signal
+
+    def bandpass(self, lowcut, highcut, fs, order=4, filter_type="butter"):
+        nyquist = 0.5 * fs
+        low = lowcut / nyquist
+        high = highcut / nyquist
+
+        if filter_type == "butter":
+            b, a = self.butter(order, [low, high], btype="band")
+        elif filter_type == "cheby":
+            b, a = self.chebyshev(order, [low, high], btype="band")
+        elif filter_type == "elliptic":
+            b, a = self.elliptic(order, [low, high], btype="band")
+        else:
+            raise ValueError("Unsupported filter type. Choose from 'butter', 'cheby', or 'elliptic'.")
+
+        filtered_signal = self._apply_iir_filter(b, a)
+        return filtered_signal
 
     def median(self, kernel_size=3):
         """
@@ -389,4 +488,29 @@ class SignalFiltering:
             ]
         )
 
+        return filtered_signal
+
+    def _apply_iir_filter(self, b, a):
+        """
+        Apply an IIR filter using the provided coefficients.
+
+        Parameters
+        ----------
+        b : numpy.ndarray
+            Numerator (b) polynomial coefficients of the IIR filter.
+        a : numpy.ndarray
+            Denominator (a) polynomial coefficients of the IIR filter.
+
+        Returns
+        -------
+        filtered_signal : numpy.ndarray
+            The filtered signal.
+        """
+        filtered_signal = np.zeros_like(self.signal)
+        for i in range(len(self.signal)):
+            filtered_signal[i] = b[0] * self.signal[i]
+            if i > 0 and len(b) > 1:
+                filtered_signal[i] += b[1] * self.signal[i-1] - a[1] * filtered_signal[i-1]
+            if i > 1 and len(b) > 2:
+                filtered_signal[i] += b[2] * self.signal[i-2] - a[2] * filtered_signal[i-2]
         return filtered_signal
