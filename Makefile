@@ -5,28 +5,22 @@ DOCS_DIR=docs
 SRC_DIR=src
 SPHINXBUILD = sphinx-build
 SOURCEDIR = source
-BUILDDIR = docs/_build/
-# PANDOC_FILE=$(DOCS_DIR)/Documentation.md
-# PANDOC_OUTPUT=$(DOCS_DIR)/Documentation.pdf
-
-# Default target: Run all tests
-all: test coverage lint pandoc
-
+BUILDDIR = $(DOCS_DIR)/_build
 PANDOC_FILE=$(DOCS_DIR)/Documentation.md
 PANDOC_OUTPUT=$(DOCS_DIR)/Documentation.pdf
 
 # Default target: Run all tests
-all: test coverage lint pandoc
+all: test coverage lint html
 
 # Use conditional syntax to handle different OS
 ifeq ($(OS),Windows_NT)
-    PYTHONPATH_SET = set PYTHONPATH=$(SRC_DIR) && 
+    PYTHONPATH_SET = set PYTHONPATH=$(SRC_DIR) &&
 else
     PYTHONPATH_SET = PYTHONPATH=$(SRC_DIR)
 endif
 
 test:
-	$(PYTHONPATH_SET) pytest tests -v
+	$(PYTHONPATH_SET) pytest $(TEST_DIR) -v
 
 # Run tests with coverage
 coverage:
@@ -50,4 +44,4 @@ clean:
 	rm -rf $(BUILDDIR)
 
 # Phony targets
-.PHONY: all test coverage lint pandoc clean
+.PHONY: all test coverage lint html clean

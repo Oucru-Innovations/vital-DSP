@@ -102,7 +102,7 @@ $RECYCLE.BIN/
 
 # Sphinx documentation
 docs/_build/
-docs/
+docs/Documentation.pdf
 
 # Executive Makefile
 make.bat
