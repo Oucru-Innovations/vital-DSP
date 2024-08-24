@@ -163,7 +163,56 @@ healthcare_dsp/
     │   ├── gui.md                         # GUI usage documentation.
 ```
 
+```
+respiratory_analysis/
+    ├── __init__.py
+    ├── preprocess/
+    │   ├── __init__.py
+    │   ├── noise_reduction.py            # Noise reduction techniques (e.g., wavelet denoising).
+    │   ├── preprocess.py                 # Main preprocessing pipeline combining different techniques.
+    │   ├── synthesize_data.py            # Generating synthetic data for testing and validation.
+    ├── estimate_rr/
+    │   ├── __init__.py
+    │   ├── fft_based_rr.py               # Respiratory rate detection using FFT.
+    │   ├── peak_detection_rr.py          # Respiratory rate detection using peak detection.
+    │   ├── time_domain_rr.py             # Time-domain analysis for RR estimation.
+    │   ├── frequency_domain_rr.py        # Frequency-domain methods for RR estimation.
+    ├── fusion/
+    │   ├── __init__.py
+    │   ├── ppg_ecg_fusion.py             # Fusion of PPG and ECG signals for improved RR estimation.
+    │   ├── multimodal_analysis.py        # Analysis combining multiple signals for robust RR estimation.
+    │   ├── respiratory_cardiac_fusion.py # Fusion of respiratory and cardiac signals for comprehensive analysis.
+    ├── sleep_apnea_detection/
+    │   ├── __init__.py
+    │   ├── amplitude_threshold.py        # Detect sleep apnea based on amplitude thresholding.
+    │   ├── pause_detection.py            # Detect sleep apnea based on pause in respiration.
+    ├── multimodal_respiratory_analysis/
+    │   ├── __init__.py
+    │   ├── correlation_analysis.py       # Correlation between respiratory and other physiological signals.
+    │   ├── coherence_analysis.py         # Coherence between respiratory and other physiological signals.
+    ├── time_frequency_analysis/
+    │   ├── __init__.py
+    │   ├── spectrogram_analysis.py       # Time-frequency analysis using spectrogram.
+    │   ├── wavelet_analysis.py           # Time-frequency analysis using wavelet transforms.
+    ├── visualization/
+    │   ├── __init__.py
+    │   ├── plot_signals.py               # Plot raw and processed signals.
+    │   ├── plot_spectrogram.py           # Visualize spectrogram for time-frequency analysis.
+    │   ├── plot_wavelet_coefficients.py  # Visualize wavelet coefficients.
+    ├── utils/
+    │   ├── __init__.py
+    │   ├── signal_processing_utils.py    # Utilities for signal processing and feature extraction.
+    │   ├── data_visualization.py         # Visualization tools for inspecting signals and results.
+    ├── tests/
+    │   ├── test_preprocess.py            # Tests for preprocessing steps.
+    │   ├── test_estimate_rr.py           # Tests for different RR estimation methods.
+    │   ├── test_fusion.py                # Tests for signal fusion techniques.
+    │   ├── test_sleep_apnea_detection.py # Tests for sleep apnea detection methods.
+    │   ├── test_multimodal_analysis.py   # Tests for multimodal respiratory analysis.
+    │   ├── test_time_frequency_analysis.py # Tests for time-frequency analysis methods.
+    │   ├── test_visualization.py         # Tests for visualization methods.
 
+```
 ## Documentation
 Comprehensive documentation for each module is available in the `docs/` directory, covering usage examples, API references, and more.
 
