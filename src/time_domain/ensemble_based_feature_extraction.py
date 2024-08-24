@@ -6,21 +6,29 @@ class EnsembleBasedFeatureExtraction:
     """
     A comprehensive class for feature extraction using ensemble methods such as Random Forest, Bagging, and Boosting.
 
-    Methods:
-    - random_forest_features: Extracts features using a custom Random Forest.
-    - bagging_features: Extracts features using a Bagging ensemble.
-    - boosting_features: Extracts features using a Boosting ensemble.
-    - stacking_features: Extracts features using a Stacking ensemble.
+    Methods
+    -------
+    random_forest_features : function
+        Extracts features using a custom Random Forest.
+    bagging_features : function
+        Extracts features using a Bagging ensemble.
+    boosting_features : function
+        Extracts features using a Boosting ensemble.
+    stacking_features : function
+        Extracts features using a Stacking ensemble.
     """
-
     def __init__(self, n_estimators=100, max_depth=None, min_samples_split=2):
         """
         Initialize the EnsembleBasedFeatureExtraction class.
 
-        Parameters:
-        n_estimators (int): The number of estimators in the ensemble.
-        max_depth (int or None): The maximum depth of the trees.
-        min_samples_split (int): The minimum number of samples required to split an internal node.
+        Parameters
+        ----------
+        n_estimators : int
+            The number of estimators in the ensemble.
+        max_depth : int or None
+            The maximum depth of the trees. If None, the trees will expand until all leaves are pure.
+        min_samples_split : int
+            The minimum number of samples required to split an internal node.
         """
         self.n_estimators = n_estimators
         self.max_depth = max_depth
@@ -30,12 +38,25 @@ class EnsembleBasedFeatureExtraction:
         """
         Extract features using a custom Random Forest.
 
-        Parameters:
-        X (numpy.ndarray): The input features.
-        y (numpy.ndarray): The target labels.
+        Parameters
+        ----------
+        X : numpy.ndarray
+            The input features with shape (n_samples, n_features).
+        y : numpy.ndarray
+            The target labels with shape (n_samples,).
 
-        Returns:
-        numpy.ndarray: The extracted features from the Random Forest.
+        Returns
+        -------
+        features : numpy.ndarray
+            The extracted features from the Random Forest, with shape (n_samples, n_estimators).
+
+        Examples
+        --------
+        >>> X = np.array([[1, 2], [3, 4], [5, 6]])
+        >>> y = np.array([0, 1, 0])
+        >>> extractor = EnsembleBasedFeatureExtraction()
+        >>> features = extractor.random_forest_features(X, y)
+        >>> print(features)
         """
         forest = [self._build_tree(X, y) for _ in range(self.n_estimators)]
         features = np.array([self._predict_tree(tree, X) for tree in forest]).T
@@ -45,12 +66,25 @@ class EnsembleBasedFeatureExtraction:
         """
         Extract features using a Bagging ensemble.
 
-        Parameters:
-        X (numpy.ndarray): The input features.
-        y (numpy.ndarray): The target labels.
+        Parameters
+        ----------
+        X : numpy.ndarray
+            The input features with shape (n_samples, n_features).
+        y : numpy.ndarray
+            The target labels with shape (n_samples,).
 
-        Returns:
-        numpy.ndarray: The extracted features from the Bagging ensemble.
+        Returns
+        -------
+        aggregated_predictions : numpy.ndarray
+            The aggregated predictions from the Bagging ensemble, with shape (n_samples,).
+
+        Examples
+        --------
+        >>> X = np.array([[1, 2], [3, 4], [5, 6]])
+        >>> y = np.array([0, 1, 0])
+        >>> extractor = EnsembleBasedFeatureExtraction()
+        >>> features = extractor.bagging_features(X, y)
+        >>> print(features)
         """
         bagged_models = [
             self._build_tree(X[np.random.choice(len(X), len(X), replace=True)], y)
@@ -66,13 +100,27 @@ class EnsembleBasedFeatureExtraction:
         """
         Extract features using a Boosting ensemble.
 
-        Parameters:
-        X (numpy.ndarray): The input features.
-        y (numpy.ndarray): The target labels.
-        learning_rate (float): The learning rate for the boosting.
+        Parameters
+        ----------
+        X : numpy.ndarray
+            The input features with shape (n_samples, n_features).
+        y : numpy.ndarray
+            The target labels with shape (n_samples,).
+        learning_rate : float, optional
+            The learning rate for the boosting. Default is 0.1.
 
-        Returns:
-        numpy.ndarray: The extracted features from the Boosting ensemble.
+        Returns
+        -------
+        predictions : numpy.ndarray
+            The extracted features from the Boosting ensemble, with shape (n_samples,).
+
+        Examples
+        --------
+        >>> X = np.array([[1, 2], [3, 4], [5, 6]])
+        >>> y = np.array([0, 1, 0])
+        >>> extractor = EnsembleBasedFeatureExtraction()
+        >>> features = extractor.boosting_features(X, y, learning_rate=0.1)
+        >>> print(features)
         """
         predictions = np.zeros(X.shape[0])
         for _ in range(self.n_estimators):
@@ -86,13 +134,27 @@ class EnsembleBasedFeatureExtraction:
         """
         Extract features using a Stacking ensemble.
 
-        Parameters:
-        X (numpy.ndarray): The input features.
-        y (numpy.ndarray): The target labels.
-        meta_model (function or None): The meta-model used to aggregate the base models' predictions.
+        Parameters
+        ----------
+        X : numpy.ndarray
+            The input features with shape (n_samples, n_features).
+        y : numpy.ndarray
+            The target labels with shape (n_samples,).
+        meta_model : function or None, optional
+            The meta-model used to aggregate the base models' predictions. Default is None.
 
-        Returns:
-        numpy.ndarray: The extracted features from the Stacking ensemble.
+        Returns
+        -------
+        stacked_features : numpy.ndarray
+            The extracted features from the Stacking ensemble, with shape (n_samples,).
+
+        Examples
+        --------
+        >>> X = np.array([[1, 2], [3, 4], [5, 6]])
+        >>> y = np.array([0, 1, 0])
+        >>> extractor = EnsembleBasedFeatureExtraction()
+        >>> features = extractor.stacking_features(X, y)
+        >>> print(features)
         """
         base_models = [self._build_tree(X, y) for _ in range(self.n_estimators)]
         base_predictions = np.array(

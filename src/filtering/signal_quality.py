@@ -1,23 +1,31 @@
 import numpy as np
 
-
 class SignalQuality:
     """
     A class to assess the quality of signals using various metrics.
 
-    Methods:
-    - snr: Computes the Signal-to-Noise Ratio.
-    - psnr: Computes the Peak Signal-to-Noise Ratio.
-    - mse: Computes the Mean Square Error between the original and processed signals.
+    Methods
+    -------
+    snr : function
+        Computes the Signal-to-Noise Ratio.
+    psnr : function
+        Computes the Peak Signal-to-Noise Ratio.
+    mse : function
+        Computes the Mean Square Error between the original and processed signals.
+    snr_of_noise : function
+        Computes the Signal-to-Noise Ratio given a noise signal.
     """
 
     def __init__(self, original_signal, processed_signal=None):
         """
         Initialize the SignalQuality class with the original and processed signals.
 
-        Parameters:
-        original_signal (numpy.ndarray): The original signal.
-        processed_signal (numpy.ndarray, optional): The processed or noisy signal for comparison.
+        Parameters
+        ----------
+        original_signal : numpy.ndarray
+            The original signal.
+        processed_signal : numpy.ndarray, optional
+            The processed or noisy signal for comparison.
         """
         if not isinstance(original_signal, np.ndarray):
             original_signal = np.array(original_signal)
@@ -34,17 +42,22 @@ class SignalQuality:
         """
         Compute the Signal-to-Noise Ratio (SNR) of the signal.
 
-        SNR is a measure of signal quality comparing the level of the signal to the level of noise.
+        SNR is a measure of signal quality that compares the level of the signal to the level of noise.
+        A higher SNR indicates a cleaner signal with less noise.
 
-        Returns:
-        float: The SNR value in decibels (dB).
+        Returns
+        -------
+        snr_value : float
+            The SNR value in decibels (dB).
 
-        Example:
+        Examples
+        --------
         >>> signal = np.array([1, 2, 3, 4, 5])
         >>> noise = np.array([0.1, 0.1, 0.1, 0.1, 0.1])
         >>> noisy_signal = signal + noise
         >>> sq = SignalQuality(signal, noisy_signal)
         >>> print(sq.snr())
+        14.154543666201898
         """
         if self.processed_signal is None:
             raise ValueError("Processed signal is required to compute SNR.")
@@ -58,17 +71,22 @@ class SignalQuality:
         """
         Compute the Peak Signal-to-Noise Ratio (PSNR) of the signal.
 
-        PSNR compares the maximum possible signal power to the noise power, which can be useful in image and signal processing.
+        PSNR compares the maximum possible signal power to the noise power.
+        It is widely used in image and signal processing to assess the quality of reconstruction.
 
-        Returns:
-        float: The PSNR value in decibels (dB).
+        Returns
+        -------
+        psnr_value : float
+            The PSNR value in decibels (dB).
 
-        Example:
+        Examples
+        --------
         >>> signal = np.array([1, 2, 3, 4, 5])
         >>> noise = np.array([0.1, 0.1, 0.1, 0.1, 0.1])
         >>> noisy_signal = signal + noise
         >>> sq = SignalQuality(signal, noisy_signal)
         >>> print(sq.psnr())
+        26.020599913279625
         """
         if self.processed_signal is None:
             raise ValueError("Processed signal is required to compute PSNR.")
@@ -83,16 +101,21 @@ class SignalQuality:
         Compute the Mean Square Error (MSE) between the original and processed signals.
 
         MSE measures the average squared difference between the original and processed signals.
+        It is often used to quantify the error introduced by noise or signal processing.
 
-        Returns:
-        float: The MSE value.
+        Returns
+        -------
+        mse_value : float
+            The MSE value.
 
-        Example:
+        Examples
+        --------
         >>> signal = np.array([1, 2, 3, 4, 5])
         >>> noise = np.array([0.1, 0.1, 0.1, 0.1, 0.1])
         >>> noisy_signal = signal + noise
         >>> sq = SignalQuality(signal, noisy_signal)
         >>> print(sq.mse())
+        0.010000000000000002
         """
         if self.processed_signal is None:
             raise ValueError("Processed signal is required to compute MSE.")
@@ -104,17 +127,26 @@ class SignalQuality:
         """
         Compute the Signal-to-Noise Ratio (SNR) given a noise signal.
 
-        Parameters:
-        noise_signal (numpy.ndarray): The noise signal.
+        This method calculates the SNR by comparing the power of the original signal
+        to the power of the provided noise signal.
 
-        Returns:
-        float: The SNR value in decibels (dB).
+        Parameters
+        ----------
+        noise_signal : numpy.ndarray
+            The noise signal.
 
-        Example:
+        Returns
+        -------
+        snr_value : float
+            The SNR value in decibels (dB).
+
+        Examples
+        --------
         >>> signal = np.array([1, 2, 3, 4, 5])
         >>> noise = np.array([0.1, 0.1, 0.1, 0.1, 0.1])
         >>> sq = SignalQuality(signal)
         >>> print(sq.snr_of_noise(noise))
+        20.0
         """
         if not isinstance(noise_signal, np.ndarray):
             noise_signal = np.array(noise_signal)

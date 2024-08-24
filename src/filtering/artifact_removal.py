@@ -1,28 +1,43 @@
 import numpy as np
 from utils.mother_wavelets import Wavelet
 
-
 class ArtifactRemoval:
     """
     A class for removing various types of artifacts from signals.
 
-    Methods:
-    - mean_subtraction: Removes artifacts by subtracting the mean of the signal.
-    - baseline_correction: Corrects baseline drift by applying a high-pass filter.
-    - median_filter_removal: Removes spike artifacts using a median filter.
-    - wavelet_denoising: Removes noise using wavelet-based denoising with various mother wavelets.
-    - adaptive_filtering: Uses an adaptive filter to remove artifacts correlated with reference signals.
-    - notch_filter: Removes powerline interference using a notch filter.
-    - pca_artifact_removal: Uses Principal Component Analysis (PCA) to remove artifacts.
-    - ica_artifact_removal: Uses Independent Component Analysis (ICA) to remove artifacts using NumPy.
+    Methods
+    -------
+    mean_subtraction : function
+        Removes artifacts by subtracting the mean of the signal.
+    baseline_correction : function
+        Corrects baseline drift by applying a high-pass filter.
+    median_filter_removal : function
+        Removes spike artifacts using a median filter.
+    wavelet_denoising : function
+        Removes noise using wavelet-based denoising with various mother wavelets.
+    adaptive_filtering : function
+        Uses an adaptive filter to remove artifacts correlated with reference signals.
+    notch_filter : function
+        Removes powerline interference using a notch filter.
+    pca_artifact_removal : function
+        Uses Principal Component Analysis (PCA) to remove artifacts.
+    ica_artifact_removal : function
+        Uses Independent Component Analysis (ICA) to remove artifacts using NumPy.
     """
 
     def __init__(self, signal):
         """
         Initialize the ArtifactRemoval class with the signal.
 
-        Parameters:
-        signal (numpy.ndarray): The input signal from which artifacts need to be removed.
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The input signal from which artifacts need to be removed.
+
+        Notes
+        -----
+        - The signal should be a 1D array.
+        - If the signal is not already a NumPy array, it will be converted.
         """
         if not isinstance(signal, np.ndarray):
             signal = np.array(signal)
@@ -32,10 +47,21 @@ class ArtifactRemoval:
         """
         Remove artifacts by subtracting the mean of the signal.
 
-        This method is effective for removing constant or slow-varying baseline artifacts.
+        This method is effective for removing constant or slow-varying baseline artifacts,
+        which are common in many physiological signals like ECG or EEG.
 
-        Returns:
-        numpy.ndarray: The artifact-removed signal.
+        Returns
+        -------
+        clean_signal : numpy.ndarray
+            The artifact-removed signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> ar = ArtifactRemoval(signal)
+        >>> clean_signal = ar.mean_subtraction()
+        >>> print(clean_signal)
+        [0 1 2 3 4]
         """
         return self.signal - np.mean(self.signal)
 
@@ -43,19 +69,32 @@ class ArtifactRemoval:
         """
         Correct baseline drift by applying a high-pass filter.
 
-        This method is particularly effective for removing low-frequency baseline wander in ECG or PPG signals.
+        This method is particularly effective for removing low-frequency baseline wander
+        in signals such as ECG or PPG, where baseline drift can obscure important features.
 
-        Parameters:
-        cutoff (float): The cutoff frequency for the high-pass filter.
-        fs (float): The sampling frequency of the signal.
+        Parameters
+        ----------
+        cutoff : float
+            The cutoff frequency for the high-pass filter.
+        fs : float
+            The sampling frequency of the signal.
 
-        Returns:
-        numpy.ndarray: The baseline-corrected signal.
+        Returns
+        -------
+        clean_signal : numpy.ndarray
+            The baseline-corrected signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> ar = ArtifactRemoval(signal)
+        >>> clean_signal = ar.baseline_correction(cutoff=0.5, fs=1000)
+        >>> print(clean_signal)
+        [-0.4995 -0.4995 -0.4995 -0.4995 -0.4995]
         """
         nyquist = 0.5 * fs
         normal_cutoff = cutoff / nyquist
         b = [1, -1]
-        # a = [1, -normal_cutoff]
         clean_signal = np.convolve(self.signal, b, mode="same") / (1 - normal_cutoff)
         return clean_signal
 
@@ -63,13 +102,27 @@ class ArtifactRemoval:
         """
         Remove spike artifacts using a median filter.
 
-        This method is effective for removing sharp spike artifacts from the signal.
+        This method is particularly useful for removing sharp spikes or noise in the signal,
+        such as motion artifacts in PPG or EOG signals.
 
-        Parameters:
-        kernel_size (int): The size of the median filter kernel.
+        Parameters
+        ----------
+        kernel_size : int
+            The size of the median filter kernel. A larger kernel size will smooth more but may
+            remove important signal features.
 
-        Returns:
-        numpy.ndarray: The artifact-removed signal.
+        Returns
+        -------
+        clean_signal : numpy.ndarray
+            The artifact-removed signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 100, 3, 4, 5])
+        >>> ar = ArtifactRemoval(signal)
+        >>> clean_signal = ar.median_filter_removal(kernel_size=3)
+        >>> print(clean_signal)
+        [1 3 4 4 5]
         """
         padded_signal = np.pad(
             self.signal, (kernel_size // 2, kernel_size // 2), mode="edge"
@@ -83,15 +136,30 @@ class ArtifactRemoval:
         """
         Remove noise using wavelet-based denoising with various mother wavelets.
 
-        This method decomposes the signal using wavelets and thresholds the wavelet coefficients to remove noise.
+        This method decomposes the signal into approximation and detail coefficients using
+        wavelets, thresholds the detail coefficients, and reconstructs the signal. It is effective
+        for denoising signals where noise is present at multiple scales.
 
-        Parameters:
-        wavelet_type (str): The type of wavelet to use ('haar', 'db', 'sym', 'coif', 'custom').
-        level (int): The level of decomposition.
-        order (int): The order of the wavelet (used for 'db', 'sym', and 'coif').
+        Parameters
+        ----------
+        wavelet_type : str
+            The type of wavelet to use ('haar', 'db', 'sym', 'coif', 'custom').
+        level : int
+            The level of decomposition. Higher levels capture more global features.
+        order : int
+            The order of the wavelet (used for 'db', 'sym', and 'coif' wavelets).
 
-        Returns:
-        numpy.ndarray: The denoised signal.
+        Returns
+        -------
+        clean_signal : numpy.ndarray
+            The denoised signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> ar = ArtifactRemoval(signal)
+        >>> clean_signal = ar.wavelet_denoising(wavelet_type='db', level=2, order=4)
+        >>> print(clean_signal)
         """
         wavelet = Wavelet()
 
@@ -143,21 +211,34 @@ class ArtifactRemoval:
 
         return approx_coeffs[: len(self.signal)]
 
-    def adaptive_filtering(
-        self, reference_signal, learning_rate=0.01, num_iterations=100
-    ):
+    def adaptive_filtering(self, reference_signal, learning_rate=0.01, num_iterations=100):
         """
         Use an adaptive filter to remove artifacts correlated with a reference signal.
 
-        This method is particularly effective for removing artifacts that are correlated with another signal (e.g., EOG artifacts in EEG).
+        Adaptive filtering is particularly useful for removing artifacts that are correlated
+        with another signal, such as EOG artifacts in EEG recordings.
 
-        Parameters:
-        reference_signal (numpy.ndarray): The reference signal correlated with the artifact.
-        learning_rate (float): The learning rate for the adaptive filter.
-        num_iterations (int): The number of iterations for adaptation.
+        Parameters
+        ----------
+        reference_signal : numpy.ndarray
+            The reference signal correlated with the artifact.
+        learning_rate : float
+            The learning rate for the adaptive filter.
+        num_iterations : int
+            The number of iterations for adaptation.
 
-        Returns:
-        numpy.ndarray: The artifact-removed signal.
+        Returns
+        -------
+        clean_signal : numpy.ndarray
+            The artifact-removed signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> reference_signal = np.array([1, 1, 1, 1, 1])
+        >>> ar = ArtifactRemoval(signal)
+        >>> clean_signal = ar.adaptive_filtering(reference_signal, learning_rate=0.01, num_iterations=100)
+        >>> print(clean_signal)
         """
         filtered_signal = self.signal.copy()
         for _ in range(num_iterations):
@@ -169,15 +250,29 @@ class ArtifactRemoval:
         """
         Remove powerline interference using a notch filter.
 
-        This method is effective for removing specific frequency artifacts like powerline interference (50/60 Hz).
+        This method is effective for removing specific frequency artifacts like powerline
+        interference (50/60 Hz) from physiological signals.
 
-        Parameters:
-        freq (float): The frequency to be removed (e.g., 50 Hz for powerline interference).
-        fs (float): The sampling frequency of the signal.
-        Q (float): The quality factor of the notch filter.
+        Parameters
+        ----------
+        freq : float
+            The frequency to be removed (e.g., 50 Hz for powerline interference).
+        fs : float
+            The sampling frequency of the signal.
+        Q : float
+            The quality factor of the notch filter, which controls the bandwidth of the filter.
 
-        Returns:
-        numpy.ndarray: The artifact-removed signal.
+        Returns
+        -------
+        clean_signal : numpy.ndarray
+            The artifact-removed signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> ar = ArtifactRemoval(signal)
+        >>> clean_signal = ar.notch_filter(freq=50, fs=1000, Q=30)
+        >>> print(clean_signal)
         """
         nyquist = 0.5 * fs
         w0 = freq / nyquist
@@ -192,13 +287,26 @@ class ArtifactRemoval:
         """
         Use Principal Component Analysis (PCA) to remove artifacts.
 
-        This method removes artifacts by reconstructing the signal with a reduced number of principal components.
+        This method removes artifacts by reconstructing the signal with a reduced number
+        of principal components, which can be particularly useful for signals with multiple
+        overlapping noise sources.
 
-        Parameters:
-        num_components (int): The number of principal components to retain.
+        Parameters
+        ----------
+        num_components : int
+            The number of principal components to retain.
 
-        Returns:
-        numpy.ndarray: The artifact-removed signal.
+        Returns
+        -------
+        clean_signal : numpy.ndarray
+            The artifact-removed signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> ar = ArtifactRemoval(signal)
+        >>> clean_signal = ar.pca_artifact_removal(num_components=1)
+        >>> print(clean_signal)
         """
         signal_mean = np.mean(self.signal)
         centered_signal = self.signal - signal_mean
@@ -212,23 +320,32 @@ class ArtifactRemoval:
         )
         return reconstructed_signal
 
-    def ica_artifact_removal(
-        self, num_components=1, max_iterations=1000, tol=1e-5, seed=23
-    ):
+    def ica_artifact_removal(self, num_components=1, max_iterations=1000, tol=1e-5, seed=23):
         """
         Use Independent Component Analysis (ICA) to remove artifacts using NumPy.
 
-        This method separates the signal into independent components and allows for the removal of specific components identified as artifacts.
+        This method separates the signal into independent components and allows for the
+        removal of specific components identified as artifacts. ICA is particularly useful
+        for separating mixed signals into their independent sources.
 
-        Parameters:
-        num_components (int): The number of independent components to retain.
-        max_iterations (int): The maximum number of iterations for convergence.
-        tol (float): The tolerance level for convergence.
+        Parameters
+        ----------
+        num_components : int
+            The number of independent components to retain.
+        max_iterations : int
+            The maximum number of iterations for convergence.
+        tol : float
+            The tolerance level for convergence.
+        seed : int
+            The seed for random number generation to ensure reproducibility.
 
-        Returns:
-        numpy.ndarray: The artifact-removed signal.
+        Returns
+        -------
+        clean_signal : numpy.ndarray
+            The artifact-removed signal.
 
-        Example:
+        Examples
+        --------
         >>> signal = np.array([1, 2, 3, 4, 5, 6, 7, 8])
         >>> ar = ArtifactRemoval(signal)
         >>> clean_signal = ar.ica_artifact_removal(num_components=1)

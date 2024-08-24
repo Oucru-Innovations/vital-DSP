@@ -3,35 +3,51 @@ TEST_DIR=tests
 COV_DIR=cov_html
 DOCS_DIR=docs
 SRC_DIR=src
+SPHINXBUILD = sphinx-build
+SOURCEDIR = source
+BUILDDIR = docs/_build/
+# PANDOC_FILE=$(DOCS_DIR)/Documentation.md
+# PANDOC_OUTPUT=$(DOCS_DIR)/Documentation.pdf
+
+# Default target: Run all tests
+all: test coverage lint pandoc
+
 PANDOC_FILE=$(DOCS_DIR)/Documentation.md
 PANDOC_OUTPUT=$(DOCS_DIR)/Documentation.pdf
 
 # Default target: Run all tests
 all: test coverage lint pandoc
 
-# Run tests with pytest
-test:
-	PYTHONPATH=$(SRC_DIR) pytest $(TEST_DIR) -v
+# Use conditional syntax to handle different OS
+ifeq ($(OS),Windows_NT)
+    PYTHONPATH_SET = set PYTHONPATH=$(SRC_DIR) && 
+else
+    PYTHONPATH_SET = PYTHONPATH=$(SRC_DIR)
+endif
 
-# Generate code coverage report
+test:
+	$(PYTHONPATH_SET) pytest tests -v
+
+# Run tests with coverage
 coverage:
-	PYTHONPATH=$(SRC_DIR) pytest --cov=$(SRC_DIR) --cov-report=html:$(COV_DIR)
+	$(PYTHONPATH_SET) pytest --cov=$(SRC_DIR) --cov-report=html:$(COV_DIR)
 
 # Lint the code using flake8 with custom config
 lint:
 	flake8 --config=.flake8 $(SRC_DIR)
 
+# Build HTML documentation
+html:
+	$(SPHINXBUILD) -b html $(SOURCEDIR) $(BUILDDIR)/html
+
 # Generate documentation using pandoc
 pandoc:
-	if [ -s $(PANDOC_FILE) ]; then \
-		pandoc $(PANDOC_FILE) -o $(PANDOC_OUTPUT); \
-	else \
-		echo "Documentation.md is empty. Skipping PDF generation."; \
-	fi
+	pandoc $(PANDOC_FILE) -o $(PANDOC_OUTPUT)
 
 # Clean up the generated files
 clean:
 	rm -rf $(COV_DIR) $(PANDOC_OUTPUT)
+	rm -rf $(BUILDDIR)
 
 # Phony targets
 .PHONY: all test coverage lint pandoc clean

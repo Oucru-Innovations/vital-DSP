@@ -5,24 +5,35 @@ class SignalQualityIndex:
     """
     A class to compute various Signal Quality Index (SQI) metrics for assessing the quality of vital signals.
 
-    Methods:
-    - amplitude_variability_sqi: Evaluates the variability in signal amplitude.
-    - baseline_wander_sqi: Measures baseline wander in ECG/PPG signals.
-    - zero_crossing_sqi: Assesses the number of zero crossings for signal stability.
-    - waveform_similarity_sqi: Compares the similarity between consecutive waveforms.
-    - signal_entropy_sqi: Computes the entropy of the signal, indicating complexity.
-    - heart_rate_variability_sqi: Assesses heart rate variability in ECG.
-    - ppg_signal_quality_sqi: Evaluates the overall quality of PPG signals.
-    - eeg_band_power_sqi: Measures the band power consistency in EEG signals.
-    - respiratory_signal_quality_sqi: Evaluates the quality of respiratory signals.
+    Methods
+    -------
+    amplitude_variability_sqi : function
+        Evaluates the variability in signal amplitude.
+    baseline_wander_sqi : function
+        Measures baseline wander in ECG/PPG signals.
+    zero_crossing_sqi : function
+        Assesses the number of zero crossings for signal stability.
+    waveform_similarity_sqi : function
+        Compares the similarity between consecutive waveforms.
+    signal_entropy_sqi : function
+        Computes the entropy of the signal, indicating complexity.
+    heart_rate_variability_sqi : function
+        Assesses heart rate variability in ECG.
+    ppg_signal_quality_sqi : function
+        Evaluates the overall quality of PPG signals.
+    eeg_band_power_sqi : function
+        Measures the band power consistency in EEG signals.
+    respiratory_signal_quality_sqi : function
+        Evaluates the quality of respiratory signals.
     """
-
     def __init__(self, signal):
         """
         Initialize the SignalQualityIndex class with the signal.
 
-        Parameters:
-        signal (numpy.ndarray): The input signal to assess.
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The input signal to assess.
         """
         if not isinstance(signal, np.ndarray):
             signal = np.array(signal)
@@ -34,13 +45,17 @@ class SignalQualityIndex:
 
         This metric assesses the variability in the amplitude of the signal, which should be minimal for high-quality signals.
 
-        Returns:
-        float: Amplitude variability SQI, typically ranging from 0 (poor) to 1 (excellent).
+        Returns
+        -------
+        sqi_value : float
+            Amplitude variability SQI, typically ranging from 0 (poor) to 1 (excellent).
 
-        Example:
+        Examples
+        --------
         >>> signal = np.array([1, 1.1, 0.9, 1, 1.2, 0.8, 1])
         >>> sqi = SignalQualityIndex(signal)
         >>> print(sqi.amplitude_variability_sqi())
+        0.9  # Example output
         """
         variability = np.var(self.signal)
         max_signal = np.max(self.signal)
@@ -54,16 +69,22 @@ class SignalQualityIndex:
 
         This metric evaluates the amount of baseline wander in the signal, which is unwanted low-frequency noise.
 
-        Parameters:
-        window_size (int): Size of the window for calculating moving average.
+        Parameters
+        ----------
+        window_size : int
+            Size of the window for calculating moving average.
 
-        Returns:
-        float: Baseline wander SQI, typically ranging from 0 (poor) to 1 (excellent).
+        Returns
+        -------
+        sqi_value : float
+            Baseline wander SQI, typically ranging from 0 (poor) to 1 (excellent).
 
-        Example:
+        Examples
+        --------
         >>> signal = np.array([1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6])
         >>> sqi = SignalQualityIndex(signal)
         >>> print(sqi.baseline_wander_sqi())
+        0.85  # Example output
         """
         moving_average = np.convolve(
             self.signal, np.ones(window_size) / window_size, mode="valid"
@@ -79,13 +100,17 @@ class SignalQualityIndex:
 
         This metric assesses the number of zero crossings in the signal, which should be consistent in high-quality signals.
 
-        Returns:
-        float: Zero-crossing SQI, typically ranging from 0 (poor) to 1 (excellent).
+        Returns
+        -------
+        sqi_value : float
+            Zero-crossing SQI, typically ranging from 0 (poor) to 1 (excellent).
 
-        Example:
+        Examples
+        --------
         >>> signal = np.array([-1, 1, -1, 1, -1, 1])
         >>> sqi = SignalQualityIndex(signal)
         >>> print(sqi.zero_crossing_sqi())
+        1.0  # Example output
         """
         zero_crossings = np.sum(np.diff(np.sign(self.signal)) != 0)
         expected_crossings = len(self.signal) / 2
@@ -98,17 +123,23 @@ class SignalQualityIndex:
 
         This metric compares the similarity between consecutive waveforms in the signal.
 
-        Parameters:
-        reference_waveform (numpy.ndarray): A reference waveform to compare against.
+        Parameters
+        ----------
+        reference_waveform : numpy.ndarray
+            A reference waveform to compare against.
 
-        Returns:
-        float: Waveform similarity SQI, typically ranging from 0 (poor) to 1 (excellent).
+        Returns
+        -------
+        sqi_value : float
+            Waveform similarity SQI, typically ranging from 0 (poor) to 1 (excellent).
 
-        Example:
+        Examples
+        --------
         >>> signal = np.array([1, 2, 3, 2, 1])
         >>> reference = np.array([1, 2, 3, 2, 1])
         >>> sqi = SignalQualityIndex(signal)
         >>> print(sqi.waveform_similarity_sqi(reference))
+        1.0  # Example output
         """
         correlation = np.corrcoef(self.signal, reference_waveform)[0, 1]
         return max(0, min(1, correlation))
@@ -119,13 +150,17 @@ class SignalQualityIndex:
 
         This metric measures the entropy of the signal, which indicates the complexity or predictability of the signal.
 
-        Returns:
-        float: Signal entropy SQI, typically ranging from 0 (poor) to 1 (excellent).
+        Returns
+        -------
+        sqi_value : float
+            Signal entropy SQI, typically ranging from 0 (poor) to 1 (excellent).
 
-        Example:
+        Examples
+        --------
         >>> signal = np.array([1, 1, 1, 1, 1, 1])
         >>> sqi = SignalQualityIndex(signal)
         >>> print(sqi.signal_entropy_sqi())
+        0.0  # Example output
         """
         probability_distribution = np.histogram(self.signal, bins=10, density=True)[0]
         entropy = -np.sum(
@@ -140,16 +175,22 @@ class SignalQualityIndex:
 
         This metric assesses the variability in RR intervals of ECG, which should be within a certain range for a healthy signal.
 
-        Parameters:
-        rr_intervals (numpy.ndarray): Array of RR intervals.
+        Parameters
+        ----------
+        rr_intervals : numpy.ndarray
+            Array of RR intervals.
 
-        Returns:
-        float: HRV SQI, typically ranging from 0 (poor) to 1 (excellent).
+        Returns
+        -------
+        sqi_value : float
+            HRV SQI, typically ranging from 0 (poor) to 1 (excellent).
 
-        Example:
+        Examples
+        --------
         >>> rr_intervals = np.array([0.8, 0.9, 1.0, 0.9, 0.8])
         >>> sqi = SignalQualityIndex(rr_intervals)
         >>> print(sqi.heart_rate_variability_sqi(rr_intervals))
+        0.9  # Example output
         """
         rmssd = np.sqrt(np.mean(np.diff(rr_intervals) ** 2))
         normalized_rmssd = 1 - (rmssd / np.mean(rr_intervals))
@@ -161,13 +202,17 @@ class SignalQualityIndex:
 
         This metric evaluates the overall quality of PPG signals based on amplitude variability and noise.
 
-        Returns:
-        float: PPG SQI, typically ranging from 0 (poor) to 1 (excellent).
+        Returns
+        -------
+        sqi_value : float
+            PPG SQI, typically ranging from 0 (poor) to 1 (excellent).
 
-        Example:
+        Examples
+        --------
         >>> signal = np.array([1, 1.1, 0.9, 1, 1.2, 0.8, 1])
         >>> sqi = SignalQualityIndex(signal)
         >>> print(sqi.ppg_signal_quality_sqi())
+        0.85  # Example output
         """
         amplitude_variability = self.amplitude_variability_sqi()
         baseline_wander = self.baseline_wander_sqi()
@@ -179,16 +224,22 @@ class SignalQualityIndex:
 
         This metric assesses the consistency of EEG band power, which is important for ensuring signal quality.
 
-        Parameters:
-        band_power (numpy.ndarray): Array of band power values for EEG.
+        Parameters
+        ----------
+        band_power : numpy.ndarray
+            Array of band power values for EEG.
 
-        Returns:
-        float: EEG band power SQI, typically ranging from 0 (poor) to 1 (excellent).
+        Returns
+        -------
+        sqi_value : float
+            EEG band power SQI, typically ranging from 0 (poor) to 1 (excellent).
 
-        Example:
+        Examples
+        --------
         >>> band_power = np.array([10, 12, 11, 13, 12])
         >>> sqi = SignalQualityIndex(band_power)
         >>> print(sqi.eeg_band_power_sqi(band_power))
+        0.9  # Example output
         """
         power_variability = np.var(band_power)
         sqi_value = 1 - (power_variability / np.mean(band_power))
@@ -200,13 +251,17 @@ class SignalQualityIndex:
 
         This metric evaluates the quality of respiratory signals, considering factors like consistency in breathing cycles.
 
-        Returns:
-        float: Respiratory SQI, typically ranging from 0 (poor) to 1 (excellent).
+        Returns
+        -------
+        sqi_value : float
+            Respiratory SQI, typically ranging from 0 (poor) to 1 (excellent).
 
-        Example:
+        Examples
+        --------
         >>> resp_signal = np.array([1, 1.1, 1.0, 1.1, 1.0])
         >>> sqi = SignalQualityIndex(resp_signal)
         >>> print(sqi.respiratory_signal_quality_sqi())
+        0.8  # Example output
         """
         amplitude_variability = self.amplitude_variability_sqi()
         zero_crossing_consistency = self.zero_crossing_sqi()

@@ -1,26 +1,36 @@
 import numpy as np
-
+import pywt
 
 class EnvelopeDetection:
     """
     A comprehensive class for detecting the envelope of physiological signals.
 
-    Methods:
-    - hilbert_envelope: Computes the envelope using the Hilbert transform.
-    - moving_average_envelope: Computes the envelope using a moving average filter.
-    - absolute_value_envelope: Computes the envelope by taking the absolute value and smoothing.
-    - peak_envelope: Computes the envelope by connecting peaks.
-    - wavelet_envelope: Computes the envelope using wavelet transform.
-    - adaptive_filter_envelope: Computes the envelope using adaptive filtering.
-    - ml_based_envelope: Computes the envelope using a machine learning-inspired method.
+    Methods
+    -------
+    hilbert_envelope : function
+        Computes the envelope using the Hilbert transform.
+    moving_average_envelope : function
+        Computes the envelope using a moving average filter.
+    absolute_value_envelope : function
+        Computes the envelope by taking the absolute value and smoothing.
+    peak_envelope : function
+        Computes the envelope by connecting peaks.
+    wavelet_envelope : function
+        Computes the envelope using wavelet transform.
+    adaptive_filter_envelope : function
+        Computes the envelope using adaptive filtering.
+    ml_based_envelope : function
+        Computes the envelope using a machine learning-inspired method.
     """
 
     def __init__(self, signal):
         """
         Initialize the EnvelopeDetection class with the signal.
 
-        Parameters:
-        signal (numpy.ndarray): The input physiological signal.
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The input physiological signal.
         """
         self.signal = signal
 
@@ -28,8 +38,17 @@ class EnvelopeDetection:
         """
         Compute the envelope using the Hilbert transform.
 
-        Returns:
-        numpy.ndarray: The envelope of the signal.
+        Returns
+        -------
+        envelope : numpy.ndarray
+            The envelope of the signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> ed = EnvelopeDetection(signal)
+        >>> envelope = ed.hilbert_envelope()
+        >>> print(envelope)
         """
         analytic_signal = self.signal + 1j * np.imag(
             np.fft.ifft(np.fft.fft(self.signal) * 2)
@@ -41,11 +60,22 @@ class EnvelopeDetection:
         """
         Compute the envelope using a moving average filter.
 
-        Parameters:
-        window_size (int): The size of the moving average window.
+        Parameters
+        ----------
+        window_size : int
+            The size of the moving average window.
 
-        Returns:
-        numpy.ndarray: The envelope of the signal.
+        Returns
+        -------
+        envelope : numpy.ndarray
+            The envelope of the signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> ed = EnvelopeDetection(signal)
+        >>> envelope = ed.moving_average_envelope(3)
+        >>> print(envelope)
         """
         cumsum = np.cumsum(np.insert(np.abs(self.signal), 0, 0))
         moving_avg = (cumsum[window_size:] - cumsum[:-window_size]) / float(window_size)
@@ -55,11 +85,22 @@ class EnvelopeDetection:
         """
         Compute the envelope by taking the absolute value and smoothing.
 
-        Parameters:
-        smoothing_factor (float): The smoothing factor for exponential smoothing.
+        Parameters
+        ----------
+        smoothing_factor : float
+            The smoothing factor for exponential smoothing.
 
-        Returns:
-        numpy.ndarray: The envelope of the signal.
+        Returns
+        -------
+        envelope : numpy.ndarray
+            The envelope of the signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> ed = EnvelopeDetection(signal)
+        >>> envelope = ed.absolute_value_envelope(0.1)
+        >>> print(envelope)
         """
         absolute_signal = np.abs(self.signal)
         smoothed_signal = np.zeros_like(absolute_signal)
@@ -74,11 +115,22 @@ class EnvelopeDetection:
         """
         Compute the envelope by connecting peaks in the signal.
 
-        Parameters:
-        interpolation_method (str): Method to use for interpolation ('linear', 'quadratic', 'cubic').
+        Parameters
+        ----------
+        interpolation_method : str
+            Method to use for interpolation ('linear', 'quadratic', 'cubic').
 
-        Returns:
-        numpy.ndarray: The envelope of the signal.
+        Returns
+        -------
+        envelope : numpy.ndarray
+            The envelope of the signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> ed = EnvelopeDetection(signal)
+        >>> envelope = ed.peak_envelope('linear')
+        >>> print(envelope)
         """
         peaks = (
             np.where(
@@ -100,15 +152,25 @@ class EnvelopeDetection:
         """
         Compute the envelope using wavelet transform.
 
-        Parameters:
-        wavelet (str): The wavelet type to use (e.g., 'db4', 'haar').
-        level (int): The level of decomposition.
+        Parameters
+        ----------
+        wavelet : str
+            The wavelet type to use (e.g., 'db4', 'haar').
+        level : int
+            The level of decomposition.
 
-        Returns:
-        numpy.ndarray: The envelope of the signal.
+        Returns
+        -------
+        envelope : numpy.ndarray
+            The envelope of the signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> ed = EnvelopeDetection(signal)
+        >>> envelope = ed.wavelet_envelope('db4', 1)
+        >>> print(envelope)
         """
-        import pywt
-
         coeffs = pywt.wavedec(self.signal, wavelet, level=level)
         envelope = np.abs(coeffs[0])
         return np.repeat(envelope, len(self.signal) // len(envelope))
@@ -117,12 +179,24 @@ class EnvelopeDetection:
         """
         Compute the envelope using adaptive filtering.
 
-        Parameters:
-        step_size (float): Step size for the adaptive filter.
-        filter_order (int): Order of the adaptive filter.
+        Parameters
+        ----------
+        step_size : float
+            Step size for the adaptive filter.
+        filter_order : int
+            Order of the adaptive filter.
 
-        Returns:
-        numpy.ndarray: The envelope of the signal.
+        Returns
+        -------
+        envelope : numpy.ndarray
+            The envelope of the signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> ed = EnvelopeDetection(signal)
+        >>> envelope = ed.adaptive_filter_envelope(0.01, 10)
+        >>> print(envelope)
         """
         y = np.zeros_like(self.signal)
         w = np.zeros(filter_order)
@@ -137,11 +211,22 @@ class EnvelopeDetection:
         """
         Compute the envelope using a machine learning-inspired method.
 
-        Parameters:
-        model (callable or None): A custom model or function for predicting the envelope.
+        Parameters
+        ----------
+        model : callable or None
+            A custom model or function for predicting the envelope.
 
-        Returns:
-        numpy.ndarray: The envelope of the signal.
+        Returns
+        -------
+        envelope : numpy.ndarray
+            The envelope of the signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> ed = EnvelopeDetection(signal)
+        >>> envelope = ed.ml_based_envelope()
+        >>> print(envelope)
         """
         if model is None:
             # Example simple model: predict next value as a weighted sum of previous values
