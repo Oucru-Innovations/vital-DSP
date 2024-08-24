@@ -35,8 +35,8 @@ html:
 	$(SPHINXBUILD) -b html $(SOURCEDIR) $(BUILDDIR)/html
 
 # Generate documentation using pandoc
-# pandoc:
-# 	pandoc $(PANDOC_FILE) -o $(PANDOC_OUTPUT)
+pandoc:
+	pandoc $(PANDOC_FILE) -o $(PANDOC_OUTPUT)
 
 # Clean up the generated files
 clean:
