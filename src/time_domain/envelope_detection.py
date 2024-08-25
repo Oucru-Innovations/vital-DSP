@@ -1,6 +1,5 @@
 import numpy as np
 from transforms.wavelet_transform import WaveletTransform
-from utils.mother_wavelets import Wavelet
 
 class EnvelopeDetection:
     """
@@ -193,7 +192,6 @@ class EnvelopeDetection:
             right=self.signal[-1],
         )
         return envelope
-
 
     def adaptive_filter_envelope(self, step_size=0.01, filter_order=10):
         """
