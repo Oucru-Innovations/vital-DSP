@@ -32,7 +32,7 @@ lint:
 
 # Build HTML documentation
 html:
-	$(SPHINXBUILD) -b html $(SOURCEDIR) $(BUILDDIR)/html
+	$(SPHINXBUILD) -b html $(DOCS_DIR)/$(SOURCEDIR) $(BUILDDIR)/html
 
 # Generate documentation using pandoc
 pandoc:
