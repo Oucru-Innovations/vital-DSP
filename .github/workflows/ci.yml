@@ -60,9 +60,9 @@ jobs:
       - name: Build package
         run: make build
     
-      - name: Deploy to PyPI
-        if: github.ref == 'refs/heads/main'
-        run: make upload
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      # - name: Deploy to PyPI
+      #   if: github.ref == 'refs/heads/main'
+      #   run: make upload
+      #   env:
+      #     TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+      #     TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
