@@ -75,7 +75,6 @@ def plot_rr_estimations(signal, sampling_rate, preprocess=None, **preprocess_kwa
         row=3, col=1
     )
 
-
     freqs, psd = welch(signal, fs=sampling_rate)
     fig.add_trace(
         go.Scatter(x=freqs, y=psd, mode='lines', name='PSD (Welch)'),

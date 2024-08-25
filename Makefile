@@ -3,6 +3,7 @@ TEST_DIR=tests
 COV_DIR=cov_html
 DOCS_DIR=docs
 SRC_DIR=src
+DIST_DIR=dist
 BUILD_DIR=build
 SPHINXBUILD = sphinx-build
 SOURCEDIR = source
@@ -11,7 +12,7 @@ PANDOC_FILE=$(DOCS_DIR)/Documentation.md
 PANDOC_OUTPUT=$(DOCS_DIR)/Documentation.pdf
 
 # Default target: Run all tests
-all: test build upload coverage lint html
+all: test build coverage lint html
 
 # Use conditional syntax to handle different OS
 ifeq ($(OS),Windows_NT)
@@ -32,12 +33,12 @@ lint:
 	flake8 --config=.flake8 $(SRC_DIR)
 
 # Build the distribution packages
-build: clean
+build:
 	python setup.py sdist bdist_wheel
 
 # Upload the package to PyPI
-upload:
-	twine upload $(DIST_DIR)/*
+# upload:
+# 	twine upload $(DIST_DIR)/*
 
 # Build HTML documentation
 html:

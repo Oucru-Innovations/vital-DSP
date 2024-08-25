@@ -1,5 +1,5 @@
 import numpy as np
-import pywt
+from transforms.wavelet_transform import WaveletTransform
 
 class EnvelopeDetection:
     """
@@ -37,6 +37,32 @@ class EnvelopeDetection:
             The input physiological signal. This could be any time-series data such as ECG, PPG, or EEG signals.
         """
         self.signal = signal
+
+    def wavelet_envelope(self, wavelet_name="db4", level=1):
+        """
+        Compute the envelope using wavelet transform.
+
+        This method decomposes the signal using wavelet transform, typically capturing
+        the low-frequency components which represent the envelope.
+
+        Parameters
+        ----------
+        wavelet_name : str, optional (default="db4")
+            The type of wavelet to use, such as 'db4' (Daubechies), 'haar', 'sym', etc.
+        level : int, optional (default=1)
+            The level of decomposition, which determines the resolution of the envelope.
+
+        Returns
+        -------
+        envelope : numpy.ndarray
+            The computed envelope of the signal.
+        """
+        wavelet_transform = WaveletTransform(self.signal, wavelet_name=wavelet_name)
+        coeffs = wavelet_transform.perform_wavelet_transform(level=level)
+        # The envelope is typically represented by the low-frequency approximation coefficients
+        envelope = np.abs(coeffs[-1])
+        # Resample the envelope to match the original signal length if necessary
+        return np.repeat(envelope, len(self.signal) // len(envelope))
 
     def hilbert_envelope(self):
         """
@@ -166,36 +192,6 @@ class EnvelopeDetection:
             right=self.signal[-1],
         )
         return envelope
-
-    def wavelet_envelope(self, wavelet="db4", level=1):
-        """
-        Compute the envelope using wavelet transform.
-
-        This method decomposes the signal using wavelet transform, typically capturing
-        the low-frequency components which represent the envelope.
-
-        Parameters
-        ----------
-        wavelet : str, optional
-            The type of wavelet to use, such as 'db4' (Daubechies) or 'haar'.
-        level : int, optional
-            The level of decomposition, which determines the resolution of the envelope.
-
-        Returns
-        -------
-        envelope : numpy.ndarray
-            The computed envelope of the signal.
-
-        Examples
-        --------
-        >>> signal = np.array([1, 2, 3, 4, 5])
-        >>> ed = EnvelopeDetection(signal)
-        >>> envelope = ed.wavelet_envelope('db4', 1)
-        >>> print(envelope)
-        """
-        coeffs = pywt.wavedec(self.signal, wavelet, level=level)
-        envelope = np.abs(coeffs[0])
-        return np.repeat(envelope, len(self.signal) // len(envelope))
 
     def adaptive_filter_envelope(self, step_size=0.01, filter_order=10):
         """

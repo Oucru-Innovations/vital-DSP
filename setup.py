@@ -25,7 +25,6 @@ setup(
         'numpy>=1.19.2',
         'scipy>=1.5.2',
         'plotly>=4.14.3',
-        'pywt>=1.0.10',
         'scikit-learn>=0.23.2',
         # Add other dependencies here
     ],
