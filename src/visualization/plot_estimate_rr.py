@@ -3,6 +3,8 @@ from respiratory_analysis.estimate_rr import fft_based_rr, peak_detection_rr, ti
 import plotly.graph_objects as go
 from utils.common import find_peaks
 from plotly.subplots import make_subplots
+# Add Frequency-Domain RR estimation (Welch method)
+from scipy.signal import welch
 
 def plot_rr_estimations(signal, sampling_rate, preprocess=None, **preprocess_kwargs):
     """
@@ -73,8 +75,7 @@ def plot_rr_estimations(signal, sampling_rate, preprocess=None, **preprocess_kwa
         row=3, col=1
     )
 
-    # Add Frequency-Domain RR estimation (Welch method)
-    from scipy.signal import welch
+
     freqs, psd = welch(signal, fs=sampling_rate)
     fig.add_trace(
         go.Scatter(x=freqs, y=psd, mode='lines', name='PSD (Welch)'),

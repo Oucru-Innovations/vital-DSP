@@ -38,7 +38,7 @@ ignore =
     F403,
     F405
 
-# Select specific error codes (Optional, if you want to enforce certain checks only)
+# Select specific error codes (Optional, if want to enforce certain checks only)
 # select =
 #     E, W, F
 
