@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='vital-DSP', 
+    name='vitalDSP', 
     version='0.1.1rc1',  
     author='van-koha',  
     author_email='vital.data@oucru.org', 
