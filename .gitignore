@@ -61,10 +61,10 @@ coverage.xml
 .hypothesis/
 
 # Sample data
-sample_data
+sample_data/private
 
 # Notebook
-src/notebooks/
+# src/notebooks/
 
 # pytest
 .cache/

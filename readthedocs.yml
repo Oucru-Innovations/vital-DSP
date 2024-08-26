@@ -1,12 +1,32 @@
+# .readthedocs.yml
+# This file is used to configure your Read the Docs build.
+
 version: 2
 
-# Build documentation in the docs/ directory with Sphinx
-sphinx:
-  configuration: docs/source/conf.py
-
-# Optionally set the Python version and other settings
+# Define the Python version and install dependencies
 python:
+  # Match this with the 'python_requires' in setup.py
   install:
-    - requirements: docs/requirements.txt  # requirements file for docs
     - method: pip
       path: .
+    - requirements: docs/requirements.txt
+
+# Build documentation using Sphinx
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3.9"
+  jobs:
+    post_install:
+      - pip install -r docs/requirements.txt
+
+# Custom configurations for the documentation builder
+formats:
+  - pdf
+  - epub
+
+# Ensure that the correct index file is referenced
+sphinx:
+  builder: html
+  configuration: docs/source/conf.py
+  

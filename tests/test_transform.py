@@ -1,17 +1,17 @@
 import numpy as np
 import pytest
-from transforms.chroma_stft import ChromaSTFT
-from transforms.dct_wavelet_fusion import DCTWaveletFusion
-from transforms.discrete_cosine_transform import DiscreteCosineTransform
-from transforms.fourier_transform import FourierTransform
-from transforms.hilbert_transform import HilbertTransform
-from transforms.event_related_potential import EventRelatedPotential
-from transforms.mfcc import MFCC
-from transforms.pca_ica_signal_decomposition import PCASignalDecomposition, ICASignalDecomposition
-from transforms.stft import STFT
-from transforms.wavelet_transform import WaveletTransform
-from transforms.wavelet_fft_fusion import WaveletFFTfusion
-from transforms.time_freq_representation import TimeFreqRepresentation
+from vitalDSP.transforms.chroma_stft import ChromaSTFT
+from vitalDSP.transforms.dct_wavelet_fusion import DCTWaveletFusion
+from vitalDSP.transforms.discrete_cosine_transform import DiscreteCosineTransform
+from vitalDSP.transforms.fourier_transform import FourierTransform
+from vitalDSP.transforms.hilbert_transform import HilbertTransform
+from vitalDSP.transforms.event_related_potential import EventRelatedPotential
+from vitalDSP.transforms.mfcc import MFCC
+from vitalDSP.transforms.pca_ica_signal_decomposition import PCASignalDecomposition, ICASignalDecomposition
+from vitalDSP.transforms.stft import STFT
+from vitalDSP.transforms.wavelet_transform import WaveletTransform
+from vitalDSP.transforms.wavelet_fft_fusion import WaveletFFTfusion
+from vitalDSP.transforms.time_freq_representation import TimeFreqRepresentation
 
 @pytest.fixture
 def sample_signal():

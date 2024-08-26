@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from respiratory_analysis.preprocess.preprocess import preprocess_signal
-from respiratory_analysis.preprocess.noise_reduction import (
+from vitalDSP.respiratory_analysis.preprocess.preprocess import preprocess_signal
+from vitalDSP.respiratory_analysis.preprocess.noise_reduction import (
     wavelet_denoising,
     savgol_denoising,
     median_denoising,

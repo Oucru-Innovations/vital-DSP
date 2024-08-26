@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
-from respiratory_analysis.estimate_rr.fft_based_rr import fft_based_rr
-from respiratory_analysis.estimate_rr.peak_detection_rr import peak_detection_rr
-from respiratory_analysis.estimate_rr.time_domain_rr import time_domain_rr
-from respiratory_analysis.estimate_rr.frequency_domain_rr import frequency_domain_rr
+from vitalDSP.respiratory_analysis.estimate_rr.fft_based_rr import fft_based_rr
+from vitalDSP.respiratory_analysis.estimate_rr.peak_detection_rr import peak_detection_rr
+from vitalDSP.respiratory_analysis.estimate_rr.time_domain_rr import time_domain_rr
+from vitalDSP.respiratory_analysis.estimate_rr.frequency_domain_rr import frequency_domain_rr
 
 def generate_test_signal(frequency, sampling_rate, duration, noise_level=0.1):
     t = np.arange(0, duration, 1/sampling_rate)

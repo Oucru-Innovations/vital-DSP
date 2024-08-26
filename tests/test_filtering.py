@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from filtering.signal_filtering import SignalFiltering
-from filtering.advanced_signal_filtering import AdvancedSignalFiltering
+from vitalDSP.filtering.signal_filtering import SignalFiltering
+from vitalDSP.filtering.advanced_signal_filtering import AdvancedSignalFiltering
 
 @pytest.fixture
 def sample_signal():

@@ -9,9 +9,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ![Python Versions](https://img.shields.io/badge/python-3.9%2B-blue)
-[![Documentation Status](https://readthedocs.org/projects/vital-DSP/badge/?version=latest)](https://vital-DSP.readthedocs.io/en/latest/?badge=latest)
-![PyPI Downloads](https://img.shields.io/pypi/dm/vital-DSP)
-[![PyPI version](https://badge.fury.io/py/vital-DSP.svg)](https://badge.fury.io/py/vital-DSP)
+[![Documentation Status](https://readthedocs.org/projects/vital-dsp/badge/?version=latest)](https://vital-dsp.readthedocs.io/en/latest/?badge=latest)
+![PyPI Downloads](https://img.shields.io/pypi/dm/vitalDSP)
+[![PyPI version](https://badge.fury.io/py/vitalDSP.svg)](https://badge.fury.io/py/vitalDSP)
 
 This repository contains a comprehensive toolkit for Digital Signal Processing (DSP) in healthcare applications. It includes traditional DSP methods as well as advanced machine learning (ML) and deep learning (DL) inspired techniques. The toolkit is designed to process a wide range of physiological signals, such as ECG, EEG, PPG, and respiratory signals, with applications in monitoring, anomaly detection, and signal quality assessment.
 
@@ -27,23 +27,37 @@ This repository contains a comprehensive toolkit for Digital Signal Processing (
 
 
 ## Installation
-To install the toolkit, run the following command:
+You can install vitalDSP in two different ways:
+### Option 1: Install via pip
+If you want the simplest installation method, you can install the latest version of vitalDSP directly from PyPI using pip:
 ```bash
-pip install -r requirements.txt
+pip install vitalDSP
 ```
+
+### Option 2: Install from the GitHub Repository
+For those who prefer to have the latest version, including any recent updates that may not yet be available on PyPI, you can clone the repository and install it manually.
+**Step 1:** Clone the Repository
+First, clone the vitalDSP repository from GitHub to your local machine:
+```bash
+git clone https://github.com/Oucru-Innovations/vital-DSP.gi
+```
+**Step 2:** Navigate to the Project Directory
+Navigate to the directory where the repository was cloned:
+
+```bash
+cd vital-DSP
+```
+
+**Step 3:** Install with setup.py
+You can now install vitalDSP using the setup.py script:
+
+```bash
+python setup.py install
+```
+This method ensures that you are using the most up-to-date codebase from the repository.
 
 ## Usage
-Detailed documentation for each module is available in the `docs/` directory. Below is a simple example of using the filtering module:
-```python
-from healthcare_dsp.filtering.moving_average import moving_average_filter
-
-# Example signal
-signal = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-
-# Apply moving average filter
-filtered_signal = moving_average_filter(signal, window_size=3)
-print(filtered_signal)
-```
+Please read the [instruction in the documentation](https://vital-DSP.readthedocs.io/en/latest/?badge=latest) for detailed usage examples and module descriptions.
 
 ## Documentation
 Comprehensive documentation for each module is available in the `docs/` directory, covering usage examples, API references, and more.
