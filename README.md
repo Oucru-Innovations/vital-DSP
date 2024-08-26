@@ -33,17 +33,7 @@ pip install -r requirements.txt
 ```
 
 ## Usage
-Detailed documentation for each module is available in the `docs/` directory. Below is a simple example of using the filtering module:
-```python
-from healthcare_dsp.filtering.moving_average import moving_average_filter
-
-# Example signal
-signal = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-
-# Apply moving average filter
-filtered_signal = moving_average_filter(signal, window_size=3)
-print(filtered_signal)
-```
+Please read the [instruction in the documentation](https://vital-DSP.readthedocs.io/en/latest/?badge=latest) for detailed usage examples and module descriptions.
 
 ## Documentation
 Comprehensive documentation for each module is available in the `docs/` directory, covering usage examples, API references, and more.

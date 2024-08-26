@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='vitalDSP', 
-    version='0.1.1rc1',  
+    version='0.1.1rc2',  
     author='van-koha',  
     author_email='vital.data@oucru.org', 
     description='A comprehensive toolkit for Digital Signal Processing in healthcare applications.',
