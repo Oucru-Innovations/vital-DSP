@@ -3,13 +3,9 @@
 
 version: 2
 
-# Build documentation in the 'docs' directory with Sphinx
-sphinx:
-  configuration: docs/source/conf.py  # Path to your Sphinx configuration file
-
 # Define the Python version and install dependencies
 python:
-  # version: 3.9  # Match this with the 'python_requires' in setup.py
+  version: 3.9  # Match this with the 'python_requires' in setup.py
   install:
     - method: pip
       path: .
@@ -28,3 +24,9 @@ build:
 formats:
   - pdf
   - epub
+
+# Ensure that the correct index file is referenced
+sphinx:
+  builder: html
+  configuration: docs/source/conf.py
+  builder: singlehtml  # Ensures a single HTML file build, useful for debugging 404 errors
