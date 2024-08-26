@@ -5,7 +5,7 @@ version: 2
 
 # Define the Python version and install dependencies
 python:
-  version: 3.9  # Match this with the 'python_requires' in setup.py
+  # Match this with the 'python_requires' in setup.py
   install:
     - method: pip
       path: .
@@ -29,4 +29,4 @@ formats:
 sphinx:
   builder: html
   configuration: docs/source/conf.py
-  builder: singlehtml  # Ensures a single HTML file build, useful for debugging 404 errors
+  
