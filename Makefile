@@ -16,7 +16,8 @@ all: test build coverage lint html
 
 # Use conditional syntax to handle different OS
 ifeq ($(OS),Windows_NT)
-    PYTHONPATH_SET = set PYTHONPATH=$(SRC_DIR) &&
+    # PYTHONPATH_SET = set PYTHONPATH=$(SRC_DIR) &&
+	# PYTHONPATH_SET = $$env:PYTHONPATH="$(SRC_DIR)" &&
 else
     PYTHONPATH_SET = PYTHONPATH=$(SRC_DIR)
 endif
