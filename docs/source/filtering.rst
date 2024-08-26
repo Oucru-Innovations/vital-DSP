@@ -7,7 +7,7 @@ Signal Filtering
 ----------------
 This module provides basic filtering techniques such as Butterworth, Chebyshev, and moving average filters, which are essential for preprocessing signals by removing noise and other unwanted components.
 
-.. automodule:: filtering.signal_filtering
+.. automodule:: vitalDSP.filtering.signal_filtering
     :members:
     :undoc-members:
     :private-members:
@@ -18,7 +18,7 @@ Artifact Removal
 ----------------
 This module focuses on identifying and removing artifacts from signals, ensuring cleaner and more accurate data for analysis. Methods include adaptive thresholding, wavelet-based removal, and iterative techniques.
 
-.. automodule:: filtering.artifact_removal
+.. automodule:: vitalDSP.filtering.artifact_removal
     :members:
     :undoc-members:
     :private-members:
@@ -29,7 +29,7 @@ Advanced Signal Filtering
 -------------------------
 Advanced filtering techniques such as adaptive filtering, Kalman filtering, and more complex algorithms that are suited for dynamic and non-linear systems.
 
-.. automodule:: filtering.advanced_signal_filtering
+.. automodule:: vitalDSP.filtering.advanced_signal_filtering
     :members:
     :undoc-members:
     :private-members:
@@ -40,7 +40,7 @@ Signal Quality Index
 --------------------
 This module provides methods to calculate various signal quality indices (SQI), which help in assessing the reliability and usability of the recorded signals.
 
-.. automodule:: filtering.signal_quality_index
+.. automodule:: vitalDSP.filtering.signal_quality_index
     :members:
     :undoc-members:
     :private-members:
@@ -51,7 +51,7 @@ Signal Quality
 --------------
 Comprehensive tools for assessing and enhancing the overall quality of signals. This includes both objective measures and methods for improving signal integrity.
 
-.. automodule:: filtering.signal_quality
+.. automodule:: vitalDSP.filtering.signal_quality
     :members:
     :undoc-members:
     :private-members:

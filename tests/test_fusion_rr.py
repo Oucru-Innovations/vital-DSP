@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
-from respiratory_analysis.fusion.ppg_ecg_fusion import ppg_ecg_fusion
-from respiratory_analysis.fusion.multimodal_analysis import multimodal_analysis
-from respiratory_analysis.fusion.respiratory_cardiac_fusion import respiratory_cardiac_fusion
+from vitalDSP.respiratory_analysis.fusion.ppg_ecg_fusion import ppg_ecg_fusion
+from vitalDSP.respiratory_analysis.fusion.multimodal_analysis import multimodal_analysis
+from vitalDSP.respiratory_analysis.fusion.respiratory_cardiac_fusion import respiratory_cardiac_fusion
 
 def generate_multimodal_signals(sampling_rate, duration, noise_level=0.1):
     t = np.arange(0, duration, 1/sampling_rate)

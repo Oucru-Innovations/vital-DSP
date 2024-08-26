@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from respiratory_analysis.sleep_apnea_detection.amplitude_threshold import detect_apnea_amplitude
-from respiratory_analysis.sleep_apnea_detection.pause_detection import detect_apnea_pauses
+from vitalDSP.respiratory_analysis.sleep_apnea_detection.amplitude_threshold import detect_apnea_amplitude
+from vitalDSP.respiratory_analysis.sleep_apnea_detection.pause_detection import detect_apnea_pauses
 
 def generate_apnea_signal(sampling_rate, duration, apnea_start, apnea_duration, noise_level=0.1):
     t = np.arange(0, duration, 1/sampling_rate)
