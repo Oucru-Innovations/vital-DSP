@@ -37,8 +37,8 @@ build:
 	python setup.py sdist bdist_wheel
 
 # Upload the package to PyPI
-# upload:
-# 	twine upload $(DIST_DIR)/*
+upload:
+	twine upload $(DIST_DIR)/*
 
 # Build HTML documentation
 html:
