@@ -494,6 +494,9 @@ class SignalFiltering:
         """
         Apply an IIR filter using the provided coefficients.
 
+        This method is enhanced to prevent division by zero or issues with infinity by adding small
+        epsilon values where necessary.
+
         Parameters
         ----------
         b : numpy.ndarray
@@ -507,10 +510,24 @@ class SignalFiltering:
             The filtered signal.
         """
         filtered_signal = np.zeros_like(self.signal)
+        epsilon = 1e-10  # Small constant to prevent division by zero
+
+        # Ensure the first coefficient of a is not zero to avoid instability
+        a[0] = max(a[0], epsilon)
+
         for i in range(len(self.signal)):
             filtered_signal[i] = b[0] * self.signal[i]
+
             if i > 0 and len(b) > 1:
-                filtered_signal[i] += b[1] * self.signal[i-1] - a[1] * filtered_signal[i-1]
+                filtered_signal[i] += b[1] * self.signal[i - 1] - a[1] * filtered_signal[i - 1]
+
             if i > 1 and len(b) > 2:
-                filtered_signal[i] += b[2] * self.signal[i-2] - a[2] * filtered_signal[i-2]
+                filtered_signal[i] += b[2] * self.signal[i - 2] - a[2] * filtered_signal[i - 2]
+
+            # Normalize by a[0] to ensure stability
+            filtered_signal[i] /= a[0]
+
+            # Apply epsilon to avoid infinities or NaNs
+            filtered_signal[i] = np.nan_to_num(filtered_signal[i], nan=0.0, posinf=0.0, neginf=0.0)
+
         return filtered_signal

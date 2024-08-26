@@ -12,7 +12,7 @@ PANDOC_FILE=$(DOCS_DIR)/Documentation.md
 PANDOC_OUTPUT=$(DOCS_DIR)/Documentation.pdf
 
 # Default target: Run all tests
-all: test build coverage lint html
+all: test build coverage lint html upload
 
 # Use conditional syntax to handle different OS
 ifeq ($(OS),Windows_NT)
