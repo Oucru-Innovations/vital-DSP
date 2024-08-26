@@ -10,8 +10,8 @@
 
 ![Python Versions](https://img.shields.io/badge/python-3.9%2B-blue)
 [![Documentation Status](https://readthedocs.org/projects/vital-DSP/badge/?version=latest)](https://vital-DSP.readthedocs.io/en/latest/?badge=latest)
-![PyPI Downloads](https://img.shields.io/pypi/dm/vital-DSP)
-[![PyPI version](https://badge.fury.io/py/vital-DSP.svg)](https://badge.fury.io/py/vital-DSP)
+![PyPI Downloads](https://img.shields.io/pypi/dm/vitalDSP)
+[![PyPI version](https://badge.fury.io/py/vitalDSP.svg)](https://badge.fury.io/py/vitalDSP)
 
 This repository contains a comprehensive toolkit for Digital Signal Processing (DSP) in healthcare applications. It includes traditional DSP methods as well as advanced machine learning (ML) and deep learning (DL) inspired techniques. The toolkit is designed to process a wide range of physiological signals, such as ECG, EEG, PPG, and respiratory signals, with applications in monitoring, anomaly detection, and signal quality assessment.
 
