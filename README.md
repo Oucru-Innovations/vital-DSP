@@ -27,10 +27,34 @@ This repository contains a comprehensive toolkit for Digital Signal Processing (
 
 
 ## Installation
-To install the toolkit, run the following command:
+You can install vitalDSP in two different ways:
+### Option 1: Install via pip
+If you want the simplest installation method, you can install the latest version of vitalDSP directly from PyPI using pip:
 ```bash
-pip install -r requirements.txt
+pip install vitalDSP
 ```
+
+### Option 2: Install from the GitHub Repository
+For those who prefer to have the latest version, including any recent updates that may not yet be available on PyPI, you can clone the repository and install it manually.
+**Step 1:** Clone the Repository
+First, clone the vitalDSP repository from GitHub to your local machine:
+```bash
+git clone https://github.com/Oucru-Innovations/vital-DSP.gi
+```
+**Step 2:** Navigate to the Project Directory
+Navigate to the directory where the repository was cloned:
+
+```bash
+cd vital-DSP
+```
+
+**Step 3:** Install with setup.py
+You can now install vitalDSP using the setup.py script:
+
+```bash
+python setup.py install
+```
+This method ensures that you are using the most up-to-date codebase from the repository.
 
 ## Usage
 Please read the [instruction in the documentation](https://vital-DSP.readthedocs.io/en/latest/?badge=latest) for detailed usage examples and module descriptions.

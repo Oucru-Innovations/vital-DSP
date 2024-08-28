@@ -29,6 +29,11 @@ Explore the core modules of the VitalDSP library below:
 
    filtering
    transforms
+   time_domain
+   respiratory_analysis
+   signal_quality_assessment
+   advanced_computation
+   utils
 
 Additional Resources
 ====================
