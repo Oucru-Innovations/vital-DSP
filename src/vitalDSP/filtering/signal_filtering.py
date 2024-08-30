@@ -1,4 +1,46 @@
 import numpy as np
+# from scipy.signal import lfilter
+from scipy import signal
+
+
+class BandpassFilter:
+    def __init__(self, band_type="butter", fs=100):
+        self.band_type = band_type
+        self.fs = fs
+
+    def signal_bypass(self, cutoff, order, a_pass, rp, rs, btype='high'):
+        nyq = 0.5 * self.fs
+        normal_cutoff = cutoff / nyq
+        if self.band_type == 'cheby1':
+            b, a = signal.cheby1(order, a_pass, normal_cutoff, btype=btype, analog=False)
+        elif self.band_type == 'cheby2':
+            b, a = signal.cheby2(order, a_pass, normal_cutoff, btype=btype, analog=False)
+        elif self.band_type == 'ellip':
+            b, a = signal.ellip(order, rp, rs, normal_cutoff, btype=btype, analog=False)
+        elif self.band_type == 'bessel':
+            b, a = signal.bessel(order, normal_cutoff, btype=btype, analog=False)
+        else:
+            b, a = signal.butter(order, normal_cutoff, btype=btype, analog=False)
+        return b, a
+
+    def signal_lowpass_filter(self, data, cutoff, order=3, a_pass=3, rp=4, rs=40):
+        b, a = self.signal_bypass(cutoff, order, a_pass, rp, rs, btype='low')
+        y = signal.lfilter(b, a, data)
+        return y
+
+    def signal_highpass_filter(self, data, cutoff, order=5, a_pass=3, rp=4, rs=40):
+        """
+        High pass filter using scipy's filtfilt. Handles cases where input signal is too short.
+        """
+        b, a = self.signal_bypass(cutoff, order, a_pass, rp, rs, btype='high')
+        padlen = 3 * max(len(b), len(a))  # Minimum required pad length
+
+        if len(data) <= padlen:
+            raise ValueError(f"The length of the input vector x must be greater than {padlen}. "
+                             f"Consider reducing the filter order or increasing the signal length.")
+
+        y = signal.filtfilt(b, a, data)
+        return y
 
 class SignalFiltering:
     """

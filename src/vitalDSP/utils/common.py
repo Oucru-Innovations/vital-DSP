@@ -285,3 +285,59 @@ def grangercausalitytests(data, max_lag, verbose=False):
             print(f"Lag: {lag}, F-statistic: {f_statistic}")
 
     return results
+
+def ecg_detect_peaks(X, thetap, sfecg):
+    """
+    Detect PQRST peaks in the synthetic ECG signal.
+
+    Parameters
+    ----------
+    X : ndarray
+        State variables of the ECG signal.
+
+    thetap : ndarray
+        Angles of PQRST extrema in radians.
+
+    sfecg : int
+        ECG sampling frequency in Hz.
+
+    Returns
+    -------
+    ind : ndarray
+        Indices of detected PQRST peaks.
+    """
+    N = len(X)
+    # irpeaks = np.zeros(N)
+
+    theta = np.arctan2(X[:, 1], X[:, 0])
+    ind0 = np.zeros(N)
+
+    for i in range(N - 1):
+        a = (theta[i] <= thetap) & (thetap <= theta[i + 1])
+        j = np.where(a)[0]
+        if j.size > 0:
+            d1 = thetap[j] - theta[i]
+            d2 = theta[i + 1] - thetap[j]
+            if d1 < d2:
+                ind0[i] = j[0] + 1
+            else:
+                ind0[i + 1] = j[0] + 1
+
+    d = max(2, int(np.ceil(sfecg / 64)))
+    ind = np.zeros(N)
+    z = X[:, 2]
+    zext = [np.min(z), np.max(z), np.min(z), np.max(z), np.min(z)]
+    sext = [1, -1, 1, -1, 1]
+
+    for i in range(5):
+        ind1 = np.where(ind0 == i + 1)[0]
+        Z = np.ones((len(ind1), 2 * d + 1)) * zext[i] * sext[i]
+        for j in range(-d, d + 1):
+            k = np.where((1 <= ind1 + j) & (ind1 + j <= N))[0]
+            Z[k, d + j] = z[ind1[k] + j] * sext[i]
+        # vmax = np.max(Z, axis=1)
+        ivmax = np.argmax(Z, axis=1)
+        iext = ind1 + ivmax - d - 1
+        ind[iext] = i + 1
+
+    return ind

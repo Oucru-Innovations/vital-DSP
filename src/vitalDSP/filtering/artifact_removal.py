@@ -308,17 +308,36 @@ class ArtifactRemoval:
         >>> clean_signal = ar.pca_artifact_removal(num_components=1)
         >>> print(clean_signal)
         """
-        signal_mean = np.mean(self.signal)
+        if self.signal.ndim == 1:
+            self.signal = self.signal.reshape(-1, 1)
+
+        signal_mean = np.mean(self.signal, axis=0)
         centered_signal = self.signal - signal_mean
-        covariance_matrix = np.cov(centered_signal)
-        eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
+
+        # Handle cases where the covariance matrix might be degenerate
+        covariance_matrix = np.cov(centered_signal, rowvar=False)
+        print(covariance_matrix)
+        # Check if covariance matrix is 2D
+        if covariance_matrix.ndim < 2:
+            raise ValueError("Covariance matrix is not 2D. Ensure the input signal has sufficient variation and dimensionality.")
+
+        # Perform eigenvalue decomposition with error handling
+        try:
+            eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
+        except np.linalg.LinAlgError as e:
+            raise ValueError(f"Linear Algebra error during eigenvalue decomposition: {e}")
+
+        # Sort eigenvalues and eigenvectors in descending order
         sorted_indices = np.argsort(eigenvalues)[::-1]
         selected_components = eigenvectors[:, sorted_indices[:num_components]]
+
+        # Reconstruct the signal using the selected components
         reconstructed_signal = (
             np.dot(centered_signal, selected_components).dot(selected_components.T)
             + signal_mean
         )
-        return reconstructed_signal
+
+        return reconstructed_signal.flatten()
 
     def ica_artifact_removal(self, num_components=1, max_iterations=1000, tol=1e-5, seed=23):
         """
