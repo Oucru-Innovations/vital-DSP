@@ -21,14 +21,28 @@ release = '0.1'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    'nbsphinx',
+    # 'sphinx-plotly-directive',
+    # 'myst_parser',
+    # 'myst_nb',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
     'sphinx.ext.todo',
     'sphinx_rtd_theme', 
-    'sphinx_markdown_builder',
-    'm2r2'
+    'sphinx_markdown_builder'
+    # 'm2r2'
+]
+
+# Additional MyST configurations (optional)
+myst_enable_extensions = [
+    "dollarmath",  # Use $...$ syntax for math
+    "amsmath",     # Use LaTeX math environments
+    "deflist",     # Use definition lists
+    "html_admonition",  # Use admonition with HTML support
+    "html_image",  # Use HTML-like <img> tags for images
+    "colon_fence", # Use ::: for extended Markdown syntax
 ]
 
 autodoc_default_options = {
@@ -40,10 +54,26 @@ autodoc_default_options = {
     'show-inheritance': True,
 }
 
+# # Exclude notebooks from autosummary processing
+# autosummary_generate = [
+#     'advanced_computation.rst',
+#     'filtering.rst',
+#     'index.rst',
+#     # Exclude the ipynb files from autosummary
+#     # 'notebooks/signal_filtering.ipynb',
+#     # 'notebooks/transforms.ipynb',
+#     'respiratory_analysis.rst',
+#     'signal_quality_assessment.rst',
+#     'time_domain.rst',
+#     'transforms.rst',
+#     'utils.rst'
+# ]
+
+
 source_suffix = ['.rst', '.md']
 
 templates_path = ['_templates']
-exclude_patterns = []
+exclude_patterns = ['_build', '**.ipynb_checkpoints']
 
 # The master toctree document.
 master_doc = 'index'

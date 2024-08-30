@@ -1,5 +1,6 @@
 import numpy as np
 from vitalDSP.utils.mother_wavelets import Wavelet
+from scipy.signal import convolve
 
 class WaveletTransform:
     """
@@ -13,7 +14,7 @@ class WaveletTransform:
         Reconstructs the signal using the inverse DWT.
     """
 
-    def __init__(self, signal, wavelet_name="haar"):
+    def __init__(self, signal, wavelet_name="haar", same_length=True):
         """
         Initialize the WaveletTransform class with the signal and select the mother wavelet.
 
@@ -23,6 +24,8 @@ class WaveletTransform:
             The input signal to be transformed.
         wavelet_name : str, optional
             Name of the wavelet to be used (default is 'haar').
+        same_length : bool, optional
+            If True, the transformed signal will have the same length as the original (default is True).
 
         Raises
         ------
@@ -32,6 +35,7 @@ class WaveletTransform:
         self.signal = signal
         self.original_length = len(signal)  # Store the original length of the signal
         self.wavelet_name = wavelet_name
+        self.same_length = same_length  # Option to maintain the same length
 
         # Retrieve the wavelet filters (low_pass, high_pass) from the Wavelet class
         wavelet_class = Wavelet()
@@ -70,21 +74,20 @@ class WaveletTransform:
         tuple
             Approximation coefficients and detail coefficients.
         """
-        output_length = len(data) // 2
+        output_length = len(data)
         approximation = np.zeros(output_length)
         detail = np.zeros(output_length)
 
         filter_len = len(self.low_pass)
 
+        # Apply padding based on the same_length option
+        if self.same_length:
+            padded_data = np.pad(data, (filter_len // 2, filter_len // 2), 'reflect')
+        else:
+            padded_data = np.pad(data, (0, filter_len - 1), 'constant')
+
         for i in range(output_length):
-            data_segment = data[2 * i : 2 * i + filter_len]
-
-            # If the data segment is shorter than the filter, pad it with zeros
-            if len(data_segment) < filter_len:
-                data_segment = np.pad(
-                    data_segment, (0, filter_len - len(data_segment)), "constant"
-                )
-
+            data_segment = padded_data[i : i + filter_len]
             approximation[i] = np.dot(self.low_pass, data_segment)
             detail[i] = np.dot(self.high_pass, data_segment)
 
@@ -114,8 +117,6 @@ class WaveletTransform:
         coeffs = []
         data = self.signal.copy()
         for _ in range(level):
-            if len(data) % 2 != 0:  # Ensure even length by padding with zero
-                data = np.append(data, 0)
             approximation, detail = self._wavelet_decompose(data)
             coeffs.append(detail)
             data = approximation
@@ -138,19 +139,16 @@ class WaveletTransform:
         numpy.ndarray
             Reconstructed data at this level.
         """
-        output_length = len(approximation) * 2
-        data = np.zeros(output_length)
+        # Convolve approximation and detail coefficients with the corresponding filters
+        approx_conv = convolve(approximation, self.low_pass, mode='full')
+        detail_conv = convolve(detail, self.high_pass, mode='full')
 
-        filter_len = len(self.low_pass)
+        # Combine the convolved signals and scale appropriately
+        data = (approx_conv + detail_conv) / np.sqrt(2)
 
-        for i in range(len(approximation)):
-            for j in range(filter_len):
-                index = 2 * i + j
-                if index < output_length:
-                    data[index] += (
-                        approximation[i] * self.low_pass[j]
-                        + detail[i] * self.high_pass[j]
-                    ) / np.sqrt(2)
+        # Trim the data to maintain the original length if required
+        if self.same_length:
+            data = data[:len(approximation)]
 
         return data
 
@@ -179,4 +177,4 @@ class WaveletTransform:
         data = coeffs[-1]  # Start with the final approximation
         for detail in reversed(coeffs[:-1]):
             data = self._wavelet_reconstruct(data, detail)
-        return data[: self.original_length]  # Trim to the original length of the signal
+        return data[:self.original_length] if self.same_length else data
