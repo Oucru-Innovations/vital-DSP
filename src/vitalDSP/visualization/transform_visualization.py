@@ -31,21 +31,23 @@ class SignalDecompositionVisualization:
         Parameters:
         signals (numpy.ndarray): The input signals (each row is a signal).
         """
-        self.signals = signals
-        self.pca = PCASignalDecomposition(signals)
-        self.ica = ICASignalDecomposition(signals)
+        self.signals = (
+            signals.T
+        )  # Ensure that signals are transposed to (n_samples, n_signals)
+        self.pca = PCASignalDecomposition(self.signals)
+        self.ica = ICASignalDecomposition(self.signals)
 
     def plot_pca(self):
         """
         Plot the Principal Component Analysis (PCA) of the signals.
 
         Example Usage:
-        >>> signals = np.random.rand(5, 100)
+        >>> signals = np.random.rand(100, 5)
         >>> sd_viz = SignalDecompositionVisualization(signals)
         >>> sd_viz.plot_pca()
         """
         pca_result = self.pca.compute_pca()
-        # time_axis = np.arange(pca_result.shape[1])
+        pca_result = pca_result.T  # Transpose to align with original signal orientation
 
         traces = [
             go.Scatter(y=pca_result[i], mode="lines", name=f"PC{i+1}")
@@ -64,12 +66,12 @@ class SignalDecompositionVisualization:
         Plot the Independent Component Analysis (ICA) of the signals.
 
         Example Usage:
-        >>> signals = np.random.rand(5, 100)
+        >>> signals = np.random.rand(100, 5)
         >>> sd_viz = SignalDecompositionVisualization(signals)
         >>> sd_viz.plot_ica()
         """
         ica_result = self.ica.compute_ica()
-        # time_axis = np.arange(ica_result.shape[1])
+        ica_result = ica_result.T  # Transpose to align with original signal orientation
 
         traces = [
             go.Scatter(y=ica_result[i], mode="lines", name=f"IC{i+1}")
@@ -82,82 +84,6 @@ class SignalDecompositionVisualization:
         )
         fig = go.Figure(data=traces, layout=layout)
         fig.show()
-
-    def compare_original_pca(self):
-        """
-        Compare the original signals and their PCA.
-
-        Example Usage:
-        >>> signals = np.random.rand(5, 100)
-        >>> sd_viz = SignalDecompositionVisualization(signals)
-        >>> sd_viz.compare_original_pca()
-        """
-        pca_result = self.pca.compute_pca()
-        # time_axis = np.arange(pca_result.shape[1])
-
-        trace_orig = [
-            go.Scatter(y=self.signals[i], mode="lines", name=f"Original Signal {i+1}")
-            for i in range(self.signals.shape[0])
-        ]
-        trace_pca = [
-            go.Scatter(y=pca_result[i], mode="lines", name=f"PC{i+1}")
-            for i in range(pca_result.shape[0])
-        ]
-
-        layout_orig = go.Layout(
-            title="Original Signals",
-            xaxis=dict(title="Sample Index"),
-            yaxis=dict(title="Amplitude"),
-        )
-        layout_pca = go.Layout(
-            title="PCA of Signals",
-            xaxis=dict(title="Sample Index"),
-            yaxis=dict(title="Amplitude"),
-        )
-
-        fig_orig = go.Figure(data=trace_orig, layout=layout_orig)
-        fig_pca = go.Figure(data=trace_pca, layout=layout_pca)
-
-        fig_orig.show()
-        fig_pca.show()
-
-    def compare_original_ica(self):
-        """
-        Compare the original signals and their ICA.
-
-        Example Usage:
-        >>> signals = np.random.rand(5, 100)
-        >>> sd_viz = SignalDecompositionVisualization(signals)
-        >>> sd_viz.compare_original_ica()
-        """
-        ica_result = self.ica.compute_ica()
-        # time_axis = np.arange(ica_result.shape[1])
-
-        trace_orig = [
-            go.Scatter(y=self.signals[i], mode="lines", name=f"Original Signal {i+1}")
-            for i in range(self.signals.shape[0])
-        ]
-        trace_ica = [
-            go.Scatter(y=ica_result[i], mode="lines", name=f"IC{i+1}")
-            for i in range(ica_result.shape[0])
-        ]
-
-        layout_orig = go.Layout(
-            title="Original Signals",
-            xaxis=dict(title="Sample Index"),
-            yaxis=dict(title="Amplitude"),
-        )
-        layout_ica = go.Layout(
-            title="ICA of Signals",
-            xaxis=dict(title="Sample Index"),
-            yaxis=dict(title="Amplitude"),
-        )
-
-        fig_orig = go.Figure(data=trace_orig, layout=layout_orig)
-        fig_ica = go.Figure(data=trace_ica, layout=layout_ica)
-
-        fig_orig.show()
-        fig_ica.show()
 
 
 class DCTWaveletFusionVisualization:
@@ -531,8 +457,10 @@ class ChromaSTFTVisualization:
         >>> chroma_stft_viz.plot_chroma_stft()
         """
         chroma_stft_result = self.chroma_stft.compute_chroma_stft()
+
+        # Time axis is the number of frames
         time_axis = np.arange(chroma_stft_result.shape[1])
-        chroma_axis = np.arange(chroma_stft_result.shape[0])
+        chroma_axis = np.arange(self.chroma_stft.n_chroma)
 
         trace = go.Heatmap(
             z=chroma_stft_result, x=time_axis, y=chroma_axis, colorscale="Viridis"

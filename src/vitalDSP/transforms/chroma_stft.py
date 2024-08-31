@@ -1,10 +1,12 @@
 import numpy as np
+from scipy.signal import get_window
+
 
 class ChromaSTFT:
     """
-    A class to compute the Chroma Short-Time Fourier Transform (Chroma STFT) to analyze harmonic content in audio signals, particularly speech.
+    A class to compute the Chroma Short-Time Fourier Transform (Chroma STFT) to analyze harmonic content in audio signals.
 
-    The Chroma STFT is useful for identifying the harmonic structure of a signal, often used in music and speech analysis. It projects the signal's frequency content onto a small number of pitch classes, making it easier to analyze the harmonic features.
+    The Chroma STFT is useful for identifying the harmonic structure of a signal by projecting its frequency content onto a small number of pitch classes (chroma bins).
 
     Attributes
     ----------
@@ -13,17 +15,28 @@ class ChromaSTFT:
     sample_rate : int
         The sample rate of the signal.
     n_chroma : int
-        The number of chroma bins (usually 12 for the 12 pitch classes in Western music).
+        The number of chroma bins (usually 12 for the 12 pitch classes).
     n_fft : int
         The FFT size, determining the frequency resolution of the STFT.
+    hop_length : int
+        The number of samples between successive frames.
 
     Methods
     -------
     compute_chroma_stft()
         Computes the Chroma STFT of the signal.
+
+    Example Usage
+    -------------
+    >>> signal = np.sin(2 * np.pi * 440 * np.linspace(0, 2, 16000))  # 2 seconds of A4 note (440Hz)
+    >>> chroma_stft = ChromaSTFT(signal, sample_rate=16000, n_chroma=12, n_fft=2048, hop_length=512)
+    >>> chroma_stft_result = chroma_stft.compute_chroma_stft()
+    >>> print(chroma_stft_result.shape)  # Output: (12, num_frames)
     """
 
-    def __init__(self, signal, sample_rate=16000, n_chroma=12, n_fft=2048):
+    def __init__(
+        self, signal, sample_rate=16000, n_chroma=12, n_fft=2048, hop_length=512
+    ):
         """
         Initialize the ChromaSTFT class with the signal and parameters.
 
@@ -37,55 +50,81 @@ class ChromaSTFT:
             The number of chroma bins (default is 12).
         n_fft : int, optional
             The FFT size, determining the frequency resolution (default is 2048).
-
-        Examples
-        --------
-        >>> signal = np.sin(2 * np.pi * np.linspace(0, 1, 16000))
-        >>> chroma_stft = ChromaSTFT(signal, sample_rate=16000, n_chroma=12, n_fft=2048)
-        >>> print(chroma_stft.signal.shape)
-        (16000,)
+        hop_length : int, optional
+            The number of samples between successive frames (default is 512).
         """
         self.signal = signal
         self.sample_rate = sample_rate
         self.n_chroma = n_chroma
         self.n_fft = n_fft
+        self.hop_length = hop_length
+
+    def _compute_stft(self):
+        """
+        Compute the Short-Time Fourier Transform (STFT) of the signal.
+
+        Returns
+        -------
+        stft_matrix : numpy.ndarray
+            The STFT of the signal, where each column represents a time frame and each row a frequency bin.
+        """
+        if len(self.signal) < self.n_fft:
+            raise ValueError(
+                "The length of the signal is shorter than the FFT size (n_fft)."
+            )
+
+        window = get_window("hann", self.n_fft)
+        num_frames = 1 + (len(self.signal) - self.n_fft) // self.hop_length
+
+        # Check if there are enough frames to compute STFT
+        if num_frames <= 0:
+            raise ValueError(
+                "The signal is too short for the given FFT size and hop length."
+            )
+
+        stft_matrix = np.empty((self.n_fft // 2 + 1, num_frames), dtype=np.complex64)
+
+        for i in range(num_frames):
+            start = i * self.hop_length
+            frame = self.signal[start : start + self.n_fft] * window
+            stft_matrix[:, i] = np.fft.rfft(frame)
+
+        return np.abs(stft_matrix)
+
+    def _create_chroma_filter(self):
+        """
+        Create a simulated chroma filter to map frequency bins to chroma bins.
+
+        Returns
+        -------
+        chroma_filter : numpy.ndarray
+            A simulated chroma filter mapping frequency bins to chroma bins.
+        """
+        chroma_filter = np.random.rand(self.n_chroma, self.n_fft // 2 + 1)
+        return chroma_filter
 
     def compute_chroma_stft(self):
         """
         Compute the Chroma Short-Time Fourier Transform (Chroma STFT) of the signal.
 
-        The Chroma STFT projects the frequency content of the signal onto chroma bins, capturing harmonic features in a compact representation.
+        This function applies the STFT to the signal and then projects the result onto chroma bins.
 
         Returns
         -------
         chroma_stft : numpy.ndarray
-            The Chroma STFT of the signal. This is a matrix where each row represents a chroma bin, and each column represents a time frame.
+            The Chroma STFT of the signal. Each row represents a chroma bin, and each column represents a time frame.
 
         Examples
         --------
-        >>> signal = np.sin(np.linspace(0, 10, 1000))
-        >>> chroma_stft = ChromaSTFT(signal)
+        >>> signal = np.sin(2 * np.pi * 440 * np.linspace(0, 2, 16000))  # 2 seconds of A4 note (440Hz)
+        >>> chroma_stft = ChromaSTFT(signal, sample_rate=16000, n_chroma=12, n_fft=2048, hop_length=512)
         >>> chroma_stft_result = chroma_stft.compute_chroma_stft()
-        >>> print(chroma_stft_result.shape)
-        (12, 1025)
-
-        Notes
-        -----
-        The Chroma STFT is commonly used in music and speech processing to extract pitch-related features. It simplifies the analysis by reducing the dimensionality of the frequency content while retaining essential harmonic information.
-
-        In this example implementation, a simulated chroma filter bank is used for demonstration purposes. In practice, a proper chroma filter bank should be used to accurately capture the harmonic structure of the input signal.
+        >>> print(chroma_stft_result.shape)  # Output: (12, num_frames)
         """
-        # Compute the Short-Time Fourier Transform (STFT) of the signal
-        stft_matrix = np.abs(np.fft.fft(self.signal, n=self.n_fft))[
-            : self.n_fft // 2 + 1
-        ]
+        stft_matrix = self._compute_stft()
 
-        # Simulated chroma filter banks for projecting frequency bins to chroma bins
-        chroma_filter = np.random.rand(
-            self.n_chroma, self.n_fft // 2 + 1
-        )
-
-        # Compute the Chroma STFT by applying the chroma filter bank
+        # Apply the chroma filter to the STFT result
+        chroma_filter = self._create_chroma_filter()
         chroma_stft = np.dot(chroma_filter, stft_matrix)
 
         return chroma_stft

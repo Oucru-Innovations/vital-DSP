@@ -1,8 +1,13 @@
 import numpy as np
 from vitalDSP.respiratory_analysis.estimate_rr.time_domain_rr import time_domain_rr
-from vitalDSP.respiratory_analysis.estimate_rr.frequency_domain_rr import frequency_domain_rr
+from vitalDSP.respiratory_analysis.estimate_rr.frequency_domain_rr import (
+    frequency_domain_rr,
+)
 
-def respiratory_cardiac_fusion(resp_signal, cardiac_signal, sampling_rate, preprocess=None, **preprocess_kwargs):
+
+def respiratory_cardiac_fusion(
+    resp_signal, cardiac_signal, sampling_rate, preprocess=None, **preprocess_kwargs
+):
     """
     Fuse respiratory and cardiac signals to perform a comprehensive analysis of respiratory rate.
 
@@ -32,10 +37,14 @@ def respiratory_cardiac_fusion(resp_signal, cardiac_signal, sampling_rate, prepr
     >>> print(rr_fusion)
     """
     # Estimate RR from respiratory signal using time-domain analysis
-    rr_resp = time_domain_rr(resp_signal, sampling_rate, preprocess=preprocess, **preprocess_kwargs)
+    rr_resp = time_domain_rr(
+        resp_signal, sampling_rate, preprocess=preprocess, **preprocess_kwargs
+    )
 
     # Estimate RR from cardiac signal using frequency-domain analysis
-    rr_cardiac = frequency_domain_rr(cardiac_signal, sampling_rate, preprocess=preprocess, **preprocess_kwargs)
+    rr_cardiac = frequency_domain_rr(
+        cardiac_signal, sampling_rate, preprocess=preprocess, **preprocess_kwargs
+    )
 
     # Combine RR estimates from both signals
     rr_fusion = np.mean([rr_resp, rr_cardiac])

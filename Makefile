@@ -25,9 +25,10 @@ endif
 test:
 	$(PYTHONPATH_SET) pytest $(TEST_DIR) -v
 
-# Run tests with coverage
-coverage:
-	$(PYTHONPATH_SET) pytest --cov=$(SRC_DIR) --cov-report=html:$(COV_DIR)
+# $(PYTHONPATH_SET) pytest --cov=$(SRC_DIR) --cov-config=.coveragerc --cov-report=html:$(COV_DIR)
+# Run tests with coverage using .coveragerc
+coverage:	
+	pytest --cov=$(SRC_DIR) --cov-config=.coveragerc --cov-report=html:$(COV_DIR)
 
 # Lint the code using flake8 with custom config
 lint:

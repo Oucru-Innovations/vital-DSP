@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class StandardScaler:
     """
     A custom implementation of the Standard Scaler, which standardizes signals by removing the mean and scaling to unit variance.

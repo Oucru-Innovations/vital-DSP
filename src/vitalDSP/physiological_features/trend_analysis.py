@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class TrendAnalysis:
     """
     A comprehensive class to track and analyze long-term trends in physiological signals.

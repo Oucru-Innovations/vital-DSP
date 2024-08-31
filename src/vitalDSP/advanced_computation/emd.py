@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class EMD:
     """
     Empirical Mode Decomposition (EMD) for decomposing non-linear and non-stationary signals into Intrinsic Mode Functions (IMFs).

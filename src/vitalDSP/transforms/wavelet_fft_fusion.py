@@ -1,6 +1,7 @@
 import numpy as np
 from vitalDSP.transforms.wavelet_transform import WaveletTransform
 
+
 class WaveletFFTfusion:
     """
     A class to perform the fusion of Wavelet Transform and FFT on a signal.

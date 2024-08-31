@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class STFT:
     """
     A class to perform Short-Time Fourier Transform (STFT) for analyzing time-varying signals.

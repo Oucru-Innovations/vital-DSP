@@ -1,6 +1,7 @@
 from vitalDSP.transforms.stft import STFT
 from vitalDSP.transforms.wavelet_transform import WaveletTransform
 
+
 class TimeFreqRepresentation:
     """
     A class to generate Time-Frequency Representations (TFR) of signals for machine learning and signal analysis.

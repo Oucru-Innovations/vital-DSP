@@ -1,46 +1,159 @@
 import numpy as np
+
 # from scipy.signal import lfilter
 from scipy import signal
 
 
 class BandpassFilter:
     def __init__(self, band_type="butter", fs=100):
+        """
+        Initializes the BandpassFilter with the specified filter type and sampling frequency.
+
+        Parameters
+        ----------
+        band_type : str
+            Type of the bandpass filter (e.g., 'butter', 'cheby1', 'cheby2', 'ellip', 'bessel').
+        fs : float
+            Sampling frequency of the signal.
+
+        Examples
+        --------
+        >>> filter = BandpassFilter(band_type="butter", fs=100)
+        """
         self.band_type = band_type
         self.fs = fs
 
-    def signal_bypass(self, cutoff, order, a_pass, rp, rs, btype='high'):
+    def signal_bypass(self, cutoff, order, a_pass, rp, rs, btype="high"):
+        """
+        Generate the filter coefficients for the specified filter type and parameters.
+
+        Parameters
+        ----------
+        cutoff : float
+            Cutoff frequency of the filter.
+        order : int
+            Order of the filter.
+        a_pass : float
+            Passband ripple for Chebyshev and Elliptic filters.
+        rp : float
+            Passband ripple for Elliptic filters.
+        rs : float
+            Stopband attenuation for Elliptic filters.
+        btype : str
+            Type of filter ('high', 'low', 'bandpass').
+
+        Returns
+        -------
+        b, a : tuple
+            Numerator (b) and denominator (a) polynomials of the IIR filter.
+
+        Examples
+        --------
+        >>> bp_filter = BandpassFilter("butter", fs=100)
+        >>> b, a = bp_filter.signal_bypass(cutoff=0.3, order=4, a_pass=3, rp=4, rs=40, btype='low')
+        >>> print(b, a)
+        """
         nyq = 0.5 * self.fs
         normal_cutoff = cutoff / nyq
-        if self.band_type == 'cheby1':
-            b, a = signal.cheby1(order, a_pass, normal_cutoff, btype=btype, analog=False)
-        elif self.band_type == 'cheby2':
-            b, a = signal.cheby2(order, a_pass, normal_cutoff, btype=btype, analog=False)
-        elif self.band_type == 'ellip':
+        if self.band_type == "cheby1":
+            b, a = signal.cheby1(
+                order, a_pass, normal_cutoff, btype=btype, analog=False
+            )
+        elif self.band_type == "cheby2":
+            b, a = signal.cheby2(
+                order, a_pass, normal_cutoff, btype=btype, analog=False
+            )
+        elif self.band_type == "ellip":
             b, a = signal.ellip(order, rp, rs, normal_cutoff, btype=btype, analog=False)
-        elif self.band_type == 'bessel':
+        elif self.band_type == "bessel":
             b, a = signal.bessel(order, normal_cutoff, btype=btype, analog=False)
         else:
             b, a = signal.butter(order, normal_cutoff, btype=btype, analog=False)
         return b, a
 
     def signal_lowpass_filter(self, data, cutoff, order=3, a_pass=3, rp=4, rs=40):
-        b, a = self.signal_bypass(cutoff, order, a_pass, rp, rs, btype='low')
+        """
+        Apply a low-pass filter to the data.
+
+        Parameters
+        ----------
+        data : numpy.ndarray
+            The input signal.
+        cutoff : float
+            Cutoff frequency of the filter.
+        order : int, optional
+            Order of the filter. Default is 3.
+        a_pass : float, optional
+            Passband ripple for Chebyshev and Elliptic filters. Default is 3.
+        rp : float, optional
+            Passband ripple for Elliptic filters. Default is 4.
+        rs : float, optional
+            Stopband attenuation for Elliptic filters. Default is 40.
+
+        Returns
+        -------
+        y : numpy.ndarray
+            The filtered signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> bp_filter = BandpassFilter("butter", fs=100)
+        >>> filtered_signal = bp_filter.signal_lowpass_filter(signal, cutoff=0.3, order=4)
+        >>> print(filtered_signal)
+        """
+        b, a = self.signal_bypass(cutoff, order, a_pass, rp, rs, btype="low")
         y = signal.lfilter(b, a, data)
         return y
 
     def signal_highpass_filter(self, data, cutoff, order=5, a_pass=3, rp=4, rs=40):
         """
-        High pass filter using scipy's filtfilt. Handles cases where input signal is too short.
+        Apply a high-pass filter to the data.
+
+        Parameters
+        ----------
+        data : numpy.ndarray
+            The input signal.
+        cutoff : float
+            Cutoff frequency of the filter.
+        order : int, optional
+            Order of the filter. Default is 5.
+        a_pass : float, optional
+            Passband ripple for Chebyshev and Elliptic filters. Default is 3.
+        rp : float, optional
+            Passband ripple for Elliptic filters. Default is 4.
+        rs : float, optional
+            Stopband attenuation for Elliptic filters. Default is 40.
+
+        Returns
+        -------
+        y : numpy.ndarray
+            The filtered signal.
+
+        Raises
+        ------
+        ValueError
+            If the length of the input signal is too short for the specified filter.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5])
+        >>> bp_filter = BandpassFilter("butter", fs=100)
+        >>> filtered_signal = bp_filter.signal_highpass_filter(signal, cutoff=0.3, order=4)
+        >>> print(filtered_signal)
         """
-        b, a = self.signal_bypass(cutoff, order, a_pass, rp, rs, btype='high')
+        b, a = self.signal_bypass(cutoff, order, a_pass, rp, rs, btype="high")
         padlen = 3 * max(len(b), len(a))  # Minimum required pad length
 
         if len(data) <= padlen:
-            raise ValueError(f"The length of the input vector x must be greater than {padlen}. "
-                             f"Consider reducing the filter order or increasing the signal length.")
+            raise ValueError(
+                f"The length of the input vector x must be greater than {padlen}. "
+                f"Consider reducing the filter order or increasing the signal length."
+            )
 
         y = signal.filtfilt(b, a, data)
         return y
+
 
 class SignalFiltering:
     """
@@ -52,14 +165,24 @@ class SignalFiltering:
 
     Methods
     -------
+    savgol_filter : static method
+        Applies a Savitzky-Golay filter.
     moving_average : function
         Applies a moving average filter.
     gaussian : function
         Applies a Gaussian filter.
     butterworth : function
         Applies a Butterworth filter.
+    chebyshev : function
+        Applies a Chebyshev filter.
+    elliptic : function
+        Applies an Elliptic filter.
+    bandpass : function
+        Applies a bandpass filter using a selected filter type.
     median : function
         Applies a median filter.
+    _apply_iir_filter : function
+        Internal method to apply IIR filters.
     """
 
     def __init__(self, signal):
@@ -85,10 +208,6 @@ class SignalFiltering:
         """
         Apply a Savitzky-Golay filter to smooth the signal.
 
-        The Savitzky-Golay filter fits successive polynomials to sections of the signal and smooths it
-        while preserving higher moments (such as peak height and width). This is particularly useful
-        in spectral signal processing.
-
         Parameters
         ----------
         signal : numpy.ndarray
@@ -102,11 +221,6 @@ class SignalFiltering:
         -------
         smoothed_signal : numpy.ndarray
             The smoothed signal.
-
-        Raises
-        ------
-        ValueError
-            If window_length is not a positive odd integer or if it is smaller than polyorder + 2.
 
         Examples
         --------
@@ -123,7 +237,6 @@ class SignalFiltering:
             raise ValueError("window_length is too small for the polynomial order")
 
         half_window = (window_length - 1) // 2
-        # Precompute coefficients
         b = np.asmatrix(
             [
                 [k**i for i in range(polyorder + 1)]
@@ -131,24 +244,29 @@ class SignalFiltering:
             ]
         )
         m = np.linalg.pinv(b).A[0]
-        # Pad the signal at the extremes with values taken from the signal itself
         firstvals = signal[0] - np.abs(signal[1 : half_window + 1][::-1] - signal[0])
         lastvals = signal[-1] + np.abs(signal[-half_window - 1 : -1][::-1] - signal[-1])
         signal = np.concatenate((firstvals, signal, lastvals))
         smoothed_signal = np.convolve(m, signal, mode="valid")
         return smoothed_signal
 
-    def moving_average(self, window_size):
+    def moving_average(self, window_size, iterations=1, method="edge"):
         """
-        Applies a moving average filter to the signal.
+        Applies a moving average filter to the signal with optional repeated scanning.
 
-        A moving average filter smooths the signal by averaging neighboring data points within a defined window size.
-        This technique is commonly used to reduce random noise and reveal trends in the data.
+        This method smooths the signal by averaging neighboring data points within a defined window size.
+        Optionally, the smoothing can be repeated multiple times for enhanced effect. This technique is
+        commonly used to reduce random noise and reveal trends in signals like EEG, ECG, and PPG.
 
         Parameters
         ----------
         window_size : int
             The size of the moving window.
+        iterations : int, optional
+            The number of times to apply the moving average for additional smoothing. Default is 1.
+        method : str, optional
+            Padding method: 'edge' (default), 'reflect', or 'constant'. Different methods may yield better results
+            for specific types of signals (e.g., vital signals like EEG, ECG, PPG).
 
         Returns
         -------
@@ -160,36 +278,35 @@ class SignalFiltering:
         >>> import numpy as np
         >>> signal = np.array([1, 2, 3, 4, 5])
         >>> sf = SignalFiltering(signal)
-        >>> filtered_signal = sf.moving_average(3)
+        >>> filtered_signal = sf.moving_average(3, iterations=2, method="reflect")
         >>> print(filtered_signal)
-        [2. 3. 4.]
         """
-        # Apply padding to the signal
-        padded_signal = np.pad(
-            self.signal,
-            (window_size // 2, window_size - 1 - window_size // 2),
-            mode="edge",
-        )
+        filtered_signal = self.signal.copy()
 
-        # Calculate the moving average
-        filtered_signal = np.convolve(
-            padded_signal, np.ones(window_size) / window_size, mode="valid"
-        )
+        for _ in range(iterations):
+            # Apply padding to the signal based on the chosen method
+            padded_signal = np.pad(
+                filtered_signal,
+                (window_size // 2, window_size - 1 - window_size // 2),
+                mode=method,
+            )
+            # Calculate the moving average
+            filtered_signal = np.convolve(
+                padded_signal, np.ones(window_size) / window_size, mode="valid"
+            )
 
         return filtered_signal
 
-    def gaussian(self, sigma=1.0):
+    def gaussian(self, sigma=1.0, iterations=1):
         """
         Applies a Gaussian filter to the signal.
-
-        The Gaussian filter is a linear filter that applies a Gaussian kernel to the signal, effectively
-        smoothing it while preserving the signal's general shape. It is particularly useful for reducing
-        noise and softening sharp edges.
 
         Parameters
         ----------
         sigma : float
             The standard deviation of the Gaussian kernel.
+        iterations : int, optional
+            The number of times to apply the Gaussian filter for additional smoothing. Default is 1.
 
         Returns
         -------
@@ -206,16 +323,17 @@ class SignalFiltering:
         """
         size = int(6 * sigma + 1) if int(6 * sigma + 1) % 2 != 0 else int(6 * sigma + 2)
         kernel = self.gaussian_kernel(size, sigma)
-        return np.convolve(self.signal, kernel, mode="same")
+        filtered_signal = self.signal.copy()
+
+        for _ in range(iterations):
+            filtered_signal = np.convolve(filtered_signal, kernel, mode="same")
+
+        return filtered_signal
 
     @staticmethod
     def gaussian_filter1d(signal, sigma):
         """
         Custom implementation of a 1D Gaussian filter.
-
-        This method applies a 1D Gaussian filter to the signal, smoothing the data by weighting
-        the points according to the Gaussian distribution. The result is a smoother signal with
-        reduced noise.
 
         Parameters
         ----------
@@ -241,16 +359,19 @@ class SignalFiltering:
         x = np.arange(-radius, radius + 1)
         gaussian_kernel = np.exp(-0.5 * (x / sigma) ** 2)
         gaussian_kernel /= gaussian_kernel.sum()
-        smoothed_signal = np.convolve(signal, gaussian_kernel, mode="same")
-        return smoothed_signal
+
+        # Pad the signal to handle boundary effects
+        pad_width = radius
+        padded_signal = np.pad(signal, pad_width, mode="edge")
+
+        # Convolve with the Gaussian kernel
+        smoothed_signal = np.convolve(padded_signal, gaussian_kernel, mode="valid")
+        return smoothed_signal[: len(signal)]
 
     @staticmethod
     def gaussian_kernel(size, sigma):
         """
         Generate a Gaussian kernel.
-
-        The Gaussian kernel is used in Gaussian filtering, where the kernel weights are
-        determined by the Gaussian function. This method generates a 1D Gaussian kernel.
 
         Parameters
         ----------
@@ -275,12 +396,9 @@ class SignalFiltering:
         kernel = kernel / np.sum(kernel)
         return kernel
 
-    def butterworth(self, cutoff, fs, order=4, btype="low"):
+    def butterworth(self, cutoff, fs, order=4, btype="low", iterations=1):
         """
         Apply a Butterworth filter to the signal.
-
-        The Butterworth filter is a type of signal processing filter designed to have a flat frequency response
-        in the passband. It is used for removing baseline wander and low-frequency noise from signals such as ECG and PPG.
 
         Parameters
         ----------
@@ -292,6 +410,8 @@ class SignalFiltering:
             Order of the Butterworth filter. Default is 4.
         btype : str, optional
             Type of filter - 'low' or 'high'. Default is 'low'.
+        iterations : int, optional
+            The number of times to apply the Butterworth filter for additional filtering. Default is 1.
 
         Returns
         -------
@@ -311,16 +431,16 @@ class SignalFiltering:
         nyquist = 0.5 * fs
         normal_cutoff = cutoff / nyquist
         b, a = self.butter(order, normal_cutoff, btype=btype)
-        filtered_signal = self._apply_iir_filter(b, a)
+        filtered_signal = self.signal.copy()
+
+        for _ in range(iterations):
+            filtered_signal = self._apply_iir_filter(b, a, filtered_signal)
+
         return filtered_signal
 
     def butter(self, order, cutoff, btype="low", fs=1.0):
         """
         Custom implementation of the Butterworth filter design using bilinear transformation.
-
-        This method designs a Butterworth filter by calculating the filter coefficients
-        based on the desired order and cutoff frequency. The resulting filter can be used
-        for low-pass, high-pass, or band-pass filtering.
 
         Parameters
         ----------
@@ -366,12 +486,12 @@ class SignalFiltering:
             raise ValueError("Invalid btype. Must be 'low', 'high', or 'band'.")
 
         b, a = np.poly(z), np.poly(p)
-        b = np.atleast_1d(b)  # Ensure b is at least 1D
-        a = np.atleast_1d(a)  # Ensure a is at least 1D
+        b = np.atleast_1d(b)
+        a = np.atleast_1d(a)
         b /= np.abs(np.sum(a))
         return b, a
 
-    def chebyshev(self, cutoff, fs, order=4, btype="low", ripple=0.05):
+    def chebyshev(self, cutoff, fs, order=4, btype="low", ripple=0.05, iterations=1):
         """
         Custom implementation of the Chebyshev Type I filter.
 
@@ -387,6 +507,8 @@ class SignalFiltering:
             Type of filter - 'low' or 'high'. Default is 'low'.
         ripple : float, optional
             The maximum ripple allowed in the passband. Default is 0.05.
+        iterations : int, optional
+            The number of times to apply the Chebyshev filter for additional filtering. Default is 1.
 
         Returns
         -------
@@ -407,14 +529,28 @@ class SignalFiltering:
             poles = normal_cutoff / poles
         z = np.zeros(0)
         b, a = np.poly(z), np.poly(poles)
-        b = np.atleast_1d(b)  # Ensure b is at least 1D
-        a = np.atleast_1d(a)  # Ensure a is at least 1D
+        b = np.atleast_1d(b)
+        a = np.atleast_1d(a)
         b = b / np.abs(np.polyval(b, 1))
         a = a / np.abs(np.polyval(a, 1))
-        filtered_signal = self._apply_iir_filter(b, a)
+
+        filtered_signal = self.signal.copy()
+
+        for _ in range(iterations):
+            filtered_signal = self._apply_iir_filter(b, a, filtered_signal)
+
         return filtered_signal
 
-    def elliptic(self, cutoff, fs, order=4, btype="low", ripple=0.05, stopband_attenuation=40):
+    def elliptic(
+        self,
+        cutoff,
+        fs,
+        order=4,
+        btype="low",
+        ripple=0.05,
+        stopband_attenuation=40,
+        iterations=1,
+    ):
         """
         Custom implementation of the Elliptic filter.
 
@@ -432,6 +568,8 @@ class SignalFiltering:
             The maximum ripple allowed in the passband. Default is 0.05.
         stopband_attenuation : float, optional
             Minimum attenuation in the stopband. Default is 40 dB.
+        iterations : int, optional
+            The number of times to apply the Elliptic filter for additional filtering. Default is 1.
 
         Returns
         -------
@@ -442,14 +580,12 @@ class SignalFiltering:
         normal_cutoff = cutoff / nyquist
 
         eps = np.sqrt(10 ** (ripple / 10) - 1)
-        # k1 = np.sqrt(1 - 10 ** (-stopband_attenuation / 10))
-        k = eps / np.sqrt(1 + eps ** 2)
+        k = eps / np.sqrt(1 + eps**2)
 
         poles = []
         for i in range(1, order + 1):
             beta = np.arcsin(k)
             theta = (2 * i - 1) * np.pi / (2 * order)
-            # phi = np.arcsin(k1 * np.sin(theta)) + beta
             poles.append(np.exp(1j * (theta + beta)))
             poles.append(np.exp(1j * (theta - beta)))
 
@@ -463,43 +599,87 @@ class SignalFiltering:
 
         z = np.zeros(0)
         b, a = np.poly(z), np.poly(poles)
-        b = np.atleast_1d(b)  # Ensure b is at least 1D
-        a = np.atleast_1d(a)  # Ensure a is at least 1D
+        b = np.atleast_1d(b)
+        a = np.atleast_1d(a)
         b = b / np.abs(np.polyval(b, 1))
         a = a / np.abs(np.polyval(a, 1))
 
-        filtered_signal = self._apply_iir_filter(b, a)
+        filtered_signal = self.signal.copy()
+
+        for _ in range(iterations):
+            filtered_signal = self._apply_iir_filter(b, a, filtered_signal)
+
         return filtered_signal
 
-    def bandpass(self, lowcut, highcut, fs, order=4, filter_type="butter"):
+    def bandpass(
+        self, lowcut, highcut, fs, order=4, filter_type="butter", iterations=1
+    ):
+        """
+        Apply a bandpass filter using the selected filter type.
+
+        Parameters
+        ----------
+        lowcut : float
+            The lower cutoff frequency.
+        highcut : float
+            The upper cutoff frequency.
+        fs : float
+            The sampling frequency.
+        order : int, optional
+            The order of the filter. Default is 4.
+        filter_type : str, optional
+            Type of filter to apply ('butter', 'cheby', 'elliptic'). Default is 'butter'.
+
+        Returns
+        -------
+        filtered_signal : numpy.ndarray
+            The filtered signal.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> fs = 1000  # Sampling frequency
+        >>> lowcut = 0.5  # Lower cutoff frequency
+        >>> highcut = 50  # Upper cutoff frequency
+        >>> signal = np.sin(2 * np.pi * 10 * np.arange(0, 10, 1/fs)) + np.random.randn(10 * fs) * 0.1
+        >>> sf = SignalFiltering(signal)
+        >>> filtered_signal = sf.bandpass(lowcut, highcut, fs, order=4, filter_type='butter')
+        >>> print(filtered_signal)
+        """
         nyquist = 0.5 * fs
         low = lowcut / nyquist
         high = highcut / nyquist
 
-        if filter_type == "butter":
-            b, a = self.butter(order, [low, high], btype="band")
-        elif filter_type == "cheby":
-            b, a = self.chebyshev(order, [low, high], btype="band")
-        elif filter_type == "elliptic":
-            b, a = self.elliptic(order, [low, high], btype="band")
-        else:
-            raise ValueError("Unsupported filter type. Choose from 'butter', 'cheby', or 'elliptic'.")
+        filtered_signal = self.signal.copy()
 
-        filtered_signal = self._apply_iir_filter(b, a)
+        for _ in range(iterations):
+            if filter_type == "butter":
+                b, a = self.butter(order, [low, high], btype="band")
+            elif filter_type == "cheby":
+                b, a = self.chebyshev(order, [low, high], btype="band")
+            elif filter_type == "elliptic":
+                b, a = self.elliptic(order, [low, high], btype="band")
+            else:
+                raise ValueError(
+                    "Unsupported filter type. Choose from 'butter', 'cheby', or 'elliptic'."
+                )
+
+            filtered_signal = self._apply_iir_filter(b, a, filtered_signal)
+
         return filtered_signal
 
-    def median(self, kernel_size=3):
+    def median(self, kernel_size=3, iterations=1, method="edge"):
         """
-        Apply a median filter to the signal.
-
-        The median filter is a non-linear filter used to remove spikes and outliers
-        from signals. It is particularly effective for removing motion artifacts
-        in PPG and ECG signals, where abrupt changes may be caused by noise rather than the signal itself.
+        Apply a median filter to the signal with optional repeated filtering.
 
         Parameters
         ----------
         kernel_size : int, optional
             Size of the median filter kernel. Default is 3.
+        iterations : int, optional
+            The number of times to apply the median filter for additional filtering. Default is 1.
+        method : str, optional
+            Padding method: 'edge' (default), 'reflect', or 'constant'.
 
         Returns
         -------
@@ -515,24 +695,24 @@ class SignalFiltering:
         >>> print(filtered_signal)
         [1 2 3 5 5 6 7 8 9 9]
         """
-        # Apply padding to the signal
-        padded_signal = np.pad(
-            self.signal,
-            (kernel_size // 2, kernel_size - 1 - kernel_size // 2),
-            mode="edge",
-        )
+        filtered_signal = self.signal.copy()
 
-        # Calculate the median filter
-        filtered_signal = np.array(
-            [
-                np.median(padded_signal[i : i + kernel_size])
-                for i in range(len(self.signal))
-            ]
-        )
+        for _ in range(iterations):
+            padded_signal = np.pad(
+                filtered_signal,
+                (kernel_size // 2, kernel_size - 1 - kernel_size // 2),
+                mode=method,
+            )
+            filtered_signal = np.array(
+                [
+                    np.median(padded_signal[i : i + kernel_size])
+                    for i in range(len(self.signal))
+                ]
+            )
 
         return filtered_signal
 
-    def _apply_iir_filter(self, b, a):
+    def _apply_iir_filter(self, b, a, filtered_signal=None):
         """
         Apply an IIR filter using the provided coefficients.
 
@@ -551,7 +731,8 @@ class SignalFiltering:
         filtered_signal : numpy.ndarray
             The filtered signal.
         """
-        filtered_signal = np.zeros_like(self.signal)
+        if filtered_signal is None:
+            filtered_signal = np.zeros_like(self.signal)
         epsilon = 1e-10  # Small constant to prevent division by zero
 
         # Ensure the first coefficient of a is not zero to avoid instability
@@ -561,15 +742,21 @@ class SignalFiltering:
             filtered_signal[i] = b[0] * self.signal[i]
 
             if i > 0 and len(b) > 1:
-                filtered_signal[i] += b[1] * self.signal[i - 1] - a[1] * filtered_signal[i - 1]
+                filtered_signal[i] += (
+                    b[1] * self.signal[i - 1] - a[1] * filtered_signal[i - 1]
+                )
 
             if i > 1 and len(b) > 2:
-                filtered_signal[i] += b[2] * self.signal[i - 2] - a[2] * filtered_signal[i - 2]
+                filtered_signal[i] += (
+                    b[2] * self.signal[i - 2] - a[2] * filtered_signal[i - 2]
+                )
 
             # Normalize by a[0] to ensure stability
             filtered_signal[i] /= a[0]
 
             # Apply epsilon to avoid infinities or NaNs
-            filtered_signal[i] = np.nan_to_num(filtered_signal[i], nan=0.0, posinf=0.0, neginf=0.0)
+            filtered_signal[i] = np.nan_to_num(
+                filtered_signal[i], nan=0.0, posinf=0.0, neginf=0.0
+            )
 
         return filtered_signal

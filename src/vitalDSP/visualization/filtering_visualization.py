@@ -1,5 +1,5 @@
 import plotly.graph_objs as go
-from vitalDSP.filtering import (
+from vitalDSP.filtering.signal_filtering import (
     SignalFiltering,
 )  # Assuming SignalFiltering class has been implemented
 
@@ -55,7 +55,7 @@ class FilteringVisualization:
         >>> fv = FilteringVisualization(signal)
         >>> fv.visualize_gaussian_filter(sigma=1.0)
         """
-        filtered_signal = self.filtering.gaussian_filter(sigma)
+        filtered_signal = self.filtering.gaussian(sigma)
         self._plot_signal(filtered_signal, title=f"Gaussian Filter (Sigma: {sigma})")
 
     def visualize_butterworth_filter(self, cutoff=0.5, order=2, fs=1000):
@@ -72,7 +72,7 @@ class FilteringVisualization:
         >>> fv = FilteringVisualization(signal)
         >>> fv.visualize_butterworth_filter(cutoff=0.3, order=2, fs=100)
         """
-        filtered_signal = self.filtering.butterworth_filter(cutoff, order, fs)
+        filtered_signal = self.filtering.butterworth(cutoff, order, fs)
         self._plot_signal(
             filtered_signal,
             title=f"Butterworth Filter (Cutoff: {cutoff} Hz, Order: {order})",
@@ -90,7 +90,7 @@ class FilteringVisualization:
         >>> fv = FilteringVisualization(signal)
         >>> fv.visualize_median_filter(kernel_size=5)
         """
-        filtered_signal = self.filtering.median_filter(kernel_size)
+        filtered_signal = self.filtering.median(kernel_size)
         self._plot_signal(
             filtered_signal, title=f"Median Filter (Kernel Size: {kernel_size})"
         )
@@ -115,9 +115,9 @@ class FilteringVisualization:
         >>> fv.visualize_all_filters(window_size=5, sigma=1.0, cutoff=0.3, order=2, fs=100, kernel_size=5)
         """
         moving_avg_signal = self.filtering.moving_average(window_size)
-        gaussian_signal = self.filtering.gaussian_filter(sigma)
-        butterworth_signal = self.filtering.butterworth_filter(cutoff, order, fs)
-        median_signal = self.filtering.median_filter(kernel_size)
+        gaussian_signal = self.filtering.gaussian(sigma)
+        butterworth_signal = self.filtering.butterworth(cutoff, order, fs)
+        median_signal = self.filtering.median(kernel_size)
 
         traces = [
             go.Scatter(y=self.signal, mode="lines", name="Original Signal"),

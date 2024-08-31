@@ -1,6 +1,7 @@
 import numpy as np
 from vitalDSP.respiratory_analysis.preprocess.preprocess import preprocess_signal
 
+
 def time_domain_rr(signal, sampling_rate, preprocess=None, **preprocess_kwargs):
     """
     Estimate respiratory rate using time-domain methods, particularly autocorrelation.
@@ -29,14 +30,16 @@ def time_domain_rr(signal, sampling_rate, preprocess=None, **preprocess_kwargs):
     """
     # Apply preprocessing if specified
     if preprocess:
-        signal = preprocess_signal(signal, sampling_rate, filter_type=preprocess, **preprocess_kwargs)
+        signal = preprocess_signal(
+            signal, sampling_rate, filter_type=preprocess, **preprocess_kwargs
+        )
 
     # Normalize the signal
     signal = (signal - np.mean(signal)) / np.std(signal)
 
     # Compute the autocorrelation of the signal
-    autocorr = np.correlate(signal, signal, mode='full')
-    autocorr = autocorr[len(autocorr) // 2:]
+    autocorr = np.correlate(signal, signal, mode="full")
+    autocorr = autocorr[len(autocorr) // 2 :]
 
     # Find the first peak in the autocorrelation
     peaks = np.diff(autocorr)

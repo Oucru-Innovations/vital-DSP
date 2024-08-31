@@ -37,7 +37,8 @@ jobs:
         run: make test
 
       - name: Generate Coverage Report
-        run: make coverage
+        run: pytest --cov=src --cov-config=.coveragerc --cov-report=html:cov_html
+
 
       - name: Run Linting
         run: make lint

@@ -2,7 +2,10 @@ import numpy as np
 from vitalDSP.respiratory_analysis.estimate_rr.fft_based_rr import fft_based_rr
 from vitalDSP.respiratory_analysis.estimate_rr.time_domain_rr import time_domain_rr
 
-def ppg_ecg_fusion(ppg_signal, ecg_signal, sampling_rate, preprocess=None, **preprocess_kwargs):
+
+def ppg_ecg_fusion(
+    ppg_signal, ecg_signal, sampling_rate, preprocess=None, **preprocess_kwargs
+):
     """
     Fuse PPG and ECG signals to improve the estimation of respiratory rate.
 
@@ -32,10 +35,14 @@ def ppg_ecg_fusion(ppg_signal, ecg_signal, sampling_rate, preprocess=None, **pre
     >>> print(rr_fusion)
     """
     # Estimate RR from PPG using FFT
-    rr_ppg = fft_based_rr(ppg_signal, sampling_rate, preprocess=preprocess, **preprocess_kwargs)
+    rr_ppg = fft_based_rr(
+        ppg_signal, sampling_rate, preprocess=preprocess, **preprocess_kwargs
+    )
 
     # Estimate RR from ECG using time-domain analysis
-    rr_ecg = time_domain_rr(ecg_signal, sampling_rate, preprocess=preprocess, **preprocess_kwargs)
+    rr_ecg = time_domain_rr(
+        ecg_signal, sampling_rate, preprocess=preprocess, **preprocess_kwargs
+    )
 
     # Combine RR estimates from both signals
     rr_fusion = np.mean([rr_ppg, rr_ecg])

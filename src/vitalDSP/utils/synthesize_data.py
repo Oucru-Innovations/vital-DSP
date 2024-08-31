@@ -5,6 +5,8 @@ from scipy.signal import resample
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 from vitalDSP.utils.common import ecg_detect_peaks
+
+
 def generate_sinusoidal(frequency, sampling_rate, duration, amplitude=1.0, phase=0.0):
     """
     Generate a sinusoidal wave.
@@ -36,7 +38,10 @@ def generate_sinusoidal(frequency, sampling_rate, duration, amplitude=1.0, phase
     signal = amplitude * np.sin(2 * np.pi * frequency * t + phase)
     return signal
 
-def generate_square_wave(frequency, sampling_rate, duration, amplitude=1.0, duty_cycle=0.5):
+
+def generate_square_wave(
+    frequency, sampling_rate, duration, amplitude=1.0, duty_cycle=0.5
+):
     """
     Generate a square wave.
 
@@ -67,6 +72,7 @@ def generate_square_wave(frequency, sampling_rate, duration, amplitude=1.0, duty
     signal = amplitude * np.where(np.mod(t * frequency, 1) < duty_cycle, 1.0, -1.0)
     return signal
 
+
 def generate_noisy_signal(base_signal, noise_level=0.1):
     """
     Add Gaussian noise to a base signal.
@@ -93,8 +99,19 @@ def generate_noisy_signal(base_signal, noise_level=0.1):
     noisy_signal = base_signal + noise
     return noisy_signal
 
-def generate_ecg_signal(sfecg=256, N=256, Anoise=0.0, hrmean=60, hrstd=1.0,
-                        lfhfratio=0.5, sfint=512, ti=None, ai=None, bi=None):
+
+def generate_ecg_signal(
+    sfecg=256,
+    N=256,
+    Anoise=0.0,
+    hrmean=60,
+    hrstd=1.0,
+    lfhfratio=0.5,
+    sfint=512,
+    ti=None,
+    ai=None,
+    bi=None,
+):
     """
     Generate a synthetic ECG signal using the dynamical model from McSharry et al.
 
@@ -157,9 +174,21 @@ def generate_ecg_signal(sfecg=256, N=256, Anoise=0.0, hrmean=60, hrstd=1.0,
     flostd = 0.01
     fhistd = 0.01
 
-    rr0 = rrprocess(flo, fhi, flostd, fhistd, lfhfratio, hrmean, hrstd, 1, 2 ** int(np.ceil(np.log2(N * 60.0 / hrmean))))
+    rr0 = rrprocess(
+        flo,
+        fhi,
+        flostd,
+        fhistd,
+        lfhfratio,
+        hrmean,
+        hrstd,
+        1,
+        2 ** int(np.ceil(np.log2(N * 60.0 / hrmean))),
+    )
 
-    rr = interp1d(np.linspace(0, len(rr0) - 1, len(rr0)), rr0, kind='cubic')(np.linspace(0, len(rr0) - 1, len(rr0) * sfint))
+    rr = interp1d(np.linspace(0, len(rr0) - 1, len(rr0)), rr0, kind="cubic")(
+        np.linspace(0, len(rr0) - 1, len(rr0) * sfint)
+    )
 
     dt = 1.0 / sfint
     rrn = np.zeros_like(rr)
@@ -187,6 +216,7 @@ def generate_ecg_signal(sfecg=256, N=256, Anoise=0.0, hrmean=60, hrstd=1.0,
 
     return s, ipeaks
 
+
 def rrprocess(flo, fhi, flostd, fhistd, lfhfratio, hrmean, hrstd, sfrr, n):
     w1 = 2 * np.pi * flo
     w2 = 2 * np.pi * fhi
@@ -195,12 +225,12 @@ def rrprocess(flo, fhi, flostd, fhistd, lfhfratio, hrmean, hrstd, sfrr, n):
     sig2 = 1
     sig1 = lfhfratio
     rrmean = 60.0 / hrmean
-    rrstd = 60.0 * hrstd / (hrmean ** 2)
+    rrstd = 60.0 * hrstd / (hrmean**2)
 
     df = sfrr / n
     w = np.arange(n) * 2 * np.pi * df
-    Hw1 = sig1 * np.exp(-0.5 * ((w - w1) / c1) ** 2) / np.sqrt(2 * np.pi * c1 ** 2)
-    Hw2 = sig2 * np.exp(-0.5 * ((w - w2) / c2) ** 2) / np.sqrt(2 * np.pi * c2 ** 2)
+    Hw1 = sig1 * np.exp(-0.5 * ((w - w1) / c1) ** 2) / np.sqrt(2 * np.pi * c1**2)
+    Hw2 = sig2 * np.exp(-0.5 * ((w - w2) / c2) ** 2) / np.sqrt(2 * np.pi * c2**2)
     Hw = Hw1 + Hw2
 
     # Resample Hw to ensure it has the correct length
@@ -222,6 +252,7 @@ def rrprocess(flo, fhi, flostd, fhistd, lfhfratio, hrmean, hrstd, sfrr, n):
     rr = np.nan_to_num(rr, nan=rrmean)
 
     return rr
+
 
 def derivsecgsyn(x, t, rr, sfint, ti, ai, bi):
     # xi = np.cos(ti)
@@ -248,6 +279,7 @@ def derivsecgsyn(x, t, rr, sfint, ti, ai, bi):
 
     dxdt = [dx1dt, dx2dt, dx3dt]
     return dxdt
+
 
 def generate_resp_signal(sampling_rate, duration, frequency=0.2, amplitude=0.5):
     """
@@ -278,12 +310,9 @@ def generate_resp_signal(sampling_rate, duration, frequency=0.2, amplitude=0.5):
     resp_signal = amplitude * np.sin(2 * np.pi * frequency * t)
     return resp_signal
 
+
 def generate_synthetic_ppg_reversed(
-    duration=10,
-    sampling_rate=1000,
-    heart_rate=60,
-    noise_level=0.01,
-    display=False
+    duration=10, sampling_rate=1000, heart_rate=60, noise_level=0.01, display=False
 ):
     """
     Generate a synthetic PPG signal.
@@ -327,10 +356,12 @@ def generate_synthetic_ppg_reversed(
         dicrotic_notch_delay = 0.1  # Time delay for the dicrotic notch
 
         # Systolic peak
-        systolic_peak = amplitude * np.exp(-((t - 0.15) ** 2) / (2 * width_systolic ** 2))
+        systolic_peak = amplitude * np.exp(-((t - 0.15) ** 2) / (2 * width_systolic**2))
 
         # Dicrotic notch and wave
-        dicrotic_wave = (dicrotic_notch_depth * np.exp(-((t - (0.15 + dicrotic_notch_delay)) ** 2) / (2 * width_diastolic ** 2)))
+        dicrotic_wave = dicrotic_notch_depth * np.exp(
+            -((t - (0.15 + dicrotic_notch_delay)) ** 2) / (2 * width_diastolic**2)
+        )
 
         return systolic_peak - dicrotic_wave
 
@@ -340,7 +371,7 @@ def generate_synthetic_ppg_reversed(
 
     # Tile the cycle to create the full PPG signal
     ppg_signal = np.tile(ppg_cycle, num_beats)
-    ppg_signal = ppg_signal[:len(time)]  # Trim to the exact length
+    ppg_signal = ppg_signal[: len(time)]  # Trim to the exact length
 
     # Add Gaussian noise to simulate artifacts
     noise = np.random.normal(0, noise_level, len(ppg_signal))
@@ -357,6 +388,7 @@ def generate_synthetic_ppg_reversed(
 
     return time, ppg_signal
 
+
 def generate_synthetic_ppg(
     duration=10,
     sampling_rate=1000,
@@ -367,7 +399,7 @@ def generate_synthetic_ppg(
     dicrotic_notch_depth=0.6,
     dicrotic_notch_delay=0.2,
     randomize=False,
-    display=False
+    display=False,
 ):
     """
     Generate a synthetic PPG signal with adjustable parameters.
@@ -424,10 +456,16 @@ def generate_synthetic_ppg(
         width_systolic = 0.08  # Width of the systolic peak
 
         # Systolic peak (tallest peak)
-        systolic_peak = amplitude * np.exp(-((t - 0.2) ** 2) / (2 * width_systolic ** 2))
+        systolic_peak = amplitude * np.exp(-((t - 0.2) ** 2) / (2 * width_systolic**2))
 
         # Diastolic peak (adjustable)
-        diastolic_peak = diastolic_amplitude * amplitude * np.exp(-((t - (0.2 + dicrotic_notch_delay)) ** 2) / (2 * diastolic_width ** 2))
+        diastolic_peak = (
+            diastolic_amplitude
+            * amplitude
+            * np.exp(
+                -((t - (0.2 + dicrotic_notch_delay)) ** 2) / (2 * diastolic_width**2)
+            )
+        )
 
         return systolic_peak + diastolic_peak
 
@@ -437,7 +475,7 @@ def generate_synthetic_ppg(
 
     # Tile the cycle to create the full PPG signal
     ppg_signal = np.tile(ppg_cycle, num_beats)
-    ppg_signal = ppg_signal[:len(time)]  # Trim to the exact length
+    ppg_signal = ppg_signal[: len(time)]  # Trim to the exact length
 
     # Add Gaussian noise to simulate artifacts
     noise = np.random.normal(0, noise_level, len(ppg_signal))

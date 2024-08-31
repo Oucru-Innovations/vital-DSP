@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class SignalPowerAnalysis:
     """
     A comprehensive class for measuring the power of physiological signals.

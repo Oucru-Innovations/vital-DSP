@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class PCASignalDecomposition:
     """
     A class to perform Principal Component Analysis (PCA) for signal decomposition.
@@ -58,7 +59,9 @@ class PCASignalDecomposition:
         """
         # Check if the input is a 2D array
         if self.signals.ndim != 2:
-            raise ValueError("Input signals must be a 2D array with shape (n_samples, n_features).")
+            raise ValueError(
+                "Input signals must be a 2D array with shape (n_samples, n_features)."
+            )
 
         # Step 1: Center the data (subtract the mean)
         mean_signal = np.mean(self.signals, axis=0)
@@ -77,9 +80,12 @@ class PCASignalDecomposition:
         # Step 5: Select the top n_components eigenvectors (principal components)
         if self.n_components is None or self.n_components > self.signals.shape[1]:
             self.n_components = self.signals.shape[1]
-        principal_components = np.dot(centered_signals, eigenvectors[:, :self.n_components])
+        principal_components = np.dot(
+            centered_signals, eigenvectors[:, : self.n_components]
+        )
 
         return principal_components
+
 
 class ICASignalDecomposition:
     """
@@ -141,24 +147,32 @@ class ICASignalDecomposition:
         """
         # Check if the input is a 2D array
         if self.signals.ndim != 2:
-            raise ValueError("Input signals must be a 2D array with shape (n_samples, n_features).")
+            raise ValueError(
+                "Input signals must be a 2D array with shape (n_samples, n_features)."
+            )
 
         # Step 1: Center and whiten the data
         mean_signal = np.mean(self.signals, axis=0)
         centered_signals = self.signals - mean_signal
         cov = np.cov(centered_signals, rowvar=False)
         eig_vals, eig_vecs = np.linalg.eigh(cov)
-        whitening_matrix = np.dot(eig_vecs / np.sqrt(eig_vals), eig_vecs.T)
-        whitened_signals = np.dot(whitening_matrix, centered_signals.T).T
+        whitening_matrix = np.dot(
+            eig_vecs / np.sqrt(eig_vals + 1e-6), eig_vecs.T
+        )  # Whitening
+        whitened_signals = np.dot(centered_signals, whitening_matrix)
 
-        # Step 2: Initialize weights
-        n_components, n_samples = whitened_signals.shape
-        W = np.random.randn(n_components, n_components)
+        # Step 2: Initialize weights (for n_signals)
+        n_signals = whitened_signals.shape[1]
+        W = np.random.randn(n_signals, n_signals)
 
         # Step 3: Perform ICA using the FastICA algorithm
         for i in range(self.max_iter):
             W_old = W.copy()
-            W = np.dot(np.tanh(np.dot(W, whitened_signals)).dot(whitened_signals.T) / n_samples, W)
+            W = np.dot(
+                np.tanh(np.dot(W, whitened_signals.T)).dot(whitened_signals)
+                / whitened_signals.shape[0],
+                W,
+            )
             W = W / np.linalg.norm(W, axis=1, keepdims=True)
 
             # Check for convergence

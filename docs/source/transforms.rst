@@ -113,6 +113,19 @@ This module covers various methods for representing signals in both time and fre
     :exclude-members: __dict__, __weakref__, __module__, __annotations__
     :noindex:
 
+Vital Transformation
+-----------------------------
+This module covers perform comprehensive signal processing on ECG and PPG signals using advanced filtering and artifact removal techniques.
+
+A series of transformations aimed at enhancing the quality of ECG and PPG signals by eliminating noise, detrending, normalizing, and enhancing critical points for easier detection. Each transformation step is modular and customizable.
+
+.. automodule:: vitalDSP.transforms.vital_transformation
+    :members:
+    :undoc-members:
+    :private-members:
+    :exclude-members: __dict__, __weakref__, __module__, __annotations__
+    :noindex:
+
 Wavelet FFT Fusion
 ------------------
 Combining Wavelet Transform with FFT (Fast Fourier Transform) to exploit the strengths of both in analyzing different aspects of the signal.

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class GenerativeSignalSynthesis:
     """
     Generative Signal Synthesis for creating synthetic signal data using various methods.

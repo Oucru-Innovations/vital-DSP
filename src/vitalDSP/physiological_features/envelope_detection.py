@@ -1,6 +1,7 @@
 import numpy as np
 from vitalDSP.transforms.wavelet_transform import WaveletTransform
 
+
 class EnvelopeDetection:
     """
     A comprehensive class for detecting the envelope of physiological signals.

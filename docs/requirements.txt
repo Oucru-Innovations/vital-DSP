@@ -1,5 +1,8 @@
 sphinx>=4.0.0
 sphinx_rtd_theme>=0.5.2
-m2r2>=0.3.1
+nbsphinx
 sphinx-markdown-builder
-nbsphinx==0.8.8
+matplotlib
+plotly
+ipykernel
+pandas

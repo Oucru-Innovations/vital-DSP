@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class LossFunctions:
     """
     A class that provides a collection of common loss functions for signal processing.

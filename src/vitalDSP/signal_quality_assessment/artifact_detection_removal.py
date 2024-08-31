@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def threshold_artifact_detection(signal, threshold=0.5):
     """
     Detect artifacts in the signal based on amplitude thresholding.
@@ -24,6 +25,7 @@ def threshold_artifact_detection(signal, threshold=0.5):
     """
     artifact_indices = np.where(np.abs(signal) > threshold)[0]
     return artifact_indices
+
 
 def z_score_artifact_detection(signal, z_threshold=3.0):
     """
@@ -53,6 +55,7 @@ def z_score_artifact_detection(signal, z_threshold=3.0):
     z_scores = np.abs((signal - mean) / std_dev)
     artifact_indices = np.where(z_scores > z_threshold)[0]
     return artifact_indices
+
 
 def kurtosis_artifact_detection(signal, kurt_threshold=3.0):
     """
@@ -87,6 +90,7 @@ def kurtosis_artifact_detection(signal, kurt_threshold=3.0):
         artifact_indices = np.array([])
     return artifact_indices
 
+
 def moving_average_artifact_removal(signal, window_size=5):
     """
     Remove artifacts using a moving average filter.
@@ -109,9 +113,14 @@ def moving_average_artifact_removal(signal, window_size=5):
     >>> cleaned_signal = moving_average_artifact_removal(signal, window_size=3)
     >>> print(cleaned_signal)
     """
-    padded_signal = np.pad(signal, (window_size // 2, window_size - 1 - window_size // 2), mode='edge')
-    smoothed_signal = np.convolve(padded_signal, np.ones(window_size) / window_size, mode='valid')
+    padded_signal = np.pad(
+        signal, (window_size // 2, window_size - 1 - window_size // 2), mode="edge"
+    )
+    smoothed_signal = np.convolve(
+        padded_signal, np.ones(window_size) / window_size, mode="valid"
+    )
     return smoothed_signal
+
 
 def wavelet_artifact_removal(signal, wavelet_func, level=3):
     """
@@ -154,9 +163,12 @@ def wavelet_artifact_removal(signal, wavelet_func, level=3):
     # Perform wavelet reconstruction
     for i in range(level - 1, -1, -1):
         low_pass, high_pass = wavelet_func(current_signal)
-        current_signal = low_pass + np.pad(high_pass, (0, len(current_signal) - len(high_pass)), 'constant')
+        current_signal = low_pass + np.pad(
+            high_pass, (0, len(current_signal) - len(high_pass)), "constant"
+        )
 
     return current_signal
+
 
 def median_filter_artifact_removal(signal, kernel_size=3):
     """
@@ -180,9 +192,14 @@ def median_filter_artifact_removal(signal, kernel_size=3):
     >>> cleaned_signal = median_filter_artifact_removal(signal, kernel_size=3)
     >>> print(cleaned_signal)
     """
-    padded_signal = np.pad(signal, (kernel_size // 2, kernel_size - 1 - kernel_size // 2), mode='edge')
-    filtered_signal = np.array([np.median(padded_signal[i:i + kernel_size]) for i in range(len(signal))])
+    padded_signal = np.pad(
+        signal, (kernel_size // 2, kernel_size - 1 - kernel_size // 2), mode="edge"
+    )
+    filtered_signal = np.array(
+        [np.median(padded_signal[i : i + kernel_size]) for i in range(len(signal))]
+    )
     return filtered_signal
+
 
 def adaptive_threshold_artifact_detection(signal, window_size=100, std_factor=2.0):
     """
@@ -213,13 +230,17 @@ def adaptive_threshold_artifact_detection(signal, window_size=100, std_factor=2.
     artifact_indices = []
 
     for i in range(num_windows):
-        segment = signal[i * window_size:(i + 1) * window_size]
+        segment = signal[i * window_size : (i + 1) * window_size]
         segment_mean = np.mean(segment)
         segment_std = np.std(segment)
-        segment_artifacts = np.where(np.abs(segment - segment_mean) > std_factor * segment_std)[0] + i * window_size
+        segment_artifacts = (
+            np.where(np.abs(segment - segment_mean) > std_factor * segment_std)[0]
+            + i * window_size
+        )
         artifact_indices.extend(segment_artifacts)
 
     return np.array(artifact_indices)
+
 
 def iterative_artifact_removal(signal, max_iterations=5, threshold=0.5):
     """
@@ -248,7 +269,9 @@ def iterative_artifact_removal(signal, max_iterations=5, threshold=0.5):
     cleaned_signal = signal.copy()
 
     for _ in range(max_iterations):
-        artifact_indices = threshold_artifact_detection(cleaned_signal, threshold=threshold)
+        artifact_indices = threshold_artifact_detection(
+            cleaned_signal, threshold=threshold
+        )
         if len(artifact_indices) == 0:
             break
         cleaned_signal[artifact_indices] = np.median(cleaned_signal)

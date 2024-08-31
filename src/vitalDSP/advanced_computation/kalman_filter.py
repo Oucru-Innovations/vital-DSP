@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class KalmanFilter:
     """
     A Kalman Filter for real-time filtering and continuous monitoring of signals.

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def sliding_window_snr(signal, window_size=100, step_size=50):
     """
     Estimate SNR adaptively using a sliding window approach.
@@ -26,12 +27,13 @@ def sliding_window_snr(signal, window_size=100, step_size=50):
     """
     snr_estimates = []
     for i in range(0, len(signal) - window_size + 1, step_size):
-        window_signal = signal[i:i + window_size]
-        signal_power = np.mean(window_signal ** 2)
+        window_signal = signal[i : i + window_size]
+        signal_power = np.mean(window_signal**2)
         noise_power = np.var(window_signal)
         snr = 10 * np.log10(signal_power / noise_power)
         snr_estimates.append(snr)
     return np.array(snr_estimates)
+
 
 def adaptive_threshold_snr(signal, threshold=0.5):
     """
@@ -58,11 +60,12 @@ def adaptive_threshold_snr(signal, threshold=0.5):
     noise_segments = signal[np.abs(signal) < threshold]
     signal_segments = signal[np.abs(signal) >= threshold]
 
-    signal_power = np.mean(signal_segments ** 2)
-    noise_power = np.mean(noise_segments ** 2)
+    signal_power = np.mean(signal_segments**2)
+    noise_power = np.mean(noise_segments**2)
 
     snr = 10 * np.log10(signal_power / noise_power)
     return snr
+
 
 def recursive_snr_estimation(signal, alpha=0.9):
     """
@@ -92,7 +95,9 @@ def recursive_snr_estimation(signal, alpha=0.9):
 
     for x in signal:
         avg_signal_power = alpha * avg_signal_power + (1 - alpha) * x**2
-        avg_noise_power = alpha * avg_noise_power + (1 - alpha) * (x - np.mean(signal))**2
+        avg_noise_power = (
+            alpha * avg_noise_power + (1 - alpha) * (x - np.mean(signal)) ** 2
+        )
         snr = 10 * np.log10(avg_signal_power / avg_noise_power)
         snr_estimates.append(snr)
 

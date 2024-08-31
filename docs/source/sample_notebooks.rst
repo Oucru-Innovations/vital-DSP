@@ -10,3 +10,7 @@ This section contains various Jupyter Notebooks that demonstrate the usage of Vi
 
    notebooks/synthesize_data.ipynb
    notebooks/signal_filtering.ipynb
+   notebooks/advanced_filtering.ipynb
+   notebooks/artifact_removal.ipynb
+   notebooks/signal_quality_index.ipynb
+   notebooks/transforms.ipynb

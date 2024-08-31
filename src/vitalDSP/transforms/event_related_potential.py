@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class EventRelatedPotential:
     """
     A class to compute Event-Related Potentials (ERP) for detecting brain responses to stimuli in EEG.
@@ -101,4 +102,6 @@ class EventRelatedPotential:
         if erps:
             return np.mean(erps, axis=0)
         else:
-            raise ValueError("No valid ERP segments were found. Check stimulus times and signal length.")
+            raise ValueError(
+                "No valid ERP segments were found. Check stimulus times and signal length."
+            )
