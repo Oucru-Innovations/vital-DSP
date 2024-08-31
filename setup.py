@@ -1,8 +1,22 @@
 from setuptools import setup, find_packages
+from setuptools.command.install import install
+
+class PostInstallCommand(install):
+    def run(self):
+        install.run(self)
+        self.display_message()
+
+    @staticmethod
+    def display_message():
+        print("\n🌟 Thank you for installing vitalDSP! 🌟")
+        print("Explore the full potential of this toolkit and stay up-to-date with the latest features.")
+        print("🔗 Visit our GitHub repository: https://github.com/Oucru-Innovations/vital-DSP")
+        print("🚀 For updates, contributions, or to report issues, head over to GitHub!")
+        print("Your feedback and contributions make vitalDSP better for everyone. Happy coding! 💻\n")
 
 setup(
     name='vitalDSP', 
-    version='0.1.1rc3',  
+    version='0.1.1rc8',  
     author='van-koha',  
     author_email='vital.data@oucru.org', 
     description='A comprehensive toolkit for Digital Signal Processing in healthcare applications.',
@@ -34,4 +48,5 @@ setup(
         ],
     },
     include_package_data=True,  # Include data from MANIFEST.in
+    cmdclass={'install': PostInstallCommand},
 )

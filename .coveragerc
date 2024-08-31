@@ -1,0 +1,11 @@
+[run]
+omit =
+    tests/*         # Exclude the tests folder
+    migrations/*    # Exclude a migrations folder
+    src/vitalDSP/visualization/*  # Ignore the visualization folder
+    src/vitalDSP/advanced_computation/*  # Ignore the advanced_computation folder
+    src/vitalDSP/time_domain/*  # Ignore the time_domain folder
+
+[report]
+exclude_lines =
+    if __name__ == .__main__.:

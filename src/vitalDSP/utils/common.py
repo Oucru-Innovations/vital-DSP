@@ -341,3 +341,37 @@ def ecg_detect_peaks(X, thetap, sfecg):
         ind[iext] = i + 1
 
     return ind
+
+def dtw_distance_windowed(x, y, window=None):
+    """
+    Compute the Dynamic Time Warping (DTW) distance between two sequences using a sliding window.
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        The first time series.
+    y : numpy.ndarray
+        The second time series.
+    window : int, optional
+        The size of the window for the DTW computation. If None, it uses the full sequence.
+
+    Returns
+    -------
+    float
+        The DTW distance between the two sequences.
+    """
+    if window is None:
+        window = len(x)
+
+    # Initialize the cost matrix with infinity
+    dtw_matrix = np.full((len(x), len(y)), np.inf)
+    dtw_matrix[0, 0] = 0
+
+    for i in range(1, len(x)):
+        for j in range(max(1, i - window), min(len(y), i + window)):
+            cost = (x[i] - y[j]) ** 2
+            dtw_matrix[i, j] = cost + min(dtw_matrix[i - 1, j],    # Insertion
+                                          dtw_matrix[i, j - 1],    # Deletion
+                                          dtw_matrix[i - 1, j - 1])  # Match
+
+    return np.sqrt(dtw_matrix[len(x) - 1, len(y) - 1])

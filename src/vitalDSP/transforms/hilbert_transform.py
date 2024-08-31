@@ -66,3 +66,48 @@ class HilbertTransform:
         # Apply the Hilbert Transform using the FFT
         hilbert_signal = np.fft.ifft(np.fft.fft(self.signal) * H)
         return hilbert_signal
+
+    def envelope(self):
+        """
+        Compute the envelope of the signal using the Hilbert Transform.
+
+        The envelope is the magnitude of the analytic signal and represents the instantaneous amplitude of the signal.
+        This is particularly useful in applications such as PPG signal analysis, where the envelope can be used to
+        assess pulse amplitude variations.
+
+        Returns
+        -------
+        numpy.ndarray
+            The envelope of the input signal.
+
+        Examples
+        --------
+        >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
+        >>> ht = HilbertTransform(signal)
+        >>> envelope = ht.envelope()
+        >>> print(envelope)
+        """
+        analytic_signal = self.compute_hilbert()
+        return np.abs(analytic_signal)
+
+    def instantaneous_phase(self):
+        """
+        Compute the instantaneous phase of the signal using the Hilbert Transform.
+
+        The instantaneous phase is the phase angle of the analytic signal and is useful in applications such as
+        ECG analysis, where phase information can help in detecting the QRS complex or other waveform characteristics.
+
+        Returns
+        -------
+        numpy.ndarray
+            The instantaneous phase of the input signal.
+
+        Examples
+        --------
+        >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
+        >>> ht = HilbertTransform(signal)
+        >>> phase = ht.instantaneous_phase()
+        >>> print(phase)
+        """
+        analytic_signal = self.compute_hilbert()
+        return np.angle(analytic_signal)

@@ -55,10 +55,8 @@ class WaveletTransform:
             self.high_pass = np.array([1, -1])  # Use a default or dummy high-pass filter
 
         # Ensure the wavelet filters are numpy arrays
-        if isinstance(self.low_pass, (float, int)):
-            self.low_pass = np.array([self.low_pass])
-        if isinstance(self.high_pass, (float, int)):
-            self.high_pass = np.array([self.high_pass])
+        self.low_pass = np.asarray(self.low_pass)
+        self.high_pass = np.asarray(self.high_pass)
 
     def _wavelet_decompose(self, data):
         """
@@ -75,9 +73,6 @@ class WaveletTransform:
             Approximation coefficients and detail coefficients.
         """
         output_length = len(data)
-        approximation = np.zeros(output_length)
-        detail = np.zeros(output_length)
-
         filter_len = len(self.low_pass)
 
         # Apply padding based on the same_length option
@@ -86,10 +81,17 @@ class WaveletTransform:
         else:
             padded_data = np.pad(data, (0, filter_len - 1), 'constant')
 
+        approximation = np.zeros(output_length)
+        detail = np.zeros(output_length)
+
+        # Iterate over the signal and apply the filters
         for i in range(output_length):
-            data_segment = padded_data[i : i + filter_len]
-            approximation[i] = np.dot(self.low_pass, data_segment)
-            detail[i] = np.dot(self.high_pass, data_segment)
+            data_segment = padded_data[i:i + filter_len]
+
+            if len(data_segment) == len(self.low_pass):
+                approximation[i] = np.dot(self.low_pass, data_segment)
+            if len(data_segment) == len(self.high_pass):
+                detail[i] = np.dot(self.high_pass, data_segment)
 
         return approximation, detail
 

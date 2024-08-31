@@ -41,6 +41,25 @@ class DCTWaveletFusion:
         self.order = order
         self.kwargs = kwargs
 
+    def _match_lengths(self, dct_coeffs, wavelet_coeffs):
+        """
+        Helper method to match the lengths of DCT and Wavelet coefficients.
+
+        Parameters
+        ----------
+        dct_coeffs : numpy.ndarray
+            DCT coefficients of the signal.
+        wavelet_coeffs : numpy.ndarray
+            Wavelet coefficients of the signal.
+
+        Returns
+        -------
+        dct_coeffs, wavelet_coeffs : numpy.ndarray
+            The adjusted DCT and Wavelet coefficients with matching lengths.
+        """
+        min_length = min(len(dct_coeffs), len(wavelet_coeffs))
+        return dct_coeffs[:min_length], wavelet_coeffs[:min_length]
+
     def compute_fusion(self):
         """
         Compute the fusion of Discrete Cosine Transform (DCT) and Wavelet Transform for the signal.
@@ -59,15 +78,21 @@ class DCTWaveletFusion:
         >>> fusion_result = fusion.compute_fusion()
         >>> print(fusion_result)
         """
-        # Compute the Discrete Cosine Transform (DCT) coefficients
+        # Compute DCT coefficients
         dct = DiscreteCosineTransform(self.signal)
         dct_coeffs = dct.compute_dct()
 
-        # Compute the Wavelet Transform coefficients
+        # Compute Wavelet Transform coefficients and use only approximation coefficients
         wavelet_transform = WaveletTransform(self.signal, wavelet_name=self.wavelet_type)
         wavelet_coeffs = wavelet_transform.perform_wavelet_transform(level=self.order)
 
+        # Extract the approximation coefficients (usually the first element of the wavelet transform result)
+        approx_coeffs = wavelet_coeffs[0]
+
+        # Match lengths of DCT and approximation wavelet coefficients
+        dct_coeffs, approx_coeffs = self._match_lengths(dct_coeffs, approx_coeffs)
+
         # Perform the fusion by multiplying corresponding DCT and Wavelet coefficients
-        fusion_result = np.multiply(dct_coeffs, wavelet_coeffs)
+        fusion_result = np.multiply(dct_coeffs, approx_coeffs)
 
         return fusion_result

@@ -148,17 +148,17 @@ class ICASignalDecomposition:
         centered_signals = self.signals - mean_signal
         cov = np.cov(centered_signals, rowvar=False)
         eig_vals, eig_vecs = np.linalg.eigh(cov)
-        whitening_matrix = np.dot(eig_vecs / np.sqrt(eig_vals), eig_vecs.T)
-        whitened_signals = np.dot(whitening_matrix, centered_signals.T).T
+        whitening_matrix = np.dot(eig_vecs / np.sqrt(eig_vals + 1e-6), eig_vecs.T)  # Whitening
+        whitened_signals = np.dot(centered_signals, whitening_matrix)
 
-        # Step 2: Initialize weights
-        n_components, n_samples = whitened_signals.shape
-        W = np.random.randn(n_components, n_components)
+        # Step 2: Initialize weights (for n_signals)
+        n_signals = whitened_signals.shape[1]
+        W = np.random.randn(n_signals, n_signals)
 
         # Step 3: Perform ICA using the FastICA algorithm
         for i in range(self.max_iter):
             W_old = W.copy()
-            W = np.dot(np.tanh(np.dot(W, whitened_signals)).dot(whitened_signals.T) / n_samples, W)
+            W = np.dot(np.tanh(np.dot(W, whitened_signals.T)).dot(whitened_signals) / whitened_signals.shape[0], W)
             W = W / np.linalg.norm(W, axis=1, keepdims=True)
 
             # Check for convergence

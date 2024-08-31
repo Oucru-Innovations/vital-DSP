@@ -34,5 +34,5 @@ def test_frequency_domain_rr():
     rr = frequency_domain_rr(signal, sampling_rate=100)
     assert 12 <= rr <= 40
 
-# if __name__ == "__main__":
-#     pytest.main()
+if __name__ == "__main__":
+    pytest.main()

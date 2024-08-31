@@ -46,7 +46,7 @@ class AdvancedSignalFiltering:
             signal = np.array(signal)
         self.signal = signal
 
-    def kalman_filter(self, R=1, Q=1):
+    def kalman_filter(self, signal=None, R=1, Q=1):
         """
         Apply a Kalman filter to the signal.
 
@@ -55,6 +55,8 @@ class AdvancedSignalFiltering:
 
         Parameters
         ----------
+        signal : numpy.ndarray, optional
+            The signal to be filtered. If not provided, self.signal will be used.
         R : float
             Measurement noise covariance. A lower value assumes more trust in the measurements.
         Q : float
@@ -73,21 +75,24 @@ class AdvancedSignalFiltering:
         >>> print(filtered_signal)
         [1.  1.75 2.5  2.12 1.56 1.94 2.7  3.5  3.12 2.56]
         """
-        n = len(self.signal)
+        if signal is None:
+            signal = self.signal  # Use the internal signal if none is provided
+
+        n = len(signal)
         xhat = np.zeros(n)  # Estimated state
         P = np.zeros(n)  # Estimated covariance
-        xhat[0] = self.signal[0]
-        P[0] = 1.0
+        xhat[0] = signal[0]  # Initial state
+        P[0] = 1.0  # Initial estimate covariance
 
         for k in range(1, n):
-            # Prediction update
+            # Prediction update (project the state ahead)
             xhatminus = xhat[k - 1]
             Pminus = P[k - 1] + Q
 
-            # Measurement update
-            K = Pminus / (Pminus + R)
-            xhat[k] = xhatminus + K * (self.signal[k] - xhatminus)
-            P[k] = (1 - K) * Pminus
+            # Measurement update (correct the state estimate)
+            K = Pminus / (Pminus + R)  # Kalman gain
+            xhat[k] = xhatminus + K * (signal[k] - xhatminus)  # Update estimate
+            P[k] = (1 - K) * Pminus  # Update error covariance
 
         return xhat
 
@@ -248,8 +253,15 @@ class AdvancedSignalFiltering:
         >>> filtered_signal = af.ensemble_filtering(filters, method='mean')
         >>> print(filtered_signal)
         """
+        # Apply all filters and ensure they return valid numpy arrays
+        filtered_signals = [np.asarray(f(), dtype=np.float64) for f in filters]
+
+        # Ensure all filtered signals have consistent lengths
+        signal_lengths = [len(signal) for signal in filtered_signals]
+        if len(set(signal_lengths)) > 1:
+            raise ValueError("All filtered signals must have the same length.")
+
         if method == "mean":
-            filtered_signals = np.array([f() for f in filters])
             return np.mean(filtered_signals, axis=0)
 
         elif method == "weighted_mean":
@@ -257,11 +269,11 @@ class AdvancedSignalFiltering:
                 raise ValueError(
                     "Weights must be provided and match the number of filters for weighted_mean."
                 )
-            filtered_signals = np.array([f() for f in filters])
             return np.average(filtered_signals, axis=0, weights=weights)
 
         elif method == "bagging":
-            aggregated_signal = np.zeros_like(self.signal)
+            # Initialize aggregated signal as zeros with the same shape as the input signal
+            aggregated_signal = np.zeros_like(self.signal, dtype=np.float64)
             for _ in range(num_iterations):
                 sampled_indices = np.random.choice(
                     len(self.signal), size=len(self.signal), replace=True
@@ -272,14 +284,18 @@ class AdvancedSignalFiltering:
             return aggregated_signal / (len(filters) * num_iterations)
 
         elif method == "boosting":
-            boosted_signal = np.zeros_like(self.signal)
-            residual = self.signal.copy()
+            # Cast the signal to float64 for numerical stability
+            boosted_signal = np.zeros_like(self.signal, dtype=np.float64)
+            residual = self.signal.astype(np.float64).copy()
+
             for _ in range(num_iterations):
                 for filter_func in filters:
                     prediction = filter_func()
+                    # Update the residual
                     residual -= learning_rate * prediction
-                    boosted_signal += prediction
-            return boosted_signal / num_iterations
+                    boosted_signal += learning_rate * prediction
+
+            return boosted_signal
 
         else:
             raise ValueError(
@@ -389,3 +405,64 @@ class AdvancedSignalFiltering:
             )
 
         return np.convolve(self.signal, weights, mode="same")
+
+    def adaptive_filtering(self, desired_signal, mu=0.5, filter_order=4):
+        """
+        Apply an adaptive filter to the signal using the Least Mean Squares (LMS) algorithm.
+
+        The LMS adaptive filter is useful for real-time signal processing tasks where the characteristics
+        of the signal may change over time. The filter coefficients are updated iteratively to minimize
+        the error between the desired signal and the filter output.
+
+        Parameters
+        ----------
+        desired_signal : numpy.ndarray
+            The desired signal that the filter output should approximate.
+        mu : float, optional
+            The step size or learning rate for the LMS algorithm. Default is 0.01.
+        filter_order : int, optional
+            The order of the adaptive filter. Default is 4.
+
+        Returns
+        -------
+        filtered_signal : numpy.ndarray
+            The filtered signal after applying the LMS adaptive filter.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 5, 6])
+        >>> desired_signal = np.array([1.1, 1.9, 3.1, 4.1, 5.0, 5.9])
+        >>> af = AdvancedSignalFiltering(signal)
+        >>> filtered_signal = af.adaptive_filtering(desired_signal, mu=0.01, filter_order=4)
+        >>> print(filtered_signal)
+        """
+        n = len(self.signal)
+        filtered_signal = np.zeros(n)
+        w = np.random.randn(filter_order) * 1e-6  # Small random initialization
+
+        for i in range(filter_order, n):
+            # Extract the input vector
+            x = self.signal[i-filter_order:i][::-1]  # Input vector (length filter_order)
+
+            # Ensure input vector size is correct
+            if len(x) != filter_order:
+                continue
+
+            # Compute the filter output
+            y = np.dot(w, x)  # Filter output
+
+            # Compute the error signal
+            e = desired_signal[i] - y  # Error signal
+
+            # Check for NaN or Inf in error or input
+            if np.isnan(e) or np.isinf(e):
+                continue
+
+            # Update filter coefficients with clipping to prevent overflow
+            w += 2 * mu * e * x
+            np.clip(w, -1e10, 1e10, out=w)  # Clipping to prevent overflow
+
+            # Store the filtered signal output
+            filtered_signal[i] = y
+
+        return filtered_signal
