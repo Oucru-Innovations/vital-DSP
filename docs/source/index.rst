@@ -35,6 +35,17 @@ Explore the core modules of the VitalDSP library below:
    advanced_computation
    utils
 
+Notebooks
+=================
+
+Explore detailed examples and tutorials provided in the Jupyter Notebooks:
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Jupyter Notebooks:
+
+   sample_notebooks
+
 Additional Resources
 ====================
 
