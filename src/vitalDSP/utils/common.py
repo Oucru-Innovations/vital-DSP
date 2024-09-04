@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def argrelextrema(signal, comparator=np.greater, order=1):
     """
     Find the relative extrema (maxima or minima) in a 1D signal.
@@ -41,13 +42,17 @@ def argrelextrema(signal, comparator=np.greater, order=1):
 
     extrema = (
         np.where(
-            comparator(signal[order:-order], signal[:-2 * order])
-            & comparator(signal[order:-order], signal[2 * order:])
-        )[0] + order
+            comparator(signal[order:-order], signal[: -2 * order])
+            & comparator(signal[order:-order], signal[2 * order :])
+        )[0]
+        + order
     )
     return extrema
 
-def find_peaks(signal, height=None, distance=None, threshold=None, prominence=None, width=None):
+
+def find_peaks(
+    signal, height=None, distance=None, threshold=None, prominence=None, width=None
+):
     """
     Identify peaks in a 1D signal.
 
@@ -88,7 +93,8 @@ def find_peaks(signal, height=None, distance=None, threshold=None, prominence=No
             if height is not None and signal[i] < height:
                 continue
             if threshold is not None and (
-                signal[i] - signal[i - 1] < threshold or signal[i] - signal[i + 1] < threshold
+                signal[i] - signal[i - 1] < threshold
+                or signal[i] - signal[i + 1] < threshold
             ):
                 continue
             if peaks and distance is not None and i - peaks[-1] < distance:
@@ -108,6 +114,7 @@ def find_peaks(signal, height=None, distance=None, threshold=None, prominence=No
                     continue
             peaks.append(i)
     return np.array(peaks)
+
 
 def filtfilt(b, a, signal):
     """
@@ -140,6 +147,7 @@ def filtfilt(b, a, signal):
     y = np.convolve(signal, b, mode="same")
     y = np.convolve(y[::-1], b, mode="same")
     return y[::-1]
+
 
 def pearsonr(x, y):
     """
@@ -184,6 +192,7 @@ def pearsonr(x, y):
     correlation = cov_xy / (std_x * std_y)
     return correlation
 
+
 def coherence(x, y, fs=1.0, nperseg=256):
     """
     Compute the coherence between two signals.
@@ -215,6 +224,7 @@ def coherence(x, y, fs=1.0, nperseg=256):
     >>> freqs, coh = coherence(x, y, fs=500)
     >>> print(freqs, coh)
     """
+
     def periodogram(signal):
         freqs = np.fft.rfftfreq(len(signal), d=1 / fs)
         psd = np.abs(np.fft.rfft(signal)) ** 2 / len(signal)
@@ -229,6 +239,7 @@ def coherence(x, y, fs=1.0, nperseg=256):
     coherence = np.abs(csd_xy) ** 2 / (psd_x * psd_y)
 
     return freqs, coherence
+
 
 def grangercausalitytests(data, max_lag, verbose=False):
     """
@@ -256,6 +267,7 @@ def grangercausalitytests(data, max_lag, verbose=False):
     >>> results = grangercausalitytests(data, max_lag=4, verbose=True)
     >>> print(results)
     """
+
     def lag_matrix(signal, max_lag):
         n = len(signal)
         lagged_data = np.zeros((n - max_lag, max_lag + 1))
@@ -285,6 +297,7 @@ def grangercausalitytests(data, max_lag, verbose=False):
             print(f"Lag: {lag}, F-statistic: {f_statistic}")
 
     return results
+
 
 def ecg_detect_peaks(X, thetap, sfecg):
     """
@@ -342,6 +355,7 @@ def ecg_detect_peaks(X, thetap, sfecg):
 
     return ind
 
+
 def dtw_distance_windowed(x, y, window=None):
     """
     Compute the Dynamic Time Warping (DTW) distance between two sequences using a sliding window.
@@ -370,8 +384,10 @@ def dtw_distance_windowed(x, y, window=None):
     for i in range(1, len(x)):
         for j in range(max(1, i - window), min(len(y), i + window)):
             cost = (x[i] - y[j]) ** 2
-            dtw_matrix[i, j] = cost + min(dtw_matrix[i - 1, j],    # Insertion
-                                          dtw_matrix[i, j - 1],    # Deletion
-                                          dtw_matrix[i - 1, j - 1])  # Match
+            dtw_matrix[i, j] = cost + min(
+                dtw_matrix[i - 1, j],  # Insertion
+                dtw_matrix[i, j - 1],  # Deletion
+                dtw_matrix[i - 1, j - 1],
+            )  # Match
 
     return np.sqrt(dtw_matrix[len(x) - 1, len(y) - 1])

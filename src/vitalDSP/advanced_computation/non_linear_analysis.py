@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 class NonlinearAnalysis:
     """
     Nonlinear Analysis for examining chaotic signals, such as Heart Rate Variability (HRV).

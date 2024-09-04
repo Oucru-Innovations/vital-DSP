@@ -1,6 +1,7 @@
 import numpy as np
 from vitalDSP.respiratory_analysis.preprocess.preprocess import preprocess_signal
 
+
 def fft_based_rr(signal, sampling_rate, preprocess=None, **preprocess_kwargs):
     """
     Estimate respiratory rate using the FFT (Fast Fourier Transform) method.
@@ -28,10 +29,12 @@ def fft_based_rr(signal, sampling_rate, preprocess=None, **preprocess_kwargs):
     >>> print(rr)
     """
     if preprocess:
-        signal = preprocess_signal(signal, sampling_rate, filter_type=preprocess, **preprocess_kwargs)
+        signal = preprocess_signal(
+            signal, sampling_rate, filter_type=preprocess, **preprocess_kwargs
+        )
 
     n = len(signal)
-    freq = np.fft.fftfreq(n, d=1/sampling_rate)
+    freq = np.fft.fftfreq(n, d=1 / sampling_rate)
     fft_spectrum = np.fft.fft(signal)
 
     peak_freq = freq[np.argmax(np.abs(fft_spectrum))]

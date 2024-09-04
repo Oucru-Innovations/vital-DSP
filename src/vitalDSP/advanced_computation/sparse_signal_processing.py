@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class SparseSignalProcessing:
     """
     Sparse Signal Processing for efficient representation and processing of signals.

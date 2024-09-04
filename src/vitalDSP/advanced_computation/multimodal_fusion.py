@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class MultimodalFusion:
     """
     Multimodal Fusion class for combining multiple signals to improve health assessments.
@@ -47,7 +48,9 @@ class MultimodalFusion:
         ValueError
             If the input signals are not a list or if they are not numpy arrays of the same length.
         """
-        if not isinstance(signals, list) or not all(isinstance(s, np.ndarray) for s in signals):
+        if not isinstance(signals, list) or not all(
+            isinstance(s, np.ndarray) for s in signals
+        ):
             raise ValueError("Signals must be a list of numpy arrays.")
 
         signal_lengths = [len(signal) for signal in signals]
@@ -128,7 +131,9 @@ class MultimodalFusion:
         >>> print(fused_signal)
         """
         if weights is None or len(weights) != len(self.signals):
-            raise ValueError("Weights must be provided and must match the number of signals.")
+            raise ValueError(
+                "Weights must be provided and must match the number of signals."
+            )
 
         fused_signal = np.zeros_like(self.signals[0])
         for signal, weight in zip(self.signals, weights):

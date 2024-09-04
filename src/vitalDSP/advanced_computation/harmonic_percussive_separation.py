@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class HarmonicPercussiveSeparation:
     """
     Harmonic-Percussive Separation for separating vocal and noise components in respiratory analysis.

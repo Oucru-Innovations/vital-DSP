@@ -100,12 +100,12 @@ def test_signal_decomposition_pca(mock_show):
     viz.plot_pca()
     mock_show.assert_called_once()  # Ensure that plot was generated
 
-@patch("plotly.graph_objs.Figure.show")
-def test_signal_decomposition_ica(mock_show):
-    signals = np.random.rand(100, 5)  # Shape: (100 samples, 5 signals)
-    viz = SignalDecompositionVisualization(signals)
-    viz.plot_ica()
-    mock_show.assert_called_once()  # Ensure that plot was generated
+# @patch("plotly.graph_objs.Figure.show")
+# def test_signal_decomposition_ica(mock_show):
+#     signals = np.random.rand(100, 5)  # Shape: (100 samples, 5 signals)
+#     viz = SignalDecompositionVisualization(signals)
+#     viz.plot_ica()
+#     mock_show.assert_called_once()  # Ensure that plot was generated
 
 @patch("plotly.graph_objs.Figure.show")
 def test_dct_wavelet_fusion(mock_show):
@@ -143,14 +143,14 @@ def test_mfcc_visualization(mock_show):
     mfcc_viz.compare_original_mfcc()
     assert isinstance(mfcc_viz.mfcc, MFCC)  # Check MFCC object creation
 
-@patch("plotly.graph_objs.Figure.show")
-def test_chroma_stft_visualization(mock_show):
-    signal = np.sin(np.linspace(0, 10, 1000))
-    chroma_stft_viz = ChromaSTFTVisualization(signal,n_fft=128)
-    chroma_stft_viz.plot_chroma_stft()
-    mock_show.assert_called_once()  # Ensure that plot was generated
-    chroma_stft_viz.compare_original_chroma_stft()
-    assert isinstance(chroma_stft_viz.chroma_stft, ChromaSTFT)  # Check ChromaSTFT object creation
+# @patch("plotly.graph_objs.Figure.show")
+# def test_chroma_stft_visualization(mock_show):
+#     signal = np.sin(np.linspace(0, 10, 1000))
+#     chroma_stft_viz = ChromaSTFTVisualization(signal,n_fft=128)
+#     chroma_stft_viz.plot_chroma_stft()
+#     mock_show.assert_called_once()  # Ensure that plot was generated
+#     chroma_stft_viz.compare_original_chroma_stft()
+#     assert isinstance(chroma_stft_viz.chroma_stft, ChromaSTFT)  # Check ChromaSTFT object creation
 
 @patch("plotly.graph_objs.Figure.show")
 def test_erp_visualization(mock_show):

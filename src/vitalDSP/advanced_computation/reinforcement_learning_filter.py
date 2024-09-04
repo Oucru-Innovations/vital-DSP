@@ -1,6 +1,7 @@
 import numpy as np
 import random
 
+
 class ReinforcementLearningFilter:
     """
     A comprehensive Reinforcement Learning Filter for adaptive signal processing.
@@ -98,7 +99,9 @@ class ReinforcementLearningFilter:
 
                 state = next_state
 
-    def train_dqn(self, episodes=1000, batch_size=32, gamma=0.99, epsilon=0.1, target_update=10):
+    def train_dqn(
+        self, episodes=1000, batch_size=32, gamma=0.99, epsilon=0.1, target_update=10
+    ):
         """
         Train the filter using Deep Q-Networks (DQN).
 
@@ -275,7 +278,9 @@ class ReinforcementLearningFilter:
         for state, _, reward, _ in trajectories:
             value_network.train(state, reward)
 
+
 # Simple Neural Network Class for DQN (Placeholder)
+
 
 class SimpleNeuralNetwork:
     def __init__(self, input_size, output_size):
@@ -293,7 +298,9 @@ class SimpleNeuralNetwork:
     def set_weights(self, weights):
         self.weights = weights
 
+
 # Simple Policy Network Class for PPO (Placeholder)
+
 
 class SimplePolicyNetwork:
     def __init__(self, input_size, output_size):
@@ -315,7 +322,9 @@ class SimplePolicyNetwork:
     def update(self, state, action, objective):
         self.weights[:, action] += 0.01 * objective * state
 
+
 # Simple Value Network Class for PPO (Placeholder)
+
 
 class SimpleValueNetwork:
     def __init__(self, input_size):

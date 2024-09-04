@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.optimize import minimize
 
+
 class GaussianProcess:
     """
     A class implementing Gaussian Process (GP) for Bayesian Optimization.
@@ -110,6 +111,7 @@ class GaussianProcess:
         self.X_train = X_train
         self.y_train = y_train
         self.K = self._rbf_kernel(X_train, X_train)
+
 
 class BayesianOptimization:
     """

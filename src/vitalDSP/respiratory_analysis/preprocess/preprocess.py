@@ -6,6 +6,8 @@ from vitalDSP.respiratory_analysis.preprocess.noise_reduction import (
     moving_average_denoising,
 )
 from vitalDSP.filtering.signal_filtering import SignalFiltering
+from scipy.signal import butter, filtfilt
+
 
 def preprocess_signal(
     signal,
@@ -21,6 +23,7 @@ def preprocess_signal(
     polyorder=2,
     kernel_size=3,
     sigma=1.0,
+    respiratory_mode=False,
 ):
     """
     Preprocesses the signal by applying bandpass filtering and noise reduction.
@@ -53,6 +56,9 @@ def preprocess_signal(
         The kernel size for median filtering.
     sigma : float, optional (default=1.0)
         The standard deviation for Gaussian filtering.
+    respiratory_mode : bool, optional (default=False)
+        If True, apply preprocessing specifically for respiratory signals (e.g., PPG or ECG-derived respiration).
+
 
     Returns
     -------
@@ -69,28 +75,94 @@ def preprocess_signal(
     # Apply bandpass filtering or other filter types
     signal_filter = SignalFiltering(signal)
     if filter_type == "bandpass":
-        filtered_signal = signal_filter.bandpass(lowcut, highcut, sampling_rate, order=order)
+        filtered_signal = signal_filter.bandpass(
+            lowcut, highcut, sampling_rate, order=order
+        )
     elif filter_type == "butterworth":
-        filtered_signal = signal_filter.butterworth(cutoff=highcut, fs=sampling_rate, order=order, btype="low")
+        filtered_signal = signal_filter.butterworth(
+            cutoff=highcut, fs=sampling_rate, order=order, btype="low"
+        )
     elif filter_type == "chebyshev":
-        filtered_signal = signal_filter.chebyshev(cutoff=highcut, fs=sampling_rate, order=order, btype="low")
+        filtered_signal = signal_filter.chebyshev(
+            cutoff=highcut, fs=sampling_rate, order=order, btype="low"
+        )
     elif filter_type == "elliptic":
-        filtered_signal = signal_filter.elliptic(cutoff=highcut, fs=sampling_rate, order=order, btype="low")
+        filtered_signal = signal_filter.elliptic(
+            cutoff=highcut, fs=sampling_rate, order=order, btype="low"
+        )
+    elif filter_type == "ignore":
+        filtered_signal = signal.copy()
     else:
-        raise ValueError("Unsupported filter type. Choose from 'bandpass', 'butterworth', 'chebyshev', or 'elliptic'.")
+        raise ValueError(
+            "Unsupported filter type. Choose from 'bandpass', 'butterworth', 'chebyshev', or 'elliptic'."
+        )
+
+    # Additional preprocessing for respiratory signals (if respiratory_mode is True)
+    if respiratory_mode:
+        filtered_signal = respiratory_filtering(
+            signal, sampling_rate, lowcut, highcut, order
+        )
 
     # Apply noise reduction
     if noise_reduction_method == "wavelet":
-        preprocessed_signal = wavelet_denoising(filtered_signal, wavelet_name=wavelet_name, level=level)
+        preprocessed_signal = wavelet_denoising(
+            filtered_signal, wavelet_name=wavelet_name, level=level
+        )
     elif noise_reduction_method == "savgol":
-        preprocessed_signal = savgol_denoising(filtered_signal, window_length=window_length, polyorder=polyorder)
+        preprocessed_signal = savgol_denoising(
+            filtered_signal, window_length=window_length, polyorder=polyorder
+        )
     elif noise_reduction_method == "median":
         preprocessed_signal = median_denoising(filtered_signal, kernel_size=kernel_size)
     elif noise_reduction_method == "gaussian":
         preprocessed_signal = gaussian_denoising(filtered_signal, sigma=sigma)
     elif noise_reduction_method == "moving_average":
-        preprocessed_signal = moving_average_denoising(filtered_signal, window_size=window_length)
+        preprocessed_signal = moving_average_denoising(
+            filtered_signal, window_size=window_length
+        )
+    elif noise_reduction_method == "ignore":
+        preprocessed_signal = filtered_signal
     else:
-        raise ValueError("Unsupported noise reduction method. Choose from 'wavelet', 'savgol', 'median', 'gaussian', or 'moving_average'.")
+        raise ValueError(
+            "Unsupported noise reduction method. Choose from 'wavelet', 'savgol', 'median', 'gaussian', or 'moving_average'."
+        )
 
     return preprocessed_signal
+
+
+def respiratory_filtering(signal, sampling_rate, lowcut=0.1, highcut=0.5, order=4):
+    """
+    Filters the signal specifically for respiratory-related frequency bands.
+
+    Parameters
+    ----------
+    signal : numpy.ndarray
+        The input signal to be filtered.
+    sampling_rate : float
+        The sampling rate of the signal in Hz.
+    lowcut : float, optional (default=0.1)
+        The lower cutoff frequency for respiratory filtering.
+    highcut : float, optional (default=0.5)
+        The upper cutoff frequency for respiratory filtering.
+    order : int, optional (default=4)
+        The order of the filter.
+
+    Returns
+    -------
+    filtered_signal : numpy.ndarray
+        The filtered respiratory signal.
+
+    Examples
+    --------
+    >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.2, 100)
+    >>> sampling_rate = 1000
+    >>> filtered_signal = respiratory_filtering(signal, sampling_rate)
+    >>> print(filtered_signal)
+    """
+    b, a = butter(
+        order,
+        [lowcut / (0.5 * sampling_rate), highcut / (0.5 * sampling_rate)],
+        btype="band",
+    )
+    filtered_signal = filtfilt(b, a, signal)
+    return filtered_signal

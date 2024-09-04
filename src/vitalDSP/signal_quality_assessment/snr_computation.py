@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def snr_power_ratio(signal, noise):
     """
     Calculate the SNR using the power ratio method.
@@ -27,6 +28,7 @@ def snr_power_ratio(signal, noise):
     power_noise = np.mean(np.square(noise))
     snr = 10 * np.log10(power_signal / power_noise)
     return snr
+
 
 def snr_peak_to_peak(signal, noise):
     """
@@ -56,6 +58,7 @@ def snr_peak_to_peak(signal, noise):
     snr = 20 * np.log10(signal_ptp / noise_ptp)
     return snr
 
+
 def snr_mean_square(signal, noise):
     """
     Calculate the SNR using the mean square of the signal and noise.
@@ -79,10 +82,11 @@ def snr_mean_square(signal, noise):
     >>> snr = snr_mean_square(signal, noise)
     >>> print(snr)
     """
-    mean_square_signal = np.mean(signal ** 2)
-    mean_square_noise = np.mean(noise ** 2)
+    mean_square_signal = np.mean(signal**2)
+    mean_square_noise = np.mean(noise**2)
     snr = 10 * np.log10(mean_square_signal / mean_square_noise)
     return snr
+
 
 def crest_factor(signal):
     """
@@ -105,9 +109,10 @@ def crest_factor(signal):
     >>> print(cf)
     """
     peak_amplitude = np.max(np.abs(signal))
-    rms_value = np.sqrt(np.mean(signal ** 2))
+    rms_value = np.sqrt(np.mean(signal**2))
     crest_factor = peak_amplitude / rms_value
     return crest_factor
+
 
 def harmonic_distortion(signal, fundamental_freq, sampling_rate, harmonics=5):
     """
@@ -136,19 +141,32 @@ def harmonic_distortion(signal, fundamental_freq, sampling_rate, harmonics=5):
     >>> print(thd)
     """
     n = len(signal)
-    freqs = np.fft.fftfreq(n, d=1/sampling_rate)
+    freqs = np.fft.fftfreq(n, d=1 / sampling_rate)
     fft_spectrum = np.abs(np.fft.fft(signal))
 
-    fundamental_amplitude = np.max(fft_spectrum[np.where((freqs >= fundamental_freq - 0.1) & (freqs <= fundamental_freq + 0.1))])
+    fundamental_amplitude = np.max(
+        fft_spectrum[
+            np.where(
+                (freqs >= fundamental_freq - 0.1) & (freqs <= fundamental_freq + 0.1)
+            )
+        ]
+    )
 
     harmonic_amplitudes = []
     for i in range(2, harmonics + 1):
         harmonic_freq = i * fundamental_freq
-        harmonic_amplitude = np.max(fft_spectrum[np.where((freqs >= harmonic_freq - 0.1) & (freqs <= harmonic_freq + 0.1))])
+        harmonic_amplitude = np.max(
+            fft_spectrum[
+                np.where(
+                    (freqs >= harmonic_freq - 0.1) & (freqs <= harmonic_freq + 0.1)
+                )
+            ]
+        )
         harmonic_amplitudes.append(harmonic_amplitude)
 
     thd = np.sqrt(np.sum(np.square(harmonic_amplitudes))) / fundamental_amplitude * 100
     return thd
+
 
 def signal_to_noise_and_distortion_ratio(signal, noise):
     """
@@ -173,10 +191,11 @@ def signal_to_noise_and_distortion_ratio(signal, noise):
     >>> sinad = signal_to_noise_and_distortion_ratio(signal, noise)
     >>> print(sinad)
     """
-    rms_signal = np.sqrt(np.mean(signal ** 2))
-    rms_noise = np.sqrt(np.mean(noise ** 2))
+    rms_signal = np.sqrt(np.mean(signal**2))
+    rms_noise = np.sqrt(np.mean(noise**2))
     sinad = 20 * np.log10(rms_signal / rms_noise)
     return sinad
+
 
 def signal_to_noise_and_interference_ratio(signal, interference):
     """
@@ -201,7 +220,7 @@ def signal_to_noise_and_interference_ratio(signal, interference):
     >>> snir = signal_to_noise_and_interference_ratio(signal, interference)
     >>> print(snir)
     """
-    rms_signal = np.sqrt(np.mean(signal ** 2))
-    rms_interference = np.sqrt(np.mean(interference ** 2))
+    rms_signal = np.sqrt(np.mean(signal**2))
+    rms_interference = np.sqrt(np.mean(interference**2))
     snir = 20 * np.log10(rms_signal / rms_interference)
     return snir

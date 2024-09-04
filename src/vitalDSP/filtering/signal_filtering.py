@@ -1,4 +1,5 @@
 import numpy as np
+
 # from scipy.signal import lfilter
 from scipy import signal
 
@@ -22,7 +23,7 @@ class BandpassFilter:
         self.band_type = band_type
         self.fs = fs
 
-    def signal_bypass(self, cutoff, order, a_pass, rp, rs, btype='high'):
+    def signal_bypass(self, cutoff, order, a_pass, rp, rs, btype="high"):
         """
         Generate the filter coefficients for the specified filter type and parameters.
 
@@ -54,13 +55,17 @@ class BandpassFilter:
         """
         nyq = 0.5 * self.fs
         normal_cutoff = cutoff / nyq
-        if self.band_type == 'cheby1':
-            b, a = signal.cheby1(order, a_pass, normal_cutoff, btype=btype, analog=False)
-        elif self.band_type == 'cheby2':
-            b, a = signal.cheby2(order, a_pass, normal_cutoff, btype=btype, analog=False)
-        elif self.band_type == 'ellip':
+        if self.band_type == "cheby1":
+            b, a = signal.cheby1(
+                order, a_pass, normal_cutoff, btype=btype, analog=False
+            )
+        elif self.band_type == "cheby2":
+            b, a = signal.cheby2(
+                order, a_pass, normal_cutoff, btype=btype, analog=False
+            )
+        elif self.band_type == "ellip":
             b, a = signal.ellip(order, rp, rs, normal_cutoff, btype=btype, analog=False)
-        elif self.band_type == 'bessel':
+        elif self.band_type == "bessel":
             b, a = signal.bessel(order, normal_cutoff, btype=btype, analog=False)
         else:
             b, a = signal.butter(order, normal_cutoff, btype=btype, analog=False)
@@ -97,7 +102,7 @@ class BandpassFilter:
         >>> filtered_signal = bp_filter.signal_lowpass_filter(signal, cutoff=0.3, order=4)
         >>> print(filtered_signal)
         """
-        b, a = self.signal_bypass(cutoff, order, a_pass, rp, rs, btype='low')
+        b, a = self.signal_bypass(cutoff, order, a_pass, rp, rs, btype="low")
         y = signal.lfilter(b, a, data)
         return y
 
@@ -137,12 +142,14 @@ class BandpassFilter:
         >>> filtered_signal = bp_filter.signal_highpass_filter(signal, cutoff=0.3, order=4)
         >>> print(filtered_signal)
         """
-        b, a = self.signal_bypass(cutoff, order, a_pass, rp, rs, btype='high')
+        b, a = self.signal_bypass(cutoff, order, a_pass, rp, rs, btype="high")
         padlen = 3 * max(len(b), len(a))  # Minimum required pad length
 
         if len(data) <= padlen:
-            raise ValueError(f"The length of the input vector x must be greater than {padlen}. "
-                             f"Consider reducing the filter order or increasing the signal length.")
+            raise ValueError(
+                f"The length of the input vector x must be greater than {padlen}. "
+                f"Consider reducing the filter order or increasing the signal length."
+            )
 
         y = signal.filtfilt(b, a, data)
         return y
@@ -355,11 +362,11 @@ class SignalFiltering:
 
         # Pad the signal to handle boundary effects
         pad_width = radius
-        padded_signal = np.pad(signal, pad_width, mode='edge')
+        padded_signal = np.pad(signal, pad_width, mode="edge")
 
         # Convolve with the Gaussian kernel
         smoothed_signal = np.convolve(padded_signal, gaussian_kernel, mode="valid")
-        return smoothed_signal[:len(signal)]
+        return smoothed_signal[: len(signal)]
 
     @staticmethod
     def gaussian_kernel(size, sigma):
@@ -534,7 +541,16 @@ class SignalFiltering:
 
         return filtered_signal
 
-    def elliptic(self, cutoff, fs, order=4, btype="low", ripple=0.05, stopband_attenuation=40, iterations=1):
+    def elliptic(
+        self,
+        cutoff,
+        fs,
+        order=4,
+        btype="low",
+        ripple=0.05,
+        stopband_attenuation=40,
+        iterations=1,
+    ):
         """
         Custom implementation of the Elliptic filter.
 
@@ -564,7 +580,7 @@ class SignalFiltering:
         normal_cutoff = cutoff / nyquist
 
         eps = np.sqrt(10 ** (ripple / 10) - 1)
-        k = eps / np.sqrt(1 + eps ** 2)
+        k = eps / np.sqrt(1 + eps**2)
 
         poles = []
         for i in range(1, order + 1):
@@ -595,7 +611,9 @@ class SignalFiltering:
 
         return filtered_signal
 
-    def bandpass(self, lowcut, highcut, fs, order=4, filter_type="butter", iterations=1):
+    def bandpass(
+        self, lowcut, highcut, fs, order=4, filter_type="butter", iterations=1
+    ):
         """
         Apply a bandpass filter using the selected filter type.
 
@@ -642,7 +660,9 @@ class SignalFiltering:
             elif filter_type == "elliptic":
                 b, a = self.elliptic(order, [low, high], btype="band")
             else:
-                raise ValueError("Unsupported filter type. Choose from 'butter', 'cheby', or 'elliptic'.")
+                raise ValueError(
+                    "Unsupported filter type. Choose from 'butter', 'cheby', or 'elliptic'."
+                )
 
             filtered_signal = self._apply_iir_filter(b, a, filtered_signal)
 
@@ -722,15 +742,21 @@ class SignalFiltering:
             filtered_signal[i] = b[0] * self.signal[i]
 
             if i > 0 and len(b) > 1:
-                filtered_signal[i] += b[1] * self.signal[i - 1] - a[1] * filtered_signal[i - 1]
+                filtered_signal[i] += (
+                    b[1] * self.signal[i - 1] - a[1] * filtered_signal[i - 1]
+                )
 
             if i > 1 and len(b) > 2:
-                filtered_signal[i] += b[2] * self.signal[i - 2] - a[2] * filtered_signal[i - 2]
+                filtered_signal[i] += (
+                    b[2] * self.signal[i - 2] - a[2] * filtered_signal[i - 2]
+                )
 
             # Normalize by a[0] to ensure stability
             filtered_signal[i] /= a[0]
 
             # Apply epsilon to avoid infinities or NaNs
-            filtered_signal[i] = np.nan_to_num(filtered_signal[i], nan=0.0, posinf=0.0, neginf=0.0)
+            filtered_signal[i] = np.nan_to_num(
+                filtered_signal[i], nan=0.0, posinf=0.0, neginf=0.0
+            )
 
         return filtered_signal

@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.signal import get_window
 
+
 class ChromaSTFT:
     """
     A class to compute the Chroma Short-Time Fourier Transform (Chroma STFT) to analyze harmonic content in audio signals.
@@ -33,7 +34,9 @@ class ChromaSTFT:
     >>> print(chroma_stft_result.shape)  # Output: (12, num_frames)
     """
 
-    def __init__(self, signal, sample_rate=16000, n_chroma=12, n_fft=2048, hop_length=512):
+    def __init__(
+        self, signal, sample_rate=16000, n_chroma=12, n_fft=2048, hop_length=512
+    ):
         """
         Initialize the ChromaSTFT class with the signal and parameters.
 
@@ -66,20 +69,24 @@ class ChromaSTFT:
             The STFT of the signal, where each column represents a time frame and each row a frequency bin.
         """
         if len(self.signal) < self.n_fft:
-            raise ValueError("The length of the signal is shorter than the FFT size (n_fft).")
+            raise ValueError(
+                "The length of the signal is shorter than the FFT size (n_fft)."
+            )
 
-        window = get_window('hann', self.n_fft)
+        window = get_window("hann", self.n_fft)
         num_frames = 1 + (len(self.signal) - self.n_fft) // self.hop_length
 
         # Check if there are enough frames to compute STFT
         if num_frames <= 0:
-            raise ValueError("The signal is too short for the given FFT size and hop length.")
+            raise ValueError(
+                "The signal is too short for the given FFT size and hop length."
+            )
 
         stft_matrix = np.empty((self.n_fft // 2 + 1, num_frames), dtype=np.complex64)
 
         for i in range(num_frames):
             start = i * self.hop_length
-            frame = self.signal[start:start + self.n_fft] * window
+            frame = self.signal[start : start + self.n_fft] * window
             stft_matrix[:, i] = np.fft.rfft(frame)
 
         return np.abs(stft_matrix)

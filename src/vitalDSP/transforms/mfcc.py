@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class MFCC:
     """
     A class to compute Mel-Frequency Cepstral Coefficients (MFCC) for audio signals.

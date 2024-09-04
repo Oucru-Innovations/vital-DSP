@@ -2,6 +2,7 @@ from vitalDSP.transforms.discrete_cosine_transform import DiscreteCosineTransfor
 from vitalDSP.transforms.wavelet_transform import WaveletTransform
 import numpy as np
 
+
 class DCTWaveletFusion:
     """
     A class to perform fusion of Discrete Cosine Transform (DCT) and Wavelet Transform on a signal.
@@ -83,7 +84,9 @@ class DCTWaveletFusion:
         dct_coeffs = dct.compute_dct()
 
         # Compute Wavelet Transform coefficients and use only approximation coefficients
-        wavelet_transform = WaveletTransform(self.signal, wavelet_name=self.wavelet_type)
+        wavelet_transform = WaveletTransform(
+            self.signal, wavelet_name=self.wavelet_type
+        )
         wavelet_coeffs = wavelet_transform.perform_wavelet_transform(level=self.order)
 
         # Extract the approximation coefficients (usually the first element of the wavelet transform result)

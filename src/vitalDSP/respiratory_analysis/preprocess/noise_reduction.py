@@ -2,7 +2,8 @@ import numpy as np
 from vitalDSP.transforms.wavelet_transform import WaveletTransform
 from vitalDSP.filtering.signal_filtering import SignalFiltering
 
-def wavelet_denoising(signal, wavelet_name='haar', level=1):
+
+def wavelet_denoising(signal, wavelet_name="haar", level=1):
     """
     Performs wavelet denoising on the input signal using the custom wavelet transform.
 
@@ -38,6 +39,7 @@ def wavelet_denoising(signal, wavelet_name='haar', level=1):
     denoised_signal = wavelet_transform.perform_inverse_wavelet_transform(coeffs)
     return denoised_signal
 
+
 def savgol_denoising(signal, window_length, polyorder):
     """
     Applies Savitzky-Golay filtering for noise reduction.
@@ -63,6 +65,7 @@ def savgol_denoising(signal, window_length, polyorder):
     >>> print(denoised_signal)
     """
     return SignalFiltering.savgol_filter(signal, window_length, polyorder)
+
 
 def median_denoising(signal, kernel_size=3):
     """
@@ -90,6 +93,7 @@ def median_denoising(signal, kernel_size=3):
     signal_filter = SignalFiltering(signal)
     return signal_filter.median(kernel_size)
 
+
 def gaussian_denoising(signal, sigma=1.0):
     """
     Applies Gaussian filtering for noise reduction.
@@ -114,6 +118,7 @@ def gaussian_denoising(signal, sigma=1.0):
     """
     signal_filter = SignalFiltering(signal)
     return signal_filter.gaussian(sigma)
+
 
 def moving_average_denoising(signal, window_size):
     """

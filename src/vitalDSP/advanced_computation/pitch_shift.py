@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class PitchShift:
     """
     A class for pitch shifting and pitch detection, primarily used in the analysis of vocal pitch.

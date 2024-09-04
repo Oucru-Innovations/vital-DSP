@@ -5,8 +5,10 @@ import numpy as np
 import ast
 import datetime as dt
 
+
 def get_flat(x, flat):
     flat.extend(ast.literal_eval(x))
+
 
 def get_flat_timestamp(x, flat, fs=100):
     format1 = "%Y-%m-%d %H:%M:%S.%f%z"
@@ -18,15 +20,19 @@ def get_flat_timestamp(x, flat, fs=100):
         start_time_converted = dt.datetime.strptime(x, format2)
 
     time_deltas = np.arange(fs) * (1 / fs)
-    dt_list = start_time_converted + np.array([dt.timedelta(seconds=td) for td in time_deltas])
+    dt_list = start_time_converted + np.array(
+        [dt.timedelta(seconds=td) for td in time_deltas]
+    )
     flat.extend(dt_list)
+
 
 def safe_get_flat_ecg_timestamp(row, shifted_series, flat, fs=100):
     try:
         next_x = shifted_series.loc[row.name]
-        get_flat_ecg_timestamp(row['timestamp'], next_x, flat, fs)
+        get_flat_ecg_timestamp(row["timestamp"], next_x, flat, fs)
     except Exception:
-        get_flat_timestamp(row['timestamp'], flat, fs)
+        get_flat_timestamp(row["timestamp"], flat, fs)
+
 
 def get_flat_ecg_timestamp(x, next_x, flat, fs=100):
     format1 = "%Y-%m-%d %H:%M:%S.%f%z"
@@ -43,25 +49,34 @@ def get_flat_ecg_timestamp(x, next_x, flat, fs=100):
     num_samples = int(total_duration * fs)
     time_deltas = np.arange(num_samples) * (1 / fs)
 
-    dt_list = start_time_converted + np.array([dt.timedelta(seconds=td) for td in time_deltas])
+    dt_list = start_time_converted + np.array(
+        [dt.timedelta(seconds=td) for td in time_deltas]
+    )
     flat.extend(dt_list)
 
-def process_in_chunks(file_path, chunk_size=10000, fs=100, data_type='ppg'):
+
+def process_in_chunks(file_path, chunk_size=10000, fs=100, data_type="ppg"):
     pleth_col = []
     date_col = []
 
     for chunk in pd.read_csv(file_path, chunksize=chunk_size):
-        if data_type == 'ppg':
-            chunk['pleth'].apply(get_flat, flat=pleth_col)
-            chunk['timestamp'].apply(get_flat_timestamp, flat=date_col, fs=fs)
-        elif data_type == 'ecg':
-            shifted_series = chunk['timestamp'].shift(-1)
-            chunk['ecg'].apply(get_flat, flat=pleth_col)
+        if data_type == "ppg":
+            chunk["pleth"].apply(get_flat, flat=pleth_col)
+            chunk["timestamp"].apply(get_flat_timestamp, flat=date_col, fs=fs)
+        elif data_type == "ecg":
+            shifted_series = chunk["timestamp"].shift(-1)
+            chunk["ecg"].apply(get_flat, flat=pleth_col)
 
             # Use a lambda function to pass the additional arguments
-            chunk.apply(lambda row: safe_get_flat_ecg_timestamp(row, shifted_series, flat=date_col, fs=fs), axis=1)
+            chunk.apply(
+                lambda row: safe_get_flat_ecg_timestamp(
+                    row, shifted_series, flat=date_col, fs=fs
+                ),
+                axis=1,
+            )
 
     return pleth_col, date_col
+
 
 def plot_trace(input_signal, output_signal, title="Processed Signal"):
     trace1 = go.Scatter(y=input_signal, mode="lines", name="Original Signal")

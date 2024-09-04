@@ -3,6 +3,7 @@ from vitalDSP.utils.common import find_peaks, filtfilt, argrelextrema
 from vitalDSP.utils.scaler import StandardScaler
 from vitalDSP.filtering.signal_filtering import SignalFiltering
 
+
 class PeakDetection:
     """
     A class to detect peaks in various physiological signals like ECG, PPG, EEG, respiratory, and arterial blood pressure (ABP) signals.

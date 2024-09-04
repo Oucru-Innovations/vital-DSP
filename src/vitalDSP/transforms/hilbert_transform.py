@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class HilbertTransform:
     """
     A class to perform the Hilbert Transform, which is used to generate analytic signals.

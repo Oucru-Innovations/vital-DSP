@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def z_score_normalization(signal):
     """
     Normalize the signal using Z-score normalization.
@@ -25,6 +26,7 @@ def z_score_normalization(signal):
     std = np.std(signal)
     normalized_signal = (signal - mean) / std
     return normalized_signal
+
 
 def min_max_normalization(signal, min_value=0, max_value=1):
     """

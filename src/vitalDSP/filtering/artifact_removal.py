@@ -4,6 +4,7 @@ from scipy.signal.windows import gaussian
 from vitalDSP.utils.mother_wavelets import Wavelet
 from sklearn.decomposition import IncrementalPCA
 
+
 class ArtifactRemoval:
     """
     A class for removing various types of artifacts from signals.
@@ -135,8 +136,15 @@ class ArtifactRemoval:
             clean_signal[i] = np.median(padded_signal[i : i + kernel_size])
         return clean_signal
 
-    def wavelet_denoising(self, wavelet_type="db", level=1, order=4,
-                          custom_wavelet=None, smoothing='lowpass', **smoothing_params):
+    def wavelet_denoising(
+        self,
+        wavelet_type="db",
+        level=1,
+        order=4,
+        custom_wavelet=None,
+        smoothing="lowpass",
+        **smoothing_params,
+    ):
         """
         Remove noise using wavelet-based denoising with various mother wavelets.
 
@@ -184,7 +192,9 @@ class ArtifactRemoval:
             mother_wavelet = wavelet.coif(order)
         elif wavelet_type == "custom":
             if custom_wavelet is None:
-                raise ValueError("A custom wavelet must be provided if wavelet_type is 'custom'.")
+                raise ValueError(
+                    "A custom wavelet must be provided if wavelet_type is 'custom'."
+                )
             mother_wavelet = custom_wavelet
         else:
             raise ValueError(
@@ -224,10 +234,14 @@ class ArtifactRemoval:
             upsampled_detail[::2] = detail_coeffs[i]
 
             # Truncate to the same length before summing
-            upsampled_approx = upsampled_approx[:len(upsampled_detail)]
+            upsampled_approx = upsampled_approx[: len(upsampled_detail)]
             approx_coeffs = (
-                np.convolve(upsampled_approx, mother_wavelet, mode="full")[:len(upsampled_approx)]
-                + np.convolve(upsampled_detail, mother_wavelet[::-1], mode="full")[:len(upsampled_detail)]
+                np.convolve(upsampled_approx, mother_wavelet, mode="full")[
+                    : len(upsampled_approx)
+                ]
+                + np.convolve(upsampled_detail, mother_wavelet[::-1], mode="full")[
+                    : len(upsampled_detail)
+                ]
             )
 
         # Adjust the length of the output signal to match the original signal length
@@ -235,7 +249,9 @@ class ArtifactRemoval:
 
         # Apply smoothing if specified
         if smoothing:
-            clean_signal = self._apply_smoothing(clean_signal, smoothing, **smoothing_params)
+            clean_signal = self._apply_smoothing(
+                clean_signal, smoothing, **smoothing_params
+            )
 
         return clean_signal
 
@@ -258,19 +274,19 @@ class ArtifactRemoval:
         smoothed_signal : numpy.ndarray
             The smoothed signal.
         """
-        if method == 'lowpass':
-            cutoff = kwargs.get('cutoff', 0.2)
-            fs = kwargs.get('fs', 1.0)
-            order = kwargs.get('order', 5)
+        if method == "lowpass":
+            cutoff = kwargs.get("cutoff", 0.2)
+            fs = kwargs.get("fs", 1.0)
+            order = kwargs.get("order", 5)
             return ArtifactRemoval._lowpass_filter(signal, cutoff, fs, order)
-        elif method == 'gaussian':
-            sigma = kwargs.get('sigma', 1.0)
+        elif method == "gaussian":
+            sigma = kwargs.get("sigma", 1.0)
             return ArtifactRemoval._gaussian_smoothing(signal, sigma)
-        elif method == 'median':
-            kernel_size = kwargs.get('kernel_size', 3)
+        elif method == "median":
+            kernel_size = kwargs.get("kernel_size", 3)
             return ArtifactRemoval._median_smoothing(signal, kernel_size)
-        elif method == 'moving_average':
-            window_size = kwargs.get('window_size', 5)
+        elif method == "moving_average":
+            window_size = kwargs.get("window_size", 5)
             return ArtifactRemoval._moving_average_smoothing(signal, window_size)
         else:
             raise ValueError(f"Unsupported smoothing method: {method}")
@@ -279,7 +295,9 @@ class ArtifactRemoval:
     def _gaussian_smoothing(signal, sigma):
         size = int(6 * sigma + 1)
         gaussian_kernel = gaussian(size, sigma)
-        smoothed_signal = convolve(signal, gaussian_kernel, mode='same') / np.sum(gaussian_kernel)
+        smoothed_signal = convolve(signal, gaussian_kernel, mode="same") / np.sum(
+            gaussian_kernel
+        )
         return smoothed_signal
 
     @staticmethod
@@ -289,7 +307,7 @@ class ArtifactRemoval:
     @staticmethod
     def _moving_average_smoothing(signal, window_size):
         kernel = np.ones(window_size) / window_size
-        smoothed_signal = convolve(signal, kernel, mode='same')
+        smoothed_signal = convolve(signal, kernel, mode="same")
         return smoothed_signal
 
     @staticmethod
@@ -315,11 +333,13 @@ class ArtifactRemoval:
         """
         nyquist = 0.5 * fs
         normal_cutoff = cutoff / nyquist
-        b, a = butter(order, normal_cutoff, btype='low', analog=False)
+        b, a = butter(order, normal_cutoff, btype="low", analog=False)
         smoothed_signal = filtfilt(b, a, signal)
         return smoothed_signal
 
-    def adaptive_filtering(self, reference_signal, learning_rate=0.01, num_iterations=100):
+    def adaptive_filtering(
+        self, reference_signal, learning_rate=0.01, num_iterations=100
+    ):
         """
         Use an adaptive filter to remove artifacts correlated with a reference signal.
 
@@ -426,8 +446,10 @@ class ArtifactRemoval:
         """
         # Segment the signal into overlapping windows
         segments = []
-        for start in range(0, len(self.signal) - window_size + 1, window_size - overlap):
-            segment = self.signal[start:start + window_size]
+        for start in range(
+            0, len(self.signal) - window_size + 1, window_size - overlap
+        ):
+            segment = self.signal[start : start + window_size]
             if len(segment) == window_size:
                 segments.append(segment)
 
@@ -435,7 +457,9 @@ class ArtifactRemoval:
 
         # If there are no valid segments, return the original signal
         if segments.size == 0:
-            raise ValueError("No valid segments available for PCA. Ensure the signal has sufficient length and variability.")
+            raise ValueError(
+                "No valid segments available for PCA. Ensure the signal has sufficient length and variability."
+            )
 
         # Center the segments by subtracting the mean
         signal_mean = np.mean(segments, axis=0)
@@ -446,35 +470,55 @@ class ArtifactRemoval:
 
         # Check if covariance matrix is 2D
         if covariance_matrix.ndim < 2 or covariance_matrix.shape[0] < num_components:
-            raise ValueError("Covariance matrix is not 2D or has insufficient dimensionality. Ensure the input signal has sufficient variation.")
+            raise ValueError(
+                "Covariance matrix is not 2D or has insufficient dimensionality. Ensure the input signal has sufficient variation."
+            )
 
         # Perform eigenvalue decomposition with error handling
         try:
             eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
         except np.linalg.LinAlgError as e:
-            raise ValueError(f"Linear Algebra error during eigenvalue decomposition: {e}")
+            raise ValueError(
+                f"Linear Algebra error during eigenvalue decomposition: {e}"
+            )
 
         # Sort eigenvalues and eigenvectors in descending order
         sorted_indices = np.argsort(eigenvalues)[::-1]
         selected_components = eigenvectors[:, sorted_indices[:num_components]]
 
         # Reconstruct the signal using the selected components
-        reconstructed_segments = np.dot(centered_signal, selected_components).dot(selected_components.T) + signal_mean
+        reconstructed_segments = (
+            np.dot(centered_signal, selected_components).dot(selected_components.T)
+            + signal_mean
+        )
 
         # Reconstruct the full signal by averaging overlapping windows
         clean_signal = np.zeros(len(self.signal))
         count = np.zeros(len(self.signal))
 
-        for i, start in enumerate(range(0, len(self.signal) - window_size + 1, window_size - overlap)):
-            clean_signal[start:start + window_size] += reconstructed_segments[i]
-            count[start:start + window_size] += 1
+        for i, start in enumerate(
+            range(0, len(self.signal) - window_size + 1, window_size - overlap)
+        ):
+            clean_signal[start : start + window_size] += reconstructed_segments[i]
+            count[start : start + window_size] += 1
 
         # Avoid division by zero by checking count
-        clean_signal = np.divide(clean_signal, count, out=np.zeros_like(clean_signal), where=count != 0)
+        clean_signal = np.divide(
+            clean_signal, count, out=np.zeros_like(clean_signal), where=count != 0
+        )
 
         return clean_signal
 
-    def ica_artifact_removal(self, num_components=1, max_iterations=1000, tol=1e-5, seed=23, window_size=None, step_size=None, batch_size=1000):
+    def ica_artifact_removal(
+        self,
+        num_components=1,
+        max_iterations=1000,
+        tol=1e-5,
+        seed=23,
+        window_size=None,
+        step_size=None,
+        batch_size=1000,
+    ):
         """
         Use Independent Component Analysis (ICA) to remove artifacts using IncrementalPCA.
 
@@ -513,7 +557,10 @@ class ArtifactRemoval:
         """
         # Apply windowing if window_size and step_size are provided
         if window_size and step_size:
-            segments = [self.signal[i:i+window_size] for i in range(0, len(self.signal) - window_size + 1, step_size)]
+            segments = [
+                self.signal[i : i + window_size]
+                for i in range(0, len(self.signal) - window_size + 1, step_size)
+            ]
             multi_dimensional_signal = np.array(segments).T
         else:
             multi_dimensional_signal = self.signal.reshape(-1, 1)
@@ -521,10 +568,14 @@ class ArtifactRemoval:
         # Validate the number of components based on the signal's dimensionality
         n_features = multi_dimensional_signal.shape[1]
         if num_components > n_features:
-            raise ValueError(f"n_components={num_components} invalid for n_features={n_features}. Ensure the signal has sufficient dimensionality for PCA.")
+            raise ValueError(
+                f"n_components={num_components} invalid for n_features={n_features}. Ensure the signal has sufficient dimensionality for PCA."
+            )
 
         # Center the signal
-        signal_centered = multi_dimensional_signal - np.mean(multi_dimensional_signal, axis=0)
+        signal_centered = multi_dimensional_signal - np.mean(
+            multi_dimensional_signal, axis=0
+        )
 
         # Apply IncrementalPCA for whitening
         ipca = IncrementalPCA(n_components=num_components, batch_size=batch_size)
@@ -541,7 +592,9 @@ class ArtifactRemoval:
                 / X_whitened.shape[0]
                 - np.mean(1 - np.tanh(np.dot(X_whitened, W.T)) ** 2, axis=0) * W
             )
-            W_new /= np.linalg.norm(W_new, axis=1)[:, np.newaxis]  # Normalize the weights
+            W_new /= np.linalg.norm(W_new, axis=1)[
+                :, np.newaxis
+            ]  # Normalize the weights
 
             # Check for convergence
             if np.max(np.abs(np.abs(np.diag(np.dot(W_new, W.T))) - 1)) < tol:
@@ -553,11 +606,15 @@ class ArtifactRemoval:
         S = np.dot(W, X_whitened.T).T
 
         # Reconstruct the signal from the components
-        reconstructed_signal = np.dot(S, np.linalg.pinv(W)).dot(ipca.components_).dot(ipca.components_.T) + np.mean(multi_dimensional_signal, axis=0)
+        reconstructed_signal = np.dot(S, np.linalg.pinv(W)).dot(ipca.components_).dot(
+            ipca.components_.T
+        ) + np.mean(multi_dimensional_signal, axis=0)
 
         # Stack segments and calculate the mean across the segments if windowing is applied
         if window_size and step_size:
-            stacked_segments = np.column_stack([reconstructed_signal[i] for i in range(len(reconstructed_signal))])
+            stacked_segments = np.column_stack(
+                [reconstructed_signal[i] for i in range(len(reconstructed_signal))]
+            )
             final_signal = np.mean(stacked_segments, axis=1)
         else:
             final_signal = reconstructed_signal.flatten()

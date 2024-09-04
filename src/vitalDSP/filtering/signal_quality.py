@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class SignalQuality:
     """
     A class to assess the quality of signals using various metrics.

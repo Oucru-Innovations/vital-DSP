@@ -1,6 +1,9 @@
 import numpy as np
 from collections import deque
-from vitalDSP.transforms.wavelet_transform import WaveletTransform  # Assuming WaveletTransform is in utils
+from vitalDSP.transforms.wavelet_transform import (
+    WaveletTransform,
+)  # Assuming WaveletTransform is in utils
+
 
 class RealTimeAnomalyDetection:
     """
@@ -355,7 +358,9 @@ class RealTimeAnomalyDetection:
 
     def _is_anomaly(self, data_point):
         """Placeholder method to determine if a data point is an anomaly (for evaluation)."""
-        return False  # This should be implemented based on the ground truth of the dataset
+        return (
+            False  # This should be implemented based on the ground truth of the dataset
+        )
 
 
 # Simple SVM Implementation (Placeholder)

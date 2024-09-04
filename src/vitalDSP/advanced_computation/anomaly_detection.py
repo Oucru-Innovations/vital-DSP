@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class AnomalyDetection:
     """
     Comprehensive Anomaly Detection for detecting anomalies in real-time from streaming data.

@@ -4,6 +4,7 @@ from vitalDSP.filtering.artifact_removal import ArtifactRemoval
 from vitalDSP.filtering.advanced_signal_filtering import AdvancedSignalFiltering
 from vitalDSP.filtering.signal_filtering import BandpassFilter, SignalFiltering
 
+
 class VitalTransformation:
     """
     A class to perform comprehensive signal processing on ECG and PPG signals using advanced filtering and artifact removal techniques.
@@ -57,7 +58,7 @@ class VitalTransformation:
     >>> print(transformed_signal)
     """
 
-    def __init__(self, signal, fs=256, signal_type='ecg'):
+    def __init__(self, signal, fs=256, signal_type="ecg"):
         self.signal = signal
         self.fs = fs
         self.signal_type = signal_type
@@ -100,30 +101,40 @@ class VitalTransformation:
             options = {}
 
         if method_order is None:
-            method_order = ['artifact_removal', 'bandpass_filter', 'detrending', 'normalization', 'smoothing', 'enhancement', 'advanced_filtering']
+            method_order = [
+                "artifact_removal",
+                "bandpass_filter",
+                "detrending",
+                "normalization",
+                "smoothing",
+                "enhancement",
+                "advanced_filtering",
+            ]
 
         for method in method_order:
-            if method == 'artifact_removal':
-                self.apply_artifact_removal(options.get('artifact_removal', 'baseline_correction'),
-                                            options.get('artifact_removal_options', {}))
-            elif method == 'bandpass_filter':
-                self.apply_bandpass_filter(options.get('bandpass_filter', {}))
-            elif method == 'detrending':
-                self.apply_detrending(options.get('detrending', {}))
-            elif method == 'normalization':
-                self.apply_normalization(options.get('normalization', {}))
-            elif method == 'smoothing':
-                self.apply_smoothing(options.get('smoothing', {}))
-            elif method == 'enhancement':
-                self.apply_enhancement(options.get('enhancement', {}))
-            elif method == 'advanced_filtering':
-                self.apply_advanced_filtering(options.get('advanced_filtering', {}))
+            if method == "artifact_removal":
+                self.apply_artifact_removal(
+                    options.get("artifact_removal", "baseline_correction"),
+                    options.get("artifact_removal_options", {}),
+                )
+            elif method == "bandpass_filter":
+                self.apply_bandpass_filter(options.get("bandpass_filter", {}))
+            elif method == "detrending":
+                self.apply_detrending(options.get("detrending", {}))
+            elif method == "normalization":
+                self.apply_normalization(options.get("normalization", {}))
+            elif method == "smoothing":
+                self.apply_smoothing(options.get("smoothing", {}))
+            elif method == "enhancement":
+                self.apply_enhancement(options.get("enhancement", {}))
+            elif method == "advanced_filtering":
+                self.apply_advanced_filtering(options.get("advanced_filtering", {}))
             else:
                 raise ValueError(f"Unknown method: {method}")
 
         return self.signal
 
-    def apply_artifact_removal(self, method='baseline_correction', options=None):
+    def apply_artifact_removal(self, method="baseline_correction", options=None):
         """
         Apply artifact removal to the signal.
 
@@ -150,48 +161,45 @@ class VitalTransformation:
 
         artifact_removal = ArtifactRemoval(self.signal)
 
-        if method == 'mean_subtraction':
+        if method == "mean_subtraction":
             self.signal = artifact_removal.mean_subtraction()
-        elif method == 'baseline_correction':
+        elif method == "baseline_correction":
             self.signal = artifact_removal.baseline_correction(
-                cutoff=options.get('cutoff', 0.5),
-                fs=self.fs
+                cutoff=options.get("cutoff", 0.5), fs=self.fs
             )
-        elif method == 'median_filter_removal':
+        elif method == "median_filter_removal":
             self.signal = artifact_removal.median_filter_removal(
-                kernel_size=options.get('kernel_size', 3)
+                kernel_size=options.get("kernel_size", 3)
             )
-        elif method == 'wavelet_denoising':
+        elif method == "wavelet_denoising":
             self.signal = artifact_removal.wavelet_denoising(
-                wavelet_type=options.get('wavelet_type', 'db'),
-                level=options.get('level', 1),
-                order=options.get('order', 4)
+                wavelet_type=options.get("wavelet_type", "db"),
+                level=options.get("level", 1),
+                order=options.get("order", 4),
             )
-        elif method == 'adaptive_filtering':
-            reference_signal = options.get('reference_signal', None)
+        elif method == "adaptive_filtering":
+            reference_signal = options.get("reference_signal", None)
             if reference_signal is None:
                 raise ValueError("Reference signal is required for adaptive filtering.")
             self.signal = artifact_removal.adaptive_filtering(
                 reference_signal,
-                learning_rate=options.get('learning_rate', 0.01),
-                num_iterations=options.get('num_iterations', 100)
+                learning_rate=options.get("learning_rate", 0.01),
+                num_iterations=options.get("num_iterations", 100),
             )
-        elif method == 'notch_filter':
+        elif method == "notch_filter":
             self.signal = artifact_removal.notch_filter(
-                freq=options.get('freq', 50),
-                fs=self.fs,
-                Q=options.get('Q', 30)
+                freq=options.get("freq", 50), fs=self.fs, Q=options.get("Q", 30)
             )
-        elif method == 'pca_artifact_removal':
+        elif method == "pca_artifact_removal":
             self.signal = artifact_removal.pca_artifact_removal(
-                num_components=options.get('num_components', 1)
+                num_components=options.get("num_components", 1)
             )
-        elif method == 'ica_artifact_removal':
+        elif method == "ica_artifact_removal":
             self.signal = artifact_removal.ica_artifact_removal(
-                num_components=options.get('num_components', 1),
-                max_iterations=options.get('max_iterations', 1000),
-                tol=options.get('tol', 1e-5),
-                seed=options.get('seed', 23)
+                num_components=options.get("num_components", 1),
+                max_iterations=options.get("max_iterations", 1000),
+                tol=options.get("tol", 1e-5),
+                seed=options.get("seed", 23),
             )
         else:
             raise ValueError(f"Unknown artifact removal method: {method}")
@@ -219,10 +227,10 @@ class VitalTransformation:
         if options is None:
             options = {}
 
-        lowcut = options.get('lowcut', 0.2)
-        highcut = options.get('highcut', 3.0)
-        filter_order = options.get('filter_order', 4)
-        filter_type = options.get('filter_type', 'butter')
+        lowcut = options.get("lowcut", 0.2)
+        highcut = options.get("highcut", 3.0)
+        filter_order = options.get("filter_order", 4)
+        filter_type = options.get("filter_type", "butter")
 
         bandpass_filter = BandpassFilter(band_type=filter_type, fs=self.fs)
 
@@ -231,18 +239,18 @@ class VitalTransformation:
             data=self.signal,
             cutoff=lowcut,
             order=filter_order,
-            a_pass=options.get('a_pass', 3),
-            rp=options.get('rp', 4),
-            rs=options.get('rs', 40)
+            a_pass=options.get("a_pass", 3),
+            rp=options.get("rp", 4),
+            rs=options.get("rs", 40),
         )
 
         self.signal = bandpass_filter.signal_lowpass_filter(
             data=self.signal,
             cutoff=highcut,
             order=filter_order,
-            a_pass=options.get('a_pass', 3),
-            rp=options.get('rp', 4),
-            rs=options.get('rs', 40)
+            a_pass=options.get("a_pass", 3),
+            rp=options.get("rp", 4),
+            rs=options.get("rs", 40),
         )
 
     def apply_detrending(self, options=None):
@@ -268,11 +276,11 @@ class VitalTransformation:
         if options is None:
             options = {}
 
-        detrend_type = options.get('detrend_type', 'linear')
-        if detrend_type == 'linear':
-            self.signal = signal.detrend(self.signal, type='linear')
-        elif detrend_type == 'constant':
-            self.signal = signal.detrend(self.signal, type='constant')
+        detrend_type = options.get("detrend_type", "linear")
+        if detrend_type == "linear":
+            self.signal = signal.detrend(self.signal, type="linear")
+        elif detrend_type == "constant":
+            self.signal = signal.detrend(self.signal, type="constant")
         else:
             raise ValueError(f"Unknown detrending method: {detrend_type}")
 
@@ -299,10 +307,12 @@ class VitalTransformation:
         if options is None:
             options = {}
 
-        normalization_range = options.get('normalization_range', (0, 1))
+        normalization_range = options.get("normalization_range", (0, 1))
         min_val = np.min(self.signal)
         max_val = np.max(self.signal)
-        self.signal = (self.signal - min_val) / (max_val - min_val) * (normalization_range[1] - normalization_range[0]) + normalization_range[0]
+        self.signal = (self.signal - min_val) / (max_val - min_val) * (
+            normalization_range[1] - normalization_range[0]
+        ) + normalization_range[0]
 
     def apply_smoothing(self, options=None):
         """
@@ -327,16 +337,18 @@ class VitalTransformation:
         if options is None:
             options = {}
 
-        smoothing_method = options.get('smoothing_method', 'moving_average')
+        smoothing_method = options.get("smoothing_method", "moving_average")
         signal_filtering = SignalFiltering(self.signal)
 
-        if smoothing_method == 'moving_average':
-            window_size = options.get('window_size', 5)
-            iterations = options.get('iterations', 1)
-            self.signal = signal_filtering.moving_average(window_size, iterations=iterations)
-        elif smoothing_method == 'gaussian':
-            sigma = options.get('sigma', 1.0)
-            iterations = options.get('iterations', 1)
+        if smoothing_method == "moving_average":
+            window_size = options.get("window_size", 5)
+            iterations = options.get("iterations", 1)
+            self.signal = signal_filtering.moving_average(
+                window_size, iterations=iterations
+            )
+        elif smoothing_method == "gaussian":
+            sigma = options.get("sigma", 1.0)
+            iterations = options.get("iterations", 1)
             self.signal = signal_filtering.gaussian(sigma=sigma, iterations=iterations)
         else:
             raise ValueError(f"Unknown smoothing method: {smoothing_method}")
@@ -364,11 +376,11 @@ class VitalTransformation:
         if options is None:
             options = {}
 
-        enhance_method = options.get('enhance_method', 'square')
+        enhance_method = options.get("enhance_method", "square")
 
-        if enhance_method == 'square':
+        if enhance_method == "square":
             self.signal = np.square(self.signal)
-        elif enhance_method == 'abs':
+        elif enhance_method == "abs":
             self.signal = np.abs(self.signal)
         else:
             raise ValueError(f"Unknown enhancement method: {enhance_method}")
@@ -396,69 +408,66 @@ class VitalTransformation:
         if options is None:
             options = {}
 
-        filter_type = options.get('filter_type', 'kalman_filter')
-        advanced_filtering = AdvancedSignalFiltering(self.signal)  # Initialize with the signal
+        filter_type = options.get("filter_type", "kalman_filter")
+        advanced_filtering = AdvancedSignalFiltering(
+            self.signal
+        )  # Initialize with the signal
 
-        if filter_type == 'kalman_filter':
-            R = options.get('R', 0.1)
-            Q = options.get('Q', 0.01)
-            self.signal = advanced_filtering.kalman_filter(R=R, Q=Q)  # Call method from instance
-        elif filter_type == 'optimization_based_filtering':
-            target_signal = options.get('target_signal', self.signal)
-            loss_type = options.get('loss_type', 'mse')
-            learning_rate = options.get('learning_rate', 0.01)
-            iterations = options.get('iterations', 100)
+        if filter_type == "kalman_filter":
+            R = options.get("R", 0.1)
+            Q = options.get("Q", 0.01)
+            self.signal = advanced_filtering.kalman_filter(
+                R=R, Q=Q
+            )  # Call method from instance
+        elif filter_type == "optimization_based_filtering":
+            target_signal = options.get("target_signal", self.signal)
+            loss_type = options.get("loss_type", "mse")
+            learning_rate = options.get("learning_rate", 0.01)
+            iterations = options.get("iterations", 100)
             self.signal = advanced_filtering.optimization_based_filtering(
                 target=target_signal,
                 loss_type=loss_type,
                 learning_rate=learning_rate,
-                iterations=iterations
+                iterations=iterations,
             )
-        elif filter_type == 'gradient_descent_filter':
-            target_signal = options.get('target_signal', self.signal)
-            learning_rate = options.get('learning_rate', 0.01)
-            iterations = options.get('iterations', 100)
+        elif filter_type == "gradient_descent_filter":
+            target_signal = options.get("target_signal", self.signal)
+            learning_rate = options.get("learning_rate", 0.01)
+            iterations = options.get("iterations", 100)
             self.signal = advanced_filtering.gradient_descent_filter(
-                target=target_signal,
-                learning_rate=learning_rate,
-                iterations=iterations
+                target=target_signal, learning_rate=learning_rate, iterations=iterations
             )
-        elif filter_type == 'ensemble_filtering':
-            filters = options.get('filters', [advanced_filtering.kalman_filter])
-            method = options.get('method', 'mean')
-            weights = options.get('weights', None)
-            num_iterations = options.get('num_iterations', 10)
-            learning_rate = options.get('learning_rate', 0.01)
+        elif filter_type == "ensemble_filtering":
+            filters = options.get("filters", [advanced_filtering.kalman_filter])
+            method = options.get("method", "mean")
+            weights = options.get("weights", None)
+            num_iterations = options.get("num_iterations", 10)
+            learning_rate = options.get("learning_rate", 0.01)
             self.signal = advanced_filtering.ensemble_filtering(
                 filters=filters,
                 method=method,
                 weights=weights,
                 num_iterations=num_iterations,
-                learning_rate=learning_rate
+                learning_rate=learning_rate,
             )
-        elif filter_type == 'convolution_based_filter':
-            kernel_type = options.get('kernel_type', 'smoothing')
-            kernel_size = options.get('kernel_size', 3)
+        elif filter_type == "convolution_based_filter":
+            kernel_type = options.get("kernel_type", "smoothing")
+            kernel_size = options.get("kernel_size", 3)
             self.signal = advanced_filtering.convolution_based_filter(
-                kernel_type=kernel_type,
-                kernel_size=kernel_size
+                kernel_type=kernel_type, kernel_size=kernel_size
             )
-        elif filter_type == 'attention_based_filter':
-            attention_type = options.get('attention_type', 'uniform')
-            size = options.get('size', 5)
+        elif filter_type == "attention_based_filter":
+            attention_type = options.get("attention_type", "uniform")
+            size = options.get("size", 5)
             self.signal = advanced_filtering.attention_based_filter(
-                attention_type=attention_type,
-                size=size,
-                **options.get('kwargs', {})
+                attention_type=attention_type, size=size, **options.get("kwargs", {})
             )
-        elif filter_type == 'adaptive_filtering':
-            desired_signal = options.get('desired_signal', self.signal)
-            mu = options.get('mu', 0.5)
-            filter_order = options.get('filter_order', 4)
+        elif filter_type == "adaptive_filtering":
+            desired_signal = options.get("desired_signal", self.signal)
+            mu = options.get("mu", 0.5)
+            filter_order = options.get("filter_order", 4)
             self.signal = advanced_filtering.adaptive_filtering(
-                desired_signal=desired_signal,
-                mu=mu,
-                filter_order=filter_order
+                desired_signal=desired_signal, mu=mu, filter_order=filter_order
             )
         else:
             raise ValueError(f"Unknown advanced filtering method: {filter_type}")

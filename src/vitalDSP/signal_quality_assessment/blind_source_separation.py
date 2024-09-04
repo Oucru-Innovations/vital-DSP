@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def center_signal(signal):
     """
     Center the signal by subtracting the mean.
@@ -25,6 +26,7 @@ def center_signal(signal):
     mean_signal = np.mean(signal, axis=1, keepdims=True)
     centered_signal = signal - mean_signal
     return centered_signal, mean_signal
+
 
 def whiten_signal(signal):
     """
@@ -53,6 +55,7 @@ def whiten_signal(signal):
     whitening_matrix = np.dot(eigenvectors, np.diag(1.0 / np.sqrt(eigenvalues)))
     whitened_signal = np.dot(whitening_matrix.T, signal)
     return whitened_signal, whitening_matrix
+
 
 def ica_artifact_removal(signals, max_iter=1000, tol=1e-5):
     """
@@ -90,7 +93,11 @@ def ica_artifact_removal(signals, max_iter=1000, tol=1e-5):
 
     for i in range(max_iter):
         # Update weights using the fixed-point algorithm (FastICA)
-        weights_new = np.dot(np.tanh(np.dot(weights, whitened_signals)).dot(whitened_signals.T) / whitened_signals.shape[1], weights.T)
+        weights_new = np.dot(
+            np.tanh(np.dot(weights, whitened_signals)).dot(whitened_signals.T)
+            / whitened_signals.shape[1],
+            weights.T,
+        )
         weights_new /= np.linalg.norm(weights_new, axis=1, keepdims=True)
 
         if np.max(np.abs(np.abs(np.diag(np.dot(weights_new, weights.T))) - 1)) < tol:
@@ -100,6 +107,7 @@ def ica_artifact_removal(signals, max_iter=1000, tol=1e-5):
 
     separated_signals = np.dot(weights, whitened_signals)
     return separated_signals
+
 
 def pca_artifact_removal(signals, n_components=None):
     """
@@ -142,6 +150,7 @@ def pca_artifact_removal(signals, n_components=None):
     reduced_signals = np.dot(eigenvectors.T, centered_signals)
     return reduced_signals
 
+
 def jade_ica(signals, max_iter=1000, tol=1e-5):
     """
     Perform Joint Approximate Diagonalization of Eigenmatrices (JADE) for ICA.
@@ -166,6 +175,7 @@ def jade_ica(signals, max_iter=1000, tol=1e-5):
     >>> separated_signals = jade_ica(signals)
     >>> print(separated_signals)
     """
+
     def jade(signals):
         # JADE implementation
         # num_signals = signals.shape[0]

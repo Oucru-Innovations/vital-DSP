@@ -1,6 +1,14 @@
 from vitalDSP.respiratory_analysis.preprocess.preprocess import preprocess_signal
 
-def detect_apnea_amplitude(signal, sampling_rate, threshold, min_duration=10, preprocess=None, **preprocess_kwargs):
+
+def detect_apnea_amplitude(
+    signal,
+    sampling_rate,
+    threshold,
+    min_duration=10,
+    preprocess=None,
+    **preprocess_kwargs
+):
     """
     Detect sleep apnea events based on amplitude thresholding.
 
@@ -31,7 +39,9 @@ def detect_apnea_amplitude(signal, sampling_rate, threshold, min_duration=10, pr
     >>> print(apnea_events)
     """
     if preprocess:
-        signal = preprocess_signal(signal, sampling_rate, filter_type=preprocess, **preprocess_kwargs)
+        signal = preprocess_signal(
+            signal, sampling_rate, filter_type=preprocess, **preprocess_kwargs
+        )
 
     # Identify segments where the signal amplitude is below the threshold
     below_threshold = signal < threshold
@@ -51,6 +61,8 @@ def detect_apnea_amplitude(signal, sampling_rate, threshold, min_duration=10, pr
     if current_start is not None:
         duration = (len(signal) - current_start) / sampling_rate
         if duration >= min_duration:
-            apnea_events.append((current_start / sampling_rate, len(signal) / sampling_rate))
+            apnea_events.append(
+                (current_start / sampling_rate, len(signal) / sampling_rate)
+            )
 
     return apnea_events

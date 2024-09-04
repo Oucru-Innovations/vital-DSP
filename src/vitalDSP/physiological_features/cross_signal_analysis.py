@@ -1,6 +1,7 @@
 import numpy as np
 from vitalDSP.utils.common import pearsonr, coherence, grangercausalitytests
 
+
 class CrossSignalAnalysis:
     """
     A comprehensive class to analyze interactions between two physiological signals, such as ECG and respiration.

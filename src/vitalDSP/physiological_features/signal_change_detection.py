@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class SignalChangeDetection:
     """
     A comprehensive class for detecting changes in physiological signals.

@@ -1,6 +1,11 @@
 import numpy as np
-from vitalDSP.respiratory_analysis.estimate_rr.peak_detection_rr import peak_detection_rr
-from vitalDSP.respiratory_analysis.estimate_rr.frequency_domain_rr import frequency_domain_rr
+from vitalDSP.respiratory_analysis.estimate_rr.peak_detection_rr import (
+    peak_detection_rr,
+)
+from vitalDSP.respiratory_analysis.estimate_rr.frequency_domain_rr import (
+    frequency_domain_rr,
+)
+
 
 def multimodal_analysis(signals, sampling_rate, preprocess=None, **preprocess_kwargs):
     """
@@ -33,8 +38,12 @@ def multimodal_analysis(signals, sampling_rate, preprocess=None, **preprocess_kw
 
     # Estimate RR from each signal using different methods
     for signal in signals:
-        rr_peak = peak_detection_rr(signal, sampling_rate, preprocess=preprocess, **preprocess_kwargs)
-        rr_freq = frequency_domain_rr(signal, sampling_rate, preprocess=preprocess, **preprocess_kwargs)
+        rr_peak = peak_detection_rr(
+            signal, sampling_rate, preprocess=preprocess, **preprocess_kwargs
+        )
+        rr_freq = frequency_domain_rr(
+            signal, sampling_rate, preprocess=preprocess, **preprocess_kwargs
+        )
         rr_estimates.append(np.mean([rr_peak, rr_freq]))
 
     # Combine RR estimates from all signals

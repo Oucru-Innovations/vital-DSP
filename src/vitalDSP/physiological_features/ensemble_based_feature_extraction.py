@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class EnsembleBasedFeatureExtraction:
     """
     A comprehensive class for feature extraction using ensemble methods such as Random Forest, Bagging, Boosting, and Stacking.
@@ -17,6 +18,7 @@ class EnsembleBasedFeatureExtraction:
     stacking_features : function
         Extracts features using a Stacking ensemble.
     """
+
     def __init__(self, n_estimators=100, max_depth=None, min_samples_split=2):
         """
         Initialize the EnsembleBasedFeatureExtraction class.

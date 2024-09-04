@@ -2,6 +2,7 @@ import numpy as np
 from scipy.stats import pearsonr
 from scipy.stats import zscore, iqr, kurtosis, skew
 
+
 class SignalQualityIndex:
     """
     A class to compute various Signal Quality Index (SQI) metrics for assessing the quality of vital signals.
@@ -27,7 +28,7 @@ class SignalQualityIndex:
             signal = np.array(signal)
         self.signal = signal
 
-    def _scale_sqi(self, sqi_values, scale='zscore'):
+    def _scale_sqi(self, sqi_values, scale="zscore"):
         """
         Scale the SQI values using the specified scaling method.
 
@@ -43,19 +44,28 @@ class SignalQualityIndex:
         scaled_sqi : numpy.ndarray
             Scaled SQI values.
         """
-        if scale == 'zscore':
+        if scale == "zscore":
             return zscore(sqi_values)
-        elif scale == 'iqr':
+        elif scale == "iqr":
             median = np.median(sqi_values)
             return (sqi_values - median) / iqr(sqi_values)
-        elif scale == 'minmax':
+        elif scale == "minmax":
             min_val = np.min(sqi_values)
             max_val = np.max(sqi_values)
             return (sqi_values - min_val) / (max_val - min_val + 1e-8)
         else:
             raise ValueError(f"Unknown scale type: {scale}")
 
-    def _process_segments(self, func, window_size, step_size, threshold=None, threshold_type='below', scale='zscore', reference_waveform=None):
+    def _process_segments(
+        self,
+        func,
+        window_size,
+        step_size,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+        reference_waveform=None,
+    ):
         """
         Helper method to process the signal in segments using a given function.
 
@@ -107,25 +117,40 @@ class SignalQualityIndex:
         abnormal_segments = []
 
         for i, sqi_value in enumerate(scaled_sqi):
-            if threshold_type == 'below':
+            if threshold_type == "below":
                 if threshold is not None and sqi_value < threshold:
-                    abnormal_segments.append((i * step_size, i * step_size + window_size))
+                    abnormal_segments.append(
+                        (i * step_size, i * step_size + window_size)
+                    )
                 else:
                     normal_segments.append((i * step_size, i * step_size + window_size))
-            elif threshold_type == 'above':
+            elif threshold_type == "above":
                 if threshold is not None and sqi_value > threshold:
-                    abnormal_segments.append((i * step_size, i * step_size + window_size))
+                    abnormal_segments.append(
+                        (i * step_size, i * step_size + window_size)
+                    )
                 else:
                     normal_segments.append((i * step_size, i * step_size + window_size))
-            elif threshold_type == 'range':
-                if threshold is not None and not (threshold[0] <= sqi_value <= threshold[1]):
-                    abnormal_segments.append((i * step_size, i * step_size + window_size))
+            elif threshold_type == "range":
+                if threshold is not None and not (
+                    threshold[0] <= sqi_value <= threshold[1]
+                ):
+                    abnormal_segments.append(
+                        (i * step_size, i * step_size + window_size)
+                    )
                 else:
                     normal_segments.append((i * step_size, i * step_size + window_size))
 
         return scaled_sqi, normal_segments, abnormal_segments
 
-    def amplitude_variability_sqi(self, window_size, step_size, threshold=None, threshold_type='below', scale='zscore'):
+    def amplitude_variability_sqi(
+        self,
+        window_size,
+        step_size,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+    ):
         """
         Compute the amplitude variability SQI over segments of the signal.
 
@@ -157,6 +182,7 @@ class SignalQualityIndex:
         >>> sqi = SignalQualityIndex(signal)
         >>> sqi_values, normal_segments, abnormal_segments = sqi.amplitude_variability_sqi(window_size=5, step_size=2, threshold=0.8)
         """
+
         def compute_sqi(segment):
             variability = np.var(segment)
             max_signal = np.max(segment)
@@ -164,9 +190,24 @@ class SignalQualityIndex:
             range_signal = max_signal - min_signal
             return variability / (range_signal + 1e-2)
 
-        return self._process_segments(compute_sqi, window_size, step_size, threshold=threshold, threshold_type=threshold_type, scale=scale)
+        return self._process_segments(
+            compute_sqi,
+            window_size,
+            step_size,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            scale=scale,
+        )
 
-    def baseline_wander_sqi(self, window_size, step_size, threshold=None, threshold_type='below', scale='zscore', moving_avg_window=50):
+    def baseline_wander_sqi(
+        self,
+        window_size,
+        step_size,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+        moving_avg_window=50,
+    ):
         """
         Compute the baseline wander SQI.
 
@@ -202,16 +243,33 @@ class SignalQualityIndex:
         >>> sqi = SignalQualityIndex(signal)
         >>> sqi_values, normal_segments, abnormal_segments = sqi.baseline_wander_sqi(window_size=3, step_size=1, threshold=0.8)
         """
+
         def compute_sqi(segment):
-            moving_average = np.convolve(segment, np.ones(moving_avg_window) / moving_avg_window, mode="valid")
-            wander = np.mean(np.abs(segment[:len(moving_average)] - moving_average))
+            moving_average = np.convolve(
+                segment, np.ones(moving_avg_window) / moving_avg_window, mode="valid"
+            )
+            wander = np.mean(np.abs(segment[: len(moving_average)] - moving_average))
             max_signal = np.max(segment)
             sqi_value = 1 - (wander / max_signal)
             return sqi_value
 
-        return self._process_segments(compute_sqi, window_size, step_size, threshold=threshold, threshold_type=threshold_type, scale=scale)
+        return self._process_segments(
+            compute_sqi,
+            window_size,
+            step_size,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            scale=scale,
+        )
 
-    def zero_crossing_sqi(self, window_size, step_size, threshold=None, threshold_type='below', scale='zscore'):
+    def zero_crossing_sqi(
+        self,
+        window_size,
+        step_size,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+    ):
         """
         Compute the zero-crossing SQI.
 
@@ -245,15 +303,34 @@ class SignalQualityIndex:
         >>> sqi = SignalQualityIndex(signal)
         >>> sqi_values, normal_segments, abnormal_segments = sqi.zero_crossing_sqi(window_size=3, step_size=1, threshold=0.8)
         """
+
         def compute_sqi(segment):
             zero_crossings = np.sum(np.diff(np.sign(segment)) != 0)
             expected_crossings = len(segment) / 2
-            sqi_value = 1 - np.abs(zero_crossings - expected_crossings) / expected_crossings
+            sqi_value = (
+                1 - np.abs(zero_crossings - expected_crossings) / expected_crossings
+            )
             return sqi_value
 
-        return self._process_segments(compute_sqi, window_size, step_size, threshold=threshold, threshold_type=threshold_type, scale=scale)
+        return self._process_segments(
+            compute_sqi,
+            window_size,
+            step_size,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            scale=scale,
+        )
 
-    def waveform_similarity_sqi(self, window_size, step_size, reference_waveform, threshold=None, threshold_type='below', scale='zscore', similarity_method='correlation'):
+    def waveform_similarity_sqi(
+        self,
+        window_size,
+        step_size,
+        reference_waveform,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+        similarity_method="correlation",
+    ):
         """
         Compute the waveform similarity SQI using various similarity metrics.
 
@@ -293,19 +370,37 @@ class SignalQualityIndex:
         >>> sqi_values, normal_segments, abnormal_segments = sqi.waveform_similarity_sqi(
         ...     window_size=3, step_size=1, reference_waveform=reference, threshold=0.8)
         """
+
         def compute_sqi(segment, reference_waveform):
-            if similarity_method == 'correlation':
+            if similarity_method == "correlation":
                 corr_coef, _ = pearsonr(segment, reference_waveform)
                 return corr_coef
-            elif similarity_method == 'custom':
+            elif similarity_method == "custom":
                 # Implement any custom similarity function here
-                return np.dot(segment, reference_waveform) / (np.linalg.norm(segment) * np.linalg.norm(reference_waveform))
+                return np.dot(segment, reference_waveform) / (
+                    np.linalg.norm(segment) * np.linalg.norm(reference_waveform)
+                )
             else:
                 raise ValueError(f"Unknown similarity method: {similarity_method}")
 
-        return self._process_segments(compute_sqi, window_size, step_size, reference_waveform=reference_waveform, threshold=threshold, threshold_type=threshold_type, scale=scale)
+        return self._process_segments(
+            compute_sqi,
+            window_size,
+            step_size,
+            reference_waveform=reference_waveform,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            scale=scale,
+        )
 
-    def signal_entropy_sqi(self, window_size, step_size, threshold=None, threshold_type='below', scale='zscore'):
+    def signal_entropy_sqi(
+        self,
+        window_size,
+        step_size,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+    ):
         """
         Compute the signal entropy SQI.
 
@@ -339,15 +434,32 @@ class SignalQualityIndex:
         >>> sqi = SignalQualityIndex(signal)
         >>> sqi_values, normal_segments, abnormal_segments = sqi.signal_entropy_sqi(window_size=3, step_size=1, threshold=0.8)
         """
+
         def compute_sqi(segment):
             probability_distribution = np.histogram(segment, bins=10, density=True)[0]
-            entropy = -np.sum(probability_distribution * np.log2(probability_distribution + 1e-8))
+            entropy = -np.sum(
+                probability_distribution * np.log2(probability_distribution + 1e-8)
+            )
             normalized_entropy = entropy / np.log2(len(segment))
             return normalized_entropy
 
-        return self._process_segments(compute_sqi, window_size, step_size, threshold=threshold, threshold_type=threshold_type, scale=scale)
+        return self._process_segments(
+            compute_sqi,
+            window_size,
+            step_size,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            scale=scale,
+        )
 
-    def skewness_sqi(self, window_size, step_size, threshold=None, threshold_type='below', scale='zscore'):
+    def skewness_sqi(
+        self,
+        window_size,
+        step_size,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+    ):
         """
         Compute the skewness SQI.
 
@@ -381,12 +493,27 @@ class SignalQualityIndex:
         >>> sqi = SignalQualityIndex(signal)
         >>> sqi_values, normal_segments, abnormal_segments = sqi.skewness_sqi(window_size=3, step_size=1, threshold=0.8)
         """
+
         def compute_sqi(segment):
             return skew(segment)
 
-        return self._process_segments(compute_sqi, window_size, step_size, threshold=threshold, threshold_type=threshold_type, scale=scale)
+        return self._process_segments(
+            compute_sqi,
+            window_size,
+            step_size,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            scale=scale,
+        )
 
-    def kurtosis_sqi(self, window_size, step_size, threshold=None, threshold_type='below', scale='zscore'):
+    def kurtosis_sqi(
+        self,
+        window_size,
+        step_size,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+    ):
         """
         Compute the kurtosis SQI.
 
@@ -420,12 +547,27 @@ class SignalQualityIndex:
         >>> sqi = SignalQualityIndex(signal)
         >>> sqi_values, normal_segments, abnormal_segments = sqi.kurtosis_sqi(window_size=3, step_size=1, threshold=0.8)
         """
+
         def compute_sqi(segment):
             return kurtosis(segment)
 
-        return self._process_segments(compute_sqi, window_size, step_size, threshold=threshold, threshold_type=threshold_type, scale=scale)
+        return self._process_segments(
+            compute_sqi,
+            window_size,
+            step_size,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            scale=scale,
+        )
 
-    def peak_to_peak_amplitude_sqi(self, window_size, step_size, threshold=None, threshold_type='below', scale='zscore'):
+    def peak_to_peak_amplitude_sqi(
+        self,
+        window_size,
+        step_size,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+    ):
         """
         Compute the peak-to-peak amplitude SQI.
 
@@ -459,12 +601,27 @@ class SignalQualityIndex:
         >>> sqi = SignalQualityIndex(signal)
         >>> sqi_values, normal_segments, abnormal_segments = sqi.peak_to_peak_amplitude_sqi(window_size=3, step_size=1, threshold=0.8)
         """
+
         def compute_sqi(segment):
             return np.max(segment) - np.min(segment)
 
-        return self._process_segments(compute_sqi, window_size, step_size, threshold=threshold, threshold_type=threshold_type, scale=scale)
+        return self._process_segments(
+            compute_sqi,
+            window_size,
+            step_size,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            scale=scale,
+        )
 
-    def snr_sqi(self, window_size, step_size, threshold=None, threshold_type='below', scale='zscore'):
+    def snr_sqi(
+        self,
+        window_size,
+        step_size,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+    ):
         """
         Compute the Signal-to-Noise Ratio (SNR) SQI.
 
@@ -498,14 +655,29 @@ class SignalQualityIndex:
         >>> sqi = SignalQualityIndex(signal)
         >>> sqi_values, normal_segments, abnormal_segments = sqi.snr_sqi(window_size=3, step_size=1, threshold=0.8)
         """
+
         def compute_sqi(segment):
-            signal_power = np.mean(segment ** 2)
+            signal_power = np.mean(segment**2)
             noise_power = np.var(segment)
             return 10 * np.log10(signal_power / (noise_power + 1e-8))
 
-        return self._process_segments(compute_sqi, window_size, step_size, threshold=threshold, threshold_type=threshold_type, scale=scale)
+        return self._process_segments(
+            compute_sqi,
+            window_size,
+            step_size,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            scale=scale,
+        )
 
-    def energy_sqi(self, window_size, step_size, threshold=None, threshold_type='below', scale='zscore'):
+    def energy_sqi(
+        self,
+        window_size,
+        step_size,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+    ):
         """
         Compute the energy SQI.
 
@@ -539,12 +711,28 @@ class SignalQualityIndex:
         >>> sqi = SignalQualityIndex(signal)
         >>> sqi_values, normal_segments, abnormal_segments = sqi.energy_sqi(window_size=3, step_size=1, threshold=0.8)
         """
+
         def compute_sqi(segment):
-            return np.sum(segment ** 2)
+            return np.sum(segment**2)
 
-        return self._process_segments(compute_sqi, window_size, step_size, threshold=threshold, threshold_type=threshold_type, scale=scale)
+        return self._process_segments(
+            compute_sqi,
+            window_size,
+            step_size,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            scale=scale,
+        )
 
-    def heart_rate_variability_sqi(self, rr_intervals, window_size, step_size, threshold=None, threshold_type='below', scale='zscore'):
+    def heart_rate_variability_sqi(
+        self,
+        rr_intervals,
+        window_size,
+        step_size,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+    ):
         """
         Compute the heart rate variability (HRV) SQI.
 
@@ -580,14 +768,29 @@ class SignalQualityIndex:
         >>> sqi = SignalQualityIndex(rr_intervals)
         >>> sqi_values, normal_segments, abnormal_segments = sqi.heart_rate_variability_sqi(rr_intervals, window_size=3, step_size=1, threshold=0.8)
         """
+
         def compute_sqi(segment):
             rmssd = np.sqrt(np.mean(np.diff(segment) ** 2))
             normalized_rmssd = rmssd / np.mean(segment)
             return normalized_rmssd
 
-        return self._process_segments(compute_sqi, window_size, step_size, threshold=threshold, threshold_type=threshold_type, scale=scale)
+        return self._process_segments(
+            compute_sqi,
+            window_size,
+            step_size,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            scale=scale,
+        )
 
-    def ppg_signal_quality_sqi(self, window_size, step_size, threshold=None, threshold_type='below', scale='zscore'):
+    def ppg_signal_quality_sqi(
+        self,
+        window_size,
+        step_size,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+    ):
         """
         Compute the PPG signal quality SQI.
 
@@ -621,6 +824,7 @@ class SignalQualityIndex:
         >>> sqi = SignalQualityIndex(signal)
         >>> sqi_values, normal_segments, abnormal_segments = sqi.ppg_signal_quality_sqi(window_size=3, step_size=1, threshold=0.8)
         """
+
         def compute_sqi(segment):
             amplitude_variability = np.var(segment)
             max_signal = np.max(segment)
@@ -628,9 +832,24 @@ class SignalQualityIndex:
             range_signal = max_signal - min_signal
             return amplitude_variability / (range_signal + 1e-2)
 
-        return self._process_segments(compute_sqi, window_size, step_size, threshold=threshold, threshold_type=threshold_type, scale=scale)
+        return self._process_segments(
+            compute_sqi,
+            window_size,
+            step_size,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            scale=scale,
+        )
 
-    def eeg_band_power_sqi(self, band_power, window_size, step_size, threshold=None, threshold_type='below', scale='zscore'):
+    def eeg_band_power_sqi(
+        self,
+        band_power,
+        window_size,
+        step_size,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+    ):
         """
         Compute the EEG band power SQI.
 
@@ -666,14 +885,29 @@ class SignalQualityIndex:
         >>> sqi = SignalQualityIndex(band_power)
         >>> sqi_values, normal_segments, abnormal_segments = sqi.eeg_band_power_sqi(band_power, window_size=3, step_size=1, threshold=0.8)
         """
+
         def compute_sqi(segment):
             power_variability = np.var(segment)
             mean_power = np.mean(segment)
             return power_variability / (mean_power + 1e-2)
 
-        return self._process_segments(compute_sqi, window_size, step_size, threshold=threshold, threshold_type=threshold_type, scale=scale)
+        return self._process_segments(
+            compute_sqi,
+            window_size,
+            step_size,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            scale=scale,
+        )
 
-    def respiratory_signal_quality_sqi(self, window_size, step_size, threshold=None, threshold_type='below', scale='zscore'):
+    def respiratory_signal_quality_sqi(
+        self,
+        window_size,
+        step_size,
+        threshold=None,
+        threshold_type="below",
+        scale="zscore",
+    ):
         """
         Compute the respiratory signal quality SQI.
 
@@ -707,11 +941,21 @@ class SignalQualityIndex:
         >>> sqi = SignalQualityIndex(resp_signal)
         >>> sqi_values, normal_segments, abnormal_segments = sqi.respiratory_signal_quality_sqi(window_size=3, step_size=1, threshold=0.8)
         """
+
         def compute_sqi(segment):
             amplitude_variability = np.var(segment)
             zero_crossings = np.sum(np.diff(np.sign(segment)) != 0)
             expected_crossings = len(segment) / 2
-            zero_crossing_consistency = 1 - np.abs(zero_crossings - expected_crossings) / expected_crossings
+            zero_crossing_consistency = (
+                1 - np.abs(zero_crossings - expected_crossings) / expected_crossings
+            )
             return amplitude_variability * zero_crossing_consistency
 
-        return self._process_segments(compute_sqi, window_size, step_size, threshold=threshold, threshold_type=threshold_type, scale=scale)
+        return self._process_segments(
+            compute_sqi,
+            window_size,
+            step_size,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            scale=scale,
+        )

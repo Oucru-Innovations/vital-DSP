@@ -2,6 +2,7 @@ import numpy as np
 from vitalDSP.utils.mother_wavelets import Wavelet
 from scipy.signal import convolve
 
+
 class WaveletTransform:
     """
     A class to perform Discrete Wavelet Transform (DWT) on signals using different mother wavelets.
@@ -52,7 +53,9 @@ class WaveletTransform:
         else:
             # If only one filter is returned, assume it's a low-pass filter
             self.low_pass = filters
-            self.high_pass = np.array([1, -1])  # Use a default or dummy high-pass filter
+            self.high_pass = np.array(
+                [1, -1]
+            )  # Use a default or dummy high-pass filter
 
         # Ensure the wavelet filters are numpy arrays
         self.low_pass = np.asarray(self.low_pass)
@@ -77,16 +80,16 @@ class WaveletTransform:
 
         # Apply padding based on the same_length option
         if self.same_length:
-            padded_data = np.pad(data, (filter_len // 2, filter_len // 2), 'reflect')
+            padded_data = np.pad(data, (filter_len // 2, filter_len // 2), "reflect")
         else:
-            padded_data = np.pad(data, (0, filter_len - 1), 'constant')
+            padded_data = np.pad(data, (0, filter_len - 1), "constant")
 
         approximation = np.zeros(output_length)
         detail = np.zeros(output_length)
 
         # Iterate over the signal and apply the filters
         for i in range(output_length):
-            data_segment = padded_data[i:i + filter_len]
+            data_segment = padded_data[i : i + filter_len]
 
             if len(data_segment) == len(self.low_pass):
                 approximation[i] = np.dot(self.low_pass, data_segment)
@@ -142,15 +145,15 @@ class WaveletTransform:
             Reconstructed data at this level.
         """
         # Convolve approximation and detail coefficients with the corresponding filters
-        approx_conv = convolve(approximation, self.low_pass, mode='full')
-        detail_conv = convolve(detail, self.high_pass, mode='full')
+        approx_conv = convolve(approximation, self.low_pass, mode="full")
+        detail_conv = convolve(detail, self.high_pass, mode="full")
 
         # Combine the convolved signals and scale appropriately
         data = (approx_conv + detail_conv) / np.sqrt(2)
 
         # Trim the data to maintain the original length if required
         if self.same_length:
-            data = data[:len(approximation)]
+            data = data[: len(approximation)]
 
         return data
 
@@ -179,4 +182,4 @@ class WaveletTransform:
         data = coeffs[-1]  # Start with the final approximation
         for detail in reversed(coeffs[:-1]):
             data = self._wavelet_reconstruct(data, detail)
-        return data[:self.original_length] if self.same_length else data
+        return data[: self.original_length] if self.same_length else data

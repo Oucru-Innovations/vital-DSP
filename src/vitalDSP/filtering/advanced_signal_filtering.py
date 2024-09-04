@@ -3,6 +3,7 @@ from vitalDSP.utils.loss_functions import LossFunctions
 from vitalDSP.utils.convolutional_kernels import ConvolutionKernels
 from vitalDSP.utils.attention_weights import AttentionWeights
 
+
 class AdvancedSignalFiltering:
     """
     A class for applying advanced filtering techniques to signals.
@@ -442,7 +443,9 @@ class AdvancedSignalFiltering:
 
         for i in range(filter_order, n):
             # Extract the input vector
-            x = self.signal[i-filter_order:i][::-1]  # Input vector (length filter_order)
+            x = self.signal[i - filter_order : i][
+                ::-1
+            ]  # Input vector (length filter_order)
 
             # Ensure input vector size is correct
             if len(x) != filter_order:

@@ -3,6 +3,7 @@ from sklearn.mixture import GaussianMixture
 from sklearn.tree import DecisionTreeClassifier
 import numpy as np
 
+
 class SignalSegmentation:
     """
     A comprehensive class for segmenting physiological signals.

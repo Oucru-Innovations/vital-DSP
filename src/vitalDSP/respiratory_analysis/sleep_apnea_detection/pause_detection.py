@@ -1,7 +1,10 @@
 from vitalDSP.utils.common import find_peaks
 from vitalDSP.respiratory_analysis.preprocess.preprocess import preprocess_signal
 
-def detect_apnea_pauses(signal, sampling_rate, min_pause_duration=10, preprocess=None, **preprocess_kwargs):
+
+def detect_apnea_pauses(
+    signal, sampling_rate, min_pause_duration=10, preprocess=None, **preprocess_kwargs
+):
     """
     Detect sleep apnea events based on pauses in the respiratory signal.
 
@@ -30,15 +33,21 @@ def detect_apnea_pauses(signal, sampling_rate, min_pause_duration=10, preprocess
     >>> print(apnea_events)
     """
     if preprocess:
-        signal = preprocess_signal(signal, sampling_rate, filter_type=preprocess, **preprocess_kwargs)
+        signal = preprocess_signal(
+            signal, sampling_rate, filter_type=preprocess, **preprocess_kwargs
+        )
 
     # Detect peaks in the respiratory signal
-    peaks = find_peaks(signal, distance=sampling_rate)  # Ensure at least 1 second between peaks
+    peaks = find_peaks(
+        signal, distance=sampling_rate
+    )  # Ensure at least 1 second between peaks
 
     apnea_events = []
     for i in range(1, len(peaks)):
-        pause_duration = (peaks[i] - peaks[i-1]) / sampling_rate
+        pause_duration = (peaks[i] - peaks[i - 1]) / sampling_rate
         if pause_duration >= min_pause_duration:
-            apnea_events.append((peaks[i-1] / sampling_rate, peaks[i] / sampling_rate))
+            apnea_events.append(
+                (peaks[i - 1] / sampling_rate, peaks[i] / sampling_rate)
+            )
 
     return apnea_events

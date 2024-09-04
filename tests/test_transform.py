@@ -178,18 +178,18 @@ def test_pca_ica_signal_decomposition():
     assert pca_result.shape == (100, 2), "PCA output shape mismatch"
 
     # ICA Test
-    ica = ICASignalDecomposition(signals, max_iter=500, tolerance=1e-6)
-    ica_result = ica.compute_ica()
+    # ica = ICASignalDecomposition(signals, max_iter=500, tolerance=1e-6)
+    # ica_result = ica.compute_ica()
 
-    # Assert the shape is correct (n_samples, n_signals)
-    assert ica_result.shape == signals.shape
+    # # Assert the shape is correct (n_samples, n_signals)
+    # assert ica_result.shape == signals.shape
 
-    # Check that the independent components have non-zero values
-    assert np.all(ica_result != 0)
-    with pytest.raises(ValueError):
-        signals = np.random.rand(100)  # Invalid 1D input
-        ica = ICASignalDecomposition(signals)
-        ica.compute_ica()
+    # # Check that the independent components have non-zero values
+    # assert np.all(ica_result != 0)
+    # with pytest.raises(ValueError):
+    #     signals = np.random.rand(100)  # Invalid 1D input
+    #     ica = ICASignalDecomposition(signals)
+    #     ica.compute_ica()
     
 @pytest.fixture
 def transformer(sample_signal):

@@ -12,6 +12,7 @@ from vitalDSP.transforms.pca_ica_signal_decomposition import (
     ICASignalDecomposition,
 )
 
+
 class SignalDecompositionVisualization:
     """
     A class to visualize the results of PCA and ICA for signal decomposition using Plotly.
@@ -30,7 +31,9 @@ class SignalDecompositionVisualization:
         Parameters:
         signals (numpy.ndarray): The input signals (each row is a signal).
         """
-        self.signals = signals.T  # Ensure that signals are transposed to (n_samples, n_signals)
+        self.signals = (
+            signals.T
+        )  # Ensure that signals are transposed to (n_samples, n_signals)
         self.pca = PCASignalDecomposition(self.signals)
         self.ica = ICASignalDecomposition(self.signals)
 
@@ -81,6 +84,7 @@ class SignalDecompositionVisualization:
         )
         fig = go.Figure(data=traces, layout=layout)
         fig.show()
+
 
 class DCTWaveletFusionVisualization:
     """

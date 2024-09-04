@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Wavelet:
     """
     A class for generating different types of mother wavelets based on their mathematical formulas.

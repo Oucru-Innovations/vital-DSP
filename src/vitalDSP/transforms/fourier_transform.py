@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class FourierTransform:
     """
     A class to perform Fourier Transform for analyzing the frequency content in signals such as ECG/EEG.
@@ -88,7 +89,9 @@ class FourierTransform:
         >>> print(reconstructed_signal)
         """
         idft = np.fft.ifft(frequency_content)
-        return idft.real  # Return the real part, as the imaginary part should be negligible
+        return (
+            idft.real
+        )  # Return the real part, as the imaginary part should be negligible
 
     def filter_frequencies(self, low_cutoff=None, high_cutoff=None, fs=1.0):
         """
@@ -116,7 +119,7 @@ class FourierTransform:
         >>> print(filtered_signal)
         """
         dft = self.compute_dft()
-        freqs = np.fft.fftfreq(len(self.signal), d=1/fs)
+        freqs = np.fft.fftfreq(len(self.signal), d=1 / fs)
 
         if low_cutoff is not None:
             dft[np.abs(freqs) < low_cutoff] = 0

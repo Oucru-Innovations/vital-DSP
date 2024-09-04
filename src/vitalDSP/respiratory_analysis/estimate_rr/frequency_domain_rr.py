@@ -2,7 +2,10 @@ import numpy as np
 from scipy.signal import welch
 from vitalDSP.respiratory_analysis.preprocess.preprocess import preprocess_signal
 
-def frequency_domain_rr(signal, sampling_rate, preprocess=None, nperseg=None, **preprocess_kwargs):
+
+def frequency_domain_rr(
+    signal, sampling_rate, preprocess=None, nperseg=None, **preprocess_kwargs
+):
     """
     Estimate respiratory rate using frequency-domain methods, particularly the Welch method.
 
@@ -32,7 +35,9 @@ def frequency_domain_rr(signal, sampling_rate, preprocess=None, nperseg=None, **
     """
     # Apply preprocessing if specified
     if preprocess:
-        signal = preprocess_signal(signal, sampling_rate, filter_type=preprocess, **preprocess_kwargs)
+        signal = preprocess_signal(
+            signal, sampling_rate, filter_type=preprocess, **preprocess_kwargs
+        )
 
     # Compute the power spectral density using the Welch method
     freqs, psd = welch(signal, fs=sampling_rate, nperseg=nperseg)

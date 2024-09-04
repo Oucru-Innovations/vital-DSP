@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.fftpack import dct, idct
 
+
 class DiscreteCosineTransform:
     """
     A class to perform Discrete Cosine Transform (DCT) and its inverse (IDCT).
@@ -35,7 +36,7 @@ class DiscreteCosineTransform:
         """
         self.signal = signal
 
-    def compute_dct(self, norm='ortho'):
+    def compute_dct(self, norm="ortho"):
         """
         Compute the Discrete Cosine Transform (DCT) of the signal.
 
@@ -65,7 +66,7 @@ class DiscreteCosineTransform:
         dct_coefficients = dct(windowed_signal, norm=norm)
         return dct_coefficients
 
-    def compute_idct(self, dct_coefficients, norm='ortho'):
+    def compute_idct(self, dct_coefficients, norm="ortho"):
         """
         Compute the Inverse Discrete Cosine Transform (IDCT) to reconstruct the signal.
 
@@ -122,5 +123,7 @@ class DiscreteCosineTransform:
         """
         dct_coefficients = self.compute_dct()
         max_coeff = np.max(np.abs(dct_coefficients))
-        compressed_coefficients = np.where(np.abs(dct_coefficients) > threshold * max_coeff, dct_coefficients, 0)
+        compressed_coefficients = np.where(
+            np.abs(dct_coefficients) > threshold * max_coeff, dct_coefficients, 0
+        )
         return compressed_coefficients

@@ -1,6 +1,7 @@
 import plotly.graph_objs as go
 from vitalDSP.filtering.artifact_removal import ArtifactRemoval
 
+
 class ArtifactRemovalVisualization:
     def __init__(self, signal, reference_signal=None):
         """
@@ -15,8 +16,8 @@ class ArtifactRemovalVisualization:
         self.artifact_removal = ArtifactRemoval(signal)
 
     def _set_reference_signal(self):
-        """ Set the reference signal in ArtifactRemoval if applicable. """
-        if hasattr(self.artifact_removal, 'set_reference_signal'):
+        """Set the reference signal in ArtifactRemoval if applicable."""
+        if hasattr(self.artifact_removal, "set_reference_signal"):
             self.artifact_removal.set_reference_signal(self.reference_signal)
 
     def visualize_artifact_removal(self, method="mean_subtraction"):
@@ -82,9 +83,15 @@ class ArtifactRemovalVisualization:
         traces = [
             go.Scatter(y=self.signal, mode="lines", name="Original Signal"),
             go.Scatter(y=mean_sub_signal, mode="lines", name="Mean Subtraction"),
-            go.Scatter(y=baseline_corr_signal, mode="lines", name="Baseline Correction"),
-            go.Scatter(y=median_filt_signal, mode="lines", name="Median Filter Removal"),
-            go.Scatter(y=wavelet_denoise_signal, mode="lines", name="Wavelet Denoising"),
+            go.Scatter(
+                y=baseline_corr_signal, mode="lines", name="Baseline Correction"
+            ),
+            go.Scatter(
+                y=median_filt_signal, mode="lines", name="Median Filter Removal"
+            ),
+            go.Scatter(
+                y=wavelet_denoise_signal, mode="lines", name="Wavelet Denoising"
+            ),
             go.Scatter(y=adaptive_filt_signal, mode="lines", name="Adaptive Filtering"),
             go.Scatter(y=notch_filt_signal, mode="lines", name="Notch Filter"),
             go.Scatter(y=pca_signal, mode="lines", name="PCA Artifact Removal"),

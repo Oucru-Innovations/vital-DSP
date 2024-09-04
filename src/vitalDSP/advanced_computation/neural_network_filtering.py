@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class NeuralNetworkFiltering:
     """
     A comprehensive neural network-based filtering approach for adaptive signal processing.

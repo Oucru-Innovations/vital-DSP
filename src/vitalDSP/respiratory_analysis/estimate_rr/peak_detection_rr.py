@@ -1,8 +1,20 @@
 from vitalDSP.utils.common import find_peaks
+
 # from scipy.signal import find_peaks
 from vitalDSP.respiratory_analysis.preprocess.preprocess import preprocess_signal
 
-def peak_detection_rr(signal, sampling_rate, preprocess=None, min_peak_distance=0.5, height=None, threshold=None, prominence=None, width=None, **preprocess_kwargs):
+
+def peak_detection_rr(
+    signal,
+    sampling_rate,
+    preprocess=None,
+    min_peak_distance=0.5,
+    height=None,
+    threshold=None,
+    prominence=None,
+    width=None,
+    **preprocess_kwargs
+):
     """
     Estimate respiratory rate using peak detection, with optional preprocessing.
 
@@ -40,12 +52,21 @@ def peak_detection_rr(signal, sampling_rate, preprocess=None, min_peak_distance=
     """
     # Apply preprocessing if specified
     if preprocess:
-        signal = preprocess_signal(signal, sampling_rate, filter_type=preprocess, **preprocess_kwargs)
+        signal = preprocess_signal(
+            signal, sampling_rate, filter_type=preprocess, **preprocess_kwargs
+        )
 
     # Convert minimum peak distance from seconds to samples
     distance = int(min_peak_distance * sampling_rate)
     # Detect peaks using the custom find_peaks function
-    peaks = find_peaks(signal, height=height, distance=distance, threshold=threshold, prominence=prominence, width=width)
+    peaks = find_peaks(
+        signal,
+        height=height,
+        distance=distance,
+        threshold=threshold,
+        prominence=prominence,
+        width=width,
+    )
 
     # Calculate the number of peaks per minute
     num_peaks = len(peaks)
