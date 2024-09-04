@@ -469,7 +469,6 @@ class ChromaSTFTVisualization:
         fig = go.Figure(data=[trace], layout=layout)
         fig.show()
 
-
     def compare_original_chroma_stft(self):
         """
         Compare the original signal and its Chroma STFT.
