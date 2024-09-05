@@ -50,10 +50,16 @@ def whiten_signal(signal):
     >>> whitened_signal, whitening_matrix = whiten_signal(signal)
     >>> print(whitened_signal)
     """
-    cov = np.cov(signal)
+    signal = np.atleast_2d(signal)
+    cov = np.cov(signal, rowvar=False)
+
+    # Add a small positive constant to avoid numerical instability
     eigenvalues, eigenvectors = np.linalg.eigh(cov)
+    eigenvalues = np.where(eigenvalues <= 0, 1e-10, eigenvalues)
+
     whitening_matrix = np.dot(eigenvectors, np.diag(1.0 / np.sqrt(eigenvalues)))
-    whitened_signal = np.dot(whitening_matrix.T, signal)
+    whitened_signal = np.dot(whitening_matrix.T, signal.T).T
+
     return whitened_signal, whitening_matrix
 
 
@@ -81,18 +87,19 @@ def ica_artifact_removal(signals, max_iter=1000, tol=1e-5):
     >>> separated_signals = ica_artifact_removal(signals)
     >>> print(separated_signals)
     """
+    signals = np.atleast_2d(signals)
+
     # Center the signals
     centered_signals, _ = center_signal(signals)
 
     # Whiten the signals
     whitened_signals, _ = whiten_signal(centered_signals)
 
-    # Initialize random weights
     num_components = whitened_signals.shape[0]
     weights = np.random.rand(num_components, num_components)
 
     for i in range(max_iter):
-        # Update weights using the fixed-point algorithm (FastICA)
+        # Update weights using FastICA
         weights_new = np.dot(
             np.tanh(np.dot(weights, whitened_signals)).dot(whitened_signals.T)
             / whitened_signals.shape[1],
@@ -100,6 +107,7 @@ def ica_artifact_removal(signals, max_iter=1000, tol=1e-5):
         )
         weights_new /= np.linalg.norm(weights_new, axis=1, keepdims=True)
 
+        # Check convergence
         if np.max(np.abs(np.abs(np.diag(np.dot(weights_new, weights.T))) - 1)) < tol:
             break
 
@@ -175,17 +183,18 @@ def jade_ica(signals, max_iter=1000, tol=1e-5):
     >>> separated_signals = jade_ica(signals)
     >>> print(separated_signals)
     """
+    signals = np.atleast_2d(signals)
 
     def jade(signals):
-        # JADE implementation
-        # num_signals = signals.shape[0]
-        # Whitening
-        whitened_signals, whitening_matrix = whiten_signal(signals)
-        # Covariance matrix
-        cov_matrix = np.cov(whitened_signals)
+        whitened_signals, _ = whiten_signal(signals)
+        cov_matrix = np.cov(whitened_signals, rowvar=False)
+
         eigenvalues, eigenvectors = np.linalg.eigh(cov_matrix)
-        B = eigenvectors * np.sqrt(eigenvalues)
-        U = np.dot(B.T, whitened_signals)
+
+        # Fixing the dimensionality of B matrix to match whitened signals
+        B = np.dot(eigenvectors, np.diag(np.sqrt(eigenvalues)))
+        U = np.dot(B.T, whitened_signals.T).T
+
         return np.dot(np.linalg.inv(U), whitened_signals)
 
     separated_signals = jade(signals)

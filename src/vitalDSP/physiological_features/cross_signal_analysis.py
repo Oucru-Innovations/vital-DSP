@@ -221,9 +221,20 @@ class CrossSignalAnalysis:
         >>> print(gc_result)
         """
         data = np.vstack([self.signal1, self.signal2]).T
-        gc_test = grangercausalitytests(data, max_lag, verbose=False)
+
+        # Signal 1 -> Signal 2
+        gc_test_12 = grangercausalitytests(data, max_lag=max_lag, verbose=False)
+
+        # Reversing data to check Signal 2 -> Signal 1
+        data_reversed = np.vstack([self.signal2, self.signal1]).T
+        gc_test_21 = grangercausalitytests(
+            data_reversed, max_lag=max_lag, verbose=False
+        )
+
+        # Returning the F-test statistic for the max_lag
         gc_result = {
-            "signal1->signal2": gc_test[max_lag]["ssr_ftest"],
-            "signal2->signal1": gc_test[max_lag]["ssr_ftest"],
+            "signal1->signal2": gc_test_12[max_lag]["ssr_ftest"],
+            "signal2->signal1": gc_test_21[max_lag]["ssr_ftest"],
         }
+
         return gc_result

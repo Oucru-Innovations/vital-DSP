@@ -76,6 +76,11 @@ class EMD:
             while sd > stop_criterion:
                 peaks = self._find_peaks(h)
                 valleys = self._find_peaks(-h)
+
+                if len(peaks) < 2 or len(valleys) < 2:
+                    # Not enough peaks/valleys to perform interpolation; stop decomposition
+                    break
+
                 upper_env = self._interpolate(peaks, h[peaks])
                 lower_env = self._interpolate(valleys, h[valleys])
                 mean_env = (upper_env + lower_env) / 2
@@ -136,5 +141,7 @@ class EMD:
         -----
         Linear interpolation is used to create the envelope from the peaks or valleys.
         """
+        if len(x) < 2:  # Not enough points to interpolate
+            return np.zeros(len(self.signal))
         interpolated = np.interp(np.arange(len(self.signal)), x, y)
         return interpolated

@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.optimize import minimize
+from scipy.special import erf
 
 
 class GaussianProcess:
@@ -201,7 +202,7 @@ class BayesianOptimization:
         numpy.ndarray
             The CDF values.
         """
-        return 0.5 * (1 + np.erf(x / np.sqrt(2)))
+        return 0.5 * (1 + erf(x / np.sqrt(2)))
 
     def _pdf(self, x):
         """
@@ -237,7 +238,9 @@ class BayesianOptimization:
         best_x = None
 
         for _ in range(n_restarts):
-            x_init = np.random.uniform(self.bounds[0], self.bounds[1], size=(1, 1))
+            x_init = np.random.uniform(
+                self.bounds[0], self.bounds[1], size=(1,)
+            ).flatten()  # Flatten x_init
             res = minimize(
                 lambda x: -self.acquisition(np.atleast_2d(x)),
                 x_init,
@@ -270,11 +273,13 @@ class BayesianOptimization:
 
         for _ in range(n_iter):
             if len(self.X_samples) > 0:
+                # Convert to numpy arrays for GP update
                 self.gp.update(np.array(self.X_samples), np.array(self.Y_samples))
 
             X_next = self.propose_location()
             Y_next = self.func(X_next)
 
+            # Append new sample to the lists
             self.X_samples.append(X_next)
             self.Y_samples.append(Y_next)
 

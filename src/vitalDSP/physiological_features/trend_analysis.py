@@ -39,6 +39,8 @@ class TrendAnalysis:
         signal : numpy.ndarray
             The input physiological signal to be analyzed.
         """
+        if len(signal) == 0:
+            raise ValueError("Signal cannot be empty.")
         self.signal = signal
 
     def compute_moving_average(self, window_size):
@@ -64,6 +66,10 @@ class TrendAnalysis:
         >>> ta.compute_moving_average(3)
         array([2., 3., 4., 5., 6.])
         """
+        if window_size > len(self.signal):
+            raise ValueError(
+                "Window size cannot be greater than the length of the signal."
+            )
         cumsum = np.cumsum(np.insert(self.signal, 0, 0))
         moving_avg = (cumsum[window_size:] - cumsum[:-window_size]) / float(window_size)
         return moving_avg
@@ -99,7 +105,6 @@ class TrendAnalysis:
         else:
             weights = np.array(weights)
             weights /= np.sum(weights)
-
         weighted_avg = np.convolve(self.signal, weights, mode="valid")
         return weighted_avg
 
@@ -127,6 +132,8 @@ class TrendAnalysis:
         >>> ta.compute_exponential_smoothing(0.3)
         array([1., 1.3, 1.81, 2.467, 3.227, 4.059, 4.941])
         """
+        if not (0 < alpha <= 1):
+            raise ValueError("Alpha must be between 0 and 1.")
         smoothed_signal = np.zeros_like(self.signal)
         smoothed_signal[0] = self.signal[0]
         for t in range(1, len(self.signal)):

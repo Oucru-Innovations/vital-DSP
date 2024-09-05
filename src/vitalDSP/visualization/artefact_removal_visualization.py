@@ -1,5 +1,6 @@
 import plotly.graph_objs as go
 from vitalDSP.filtering.artifact_removal import ArtifactRemoval
+import numpy as np
 
 
 class ArtifactRemovalVisualization:
@@ -43,8 +44,11 @@ class ArtifactRemovalVisualization:
             cleaned_signal = self.artifact_removal.median_filter_removal()
         elif method == "wavelet_denoising":
             cleaned_signal = self.artifact_removal.wavelet_denoising()
+            cleaned_signal = np.real(cleaned_signal)  # Take the real part
         elif method == "adaptive_filtering":
-            cleaned_signal = self.artifact_removal.adaptive_filtering()
+            cleaned_signal = self.artifact_removal.adaptive_filtering(
+                self.reference_signal
+            )
         elif method == "notch_filter":
             cleaned_signal = self.artifact_removal.notch_filter()
         elif method == "pca_artifact_removal":
@@ -74,11 +78,15 @@ class ArtifactRemovalVisualization:
         mean_sub_signal = self.artifact_removal.mean_subtraction()
         baseline_corr_signal = self.artifact_removal.baseline_correction()
         median_filt_signal = self.artifact_removal.median_filter_removal()
-        wavelet_denoise_signal = self.artifact_removal.wavelet_denoising()
-        adaptive_filt_signal = self.artifact_removal.adaptive_filtering()
+        wavelet_denoise_signal = np.real(
+            self.artifact_removal.wavelet_denoising()
+        )  # Real part
+        adaptive_filt_signal = self.artifact_removal.adaptive_filtering(
+            self.reference_signal
+        )  # Pass reference_signal
         notch_filt_signal = self.artifact_removal.notch_filter()
-        pca_signal = self.artifact_removal.pca_artifact_removal()
-        ica_signal = self.artifact_removal.ica_artifact_removal()
+        pca_signal = self.artifact_removal.pca_artifact_removal(num_components=1)
+        ica_signal = self.artifact_removal.ica_artifact_removal(num_components=1)
 
         traces = [
             go.Scatter(y=self.signal, mode="lines", name="Original Signal"),

@@ -18,6 +18,12 @@ Whether you're a beginner or an experienced user, this documentation will guide 
 .. note::
    If you're new to DSP or healthcare signal processing, check out the **Getting Started** section first!
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Getting Started:
+
+   getting_started
+
 Core Modules
 ============
 
@@ -34,6 +40,7 @@ Explore the core modules of the VitalDSP library below:
    respiratory_analysis
    signal_quality_assessment
    advanced_computation
+   feature_engineering
    utils
 
 Notebooks

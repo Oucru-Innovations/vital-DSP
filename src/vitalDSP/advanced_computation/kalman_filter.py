@@ -61,10 +61,12 @@ class KalmanFilter:
         measurement_covariance : numpy.ndarray
             The measurement noise covariance matrix.
         """
-        self.state = initial_state
-        self.covariance = initial_covariance
-        self.process_covariance = process_covariance
-        self.measurement_covariance = measurement_covariance
+        self.state = initial_state.astype(float)  # Ensuring state is float
+        self.covariance = initial_covariance.astype(
+            float
+        )  # Ensuring covariance is float
+        self.process_covariance = process_covariance.astype(float)
+        self.measurement_covariance = measurement_covariance.astype(float)
 
     def filter(
         self,
@@ -114,7 +116,9 @@ class KalmanFilter:
             # Prediction step
             self.state = transition_matrix @ self.state
             if control_input is not None and control_matrix is not None:
-                self.state += control_matrix @ control_input
+                self.state += control_matrix @ control_input.astype(
+                    float
+                )  # Ensure control_input is float
             self.covariance = (
                 transition_matrix @ self.covariance @ transition_matrix.T
                 + self.process_covariance

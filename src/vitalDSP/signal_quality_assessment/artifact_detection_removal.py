@@ -272,8 +272,13 @@ def iterative_artifact_removal(signal, max_iterations=5, threshold=0.5):
         artifact_indices = threshold_artifact_detection(
             cleaned_signal, threshold=threshold
         )
+
         if len(artifact_indices) == 0:
             break
-        cleaned_signal[artifact_indices] = np.median(cleaned_signal)
+
+        # Replace only artifact indices with the median of the non-artifact portion of the signal
+        if len(artifact_indices) > 0:
+            median_value = np.median(np.delete(cleaned_signal, artifact_indices))
+            cleaned_signal[artifact_indices] = median_value
 
     return cleaned_signal

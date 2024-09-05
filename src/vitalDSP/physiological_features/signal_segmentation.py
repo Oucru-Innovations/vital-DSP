@@ -92,9 +92,18 @@ class SignalSegmentation:
         segments = []
         start_idx = 0
         while start_idx < len(self.signal):
+            # Limit minimum segment size to avoid unnecessary iterations
             end_idx = adaptive_fn(self.signal[start_idx:])
+            end_idx = min(
+                len(self.signal) - start_idx, end_idx
+            )  # Ensure no index out of range
+
+            if end_idx == 0:
+                break  # Avoid infinite loops if adaptive_fn returns 0
+
             segments.append(self.signal[start_idx : start_idx + end_idx])
             start_idx += end_idx
+
         return segments
 
     def threshold_based_segmentation(self, threshold):
