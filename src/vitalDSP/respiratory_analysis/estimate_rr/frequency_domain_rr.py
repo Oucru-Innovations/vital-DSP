@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.signal import welch
-from vitalDSP.respiratory_analysis.preprocess.preprocess import preprocess_signal
+from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 
 
 def frequency_domain_rr(
@@ -46,6 +46,4 @@ def frequency_domain_rr(
     peak_freq = freqs[np.argmax(psd)]
 
     # Convert frequency to breaths per minute (bpm)
-    rr = peak_freq * 60
-
-    return rr
+    return peak_freq * 60

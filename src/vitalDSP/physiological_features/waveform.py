@@ -1,6 +1,7 @@
 import numpy as np
 from vitalDSP.physiological_features.peak_detection import PeakDetection
 
+
 class WaveformMorphology:
     """
     A class for computing morphological features from physiological waveforms (ECG, PPG, EEG).

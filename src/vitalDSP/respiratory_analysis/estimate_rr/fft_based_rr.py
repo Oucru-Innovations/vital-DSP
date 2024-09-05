@@ -1,5 +1,5 @@
 import numpy as np
-from vitalDSP.respiratory_analysis.preprocess.preprocess import preprocess_signal
+from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 
 
 def fft_based_rr(signal, sampling_rate, preprocess=None, **preprocess_kwargs):
@@ -39,6 +39,4 @@ def fft_based_rr(signal, sampling_rate, preprocess=None, **preprocess_kwargs):
 
     peak_freq = freq[np.argmax(np.abs(fft_spectrum))]
 
-    rr = np.abs(peak_freq) * 60
-
-    return rr
+    return np.abs(peak_freq) * 60

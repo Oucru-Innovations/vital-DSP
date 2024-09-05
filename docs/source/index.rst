@@ -27,9 +27,10 @@ Explore the core modules of the VitalDSP library below:
    :maxdepth: 2
    :caption: Core Modules:
 
+   preprocess
    filtering
    transforms
-   time_domain
+   physiological_features
    respiratory_analysis
    signal_quality_assessment
    advanced_computation

@@ -1,4 +1,4 @@
-from vitalDSP.respiratory_analysis.preprocess.noise_reduction import (
+from vitalDSP.preprocess.noise_reduction import (
     wavelet_denoising,
     savgol_denoising,
     median_denoising,
@@ -7,6 +7,72 @@ from vitalDSP.respiratory_analysis.preprocess.noise_reduction import (
 )
 from vitalDSP.filtering.signal_filtering import SignalFiltering
 from scipy.signal import butter, filtfilt
+import numpy as np
+
+
+class PreprocessConfig:
+    """
+    Configuration class for signal preprocessing, which includes filtering and noise reduction parameters.
+
+    Attributes
+    ----------
+    filter_type : str
+        The type of filtering to apply ('bandpass', 'butterworth', 'chebyshev', 'elliptic').
+    noise_reduction_method : str
+        The noise reduction method to apply ('wavelet', 'savgol', 'median', 'gaussian', 'moving_average').
+    lowcut : float
+        The lower cutoff frequency for filtering.
+    highcut : float
+        The upper cutoff frequency for filtering.
+    order : int
+        The order of the filter.
+    wavelet_name : str
+        The name of the wavelet to use for wavelet-based noise reduction.
+    level : int
+        The level of wavelet decomposition.
+    window_length : int
+        The window length for Savitzky-Golay filtering.
+    polyorder : int
+        The polynomial order for Savitzky-Golay filtering.
+    kernel_size : int
+        The kernel size for median filtering.
+    sigma : float
+        The standard deviation for Gaussian filtering.
+    respiratory_mode: bool
+        Apply the preprocessing function specifically for respiratory signals (e.g., PPG or ECG-derived respiration).
+    repreprocess: bool
+        Re preprocessing function
+    """
+
+    def __init__(
+        self,
+        filter_type="bandpass",
+        noise_reduction_method="wavelet",
+        lowcut=0.1,
+        highcut=0.5,
+        order=4,
+        wavelet_name="haar",
+        level=1,
+        window_length=5,
+        polyorder=2,
+        kernel_size=3,
+        sigma=1.0,
+        respiratory_mode=False,
+        repreprocess=False,
+    ):
+        self.filter_type = filter_type
+        self.noise_reduction_method = noise_reduction_method
+        self.lowcut = lowcut
+        self.highcut = highcut
+        self.order = order
+        self.wavelet_name = wavelet_name
+        self.level = level
+        self.window_length = window_length
+        self.polyorder = polyorder
+        self.kernel_size = kernel_size
+        self.sigma = sigma
+        self.respiratory_mode = respiratory_mode
+        self.repreprocess = repreprocess
 
 
 def preprocess_signal(
@@ -44,7 +110,7 @@ def preprocess_signal(
         The order of the filter.
     noise_reduction_method : str, optional (default="wavelet")
         The noise reduction method to apply ('wavelet', 'savgol', 'median', 'gaussian', 'moving_average').
-    wavelet_name : str, optional (default="db4")
+    wavelet_name : str, optional (default="db")
         The type of wavelet to use for wavelet denoising.
     level : int, optional (default=1)
         The level of wavelet decomposition for wavelet denoising.
@@ -72,6 +138,10 @@ def preprocess_signal(
     >>> preprocessed_signal = preprocess_signal(signal, sampling_rate, filter_type='bandpass', noise_reduction_method='wavelet')
     >>> print(preprocessed_signal)
     """
+    # Ensure signal is in float64 format
+    signal = np.asarray(signal, dtype=np.float64)
+    # Optionally, clip large signal values to avoid overflow
+    signal = np.clip(signal, -1e10, 1e10)
     # Apply bandpass filtering or other filter types
     signal_filter = SignalFiltering(signal)
     if filter_type == "bandpass":

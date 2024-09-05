@@ -1,4 +1,4 @@
-from vitalDSP.respiratory_analysis.preprocess.preprocess import preprocess_signal
+from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 
 
 def detect_apnea_amplitude(
