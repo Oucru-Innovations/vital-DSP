@@ -18,7 +18,7 @@ Signal Preprocessing
 -----------------------------------
 Preprocess respiratory signals to prepare them for subsequent analysis, including normalization and filtering.
 
-.. automodule:: vitalDSP.preprocess.preprocess
+.. automodule:: vitalDSP.preprocess.preprocess_operations
     :members:
     :undoc-members:
     :private-members:

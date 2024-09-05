@@ -1,5 +1,5 @@
 import numpy as np
-from vitalDSP.preprocess.preprocess import preprocess_signal
+from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 
 
 def fft_based_rr(signal, sampling_rate, preprocess=None, **preprocess_kwargs):

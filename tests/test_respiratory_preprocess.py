@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from vitalDSP.preprocess.preprocess import preprocess_signal
+from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 from vitalDSP.preprocess.noise_reduction import (
     wavelet_denoising,
     savgol_denoising,

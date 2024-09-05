@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.signal import welch
-from vitalDSP.preprocess.preprocess import preprocess_signal
+from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 
 
 def frequency_domain_rr(

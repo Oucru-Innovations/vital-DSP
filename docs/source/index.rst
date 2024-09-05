@@ -27,6 +27,7 @@ Explore the core modules of the VitalDSP library below:
    :maxdepth: 2
    :caption: Core Modules:
 
+   preprocess
    filtering
    transforms
    physiological_features

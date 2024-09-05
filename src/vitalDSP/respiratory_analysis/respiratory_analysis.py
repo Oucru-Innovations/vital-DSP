@@ -1,4 +1,4 @@
-from vitalDSP.preprocess.preprocess import preprocess_signal
+from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 from vitalDSP.respiratory_analysis.estimate_rr.peak_detection_rr import (
     peak_detection_rr,
 )
@@ -6,75 +6,11 @@ from vitalDSP.respiratory_analysis.estimate_rr.fft_based_rr import fft_based_rr
 from vitalDSP.respiratory_analysis.estimate_rr.frequency_domain_rr import (
     frequency_domain_rr,
 )
+from vitalDSP.preprocess.preprocess_operations import PreprocessConfig
 from vitalDSP.respiratory_analysis.estimate_rr.time_domain_rr import time_domain_rr
 from scipy.signal import find_peaks
 from scipy.interpolate import interp1d
 import numpy as np
-
-
-class PreprocessConfig:
-    """
-    Configuration class for signal preprocessing, which includes filtering and noise reduction parameters.
-
-    Attributes
-    ----------
-    filter_type : str
-        The type of filtering to apply ('bandpass', 'butterworth', 'chebyshev', 'elliptic').
-    noise_reduction_method : str
-        The noise reduction method to apply ('wavelet', 'savgol', 'median', 'gaussian', 'moving_average').
-    lowcut : float
-        The lower cutoff frequency for filtering.
-    highcut : float
-        The upper cutoff frequency for filtering.
-    order : int
-        The order of the filter.
-    wavelet_name : str
-        The name of the wavelet to use for wavelet-based noise reduction.
-    level : int
-        The level of wavelet decomposition.
-    window_length : int
-        The window length for Savitzky-Golay filtering.
-    polyorder : int
-        The polynomial order for Savitzky-Golay filtering.
-    kernel_size : int
-        The kernel size for median filtering.
-    sigma : float
-        The standard deviation for Gaussian filtering.
-    respiratory_mode: bool
-        Apply the preprocessing function specifically for respiratory signals (e.g., PPG or ECG-derived respiration).
-    repreprocess: bool
-        Re preprocessing function
-    """
-
-    def __init__(
-        self,
-        filter_type="bandpass",
-        noise_reduction_method="wavelet",
-        lowcut=0.1,
-        highcut=0.5,
-        order=4,
-        wavelet_name="haar",
-        level=1,
-        window_length=5,
-        polyorder=2,
-        kernel_size=3,
-        sigma=1.0,
-        respiratory_mode=True,
-        repreprocess=False,
-    ):
-        self.filter_type = filter_type
-        self.noise_reduction_method = noise_reduction_method
-        self.lowcut = lowcut
-        self.highcut = highcut
-        self.order = order
-        self.wavelet_name = wavelet_name
-        self.level = level
-        self.window_length = window_length
-        self.polyorder = polyorder
-        self.kernel_size = kernel_size
-        self.sigma = sigma
-        self.respiratory_mode = respiratory_mode
-        self.repreprocess = repreprocess
 
 
 class RespiratoryAnalysis:

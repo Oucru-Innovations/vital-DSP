@@ -1,7 +1,7 @@
 from vitalDSP.utils.common import find_peaks
 
 # from scipy.signal import find_peaks
-from vitalDSP.preprocess.preprocess import preprocess_signal
+from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 
 
 def peak_detection_rr(
