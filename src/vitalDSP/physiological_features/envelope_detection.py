@@ -39,7 +39,7 @@ class EnvelopeDetection:
         """
         self.signal = signal
 
-    def wavelet_envelope(self, wavelet_name="db4", level=1):
+    def wavelet_envelope(self, wavelet_name="db", level=1):
         """
         Compute the envelope using wavelet transform.
 
@@ -48,8 +48,8 @@ class EnvelopeDetection:
 
         Parameters
         ----------
-        wavelet_name : str, optional (default="db4")
-            The type of wavelet to use, such as 'db4' (Daubechies), 'haar', 'sym', etc.
+        wavelet_name : str, optional (default="db")
+            The type of wavelet to use, such as 'db' (Daubechies), 'haar', 'sym', etc.
         level : int, optional (default=1)
             The level of decomposition, which determines the resolution of the envelope.
 
