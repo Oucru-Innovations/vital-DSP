@@ -13,4 +13,5 @@ This section contains various Jupyter Notebooks that demonstrate the usage of Vi
    notebooks/advanced_filtering.ipynb
    notebooks/artifact_removal.ipynb
    notebooks/signal_quality_index.ipynb
+   notebooks/physiological_features.ipynb
    notebooks/transforms.ipynb

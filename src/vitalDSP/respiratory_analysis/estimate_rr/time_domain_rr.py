@@ -1,5 +1,5 @@
 import numpy as np
-from vitalDSP.respiratory_analysis.preprocess.preprocess import preprocess_signal
+from vitalDSP.preprocess.preprocess import preprocess_signal
 
 
 def time_domain_rr(signal, sampling_rate, preprocess=None, **preprocess_kwargs):
@@ -46,6 +46,4 @@ def time_domain_rr(signal, sampling_rate, preprocess=None, **preprocess_kwargs):
     rr_interval = np.argmax(peaks) / sampling_rate
 
     # Convert interval to breaths per minute
-    rr = 60 / rr_interval
-
-    return rr
+    return 60 / rr_interval

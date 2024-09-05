@@ -115,7 +115,7 @@ class WaveletTransform:
         Examples
         --------
         >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
-        >>> wavelet_transform = WaveletTransform(signal, wavelet_name='db4')
+        >>> wavelet_transform = WaveletTransform(signal, wavelet_name='db')
         >>> coeffs = wavelet_transform.perform_wavelet_transform(level=3)
         >>> print(coeffs)
         """
@@ -174,7 +174,7 @@ class WaveletTransform:
         Examples
         --------
         >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
-        >>> wavelet_transform = WaveletTransform(signal, wavelet_name='db4')
+        >>> wavelet_transform = WaveletTransform(signal, wavelet_name='db')
         >>> coeffs = wavelet_transform.perform_wavelet_transform(level=3)
         >>> reconstructed_signal = wavelet_transform.perform_inverse_wavelet_transform(coeffs)
         >>> print(reconstructed_signal)

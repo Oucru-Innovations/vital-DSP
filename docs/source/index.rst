@@ -29,7 +29,7 @@ Explore the core modules of the VitalDSP library below:
 
    filtering
    transforms
-   time_domain
+   physiological_features
    respiratory_analysis
    signal_quality_assessment
    advanced_computation

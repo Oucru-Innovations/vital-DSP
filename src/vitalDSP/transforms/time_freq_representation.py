@@ -59,7 +59,7 @@ class TimeFreqRepresentation:
         Examples
         --------
         >>> signal = np.sin(np.linspace(0, 10, 1000))
-        >>> tfr = TimeFreqRepresentation(signal, method='wavelet', wavelet_name='db4', level=4)
+        >>> tfr = TimeFreqRepresentation(signal, method='wavelet', wavelet_name='db', level=4)
         >>> tfr_result = tfr.compute_tfr()
         >>> print(tfr_result)
         """

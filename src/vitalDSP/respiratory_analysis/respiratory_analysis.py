@@ -1,4 +1,4 @@
-from vitalDSP.respiratory_analysis.preprocess.preprocess import preprocess_signal
+from vitalDSP.preprocess.preprocess import preprocess_signal
 from vitalDSP.respiratory_analysis.estimate_rr.peak_detection_rr import (
     peak_detection_rr,
 )

@@ -1,7 +1,7 @@
 from vitalDSP.utils.common import find_peaks
 
 # from scipy.signal import find_peaks
-from vitalDSP.respiratory_analysis.preprocess.preprocess import preprocess_signal
+from vitalDSP.preprocess.preprocess import preprocess_signal
 
 
 def peak_detection_rr(
@@ -71,6 +71,4 @@ def peak_detection_rr(
     # Calculate the number of peaks per minute
     num_peaks = len(peaks)
     duration_minutes = len(signal) / sampling_rate / 60
-    rr = num_peaks / duration_minutes
-
-    return rr
+    return num_peaks / duration_minutes
