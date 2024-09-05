@@ -1,7 +1,12 @@
 import numpy as np
+from scipy.stats import linregress
 from vitalDSP.physiological_features.peak_detection import PeakDetection
-from vitalDSP.preprocess.preprocess_operations import PreprocessConfig, preprocess_signal
+from vitalDSP.preprocess.preprocess_operations import (
+    PreprocessConfig,
+    preprocess_signal,
+)
 from vitalDSP.physiological_features.waveform import WaveformMorphology
+
 
 class PhysiologicalFeatureExtractor:
     """
@@ -39,6 +44,87 @@ class PhysiologicalFeatureExtractor:
         self.signal = np.asarray(signal, dtype=np.float64)
         self.fs = fs
 
+    def detect_troughs(self, peaks):
+        """
+        Detect troughs (valleys) in the signal based on the given peaks.
+
+        Parameters
+        ----------
+        peaks : numpy.ndarray
+            The indices of detected peaks.
+
+        Returns
+        -------
+        troughs : numpy.ndarray
+            The indices of detected troughs.
+
+        Examples
+        --------
+        >>> peaks = np.array([100, 200, 300])
+        >>> troughs = extractor.detect_troughs(peaks)
+        >>> print(troughs)
+        """
+        troughs = []
+        for i in range(len(peaks) - 1):
+            # Find the local minimum between two consecutive peaks
+            segment = self.signal[peaks[i] : peaks[i + 1]]
+            trough = np.argmin(segment) + peaks[i]
+            troughs.append(trough)
+        return np.array(troughs)
+
+    def compute_peak_trend(self, peaks):
+        """
+        Compute the trend slope of peak amplitudes over time.
+
+        Parameters
+        ----------
+        peaks : numpy.ndarray
+            The set of peaks.
+
+        Returns
+        -------
+        trend_slope : float
+            The slope of the peak amplitude trend over time.
+
+        Examples
+        --------
+        >>> signal = np.random.randn(1000)
+        >>> peaks = np.array([100, 200, 300])
+        >>> extractor = PhysiologicalFeatureExtractor(signal)
+        >>> trend_slope = extractor.compute_peak_trend(peaks)
+        >>> print(trend_slope)
+        """
+        amplitudes = self.signal[peaks]
+        if len(peaks) > 1:
+            slope, _, _, _, _ = linregress(peaks, amplitudes)
+            return slope
+        return 0.0
+
+    def compute_amplitude_variability(self, peaks):
+        """
+        Compute the variability of the amplitudes at the given peak locations.
+
+        Parameters
+        ----------
+        peaks : numpy.ndarray
+            The set of peaks.
+
+        Returns
+        -------
+        variability : float
+            The amplitude variability (standard deviation of the peak amplitudes).
+
+        Examples
+        --------
+        >>> signal = np.random.randn(1000)
+        >>> peaks = np.array([100, 200, 300])
+        >>> extractor = PhysiologicalFeatureExtractor(signal)
+        >>> variability = extractor.compute_amplitude_variability(peaks)
+        >>> print(variability)
+        """
+        amplitudes = self.signal[peaks]
+        return np.std(amplitudes) if len(amplitudes) > 1 else 0.0
+
     def get_preprocess_signal(self, preprocess_config):
         """
         Preprocess the signal by applying bandpass filtering and noise reduction.
@@ -75,10 +161,10 @@ class PhysiologicalFeatureExtractor:
             polyorder=preprocess_config.polyorder,
             kernel_size=preprocess_config.kernel_size,
             sigma=preprocess_config.sigma,
-            respiratory_mode=preprocess_config.respiratory_mode
+            respiratory_mode=preprocess_config.respiratory_mode,
         )
 
-    def extract_features(self, signal_type="ECG", preprocess_config=None):
+    def extract_features(self, signal_type="ECG", preprocess_config=None, mode="peak"):
         """
         Extract all physiological features from the signal for either ECG or PPG.
 
@@ -88,6 +174,8 @@ class PhysiologicalFeatureExtractor:
             The type of signal ("ECG" or "PPG"). Default is "ECG".
         preprocess_config : PreprocessConfig, optional
             The configuration object for signal preprocessing. If None, default settings are used.
+        mode : str, optional
+            The type of area computation method ("peak" or "trough"). Default is "peak".
 
         Returns
         -------
@@ -118,18 +206,42 @@ class PhysiologicalFeatureExtractor:
             peaks = PeakDetection(
                 clean_signal, method="ppg_first_derivative"
             ).detect_peaks()
+            if mode == "peak":
+                systolic_area = morphology.compute_volume(
+                    peaks[:-1], peaks[1:], mode=mode
+                )
+                diastolic_area = morphology.compute_volume(
+                    peaks[1:], peaks[2:], mode=mode
+                )
+                systolic_duration = morphology.compute_duration(
+                    peaks[:-1], peaks[1:], mode=mode
+                )
+                diastolic_duration = morphology.compute_duration(
+                    peaks[1:], peaks[2:], mode=mode
+                )
+            else:
+                troughs = self.detect_troughs(peaks)
+                systolic_area = morphology.compute_volume(peaks, troughs, mode=mode)
+                diastolic_area = morphology.compute_volume(peaks, troughs, mode=mode)
+                systolic_duration = morphology.compute_duration(
+                    peaks, troughs, mode=mode
+                )
+                diastolic_duration = morphology.compute_duration(
+                    peaks, troughs, mode=mode
+                )
+
             dicrotic_notch_locs = morphology.compute_ppg_dicrotic_notch()
-            systolic_duration = morphology.compute_duration(peaks[:-1], peaks[1:])
-            diastolic_duration = morphology.compute_duration(peaks[1:], peaks[2:])
-            systolic_area = morphology.compute_volume(peaks[:-1], peaks[1:])
-            diastolic_area = morphology.compute_volume(peaks[1:], peaks[2:])
-            systolic_variability = morphology.compute_amplitude_variability(peaks[:-1])
-            diastolic_variability = morphology.compute_amplitude_variability(peaks[1:])
+
+            # systolic_area = morphology.compute_volume_sequence(peaks[:-1], peaks[1:])
+            # diastolic_area = morphology.compute_volume_sequence(peaks[1:], peaks[2:])
+
+            systolic_variability = self.compute_amplitude_variability(peaks[:-1])
+            diastolic_variability = self.compute_amplitude_variability(peaks[1:])
             signal_skewness = morphology.compute_skewness()
-            peak_trend_slope = morphology.compute_peak_trend(peaks)
+            peak_trend_slope = self.compute_peak_trend(peaks)
 
             return {
-                "systolic_duration": systolic_duration,
+                "systolic_duration": systolic_duration.value(),
                 "diastolic_duration": diastolic_duration,
                 "systolic_area": systolic_area,
                 "diastolic_area": diastolic_area,
@@ -143,14 +255,16 @@ class PhysiologicalFeatureExtractor:
         elif signal_type == "ECG":
             r_peaks = PeakDetection(clean_signal, method="ecg_r_peak").detect_peaks()
             qrs_duration = morphology.compute_qrs_duration()
-            qrs_area = morphology.compute_volume(r_peaks[:-1], r_peaks[1:])
-            t_wave_area = morphology.compute_volume(r_peaks[1:], r_peaks[2:])
+            qrs_area = morphology.compute_volume(r_peaks[:-1], r_peaks[1:], mode="peak")
+            t_wave_area = morphology.compute_volume(
+                r_peaks[1:], r_peaks[2:], mode="peak"
+            )
             qrs_amplitude = np.mean(clean_signal[r_peaks])
-            qrs_slope = morphology.compute_slope(r_peaks[:-1], r_peaks[1:])
+            qrs_slope = morphology.compute_slope(r_peaks[:-1], r_peaks[1:], mode="peak")
             qrs_t_ratio = qrs_area / t_wave_area if t_wave_area != 0 else 0
             signal_skewness = morphology.compute_skewness()
-            peak_trend_slope = morphology.compute_peak_trend(r_peaks)
-            amplitude_variability = morphology.compute_amplitude_variability(r_peaks)
+            peak_trend_slope = self.compute_peak_trend(r_peaks)
+            amplitude_variability = self.compute_amplitude_variability(r_peaks)
 
             return {
                 "qrs_duration": qrs_duration,

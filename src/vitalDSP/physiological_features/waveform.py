@@ -1,5 +1,6 @@
 import numpy as np
 from vitalDSP.physiological_features.peak_detection import PeakDetection
+from scipy.stats import skew
 
 
 class WaveformMorphology:
@@ -25,6 +26,182 @@ class WaveformMorphology:
         self.fs = fs  # Sampling frequency
         self.signal_type = signal_type  # 'ECG', 'PPG', 'EEG'
 
+    def detect_troughs(self, peaks):
+        """
+        Detects the troughs (valleys) in the PPG waveform between systolic peaks.
+
+        Parameters
+        ----------
+        peaks : np.array
+            Indices of detected systolic peaks in the PPG waveform.
+
+        Returns
+        -------
+        troughs : np.array
+            Indices of the detected troughs between the systolic peaks.
+
+        Example
+        -------
+        >>> waveform = np.sin(np.linspace(0, 2*np.pi, 100))  # Simulated PPG signal
+        >>> wm = WaveformMorphology(waveform, signal_type="PPG")
+        >>> peaks = PeakDetection(waveform).detect_peaks()
+        >>> troughs = wm.detect_troughs(peaks)
+        >>> print(f"Troughs: {troughs}")
+        """
+        troughs = []
+        for i in range(len(peaks) - 1):
+            segment = self.waveform[peaks[i] : peaks[i + 1]]
+            trough = np.argmin(segment) + peaks[i]
+            troughs.append(trough)
+        return np.array(troughs)
+
+    def detect_notches(self):
+        """
+        Detects the dicrotic notches in a PPG waveform using second derivative.
+
+        Returns
+        -------
+        notches : np.array
+            Indices of detected dicrotic notches in the PPG waveform.
+
+        Example
+        -------
+        >>> waveform = np.sin(np.linspace(0, 2*np.pi, 100))  # Simulated PPG signal
+        >>> wm = WaveformMorphology(waveform, signal_type="PPG")
+        >>> notches = wm.detect_notches()
+        >>> print(f"Dicrotic Notches: {notches}")
+        """
+        if self.signal_type != "PPG":
+            raise ValueError("Notches can only be detected for PPG signals.")
+
+        notch_detector = PeakDetection(self.waveform, method="ppg_second_derivative")
+        notches = notch_detector.detect_peaks()
+        return notches
+
+    def detect_q_session(self, r_peaks):
+        """
+        Detects the Q sessions (start and end) in the ECG waveform based on R peaks.
+
+        Parameters
+        ----------
+        r_peaks : np.array
+            Indices of detected R peaks in the ECG waveform.
+
+        Returns
+        -------
+        q_sessions : list of tuples
+            Each tuple contains the start and end index of a Q session.
+
+        Example
+        -------
+        >>> waveform = np.sin(np.linspace(0, 2*np.pi, 100))  # Simulated ECG signal
+        >>> wm = WaveformMorphology(waveform, signal_type="ECG")
+        >>> r_peaks = PeakDetection(waveform).detect_peaks()
+        >>> q_sessions = wm.detect_q_session(r_peaks)
+        >>> print(f"Q Sessions: {q_sessions}")
+        """
+        if self.signal_type != "ECG":
+            raise ValueError("Q sessions can only be detected for ECG signals.")
+
+        q_sessions = []
+        for r_peak in r_peaks:
+            q_start = max(
+                0, r_peak - int(self.fs * 0.04)
+            )  # Example: 40 ms before R peak
+            q_end = r_peak
+            q_sessions.append((q_start, q_end))
+        return q_sessions
+
+    def detect_r_session(self, r_peaks):
+        """
+        Detects the R sessions (start and end) in the ECG waveform.
+
+        Parameters
+        ----------
+        r_peaks : np.array
+            Indices of detected R peaks in the ECG waveform.
+
+        Returns
+        -------
+        r_sessions : list of tuples
+            Each tuple contains the start and end index of an R session.
+
+        Example
+        -------
+        >>> waveform = np.sin(np.linspace(0, 2*np.pi, 100))  # Simulated ECG signal
+        >>> wm = WaveformMorphology(waveform, signal_type="ECG")
+        >>> r_peaks = PeakDetection(waveform).detect_peaks()
+        >>> r_sessions = wm.detect_r_session(r_peaks)
+        >>> print(f"R Sessions: {r_sessions}")
+        """
+        r_sessions = [
+            (r_peak - int(self.fs * 0.02), r_peak + int(self.fs * 0.02))
+            for r_peak in r_peaks
+        ]
+        return r_sessions
+
+    def detect_s_session(self, r_peaks):
+        """
+        Detects the S sessions (start and end) in the ECG waveform based on R peaks.
+
+        Parameters
+        ----------
+        r_peaks : np.array
+            Indices of detected R peaks in the ECG waveform.
+
+        Returns
+        -------
+        s_sessions : list of tuples
+            Each tuple contains the start and end index of an S session.
+
+        Example
+        -------
+        >>> waveform = np.sin(np.linspace(0, 2*np.pi, 100))  # Simulated ECG signal
+        >>> wm = WaveformMorphology(waveform, signal_type="ECG")
+        >>> r_peaks = PeakDetection(waveform).detect_peaks()
+        >>> s_sessions = wm.detect_s_session(r_peaks)
+        >>> print(f"S Sessions: {s_sessions}")
+        """
+        if self.signal_type != "ECG":
+            raise ValueError("S sessions can only be detected for ECG signals.")
+
+        s_sessions = []
+        for r_peak in r_peaks:
+            s_start = r_peak
+            s_end = min(
+                len(self.waveform), r_peak + int(self.fs * 0.04)
+            )  # Example: 40 ms after R peak
+            s_sessions.append((s_start, s_end))
+        return s_sessions
+
+    def detect_qrs_session(self, r_peaks):
+        """
+        Detects the QRS complex sessions (start and end) in the ECG waveform.
+
+        Parameters
+        ----------
+        r_peaks : np.array
+            Indices of detected R peaks in the ECG waveform.
+
+        Returns
+        -------
+        qrs_sessions : list of tuples
+            Each tuple contains the start and end index of a QRS session.
+
+        Example
+        -------
+        >>> waveform = np.sin(np.linspace(0, 2*np.pi, 100))  # Simulated ECG signal
+        >>> wm = WaveformMorphology(waveform, signal_type="ECG")
+        >>> r_peaks = PeakDetection(waveform).detect_peaks()
+        >>> qrs_sessions = wm.detect_qrs_session(r_peaks)
+        >>> print(f"QRS Sessions: {qrs_sessions}")
+        """
+        q_sessions = self.detect_q_session(r_peaks)
+        s_sessions = self.detect_s_session(r_peaks)
+
+        qrs_sessions = [(q[0], s[1]) for q, s in zip(q_sessions, s_sessions)]
+        return qrs_sessions
+
     def compute_amplitude(self):
         """
         Computes the amplitude (max-min) of the waveform, representing the peak-to-peak range.
@@ -40,7 +217,49 @@ class WaveformMorphology:
         """
         return np.max(self.waveform) - np.min(self.waveform)
 
-    def compute_volume(self, peaks):
+    def compute_volume(self, peaks1, peaks2, mode="peak"):
+        """
+        Compute the area under the curve between two sets of peaks.
+
+        Parameters
+        ----------
+        peaks1 : numpy.ndarray
+            The first set of peaks (e.g., systolic peaks).
+        peaks2 : numpy.ndarray
+            The second set of peaks (e.g., diastolic peaks).
+        mode : str, optional
+            The type of area computation method ("peak" or "trough"). Default is "peak".
+
+        Returns
+        -------
+        volume : float
+            The mean area between the two sets of peaks.
+
+        Examples
+        --------
+        >>> signal = np.random.randn(1000)
+        >>> peaks1 = np.array([100, 200, 300])
+        >>> peaks2 = np.array([150, 250, 350])
+        >>> extractor = PhysiologicalFeatureExtractor(signal)
+        >>> volume = extractor.compute_volume(peaks1, peaks2)
+        >>> print(volume)
+        """
+        if mode == "peak":
+            areas = [
+                np.trapz(self.waveform[p1:p2])
+                for p1, p2 in zip(peaks1, peaks2)
+                if p1 < p2
+            ]
+        elif mode == "trough":
+            areas = [
+                np.trapz(self.waveform[min(p, t) : max(p, t)])
+                for p, t in zip(peaks1, peaks2)
+            ]
+        else:
+            raise ValueError("Volume mode must be 'peak' or 'trough'.")
+        return np.mean(areas) if areas else 0.0
+
+    def compute_volume_sequence(self, peaks):
         """
         Computes the area under the waveform for a given peak, typically used to analyze
         the volume of QRS complexes (ECG) or systolic/diastolic volumes (PPG).
@@ -63,6 +282,24 @@ class WaveformMorphology:
                     self.waveform[peak - 1 : peak + 2]
                 )  # AUC for one peak region
         return auc
+
+    def compute_skewness(self):
+        """
+        Compute the skewness of the signal.
+
+        Returns
+        -------
+        skewness : float
+            The skewness of the signal.
+
+        Examples
+        --------
+        >>> signal = np.random.randn(1000)
+        >>> extractor = PhysiologicalFeatureExtractor(signal)
+        >>> skewness = extractor.compute_skewness()
+        >>> print(skewness)
+        """
+        return skew(self.waveform)
 
     def compute_qrs_duration(self):
         """
@@ -92,6 +329,42 @@ class WaveformMorphology:
             qrs_duration += (s_end - q_start) * 1000 / self.fs
 
         return qrs_duration / len(r_peaks) if len(r_peaks) > 0 else 0.0
+
+    def compute_duration(self, peaks1, peaks2, mode):
+        """
+        Compute the mean duration between two sets of peaks.
+
+        Parameters
+        ----------
+        peaks1 : numpy.ndarray
+            The first set of peaks (e.g., systolic peaks).
+        peaks2 : numpy.ndarray
+            The second set of peaks (e.g., diastolic peaks).
+        mode : str, optional
+            The type of duration computation method ("peak" or "trough"). Default is "peak".
+
+        Returns
+        -------
+        duration : float
+            The mean duration between the two sets of peaks in seconds.
+
+        Examples
+        --------
+        >>> peaks1 = np.array([100, 200, 300])
+        >>> peaks2 = np.array([150, 250, 350])
+        >>> extractor = PhysiologicalFeatureExtractor(np.random.randn(1000))
+        >>> duration = extractor.compute_duration(peaks1, peaks2)
+        >>> print(duration)
+        """
+        if mode == "peak":
+            durations = [
+                (p2 - p1) / self.fs for p1, p2 in zip(peaks1, peaks2) if p1 < p2
+            ]
+        elif mode == "trough":
+            durations = [(t - p) / self.fs for p, t in zip(peaks1, peaks2)]
+        else:
+            raise ValueError("Duration mode must be 'peak' or 'trough'.")
+        return np.mean(durations) if durations else 0.0
 
     def compute_ppg_dicrotic_notch(self):
         """
@@ -186,7 +459,48 @@ class WaveformMorphology:
             "alpha_power": np.sum(alpha),
         }
 
-    def compute_slope(self):
+    def compute_slope(self, peaks1, peaks2, mode="peak"):
+        """
+        Compute the mean slope between two sets of peaks.
+
+        Parameters
+        ----------
+        peaks1 : numpy.ndarray
+            The first set of peaks.
+        peaks2 : numpy.ndarray
+            The second set of peaks.
+        mode : str, optional
+        The type of duration computation method ("peak" or "trough"). Default is "peak".
+
+        Returns
+        -------
+        slope : float
+            The mean slope between the two sets of peaks.
+
+        Examples
+        --------
+        >>> peaks1 = np.array([100, 200, 300])
+        >>> peaks2 = np.array([150, 250, 350])
+        >>> extractor = PhysiologicalFeatureExtractor(np.random.randn(1000))
+        >>> slope = extractor.compute_slope(peaks1, peaks2)
+        >>> print(slope)
+        """
+        if mode == "peak":
+            slopes = [
+                (self.waveform[p2] - self.waveform[p1]) / (p2 - p1)
+                for p1, p2 in zip(peaks1, peaks2)
+                if p1 < p2
+            ]
+        elif mode == "trough":
+            slopes = [
+                (self.waveform[p] - self.waveform[t]) / (p - t)
+                for p, t in zip(peaks1, peaks2)
+            ]
+        else:
+            raise ValueError("Slope mode must be 'peak' or 'trough'.")
+        return np.mean(slopes) if slopes else 0.0
+
+    def compute_slope_sequence(self):
         """
         Computes the slope of the waveform by calculating its first derivative.
 
