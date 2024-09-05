@@ -34,6 +34,7 @@ Explore the core modules of the VitalDSP library below:
    respiratory_analysis
    signal_quality_assessment
    advanced_computation
+   feature_engineering
    utils
 
 Notebooks
