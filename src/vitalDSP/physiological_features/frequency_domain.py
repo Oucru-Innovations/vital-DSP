@@ -25,8 +25,13 @@ class FrequencyDomainFeatures:
             nn_intervals (list or np.array): The NN intervals (in milliseconds) between heartbeats.
             fs (int): The sampling frequency (Hz) for HRV analysis. Default is 4 Hz.
         """
+        if len(nn_intervals) == 0:
+            raise ValueError("nn_intervals cannot be empty")
+        if np.all(np.array(nn_intervals) == 0):
+            raise ValueError("nn_intervals cannot contain all zeros")
+
         self.nn_intervals = np.array(nn_intervals)
-        self.fs = fs  # Sampling frequency, usually 4Hz or derived from the data
+        self.fs = fs
 
     def compute_psd(self):
         """
@@ -42,6 +47,7 @@ class FrequencyDomainFeatures:
             >>> lf, hf = fdf.compute_psd()
             >>> print(f"LF: {lf}, HF: {hf}")
         """
+        """Computes the Power Spectral Density (PSD) using Welch's method."""
         # Detrend the NN intervals and compute the PSD
         f, psd = welch(
             self.nn_intervals - np.mean(self.nn_intervals),
@@ -49,7 +55,7 @@ class FrequencyDomainFeatures:
             nperseg=len(self.nn_intervals),
         )
 
-        # Define frequency bands for HRV analysis
+        # Define frequency bands for HRV analysis relative to the sampling frequency
         lf_band = (0.04, 0.15)  # Low Frequency
         hf_band = (0.15, 0.40)  # High Frequency
 

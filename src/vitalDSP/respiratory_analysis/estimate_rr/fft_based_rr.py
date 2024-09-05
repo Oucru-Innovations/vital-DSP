@@ -33,10 +33,23 @@ def fft_based_rr(signal, sampling_rate, preprocess=None, **preprocess_kwargs):
             signal, sampling_rate, filter_type=preprocess, **preprocess_kwargs
         )
 
-    n = len(signal)
-    freq = np.fft.fftfreq(n, d=1 / sampling_rate)
-    fft_spectrum = np.fft.fft(signal)
+    # n = len(signal)
+    # freq = np.fft.fftfreq(n, d=1 / sampling_rate)
+    # fft_spectrum = np.fft.fft(signal)
 
-    peak_freq = freq[np.argmax(np.abs(fft_spectrum))]
+    # peak_freq = freq[np.argmax(np.abs(fft_spectrum))]
+    # Perform FFT on the signal
+    fft_result = np.fft.fft(signal)
+    freqs = np.fft.fftfreq(len(signal), d=1 / sampling_rate)
+
+    # Consider only positive frequencies
+    positive_freqs = freqs[freqs > 0]
+    positive_fft = np.abs(fft_result[freqs > 0])
+
+    # Find the peak frequency in the FFT spectrum
+    peak_freq = positive_freqs[np.argmax(positive_fft)]
+
+    # # Convert peak frequency from Hz to BPM
+    # rr_bpm = peak_freq * 60  # Conversion from Hz to BPM
 
     return np.abs(peak_freq) * 60

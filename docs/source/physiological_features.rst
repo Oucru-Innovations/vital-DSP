@@ -1,4 +1,4 @@
-Time Domain Analysis
+Physiological Features
 ====================
 
 This section covers the time-domain analysis techniques provided by the VitalDSP library. These methods focus on analyzing signals within the time domain, which is crucial for understanding the temporal characteristics of biomedical signals.

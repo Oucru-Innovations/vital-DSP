@@ -81,22 +81,23 @@ def plot_rr_estimations(signal, sampling_rate, preprocess=None, **preprocess_kwa
 
     # Add Peak Detection RR estimation
     peaks = find_peaks(signal)[0]
-    fig.add_trace(
-        go.Scatter(x=time_axis, y=signal, mode="lines", name="Original Signal"),
-        row=2,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=time_axis[peaks],
-            y=signal[peaks],
-            mode="markers",
-            name="Detected Peaks",
-            marker=dict(color="red"),
-        ),
-        row=2,
-        col=1,
-    )
+    if peaks.size > 0:  # Ensure `peaks` is treated as an array
+        fig.add_trace(
+            go.Scatter(x=time_axis, y=signal, mode="lines", name="Original Signal"),
+            row=2,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=np.array(time_axis[peaks]),  # Ensure array-like structure
+                y=np.array(signal[peaks]),  # Ensure array-like structure
+                mode="markers",
+                name="Detected Peaks",
+                marker=dict(color="red"),
+            ),
+            row=2,
+            col=1,
+        )
 
     # Add Time-Domain RR estimation (Autocorrelation)
     autocorr = np.correlate(signal, signal, mode="full")
@@ -112,6 +113,7 @@ def plot_rr_estimations(signal, sampling_rate, preprocess=None, **preprocess_kwa
         col=1,
     )
 
+    # Frequency-Domain RR estimation (Welch method)
     freqs, psd = welch(signal, fs=sampling_rate)
     fig.add_trace(
         go.Scatter(x=freqs, y=psd, mode="lines", name="PSD (Welch)"), row=4, col=1
@@ -135,14 +137,4 @@ def plot_rr_estimations(signal, sampling_rate, preprocess=None, **preprocess_kwa
     fig.update_yaxes(title_text="Autocorrelation", row=3, col=1)
     fig.update_yaxes(title_text="Power Spectral Density", row=4, col=1)
 
-    # Show plot
-    fig.show()
-
-
-# Example usage with a synthetic signal
-signal = np.sin(2 * np.pi * 0.2 * np.arange(0, 10, 0.01)) + 0.1 * np.random.normal(
-    size=1000
-)
-plot_rr_estimations(
-    signal, sampling_rate=100, preprocess="bandpass", lowcut=0.1, highcut=0.5
-)
+    return fig  # Return the figure instead of showing it for testing purposes

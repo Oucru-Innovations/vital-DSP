@@ -90,8 +90,22 @@ class PitchShift:
         """
         autocorr = np.correlate(self.signal, self.signal, mode="full")
         autocorr = autocorr[len(autocorr) // 2 :]
+
+        # Handle silence (if the signal is flat)
+        if np.all(autocorr == 0):
+            return float("inf")
+
         d = np.diff(autocorr)
-        start = np.where(d > 0)[0][0]
+
+        # Find the first positive difference to ignore the zero-lag peak
+        try:
+            start = np.where(d > 0)[0][0]
+        except IndexError:
+            # In case no positive difference is found (e.g., for silence)
+            return float("inf")
+
+        # Find the first peak after the zero-lag peak
         peak = np.argmax(autocorr[start:]) + start
-        pitch = self.sampling_rate / peak
+        pitch = self.sampling_rate / peak if peak > 0 else float("inf")
+
         return pitch

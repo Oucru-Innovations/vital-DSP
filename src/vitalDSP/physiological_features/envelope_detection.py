@@ -60,10 +60,24 @@ class EnvelopeDetection:
         """
         wavelet_transform = WaveletTransform(self.signal, wavelet_name=wavelet_name)
         coeffs = wavelet_transform.perform_wavelet_transform(level=level)
+
         # The envelope is typically represented by the low-frequency approximation coefficients
         envelope = np.abs(coeffs[-1])
-        # Resample the envelope to match the original signal length if necessary
-        return np.repeat(envelope, len(self.signal) // len(envelope))
+
+        # Calculate the repetition factor and resample the envelope
+        repeat_factor = len(self.signal) // len(envelope)
+        remainder = len(self.signal) % len(envelope)
+
+        # Repeat the envelope to match the signal length
+        resampled_envelope = np.repeat(envelope, repeat_factor)
+
+        # Handle the case where the signal length isn't a multiple of the envelope length
+        if remainder > 0:
+            resampled_envelope = np.concatenate(
+                [resampled_envelope, envelope[:remainder]]
+            )
+
+        return resampled_envelope
 
     def hilbert_envelope(self):
         """
