@@ -40,7 +40,7 @@ Signal Quality Index
 --------------------
 This module provides methods to calculate various signal quality indices (SQI), which help in assessing the reliability and usability of the recorded signals.
 
-.. automodule:: vitalDSP.filtering.signal_quality_index
+.. automodule:: vitalDSP.signal_quality_assessment.signal_quality_index
     :members:
     :undoc-members:
     :private-members:
@@ -51,7 +51,7 @@ Signal Quality
 --------------
 Comprehensive tools for assessing and enhancing the overall quality of signals. This includes both objective measures and methods for improving signal integrity.
 
-.. automodule:: vitalDSP.filtering.signal_quality
+.. automodule:: vitalDSP.signal_quality_assessment.signal_quality
     :members:
     :undoc-members:
     :private-members:

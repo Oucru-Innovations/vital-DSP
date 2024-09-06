@@ -206,34 +206,36 @@ class PhysiologicalFeatureExtractor:
             peaks = PeakDetection(
                 clean_signal, method="ppg_first_derivative"
             ).detect_peaks()
+
             if mode == "peak":
                 systolic_area = morphology.compute_volume(
-                    peaks[:-1], peaks[1:], mode=mode
+                    peaks[:-1].astype(int), peaks[1:].astype(int), mode=mode
                 )
                 diastolic_area = morphology.compute_volume(
-                    peaks[1:], peaks[2:], mode=mode
+                    peaks[1:].astype(int), peaks[2:].astype(int), mode=mode
                 )
                 systolic_duration = morphology.compute_duration(
-                    peaks[:-1], peaks[1:], mode=mode
+                    peaks[:-1].astype(int), peaks[1:].astype(int), mode=mode
                 )
                 diastolic_duration = morphology.compute_duration(
-                    peaks[1:], peaks[2:], mode=mode
+                    peaks[1:].astype(int), peaks[2:].astype(int), mode=mode
                 )
             else:
-                troughs = self.detect_troughs(peaks)
-                systolic_area = morphology.compute_volume(peaks, troughs, mode=mode)
-                diastolic_area = morphology.compute_volume(peaks, troughs, mode=mode)
+                troughs = self.detect_troughs(peaks.astype(int))
+                systolic_area = morphology.compute_volume(
+                    peaks.astype(int), troughs.astype(int), mode=mode
+                )
+                diastolic_area = morphology.compute_volume(
+                    peaks.astype(int), troughs.astype(int), mode=mode
+                )
                 systolic_duration = morphology.compute_duration(
-                    peaks, troughs, mode=mode
+                    peaks.astype(int), troughs.astype(int), mode=mode
                 )
                 diastolic_duration = morphology.compute_duration(
-                    peaks, troughs, mode=mode
+                    peaks.astype(int), troughs.astype(int), mode=mode
                 )
 
             dicrotic_notch_locs = morphology.compute_ppg_dicrotic_notch()
-
-            # systolic_area = morphology.compute_volume_sequence(peaks[:-1], peaks[1:])
-            # diastolic_area = morphology.compute_volume_sequence(peaks[1:], peaks[2:])
 
             systolic_variability = self.compute_amplitude_variability(peaks[:-1])
             diastolic_variability = self.compute_amplitude_variability(peaks[1:])
@@ -241,8 +243,8 @@ class PhysiologicalFeatureExtractor:
             peak_trend_slope = self.compute_peak_trend(peaks)
 
             return {
-                "systolic_duration": systolic_duration.value(),
-                "diastolic_duration": diastolic_duration,
+                "systolic_duration": systolic_duration,  # Removed .value() call
+                "diastolic_duration": diastolic_duration,  # Removed .value() call
                 "systolic_area": systolic_area,
                 "diastolic_area": diastolic_area,
                 "signal_skewness": signal_skewness,
@@ -253,7 +255,11 @@ class PhysiologicalFeatureExtractor:
             }
 
         elif signal_type == "ECG":
-            r_peaks = PeakDetection(clean_signal, method="ecg_r_peak").detect_peaks()
+            r_peaks = (
+                PeakDetection(clean_signal, method="ecg_r_peak")
+                .detect_peaks()
+                .astype(int)
+            )  # Explicit integer casting for r_peaks
             qrs_duration = morphology.compute_qrs_duration()
             qrs_area = morphology.compute_volume(r_peaks[:-1], r_peaks[1:], mode="peak")
             t_wave_area = morphology.compute_volume(

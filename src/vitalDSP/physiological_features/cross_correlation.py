@@ -48,7 +48,9 @@ class CrossCorrelationFeatures:
             self.signal2 - np.mean(self.signal2),
             mode=mode,
         )
-        lag = np.argmax(np.abs(cross_corr)) - (len(self.signal1) - 1)
+        lag = int(
+            np.argmax(np.abs(cross_corr)) - (len(self.signal1) - 1)
+        )  # Ensure lag is an integer
         return cross_corr, lag
 
     def compute_normalized_cross_correlation(self):

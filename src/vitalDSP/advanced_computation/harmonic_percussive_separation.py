@@ -37,7 +37,7 @@ class HarmonicPercussiveSeparation:
         >>> hps = HarmonicPercussiveSeparation(signal)
         """
         if not isinstance(signal, np.ndarray):
-            signal = np.array(signal)
+            raise TypeError("Signal must be a numpy array.")
         self.signal = signal
 
     def separate(self, kernel_size=31):
@@ -67,8 +67,10 @@ class HarmonicPercussiveSeparation:
         >>> print(harmonic)
         >>> print(percussive)
         """
-        harmonic = self._median_filter(self.signal, size=(kernel_size, 1))
-        percussive = self._median_filter(self.signal, size=(1, kernel_size))
+        harmonic = self._apply_median(self.signal, kernel_size)
+        percussive = self._apply_median(
+            self.signal, kernel_size
+        )  # Simplified for 1D signal
         return harmonic, percussive
 
     def _median_filter(self, signal, size):

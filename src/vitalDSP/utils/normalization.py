@@ -24,6 +24,11 @@ def z_score_normalization(signal):
     """
     mean = np.mean(signal)
     std = np.std(signal)
+
+    # Handle the case where std is 0 to avoid division by zero
+    if std == 0:
+        return np.zeros_like(signal)
+
     normalized_signal = (signal - mean) / std
     return normalized_signal
 
@@ -55,6 +60,11 @@ def min_max_normalization(signal, min_value=0, max_value=1):
     """
     min_signal = np.min(signal)
     max_signal = np.max(signal)
+
+    # Handle the case where min and max are the same to avoid division by zero
+    if min_signal == max_signal:
+        return np.zeros_like(signal)
+
     normalized_signal = (signal - min_signal) / (max_signal - min_signal)
     normalized_signal = normalized_signal * (max_value - min_value) + min_value
     return normalized_signal
