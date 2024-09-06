@@ -204,14 +204,21 @@ class EnsembleBasedFeatureExtraction:
         The tree is built by recursively finding the best split that minimizes the variance of the target values in each node.
         """
         if len(y) <= self.min_samples_split or (
-            self.max_depth and depth >= self.max_depth
+            self.max_depth is not None and depth >= self.max_depth
         ):
             return np.mean(y)
+
         feature, threshold = self._best_split(X, y)
+
+        if feature is None or threshold is None:  # Safeguard for no valid split
+            return np.mean(y)
+
         left_indices = X[:, feature] < threshold
         right_indices = ~left_indices
+
         left_tree = self._build_tree(X[left_indices], y[left_indices], depth + 1)
         right_tree = self._build_tree(X[right_indices], y[right_indices], depth + 1)
+
         return (feature, threshold, left_tree, right_tree)
 
     def _best_split(self, X, y):
@@ -241,20 +248,32 @@ class EnsembleBasedFeatureExtraction:
         The best split is determined by evaluating all possible splits and selecting the one that minimizes the weighted variance of the target values in the left and right nodes.
         """
         best_feature, best_threshold, best_score = None, None, float("inf")
+
+        if X.shape[0] <= 1:  # Handle edge case where splitting is not feasible
+            return best_feature, best_threshold
+
         for feature in range(X.shape[1]):
             thresholds = np.unique(X[:, feature])
+
             for threshold in thresholds:
                 left_indices = X[:, feature] < threshold
                 right_indices = ~left_indices
+
+                if np.sum(left_indices) == 0 or np.sum(right_indices) == 0:
+                    continue  # Skip if one of the groups is empty
+
                 left_score = np.mean((y[left_indices] - np.mean(y[left_indices])) ** 2)
                 right_score = np.mean(
                     (y[right_indices] - np.mean(y[right_indices])) ** 2
                 )
+
                 score = left_score * np.sum(left_indices) + right_score * np.sum(
                     right_indices
                 )
+
                 if score < best_score:
                     best_feature, best_threshold, best_score = feature, threshold, score
+
         return best_feature, best_threshold
 
     def _predict_tree(self, tree, X):
