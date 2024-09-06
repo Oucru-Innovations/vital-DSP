@@ -39,6 +39,8 @@ class SignalPowerAnalysis:
         signal : numpy.ndarray
             The input physiological signal to be analyzed.
         """
+        if len(signal) == 0:
+            raise ValueError("Signal cannot be empty.")
         self.signal = signal
 
     def compute_rmse(self):
@@ -61,8 +63,9 @@ class SignalPowerAnalysis:
         >>> print(rmse)
         3.3166247903554
         """
-        rmse = np.sqrt(np.mean(self.signal**2))
-        return rmse
+        if len(self.signal) == 0:
+            raise ValueError("Signal is empty.")
+        return np.sqrt(np.mean(self.signal**2))
 
     def compute_mean_square(self):
         """
@@ -83,8 +86,9 @@ class SignalPowerAnalysis:
         >>> print(mean_square)
         11.0
         """
-        mean_square = np.mean(self.signal**2)
-        return mean_square
+        if len(self.signal) == 0:
+            raise ValueError("Signal is empty.")
+        return np.mean(self.signal**2)
 
     def compute_total_power(self):
         """
@@ -106,6 +110,8 @@ class SignalPowerAnalysis:
         >>> print(total_power)
         11.0
         """
+        if len(self.signal) == 0:
+            raise ValueError("Signal is empty.")
         total_power = np.sum(self.signal**2) / len(self.signal)
         return total_power
 
@@ -129,6 +135,8 @@ class SignalPowerAnalysis:
         >>> print(peak_power)
         25.0
         """
+        if len(self.signal) == 0:
+            raise ValueError("Signal is empty.")
         peak_power = np.max(self.signal**2)
         return peak_power
 
@@ -158,8 +166,12 @@ class SignalPowerAnalysis:
         >>> print(snr)
         20.0
         """
+        if len(noise_signal) == 0:
+            raise ValueError("Noise signal is empty.")
         signal_power = np.mean(self.signal**2)
         noise_power = np.mean(noise_signal**2)
+        if noise_power == 0:
+            return np.inf
         snr = 10 * np.log10(signal_power / noise_power)
         return snr
 
@@ -192,11 +204,13 @@ class SignalPowerAnalysis:
         >>> print(freqs)
         >>> print(psd)
         """
+        if nperseg > len(self.signal):
+            raise ValueError("nperseg cannot be greater than the length of the signal.")
         freqs = np.fft.rfftfreq(len(self.signal), d=1 / fs)
         psd = np.abs(np.fft.rfft(self.signal)) ** 2 / len(self.signal)
         return freqs, psd
 
-    def compute_band_power(self, band, fs=1.0):
+    def compute_band_power(self, band, fs=1.0, nperseg=None):
         """
         Compute the power of the signal within a specific frequency band.
 
@@ -222,7 +236,11 @@ class SignalPowerAnalysis:
         >>> band_power = spa.compute_band_power((1, 3), fs=10.0)
         >>> print(band_power)
         """
-        freqs, psd = self.compute_psd(fs)
+        if nperseg is None:
+            nperseg = len(
+                self.signal
+            )  # Default nperseg to signal length if not provided
+        freqs, psd = self.compute_psd(fs, nperseg=nperseg)
         band_power = np.trapz(
             psd[(freqs >= band[0]) & (freqs <= band[1])],
             freqs[(freqs >= band[0]) & (freqs <= band[1])],
@@ -249,5 +267,7 @@ class SignalPowerAnalysis:
         >>> print(energy)
         55.0
         """
+        if len(self.signal) == 0:
+            raise ValueError("Signal is empty.")
         energy = np.sum(self.signal**2)
         return energy

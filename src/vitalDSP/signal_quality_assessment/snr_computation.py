@@ -26,6 +26,10 @@ def snr_power_ratio(signal, noise):
     """
     power_signal = np.mean(np.square(signal))
     power_noise = np.mean(np.square(noise))
+
+    if power_noise == 0:
+        raise ZeroDivisionError("Noise power is zero, cannot compute SNR.")
+
     snr = 10 * np.log10(power_signal / power_noise)
     return snr
 
@@ -55,6 +59,12 @@ def snr_peak_to_peak(signal, noise):
     """
     signal_ptp = np.ptp(signal)
     noise_ptp = np.ptp(noise)
+
+    if noise_ptp == 0:
+        raise ZeroDivisionError(
+            "Noise peak-to-peak amplitude is zero, cannot compute SNR."
+        )
+
     snr = 20 * np.log10(signal_ptp / noise_ptp)
     return snr
 
@@ -84,6 +94,10 @@ def snr_mean_square(signal, noise):
     """
     mean_square_signal = np.mean(signal**2)
     mean_square_noise = np.mean(noise**2)
+
+    if mean_square_noise == 0:
+        raise ZeroDivisionError("Noise mean square is zero, cannot compute SNR.")
+
     snr = 10 * np.log10(mean_square_signal / mean_square_noise)
     return snr
 
@@ -110,6 +124,10 @@ def crest_factor(signal):
     """
     peak_amplitude = np.max(np.abs(signal))
     rms_value = np.sqrt(np.mean(signal**2))
+
+    if rms_value == 0:
+        raise ZeroDivisionError("RMS value is zero, cannot compute crest factor.")
+
     crest_factor = peak_amplitude / rms_value
     return crest_factor
 
@@ -152,6 +170,9 @@ def harmonic_distortion(signal, fundamental_freq, sampling_rate, harmonics=5):
         ]
     )
 
+    if fundamental_amplitude == 0:
+        return 0  # If fundamental amplitude is zero, THD cannot be computed.
+
     harmonic_amplitudes = []
     for i in range(2, harmonics + 1):
         harmonic_freq = i * fundamental_freq
@@ -193,6 +214,10 @@ def signal_to_noise_and_distortion_ratio(signal, noise):
     """
     rms_signal = np.sqrt(np.mean(signal**2))
     rms_noise = np.sqrt(np.mean(noise**2))
+
+    if rms_noise == 0:
+        raise ZeroDivisionError("Noise RMS is zero, cannot compute SINAD.")
+
     sinad = 20 * np.log10(rms_signal / rms_noise)
     return sinad
 
@@ -222,5 +247,9 @@ def signal_to_noise_and_interference_ratio(signal, interference):
     """
     rms_signal = np.sqrt(np.mean(signal**2))
     rms_interference = np.sqrt(np.mean(interference**2))
+
+    if rms_interference == 0:
+        raise ZeroDivisionError("Interference RMS is zero, cannot compute SNIR.")
+
     snir = 20 * np.log10(rms_signal / rms_interference)
     return snir
