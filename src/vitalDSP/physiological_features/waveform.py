@@ -1,5 +1,5 @@
 import numpy as np
-from vitalDSP.physiological_features.peak_detection import PeakDetection
+from vitalDSP.utils.peak_detection import PeakDetection
 from scipy.stats import skew
 
 

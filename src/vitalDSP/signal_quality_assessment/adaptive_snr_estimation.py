@@ -30,7 +30,12 @@ def sliding_window_snr(signal, window_size=100, step_size=50):
         window_signal = signal[i : i + window_size]
         signal_power = np.mean(window_signal**2)
         noise_power = np.var(window_signal)
-        snr = 10 * np.log10(signal_power / noise_power)
+
+        if noise_power == 0:  # Handle division by zero
+            snr = float("inf")
+        else:
+            snr = 10 * np.log10(signal_power / noise_power)
+
         snr_estimates.append(snr)
     return np.array(snr_estimates)
 
@@ -60,8 +65,18 @@ def adaptive_threshold_snr(signal, threshold=0.5):
     noise_segments = signal[np.abs(signal) < threshold]
     signal_segments = signal[np.abs(signal) >= threshold]
 
+    if len(signal_segments) == 0:  # Handle case where no signal segments
+        return float("inf")
+
     signal_power = np.mean(signal_segments**2)
+
+    if len(noise_segments) == 0:  # Handle case where no noise segments
+        return float("inf")
+
     noise_power = np.mean(noise_segments**2)
+
+    if noise_power == 0:  # Handle division by zero
+        return float("inf")
 
     snr = 10 * np.log10(signal_power / noise_power)
     return snr
@@ -93,12 +108,17 @@ def recursive_snr_estimation(signal, alpha=0.9):
     avg_signal_power = 0
     avg_noise_power = 0
 
+    mean_signal = np.mean(signal)
+
     for x in signal:
         avg_signal_power = alpha * avg_signal_power + (1 - alpha) * x**2
-        avg_noise_power = (
-            alpha * avg_noise_power + (1 - alpha) * (x - np.mean(signal)) ** 2
-        )
-        snr = 10 * np.log10(avg_signal_power / avg_noise_power)
+        avg_noise_power = alpha * avg_noise_power + (1 - alpha) * (x - mean_signal) ** 2
+
+        if avg_noise_power == 0:  # Handle division by zero
+            snr = float("inf")
+        else:
+            snr = 10 * np.log10(avg_signal_power / avg_noise_power)
+
         snr_estimates.append(snr)
 
     return np.array(snr_estimates)
