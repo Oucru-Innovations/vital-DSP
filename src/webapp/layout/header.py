@@ -1,3 +1,23 @@
-from dash import html
+import dash_bootstrap_components as dbc
 
-header = html.Div([html.H1("VitalDSP Web App"), html.Hr()], className="header")
+
+def Header():
+    header = dbc.Navbar(
+        dbc.Container(
+            [
+                dbc.NavbarBrand("vitalDSP Dashboard", href="#"),
+                dbc.Nav(
+                    [
+                        dbc.NavItem(dbc.NavLink("Home", href="#")),
+                        dbc.NavItem(dbc.NavLink("About", href="#")),
+                        dbc.NavItem(dbc.NavLink("Contact", href="#")),
+                    ],
+                    navbar=True,
+                ),
+            ]
+        ),
+        color="dark",
+        dark=True,
+        sticky="top",
+    )
+    return header

@@ -12,5 +12,5 @@ class SignalData(BaseModel):
 @router.post("/process-signal")
 async def process_signal(data: SignalData):
     # Call a function from vitalDSP to process the signal
-    processed_data = (data.data)
+    processed_data = data.data
     return {"processed_data": processed_data}
