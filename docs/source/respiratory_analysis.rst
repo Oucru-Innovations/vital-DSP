@@ -3,6 +3,18 @@ Respiratory Analysis
 
 This section covers the respiratory analysis techniques provided by the VitalDSP library. These methods are designed to estimate respiratory rates, perform multimodal analysis, preprocess signals, and detect sleep apnea.
 
+Respiratory Analysis
+-----------------------------------
+Techniques for analyzing respiratory patterns in physiological signals (e.g., PPG, ECG), with built-in preprocessing, filtering, and noise reduction options
+
+.. automodule:: vitalDSP.respiratory_analysis.respiratory_analysis
+    :members:
+    :undoc-members:
+    :private-members:
+    :exclude-members: __dict__, __weakref__, __module__, __annotations__
+    :noindex:
+
+
 Estimation of Respiratory Rate (RR)
 -----------------------------------
 Techniques for estimating respiratory rate using various methods including time-domain, frequency-domain, peak detection, and FFT-based approaches.

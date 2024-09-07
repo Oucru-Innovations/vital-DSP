@@ -90,6 +90,7 @@ def preprocess_signal(
     kernel_size=3,
     sigma=1.0,
     respiratory_mode=False,
+    repreprocess=False
 ):
     """
     Preprocesses the signal by applying bandpass filtering and noise reduction.
