@@ -57,3 +57,25 @@ Functions for computing the Signal-to-Noise Ratio (SNR) of signals, which is a c
     :private-members:
     :exclude-members: __dict__, __weakref__, __module__, __annotations__
     :noindex:
+
+Signal Quality Index
+--------------------
+This module provides methods to calculate various signal quality indices (SQI), which help in assessing the reliability and usability of the recorded signals.
+
+.. automodule:: vitalDSP.signal_quality_assessment.signal_quality_index
+    :members:
+    :undoc-members:
+    :private-members:
+    :exclude-members: __dict__, __weakref__, __module__, __annotations__
+    :noindex:
+
+Signal Quality
+--------------
+Comprehensive tools for assessing and enhancing the overall quality of signals. This includes both objective measures and methods for improving signal integrity.
+
+.. automodule:: vitalDSP.signal_quality_assessment.signal_quality
+    :members:
+    :undoc-members:
+    :private-members:
+    :exclude-members: __dict__, __weakref__, __module__, __annotations__
+    :noindex:

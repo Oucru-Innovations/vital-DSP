@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from vitalDSP.physiological_features.signal_change_detection import SignalChangeDetection  # replace 'your_module' with the actual module name
+from vitalDSP.physiological_features.signal_change_detection import SignalChangeDetection
 
 @pytest.fixture
 def sample_signal():

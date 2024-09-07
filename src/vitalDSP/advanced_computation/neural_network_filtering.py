@@ -208,7 +208,7 @@ class FeedforwardNetwork:
         self.dropout_rate = dropout_rate
         self.batch_norm = batch_norm
 
-        input_size = 1  # Assuming your input signal is 1D
+        input_size = 1  # Assuming input signal is 1D
         # Ensure the last layer has only one output neuron
         self.weights = (
             [np.random.randn(input_size, hidden_layers[0])]
