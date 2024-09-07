@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from scipy.signal import welch
-from vitalDSP.physiological_features.energy_analysis import EnergyAnalysis  # Assuming your code is saved as energy_analysis.py
+from vitalDSP.physiological_features.energy_analysis import EnergyAnalysis
 
 @pytest.fixture
 def sample_signal():

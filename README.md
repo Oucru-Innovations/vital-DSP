@@ -6,7 +6,7 @@
 <!-- [![Coverage Status](https://coveralls.io/repos/github/Oucru-Innovations/vital-DSP/badge.svg?branch=main)](https://coveralls.io/github/Oucru-Innovations/vital-DSP?branch=main) -->
 <!-- [![codecov](https://codecov.io/gh/Oucru-Innovations/vital-DSP/branch/main/graph/badge.svg)](https://codecov.io/gh/Oucru-Innovations/vital-DSP) -->
 <!-- ![GitHub License](https://img.shields.io/github/license/Oucru-Innovations/vital-DSP) -->
-[![Coverage Status](https://coveralls.io/repos/github/vital-DSP/badge.svg?branch=main)](https://coveralls.io/github/vital-DSP?branch=main)
+[![Coverage Status](https://coveralls.io/repos/github/Oucru-Innovations/vital-DSP/badge.svg)](https://coveralls.io/github/Oucru-Innovations/vital-DSP)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 

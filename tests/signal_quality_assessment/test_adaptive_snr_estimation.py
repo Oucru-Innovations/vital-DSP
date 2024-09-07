@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from vitalDSP.signal_quality_assessment.adaptive_snr_estimation import sliding_window_snr, adaptive_threshold_snr, recursive_snr_estimation  # Replace 'your_module' with the actual module name
+from vitalDSP.signal_quality_assessment.adaptive_snr_estimation import sliding_window_snr, adaptive_threshold_snr, recursive_snr_estimation
 
 # Test for sliding_window_snr
 def test_sliding_window_snr():
