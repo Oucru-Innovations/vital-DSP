@@ -1,11 +1,13 @@
 [run]
+branch = True
 omit =
     tests/*         # Exclude the tests folder
     migrations/*    # Exclude a migrations folder
-    src/vitalDSP/visualization/*  # Ignore the visualization folder
-    src/vitalDSP/advanced_computation/*  # Ignore the advanced_computation folder
-    src/vitalDSP/time_domain/*  # Ignore the time_domain folder
 
 [report]
 exclude_lines =
     if __name__ == .__main__.:
+
+    # Other common exclusions
+    pragma: no cover  # Lines marked to be skipped from coverage
+    raise NotImplementedError  # Exclude exceptions for unimplemented features

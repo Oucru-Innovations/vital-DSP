@@ -41,7 +41,34 @@ def test_wavelet_denoising(test_signal):
     clean_signal = ar.wavelet_denoising(wavelet_type="db", level=2, order=4)
     assert len(clean_signal) == len(test_signal), "Wavelet denoising output size mismatch."
     assert not np.allclose(clean_signal, test_signal), "Wavelet denoising did not remove noise."
+    
+    clean_signal = ar.wavelet_denoising(wavelet_type="db", level=2, order=4, smooth="gaussian")
+    assert len(clean_signal) == len(test_signal), "Wavelet denoising output size mismatch."
+    
+    clean_signal = ar.wavelet_denoising(wavelet_type="db", level=2, order=4, smooth="median")
+    assert len(clean_signal) == len(test_signal), "Wavelet denoising output size mismatch."
+    
+    clean_signal = ar.wavelet_denoising(wavelet_type="db", level=2, order=4, smooth="moving_average")
+    assert len(clean_signal) == len(test_signal), "Wavelet denoising output size mismatch."
+    
+    clean_signal = ar.wavelet_denoising(wavelet_type="haar", level=2, order=4)
+    assert len(clean_signal) == len(test_signal), "Wavelet denoising output size mismatch."
+    
+    clean_signal = ar.wavelet_denoising(wavelet_type="sym", level=2, order=4)
+    assert len(clean_signal) == len(test_signal), "Wavelet denoising output size mismatch."
 
+    clean_signal = ar.wavelet_denoising(wavelet_type="coif", level=2, order=4)
+    assert len(clean_signal) == len(test_signal), "Wavelet denoising output size mismatch."
+    
+    clean_signal = ar.wavelet_denoising(wavelet_type="custom", level=2, order=4, custom_wavelet=np.array([1,2,3,2,1]))
+    assert len(clean_signal) == len(test_signal), "Wavelet denoising output size mismatch."
+    
+    with pytest.raises(ValueError):
+        ar.wavelet_denoising(wavelet_type="custom", level=2, order=4, custom_wavelet=None)
+            
+    with pytest.raises(ValueError):
+        ar.wavelet_denoising(wavelet_type="invalid", level=2, order=4)
+    
 def test_adaptive_filtering(test_signal):
     reference_signal = np.ones_like(test_signal)
     ar = ArtifactRemoval(test_signal)

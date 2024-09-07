@@ -65,18 +65,18 @@ def adaptive_threshold_snr(signal, threshold=0.5):
     noise_segments = signal[np.abs(signal) < threshold]
     signal_segments = signal[np.abs(signal) >= threshold]
 
-    if len(signal_segments) == 0:  # Handle case where no signal segments
-        return float("inf")
+    if len(signal_segments) == 0 or len(noise_segments) == 0:
+        # Avoid division by zero and return a sentinel value
+        return float("inf") if len(signal_segments) == 0 else -float("inf")
 
     signal_power = np.mean(signal_segments**2)
-
-    if len(noise_segments) == 0:  # Handle case where no noise segments
-        return float("inf")
-
     noise_power = np.mean(noise_segments**2)
 
-    if noise_power == 0:  # Handle division by zero
-        return float("inf")
+    if noise_power == 0:
+        return float("inf")  # Infinite SNR due to no noise
+
+    if signal_power == 0:
+        return -float("inf")  # No signal means undefined SNR (set to -inf)
 
     snr = 10 * np.log10(signal_power / noise_power)
     return snr

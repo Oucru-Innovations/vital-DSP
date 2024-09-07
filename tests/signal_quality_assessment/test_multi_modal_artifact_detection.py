@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from vitalDSP.signal_quality_assessment.multi_modal_artifact_detection import (  # Replace `your_module` with the actual module name
+from vitalDSP.signal_quality_assessment.multi_modal_artifact_detection import (
     correlation_based_artifact_detection,
     energy_ratio_artifact_detection,
     mutual_information_artifact_detection,

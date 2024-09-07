@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from vitalDSP.signal_quality_assessment.signal_quality import SignalQuality  # Replace 'your_module' with the actual module name
+from vitalDSP.signal_quality_assessment.signal_quality import SignalQuality
 
 def test_signalquality_initialization():
     # Test initializing with numpy arrays

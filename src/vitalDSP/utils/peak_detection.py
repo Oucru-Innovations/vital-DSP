@@ -389,8 +389,22 @@ class PeakDetection:
         >>> peaks = detector._resp_zero_crossing_detection()
         >>> print(peaks)
         """
+        # Detect zero-crossings (sign changes)
         zero_crossings = np.where(np.diff(np.sign(self.signal)))[0]
+
+        # Check if zero_crossings is non-empty and contains enough points
+        if zero_crossings.size == 0:
+            raise ValueError("No zero-crossings detected in the signal.")
+
+        # Handle cases where there may be an odd number of zero-crossings
+        if len(zero_crossings) % 2 != 0:
+            zero_crossings = zero_crossings[
+                :-1
+            ]  # Ensure an even number for peak detection
+
+        # Return every second zero-crossing as a peak
         peaks = zero_crossings[::2]
+
         return peaks
 
     def _abp_systolic_peak_detection(self):

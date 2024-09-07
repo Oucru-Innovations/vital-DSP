@@ -31,7 +31,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov flake8 pandoc pandas pytest-mock
-          pip install setuptools wheel twine sphinx
+          pip install setuptools wheel twine sphinx coveralls  
 
       - name: Run Tests
         run: make test
@@ -60,7 +60,11 @@ jobs:
       
       - name: Build package
         run: make build
-    
+      
+      - name: Send coverage to Coveralls
+        run: coveralls
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
       # - name: Deploy to PyPI
       #   if: github.ref == 'refs/heads/main'
       #   run: make upload
