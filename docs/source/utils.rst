@@ -36,6 +36,19 @@ Functions for creating and applying convolutional kernels, which are essential i
     :exclude-members: __dict__, __weakref__, __module__, __annotations__
     :noindex:
 
+
+Peak Detection
+--------------
+Identify peaks in the signal, which are often indicative of significant events or features, such as heartbeats or respiratory cycles.
+
+.. automodule:: vitalDSP.utils.peak_detection
+    :members:
+    :undoc-members:
+    :private-members:
+    :exclude-members: __dict__, __weakref__, __module__, __annotations__
+    :noindex:
+
+
 Loss Functions
 --------------
 Various loss functions used in training machine learning models, particularly in the context of signal processing tasks.

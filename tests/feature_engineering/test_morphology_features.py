@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from scipy.stats import linregress
-from vitalDSP.physiological_features.peak_detection import PeakDetection
+from vitalDSP.utils.peak_detection import PeakDetection
 from vitalDSP.preprocess.preprocess_operations import PreprocessConfig, preprocess_signal
 from vitalDSP.physiological_features.waveform import WaveformMorphology
 from vitalDSP.feature_engineering.morphology_features import PhysiologicalFeatureExtractor

@@ -207,25 +207,20 @@ class FeedforwardNetwork:
         self.hidden_layers = hidden_layers
         self.dropout_rate = dropout_rate
         self.batch_norm = batch_norm
-        self.weights = [
-            np.random.randn(n_in, n_out)
-            for n_in, n_out in zip(hidden_layers[:-1], hidden_layers[1:])
-        ]
-        self.biases = [np.random.randn(n_out) for n_out in hidden_layers[1:]]
 
-    def train(self, X, y, learning_rate, epochs, batch_size):
-        for epoch in range(epochs):
-            for start in range(0, len(X), batch_size):
-                end = start + batch_size
-                batch_X = X[start:end]
-                batch_y = y[start:end]
-                self._train_batch(batch_X, batch_y, learning_rate)
-
-    def _train_batch(self, X, y, learning_rate):
-        # Forward pass
-        activations = self._forward(X)
-        # Backward pass
-        self._backward(X, y, activations, learning_rate)
+        input_size = 1  # Assuming your input signal is 1D
+        # Ensure the last layer has only one output neuron
+        self.weights = (
+            [np.random.randn(input_size, hidden_layers[0])]
+            + [
+                np.random.randn(n_in, n_out)
+                for n_in, n_out in zip(hidden_layers[:-1], hidden_layers[1:])
+            ]
+            + [np.random.randn(hidden_layers[-1], 1)]
+        )  # Output layer has 1 neuron
+        self.biases = [np.random.randn(n_out) for n_out in hidden_layers] + [
+            np.random.randn(1)
+        ]  # Output layer bias
 
     def _forward(self, X):
         activations = [X]
@@ -240,7 +235,9 @@ class FeedforwardNetwork:
         return activations
 
     def _backward(self, X, y, activations, learning_rate):
-        delta = activations[-1] - y
+        delta = activations[-1] - y.reshape(
+            -1, 1
+        )  # Fix the shape of y to match activations[-1]
         for i in reversed(range(len(self.weights))):
             dW = np.dot(activations[i].T, delta)
             db = np.sum(delta, axis=0)
@@ -249,6 +246,20 @@ class FeedforwardNetwork:
             )
             self.weights[i] -= learning_rate * dW
             self.biases[i] -= learning_rate * db
+
+    def train(self, X, y, learning_rate, epochs, batch_size):
+        for epoch in range(epochs):
+            for start in range(0, len(X), batch_size):
+                end = start + batch_size
+                batch_X = X[start:end]
+                batch_y = y[start:end]
+                self._train_batch(batch_X, batch_y, learning_rate)
+
+    def _train_batch(self, X, y, learning_rate):
+        # Forward pass
+        activations = self._forward(X)
+        # Backward pass
+        self._backward(X, y, activations, learning_rate)
 
     def predict(self, X):
         A = X
@@ -282,9 +293,30 @@ class ConvolutionalNetwork:
     def __init__(self, dropout_rate, batch_norm):
         self.dropout_rate = dropout_rate
         self.batch_norm = batch_norm
-        self.filters = [np.random.randn(3, 3) for _ in range(16)]
+
+        # Assume the input shape is (batch_size, height, width)
+        self.filters = [
+            np.random.randn(3, 3) for _ in range(16)
+        ]  # 16 filters of size 3x3
+
+        # Adjust the weight initialization for the fully connected layers
         self.weights = [np.random.randn(144, 64), np.random.randn(64, 1)]
         self.biases = [np.random.randn(64), np.random.randn(1)]
+
+    def _forward(self, X):
+        # Apply convolution followed by flattening the output
+        A = self._convolution(X)
+        A = A.reshape(A.shape[0], -1)  # Flatten
+        activations = [A]
+        for W, b in zip(self.weights, self.biases):
+            Z = np.dot(activations[-1], W) + b
+            if self.batch_norm:
+                Z = self._batch_normalization(Z)
+            A = self._relu(Z)
+            if self.dropout_rate > 0:
+                A = self._apply_dropout(A)
+            activations.append(A)
+        return activations
 
     def train(self, X, y, learning_rate, epochs, batch_size):
         for epoch in range(epochs):
@@ -299,20 +331,6 @@ class ConvolutionalNetwork:
         activations = self._forward(X)
         # Backward pass
         self._backward(X, y, activations, learning_rate)
-
-    def _forward(self, X):
-        A = self._convolution(X)
-        A = A.reshape(A.shape[0], -1)  # Flatten for fully connected layers
-        activations = [A]
-        for W, b in zip(self.weights, self.biases):
-            Z = np.dot(activations[-1], W) + b
-            if self.batch_norm:
-                Z = self._batch_normalization(Z)
-            A = self._relu(Z)
-            if self.dropout_rate > 0:
-                A = self._apply_dropout(A)
-            activations.append(A)
-        return activations
 
     def _backward(self, X, y, activations, learning_rate):
         delta = activations[-1] - y
@@ -364,18 +382,25 @@ class ConvolutionalNetwork:
 
 
 # Simple Recurrent Network Implementation (Placeholder)
-
-
 class RecurrentNetwork:
     def __init__(self, recurrent_type="lstm", dropout_rate=0.5, batch_norm=True):
         self.recurrent_type = recurrent_type
         self.dropout_rate = dropout_rate
         self.batch_norm = batch_norm
-        self.Wx = np.random.randn(10, 64)
-        self.Wh = np.random.randn(64, 64)
-        self.b = np.random.randn(64)
-        self.Wy = np.random.randn(64, 1)
-        self.by = np.random.randn(1)
+
+        input_size = 10  # Adjust the input size based on expected input shape
+        self.Wx = np.random.randn(input_size, 64)  # Input-to-hidden weight
+        self.Wh = np.random.randn(64, 64)  # Hidden-to-hidden weight
+        self.b = np.random.randn(64)  # Bias for the hidden layer
+        self.Wy = np.random.randn(64, 1)  # Output weight
+        self.by = np.random.randn(1)  # Bias for the output
+
+    def _backward(self, X, y, activations, learning_rate):
+        delta = activations[-1] - y.reshape(-1, 1)  # Fix the shape mismatch
+        dWy = np.dot(activations[0].T, delta)
+        dby = np.sum(delta, axis=0)
+        self.Wy -= learning_rate * dWy
+        self.by -= learning_rate * dby
 
     def train(self, X, y, learning_rate, epochs, batch_size):
         for epoch in range(epochs):
@@ -392,20 +417,13 @@ class RecurrentNetwork:
         self._backward(X, y, activations, learning_rate)
 
     def _forward(self, X):
-        h = np.zeros((X.shape[0], 64))
+        h = np.zeros((X.shape[0], 64))  # Initial hidden state
         if self.recurrent_type == "lstm":
             h, _ = self._lstm(X, h)
         elif self.recurrent_type == "gru":
             h = self._gru(X, h)
         Z = np.dot(h, self.Wy) + self.by
         return [h, Z]
-
-    def _backward(self, X, y, activations, learning_rate):
-        delta = activations[-1] - y
-        dWy = np.dot(activations[0].T, delta)
-        dby = np.sum(delta, axis=0)
-        self.Wy -= learning_rate * dWy
-        self.by -= learning_rate * dby
 
     def predict(self, X):
         h = np.zeros((X.shape[0], 64))

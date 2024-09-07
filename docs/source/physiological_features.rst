@@ -102,17 +102,6 @@ Techniques for analyzing the nonlinear features from physiological signals (ECG,
     :exclude-members: __dict__, __weakref__, __module__, __annotations__
     :noindex:
 
-Peak Detection
---------------
-Identify peaks in the signal, which are often indicative of significant events or features, such as heartbeats or respiratory cycles.
-
-.. automodule:: vitalDSP.physiological_features.peak_detection
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:
-
 Signal Change Detection
 -----------------------
 Detect abrupt changes in signals, which may signify transitions between different physiological states or responses.
