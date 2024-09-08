@@ -17,6 +17,6 @@ if __name__ == "__main__":
     """
 
     # Run the FastAPI app (which also serves the Dash app) using Uvicorn
-    uvicorn.run(fastapi_app, host="0.0.0.0", port=8008)
+    uvicorn.run(fastapi_app, host="0.0.0.0", port=8000)
 
     # Expose app for testing

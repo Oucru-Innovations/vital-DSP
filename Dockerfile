@@ -16,4 +16,4 @@ EXPOSE 8050
 EXPOSE 8000
 
 # Start Uvicorn server with FastAPI and Dash integration
-CMD ["uvicorn", "src.webapp.run_webapp:fastapi_app", "--host", "0.0.0.0", "--port", "8008", "--reload"]
+CMD ["uvicorn", "src.webapp.run_webapp:fastapi_app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

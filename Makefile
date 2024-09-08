@@ -51,7 +51,7 @@ html:
 
 # Run the FastAPI + Dash web app using Uvicorn
 webapp:
-	uvicorn src.webapp.run_webapp:fastapi_app --reload --host 0.0.0.0 --port 8008
+	uvicorn src.webapp.run_webapp:fastapi_app --reload --host 0.0.0.0 --port 8000
 
 
 # Make sure the upload/results folders do not exceed the limit

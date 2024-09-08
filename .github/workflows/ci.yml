@@ -62,7 +62,7 @@ jobs:
           path: $(DOCS_DIR)
       
       - name: Start Uvicorn (background)
-        run: nohup uvicorn src.webapp.run_webapp:fastapi_app --host 0.0.0.0 --port 8008 &
+        run: nohup uvicorn src.webapp.run_webapp:fastapi_app --host 0.0.0.0 --port 8000 &
 
       # - name: Run Web App Tests
       #   run: pytest tests/  # Assuming having tests to run that require the app

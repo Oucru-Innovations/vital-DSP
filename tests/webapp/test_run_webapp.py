@@ -10,23 +10,23 @@ async def test_uvicorn_server():
     """
     # Run the Uvicorn server as a subprocess
     process = subprocess.Popen(
-        ["uvicorn", "webapp.run_webapp:fastapi_app", "--port", "8008", "--reload"],
+        ["uvicorn", "webapp.run_webapp:fastapi_app", "--port", "8000", "--reload"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )
 
     # Allow the server some time to start up
-    await asyncio.sleep(2)
+    await asyncio.sleep(25)
 
     try:
         async with httpx.AsyncClient() as client:
             # Test the Dash homepage
-            response = await client.get("http://localhost:8008/")
+            response = await client.get("http://localhost:8000/")
             assert response.status_code == 200, "Uvicorn should serve Dash homepage successfully."
             assert "Vital-DSP Dashboard" in response.text, "Dash homepage should contain 'Vital-DSP Dashboard'."
 
             # Test the FastAPI route
-            response = await client.get("http://localhost:8008/api/some-endpoint")  # Replace with an actual FastAPI route
+            response = await client.get("http://localhost:8000/api/some-endpoint")  # Replace with an actual FastAPI route
             assert response.status_code == 200, "Uvicorn should serve FastAPI route successfully."
 
     finally:
