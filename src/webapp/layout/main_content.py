@@ -1,10 +1,16 @@
-from dash import html, dcc
+from dash import html
+from webapp.layout.upload_section import upload_layout  # Import your upload layout
 
-main_content = html.Div(
-    [
-        dcc.Graph(id="signal-graph"),
-        dcc.Upload(id="upload-data", children=html.Button("Upload File")),
-        html.Div(id="output-data"),
-    ],
-    className="main-content",
-)
+def MainContent():
+    main_content = html.Div(
+        [
+            upload_layout,
+            # You can add more sections or use Dash's `dcc.Location` for multi-page apps
+        ],
+        style={
+            "margin-left": "18rem",  # Width of the sidebar + some padding
+            "margin-right": "2rem",
+            "padding": "2rem 1rem",
+        },
+    )
+    return main_content
