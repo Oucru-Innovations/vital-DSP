@@ -7,6 +7,7 @@ from uvicorn import run as uvicorn_run
 # import os
 # Import the Dash app and its layout
 from webapp.app import app as dash_app
+
 # from webapp.layout import layout
 
 # import webapp.callbacks  # Register Dash callbacks

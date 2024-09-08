@@ -6,6 +6,7 @@ from starlette.middleware.wsgi import WSGIMiddleware
 from webapp.layout.header import Header
 from webapp.layout.footer import Footer
 from webapp.layout.sidebar import Sidebar
+
 # from webapp.layout.main_content import MainContent
 from webapp.layout.upload_section import upload_layout
 import dash_bootstrap_components as dbc
