@@ -2,6 +2,18 @@ import dash_bootstrap_components as dbc
 
 
 def Header():
+    """
+    Generates the header component for the Dash web application.
+
+    Returns
+    -------
+    dbc.Navbar
+        A Dash Bootstrap component (dbc) Navbar containing the brand and navigation links.
+
+    Example
+    -------
+    >>> header = Header()
+    """
     header = dbc.Navbar(
         dbc.Container(
             [

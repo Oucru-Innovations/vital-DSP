@@ -3,6 +3,18 @@ import dash_bootstrap_components as dbc
 
 
 def Sidebar():
+    """
+    Generates the sidebar component for navigation and filtering in the Dash web application.
+
+    Returns
+    -------
+    html.Div
+        A Dash HTML Div component containing navigation links and filters in the sidebar.
+
+    Example
+    -------
+    >>> sidebar = Sidebar()
+    """
     sidebar = html.Div(
         [
             html.H2("Sidebar", className="display-4"),

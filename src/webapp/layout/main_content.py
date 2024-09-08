@@ -3,13 +3,24 @@ from webapp.layout.upload_section import upload_layout  # Import your upload lay
 
 
 def MainContent():
+    """
+    Generates the main content area of the Dash web application.
+
+    Returns
+    -------
+    html.Div
+        A Dash HTML Div component containing the upload section and more if needed.
+
+    Example
+    -------
+    >>> main_content = MainContent()
+    """
     main_content = html.Div(
         [
-            upload_layout,
-            # You can add more sections or use Dash's `dcc.Location` for multi-page apps
+            upload_layout,  # The layout section for file uploads
         ],
         style={
-            "margin-left": "18rem",  # Width of the sidebar + some padding
+            "margin-left": "18rem",  # Adjust for sidebar width
             "margin-right": "2rem",
             "padding": "2rem 1rem",
         },

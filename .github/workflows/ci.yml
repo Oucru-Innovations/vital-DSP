@@ -31,7 +31,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov flake8 pandoc pandas pytest-mock
+          pip install pytest pytest-cov flake8 pandoc pandas httpx pytest-mock pytest-asyncio
           pip install setuptools wheel twine sphinx coveralls
           pip install dash
 
