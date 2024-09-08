@@ -1,6 +1,7 @@
 from dash import html
 import dash_bootstrap_components as dbc
 
+
 def Sidebar():
     """
     Generates the sidebar component for navigation and filtering in the Dash web application.
@@ -16,54 +17,64 @@ def Sidebar():
     """
     sidebar = html.Div(
         [
-            html.H2("Menu", className="display-4"),
-            html.Hr(),
+            # Stylish hamburger toggle button
+            html.Div(
+                dbc.Button(
+                    html.I(
+                        className="fas fa-bars", id="toggle-icon"
+                    ),  # 3-dash "hamburger" icon
+                    id="sidebar-toggle",
+                    n_clicks=0,
+                    className="toggle-button",
+                ),
+                style={"text-align": "left"},  # Center the button horizontally
+            ),
+            # Navigation items with icons and text
             dbc.Nav(
                 [
                     dbc.NavLink(
-                        [html.I(className="fas fa-upload"), " Upload Data"],
+                        [
+                            html.I(className="fas fa-home"),  # Icon
+                            html.Span(" Home", className="nav-text"),  # Text
+                        ],
+                        href="/",
+                        active="exact",
+                        className="nav-item",
+                    ),
+                    dbc.NavLink(
+                        [
+                            html.I(className="fas fa-upload"),  # Icon
+                            html.Span(" Upload", className="nav-text"),  # Text
+                        ],
                         href="/upload",
                         active="exact",
+                        className="nav-item",
                     ),
                     dbc.NavLink(
-                        [html.I(className="fas fa-chart-line"), " Data Visualization"],
+                        [
+                            html.I(className="fas fa-chart-line"),  # Icon
+                            html.Span(" Visualize", className="nav-text"),  # Text
+                        ],
                         href="/visualize",
                         active="exact",
+                        className="nav-item",
                     ),
                     dbc.NavLink(
-                        [html.I(className="fas fa-cog"), " Settings"],
+                        [
+                            html.I(className="fas fa-cog"),  # Icon
+                            html.Span(" Settings", className="nav-text"),  # Text
+                        ],
                         href="/settings",
                         active="exact",
+                        className="nav-item",
                     ),
                 ],
                 vertical=True,
                 pills=True,
-            ),
-            html.Hr(),
-            dbc.Button(
-                "Toggle Sidebar", id="sidebar-toggle", className="mb-3", color="primary"
-            ),
-            dbc.Collapse(
-                dbc.Nav(
-                    [
-                        html.P("Additional content here..."),
-                        dbc.NavLink("More Links", href="#", className="nav-item-icon"),
-                    ],
-                    vertical=True,
-                ),
-                id="sidebar-collapse",
-                is_open=True,
+                className="sidebar-nav",
             ),
         ],
-        style={
-            "position": "fixed",
-            "top": "56px",  # Height of the header
-            "left": 0,
-            "bottom": 0,
-            "width": "16rem",
-            "padding": "2rem 1rem",
-            "background-color": "#f8f9fa",
-        },
-        className="sidebar",
+        id="sidebar",
+        className="sidebar-expanded",  # Start in expanded state
     )
     return sidebar

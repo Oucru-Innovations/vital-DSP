@@ -10,7 +10,11 @@ from webapp.layout.sidebar import Sidebar
 
 # Import FastAPI routes
 from webapp.api.endpoints import router as api_router
-from webapp.callbacks.app_callbacks import register_callbacks
+
+# from webapp.callbacks.app_callbacks import register_callbacks
+from webapp.callbacks.app_callbacks import register_sidebar_callbacks
+from webapp.callbacks.page_routing_callbacks import register_page_routing_callbacks
+from webapp.callbacks.upload_callbacks import register_upload_callbacks
 
 
 def create_dash_app() -> Dash:
@@ -28,12 +32,13 @@ def create_dash_app() -> Dash:
     >>> dash_app.run_server(debug=True)
     """
     # Initialize Dash app with Bootstrap CSS theme
-    app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+    app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP, "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"])
     app.title = "Vital-DSP Dashboard"
 
     # Set the layout of the app, including header, sidebar, and footer
     app.layout = html.Div(
-        [
+        id="body",
+        children=[
             dcc.Location(id="url", refresh=False),  # For page routing
             Header(),
             Sidebar(),
@@ -50,12 +55,11 @@ def create_dash_app() -> Dash:
         ]
     )
     # Register callbacks AFTER app is created
-    register_callbacks(app)
+    register_sidebar_callbacks(app)
+    register_page_routing_callbacks(app)
+    register_upload_callbacks(app)  # Register upload callback
 
     return app
-
-
-app = create_dash_app()
 
 
 def create_fastapi_app() -> FastAPI:

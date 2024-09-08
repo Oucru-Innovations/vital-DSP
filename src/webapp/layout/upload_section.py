@@ -4,6 +4,8 @@ import dash_bootstrap_components as dbc
 # Layout for file upload interface
 upload_layout = html.Div(
     [
+        # Hidden store to store the full dataset
+        dcc.Store(id="uploaded-data-store"),
         dbc.Card(
             dbc.CardBody(
                 [
@@ -26,6 +28,15 @@ upload_layout = html.Div(
                         multiple=False,  # Single file upload
                     ),
                     html.Div(id="upload-status"),
+                    # Input to control the chunk size
+                    dcc.Input(
+                        id="chunk-size-input",
+                        type="number",
+                        value=100,  # Default chunk size
+                        min=10,
+                        step=10,
+                        style={"marginTop": "10px"},
+                    ),
                 ]
             ),
             className="mb-3",
@@ -40,10 +51,10 @@ upload_layout = html.Div(
             className="mb-3",
         ),
     ],
-    style={
-        "margin-left": "18rem",  # Adjust for sidebar width
-        "margin-right": "2rem",
-        "padding": "2rem 1rem",
-    },
+    # style={
+    #     "margin-left": "18rem",  # Adjust for sidebar width
+    #     "margin-right": "2rem",
+    #     "padding": "2rem 1rem",
+    # },
     className="main-content",
 )
