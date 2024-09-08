@@ -31,8 +31,8 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov flake8 pandoc pandas pytest-mock
-          pip install setuptools wheel twine sphinx coveralls
+          pip install pytest pytest-cov flake8 pandoc pandas httpx pytest-mock pytest-asyncio
+          pip install setuptools wheel twine sphinx coveralls responses
           pip install dash
 
       - name: Run Tests
@@ -62,7 +62,7 @@ jobs:
           path: $(DOCS_DIR)
       
       - name: Start Uvicorn (background)
-        run: nohup uvicorn src.webapp.run_webapp:fastapi_app --host 0.0.0.0 --port 8008 &
+        run: nohup uvicorn src.webapp.run_webapp:fastapi_app --host 0.0.0.0 --port 8000 &
 
       # - name: Run Web App Tests
       #   run: pytest tests/  # Assuming having tests to run that require the app

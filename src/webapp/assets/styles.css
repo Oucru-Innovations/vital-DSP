@@ -1,0 +1,172 @@
+/* Define Light Theme Variables */
+.light-theme {
+    --background-color: #ffffff;
+    --text-color: #000000;
+    --sidebar-bg: #f8f9fa;
+    --sidebar-text-color: #000;
+    --header-bg: #007bff;
+    --header-text-color: #ffffff;
+    --button-bg: #007bff;
+    --button-text-color: #ffffff;
+}
+
+/* Define Dark Theme Variables */
+.dark-theme {
+    --background-color: #2d2d2d;
+    --text-color: #f1f1f1;
+    --sidebar-bg: #333;
+    --sidebar-text-color: #ffffff;
+    --header-bg: #1a1a1a;
+    --header-text-color: #ffffff;
+    --button-bg: #444;
+    --button-text-color: #ffffff;
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+#sidebar {
+    background-color: var(--sidebar-bg);
+    color: var(--sidebar-text-color);
+}
+
+#header {
+    background-color: var(--header-bg);
+    color: var(--header-text-color);
+}
+
+#footer {
+    background-color: var(--header-bg);
+    color: var(--header-text-color);
+}
+
+/* Header hover effect */
+.nav-item-icon:hover {
+    transform: scale(1.1);
+    transition: transform 0.2s ease-in-out;
+    color: #007bff !important;
+}
+
+/* Sidebar hover effect */
+.sidebar .nav-link:hover {
+    background-color: #007bff !important;
+    color: white !important;
+    transition: background-color 0.2s ease-in-out;
+}
+
+/* Footer link hover effect */
+.footer-link:hover {
+    text-decoration: underline;
+    color: #007bff;
+}
+
+/* Scroll-to-top button hover */
+.scroll-top {
+    font-size: 1.5rem;
+    display: inline-block;
+    margin-top: 10px;
+    color: #007bff;
+}
+
+.scroll-top:hover {
+    transform: translateY(-5px);
+    transition: transform 0.2s ease-in-out;
+}
+
+/* Add animation to content load */
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+.main-content {
+    animation: fadeIn 1s;
+}
+
+/* Sidebar Collapsibility */
+#sidebar-collapse {
+    overflow: hidden;
+    transition: height 0.5s ease;
+}
+
+/* Sidebar when expanded */
+.sidebar-expanded {
+    position: fixed;
+    top: 56px;  /* Assuming the header is 56px tall */
+    left: 0;
+    bottom: 0;
+    width: 200px;
+    background-color: #f8f9fa;
+    transition: width 0.3s ease;
+    padding: 1rem 0;
+}
+
+.toggle-theme-button {
+    background-color: var(--button-bg);
+    color: var(--button-text-color);
+}
+
+.nav-theme-item {
+    color: var(--sidebar-text-color);
+}
+
+/* Toggle button styles */
+.toggle-button {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 24px;
+    color: #333;
+    text-align: left;
+}
+
+.toggle-button:hover {
+    color: #007bff;  /* Hover color for the icon */
+}
+
+/* Sidebar when collapsed */
+.sidebar-collapsed {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    bottom: 0;
+    width: 80px;
+    background-color: #f8f9fa;
+    transition: width 0.3s ease;
+    padding: 1rem 0;
+}
+
+
+/* Hide the text when collapsed */
+.sidebar-collapsed .nav-text {
+    display: none;
+}
+
+/* Sidebar navigation item styles */
+.nav-item {
+    padding: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.nav-item i {
+    margin-right: 10px;
+}
+
+.sidebar-nav {
+    padding-left: 0;
+}
+
+/* Content area: Apply margin-left to make space for the sidebar */
+#page-content {
+    margin-left: 250px;  /* This matches the expanded width of the sidebar */
+    padding: 2rem 1rem;
+    transition: margin-left 0.3s ease;
+}
+
+/* Adjust content margin when sidebar is collapsed */
+.sidebar-collapsed + #page-content {
+    margin-left: 80px;  /* This matches the collapsed width of the sidebar */
+}
