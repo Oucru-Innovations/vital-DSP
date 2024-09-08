@@ -16,14 +16,14 @@ class PostInstallCommand(install):
 
 setup(
     name='vitalDSP', 
-    version='0.1.1rc12',  
+    version='0.1.1rc13',  
     author='van-koha',  
     author_email='vital.data@oucru.org', 
     description='A comprehensive toolkit for Digital Signal Processing in healthcare applications.',
     long_description=open('README.md').read(),  # Use the README file as the long description
     long_description_content_type='text/markdown',  # The format of the long description (markdown in this case)
     url='https://github.com/Oucru-Innovations/vital-DSP',  
-    packages=find_packages(where='src'),  # Find all packages in the 'src' directory
+    packages=find_packages(where='src',include=['vitalDSP', 'vitalDSP.*', 'webapp', 'webapp.*']),  # Find all packages in the 'src' directory
     package_dir={'': 'src'},  # Tell setuptools that all packages are under 'src'
     classifiers=[
         'Programming Language :: Python :: 3',
@@ -40,10 +40,14 @@ setup(
         'scipy>=1.5.2',
         'plotly>=4.14.3',
         'scikit-learn>=0.23.2',
+        'dash>=2.0.0',  # Updated to include Dash
+        'fastapi>=0.68.0',  # Include FastAPI for APIs
+        'uvicorn>=0.15.0'   # Uvicorn for serving FastAPI
         # Add other dependencies here
     ],
     entry_points={
         'console_scripts': [
+            'vitalDSP-webapp = vitalDSP.webapp.run_webapp:main',  # Entry point for the Dash web app
             # 'command_name = module:function',  # Add command-line tools here
         ],
     },

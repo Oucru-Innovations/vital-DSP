@@ -3,3 +3,7 @@ plotly>=4.14.3
 scipy>=1.5.2
 scikit-learn>=0.23.2
 matplotlib
+dash>=2.0.0
+fastapi>=0.68.0
+uvicorn>=0.15.0
+dash-bootstrap-components

@@ -7,12 +7,15 @@ DIST_DIR=dist
 BUILD_DIR=build
 SPHINXBUILD = sphinx-build
 SOURCEDIR = source
+WEBAPP_DIR=$(SRC_DIR)/webapp
+UPLOAD_DIR=$(WEBAPP_DIR)/data/uploads  # Upload folder
+RESULTS_DIR=$(WEBAPP_DIR)/data/results  # Results folder
 DOCBUILDDIR = $(DOCS_DIR)/_build
 PANDOC_FILE=$(DOCS_DIR)/Documentation.md
 PANDOC_OUTPUT=$(DOCS_DIR)/Documentation.pdf
 
 # Default target: Run all tests
-all: test build coverage lint html upload
+all: test build coverage lint html upload webapp
 
 # Use conditional syntax to handle different OS
 ifeq ($(OS),Windows_NT)
@@ -45,6 +48,15 @@ upload:
 # Build HTML documentation
 html:
 	$(SPHINXBUILD) -b html $(DOCS_DIR)/$(SOURCEDIR) $(DOCBUILDDIR)/html
+
+# Run the FastAPI + Dash web app using Uvicorn
+webapp:
+	uvicorn src.webapp.run_webapp:fastapi_app --reload --host 0.0.0.0 --port 8000
+
+
+# Make sure the upload/results folders do not exceed the limit
+# storage-check:
+# 	@du -sh $(UPLOAD_DIR) $(RESULTS_DIR) | awk '{ if($$1 > "1G") print "Warning: Storage limit exceeded, please clean up."; }'
 
 # Generate documentation using pandoc
 pandoc:
