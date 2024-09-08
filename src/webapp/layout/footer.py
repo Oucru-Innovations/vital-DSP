@@ -23,9 +23,15 @@ def Footer():
                     [
                         "© 2024 Oucru - VitalDSP. All rights reserved.",
                         html.Br(),
-                        html.A("Privacy Policy", href="#"),
+                        html.A("Privacy Policy", href="#", className="footer-link"),
                         " | ",
-                        html.A("Terms of Service", href="#"),
+                        html.A("Terms of Service", href="#", className="footer-link"),
+                        html.Br(),
+                        html.A(
+                            html.I(className="fas fa-arrow-up"),
+                            href="#",
+                            className="scroll-top",  # Scroll-to-top button
+                        ),
                     ],
                     className="text-center",
                 )

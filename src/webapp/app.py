@@ -10,6 +10,7 @@ from webapp.layout.sidebar import Sidebar
 
 # Import FastAPI routes
 from webapp.api.endpoints import router as api_router
+from webapp.callbacks.app_callbacks import register_callbacks
 
 
 def create_dash_app() -> Dash:
@@ -48,11 +49,8 @@ def create_dash_app() -> Dash:
             Footer(),
         ]
     )
-
-    # Import the callback functions from the callbacks folder
-    from webapp.callbacks.page_routing_callbacks import register_page_routing_callbacks
-
-    register_page_routing_callbacks(app)
+    # Register callbacks AFTER app is created
+    register_callbacks(app)
 
     return app
 

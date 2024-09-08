@@ -1,0 +1,48 @@
+/* Header hover effect */
+.nav-item-icon:hover {
+    transform: scale(1.1);
+    transition: transform 0.2s ease-in-out;
+    color: #007bff !important;
+}
+
+/* Sidebar hover effect */
+.sidebar .nav-link:hover {
+    background-color: #007bff !important;
+    color: white !important;
+    transition: background-color 0.2s ease-in-out;
+}
+
+/* Footer link hover effect */
+.footer-link:hover {
+    text-decoration: underline;
+    color: #007bff;
+}
+
+/* Scroll-to-top button hover */
+.scroll-top {
+    font-size: 1.5rem;
+    display: inline-block;
+    margin-top: 10px;
+    color: #007bff;
+}
+
+.scroll-top:hover {
+    transform: translateY(-5px);
+    transition: transform 0.2s ease-in-out;
+}
+
+/* Add animation to content load */
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+.main-content {
+    animation: fadeIn 1s;
+}
+
+/* Sidebar Collapsibility */
+#sidebar-collapse {
+    overflow: hidden;
+    transition: height 0.5s ease;
+}
