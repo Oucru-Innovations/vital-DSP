@@ -1,6 +1,7 @@
 from dash import html
 from webapp.layout.upload_section import upload_layout  # Import your upload layout
 
+
 def MainContent():
     main_content = html.Div(
         [

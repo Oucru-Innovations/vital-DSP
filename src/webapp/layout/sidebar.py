@@ -1,18 +1,19 @@
-from dash import html, dcc
+from dash import html
 import dash_bootstrap_components as dbc
+
 
 def Sidebar():
     sidebar = html.Div(
         [
             html.H2("Sidebar", className="display-4"),
             html.Hr(),
-            html.P(
-                "Navigation and Filters", className="lead"
-            ),
+            html.P("Navigation and Filters", className="lead"),
             dbc.Nav(
                 [
                     dbc.NavLink("Upload Data", href="/upload", active="exact"),
-                    dbc.NavLink("Data Visualization", href="/visualize", active="exact"),
+                    dbc.NavLink(
+                        "Data Visualization", href="/visualize", active="exact"
+                    ),
                     dbc.NavLink("Settings", href="/settings", active="exact"),
                 ],
                 vertical=True,
