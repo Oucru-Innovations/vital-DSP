@@ -382,6 +382,9 @@ class VitalTransformation:
             self.signal = np.square(self.signal)
         elif enhance_method == "abs":
             self.signal = np.abs(self.signal)
+        elif enhance_method == "gradient":
+            # Use the gradient to enhance rapid changes in the signal
+            self.signal = np.gradient(self.signal)
         else:
             raise ValueError(f"Unknown enhancement method: {enhance_method}")
 

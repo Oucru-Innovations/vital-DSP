@@ -32,7 +32,13 @@ def create_dash_app() -> Dash:
     >>> dash_app.run_server(debug=True)
     """
     # Initialize Dash app with Bootstrap CSS theme
-    app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP, "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"])
+    app = Dash(
+        __name__,
+        external_stylesheets=[
+            dbc.themes.BOOTSTRAP,
+            "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css",
+        ],
+    )
     app.title = "Vital-DSP Dashboard"
 
     # Set the layout of the app, including header, sidebar, and footer
@@ -52,7 +58,7 @@ def create_dash_app() -> Dash:
                 },
             ),
             Footer(),
-        ]
+        ],
     )
     # Register callbacks AFTER app is created
     register_sidebar_callbacks(app)
