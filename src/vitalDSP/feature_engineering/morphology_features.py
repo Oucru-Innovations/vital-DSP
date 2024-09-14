@@ -164,7 +164,7 @@ class PhysiologicalFeatureExtractor:
             respiratory_mode=preprocess_config.respiratory_mode,
         )
 
-    def extract_features(self, signal_type="ECG", preprocess_config=None, mode="peak"):
+    def extract_features(self, signal_type="ECG", preprocess_config=None):
         """
         Extract all physiological features from the signal for either ECG or PPG.
 
@@ -174,8 +174,6 @@ class PhysiologicalFeatureExtractor:
             The type of signal ("ECG" or "PPG"). Default is "ECG".
         preprocess_config : PreprocessConfig, optional
             The configuration object for signal preprocessing. If None, default settings are used.
-        mode : str, optional
-            The type of area computation method ("peak" or "trough"). Default is "peak".
 
         Returns
         -------
@@ -197,92 +195,260 @@ class PhysiologicalFeatureExtractor:
         # Preprocess the signal
         clean_signal = self.get_preprocess_signal(preprocess_config)
 
+        # Baseline correction
+        clean_signal = clean_signal - np.min(clean_signal)
+
         # Initialize the morphology class
         morphology = WaveformMorphology(
             clean_signal, fs=self.fs, signal_type=signal_type
         )
 
-        if signal_type == "PPG":
-            peaks = PeakDetection(
-                clean_signal, method="ppg_first_derivative"
-            ).detect_peaks()
+        # Initialize features as an empty dictionary before the try block
+        features = {}
 
-            if mode == "peak":
-                systolic_area = morphology.compute_volume(
-                    peaks[:-1].astype(int), peaks[1:].astype(int), mode=mode
+        try:
+            if signal_type == "PPG":
+                features = {
+                    "systolic_duration": np.nan,
+                    "diastolic_duration": np.nan,
+                    "systolic_area": np.nan,
+                    "diastolic_area": np.nan,
+                    "systolic_slope": np.nan,
+                    "diastolic_slope": np.nan,
+                    "signal_skewness": np.nan,
+                    "peak_trend_slope": np.nan,
+                    "systolic_amplitude_variability": np.nan,
+                    "diastolic_amplitude_variability": np.nan,
+                }
+                # Detect peaks and troughs in the PPG signal
+                peaks = PeakDetection(
+                    clean_signal, method="ppg_first_derivative"
+                ).detect_peaks()
+                troughs = morphology.detect_troughs(peaks)
+
+                # Ensure peaks and troughs are numpy arrays
+                peaks = np.array(peaks, dtype=int)
+                troughs = np.array(troughs, dtype=int)
+
+                # Adjust lengths and alignments
+                # Since troughs are between peaks, len(troughs) = len(peaks) - 1
+                # For computations, we need to align the indices correctly
+                if peaks[0] < troughs[0]:
+                    # The first peak comes before the first trough, remove the first peak
+                    peaks = peaks[1:]
+                if len(troughs) > len(peaks):
+                    troughs = troughs[: len(peaks)]
+                else:
+                    peaks = peaks[: len(troughs)]
+
+                # Compute systolic area (from trough to peak)
+                systolic_areas = [
+                    np.trapz(clean_signal[troughs[i] : peaks[i]])
+                    for i in range(len(peaks))
+                    if troughs[i] < peaks[i]
+                ]
+                systolic_area = np.mean(systolic_areas) if systolic_areas else 0.0
+
+                # Compute diastolic area (from peak to next trough)
+                diastolic_areas = []
+                for i in range(len(peaks) - 1):
+                    start = peaks[i]
+                    end = troughs[i + 1]
+                    if start < end:
+                        area = np.trapz(clean_signal[start:end])
+                        diastolic_areas.append(area)
+                diastolic_area = np.mean(diastolic_areas) if diastolic_areas else 0.0
+
+                # Compute systolic duration (time from trough to peak)
+                systolic_durations = [
+                    (peaks[i] - troughs[i]) / self.fs
+                    for i in range(len(peaks))
+                    if peaks[i] > troughs[i]
+                ]
+                systolic_duration = (
+                    np.mean(systolic_durations) if systolic_durations else 0.0
                 )
-                diastolic_area = morphology.compute_volume(
-                    peaks[1:].astype(int), peaks[2:].astype(int), mode=mode
+
+                # Compute diastolic duration (time from peak to next trough)
+                diastolic_durations = [
+                    (troughs[i + 1] - peaks[i]) / self.fs
+                    for i in range(len(peaks) - 1)
+                    if troughs[i + 1] > peaks[i]
+                ]
+                diastolic_duration = (
+                    np.mean(diastolic_durations) if diastolic_durations else 0.0
                 )
-                systolic_duration = morphology.compute_duration(
-                    peaks[:-1].astype(int), peaks[1:].astype(int), mode=mode
+
+                # Compute systolic slope (rate of increase from trough to peak)
+                systolic_slopes = [
+                    (clean_signal[peaks[i]] - clean_signal[troughs[i]])
+                    / (peaks[i] - troughs[i])
+                    for i in range(len(peaks))
+                    if peaks[i] > troughs[i]
+                ]
+                systolic_slope = np.mean(systolic_slopes) if systolic_slopes else 0.0
+
+                # Compute diastolic slope (rate of decrease from peak to next trough)
+                diastolic_slopes = [
+                    (clean_signal[troughs[i + 1]] - clean_signal[peaks[i]])
+                    / (troughs[i + 1] - peaks[i])
+                    for i in range(len(peaks) - 1)
+                    if troughs[i + 1] > peaks[i]
+                ]
+                diastolic_slope = np.mean(diastolic_slopes) if diastolic_slopes else 0.0
+
+                # Compute other features
+                # Dicrotic notch detection can be challenging; if not reliable, it can be omitted or handled separately
+                # For simplicity, we'll omit dicrotic notch features here
+
+                systolic_variability = self.compute_amplitude_variability(peaks)
+                diastolic_variability = self.compute_amplitude_variability(troughs)
+                signal_skewness = morphology.compute_skewness()
+                peak_trend_slope = self.compute_peak_trend(peaks)
+
+                features = {
+                    "systolic_duration": systolic_duration,
+                    "diastolic_duration": diastolic_duration,
+                    "systolic_area": systolic_area,
+                    "diastolic_area": diastolic_area,
+                    "systolic_slope": systolic_slope,
+                    "diastolic_slope": diastolic_slope,
+                    "signal_skewness": signal_skewness,
+                    "peak_trend_slope": peak_trend_slope,
+                    "systolic_amplitude_variability": systolic_variability,
+                    "diastolic_amplitude_variability": diastolic_variability,
+                }
+
+            elif signal_type == "ECG":
+                features = {
+                    "qrs_duration": np.nan,
+                    "qrs_area": np.nan,
+                    "qrs_amplitude": np.nan,
+                    "qrs_slope": np.nan,
+                    "t_wave_area": np.nan,
+                    "heart_rate": np.nan,
+                    "r_peak_amplitude_variability": np.nan,
+                    "signal_skewness": np.nan,
+                    "peak_trend_slope": np.nan,
+                }
+                # Detect R-peaks in the ECG signal
+                peak_detector = PeakDetection(clean_signal, method="ecg_r_peak")
+                r_peaks = peak_detector.detect_peaks()
+                r_peaks = np.array(r_peaks, dtype=int)
+
+                # Detect Q and S points around R peaks
+                q_points = []
+                s_points = []
+                for r_peak in r_peaks:
+                    # Q point detection (40 ms before R peak)
+                    q_start = max(0, r_peak - int(self.fs * 0.04))
+                    q_end = r_peak
+                    q_segment = clean_signal[q_start:q_end]
+                    if len(q_segment) > 0:
+                        q_point = np.argmin(q_segment) + q_start
+                        q_points.append(q_point)
+                    else:
+                        q_points.append(q_start)
+
+                    # S point detection (40 ms after R peak)
+                    s_start = r_peak
+                    s_end = min(len(clean_signal), r_peak + int(self.fs * 0.04))
+                    s_segment = clean_signal[s_start:s_end]
+                    if len(s_segment) > 0:
+                        s_point = np.argmin(s_segment) + s_start
+                        s_points.append(s_point)
+                    else:
+                        s_points.append(s_end)
+
+                # Compute QRS durations
+                # qrs_durations = [
+                #     (s_points[i] - q_points[i]) / self.fs
+                #     for i in range(len(r_peaks))
+                #     if s_points[i] > q_points[i]
+                # ]
+                qrs_durations = morphology.compute_qrs_duration(r_peaks)
+
+                qrs_duration = np.mean(qrs_durations) if qrs_durations else 0.0
+
+                # Compute QRS areas
+                qrs_areas = [
+                    np.trapz(clean_signal[q_points[i] : s_points[i]])
+                    for i in range(len(r_peaks))
+                    if s_points[i] > q_points[i]
+                ]
+                qrs_area = np.mean(qrs_areas) if qrs_areas else 0.0
+
+                # Compute QRS amplitude
+                qrs_amplitudes = clean_signal[r_peaks]
+                qrs_amplitude = (
+                    np.mean(qrs_amplitudes) if len(qrs_amplitudes) > 0 else 0.0
                 )
-                diastolic_duration = morphology.compute_duration(
-                    peaks[1:].astype(int), peaks[2:].astype(int), mode=mode
+
+                # Compute QRS slopes
+                qrs_slopes = [
+                    (clean_signal[r_peaks[i]] - clean_signal[q_points[i]])
+                    / (r_peaks[i] - q_points[i])
+                    for i in range(len(r_peaks))
+                    if r_peaks[i] > q_points[i] and (r_peaks[i] - q_points[i]) != 0
+                ]
+                qrs_slope = np.mean(qrs_slopes) if qrs_slopes else 0.0
+
+                # Compute RR intervals and heart rate
+                rr_intervals = np.diff(r_peaks) / self.fs  # in seconds
+                average_rr_interval = (
+                    np.mean(rr_intervals) if len(rr_intervals) > 0 else 0.0
                 )
+                heart_rate = (
+                    60 / average_rr_interval if average_rr_interval > 0 else 0.0
+                )
+
+                # Compute amplitude variability
+                amplitude_variability = (
+                    np.std(qrs_amplitudes) / np.mean(qrs_amplitudes)
+                    if np.mean(qrs_amplitudes) != 0
+                    else 0.0
+                )
+
+                # Compute T-wave areas
+                t_wave_areas = []
+                for i in range(len(r_peaks)):
+                    s_point = s_points[i]
+                    t_start = s_point
+                    t_end = min(
+                        len(clean_signal), s_point + int(self.fs * 0.3)
+                    )  # 300 ms after S point
+                    t_segment = clean_signal[t_start:t_end]
+                    if len(t_segment) > 0:
+                        # Compute area under the T-wave segment
+                        area = np.trapz(t_segment)
+                        t_wave_areas.append(area)
+                t_wave_area = np.mean(t_wave_areas) if t_wave_areas else 0.0
+
+                # Compute signal skewness
+                signal_skewness = morphology.compute_skewness()
+
+                # Compute peak trend
+                peak_trend_slope = self.compute_peak_trend(r_peaks)
+
+                features = {
+                    "qrs_duration": qrs_duration,
+                    "qrs_area": qrs_area,
+                    "qrs_amplitude": qrs_amplitude,
+                    "qrs_slope": qrs_slope,
+                    "t_wave_area": t_wave_area,
+                    "heart_rate": heart_rate,
+                    "r_peak_amplitude_variability": amplitude_variability,
+                    "signal_skewness": signal_skewness,
+                    "peak_trend_slope": peak_trend_slope,
+                }
+
             else:
-                troughs = self.detect_troughs(peaks.astype(int))
-                systolic_area = morphology.compute_volume(
-                    peaks.astype(int), troughs.astype(int), mode=mode
-                )
-                diastolic_area = morphology.compute_volume(
-                    peaks.astype(int), troughs.astype(int), mode=mode
-                )
-                systolic_duration = morphology.compute_duration(
-                    peaks.astype(int), troughs.astype(int), mode=mode
-                )
-                diastolic_duration = morphology.compute_duration(
-                    peaks.astype(int), troughs.astype(int), mode=mode
-                )
+                raise ValueError(f"Unsupported signal type: {signal_type}")
 
-            dicrotic_notch_locs = morphology.compute_ppg_dicrotic_notch()
+        except Exception as e:
+            print(f"Error during feature extraction: {e}")
+            features = {
+                key: np.nan for key in features
+            }  # Set all features to np.nan in case of error
 
-            systolic_variability = self.compute_amplitude_variability(peaks[:-1])
-            diastolic_variability = self.compute_amplitude_variability(peaks[1:])
-            signal_skewness = morphology.compute_skewness()
-            peak_trend_slope = self.compute_peak_trend(peaks)
-
-            return {
-                "systolic_duration": systolic_duration,  # Removed .value() call
-                "diastolic_duration": diastolic_duration,  # Removed .value() call
-                "systolic_area": systolic_area,
-                "diastolic_area": diastolic_area,
-                "signal_skewness": signal_skewness,
-                "peak_trend_slope": peak_trend_slope,
-                "systolic_amplitude_variability": systolic_variability,
-                "diastolic_amplitude_variability": diastolic_variability,
-                "dicrotic_notch_locs": dicrotic_notch_locs,
-            }
-
-        elif signal_type == "ECG":
-            r_peaks = (
-                PeakDetection(clean_signal, method="ecg_r_peak")
-                .detect_peaks()
-                .astype(int)
-            )  # Explicit integer casting for r_peaks
-            qrs_duration = morphology.compute_qrs_duration()
-            qrs_area = morphology.compute_volume(r_peaks[:-1], r_peaks[1:], mode="peak")
-            t_wave_area = morphology.compute_volume(
-                r_peaks[1:], r_peaks[2:], mode="peak"
-            )
-            qrs_amplitude = np.mean(clean_signal[r_peaks])
-            qrs_slope = morphology.compute_slope(r_peaks[:-1], r_peaks[1:], mode="peak")
-            qrs_t_ratio = qrs_area / t_wave_area if t_wave_area != 0 else 0
-            signal_skewness = morphology.compute_skewness()
-            peak_trend_slope = self.compute_peak_trend(r_peaks)
-            amplitude_variability = self.compute_amplitude_variability(r_peaks)
-
-            return {
-                "qrs_duration": qrs_duration,
-                "qrs_area": qrs_area,
-                "t_wave_area": t_wave_area,
-                "qrs_amplitude": qrs_amplitude,
-                "qrs_slope": qrs_slope,
-                "qrs_t_ratio": qrs_t_ratio,
-                "signal_skewness": signal_skewness,
-                "peak_trend_slope": peak_trend_slope,
-                "r_peak_amplitude_variability": amplitude_variability,
-            }
-
-        else:
-            raise ValueError(f"Unsupported signal type: {signal_type}")
+        return features

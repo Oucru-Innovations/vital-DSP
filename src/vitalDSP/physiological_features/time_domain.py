@@ -36,6 +36,12 @@ class TimeDomainFeatures:
         compute_iqr_nn(): Computes the interquartile range (IQR) of NN intervals.
         compute_mean_nn(): Computes the mean of NN intervals.
         compute_std_nn(): Computes the standard deviation of NN intervals (alias for SDNN).
+        compute_pnn20(): Computes the percentage of NN intervals differing by more than 20 ms.
+        compute_nn20(): Computes the count of NN intervals differing by more than 20 ms.
+        compute_cvnn(): Computes the coefficient of variation of NN intervals (CVNN).
+        compute_hrv_triangular_index(): Computes the HRV Triangular Index based on the histogram of NN intervals.
+        compute_tinn(): Computes TINN (Triangular Interpolation of NN Interval Histogram).
+        compute_sdsd(): Computes the standard deviation of successive differences (SDSD).
     """
 
     def __init__(self, nn_intervals):
@@ -163,3 +169,88 @@ class TimeDomainFeatures:
             7.483314773547883
         """
         return self.compute_sdnn()
+
+    def compute_pnn20(self):
+        """
+        Computes the percentage of successive NN intervals differing by more than 20 ms (pNN20).
+
+        Returns:
+            float: The pNN20 value as a percentage.
+
+        Example:
+            >>> tdf = TimeDomainFeatures([800, 810, 790, 805, 795])
+            >>> tdf.compute_pnn20()
+            40.0
+        """
+        diff_nn_intervals = np.abs(np.diff(self.nn_intervals))
+        nn20 = np.sum(diff_nn_intervals > 20)
+        return 100.0 * nn20 / len(self.nn_intervals)
+
+    def compute_cvnn(self):
+        """
+        Computes the coefficient of variation of NN intervals (CVNN), which is the ratio of the standard deviation
+        to the mean NN interval.
+
+        Returns:
+            float: The CVNN value.
+
+        Example:
+            >>> tdf = TimeDomainFeatures([800, 810, 790, 805, 795])
+            >>> tdf.compute_cvnn()
+            0.009354143466934854
+        """
+        mean_nn = self.compute_mean_nn()
+        sdnn = self.compute_sdnn()
+        return sdnn / mean_nn
+
+    def compute_hrv_triangular_index(self):
+        """
+        Computes the HRV Triangular Index, which is the total number of NN intervals divided by the
+        height of the histogram of all NN intervals.
+
+        Returns:
+            float: The HRV Triangular Index.
+
+        Example:
+            >>> tdf = TimeDomainFeatures([800, 810, 790, 805, 795])
+            >>> tdf.compute_hrv_triangular_index()
+            5.0
+        """
+        hist, bin_edges = np.histogram(self.nn_intervals, bins="auto")
+        max_bin_count = np.max(hist)
+        return len(self.nn_intervals) / max_bin_count
+
+    def compute_tinn(self):
+        """
+        Computes the Triangular Interpolation of NN Interval Histogram (TINN), which is the width of the
+        base of the histogram of NN intervals.
+
+        Returns:
+            float: The TINN value.
+
+        Example:
+            >>> tdf = TimeDomainFeatures([800, 810, 790, 805, 795])
+            >>> tdf.compute_tinn()
+            20.0
+        """
+        hist, bin_edges = np.histogram(self.nn_intervals, bins="auto")
+        bin_width = np.diff(bin_edges)
+        max_bin_index = np.argmax(hist)
+        left_edge = bin_edges[max_bin_index] - bin_width[max_bin_index] / 2
+        right_edge = bin_edges[max_bin_index] + bin_width[max_bin_index] / 2
+        return right_edge - left_edge
+
+    def compute_sdsd(self):
+        """
+        Computes the standard deviation of successive differences (SDSD) between NN intervals.
+
+        Returns:
+            float: The SDSD value.
+
+        Example:
+            >>> tdf = TimeDomainFeatures([800, 810, 790, 805, 795])
+            >>> tdf.compute_sdsd()
+            10.0
+        """
+        diff_nn_intervals = np.diff(self.nn_intervals)
+        return np.std(diff_nn_intervals)

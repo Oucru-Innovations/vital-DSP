@@ -231,6 +231,13 @@ def recurrent_network():
     return RecurrentNetwork(recurrent_type, dropout_rate, batch_norm)
 
 @pytest.fixture
+def recurrent_network_gru():
+    recurrent_type = "gru"
+    dropout_rate = 0.3
+    batch_norm = True
+    return RecurrentNetwork(recurrent_type, dropout_rate, batch_norm)
+
+@pytest.fixture
 def sample_recurrent_data():
     # Assuming input shape: (batch_size, sequence_length, features)
     np.random.seed(0)

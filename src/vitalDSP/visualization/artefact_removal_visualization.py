@@ -51,10 +51,10 @@ class ArtifactRemovalVisualization:
             )
         elif method == "notch_filter":
             cleaned_signal = self.artifact_removal.notch_filter()
-        elif method == "pca_artifact_removal":
-            cleaned_signal = self.artifact_removal.pca_artifact_removal()
-        elif method == "ica_artifact_removal":
-            cleaned_signal = self.artifact_removal.ica_artifact_removal()
+        # elif method == "pca_artifact_removal":
+        #     cleaned_signal = self.artifact_removal.pca_artifact_removal()
+        # elif method == "ica_artifact_removal":
+        #     cleaned_signal = self.artifact_removal.ica_artifact_removal()
         else:
             raise ValueError("Invalid artifact removal method specified.")
 
@@ -85,8 +85,8 @@ class ArtifactRemovalVisualization:
             self.reference_signal
         )  # Pass reference_signal
         notch_filt_signal = self.artifact_removal.notch_filter()
-        pca_signal = self.artifact_removal.pca_artifact_removal(num_components=1)
-        ica_signal = self.artifact_removal.ica_artifact_removal(num_components=1)
+        # pca_signal = self.artifact_removal.pca_artifact_removal(num_components=1)
+        # ica_signal = self.artifact_removal.ica_artifact_removal(num_components=1)
 
         traces = [
             go.Scatter(y=self.signal, mode="lines", name="Original Signal"),
@@ -102,8 +102,8 @@ class ArtifactRemovalVisualization:
             ),
             go.Scatter(y=adaptive_filt_signal, mode="lines", name="Adaptive Filtering"),
             go.Scatter(y=notch_filt_signal, mode="lines", name="Notch Filter"),
-            go.Scatter(y=pca_signal, mode="lines", name="PCA Artifact Removal"),
-            go.Scatter(y=ica_signal, mode="lines", name="ICA Artifact Removal"),
+            # go.Scatter(y=pca_signal, mode="lines", name="PCA Artifact Removal"),
+            # go.Scatter(y=ica_signal, mode="lines", name="ICA Artifact Removal"),
         ]
 
         layout = go.Layout(

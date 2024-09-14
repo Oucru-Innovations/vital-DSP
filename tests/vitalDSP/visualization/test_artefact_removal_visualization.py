@@ -96,19 +96,19 @@ def test_visualize_artifact_removal_notch_filter(signal, reference_signal):
 #     assert cleaned_signal is not None
 #     assert len(cleaned_signal) == len(test_signal)
 
-# def test_visualize_all_removals(signal, reference_signal):
-#     ar_visualization = ArtifactRemovalVisualization(signal, reference_signal)
-#     ar_visualization.visualize_all_removals()
+def test_visualize_all_removals(signal, reference_signal):
+    ar_visualization = ArtifactRemovalVisualization(signal, reference_signal)
+    ar_visualization.visualize_all_removals()
 
-#     # Check that all methods are applied correctly
-#     assert ar_visualization.artifact_removal.mean_subtraction() is not None
-#     assert ar_visualization.artifact_removal.baseline_correction() is not None
-#     assert ar_visualization.artifact_removal.median_filter_removal() is not None
-#     assert ar_visualization.artifact_removal.wavelet_denoising() is not None
-#     assert ar_visualization.artifact_removal.adaptive_filtering(reference_signal) is not None
-#     assert ar_visualization.artifact_removal.notch_filter() is not None
-#     assert ar_visualization.artifact_removal.pca_artifact_removal() is not None
-#     assert ar_visualization.artifact_removal.ica_artifact_removal() is not None
+    # Check that all methods are applied correctly
+    assert ar_visualization.artifact_removal.mean_subtraction() is not None
+    assert ar_visualization.artifact_removal.baseline_correction() is not None
+    assert ar_visualization.artifact_removal.median_filter_removal() is not None
+    assert ar_visualization.artifact_removal.wavelet_denoising() is not None
+    assert ar_visualization.artifact_removal.adaptive_filtering(reference_signal) is not None
+    assert ar_visualization.artifact_removal.notch_filter() is not None
+    # assert ar_visualization.artifact_removal.pca_artifact_removal() is not None
+    # assert ar_visualization.artifact_removal.ica_artifact_removal() is not None
 
 def test_invalid_method(signal, reference_signal):
     ar_visualization = ArtifactRemovalVisualization(signal, reference_signal)

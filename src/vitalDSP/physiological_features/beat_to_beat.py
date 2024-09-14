@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.signal import resample
+from vitalDSP.utils.common import deprecated
 
 
 class BeatToBeatAnalysis:
@@ -29,6 +30,7 @@ class BeatToBeatAnalysis:
         self.fs = fs  # Sampling frequency
         self.signal_type = signal_type  # 'ECG' or 'PPG'
 
+    @deprecated("Use vitalDSP.transforms.beat_transformation.RRTransformation instead.")
     def compute_rr_intervals(self, correction_method=None, threshold=150):
         """
         Computes the R-R intervals (for ECG) or P-P intervals (for PPG) from the detected peaks.
@@ -36,7 +38,7 @@ class BeatToBeatAnalysis:
 
         Args:
             correction_method (str): Method to correct false detections ('interpolation', 'resampling', or 'adaptive_threshold').
-                                     Default is None (no correction).
+                                    Default is None (no correction).
             threshold (int): Threshold for adaptive correction methods in milliseconds. Default is 150 ms.
 
         Returns:
@@ -120,6 +122,9 @@ class BeatToBeatAnalysis:
         ]
         return valid_rr_intervals
 
+    @deprecated(
+        "Use vitalDSP.physiological_features.time_domain.compute_mean_nn() instead."
+    )
     def compute_mean_rr(self):
         """
         Computes the mean of the R-R intervals.
@@ -130,6 +135,9 @@ class BeatToBeatAnalysis:
         rr_intervals = self.compute_rr_intervals()
         return np.mean(rr_intervals)
 
+    @deprecated(
+        "Use vitalDSP.physiological_features.time_domain.compute_std_nn() instead."
+    )
     def compute_sdnn(self):
         """
         Computes the standard deviation of the R-R intervals (SDNN), a common HRV metric.
@@ -140,6 +148,9 @@ class BeatToBeatAnalysis:
         rr_intervals = self.compute_rr_intervals()
         return np.std(rr_intervals)
 
+    @deprecated(
+        "Use vitalDSP.physiological_features.time_domain.compute_rmssd() instead."
+    )
     def compute_rmssd(self):
         """
         Computes the Root Mean Square of Successive Differences (RMSSD), a measure of short-term
@@ -152,6 +163,9 @@ class BeatToBeatAnalysis:
         successive_diffs = np.diff(rr_intervals)
         return np.sqrt(np.mean(successive_diffs**2))
 
+    @deprecated(
+        "Use vitalDSP.physiological_features.time_domain.compute_pnn50() instead."
+    )
     def compute_pnn50(self):
         """
         Computes the percentage of successive R-R intervals that differ by more than 50 milliseconds (pNN50),

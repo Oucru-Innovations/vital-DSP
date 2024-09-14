@@ -86,6 +86,30 @@ def test_update_model_knn(anomaly_detector):
     anomaly_detector.update_model(6, model_type='knn')
     assert 6 in anomaly_detector.models['knn']['training_data']
 
+def test_update_model_svm(anomaly_detector):
+    # Test SVM model update with new data point
+    training_data = np.array([1, 2, 3, 4, 5])
+    anomaly_detector.train_svm(training_data)
+    anomaly_detector.update_model(6, model_type='svm')
+    # Assert that the SVM model has been updated with the new data
+    assert hasattr(anomaly_detector.models['svm'], 'training_data'), "SVM model should have 'training_data' attribute"
+    assert 6 in anomaly_detector.models['svm'].training_data, "New data point should be in the SVM training data"
+
+def test_update_model_autoencoder(anomaly_detector):
+    """
+    Test AutoEncoder model update with a new data point.
+    """
+    training_data = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)  # Reshape to 2D array
+    anomaly_detector.train_autoencoder(training_data)
+
+    new_data_point = np.array([6]).reshape(1, -1)  # Ensure new data point is 2D
+    anomaly_detector.update_model(new_data_point, model_type='autoencoder')
+
+    # Assert that the training data includes the new data point
+    autoencoder_model = anomaly_detector.models['autoencoder']
+    assert autoencoder_model.training_data[-1] == new_data_point, "The new data point should be appended."
+
+
 def test_update_model_invalid(anomaly_detector):
     # Test invalid model type during update
     with pytest.raises(ValueError):

@@ -2,6 +2,9 @@ import numpy as np
 
 # from scipy.signal import lfilter
 from scipy import signal
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 class BandpassFilter:
@@ -23,7 +26,7 @@ class BandpassFilter:
         self.band_type = band_type
         self.fs = fs
 
-    def signal_bypass(self, cutoff, order, a_pass, rp, rs, btype="high"):
+    def signal_bypass(self, cutoff, order, a_pass=3, rp=4, rs=40, btype="high"):
         """
         Generate the filter coefficients for the specified filter type and parameters.
 
@@ -464,31 +467,32 @@ class SignalFiltering:
         >>> b, a = SignalFiltering().butter(4, 0.3, btype='low', fs=1.0)
         >>> print(b, a)
         """
-        nyquist = 0.5
+        nyquist = 0.5 * fs
         normalized_cutoff = np.array(cutoff) / nyquist
-        if btype == "low":
-            poles = np.exp(
-                1j * np.pi * (np.arange(1, 2 * order + 1, 2) + order - 1) / (2 * order)
-            )
-            poles = poles[np.real(poles) < 0]
-            z, p = np.zeros(0), poles
-        elif btype == "high":
-            z, p = self.butter(order, cutoff, btype="low")
-            z, p = -z, -p
-        elif btype == "band":
-            low = np.min(normalized_cutoff)
-            high = np.max(normalized_cutoff)
-            z_low, p_low = self.butter(order, low, btype="high")
-            z_high, p_high = self.butter(order, high, btype="low")
-            z = np.concatenate([z_low, z_high])
-            p = np.concatenate([p_low, p_high])
-        else:
-            raise ValueError("Invalid btype. Must be 'low', 'high', or 'band'.")
+        b, a = signal.butter(order, normalized_cutoff, btype=btype, analog=False)
+        # if btype == "low":
+        #     poles = np.exp(
+        #         1j * np.pi * (np.arange(1, 2 * order + 1, 2) + order - 1) / (2 * order)
+        #     )
+        #     poles = poles[np.real(poles) < 0]
+        #     z, p = np.zeros(0), poles
+        # elif btype == "high":
+        #     z, p = self.butter(order, cutoff, btype="low")
+        #     z, p = -z, -p
+        # elif btype == "band":
+        #     low = np.min(normalized_cutoff)
+        #     high = np.max(normalized_cutoff)
+        #     z_low, p_low = self.butter(order, low, btype="high")
+        #     z_high, p_high = self.butter(order, high, btype="low")
+        #     z = np.concatenate([z_low, z_high])
+        #     p = np.concatenate([p_low, p_high])
+        # else:
+        #     raise ValueError("Invalid btype. Must be 'low', 'high', or 'band'.")
 
-        b, a = np.poly(z), np.poly(p)
-        b = np.atleast_1d(b)
-        a = np.atleast_1d(a)
-        b /= np.abs(np.sum(a))
+        # b, a = np.poly(z), np.poly(p)
+        # b = np.atleast_1d(b)
+        # a = np.atleast_1d(a)
+        # b /= np.abs(np.sum(a))
         return b, a
 
     def chebyshev(self, cutoff, fs, order=4, btype="low", ripple=0.05, iterations=1):
@@ -646,19 +650,19 @@ class SignalFiltering:
         >>> filtered_signal = sf.bandpass(lowcut, highcut, fs, order=4, filter_type='butter')
         >>> print(filtered_signal)
         """
-        nyquist = 0.5 * fs
-        low = lowcut / nyquist
-        high = highcut / nyquist
+        # nyquist = 0.5 * fs
+        # low = lowcut / nyquist
+        # high = highcut / nyquist
 
         filtered_signal = self.signal.copy()
 
         for _ in range(iterations):
             if filter_type == "butter":
-                b, a = self.butter(order, [low, high], btype="band")
+                b, a = self.butter(order, [lowcut, highcut], btype="band", fs=fs)
             elif filter_type == "cheby":
-                b, a = self.chebyshev(order, [low, high], btype="band")
+                b, a = self.chebyshev(order, [lowcut, highcut], btype="band", fs=fs)
             elif filter_type == "elliptic":
-                b, a = self.elliptic(order, [low, high], btype="band")
+                b, a = self.elliptic(order, [lowcut, highcut], btype="band", fs=fs)
             else:
                 raise ValueError(
                     "Unsupported filter type. Choose from 'butter', 'cheby', or 'elliptic'."
@@ -732,31 +736,52 @@ class SignalFiltering:
             The filtered signal.
         """
         if filtered_signal is None:
-            filtered_signal = np.zeros_like(self.signal)
-        epsilon = 1e-10  # Small constant to prevent division by zero
+            # filtered_signal = np.zeros_like(self.signal)
+            filtered_signal = self.signal.copy()
+        # epsilon = 1e-10  # Small constant to prevent division by zero
 
-        # Ensure the first coefficient of a is not zero to avoid instability
-        a[0] = max(a[0], epsilon)
+        # # Ensure the first coefficient of a is not zero to avoid instability
+        # a[0] = max(a[0], epsilon)
 
-        for i in range(len(self.signal)):
-            filtered_signal[i] = b[0] * self.signal[i]
+        # for i in range(len(self.signal)):
+        #     filtered_signal[i] = b[0] * self.signal[i]
 
-            if i > 0 and len(b) > 1:
-                filtered_signal[i] += (
-                    b[1] * self.signal[i - 1] - a[1] * filtered_signal[i - 1]
-                )
+        #     if i > 0 and len(b) > 1:
+        #         filtered_signal[i] = np.clip(
+        #             np.real(filtered_signal[i])
+        #             + (
+        #                 b[1] * self.signal[i - 1]
+        #                 - a[1] * np.real(filtered_signal[i - 1])
+        #             ),
+        #             -1e10,
+        #             1e10,
+        #         )
+        #         # filtered_signal[i] += (
+        #         #     b[1] * self.signal[i - 1] - a[1] * filtered_signal[i - 1]
+        #         # )
 
-            if i > 1 and len(b) > 2:
-                filtered_signal[i] += (
-                    b[2] * self.signal[i - 2] - a[2] * filtered_signal[i - 2]
-                )
+        #     if i > 1 and len(b) > 2:
+        #         filtered_signal[i] = np.clip(
+        #             np.real(filtered_signal[i])
+        #             + (
+        #                 b[2] * self.signal[i - 2]
+        #                 - a[2] * np.real(filtered_signal[i - 2])
+        #             ),
+        #             -1e10,
+        #             1e10,
+        #         )
+        #         # filtered_signal[i] += (
+        #         #     b[2] * self.signal[i - 2] - a[2] * filtered_signal[i - 2]
+        #         # )
 
-            # Normalize by a[0] to ensure stability
-            filtered_signal[i] /= a[0]
+        #     # Normalize by a[0] to ensure stability
+        #     filtered_signal[i] = np.real(filtered_signal[i]) / a[0]
 
-            # Apply epsilon to avoid infinities or NaNs
-            filtered_signal[i] = np.nan_to_num(
-                filtered_signal[i], nan=0.0, posinf=0.0, neginf=0.0
-            )
+        #     # Apply epsilon to avoid infinities or NaNs
+        #     filtered_signal[i] = np.nan_to_num(
+        #         filtered_signal[i], nan=0.0, posinf=0.0, neginf=0.0
+        #     )
 
+        # Use filtfilt to avoid phase distortion
+        filtered_signal = signal.filtfilt(b, a, filtered_signal)
         return filtered_signal

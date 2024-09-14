@@ -388,18 +388,79 @@ class SimpleSVM:
 # Simple Autoencoder Implementation (Placeholder)
 class SimpleAutoencoder:
     def __init__(self, training_data, encoding_dim=3):
+        """
+        Initialize the SimpleAutoencoder with training data and an encoding dimension.
+        If the training data is 1D, it is reshaped to 2D.
+
+        Parameters
+        ----------
+        training_data : np.array
+            The training data used to initialize the autoencoder.
+        encoding_dim : int, optional
+            The dimension of the encoded space. Default is 3.
+
+        Example
+        -------
+        >>> model = SimpleAutoencoder(training_data=np.array([1, 2, 3]), encoding_dim=3)
+        """
         self.encoding_dim = encoding_dim
-        self.weights = np.random.randn(training_data.shape[1], encoding_dim)
+
+        # Ensure training_data is at least 2D
+        if training_data.ndim == 1:
+            training_data = training_data.reshape(-1, 1)
+
         self.training_data = training_data
 
+        # Initialize weights based on input dimension
+        self.weights = np.random.randn(self.training_data.shape[1], encoding_dim)
+
     def reconstruction_error(self, data_point):
+        """
+        Compute the reconstruction error for a given data point.
+
+        Parameters
+        ----------
+        data_point : np.array
+            The data point to compute the reconstruction error for.
+
+        Returns
+        -------
+        float
+            The mean squared reconstruction error.
+
+        Example
+        -------
+        >>> error = model.reconstruction_error(np.array([1, 2, 3]))
+        """
         encoded = np.dot(data_point, self.weights)
         reconstructed = np.dot(encoded, self.weights.T)
         return np.mean((data_point - reconstructed) ** 2)
 
     def update(self, data_point):
-        # Placeholder Autoencoder online update logic
-        self.training_data = np.append(self.training_data, [data_point], axis=0)
+        """
+        Update the autoencoder with a new data point.
+
+        Parameters
+        ----------
+        data_point : np.array
+            The new data point to be added for online learning.
+
+        Notes
+        -----
+        If the `data_point` is 1D, it is reshaped to 2D before appending.
+
+        Example
+        -------
+        >>> model.update(np.array([4, 5, 6]))
+        """
+        # Ensure the new data point is 2D
+        if data_point.ndim == 1:
+            data_point = data_point.reshape(1, -1)
+
+        # Append the new data point to the training data
+        self.training_data = np.append(self.training_data, data_point, axis=0)
+
+        # Update weights (placeholder update logic)
         self.weights += np.random.randn(*self.weights.shape) * 0.01
 
 

@@ -321,14 +321,39 @@ class WaveformMorphology:
         peak_detector = PeakDetection(self.waveform, method="ecg_r_peak")
         r_peaks = peak_detector.detect_peaks()
 
-        # Assume that Q-wave starts before the R peak and S-wave ends after the R peak
-        qrs_duration = 0.0
+        # Detect Q and S points around R peaks
+        q_points = []
+        s_points = []
         for r_peak in r_peaks:
-            q_start = r_peak - int(self.fs * 0.02)  # 20 ms before R peak
-            s_end = r_peak + int(self.fs * 0.02)  # 20 ms after R peak
-            qrs_duration += (s_end - q_start) * 1000 / self.fs
+            # Q point detection
+            q_start = max(0, r_peak - int(self.fs * 0.04))
+            q_end = r_peak
+            q_segment = self.waveform[q_start:q_end]
+            if len(q_segment) > 0:
+                q_point = np.argmin(q_segment) + q_start
+                q_points.append(q_point)
+            else:
+                q_points.append(q_start)
 
-        return qrs_duration / len(r_peaks) if len(r_peaks) > 0 else 0.0
+            # S point detection
+            s_start = r_peak
+            s_end = min(len(self.waveform), r_peak + int(self.fs * 0.04))
+            s_segment = self.waveform[s_start:s_end]
+            if len(s_segment) > 0:
+                s_point = np.argmin(s_segment) + s_start
+                s_points.append(s_point)
+            else:
+                s_points.append(s_end)
+
+        # Compute QRS durations
+        qrs_durations = [
+            (s_points[i] - q_points[i]) / self.fs
+            for i in range(len(r_peaks))
+            if s_points[i] > q_points[i]
+        ]
+        qrs_duration = np.mean(qrs_durations) if qrs_durations else 0.0
+
+        return qrs_duration
 
     def compute_duration(self, peaks1, peaks2, mode):
         """

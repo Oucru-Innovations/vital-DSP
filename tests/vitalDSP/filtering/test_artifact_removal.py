@@ -63,11 +63,23 @@ def test_wavelet_denoising(test_signal):
     clean_signal = ar.wavelet_denoising(wavelet_type="custom", level=2, order=4, custom_wavelet=np.array([1,2,3,2,1]))
     assert len(clean_signal) == len(test_signal), "Wavelet denoising output size mismatch."
     
+    clean_signal = ar.wavelet_denoising(wavelet_type="custom", smoothing="gaussian", level=2, order=4, custom_wavelet=np.array([1,2,3,2,1]))
+    assert len(clean_signal) == len(test_signal), "Wavelet denoising output size mismatch."
+    
+    clean_signal = ar.wavelet_denoising(wavelet_type="custom", smoothing="median", level=2, order=4, custom_wavelet=np.array([1,2,3,2,1]))
+    assert len(clean_signal) == len(test_signal), "Wavelet denoising output size mismatch."
+    
+    clean_signal = ar.wavelet_denoising(wavelet_type="custom", smoothing="moving_average", level=2, order=4, custom_wavelet=np.array([1,2,3,2,1]))
+    assert len(clean_signal) == len(test_signal), "Wavelet denoising output size mismatch."
+    
     with pytest.raises(ValueError):
         ar.wavelet_denoising(wavelet_type="custom", level=2, order=4, custom_wavelet=None)
             
     with pytest.raises(ValueError):
         ar.wavelet_denoising(wavelet_type="invalid", level=2, order=4)
+        
+    with pytest.raises(ValueError):
+        ar.wavelet_denoising(wavelet_type="custom", smoothing="invalid", level=2, order=4)
     
 def test_adaptive_filtering(test_signal):
     reference_signal = np.ones_like(test_signal)
@@ -87,6 +99,9 @@ def test_pca_artifact_removal(test_signal):
     clean_signal = ar.pca_artifact_removal(num_components=1, window_size=4, overlap=2)
     assert len(clean_signal) == len(test_signal), "PCA artifact removal output size mismatch."
     assert not np.allclose(clean_signal, test_signal), "PCA artifact removal did not work properly."
+    
+    with pytest.raises(ValueError):
+        ar.pca_artifact_removal(num_components=1, window_size=100, overlap=2)
 
 def test_ica_artifact_removal(test_signal):
     ar = ArtifactRemoval(test_signal)
@@ -97,3 +112,6 @@ def test_ica_artifact_removal(test_signal):
     assert len(clean_signal) == (len(test_signal)//step_size-window_size+step_size), "ICA artifact removal output size mismatch."
     assert not np.allclose(clean_signal[:min(len(clean_signal),len(test_signal))],
                            test_signal[:min(len(clean_signal),len(test_signal))]), "ICA artifact removal did not work properly."
+    
+    clean_signal = ar.ica_artifact_removal(num_components=1, batch_size=200)
+    assert len(clean_signal.shape) == 1, "ICA artifact removal doesnot flatten the signal."

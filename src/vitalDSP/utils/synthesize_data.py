@@ -356,7 +356,9 @@ def generate_synthetic_ppg_reversed(
         dicrotic_notch_delay = 0.1  # Time delay for the dicrotic notch
 
         # Systolic peak
-        systolic_peak = amplitude * np.exp(-((t - 0.15) ** 2) / (2 * width_systolic**2))
+        systolic_peak = amplitude * np.exp(
+            -((t - 0.15) ** 2) / (2 * width_systolic**2)
+        )
 
         # Dicrotic notch and wave
         dicrotic_wave = dicrotic_notch_depth * np.exp(
@@ -456,7 +458,9 @@ def generate_synthetic_ppg(
         width_systolic = 0.08  # Width of the systolic peak
 
         # Systolic peak (tallest peak)
-        systolic_peak = amplitude * np.exp(-((t - 0.2) ** 2) / (2 * width_systolic**2))
+        systolic_peak = amplitude * np.exp(
+            -((t - 0.2) ** 2) / (2 * width_systolic**2)
+        )
 
         # Diastolic peak (adjustable)
         diastolic_peak = (

@@ -98,7 +98,28 @@ class VitalTransformation:
         >>> print(transformed_signal)
         """
         if options is None:
-            options = {}
+            options = {
+                "artifact_removal": "baseline_correction",
+                "artifact_removal_options": {"cutoff": 0.5},
+                "bandpass_filter": {
+                    "lowcut": 0.5,
+                    "highcut": 30,
+                    "filter_order": 4,
+                    "filter_type": "butter",
+                },
+                "detrending": {"detrend_type": "linear"},
+                "normalization": {"normalization_range": (0, 1)},
+                "smoothing": {
+                    "smoothing_method": "moving_average",
+                    "window_size": 5,
+                    "iterations": 2,
+                },
+                "enhancement": {"enhance_method": "square"},
+                "advanced_filtering": {
+                    "filter_type": "kalman_filter",
+                    "options": {"R": 0.1, "Q": 0.01},
+                },
+            }
 
         if method_order is None:
             method_order = [
@@ -157,7 +178,7 @@ class VitalTransformation:
         >>> print(transformer.signal)
         """
         if options is None:
-            options = {}
+            {"lowcut": 0.5, "highcut": 30, "filter_order": 4, "filter_type": "butter"}
 
         artifact_removal = ArtifactRemoval(self.signal)
 
@@ -224,15 +245,32 @@ class VitalTransformation:
         >>> transformer.apply_bandpass_filter(options={'lowcut': 0.5, 'highcut': 30, 'filter_order': 4, 'filter_type': 'butter'})
         >>> print(transformer.signal)
         """
+        # Ensure the signal length is long enough for the filter
         if options is None:
-            options = {}
-
+            options = {
+                "lowcut": 0.5,
+                "highcut": 30,
+                "filter_order": 4,
+                "filter_type": "butter",
+            }
+        if len(self.signal) < 3 * options.get("filter_order", 4):
+            raise ValueError("Signal too short for the specified filter order.")
         lowcut = options.get("lowcut", 0.2)
         highcut = options.get("highcut", 3.0)
         filter_order = options.get("filter_order", 4)
         filter_type = options.get("filter_type", "butter")
 
         bandpass_filter = BandpassFilter(band_type=filter_type, fs=self.fs)
+
+        # Check signal length and adjust filter order if necessary
+        padlen = 3 * max(
+            len(bandpass_filter.signal_bypass(lowcut, filter_order, btype="low")[0]),
+            len(bandpass_filter.signal_bypass(lowcut, filter_order, btype="low")[1]),
+        )
+        if len(self.signal) <= padlen:
+            filter_order = max(
+                1, int(len(self.signal) / 3)
+            )  # Reduce filter order dynamically
 
         # Apply bandpass filter
         self.signal = bandpass_filter.signal_highpass_filter(
@@ -274,7 +312,13 @@ class VitalTransformation:
         >>> print(transformer.signal)
         """
         if options is None:
-            options = {}
+            options = {
+                "detrend_type": "linear",
+                "lowcut": 0.5,
+                "highcut": 30,
+                "filter_order": 4,
+                "filter_type": "butter",
+            }
 
         detrend_type = options.get("detrend_type", "linear")
         if detrend_type == "linear":
@@ -305,7 +349,7 @@ class VitalTransformation:
         >>> print(transformer.signal)
         """
         if options is None:
-            options = {}
+            options = {"normalization_range": (0, 1)}
 
         normalization_range = options.get("normalization_range", (0, 1))
         min_val = np.min(self.signal)
@@ -335,7 +379,11 @@ class VitalTransformation:
         >>> print(transformer.signal)
         """
         if options is None:
-            options = {}
+            options = {
+                "smoothing_method": "moving_average",
+                "window_size": 5,
+                "iterations": 2,
+            }
 
         smoothing_method = options.get("smoothing_method", "moving_average")
         signal_filtering = SignalFiltering(self.signal)
@@ -374,7 +422,7 @@ class VitalTransformation:
         >>> print(transformer.signal)
         """
         if options is None:
-            options = {}
+            options = {"enhance_method": "square"}
 
         enhance_method = options.get("enhance_method", "square")
 
@@ -382,6 +430,9 @@ class VitalTransformation:
             self.signal = np.square(self.signal)
         elif enhance_method == "abs":
             self.signal = np.abs(self.signal)
+        elif enhance_method == "gradient":
+            # Use the gradient to enhance rapid changes in the signal
+            self.signal = np.gradient(self.signal)
         else:
             raise ValueError(f"Unknown enhancement method: {enhance_method}")
 
@@ -406,7 +457,7 @@ class VitalTransformation:
         >>> print(transformer.signal)
         """
         if options is None:
-            options = {}
+            options = {"filter_type": "kalman_filter", "R": 0.1, "Q": 0.01}
 
         filter_type = options.get("filter_type", "kalman_filter")
         advanced_filtering = AdvancedSignalFiltering(

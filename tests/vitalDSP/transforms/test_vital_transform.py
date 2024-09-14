@@ -122,8 +122,29 @@ def test_apply_advanced_filtering(transformer, mocker):
     # Mocking AdvancedSignalFiltering
     mocker.patch('vitalDSP.filtering.advanced_signal_filtering.AdvancedSignalFiltering.kalman_filter', return_value=transformer.signal)
 
+    transformer.apply_advanced_filtering()
+    assert transformer.signal is not None
+
     # Test Kalman filter application
     transformer.apply_advanced_filtering(options={"filter_type": "kalman_filter", "R": 0.1, "Q": 0.01})
+    assert transformer.signal is not None
+    
+    # Test convolution_based_filter filter application
+    transformer.apply_advanced_filtering(options={"filter_type": "convolution_based_filter", 
+                                                "kernel_type": "smoothing", 
+                                                "kernel_size": 5})
+    assert transformer.signal is not None
+
+    # Test convolution_based_filter filter application
+    transformer.apply_advanced_filtering(options={"filter_type": "attention_based_filter", 
+                                                "attention_type": "uniform", 
+                                                "size": 5})
+    assert transformer.signal is not None
+
+    # Test convolution_based_filter filter application
+    transformer.apply_advanced_filtering(options={"filter_type": "adaptive_filtering", 
+                                                "desired_signal": transformer.signal, 
+                                                "mu": 0.01, "filter_order": 5})
     assert transformer.signal is not None
 
     # Test invalid advanced filtering method

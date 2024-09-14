@@ -1,13 +1,36 @@
 import numpy as np
 
+# from scipy.spatial.distance import cdist
+from scipy.spatial import KDTree
+
 
 class NonlinearFeatures:
     """
-    A class for computing nonlinear features from physiological signals (ECG, PPG, EEG).
+    A class for computing nonlinear (geometric) features from physiological signals (ECG, PPG, EEG).
 
-    Attributes:
-        signal (np.array): The physiological signal (ECG, PPG, EEG).
-        fs (int): The sampling frequency of the signal in Hz. Default is 1000 Hz.
+    Attributes
+    ----------
+    signal : np.array
+        The physiological signal (e.g., ECG, PPG, EEG).
+    fs : int
+        The sampling frequency of the signal in Hz. Default is 1000 Hz.
+
+    Methods
+    -------
+    compute_sample_entropy(m=2, r=0.2)
+        Computes the sample entropy of the signal, measuring its complexity.
+    compute_approximate_entropy(m=2, r=0.2)
+        Computes the approximate entropy of the signal, quantifying its unpredictability.
+    compute_fractal_dimension(kmax=10)
+        Computes the fractal dimension of the signal using Higuchi's method.
+    compute_lyapunov_exponent()
+        Computes the largest Lyapunov exponent, indicating the presence of chaos in the signal.
+    compute_dfa(order=1)
+        Computes the detrended fluctuation analysis (DFA) for assessing fractal scaling.
+    compute_poincare_features()
+        Computes Poincaré plot features (SD1 and SD2) to assess short- and long-term HRV variability.
+    compute_recurrence_features(threshold=0.2)
+        Computes features from the recurrence plot, including recurrence rate, determinism, and laminarity.
     """
 
     def __init__(self, signal, fs=1000):
@@ -39,29 +62,44 @@ class NonlinearFeatures:
             >>> sample_entropy = nf.compute_sample_entropy()
             >>> print(f"Sample Entropy: {sample_entropy}")
         """
-        if len(self.signal) <= m:
+
+        signal = np.asarray(self.signal)
+        N = len(signal)
+
+        if np.all(signal == 0) or np.std(signal) == 0:
+            return 0  # Return 0 for constant or zero signals
+        if N < m + 1:
             return 0  # Return 0 for signals too short for meaningful entropy
 
-        N = len(self.signal)
+        # Normalize the signal to have zero mean and unit variance
+        signal = (signal - np.mean(signal)) / np.std(signal)
+        r *= np.std(signal)  # Scale tolerance to the signal's standard deviation
 
-        def _phi(m):
-            if N - m + 1 <= 0:
-                return 0
-            x = np.array([self.signal[i : i + m] for i in range(N - m + 1)])
-            C = np.sum(
-                [
-                    np.sum(np.abs(x[i] - x[j]) < r)
-                    for i in range(len(x))
-                    for j in range(len(x))
-                    if i != j
-                ]
-            )
-            return C / ((N - m + 1) ** 2 - (N - m + 1))
+        # Create embedded vectors for dimensions m and m+1
+        embedded_m = np.array([signal[i : i + m] for i in range(N - m + 1)])
+        embedded_m1 = np.array([signal[i : i + m + 1] for i in range(N - m)])
 
-        phi_m = _phi(m)
-        phi_m1 = _phi(m + 1)
+        def _count_similar(template, data, r):
+            distances = np.max(np.abs(data - template), axis=1)
+            return np.sum(distances < r)
+
+        # Count similar patterns for m
+        count_m = 0
+        for i in range(len(embedded_m)):
+            template = embedded_m[i]
+            count_m += _count_similar(template, embedded_m[i + 1 :], r)
+        phi_m = count_m / ((N - m + 1) * (N - m) / 2)
+
+        # Count similar patterns for m+1
+        count_m1 = 0
+        for i in range(len(embedded_m1)):
+            template = embedded_m1[i]
+            count_m1 += _count_similar(template, embedded_m1[i + 1 :], r)
+        phi_m1 = count_m1 / ((N - m) * (N - m - 1) / 2)
+
         if phi_m == 0 or phi_m1 == 0:
-            return 0  # Return 0 to avoid log of zero
+            return 0  # Avoid log of zero
+
         return -np.log(phi_m1 / phi_m)
 
     def compute_approximate_entropy(self, m=2, r=0.2):
@@ -83,24 +121,42 @@ class NonlinearFeatures:
             >>> print(f"Approximate Entropy: {approx_entropy}")
         """
 
-        if len(self.signal) <= m:
+        signal = np.asarray(self.signal)
+        N = len(signal)
+
+        if np.all(signal == 0) or np.std(signal) == 0:
+            return 0  # Return 0 for constant or zero signals
+        if N <= m + 1:
             return 0  # Return 0 for signals too short for meaningful entropy
 
-        def _phi(m):
-            x = np.array(
-                [self.signal[i : i + m] for i in range(len(self.signal) - m + 1)]
-            )
-            C = np.sum(
-                [
-                    np.max(np.abs(x[i] - x[j])) < r
-                    for i in range(len(x))
-                    for j in range(len(x))
-                    if i != j
-                ]
-            )
-            return C / (len(self.signal) - m + 1)
+        # Normalize the signal to have zero mean and unit variance
+        signal = (signal - np.mean(signal)) / np.std(signal)
+        r *= np.std(signal)  # Scale tolerance to the signal's standard deviation
 
-        return _phi(m) - _phi(m + 1)
+        def _phi(m):
+            # Create embedded vectors for dimension m
+            embedded = np.array([signal[i : i + m] for i in range(N - m + 1)])
+            # Build a KDTree for efficient neighbor searches
+            tree = KDTree(embedded)
+
+            # Query neighbors within radius r using Chebyshev (max) distance
+            counts = tree.query_ball_point(embedded, r, p=np.inf)
+            # Compute C_i values
+            C = np.array([len(c) / (N - m + 1) for c in counts])
+
+            # Handle zero counts to avoid log(0)
+            C = np.where(C == 0, np.finfo(float).eps, C)
+
+            # Compute phi
+            phi = np.sum(np.log(C)) / (N - m + 1)
+            return phi
+
+        # Compute phi for m and m+1
+        phi_m = _phi(m)
+        phi_m1 = _phi(m + 1)
+
+        # Approximate entropy is the difference between the two phi values
+        return phi_m - phi_m1
 
     def compute_fractal_dimension(self, kmax=10):
         """
@@ -183,3 +239,247 @@ class NonlinearFeatures:
             return np.mean(divergences)
 
         return _lyapunov(time_delay=5, dim=2, max_t=max_t)
+
+    def compute_dfa(self, order=1):
+        """
+        Computes the Detrended Fluctuation Analysis (DFA) of the signal. DFA is used to assess
+        the fractal scaling properties of time-series data, especially in physiological signals.
+
+        Args:
+            order (int): The order of the polynomial fit for detrending. Default is 1 (linear detrending).
+
+        Returns:
+            float: The DFA scaling exponent (α).
+
+        Example:
+            >>> ecg_signal = [...]  # Sample ECG signal
+            >>> nf = NonlinearFeatures(ecg_signal)
+            >>> dfa = nf.compute_dfa(order=1)
+            >>> print(f"DFA Scaling Exponent: {dfa}")
+        """
+        import numpy as np
+
+        signal = np.asarray(self.signal)
+        N = len(signal)
+        if N < 4:
+            return 0  # Not enough data for DFA computation
+
+        # Step 1: Compute the integrated signal
+        integrated_signal = np.cumsum(signal - np.mean(signal))
+
+        # Step 2: Define scales (segment lengths)
+        scales = np.unique(
+            np.floor(np.logspace(np.log10(4), np.log10(N // 4), num=20))
+        ).astype(int)
+        fluctuation_sizes = []
+
+        for scale in scales:
+            # Number of segments
+            n_segments = N // scale
+            if n_segments < 2:
+                continue  # Need at least 2 segments for reliable estimation
+
+            # Truncate the integrated signal to make it divisible by scale
+            truncated_length = n_segments * scale
+            integrated_truncated = integrated_signal[:truncated_length]
+
+            # Reshape into segments
+            segments = integrated_truncated.reshape((n_segments, scale))
+
+            # Create the time vector for polynomial fitting
+            x = np.arange(scale)
+
+            if order == 1:
+                # Linear detrending can be vectorized
+                X = np.vstack([x, np.ones_like(x)]).T  # Design matrix
+                # Precompute pseudoinverse of X
+                XtX_inv_Xt = np.linalg.pinv(X)
+                # Compute coefficients for all segments
+                coeffs = XtX_inv_Xt @ segments.T  # Shape: (2, n_segments)
+                # Compute trends
+                trends = X @ coeffs  # Shape: (scale, n_segments)
+                trends = trends.T  # Shape: (n_segments, scale)
+            else:
+                # For higher-order polynomials, process each segment individually
+                trends = np.zeros_like(segments)
+                for i in range(n_segments):
+                    coeffs = np.polyfit(x, segments[i], order)
+                    trends[i] = np.polyval(coeffs, x)
+
+            # Compute fluctuations
+            residuals = segments - trends
+            rms = np.sqrt(np.mean(residuals**2, axis=1))
+            # Append the mean fluctuation for this scale
+            fluctuation_sizes.append(np.mean(rms))
+
+        # Convert scales and fluctuation sizes to numpy arrays
+        fluctuation_sizes = np.array(fluctuation_sizes)
+        scales = scales[: len(fluctuation_sizes)]
+
+        # Logarithms of scales and fluctuation sizes
+        log_scales = np.log(scales)
+        log_fluctuation_sizes = np.log(fluctuation_sizes)
+
+        # Linear regression to find the scaling exponent (alpha)
+        dfa_alpha = np.polyfit(log_scales, log_fluctuation_sizes, 1)[0]
+        return dfa_alpha
+
+    def compute_poincare_features(self, nn_intervals):
+        """
+        Computes the SD1 and SD2 features from the Poincaré plot of the NN intervals. SD1 reflects
+        short-term HRV, while SD2 reflects long-term HRV.
+
+        Returns:
+            tuple: SD1 (short-term HRV), SD2 (long-term HRV).
+
+        Example:
+            >>> nf = NonlinearFeatures(signal)
+            >>> nn_intervals = [800, 810, 790, 805, 795]
+            >>> sd1, sd2 = nf.compute_poincare_features(nn_intervals=nn_intervals)
+            >>> print(f"SD1: {sd1}, SD2: {sd2}")
+        """
+        nn_intervals = np.asarray(nn_intervals)
+        x1 = nn_intervals[:-1]
+        x2 = nn_intervals[1:]
+
+        # Compute the differences and sums
+        diff = x2 - x1
+        # summ = x2 + x1
+
+        # Compute variances
+        var_diff = np.var(diff, ddof=1)
+        var_nn = np.var(nn_intervals, ddof=1)
+
+        # Calculate SD1 and SD2
+        sd1 = np.sqrt(var_diff / 2)
+        sd2 = np.sqrt(2 * var_nn - var_diff / 2)
+
+        return sd1, sd2
+
+    def compute_recurrence_features(self, threshold=0.2, sample_size=10000):
+        """
+        Computes approximate recurrence features by sampling point pairs. This approach significantly
+        reduces computation time for large datasets by avoiding the full pairwise distance calculations.
+
+        Args:
+            threshold (float): The threshold to define recurrences. Default is 0.2.
+            sample_size (int): The number of point pairs to sample. Default is 10,000.
+
+        Returns:
+            dict: A dictionary containing approximate recurrence rate, determinism, and laminarity.
+
+        Example:
+            >>> ecg_signal = [...]  # Sample ECG signal
+            >>> nf = NonlinearFeatures(ecg_signal)
+            >>> rqa_features = nf.compute_recurrence_features(threshold=0.2, sample_size=10000)
+            >>> print(rqa_features)
+        """
+        signal = np.asarray(self.signal)
+        N = len(signal)
+
+        if N < 2:
+            return {
+                "recurrence_rate": 0,
+                "determinism": 0,
+                "laminarity": 0,
+            }
+
+        # Normalize the signal to zero mean and unit variance
+        signal = (signal - np.mean(signal)) / np.std(signal)
+
+        # Create phase space (embedding dimension = 2)
+        phase_space = np.column_stack((signal[:-1], signal[1:]))
+        M = len(phase_space)
+
+        # Total number of possible pairs (excluding self-pairs)
+        total_pairs = M * (M - 1) // 2
+
+        # Adjust sample size if necessary
+        sample_size = min(sample_size, total_pairs)
+
+        # Sample random indices without replacement
+        idx_pairs = np.random.choice(total_pairs, size=sample_size, replace=False)
+        idx1 = idx_pairs // M
+        idx2 = idx_pairs % M
+
+        # Ensure idx1 < idx2 to avoid duplicate pairs
+        mask = idx1 < idx2
+        idx1 = idx1[mask]
+        idx2 = idx2[mask]
+        sample_size = len(idx1)
+
+        # Compute distances between sampled pairs
+        diffs = phase_space[idx1] - phase_space[idx2]
+        distances = np.sqrt(np.sum(diffs**2, axis=1))
+
+        # Compute approximate recurrence rate
+        recurrences = distances < threshold
+        recurrence_rate = np.sum(recurrences) / sample_size
+
+        # Approximate determinism and laminarity
+        # Sort indices to detect line structures
+        sorted_indices = np.argsort(idx1)
+        idx1_sorted = idx1[sorted_indices]
+        idx2_sorted = idx2[sorted_indices]
+        recurrences_sorted = recurrences[sorted_indices]
+
+        # Initialize variables for line detection
+        diag_lengths = []
+        vert_lengths = []
+        current_diag_len = 1
+        current_vert_len = 1
+
+        for i in range(1, sample_size):
+            if recurrences_sorted[i]:
+                # Check for diagonal lines (idx1 and idx2 increase by 1)
+                if (
+                    idx1_sorted[i] - idx1_sorted[i - 1] == 1
+                    and idx2_sorted[i] - idx2_sorted[i - 1] == 1
+                ):
+                    current_diag_len += 1
+                else:
+                    if current_diag_len > 1:
+                        diag_lengths.append(current_diag_len)
+                    current_diag_len = 1
+
+                # Check for vertical lines (idx1 increases by 1, idx2 same)
+                if (
+                    idx1_sorted[i] - idx1_sorted[i - 1] == 1
+                    and idx2_sorted[i] == idx2_sorted[i - 1]
+                ):
+                    current_vert_len += 1
+                else:
+                    if current_vert_len > 1:
+                        vert_lengths.append(current_vert_len)
+                    current_vert_len = 1
+            else:
+                if current_diag_len > 1:
+                    diag_lengths.append(current_diag_len)
+                current_diag_len = 1
+                if current_vert_len > 1:
+                    vert_lengths.append(current_vert_len)
+                current_vert_len = 1
+
+        # Append the last lengths if needed
+        if current_diag_len > 1:
+            diag_lengths.append(current_diag_len)
+        if current_vert_len > 1:
+            vert_lengths.append(current_vert_len)
+
+        # Calculate determinism
+        if diag_lengths:
+            det = np.sum(diag_lengths) / np.sum(recurrences)
+        else:
+            det = 0
+
+        # Calculate laminarity
+        if vert_lengths:
+            laminarity = np.sum(vert_lengths) / np.sum(recurrences)
+        else:
+            laminarity = 0
+
+        return {
+            "recurrence_rate": recurrence_rate,
+            "determinism": det,
+            "laminarity": laminarity,
+        }
