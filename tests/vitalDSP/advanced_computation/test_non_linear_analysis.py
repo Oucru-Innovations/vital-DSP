@@ -3,15 +3,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from vitalDSP.advanced_computation.non_linear_analysis import NonlinearAnalysis
 
+
 @pytest.fixture
 def test_signal():
     # Generate a test signal for use in tests
     np.random.seed(42)
     return np.sin(np.linspace(0, 10, 100)) + 0.5 * np.random.normal(size=100)
 
+
 @pytest.fixture
 def nonlinear_analysis(test_signal):
     return NonlinearAnalysis(test_signal)
+
 
 def test_lyapunov_exponent(nonlinear_analysis):
     # Test Lyapunov exponent calculation
@@ -19,6 +22,7 @@ def test_lyapunov_exponent(nonlinear_analysis):
     assert isinstance(lyapunov, float)
     # Ensure the exponent is calculated (it might be positive or negative depending on signal dynamics)
     assert lyapunov != 0
+
 
 def test_lyapunov_exponent_small_signal():
     # Test Lyapunov exponent with a small signal (for robustness)
@@ -28,15 +32,17 @@ def test_lyapunov_exponent_small_signal():
     assert isinstance(lyapunov, float)
     assert lyapunov != 0
 
+
 def test_poincare_plot(nonlinear_analysis, monkeypatch):
     # Test Poincaré plot generation, ensuring the plot is generated
     # Use monkeypatch to prevent the plot from actually being shown during the test
     def mock_show():
         pass
 
-    monkeypatch.setattr(plt, 'show', mock_show)
+    monkeypatch.setattr(plt, "show", mock_show)
     figure = nonlinear_analysis.poincare_plot()
     assert figure is None  # Since Poincaré plot doesn't return a figure, just plots
+
 
 def test_correlation_dimension(nonlinear_analysis):
     # Test correlation dimension calculation
@@ -44,6 +50,7 @@ def test_correlation_dimension(nonlinear_analysis):
     assert isinstance(correlation_dim, float)
     # Ensure correlation dimension is calculated (could be positive or negative depending on signal complexity)
     assert correlation_dim != 0
+
 
 def test_correlation_dimension_large_radius():
     # Test correlation dimension with a larger radius

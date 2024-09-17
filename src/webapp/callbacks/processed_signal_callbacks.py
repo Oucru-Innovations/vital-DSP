@@ -1,4 +1,4 @@
-# src/webapp/callbacks/callback1.py
+# src/webapp/callbacks/processed_signal_callbacks.py
 from dash import Input, Output
 from webapp.app import app
 

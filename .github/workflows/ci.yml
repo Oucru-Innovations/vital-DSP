@@ -33,13 +33,24 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov flake8 pandoc pandas httpx pytest-mock pytest-asyncio
           pip install setuptools wheel twine sphinx coveralls responses
-          pip install dash
+          pip install dash dash[testing]
+          pip install selenium webdriver-manager
+      
+      - name: Install Chrome and ChromeDriver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          sudo apt-get install -y xvfb
 
-      - name: Run Tests
-        run: make test
+      - name: Run Tests and Generate Coverage with Xvfb (for headless browser)
+        run: |
+          Xvfb :99 &  # Start X virtual framebuffer for headless browser testing
+          export DISPLAY=:99  # Set the DISPLAY environment variable to use Xvfb
+          pytest --cov=src/vitalDSP --cov-config=.coveragerc --cov-report=html:cov_html  # Run tests and generate coverage that involve Selenium and Dash
+  
 
-      - name: Generate Coverage Report
-        run: pytest --cov=src/vitalDSP --cov-config=.coveragerc --cov-report=html:cov_html
+      # - name: Generate Coverage Report
+      #   run: pytest --cov=src/vitalDSP --cov-config=.coveragerc --cov-report=html:cov_html
         # run: pytest --cov=src --cov-config=.coveragerc --cov-report=html:cov_html
 
 

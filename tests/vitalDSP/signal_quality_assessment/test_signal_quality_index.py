@@ -57,11 +57,11 @@ def test_scale_sqi_invalid_scale(sqi_instance):
 def test_process_segments_below_threshold(sqi_instance):
     def mock_func(segment):
         return np.mean(segment)
-    
+
     sqi_values, normal_segments, abnormal_segments = sqi_instance._process_segments(
         mock_func, window_size=5, step_size=2, threshold=0.0, threshold_type="below"
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0
@@ -70,21 +70,23 @@ def test_process_segments_below_threshold(sqi_instance):
 def test_process_segments_above_threshold(sqi_instance):
     def mock_func(segment):
         return np.mean(segment)
-    
+
     sqi_values, normal_segments, abnormal_segments = sqi_instance._process_segments(
         mock_func, window_size=5, step_size=2, threshold=0.0, threshold_type="above"
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0
 
 
 def test_amplitude_variability_sqi(sqi_instance):
-    sqi_values, normal_segments, abnormal_segments = sqi_instance.amplitude_variability_sqi(
-        window_size=5, step_size=2, threshold=0.5
+    sqi_values, normal_segments, abnormal_segments = (
+        sqi_instance.amplitude_variability_sqi(
+            window_size=5, step_size=2, threshold=0.5
+        )
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0
@@ -94,7 +96,7 @@ def test_baseline_wander_sqi(sqi_instance):
     sqi_values, normal_segments, abnormal_segments = sqi_instance.baseline_wander_sqi(
         window_size=5, step_size=2, threshold=0.5, moving_avg_window=3
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0
@@ -111,15 +113,22 @@ def test_zero_crossing_sqi():
 
     assert len(sqi_values) > 0  # Ensure SQI values are computed
     assert len(normal_segments) > 0  # Ensure normal segments are found
-    assert len(abnormal_segments) >= 0  # Abnormal segments could be 0 if none are detected
+    assert (
+        len(abnormal_segments) >= 0
+    )  # Abnormal segments could be 0 if none are detected
 
 
 def test_waveform_similarity_sqi(sqi_instance):
     reference_waveform = sqi_instance.signal[:5]
-    sqi_values, normal_segments, abnormal_segments = sqi_instance.waveform_similarity_sqi(
-        window_size=5, step_size=2, reference_waveform=reference_waveform, threshold=0.5
+    sqi_values, normal_segments, abnormal_segments = (
+        sqi_instance.waveform_similarity_sqi(
+            window_size=5,
+            step_size=2,
+            reference_waveform=reference_waveform,
+            threshold=0.5,
+        )
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0
@@ -129,7 +138,7 @@ def test_signal_entropy_sqi(sqi_instance):
     sqi_values, normal_segments, abnormal_segments = sqi_instance.signal_entropy_sqi(
         window_size=5, step_size=2, threshold=0.5
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0
@@ -139,7 +148,7 @@ def test_skewness_sqi(sqi_instance):
     sqi_values, normal_segments, abnormal_segments = sqi_instance.skewness_sqi(
         window_size=5, step_size=2, threshold=0.5
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0
@@ -149,17 +158,19 @@ def test_kurtosis_sqi(sqi_instance):
     sqi_values, normal_segments, abnormal_segments = sqi_instance.kurtosis_sqi(
         window_size=5, step_size=2, threshold=0.5
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0
 
 
 def test_peak_to_peak_amplitude_sqi(sqi_instance):
-    sqi_values, normal_segments, abnormal_segments = sqi_instance.peak_to_peak_amplitude_sqi(
-        window_size=5, step_size=2, threshold=0.5
+    sqi_values, normal_segments, abnormal_segments = (
+        sqi_instance.peak_to_peak_amplitude_sqi(
+            window_size=5, step_size=2, threshold=0.5
+        )
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0
@@ -169,7 +180,7 @@ def test_snr_sqi(sqi_instance):
     sqi_values, normal_segments, abnormal_segments = sqi_instance.snr_sqi(
         window_size=5, step_size=2, threshold=0.5
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0
@@ -179,7 +190,7 @@ def test_energy_sqi(sqi_instance):
     sqi_values, normal_segments, abnormal_segments = sqi_instance.energy_sqi(
         window_size=5, step_size=2, threshold=0.5
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0
@@ -191,17 +202,17 @@ def test_heart_rate_variability_sqi():
     sqi_values, normal_segments, abnormal_segments = sqi.heart_rate_variability_sqi(
         rr_intervals, window_size=3, step_size=1, threshold=0.2
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0
 
 
 def test_ppg_signal_quality_sqi(sqi_instance):
-    sqi_values, normal_segments, abnormal_segments = sqi_instance.ppg_signal_quality_sqi(
-        window_size=5, step_size=2, threshold=0.5
+    sqi_values, normal_segments, abnormal_segments = (
+        sqi_instance.ppg_signal_quality_sqi(window_size=5, step_size=2, threshold=0.5)
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0
@@ -211,17 +222,19 @@ def test_eeg_band_power_sqi(sqi_instance):
     sqi_values, normal_segments, abnormal_segments = sqi_instance.eeg_band_power_sqi(
         sqi_instance.signal, window_size=5, step_size=2, threshold=0.5
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0
 
 
 def test_respiratory_signal_quality_sqi(sqi_instance):
-    sqi_values, normal_segments, abnormal_segments = sqi_instance.respiratory_signal_quality_sqi(
-        window_size=5, step_size=2, threshold=0.5
+    sqi_values, normal_segments, abnormal_segments = (
+        sqi_instance.respiratory_signal_quality_sqi(
+            window_size=5, step_size=2, threshold=0.5
+        )
     )
-    
+
     assert len(sqi_values) > 0
     assert len(normal_segments) > 0
     assert len(abnormal_segments) > 0

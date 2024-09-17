@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from webapp.app import create_fastapi_app, create_dash_app
 from httpx import WSGITransport  # Import WSGITransport for Dash testing
 
+
 @pytest.fixture
 def fastapi_client():
     app = create_fastapi_app()
@@ -23,16 +24,16 @@ def dash_client():
 async def test_dash_homepage(dash_client):
     """
     Test that the Dash app homepage loads successfully.
-    
+
     In CI environments, the request is mocked to avoid real server dependency.
     """
     # Mock response for http://localhost/
     responses.add(
-        responses.GET, "http://localhost/", 
-        body="Vital-DSP Dashboard",
-        status=200
+        responses.GET, "http://localhost/", body="Vital-DSP Dashboard", status=200
     )
 
     response = dash_client.get("http://localhost/")
     assert response.status_code == 200, "Dash homepage should load successfully."
-    assert "Vital-DSP Dashboard" in response.text, "Homepage should contain 'Vital-DSP Dashboard'."
+    assert (
+        "Vital-DSP Dashboard" in response.text
+    ), "Homepage should contain 'Vital-DSP Dashboard'."

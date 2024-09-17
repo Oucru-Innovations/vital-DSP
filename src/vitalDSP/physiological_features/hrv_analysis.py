@@ -117,7 +117,7 @@ class HRVFeatures:
         # Frequency-domain features
         freq_features = FrequencyDomainFeatures(self.nn_intervals, fs=4)
         for feature, method in [
-            ("psd", freq_features.compute_psd),
+            # ("psd", freq_features.compute_psd),
             ("lf_power", freq_features.compute_lf),
             ("hf_power", freq_features.compute_hf),
             ("lf_hf_ratio", freq_features.compute_lf_hf_ratio),
@@ -148,12 +148,7 @@ class HRVFeatures:
             # ("recurrence", nonlinear_features.compute_recurrence_features),
         ]:
             try:
-                if feature == "recurrence":
-                    recurrence_dict = method()
-                    features["recurrence_rate"] = recurrence_dict["recurrence_rate"]
-                    features["determinism"] = recurrence_dict["determinism"]
-                    features["laminarity"] = recurrence_dict["laminarity"]
-                elif feature == "poincare":
+                if feature == "poincare":
                     poincare_sd1, poincare_sd2 = method()
                     features["poincare_sd1"] = poincare_sd1
                     features["poincare_sd2"] = poincare_sd2
@@ -168,9 +163,9 @@ class HRVFeatures:
                 features["sample_entropy"] = nonlinear_features.compute_sample_entropy(
                     **kwargs
                 )
-                features[
-                    "approximate_entropy"
-                ] = nonlinear_features.compute_approximate_entropy(**kwargs)
+                features["approximate_entropy"] = (
+                    nonlinear_features.compute_approximate_entropy(**kwargs)
+                )
                 recurrence_dict = nonlinear_features.compute_recurrence_features(
                     **kwargs
                 )

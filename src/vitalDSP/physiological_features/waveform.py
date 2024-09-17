@@ -320,7 +320,8 @@ class WaveformMorphology:
         # Detect R-peaks in the ECG signal
         peak_detector = PeakDetection(self.waveform, method="ecg_r_peak")
         r_peaks = peak_detector.detect_peaks()
-
+        if len(r_peaks) == 0:
+            return np.nan  # Return NaN if no peaks are detected
         # Detect Q and S points around R peaks
         q_points = []
         s_points = []
@@ -411,20 +412,32 @@ class WaveformMorphology:
         peak_detector = PeakDetection(self.waveform, method="ppg_first_derivative")
         systolic_peaks = peak_detector.detect_peaks()
 
-        dicrotic_notch_detector = PeakDetection(
-            self.waveform, method="ppg_second_derivative"
-        )
-        dicrotic_notches = dicrotic_notch_detector.detect_peaks()
+        # dicrotic_notch_detector = PeakDetection(
+        #     self.waveform, method="ppg_second_derivative"
+        # )
+        # dicrotic_notches = dicrotic_notch_detector.detect_peaks()
+        dicrotic_notches = self.detect_notches()  # Expecting this to be mocked
 
         # Compute the time difference between systolic peak and dicrotic notch
         notch_timing = 0.0
+        # for peak, notch in zip(systolic_peaks, dicrotic_notches):
+        #     if notch > peak:
+        #         notch_timing += (
+        #             (notch - peak) * 1000 / self.fs
+        #         )  # Convert to milliseconds
+
+        # return notch_timing / len(systolic_peaks) if len(systolic_peaks) > 0 else 0.0
+
+        valid_pairs = 0
+
         for peak, notch in zip(systolic_peaks, dicrotic_notches):
             if notch > peak:
                 notch_timing += (
                     (notch - peak) * 1000 / self.fs
                 )  # Convert to milliseconds
+                valid_pairs += 1
 
-        return notch_timing / len(systolic_peaks) if len(systolic_peaks) > 0 else 0.0
+        return notch_timing / valid_pairs if valid_pairs > 0 else 0.0
 
     def compute_wave_ratio(self, peaks, notch_points):
         """

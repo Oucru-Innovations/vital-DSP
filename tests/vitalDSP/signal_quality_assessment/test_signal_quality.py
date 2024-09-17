@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 from vitalDSP.signal_quality_assessment.signal_quality import SignalQuality
 
+
 def test_signalquality_initialization():
     # Test initializing with numpy arrays
     signal = np.array([1, 2, 3, 4, 5])
@@ -21,6 +22,7 @@ def test_signalquality_initialization():
     sq = SignalQuality(signal)
     assert sq.processed_signal is None
 
+
 def test_snr():
     signal = np.array([1, 2, 3, 4, 5])
     noise = np.array([0.1, 0.1, 0.1, 0.1, 0.1])
@@ -28,14 +30,17 @@ def test_snr():
     sq = SignalQuality(signal, processed_signal)
 
     snr_value = sq.snr()
-    
+
     # Adjust the expected value based on correct calculation
     assert snr_value == pytest.approx(30.4139, 0.001)
 
     # Test error when processed_signal is not provided
     sq_no_processed = SignalQuality(signal)
-    with pytest.raises(ValueError, match="Processed signal is required to compute SNR."):
+    with pytest.raises(
+        ValueError, match="Processed signal is required to compute SNR."
+    ):
         sq_no_processed.snr()
+
 
 def test_psnr():
     signal = np.array([1, 2, 3, 4, 5])
@@ -50,8 +55,11 @@ def test_psnr():
 
     # Test error when processed_signal is not provided
     sq_no_processed = SignalQuality(signal)
-    with pytest.raises(ValueError, match="Processed signal is required to compute PSNR."):
+    with pytest.raises(
+        ValueError, match="Processed signal is required to compute PSNR."
+    ):
         sq_no_processed.psnr()
+
 
 def test_mse():
     signal = np.array([1, 2, 3, 4, 5])
@@ -64,8 +72,11 @@ def test_mse():
 
     # Test error when processed_signal is not provided
     sq_no_processed = SignalQuality(signal)
-    with pytest.raises(ValueError, match="Processed signal is required to compute MSE."):
+    with pytest.raises(
+        ValueError, match="Processed signal is required to compute MSE."
+    ):
         sq_no_processed.mse()
+
 
 def test_snr_of_noise():
     signal = np.array([1, 2, 3, 4, 5])

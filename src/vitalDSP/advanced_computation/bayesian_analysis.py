@@ -62,9 +62,7 @@ class GaussianProcess:
             The kernel matrix computed between X1 and X2.
         """
         sqdist = (
-            np.sum(X1**2, 1).reshape(-1, 1)
-            + np.sum(X2**2, 1)
-            - 2 * np.dot(X1, X2.T)
+            np.sum(X1**2, 1).reshape(-1, 1) + np.sum(X2**2, 1) - 2 * np.dot(X1, X2.T)
         )
         return np.exp(-0.5 / self.length_scale**2 * sqdist)
 

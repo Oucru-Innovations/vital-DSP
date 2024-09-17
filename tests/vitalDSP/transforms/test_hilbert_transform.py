@@ -4,6 +4,7 @@ from numpy.testing import assert_almost_equal
 from scipy.signal import hilbert
 from vitalDSP.transforms.hilbert_transform import HilbertTransform
 
+
 class TestHilbertTransform:
 
     def test_hilbert_transform(self):
@@ -53,5 +54,6 @@ class TestHilbertTransform:
 
         # Assert that the result is close to the expected value
         assert_almost_equal(phase, expected_phase, decimal=5)
+
 
 # To run the tests, simply execute: pytest test_hilbert_transform.py

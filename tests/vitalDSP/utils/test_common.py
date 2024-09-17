@@ -1,6 +1,16 @@
 import pytest
 import numpy as np
-from vitalDSP.utils.common import argrelextrema, find_peaks, filtfilt, pearsonr, coherence, grangercausalitytests, ecg_detect_peaks, dtw_distance_windowed
+from vitalDSP.utils.common import (
+    argrelextrema,
+    find_peaks,
+    filtfilt,
+    pearsonr,
+    coherence,
+    grangercausalitytests,
+    ecg_detect_peaks,
+    dtw_distance_windowed,
+)
+
 
 # Test for argrelextrema
 def test_argrelextrema_maxima():
@@ -8,15 +18,18 @@ def test_argrelextrema_maxima():
     maxima = argrelextrema(signal, comparator=np.greater, order=1)
     assert np.array_equal(maxima, np.array([1, 3, 5]))
 
+
 def test_argrelextrema_minima():
     signal = np.array([1, 3, 2, 4, 3, 5, 4])
     minima = argrelextrema(signal, comparator=np.less, order=1)
     assert np.array_equal(minima, np.array([2, 4]))
 
+
 def test_argrelextrema_order_too_small():
     signal = np.array([1, 3])
     with pytest.raises(ValueError):
         argrelextrema(signal, comparator=np.greater, order=1)
+
 
 # Test for find_peaks
 def test_find_peaks():
@@ -24,10 +37,12 @@ def test_find_peaks():
     peaks = find_peaks(signal, height=1)
     assert np.array_equal(peaks, np.array([1, 3, 5]))
 
+
 def test_find_peaks_with_distance():
     signal = np.array([0, 0, 0, 1, 2, 0, 2, 0, 0, 0])
     peaks = find_peaks(signal, distance=2)
     assert np.array_equal(peaks, np.array([4, 6]))
+
 
 # Test for filtfilt
 def test_filtfilt():
@@ -39,18 +54,23 @@ def test_filtfilt():
     expected_output = np.convolve(expected_output[::-1], b, mode="same")[::-1]
     assert np.allclose(filtered_signal, expected_output)
 
+
 # Test for pearsonr
 def test_pearsonr():
     x = np.array([1, 2, 3, 4])
     y = np.array([1, 2, 3, 5])
     corr = pearsonr(x, y)
-    assert 0.9819 <= corr <= 0.9829, f"Expected in range [0.9819, 0.9829], but got {corr}"
+    assert (
+        0.9819 <= corr <= 0.9829
+    ), f"Expected in range [0.9819, 0.9829], but got {corr}"
+
 
 def test_pearsonr_different_length():
     x = np.array([1, 2, 3])
     y = np.array([1, 2])
     with pytest.raises(ValueError):
         pearsonr(x, y)
+
 
 # Test for coherence
 def test_coherence():
@@ -60,6 +80,7 @@ def test_coherence():
     assert freqs.shape[0] > 0
     assert coh.shape[0] > 0
 
+
 # Test for grangercausalitytests
 def test_grangercausalitytests():
     data = np.random.rand(100, 2)
@@ -67,13 +88,15 @@ def test_grangercausalitytests():
     assert isinstance(results, dict)
     assert len(results) == 4  # Should have 4 lags
 
+
 # Test for ecg_detect_peaks
 def test_ecg_detect_peaks():
     X = np.random.rand(100, 3)
-    thetap = np.array([0, np.pi/2, np.pi, 3*np.pi/2])
+    thetap = np.array([0, np.pi / 2, np.pi, 3 * np.pi / 2])
     sfecg = 500
     ind = ecg_detect_peaks(X, thetap, sfecg)
     assert len(ind) == 100
+
 
 # Test for dtw_distance_windowed
 def test_dtw_distance_windowed():
@@ -82,11 +105,9 @@ def test_dtw_distance_windowed():
     distance = dtw_distance_windowed(x, y, window=2)
     assert distance >= 0
 
+
 def test_dtw_distance_windowed_exact():
     x = np.array([1, 2, 3, 4, 5])
     y = np.array([1, 2, 3, 4, 5])
     distance = dtw_distance_windowed(x, y)
     assert np.isclose(distance, 0)
-
-if __name__ == "__main__":
-    pytest.main()

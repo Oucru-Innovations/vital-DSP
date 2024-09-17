@@ -179,23 +179,45 @@ def jade_ica(signals, max_iter=1000, tol=1e-5):
 
     Examples
     --------
-    >>> signals = np.array([[1, 2, 3], [4, 5, 6]])
+    >>> # Input must be square matrix
+    >>> signals = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
     >>> separated_signals = jade_ica(signals)
     >>> print(separated_signals)
     """
     signals = np.atleast_2d(signals)
 
+    # Ensure there are at least two signals
+    if signals.shape[0] < 2:
+        raise ValueError("Input must contain at least two signals for JADE.")
+
     def jade(signals):
+        # Whiten the signals
         whitened_signals, _ = whiten_signal(signals)
+
+        # Compute the covariance matrix (ensure it's square)
         cov_matrix = np.cov(whitened_signals, rowvar=False)
 
+        if cov_matrix.shape[0] != cov_matrix.shape[1]:
+            raise ValueError("Covariance matrix must be square for JADE.")
+
+        # Perform eigenvalue decomposition
         eigenvalues, eigenvectors = np.linalg.eigh(cov_matrix)
 
-        # Fixing the dimensionality of B matrix to match whitened signals
+        # Avoid numerical issues by ensuring all eigenvalues are positive
+        eigenvalues = np.where(eigenvalues <= 0, 1e-10, eigenvalues)
+
+        # Fix dimensionality of B matrix to match whitened signals
         B = np.dot(eigenvectors, np.diag(np.sqrt(eigenvalues)))
+
         U = np.dot(B.T, whitened_signals.T).T
+
+        # Ensure U is square before inverting
+        if U.shape[0] != U.shape[1]:
+            raise ValueError("Matrix U must be square to perform inversion.")
 
         return np.dot(np.linalg.inv(U), whitened_signals)
 
+    # Call the internal JADE algorithm
     separated_signals = jade(signals)
+
     return separated_signals

@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from scipy.signal import welch
-from vitalDSP.physiological_features.frequency_domain import FrequencyDomainFeatures 
+from vitalDSP.physiological_features.frequency_domain import FrequencyDomainFeatures
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ def test_initialization(fdf_instance, nn_intervals):
 
 def test_compute_psd(fdf_instance):
     """Test compute_psd method to ensure it returns LF and HF power correctly."""
-    ulf, vlf,lf, hf = fdf_instance.compute_psd()
+    ulf, vlf, lf, hf = fdf_instance.compute_psd()
     assert isinstance(lf, float), "LF power should be a float"
     assert isinstance(hf, float), "HF power should be a float"
     assert lf >= 0, "LF power should be non-negative"
@@ -75,7 +75,7 @@ def test_sampling_frequency_effect():
     """Test if changing the sampling frequency affects the LF and HF power."""
     # Generate a synthetic signal with a sinusoidal component in both LF and HF bands
     np.random.seed(42)
-    
+
     # Create nn_intervals with a mix of LF (0.1 Hz) and HF (0.3 Hz) components
     time = np.arange(0, 10, 0.25)  # 4 Hz sampling
     signal_4hz = 800 + 100 * np.sin(2 * np.pi * 0.1 * time)  # LF component
@@ -95,4 +95,6 @@ def test_sampling_frequency_effect():
 
     # Ensure that the power changes with different sampling frequencies
     # assert lf_10hz != lf_4hz, "LF power should change with different sampling frequencies"
-    assert hf_10hz != hf_4hz, "HF power should change with different sampling frequencies"
+    assert (
+        hf_10hz != hf_4hz
+    ), "HF power should change with different sampling frequencies"

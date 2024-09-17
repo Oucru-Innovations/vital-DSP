@@ -3,6 +3,7 @@ import numpy as np
 from vitalDSP.transforms.wavelet_transform import WaveletTransform
 from vitalDSP.physiological_features.envelope_detection import EnvelopeDetection
 
+
 # Mocking the WaveletTransform to avoid dependency during tests
 class MockWaveletTransform:
     def __init__(self, signal, wavelet_name="db"):
@@ -23,7 +24,11 @@ def sample_signal():
 @pytest.fixture
 def envelope_detector(sample_signal, monkeypatch):
     # Replace the actual WaveletTransform with a mock to avoid unnecessary dependencies
-    monkeypatch.setattr(WaveletTransform, "perform_wavelet_transform", MockWaveletTransform.perform_wavelet_transform)
+    monkeypatch.setattr(
+        WaveletTransform,
+        "perform_wavelet_transform",
+        MockWaveletTransform.perform_wavelet_transform,
+    )
     return EnvelopeDetection(sample_signal)
 
 
@@ -63,7 +68,7 @@ def test_wavelet_envelope(envelope_detector):
     # Test wavelet_envelope method with a signal length divisible by the wavelet level
     signal_length = len(envelope_detector.signal)
     envelope = envelope_detector.wavelet_envelope(wavelet_name="db", level=1)
-    
+
     # Assert that the length of the envelope matches the signal length after repeating
     assert isinstance(envelope, np.ndarray)
     assert len(envelope) == signal_length

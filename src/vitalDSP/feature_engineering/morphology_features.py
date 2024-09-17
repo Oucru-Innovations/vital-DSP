@@ -366,7 +366,7 @@ class PhysiologicalFeatureExtractor:
                 #     for i in range(len(r_peaks))
                 #     if s_points[i] > q_points[i]
                 # ]
-                qrs_durations = morphology.compute_qrs_duration(r_peaks)
+                qrs_durations = morphology.compute_qrs_duration()
 
                 qrs_duration = np.mean(qrs_durations) if qrs_durations else 0.0
 
@@ -417,11 +417,15 @@ class PhysiologicalFeatureExtractor:
                     t_end = min(
                         len(clean_signal), s_point + int(self.fs * 0.3)
                     )  # 300 ms after S point
-                    t_segment = clean_signal[t_start:t_end]
-                    if len(t_segment) > 0:
-                        # Compute area under the T-wave segment
-                        area = np.trapz(t_segment)
-                        t_wave_areas.append(area)
+
+                    # Ensure valid segment
+                    if t_start < t_end and len(clean_signal[t_start:t_end]) > 0:
+                        t_segment = clean_signal[t_start:t_end]
+                        if len(t_segment) > 0:
+                            # Compute area under the T-wave segment
+                            area = np.trapz(t_segment)
+                            t_wave_areas.append(area)
+
                 t_wave_area = np.mean(t_wave_areas) if t_wave_areas else 0.0
 
                 # Compute signal skewness
