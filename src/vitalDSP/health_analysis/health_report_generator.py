@@ -1,7 +1,9 @@
 from vitalDSP.health_analysis.interpretation_engine import InterpretationEngine
 from vitalDSP.health_analysis.health_report_visualization import HealthReportVisualizer
 from vitalDSP.health_analysis.html_template import render_report
+
 # from vitalDSP.health_analysis.file_io import FileIO
+import numpy as np
 
 
 class HealthReportGenerator:
@@ -40,7 +42,7 @@ class HealthReportGenerator:
         self.interpreter = InterpretationEngine(feature_config_path)
         self.visualizer = HealthReportVisualizer(self.interpreter.config)
 
-    def generate(self, filter_status="all"):
+    def generate(self, filter_status="all", output_dir=None):
         """
         Generates the complete health report by interpreting the features, generating visualizations, and rendering an HTML report.
 
@@ -57,41 +59,51 @@ class HealthReportGenerator:
             >>> with open('health_report.html', 'w') as file:
             >>>     file.write(report_html)
         """
-        report_content = {}
+        # report_content = {}
+        segment_values = {}  # To store segmented interpretations
 
         # Step 1: Interpret each feature with the loaded configuration
-        for feature_name, value in self.feature_data.items():
-            # Interpret each feature and get its range status
+        for feature_name, values in self.feature_data.items():
+            # Calculate the mean of the feature's values
+            mean_value = sum(values) / len(values)
+
+            # Interpret based on the mean value
             interpretation = self.interpreter.interpret_feature(
-                feature_name, value, self.segment_duration
+                feature_name, mean_value, self.segment_duration
             )
             range_status = self.interpreter.get_range_status(
-                feature_name, value, self.segment_duration
+                feature_name, mean_value, self.segment_duration
             )
 
             # Skip features not matching the filter status
             if filter_status != "all" and range_status != filter_status:
                 continue
 
-            # Add interpretation details and range status for each feature
-            report_content[feature_name] = {
+            median_value = np.median(values)
+            stddev_value = np.std(values)
+            # Store aggregated information
+            segment_values[feature_name] = {
                 "description": interpretation["description"],
-                "value": value,
+                "value": values,  # Store the list of values for the feature
+                "median": median_value,  # Median value
+                "stddev": stddev_value,  # Standard deviation
                 "interpretation": interpretation["interpretation"],
                 "normal_range": interpretation["normal_range"],
                 "contradiction": interpretation.get("contradiction", None),
                 "correlation": interpretation.get("correlation", None),
-                "range_status": range_status,
+                "range_status": range_status,  # Based on the mean value
             }
 
-        # Step 2: Generate visualizations for all features
-        visualizations = self.visualizer.create_visualizations(self.feature_data)
+        # Step 2: Generate visualizations for all features (pass all segments of data)
+        visualizations = self.visualizer.create_visualizations(
+            self.feature_data, output_dir=output_dir
+        )
 
         # Step 3: Provide all visualizations for each feature
         selected_visualizations = visualizations
 
         # Step 4: Render the report
-        report_html = render_report(report_content, selected_visualizations)
+        report_html = render_report(segment_values, selected_visualizations)
 
         return report_html
 
@@ -152,64 +164,107 @@ class HealthReportGenerator:
         return feature_report
 
 
-# if __name__ == "__main__":
-    # # Example feature data for a 1-minute segment
-    # feature_data = {
-    #     "sdnn": 35.0,
-    #     "rmssd": 45.0,
-    #     "nn50": 30,
-    #     "pnn50": 28.5,
-    #     "mean_nn": 750.0,
-    #     "median_nn": 745.0,
-    #     "iqr_nn": 60.0,
-    #     "std_nn": 25.0,
-    #     "pnn20": 40.0,
-    #     "cvnn": 0.12,
-    #     "hrv_triangular_index": 5.5,
-    #     "tinn": 40.0,
-    #     "sdsd": 35.0,
-    #     "lf_power": 800.0,
-    #     "hf_power": 600.0,
-    #     "lf_hf_ratio": 1.33,
-    #     "ulf_power": 200.0,
-    #     "vlf_power": 300.0,
-    #     "total_power": 1600.0,
-    #     "lfnu_power": 45.0,
-    #     "hfnu_power": 35.0,
-    #     "fractal_dimension": 1.25,
-    #     # "lyapunov_exponent": 0.85,
-    #     "dfa": 1.2,
-    #     "poincare_sd1": 28.5,
-    #     "poincare_sd2": 45.0,
-    #     "sample_entropy": 0.85,
-    #     "approximate_entropy": 0.72,
-    #     "recurrence_rate": 0.65,
-    #     "determinism": 0.78,
-    #     "laminarity": 0.85,
-    #     "systolic_duration": 0.35,
-    #     "diastolic_duration": 0.5,
-    #     "systolic_area": 200.0,
-    #     "diastolic_area": 180.0,
-    #     "systolic_slope": 1.5,
-    #     "diastolic_slope": 1.2,
-    #     "signal_skewness": 0.1,
-    #     "peak_trend_slope": 0.05,
-    #     "systolic_amplitude_variability": 5.0,
-    #     "diastolic_amplitude_variability": 4.8,
-    # }
+if __name__ == "__main__":
+    # Example feature data for a 1-minute segment
+    # Set a random seed for reproducibility
+    np.random.seed(42)
+    duration = 60
+    fs = 100
+    # Generate mock feature data
+    feature_data = {
+        "sdnn": np.random.normal(
+            50, 10, duration
+        ).tolist(),  # Normally distributed around 50 with std dev of 10
+        "rmssd": np.random.normal(
+            30, 8, duration
+        ).tolist(),  # Normally distributed around 30 with std dev of 8
+        "total_power": np.random.normal(
+            1600, 300, duration
+        ).tolist(),  # Normally distributed around 1600 with std dev of 300
+        "lfnu_power": np.random.normal(
+            45, 5, duration
+        ).tolist(),  # Normally distributed around 45 with std dev of 5
+        "hfnu_power": np.random.normal(
+            35, 4, duration
+        ).tolist(),  # Normally distributed around 35 with std dev of 4
+        "fractal_dimension": np.random.normal(
+            1.25, 0.05, duration
+        ).tolist(),  # Normally around 1.25 with std dev of 0.05
+        "dfa": np.random.normal(
+            1.2, 0.08, duration
+        ).tolist(),  # Normally distributed around 1.2 with std dev of 0.08
+        "poincare_sd1": np.random.normal(
+            28.5, 3, duration
+        ).tolist(),  # Normally around 28.5 with std dev of 3
+        "poincare_sd2": np.random.normal(
+            45, 4, duration
+        ).tolist(),  # Normally around 45 with std dev of 4
+        "sample_entropy": np.random.normal(
+            0.85, 0.1, duration
+        ).tolist(),  # Normally around 0.85 with std dev of 0.1
+        "approximate_entropy": np.random.normal(
+            0.72, 0.1, duration
+        ).tolist(),  # Normally around 0.72 with std dev of 0.1
+        "recurrence_rate": np.random.normal(
+            0.65, 0.1, duration
+        ).tolist(),  # Normally around 0.65 with std dev of 0.1
+        "determinism": np.random.normal(
+            0.78, 0.1, duration
+        ).tolist(),  # Normally around 0.78 with std dev of 0.1
+        "laminarity": np.random.normal(
+            0.85, 0.05, duration
+        ).tolist(),  # Normally around 0.85 with std dev of 0.05
+        "systolic_duration": np.random.normal(
+            0.35, 0.05, duration
+        ).tolist(),  # Normally around 0.35 with std dev of 0.05
+        "diastolic_duration": np.random.normal(
+            0.5, 0.05, duration
+        ).tolist(),  # Normally around 0.5 with std dev of 0.05
+        "systolic_area": np.random.normal(
+            200, 20, duration
+        ).tolist(),  # Normally around 200 with std dev of 20
+        "diastolic_area": np.random.normal(
+            180, 20, duration
+        ).tolist(),  # Normally around 180 with std dev of 20
+        "systolic_slope": np.random.normal(
+            1.5, 0.1, duration
+        ).tolist(),  # Normally around 1.5 with std dev of 0.1
+        "diastolic_slope": np.random.normal(
+            1.2, 0.1, duration
+        ).tolist(),  # Normally around 1.2 with std dev of 0.1
+        "signal_skewness": np.random.normal(
+            0.1, 0.02, duration
+        ).tolist(),  # Normally around 0.1 with std dev of 0.02
+        "peak_trend_slope": np.random.normal(
+            0.05, 0.01, duration
+        ).tolist(),  # Normally around 0.05 with std dev of 0.01
+        "systolic_amplitude_variability": np.random.normal(
+            5.0, 0.5, duration
+        ).tolist(),  # Normally around 5.0 with std dev of 0.5
+        "diastolic_amplitude_variability": np.random.normal(
+            4.8, 0.5, duration
+        ).tolist(),  # Normally around 4.8 with std dev of 0.5
+        # "respiratory_rate": np.random.normal(16, 3, duration).tolist(),  # Normally around 16 breaths/min with std dev of 3
+        # "pulse_pressure": np.random.normal(40, 5, duration).tolist(),  # Normally around 40 mmHg with std dev of 5
+        # "stroke_volume": np.random.normal(70, 10, duration).tolist(),  # Normally around 70 mL with std dev of 10
+        # "cardiac_output": np.random.normal(5.5, 0.7, duration).tolist(),  # Normally around 5.5 L/min with std dev of 0.7
+        # "qt_interval": np.random.normal(400, 20, duration).tolist(),  # Normally around 400 ms with std dev of 20
+        # "qrs_duration": np.random.normal(90, 10, duration).tolist(),  # Normally around 90 ms with std dev of 10
+        # "p_wave_duration": np.random.normal(100, 10, duration).tolist(),  # Normally around 100 ms with std dev of 10
+        # "pr_interval": np.random.normal(160, 20, duration).tolist(),  # Normally around 160 ms with std dev of 20
+    }
 
-    # # Initialize the health report generator
-    # report_generator = HealthReportGenerator(
-    #     feature_data=feature_data, segment_duration="1_min"
-    # )
+    # Example output to check the data format
+    # print(feature_data)
 
-    # # Generate the report (HTML)
-    # report_html = report_generator.generate()
+    # Initialize the health report generator
+    report_generator = HealthReportGenerator(
+        feature_data=feature_data, segment_duration="1_min"
+    )
 
-    # # Save or display the report HTML
-    # with open("health_analysis_report.html", "w") as report_file:
-    #     report_file.write(report_html)
+    # Generate the report (HTML)
+    report_html = report_generator.generate()
 
-    # print(
-    #     "Health report has been generated and saved as 'health_analysis_report.html'."
-    # )
+    # Write the HTML content to a file
+    with open("report.html", "w", encoding="utf-8") as file:
+        file.write(report_html)

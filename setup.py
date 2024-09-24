@@ -16,7 +16,7 @@ class PostInstallCommand(install):
 
 setup(
     name='vitalDSP', 
-    version='0.1.1rc18',  
+    version='0.1.1rc19',  
     author='van-koha',  
     author_email='vital.data@oucru.org', 
     description='A comprehensive toolkit for Digital Signal Processing in healthcare applications.',
@@ -43,6 +43,7 @@ setup(
         'scipy>=1.5.2',
         'plotly>=4.14.3',
         'scikit-learn>=0.23.2',
+        'statsmodels',
         'dash>=2.0.0',  # Updated to include Dash
         'fastapi>=0.68.0',  # Include FastAPI for APIs
         'uvicorn>=0.15.0'   # Uvicorn for serving FastAPI
