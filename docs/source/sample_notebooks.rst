@@ -8,6 +8,7 @@ This section contains various Jupyter Notebooks that demonstrate the usage of Vi
    :caption: Notebooks:
    :titlesonly:
 
+   notebooks/health_report_analysis.ipynb
    notebooks/synthesize_data.ipynb
    notebooks/signal_filtering.ipynb
    notebooks/advanced_filtering.ipynb

@@ -11,6 +11,9 @@ __pycache__/
 
 # Notes
 Features.txt
+markdowns/
+visualizations/
+health_analysis_report.html
 
 # Distribution / packaging
 .Python

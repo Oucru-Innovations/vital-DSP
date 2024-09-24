@@ -7,3 +7,5 @@ dash>=2.0.0
 fastapi>=0.68.0
 uvicorn>=0.15.0
 dash-bootstrap-components
+jinja2
+seaborn
