@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 from vitalDSP.health_analysis.interpretation_engine import InterpretationEngine
 
 # Sample YAML configuration for testing purposes
@@ -125,3 +125,96 @@ def test_interpret_feature_unknown_feature(engine_with_mocked_config):
         "Feature 'unknown_feature' not found in configuration."
         in interpretation["description"]
     )
+
+# Update Test Cases
+# Sample YAML data for testing
+sample_yaml = """
+NN50:
+  normal_range:
+    "1 min": [40, 150]
+    "5 min": [30, 100]
+  interpretation:
+    in_range: "Normal parasympathetic activity."
+    below_range: "Low parasympathetic activity."
+    above_range: "High parasympathetic activity."
+  description: "Number of significant changes in heart rate."
+  contradiction: "Low NN50 contradicts high RMSSD."
+  correlation: "Positively correlated with RMSSD."
+"""
+
+def test_load_yaml_success():
+    # Test the _load_yaml function success case
+    engine = InterpretationEngine()
+    with patch("builtins.open", mock_open(read_data=sample_yaml)):
+        data = engine._load_yaml("fake_path.yaml")
+        assert "NN50" in data
+        assert data["NN50"]["normal_range"]["1 min"] == [40, 150]
+
+def test_load_yaml_file_not_found():
+    # Test _load_yaml when the file is not found
+    engine = InterpretationEngine()
+    with pytest.raises(FileNotFoundError, match="YAML file not found: missing.yaml"):
+        engine._load_yaml("missing.yaml")
+
+def test_load_yaml_parse_error():
+    # Test _load_yaml when the YAML parsing fails
+    engine = InterpretationEngine()
+    malformed_yaml = "bad_yaml: [this is : not correct"
+    with patch("builtins.open", mock_open(read_data=malformed_yaml)):
+        with pytest.raises(Exception, match="Error parsing YAML file"):
+            engine._load_yaml("fake_path.yaml")
+
+def test_init_custom_yaml():
+    # Test __init__ when providing a custom YAML file
+    with patch("builtins.open", mock_open(read_data=sample_yaml)):
+        engine = InterpretationEngine("fake_path.yaml")
+        assert "NN50" in engine.config
+
+def test_load_feature_config_raises_exception():
+    # Mocking the open_text function to raise an Exception
+    with patch("importlib.resources.open_text", side_effect=Exception("Test error")):
+        with pytest.raises(FileNotFoundError, match="Error loading feature_config.yml: Test error"):
+            engine = InterpretationEngine()
+
+def test_get_range_status_no_normal_range():
+    # Test get_range_status when no normal range is available
+    engine = InterpretationEngine()
+    engine.config = {
+        "NN50": {
+            "normal_range": {
+                "5 min": [30, 100]  # Only has "5 min", not "1 min"
+            }
+        }
+    }
+    assert engine.get_range_status("NN50", 50) == "unknown"
+
+def test_get_range_status_inf_handling():
+    # Test get_range_status with '-inf' and 'inf' in normal range
+    engine = InterpretationEngine()
+    engine.config = {
+        "NN50": {
+            "normal_range": {
+                "1 min": ["-inf", "inf"]
+            }
+        }
+    }
+    status = engine.get_range_status("NN50", 50)
+    assert status == "in_range"  # Since the value is within -inf to inf
+
+def test_interpret_feature_no_normal_range():
+    # Test interpret_feature when no normal range is available
+    engine = InterpretationEngine()
+    engine.config = {
+        "NN50": {
+            "normal_range": {}
+        }
+    }
+    result = engine.interpret_feature("NN50", 50)
+    assert result == {"normal_range": "Normal range for 'NN50' not available."}
+
+def test_parse_inf_values():
+    # Test _parse_inf_values for handling '-inf'
+    engine = InterpretationEngine()
+    assert engine._parse_inf_values("-inf") == -np.inf
+    assert engine._parse_inf_values("inf") == np.inf
+    assert engine._parse_inf_values(100) == 100

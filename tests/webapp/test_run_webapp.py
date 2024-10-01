@@ -11,7 +11,7 @@ async def test_uvicorn_server():
     """
     # Run the Uvicorn server as a subprocess
     process = subprocess.Popen(
-        ["uvicorn", "webapp.run_webapp:fastapi_app", "--port", "8000", "--reload"],
+        ["uvicorn", "vitalDSP_webapp.run_webapp:fastapi_app", "--port", "8000", "--reload"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )

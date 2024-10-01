@@ -69,6 +69,9 @@ coverage.xml
 
 # Sample data
 sample_data/private
+sample_data/analysis
+sample_data/Event_Data
+
 
 # Notebook
 # src/notebooks/
@@ -100,6 +103,9 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 *.lnk
+
+docs/source/_static/_images/
+docs/source/notebooks/docs/_static/_images/*
 
 # Logs and databases
 *.log

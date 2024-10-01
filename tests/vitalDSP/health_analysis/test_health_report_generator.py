@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 from vitalDSP.health_analysis.health_report_generator import HealthReportGenerator
 import matplotlib
+from unittest.mock import patch, MagicMock
 
 # Use Agg backend to prevent issues with Tkinter in testing environments
 matplotlib.use("Agg")
@@ -90,6 +91,34 @@ def report_generator(sample_feature_data):
     )
 
 
+# Mocking the required components for HealthReportGenerator
+@pytest.fixture
+def mock_interpreter():
+    interpreter = MagicMock()
+    interpreter.interpret_feature.return_value = {
+        "description": "Mock description",
+        "interpretation": "Mock interpretation",
+        "normal_range": [10, 100],
+        "contradiction": "Mock contradiction",
+        "correlation": "Mock correlation",
+    }
+    interpreter.get_range_status.return_value = "in_range"
+    return interpreter
+
+@pytest.fixture
+def mock_visualizer():
+    visualizer = MagicMock()
+    visualizer.create_visualizations.return_value = {}
+    return visualizer
+
+@pytest.fixture
+def generator(mock_interpreter, mock_visualizer):
+    feature_data = {"nn50": [45, 55, np.nan, np.inf], "rmssd": [60, 70, 80]}
+    with patch("vitalDSP.health_analysis.health_report_generator.InterpretationEngine", return_value=mock_interpreter), \
+        patch("vitalDSP.health_analysis.health_report_generator.HealthReportVisualizer", return_value=mock_visualizer):
+        return HealthReportGenerator(feature_data, segment_duration="1 min")
+
+
 def test_generate_report_html(report_generator):
     """
     Test if the health report is generated as HTML and if the content has expected keys.
@@ -157,3 +186,44 @@ def test_normal_values_handling(report_generator):
     # Check for normal-range values handling
     assert "750.0" in report_html, "Normal-range values should be correctly displayed."
     assert "Normal Range" in report_html, "Report should mention 'Normal Range'."
+
+#-----------------------------------------------------
+# Update test cases
+
+def test_generate_filter_status_skip(generator):
+    # Modify the range status to simulate mismatch with filter_status
+    generator.interpreter.get_range_status.return_value = "out_of_range"
+    
+    # Call generate with filter_status different from range_status
+    report_html = generator.generate(filter_status="in_range")
+    
+    # Ensure nn50 is skipped due to filter status mismatch
+    assert "nn50" not in report_html
+
+def test_generate_feature_processing_exception(generator):
+    # Mock interpreter to raise an exception when interpreting nn50
+    generator.interpreter.interpret_feature.side_effect = Exception("Mock Error")
+    
+    # Ensure it logs the error but continues with other features
+    with patch.object(generator.logger, 'error') as mock_log_error:
+        generator.generate()
+        mock_log_error.assert_called_with("Error processing rmssd: Mock Error")
+
+def test_generate_process_interpretations_exception(generator):
+    # Mock process_interpretations to raise an exception
+    with patch("vitalDSP.health_analysis.health_report_generator.process_interpretations", side_effect=Exception("Mock Error")), \
+        patch.object(generator.logger, 'error') as mock_log_error:
+        generator.generate()
+        mock_log_error.assert_called_with("Error in processing feature interpretations: Mock Error")
+
+def test_generate_feature_report(generator):
+    # Call _generate_feature_report for nn50 with mock data
+    feature_report = generator._generate_feature_report("nn50", 45)
+
+    # Ensure the report has the expected keys and values
+    assert feature_report["description"] == "Mock description"
+    assert feature_report["value"] == 45
+    assert feature_report["interpretation"] == "Mock interpretation"
+    assert feature_report["normal_range"] == [10, 100]
+    assert feature_report["contradiction"] == "Mock contradiction"
+    assert feature_report["correlation"] == "Mock correlation"

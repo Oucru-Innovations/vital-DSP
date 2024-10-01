@@ -233,6 +233,29 @@ pnn20:
         strong: 0.1
         slight: 0.2
 
+pnn_20:
+  normal_range:
+    1_min: [20, 50]
+    5_min: [25, 60]
+  description: "pNN20 measures the percentage of successive NN intervals that differ by more than 20 ms. It is a more sensitive marker of short-term heart rate variability than pNN50, reflecting parasympathetic activity."
+  interpretation:
+    in_range: "Normal pNN20 indicates healthy short-term heart rate variability and strong parasympathetic regulation."
+    below_range: "Low pNN20 suggests reduced short-term heart rate variability, commonly due to autonomic dysfunction or stress."
+    above_range: "High pNN20 suggests enhanced parasympathetic activity, often seen during recovery or relaxation."
+  contradiction:
+    rmssd: "Low pNN20 contradicts high RMSSD, as both should reflect similar short-term variability."
+  correlation:
+    rmssd: "Correlated with RMSSD and HF power, reflecting parasympathetic regulation."
+  thresholds:
+    contradiction:
+      rmssd:
+        strong: 0.25
+        slight: 0.1
+    correlation:
+      rmssd:
+        strong: 0.1
+        slight: 0.2
+
 cvnn:
   normal_range:
     1_min: [0.05, 0.15]
@@ -380,6 +403,37 @@ hf_power:
         slight: 0.1
     correlation:
       pnn50:
+        strong: 0.1
+        slight: 0.2
+
+lyapunov_exponent:
+  normal_range:
+    1_min: [-0.5, 0.5]
+    5_min: [-0.3, 0.3]
+  description: "Lyapunov Exponent measures the rate of separation of infinitesimally close trajectories, indicating the presence of chaos in the system. Positive values suggest chaotic dynamics, while negative values suggest stability."
+  interpretation:
+    in_range: "Lyapunov Exponent is within the normal range, indicating a stable system."
+    below_range: "Negative Lyapunov Exponent suggests stability and predictability in the system."
+    above_range: "Positive Lyapunov Exponent indicates chaotic behavior, suggesting instability."
+  contradiction:
+    heart_rate_variability: "High Lyapunov Exponent contradicts high heart rate variability, as both should reflect system stability."
+    fractal_dimension: "High Lyapunov Exponent may contradict a low fractal dimension, suggesting inconsistency in the system's complexity."
+  correlation:
+    total_power: "Lyapunov Exponent may correlate with total power, as both reflect underlying dynamics of the system."
+    sdnn: "Lyapunov Exponent is related to SDNN, indicating the complexity of heart rate dynamics."
+  thresholds:
+    contradiction:
+      heart_rate_variability:
+        strong: 0.3
+        slight: 0.1
+      fractal_dimension:
+        strong: 0.3
+        slight: 0.1
+    correlation:
+      total_power:
+        strong: 0.15
+        slight: 0.25
+      sdnn:
         strong: 0.1
         slight: 0.2
 

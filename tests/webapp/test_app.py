@@ -2,7 +2,7 @@ import pytest
 import httpx
 import responses
 from fastapi.testclient import TestClient
-from webapp.app import create_fastapi_app, create_dash_app
+from vitalDSP_webapp.app import create_fastapi_app, create_dash_app
 from httpx import WSGITransport  # Import WSGITransport for Dash testing
 
 

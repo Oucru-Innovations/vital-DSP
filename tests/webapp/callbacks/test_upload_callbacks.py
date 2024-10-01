@@ -1,7 +1,7 @@
 import pytest
 import base64
 from dash.dependencies import Input, Output, State
-from webapp.callbacks.upload_callbacks import handle_file_upload
+from vitalDSP_webapp.callbacks.upload_callbacks import handle_file_upload
 
 
 # Test file upload callback

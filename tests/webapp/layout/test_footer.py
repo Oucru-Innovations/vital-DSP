@@ -1,5 +1,5 @@
 import pytest
-from webapp.layout.footer import Footer
+from vitalDSP_webapp.layout.footer import Footer
 import dash_bootstrap_components as dbc
 
 

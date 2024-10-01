@@ -306,3 +306,49 @@ def test_compute_recurrence_features_invalid_signal():
     ), "Expected recurrence rate to be 0 for empty signal"
     assert features["determinism"] == 0, "Expected determinism to be 0 for empty signal"
     assert features["laminarity"] == 0, "Expected laminarity to be 0 for empty signal"
+
+
+# Update test cases
+
+def test_compute_sample_entropy_signal_too_short():
+    signal = [1, 2]  # Signal shorter than m + 1 where m = 2
+    nf = NonlinearFeatures(signal)
+    result = nf.compute_sample_entropy(m=2)
+    assert result == 0, "Expected 0 for signals too short for meaningful entropy"
+
+def test_compute_fractal_dimension_zero_division():
+    signal = [1, 2, 3, 4]  # Signal smaller than needed for kmax calculation
+    nf = NonlinearFeatures(signal)
+    result = nf.compute_fractal_dimension(kmax=10)
+    assert result == 0, "Expected 0 for signals too short for fractal dimension calculation"
+
+def test_compute_dfa_signal_too_short():
+    signal = [1, 2, 3]  # Less than 4 points in the signal
+    nf = NonlinearFeatures(signal)
+    result = nf.compute_dfa(order=1)
+    assert result == 0, "Expected 0 for signals too short for DFA computation"
+
+def test_compute_dfa_order_greater_than_1():
+    signal = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]  # Enough data points for DFA
+    nf = NonlinearFeatures(signal)
+    result = nf.compute_dfa(order=2)  # Using a higher order polynomial
+    assert isinstance(result, float), "Expected a float result for higher-order DFA"
+
+def test_compute_recurrence_features_diagonal_lines():
+    signal = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    nf = NonlinearFeatures(signal)
+    rqa_features = nf.compute_recurrence_features(threshold=0.5, sample_size=5)
+    assert "determinism" in rqa_features and rqa_features["determinism"] >= 0, "Determinism should be computed"
+
+def test_compute_recurrence_features_vertical_lines():
+    signal = [1, 2, 1, 2, 1, 2, 1, 2, 1, 2]  # Pattern that should generate vertical lines
+    nf = NonlinearFeatures(signal)
+    rqa_features = nf.compute_recurrence_features(threshold=0.5, sample_size=5)
+    assert "laminarity" in rqa_features and rqa_features["laminarity"] >= 0, "Laminarity should be computed"
+
+def test_compute_recurrence_features_determinism_and_laminarity():
+    signal = [1, 1, 1, 1, 1, 1, 1, 1]  # Constant signal
+    nf = NonlinearFeatures(signal)
+    rqa_features = nf.compute_recurrence_features(threshold=0.1, sample_size=10)
+    assert rqa_features["determinism"] == 0, "Expected determinism to be 0 for constant signal"
+    assert rqa_features["laminarity"] == 0, "Expected laminarity to be 0 for constant signal"

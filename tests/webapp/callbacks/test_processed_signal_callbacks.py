@@ -2,7 +2,7 @@ import pytest
 from dash import dcc, html
 from dash.testing.application_runners import import_app
 from selenium import webdriver
-from webapp.app import create_dash_app
+from vitalDSP_webapp.app import create_dash_app
 
 
 # Fixture for setting up the Dash app

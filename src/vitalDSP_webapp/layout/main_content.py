@@ -1,5 +1,5 @@
 from dash import html
-from webapp.layout.upload_section import upload_layout
+from vitalDSP_webapp.layout.upload_section import upload_layout
 
 
 def MainContent():

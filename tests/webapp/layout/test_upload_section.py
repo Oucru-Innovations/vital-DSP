@@ -1,5 +1,5 @@
 import pytest
-from webapp.layout.upload_section import upload_layout
+from vitalDSP_webapp.layout.upload_section import upload_layout
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 

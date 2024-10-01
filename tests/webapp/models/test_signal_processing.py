@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from webapp.models.signal_processing import filter_signal
+from vitalDSP_webapp.models.signal_processing import filter_signal
 
 
 # Test for empty input data

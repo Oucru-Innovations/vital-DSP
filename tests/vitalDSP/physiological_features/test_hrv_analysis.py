@@ -278,3 +278,68 @@ def test_hrv_complex_methods_exception_handling(hrv):
     features = hrv.compute_all_features(include_complex_methods=True)
     assert "sample_entropy" in features
     assert features["sample_entropy"] is not None
+
+# Update Test Cases
+def test_rr_interval_transformation_fails():
+    # Simulate signals and initialize HRVFeatures with rr_intervals being None
+    signals = [1, 2, 3, 4, 5]  # Example signals (short signal that triggers filter error)
+    fs = 100  # Sampling frequency
+    signal_type = "ppg"
+    # Expect the ValueError due to short signal length for the filter
+    with pytest.raises(ValueError, match="Signal too short for the specified filter order."):
+        HRVFeatures(signals=signals, fs=fs, signal_type=signal_type)
+
+def test_rr_interval_transformation_fails_due_to_invalid_rr():
+    signals = [1] * 100  # Longer signals to avoid filter error
+    fs = 100
+    signal_type = "ppg"
+
+    # Mock RRTransformation to return None, simulating a failure in RR extraction
+    with patch('vitalDSP.transforms.beats_transformation.RRTransformation.process_rr_intervals', return_value=None):
+        with pytest.raises(ValueError, match="RR interval transformation failed to extract valid RR intervals"):
+            HRVFeatures(signals=signals, fs=fs, signal_type=signal_type)
+
+def test_time_domain_exception():
+    # Mock TimeDomainFeatures method to raise an exception
+    signals = [1, 2, 3, 4, 5]  # Example signals
+    nn_intervals = [800, 810, 790, 805, 795]  # NN intervals in ms
+
+    hrv = HRVFeatures(signals, nn_intervals)
+
+    with patch('vitalDSP.physiological_features.time_domain.TimeDomainFeatures.compute_sdnn', side_effect=Exception('Test error')):
+        features = hrv.compute_all_features()
+        assert np.isnan(features['sdnn'])  # Assert that the feature is NaN when an exception occurs
+
+def test_frequency_domain_exception():
+    signals = [1, 2, 3, 4, 5]  # Example signals
+    nn_intervals = [800, 810, 790, 805, 795]  # NN intervals in ms
+
+    hrv = HRVFeatures(signals, nn_intervals)
+
+    with patch('vitalDSP.physiological_features.frequency_domain.FrequencyDomainFeatures.compute_lf', side_effect=Exception('Test error')):
+        features = hrv.compute_all_features()
+        assert np.isnan(features['lf_power'])  # Assert that the feature is NaN when an exception occurs
+
+def test_nonlinear_exception():
+    signals = [1, 2, 3, 4, 5]  # Example signals
+    nn_intervals = [800, 810, 790, 805, 795]  # NN intervals in ms
+
+    hrv = HRVFeatures(signals, nn_intervals)
+
+    with patch('vitalDSP.physiological_features.nonlinear.NonlinearFeatures.compute_fractal_dimension', side_effect=Exception('Test error')):
+        features = hrv.compute_all_features()
+        assert np.isnan(features['fractal_dimension'])  # Assert that the feature is NaN when an exception occurs
+        
+def test_complex_feature_exception():
+    signals = [1, 2, 3, 4, 5]  # Example signals
+    nn_intervals = [800, 810, 790, 805, 795]  # NN intervals in ms
+
+    hrv = HRVFeatures(signals, nn_intervals)
+
+    with patch('vitalDSP.physiological_features.nonlinear.NonlinearFeatures.compute_sample_entropy', side_effect=Exception('Test error')):
+        features = hrv.compute_all_features(include_complex_methods=True)
+        assert features['sample_entropy'] is None  # Assert that the feature is None when an exception occurs
+        assert features['approximate_entropy'] is None
+        assert features['recurrence_rate'] is None
+        assert features['determinism'] is None
+        assert features['laminarity'] is None

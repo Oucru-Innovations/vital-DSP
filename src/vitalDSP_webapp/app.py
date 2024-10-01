@@ -4,17 +4,17 @@ from starlette.middleware.wsgi import WSGIMiddleware
 import dash_bootstrap_components as dbc
 
 # Import layout components
-from webapp.layout.header import Header
-from webapp.layout.footer import Footer
-from webapp.layout.sidebar import Sidebar
+from vitalDSP_webapp.layout.header import Header
+from vitalDSP_webapp.layout.footer import Footer
+from vitalDSP_webapp.layout.sidebar import Sidebar
 
 # Import FastAPI routes
-from webapp.api.endpoints import router as api_router
+from vitalDSP_webapp.api.endpoints import router as api_router
 
 # from webapp.callbacks.app_callbacks import register_callbacks
-from webapp.callbacks.app_callbacks import register_sidebar_callbacks
-from webapp.callbacks.page_routing_callbacks import register_page_routing_callbacks
-from webapp.callbacks.upload_callbacks import register_upload_callbacks
+from vitalDSP_webapp.callbacks.app_callbacks import register_sidebar_callbacks
+from vitalDSP_webapp.callbacks.page_routing_callbacks import register_page_routing_callbacks
+from vitalDSP_webapp.callbacks.upload_callbacks import register_upload_callbacks
 
 
 def create_dash_app() -> Dash:

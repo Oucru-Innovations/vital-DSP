@@ -1,255 +1,358 @@
 from jinja2 import Template
+import numpy as np
 
 
-def render_report(feature_interpretations, visualizations, filter_status="all"):
-    """
-    Renders the health report in HTML format using the given feature interpretations and visualizations.
+def calculate_correlation(feature_values, related_values, thresholds, chunk_size=5):
+    counts = {"strongly": 0, "slightly": 0, "no": 0}
 
-    Args:
-        feature_interpretations (dict): Dictionary containing interpreted feature results.
-        visualizations (dict): Dictionary containing paths or embedded links to visualizations.
-        filter_status (str): Filter for displaying specific features (in_range, below_range, above_range, or all).
+    total_chunks = len(feature_values) // chunk_size
+    strong_threshold = thresholds.get("strong", 0.5)
+    slight_threshold = thresholds.get("slight", 0.2)
 
-    Returns:
-        str: HTML report as a string.
-    """
-    html_template = """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    for i in range(total_chunks):
+        start = i * chunk_size
+        end = start + chunk_size
+        current_feature_chunk = feature_values[start:end]
+        current_related_chunk = related_values[start:end]
+
+        if len(current_feature_chunk) == len(current_related_chunk):
+            correlation_coefficient = np.corrcoef(
+                current_feature_chunk, current_related_chunk
+            )[0, 1]
+
+            if correlation_coefficient >= strong_threshold:
+                counts["strongly"] += 1
+            elif correlation_coefficient >= slight_threshold:
+                counts["slightly"] += 1
+            else:
+                counts["no"] += 1
+
+    total_checked_chunks = sum(counts.values())
+    if total_checked_chunks > 0:
+        percentage_strongly = counts["strongly"] / total_checked_chunks
+        percentage_slightly = counts["slightly"] / total_checked_chunks
+
+        if percentage_strongly >= 0.6:
+            return "Strong correlation"
+        elif percentage_slightly >= 0.6:
+            return "Slight correlation"
+
+    return "No significant correlation"
+
+
+def calculate_contradiction(feature_values, related_values, thresholds, chunk_size=5):
+    counts = {"strongly": 0, "slightly": 0, "no": 0}
+
+    total_chunks = len(feature_values) // chunk_size
+    strong_threshold = thresholds.get("strong", 0.3)
+    slight_threshold = thresholds.get("slight", 0.1)
+
+    for i in range(total_chunks):
+        start = i * chunk_size
+        end = start + chunk_size
+        current_feature_chunk = feature_values[start:end]
+        current_related_chunk = related_values[start:end]
+
+        if len(current_feature_chunk) == len(current_related_chunk):
+            feature_low = min(current_feature_chunk)
+            related_high = max(current_related_chunk)
+
+            if feature_low < strong_threshold and related_high > strong_threshold:
+                counts["strongly"] += 1
+            elif feature_low < slight_threshold and related_high > slight_threshold:
+                counts["slightly"] += 1
+            else:
+                counts["no"] += 1
+
+    total_checked_chunks = sum(counts.values())
+    if total_checked_chunks > 0:
+        percentage_strongly = counts["strongly"] / total_checked_chunks
+        percentage_slightly = counts["slightly"] / total_checked_chunks
+
+        if percentage_strongly >= 0.6:
+            return "Strong contradiction"
+        elif percentage_slightly >= 0.6:
+            return "Slight contradiction"
+
+    return "No significant contradiction"
+
+
+def process_interpretations(feature_interpretations):
+    for feature, interpretation in feature_interpretations.items():
+        # Handle Correlation
+        if "correlation" in interpretation:
+            for related_feature, explanation in interpretation["correlation"].items():
+                feature_values = interpretation.get("value", [])
+                related_values = feature_interpretations.get(related_feature, {}).get(
+                    "value", []
+                )
+                thresholds = (
+                    interpretation.get("thresholds", {})
+                    .get("correlation", {})
+                    .get(related_feature, {})
+                )
+
+                if feature_values and related_values:
+                    correlation_strength = calculate_correlation(
+                        feature_values, related_values, thresholds
+                    )
+                    interpretation["correlation_strength"] = correlation_strength
+
+        # Handle Contradiction
+        if "contradiction" in interpretation:
+            for related_feature, explanation in interpretation["contradiction"].items():
+                feature_values = interpretation.get("value", [])
+                related_values = feature_interpretations.get(related_feature, {}).get(
+                    "value", []
+                )
+                thresholds = (
+                    interpretation.get("thresholds", {})
+                    .get("contradiction", {})
+                    .get(related_feature, {})
+                )
+
+                if feature_values and related_values:
+                    contradiction_strength = calculate_contradiction(
+                        feature_values, related_values, thresholds
+                    )
+                    interpretation["contradiction_strength"] = contradiction_strength
+
+    return feature_interpretations
+
+
+def _get_base_css():
+    base_css = """
         <style>
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                padding: 20px;
-                background-color: #f7f9fa;
-                color: #2c3e50;
-            }
-            h1 {
-                text-align: center;
-                color: #2c3e50;
-            }
-            .filter-dropdown, .plot-dropdown {
-                margin-bottom: 20px;
-                text-align: center;
-            }
-            .filter-dropdown select, .plot-dropdown select {
-                padding: 10px;
-                font-size: 16px;
-                border-radius: 8px;
-                border: 1px solid #ccc;
-                outline: none;
-                background-color: #fff;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                transition: border-color 0.3s ease;
-            }
-            .filter-dropdown select:hover, .plot-dropdown select:hover {
-                border-color: #2980b9;
-            }
-            .filter-dropdown select:focus, .plot-dropdown select:focus {
-                border-color: #3498db;
-                box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
-            }
-            .container {
-                display: flex;
-                flex-wrap: wrap;
-                {#justify-content: space-between;#}
-                justify-content: space-around;
-                margin-top: 20px;
-            }
-            .column {
-                width: 48%;
-                margin-bottom: 20px;
-            }
-            .feature-section {
-                padding: 15px;
-                background-color: #ffffff;
-                border: 1px solid #ddd;
-                border-radius: 10px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-                margin-bottom: 20px;
-            }
-            .feature-title {
-                font-size: 18px;
-                color: #2c3e50;
-                margin-bottom: 10px;
-                text-align: center;
-            }
-            .column.feature-section {
-                width: 45%;
-                margin-bottom: 20px;
-            }
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    padding: 20px;
+                    background-color: #f7f9fa;
+                    color: #2c3e50;
+                }
+                h1 {
+                    text-align: center;
+                    color: #2c3e50;
+                }
+                .filter-dropdown, .plot-dropdown {
+                    margin-bottom: 20px;
+                    text-align: center;
+                }
+                .filter-dropdown select, .plot-dropdown select {
+                    padding: 10px;
+                    font-size: 16px;
+                    border-radius: 8px;
+                    border: 1px solid #ccc;
+                    outline: none;
+                    background-color: #fff;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    transition: border-color 0.3s ease;
+                }
+                .filter-dropdown select:hover, .plot-dropdown select:hover {
+                    border-color: #2980b9;
+                }
+                .filter-dropdown select:focus, .plot-dropdown select:focus {
+                    border-color: #3498db;
+                    box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+                }
+                .container {
+                    display: flex;
+                    flex-wrap: wrap;
+                    {#justify-content: space-between;#}
+                    justify-content: space-around;
+                    margin-top: 20px;
+                }
+                .column {
+                    width: 48%;
+                    margin-bottom: 20px;
+                }
+                .feature-section {
+                    padding: 15px;
+                    background-color: #ffffff;
+                    border: 1px solid #ddd;
+                    border-radius: 10px;
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                    margin-bottom: 20px;
+                }
+                .feature-title {
+                    font-size: 18px;
+                    color: #2c3e50;
+                    margin-bottom: 10px;
+                    text-align: center;
+                }
+                .column.feature-section {
+                    width: 45%;
+                    margin-bottom: 20px;
+                }
 
-            .grid-2-cols {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 20px;
-            }
-            .content-block {
-                padding: 15px;
-                margin: 15px 0;
-                border-radius: 5px;
-            }
-            .description-block {
-                padding: 15px;
-                border-radius: 8px;
-                background-color: #d1e7dd;
-                border-left: 5px solid #0f5132;
-            }
-            .interpretation-block {
-                padding: 15px;
-                border-radius: 8px;
-                background-color: #ffe5d9;
-                border-left: 5px solid #d12e2a;
-            }
-            .contradiction-block {
-                padding: 15px;
-                border-radius: 8px;
-                background-color: #fce8f1;
-                border-left: 5px solid #cc0056;
-            }
-            .correlation-block {
-                padding: 15px;
-                border-radius: 8px;
-                background-color: #e8f4fc;
-                border-left: 5px solid #1a73e8;
-            }
-            .correlation-item, .contradiction-item {
-                margin-bottom: 10px;
-            }
-            .highlight {
-                font-weight: bold;
-                color: #2c3e50;
-            }
-            .normal-range-bar {
-                background: linear-gradient(to right, #85C1E9, #f1948a);
-                height: 12px;
-                width: 100%;
-                border-radius: 5px;
-                position: relative;
-                margin-left: 20px;
-                margin-top: 10px;
-                flex-grow: 1;
-            }
-            .current-value-marker {
-                position: absolute;
-                top: -12px;
-                width: 0;
-                height: 0;
-                border-left: 6px solid transparent;
-                border-right: 6px solid transparent;
-                border-bottom: 12px solid #2c3e50;
-            }
-            .current-value-label {
-                position: absolute;
-                top: -25px;
-                font-size: 12px;
-                color: #34495e;
-            }
-            .visualization {
-                margin: 20px 0;
-                text-align: center;
-            }
-            .value-range-container {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 10px;
-            }
-            /* Styling for the content text blocks */
-            .content-text {
-                font-size: 16px;
-                color: #2c3e50;
-                margin-right: 20px;
-            }
-            .grid-2-cols-modern {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 20px;
-                align-items: center;
-            }
+                .grid-2-cols {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 20px;
+                }
+                .content-block {
+                    padding: 15px;
+                    margin: 15px 0;
+                    border-radius: 5px;
+                }
+                .description-block {
+                    padding: 15px;
+                    border-radius: 8px;
+                    background-color: #d1e7dd;
+                    border-left: 5px solid #0f5132;
+                }
+                .interpretation-block {
+                    padding: 15px;
+                    border-radius: 8px;
+                    background-color: #ffe5d9;
+                    border-left: 5px solid #d12e2a;
+                }
+                .contradiction-block {
+                    padding: 15px;
+                    border-radius: 8px;
+                    background-color: #fce8f1;
+                    border-left: 5px solid #cc0056;
+                }
+                .correlation-block {
+                    padding: 15px;
+                    border-radius: 8px;
+                    background-color: #e8f4fc;
+                    border-left: 5px solid #1a73e8;
+                }
+                .correlation-item, .contradiction-item {
+                    margin-bottom: 10px;
+                }
+                .highlight {
+                    font-weight: bold;
+                    color: #2c3e50;
+                }
+                .normal-range-bar {
+                    background: linear-gradient(to right, #85C1E9, #f1948a);
+                    height: 12px;
+                    width: 100%;
+                    border-radius: 5px;
+                    position: relative;
+                    margin-left: 20px;
+                    margin-top: 10px;
+                    flex-grow: 1;
+                }
+                .current-value-marker {
+                    position: absolute;
+                    top: -12px;
+                    width: 0;
+                    height: 0;
+                    border-left: 6px solid transparent;
+                    border-right: 6px solid transparent;
+                    border-bottom: 12px solid #2c3e50;
+                }
+                .current-value-label {
+                    position: absolute;
+                    top: -25px;
+                    font-size: 12px;
+                    color: #34495e;
+                }
+                .visualization {
+                    margin: 20px 0;
+                    text-align: center;
+                }
+                .value-range-container {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                }
+                /* Styling for the content text blocks */
+                .content-text {
+                    font-size: 16px;
+                    color: #2c3e50;
+                    margin-right: 20px;
+                }
+                .grid-2-cols-modern {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 20px;
+                    align-items: center;
+                }
 
-            .content-block-modern {
-                padding: 15px;
-                background-color: #ffffff;
-                border-radius: 8px;
-                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            }
+                .content-block-modern {
+                    padding: 15px;
+                    background-color: #ffffff;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+                }
 
-            .value-summary {
-                display: flex;
-                justify-content: space-between;
-            }
+                .value-summary {
+                    display: flex;
+                    justify-content: space-between;
+                }
 
-            .value-box {
-                text-align: center;
-            }
+                .value-box {
+                    text-align: center;
+                }
 
-            .value-box .label {
-                font-size: 14px;
-                color: #7f8c8d;
-                margin-bottom: 5px;
-            }
+                .value-box .label {
+                    font-size: 14px;
+                    color: #7f8c8d;
+                    margin-bottom: 5px;
+                }
 
-            .value-box .value {
-                font-size: 18px;
-                color: #2c3e50;
-                font-weight: bold;
-            }
+                .value-box .value {
+                    font-size: 18px;
+                    color: #2c3e50;
+                    font-weight: bold;
+                }
 
-            .range-section {
-                text-align: center;
-            }
+                .range-section {
+                    text-align: center;
+                }
 
-            .range-display {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            }
+                .range-display {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                }
 
-            .range-label {
-                font-size: 14px;
-                color: #7f8c8d;
-            }
+                .range-label {
+                    font-size: 14px;
+                    color: #7f8c8d;
+                }
 
-            .normal-range-bar-modern {
-                position: relative;
-                height: 15px;
-                width: 100%;
-                background: linear-gradient(to right, #85C1E9, #f1948a);
-                border-radius: 7px;
-                margin: 0 10px;
-                box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-            }
+                .normal-range-bar-modern {
+                    position: relative;
+                    height: 15px;
+                    width: 100%;
+                    background: linear-gradient(to right, #85C1E9, #f1948a);
+                    border-radius: 7px;
+                    margin: 0 10px;
+                    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
 
-            .current-value-marker-modern {
-                position: absolute;
-                top: -5px;
-                width: 10px;
-                height: 20px;
-                background-color: #2c3e50;
-                border-radius: 2px;
-                box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
-                transition: left 0.3s ease-in-out;
-            }
+                .current-value-marker-modern {
+                    position: absolute;
+                    top: -5px;
+                    width: 10px;
+                    height: 20px;
+                    background-color: #2c3e50;
+                    border-radius: 2px;
+                    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+                    transition: left 0.3s ease-in-out;
+                }
 
-            .current-value-label-modern {
-                position: absolute;
-                top: -30px;
-                font-size: 12px;
-                font-weight: bold;
-                color: #34495e;
-                transition: left 0.3s ease-in-out;
-            }
+                .current-value-label-modern {
+                    position: absolute;
+                    top: -30px;
+                    font-size: 12px;
+                    font-weight: bold;
+                    color: #34495e;
+                    transition: left 0.3s ease-in-out;
+                }
+
+            </style>
+    """
+    return base_css
 
 
-        </style>
-        <title>Health Report</title>
-    </head>
-    <body>
-        <h1>Health Analysis Report</h1>
-
+def _get_filter_dropdown():
+    return """
         <div class="filter-dropdown">
             <label for="filter">Filter Features:</label>
             <select id="filter" onchange="filterReport(this)">
@@ -259,8 +362,11 @@ def render_report(feature_interpretations, visualizations, filter_status="all"):
                 <option value="below_range" {% if filter_status == 'below_range' %}selected{% endif %}>Below Normal Range</option>
             </select>
         </div>
+    """
 
-        <div class="container">
+def _get_feature_template():
+    return """s
+    <div class="container">
             {% for feature, interpretation in feature_interpretations.items() %}
             <div class="column feature-section" data-status="{{ interpretation.get('range_status', 'unknown') }}">
                 <h2 class="feature-title">
@@ -331,107 +437,49 @@ def render_report(feature_interpretations, visualizations, filter_status="all"):
 
                 <!-- Correlation and Contradiction Grid Layout -->
                 <div class="grid-2-cols">
-                    {% if interpretation.get('correlation') %}
-                    <div class="correlation-block">
-                        <p class="highlight">Correlation:</p>
-                        <div class="correlation-content">
-                            {% for related_feature, explanation in interpretation['correlation'].items() %}
-                            {% set correlation_strength = 'no' %}
-                            {% set feature_value = interpretation.get('median', 0) %}
-                            {% set related_value = feature_interpretations.get(related_feature, {}).get('median', 0) %}
-                            {% set thresholds = interpretation.get('thresholds', {}).get('correlation', {}).get(related_feature, {}) %}
-                            {% if thresholds %}
-                                {% set strong_threshold = thresholds.get('strong', 0.1) %}
-                                {% set slight_threshold = thresholds.get('slight', 0.2) %}
-                                {% if abs(feature_value - related_value) < strong_threshold * feature_value %}
-                                    {% set correlation_strength = 'strongly' %}
-                                {% elif abs(feature_value - related_value) < slight_threshold * feature_value %}
-                                    {% set correlation_strength = 'slightly' %}
-                                {% else %}
-                                    {% set correlation_strength = 'no' %}
-                                {% endif %}
-                            {% endif %}
-
-                            <div class="correlation-item">
-                                <p><strong>Related Feature: {{ related_feature }}</strong></p>
-                                <p>
-                                    {% if correlation_strength == 'strongly' %}
-                                        ✅ Strongly correlates with {{ related_feature }}. {{ explanation }}
-                                    {% elif correlation_strength == 'slightly' %}
-                                        ✔️ Slightly correlates with {{ related_feature }}. {{ explanation }}
-                                    {% else %}
-                                        ⚡ No significant correlation with {{ related_feature }}. {{ explanation }}
-                                    {% endif %}
-                                </p>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    {% if interpretation.get('contradiction') %}
+                    <!-- Contradiction Section -->
+                    {% if interpretation.get('contradiction_strength') %}
                     <div class="contradiction-block">
                         <p class="highlight">Contradiction:</p>
                         <div class="contradiction-content">
                             {% for related_feature, explanation in interpretation['contradiction'].items() %}
-                            {% set contradiction_strength = 'no' %}
-                            {% set feature_value = interpretation.get('median', 0) %}
-                            {% set related_value = feature_interpretations.get(related_feature, {}).get('median', 0) %}
-                            {% set thresholds = interpretation.get('thresholds', {}).get('contradiction', {}).get(related_feature, {}) %}
-                            {% if thresholds %}
-                                {% set strong_threshold = thresholds.get('strong', 0.3) %}
-                                {% set slight_threshold = thresholds.get('slight', 0.1) %}
-                                {% if abs(feature_value - related_value) > strong_threshold * feature_value %}
-                                    {% set contradiction_strength = 'strongly' %}
-                                {% elif abs(feature_value - related_value) > slight_threshold * feature_value %}
-                                    {% set contradiction_strength = 'slightly' %}
+                            <p><strong>{{ related_feature }}: </strong></p>
+                            <p>
+                                {% if interpretation['contradiction_strength'] == 'Strong contradiction' %}
+                                    🔴 Strong contradiction. {{ explanation }}
+                                {% elif interpretation['contradiction_strength'] == 'Slight contradiction' %}
+                                    🟡 Slight contradiction. {{ explanation }}
                                 {% else %}
-                                    {% set contradiction_strength = 'no' %}
+                                    🟢 No significant contradiction. {{ explanation }}
                                 {% endif %}
-                            {% endif %}
-                            <div class="contradiction-item">
-                                <p><strong>Related Feature: {{ related_feature }}</strong></p>
-                                <p>
-                                    {% if contradiction_strength == 'strongly' %}
-                                        ⛔ Strongly contradicts {{ related_feature }}. {{ explanation }}
-                                    {% elif contradiction_strength == 'slightly' %}
-                                        ⚠️ Slightly contradicts {{ related_feature }}. {{ explanation }}
-                                    {% else %}
-                                        ⭕ No significant contradiction with {{ related_feature }}. {{ explanation }}
-                                    {% endif %}
-                                </p>
-                            </div>
+                            </p>
                             {% endfor %}
                         </div>
                     </div>
                     {% endif %}
+
+                    <!-- Correlation Section -->
+                    {% if interpretation.get('correlation_strength') %}
+                    <div class="correlation-block">
+                        <p class="highlight">Correlation:</p>
+                        <div class="correlation-content">
+                            {% for related_feature, explanation in interpretation['correlation'].items() %}
+                            <p><strong>{{ related_feature }}: </strong></p>
+                            <p>
+                                {% if interpretation['correlation_strength'] == 'Strong correlation' %}
+                                    ✅ Strong correlation. {{ explanation }}
+                                {% elif interpretation['correlation_strength'] == 'Slight correlation' %}
+                                    ⚪ Slight correlation. {{ explanation }}
+                                {% else %}
+                                    ⭕ No significant correlation. {{ explanation }}
+                                {% endif %}
+                            </p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
                 </div>
-
-            {# Final conclusion section #}
-            {#
-            <div class="content-block final-conclusion-block" style="padding: 20px; margin-top: 30px; background-color: #e2eafc; border-radius: 10px;">
-                <h3 style="color: #1c3f91;">Final Conclusion:</h3>
-                <p>
-                    {% if correlation_strength == 'strongly' %}
-                        ✅ Strong correlation overall.
-                    {% elif correlation_strength == 'slightly' %}
-                        ✔️ Slight correlation overall.
-                    {% else %}
-                        ⚡ No significant correlation.
-                    {% endif %}
-                </p>
-
-                <p>
-                    {% if contradiction_strength == 'strongly' %}
-                        ⛔ Strong contradiction overall. Immediate attention may be required.
-                    {% elif contradiction_strength == 'slightly' %}
-                        ⚠️ Slight contradiction overall. Monitor for potential issues.
-                    {% else %}
-                        ⭕ No significant contradiction.
-                    {% endif %}
-                </p>
-            </div>
-            #}
 
             {# Visualizations section in a 2-column grid with a dropdown for related features #}
 
@@ -459,7 +507,7 @@ def render_report(feature_interpretations, visualizations, filter_status="all"):
                         </div>
                         <div id="visualization_{{ feature }}" class="visualization">
                             {% if visualizations[feature][default_plot] is not none %}
-                                <img src="{{ visualizations[feature][default_plot] }}" alt="Visualization for {{ feature }}" width="400">
+                                <img src="{{ visualizations[feature][default_plot] }}" alt="Visualization for {{ feature }}" style="max-width: 100%; height: auto;">
                             {% else %}
                                 <p>No visualization available for this plot type.</p>
                             {% endif %}
@@ -479,7 +527,7 @@ def render_report(feature_interpretations, visualizations, filter_status="all"):
                         </div>
                         <div id="visualization_{{ feature }}_second" class="visualization">
                             {% if visualizations[feature][default_plot_2] is not none %}
-                                <img src="{{ visualizations[feature][default_plot_2] }}" alt="Visualization for {{ feature }} - {{ default_plot_2 }}" width="400">
+                                <img src="{{ visualizations[feature][default_plot_2] }}" alt="Visualization for {{ feature }} - {{ default_plot_2 }}" style="max-width: 100%; height: auto;">
                             {% else %}
                                 <p>No visualization available for this plot type.</p>
                             {% endif %}
@@ -504,7 +552,7 @@ def render_report(feature_interpretations, visualizations, filter_status="all"):
 
                             <div id="related_visualization_{{ feature }}" class="visualization">
                                 {% if visualizations.get(first_related_feature) and visualizations[first_related_feature]['bell_plot'] is not none %}
-                                    <img id="related_feature_plot_{{ feature }}" src="{{ visualizations[first_related_feature]['bell_plot'] }}" alt="Related Feature Plot" width="400">
+                                    <img id="related_feature_plot_{{ feature }}" src="{{ visualizations[first_related_feature]['bell_plot'] }}" alt="Related Feature Plot" style="max-width: 100%; height: auto;">
                                 {% else %}
                                     <p>No related plot available for the selected feature.</p>
                                 {% endif %}
@@ -518,7 +566,11 @@ def render_report(feature_interpretations, visualizations, filter_status="all"):
             </div>
             {% endfor %}
         </div>
+    """
 
+
+def _get_javascript_content():
+    return """
         <script>
             const visualizations = {{ visualizations | tojson | safe }};
             function filterReport(select) {
@@ -576,6 +628,38 @@ def render_report(feature_interpretations, visualizations, filter_status="all"):
                 }
             }
         </script>
+    """
+
+
+def render_report(feature_interpretations, visualizations, filter_status="all"):
+    """
+    Renders the health report in HTML format using the given feature interpretations and visualizations.
+
+    Args:
+        feature_interpretations (dict): Dictionary containing interpreted feature results.
+        visualizations (dict): Dictionary containing paths or embedded links to visualizations.
+        filter_status (str): Filter for displaying specific features (in_range, below_range, above_range, or all).
+
+    Returns:
+        str: HTML report as a string.
+    """
+    html_template = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        {_get_base_css()}
+        <title>Health Report</title>
+    </head>
+    <body>
+        <h1>Health Analysis Report</h1>
+
+        {_get_filter_dropdown()}
+
+        {_get_feature_template()}
+
+        {_get_javascript_content()}
     </body>
 
     </html>

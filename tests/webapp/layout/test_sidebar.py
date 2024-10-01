@@ -1,5 +1,5 @@
 import pytest
-from webapp.layout.sidebar import Sidebar
+from vitalDSP_webapp.layout.sidebar import Sidebar
 from dash import html
 
 

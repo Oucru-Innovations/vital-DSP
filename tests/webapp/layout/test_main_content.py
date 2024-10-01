@@ -1,5 +1,5 @@
 import pytest
-from webapp.layout.main_content import MainContent
+from vitalDSP_webapp.layout.main_content import MainContent
 from dash import html
 
 
