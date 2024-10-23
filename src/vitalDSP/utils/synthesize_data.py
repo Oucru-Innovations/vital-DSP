@@ -3,8 +3,12 @@ from scipy.interpolate import interp1d
 from scipy.fft import ifft
 from scipy.signal import resample
 import matplotlib.pyplot as plt
-from scipy.integrate import odeint
-from vitalDSP.utils.common import ecg_detect_peaks
+
+# from scipy.integrate import odeint
+from scipy.integrate import solve_ivp
+
+# from vitalDSP.utils.peak_detection import PeakDetection
+# from vitalDSP.utils.common import ecg_detect_peaks
 
 
 def generate_sinusoidal(frequency, sampling_rate, duration, amplitude=1.0, phase=0.0):
@@ -100,6 +104,24 @@ def generate_noisy_signal(base_signal, noise_level=0.1):
     return noisy_signal
 
 
+def interp(ys, mul):
+    """
+    handy func
+    :param ys:
+    :param mul:
+    :return:
+    """
+    # linear extrapolation for last (mul - 1) points
+    ys = list(ys)
+    ys.append(2 * ys[-1] - ys[-2])
+    # make interpolation function
+    xs = np.arange(len(ys))
+    fn = interp1d(xs, ys, kind="cubic")
+    # call it on desired data points
+    new_xs = np.arange(len(ys) - 1, step=1.0 / mul)
+    return fn(new_xs)
+
+
 def generate_ecg_signal(
     sfecg=256,
     N=256,
@@ -174,6 +196,12 @@ def generate_ecg_signal(
     flostd = 0.01
     fhistd = 0.01
 
+    # calculate time scales for rr and total output
+    sampfreqrr = 1
+    trr = 1 / sampfreqrr
+    rrmean = 60 / hrmean
+    Nrr = 2 ** (np.ceil(np.log2(N * rrmean / trr)))
+
     rr0 = rrprocess(
         flo,
         fhi,
@@ -182,10 +210,11 @@ def generate_ecg_signal(
         lfhfratio,
         hrmean,
         hrstd,
-        1,
-        2 ** int(np.ceil(np.log2(N * 60.0 / hrmean))),
+        sampfreqrr,  # 1,
+        Nrr,  # 2 ** int(np.ceil(np.log2(N * 60.0 / hrmean))),
     )
 
+    # upsample rr time series from 1 Hz to sfint Hz
     rr = interp1d(np.linspace(0, len(rr0) - 1, len(rr0)), rr0, kind="cubic")(
         np.linspace(0, len(rr0) - 1, len(rr0) * sfint)
     )
@@ -195,26 +224,62 @@ def generate_ecg_signal(
     tecg = 0
     i = 0
     while i < len(rr):
-        tecg += rr[i]
-        ip = int(round(tecg / dt))
-        rrn[i:ip] = rr[i]
-        i = ip
-
-    Tspan = np.arange(0, len(rrn) * dt, dt)
+        tecg = tecg + rr[i]
+        ip = int(np.round(tecg / dt))
+        rrn[i : ip + 1] = rr[i]
+        i = ip + 1
+    Nt = ip
     x0 = [1, 0, 0.04]
+    tspan = np.arange(0, (Nt - 1) * dt, dt)
+    args = (rrn, sfint, ti, ai, bi)
+    # solv_ode = solve_ivp(ordinary_differential_equation, [tspan[0], tspan[-1]],
+    #                      x0, t_eval=np.arange(20.5, 21.5, 0.00001), args=args)
+    solv_ode = solve_ivp(
+        ordinary_differential_equation,
+        [tspan[0], tspan[-1]],
+        x0,
+        t_eval=np.arange(tspan[0], tspan[-1], 1 / sfecg),
+        args=args,
+    )
 
-    X0 = odeint(derivsecgsyn, x0, Tspan, args=(rrn, sfint, ti, ai, bi))
-
-    X = X0[::q, :]
-
-    ipeaks = ecg_detect_peaks(X, ti, sfecg)
-
-    z = X[:, 2]
+    X = solv_ode.y
+    z = X[2]
     z = (z - np.min(z)) * 1.6 / (np.max(z) - np.min(z)) - 0.4
-
     s = z + Anoise * (2 * np.random.rand(len(z)) - 1)
 
-    return s, ipeaks
+    # detector = PeakDetection(s, method="ecg_r_peak",
+    #                          **{"distance":50,"window_size":7,"threshold_factor":1.8})
+    # ipeaks = detector.detect_peaks()
+    return s
+
+
+def ordinary_differential_equation(
+    t, x_equations, rr=None, sfint=None, ti=None, ai=None, bi=None
+):
+    x = x_equations[0]
+    y = x_equations[1]
+    z = x_equations[2]
+
+    ta = np.arctan2(y, x)
+    r0 = 1
+    a0 = 1.0 - np.sqrt(x**2 + y**2) / r0
+    ip = int(1 + np.floor(t * sfint))
+    try:
+        w0 = 2 * np.pi / rr[ip]
+    except Exception:
+        w0 = 2 * np.pi / rr[-1]
+
+    fresp = 0.25
+    zbase = 0.005 * np.sin(2 * np.pi * fresp * t)
+
+    dx1dt = a0 * x - w0 * y
+    dx2dt = a0 * y + w0 * x
+
+    dti = np.fmod(ta - ti, 2 * np.pi)
+    dx3dt = -np.sum(ai * dti * np.exp(-0.5 * np.divide(dti, bi) ** 2))
+    dx3dt = dx3dt - 1.0 * (z - zbase)
+
+    return [dx1dt, dx2dt, dx3dt]
 
 
 def rrprocess(flo, fhi, flostd, fhistd, lfhfratio, hrmean, hrstd, sfrr, n):
@@ -224,33 +289,52 @@ def rrprocess(flo, fhi, flostd, fhistd, lfhfratio, hrmean, hrstd, sfrr, n):
     c2 = 2 * np.pi * fhistd
     sig2 = 1
     sig1 = lfhfratio
-    rrmean = 60.0 / hrmean
-    rrstd = 60.0 * hrstd / (hrmean**2)
-
+    rrmean = 60 / hrmean
+    rrstd = 60 * hrstd / (hrmean * hrmean)
+    """
+    Generating RR-intervals which have a bimodal power spectrum
+    consisting of the sum of two Gaussian distributions
+    """
     df = sfrr / n
-    w = np.arange(n) * 2 * np.pi * df
-    Hw1 = sig1 * np.exp(-0.5 * ((w - w1) / c1) ** 2) / np.sqrt(2 * np.pi * c1**2)
-    Hw2 = sig2 * np.exp(-0.5 * ((w - w2) / c2) ** 2) / np.sqrt(2 * np.pi * c2**2)
-    Hw = Hw1 + Hw2
+    w = np.arange(0, n).T * 2 * np.pi * df
+    dw1 = w - w1
+    dw2 = w - w2
 
     # Resample Hw to ensure it has the correct length
-    Hw_resampled = resample(Hw, n)
-
+    Hw1 = sig1 * np.exp(-0.5 * (dw1 / c1) ** 2) / np.sqrt(2 * np.pi * np.power(c1, 2))
+    Hw2 = sig2 * np.exp(-0.5 * (dw2 / c2) ** 2) / np.sqrt(2 * np.pi * np.power(c2, 2))
+    Hw = Hw1 + Hw2
+    """
+    An RR-interval time series T(t)
+    with power spectrum is S(f)
+    generated by taking the inverse Fourier transform of
+    a sequence of complex numbers with amplitudes sqrt(S(f))
+    and phases which are randomly distributed between 0 and 2pi
+    """
     # Ensure Hw_resampled is non-negative before taking the square root
-    Hw_resampled = np.maximum(Hw_resampled, 0)
-
-    Sw = (sfrr / 2) * np.sqrt(Hw_resampled)
+    Hw0_half = np.array(Hw[0 : int(n / 2)])
+    Hw0 = np.append(Hw0_half, np.flip(Hw0_half))
+    Sw = (sfrr / 2) * (Hw0**0.5)
 
     # Generate phase with correct length
-    ph = 2 * np.pi * np.random.rand(n)
-    SwC = Sw * np.exp(1j * ph)
-    x = np.real(ifft(SwC)) / n
+    ph0 = 2 * np.pi * np.random.rand(int(n / 2) - 1, 1)
+    # ph0 = 2 * np.pi * 0.001*np.arange(127).reshape(-1,1)
+    ph = np.vstack((0, ph0, 0, -np.flip(ph0)))
 
-    rr = rrmean + x * (rrstd / np.std(x))
+    # create the complex number
+    SwC = np.multiply(Sw.reshape(-1, 1), np.exp(1j * ph))
+    inverse_res = np.fft.ifft(SwC.reshape(-1))
+    x = (1 / n) * np.real(inverse_res)
 
+    """
+        By multiplying this time series by an appropriate scaling constant
+        and adding an offset value, the resulting time series can be given
+        any required mean and standard deviation
+    """
+    xstd = np.std(x)
+    ratio = rrstd / xstd
     # Handle potential NaN values in rr
-    rr = np.nan_to_num(rr, nan=rrmean)
-
+    rr = rrmean + x * ratio
     return rr
 
 

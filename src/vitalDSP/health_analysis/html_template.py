@@ -364,16 +364,10 @@ def _get_filter_dropdown():
         </div>
     """
 
-def _get_feature_template():
-    return """s
-    <div class="container">
-            {% for feature, interpretation in feature_interpretations.items() %}
-            <div class="column feature-section" data-status="{{ interpretation.get('range_status', 'unknown') }}">
-                <h2 class="feature-title">
-                    {{ feature }}
-                </h2>
 
-                <!-- Combined Description and Interpretation -->
+def _get_description_interpretation_template():
+    return """
+    <!-- Combined Description and Interpretation -->
                 <div class="grid-2-cols">
                     <div class="description-block">
                         <p class="highlight">Description:</p>
@@ -387,8 +381,62 @@ def _get_feature_template():
                     </div>
                     {% endif %}
                 </div>
+    """
 
-                <!-- Stylish Summary of Values and Range Display -->
+
+def _get_correlation_contradiction_template():
+    return """
+        <!-- Correlation and Contradiction Grid Layout -->
+                <div class="grid-2-cols">
+                    <!-- Contradiction Section -->
+                    {% if interpretation.get('contradiction_strength') %}
+                    <div class="contradiction-block">
+                        <p class="highlight">Contradiction:</p>
+                        <div class="contradiction-content">
+                            {% for related_feature, explanation in interpretation['contradiction'].items() %}
+                            <p><strong>{{ related_feature }}: </strong></p>
+                            <p>
+                                {% if interpretation['contradiction_strength'] == 'Strong contradiction' %}
+                                    🔴 Strong contradiction. {{ explanation }}
+                                {% elif interpretation['contradiction_strength'] == 'Slight contradiction' %}
+                                    🟡 Slight contradiction. {{ explanation }}
+                                {% else %}
+                                    🟢 No significant contradiction. {{ explanation }}
+                                {% endif %}
+                            </p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Correlation Section -->
+                    {% if interpretation.get('correlation_strength') %}
+                    <div class="correlation-block">
+                        <p class="highlight">Correlation:</p>
+                        <div class="correlation-content">
+                            {% for related_feature, explanation in interpretation['correlation'].items() %}
+                            <p><strong>{{ related_feature }}: </strong></p>
+                            <p>
+                                {% if interpretation['correlation_strength'] == 'Strong correlation' %}
+                                    ✅ Strong correlation. {{ explanation }}
+                                {% elif interpretation['correlation_strength'] == 'Slight correlation' %}
+                                    ⚪ Slight correlation. {{ explanation }}
+                                {% else %}
+                                    ⭕ No significant correlation. {{ explanation }}
+                                {% endif %}
+                            </p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                </div>
+    """
+
+
+def _get_range_interpretation_template():
+    return """
+        <!-- Stylish Summary of Values and Range Display -->
                 <div class="grid-2-cols-modern">
                     <div class="content-block-modern">
                         <p class="highlight">Values</p>
@@ -434,54 +482,12 @@ def _get_feature_template():
                         </div>
                     </div>
                 </div>
+    """
 
-                <!-- Correlation and Contradiction Grid Layout -->
-                <div class="grid-2-cols">
-                    <!-- Contradiction Section -->
-                    {% if interpretation.get('contradiction_strength') %}
-                    <div class="contradiction-block">
-                        <p class="highlight">Contradiction:</p>
-                        <div class="contradiction-content">
-                            {% for related_feature, explanation in interpretation['contradiction'].items() %}
-                            <p><strong>{{ related_feature }}: </strong></p>
-                            <p>
-                                {% if interpretation['contradiction_strength'] == 'Strong contradiction' %}
-                                    🔴 Strong contradiction. {{ explanation }}
-                                {% elif interpretation['contradiction_strength'] == 'Slight contradiction' %}
-                                    🟡 Slight contradiction. {{ explanation }}
-                                {% else %}
-                                    🟢 No significant contradiction. {{ explanation }}
-                                {% endif %}
-                            </p>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
 
-                    <!-- Correlation Section -->
-                    {% if interpretation.get('correlation_strength') %}
-                    <div class="correlation-block">
-                        <p class="highlight">Correlation:</p>
-                        <div class="correlation-content">
-                            {% for related_feature, explanation in interpretation['correlation'].items() %}
-                            <p><strong>{{ related_feature }}: </strong></p>
-                            <p>
-                                {% if interpretation['correlation_strength'] == 'Strong correlation' %}
-                                    ✅ Strong correlation. {{ explanation }}
-                                {% elif interpretation['correlation_strength'] == 'Slight correlation' %}
-                                    ⚪ Slight correlation. {{ explanation }}
-                                {% else %}
-                                    ⭕ No significant correlation. {{ explanation }}
-                                {% endif %}
-                            </p>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
-
-                </div>
-
-            {# Visualizations section in a 2-column grid with a dropdown for related features #}
+def _get_visualization_template():
+    return """
+        {# Visualizations section in a 2-column grid with a dropdown for related features #}
 
             {% if feature in visualizations and visualizations[feature] %}
                 <!-- Define available plot types -->
@@ -562,11 +568,29 @@ def _get_feature_template():
                     -->
                 </div>
             {% endif %}
+    """
 
+
+def _get_feature_template():
+    return (
+        """
+        <div class="container">
+            {% for feature, interpretation in feature_interpretations.items() %}
+            <div class="column feature-section" data-status="{{ interpretation.get('range_status', 'unknown') }}">
+                <h2 class="feature-title">
+                    {{ feature }}
+                </h2>
+    """
+        + _get_description_interpretation_template()
+        + _get_range_interpretation_template()
+        + _get_correlation_contradiction_template()
+        + _get_visualization_template()
+        + """
             </div>
             {% endfor %}
         </div>
     """
+    )
 
 
 def _get_javascript_content():

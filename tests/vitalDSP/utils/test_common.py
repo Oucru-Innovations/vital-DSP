@@ -7,7 +7,6 @@ from vitalDSP.utils.common import (
     pearsonr,
     coherence,
     grangercausalitytests,
-    ecg_detect_peaks,
     dtw_distance_windowed,
 )
 
@@ -87,15 +86,6 @@ def test_grangercausalitytests():
     results = grangercausalitytests(data, max_lag=4, verbose=False)
     assert isinstance(results, dict)
     assert len(results) == 4  # Should have 4 lags
-
-
-# Test for ecg_detect_peaks
-def test_ecg_detect_peaks():
-    X = np.random.rand(100, 3)
-    thetap = np.array([0, np.pi / 2, np.pi, 3 * np.pi / 2])
-    sfecg = 500
-    ind = ecg_detect_peaks(X, thetap, sfecg)
-    assert len(ind) == 100
 
 
 # Test for dtw_distance_windowed

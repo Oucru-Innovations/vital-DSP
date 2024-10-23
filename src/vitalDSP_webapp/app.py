@@ -13,7 +13,9 @@ from vitalDSP_webapp.api.endpoints import router as api_router
 
 # from webapp.callbacks.app_callbacks import register_callbacks
 from vitalDSP_webapp.callbacks.app_callbacks import register_sidebar_callbacks
-from vitalDSP_webapp.callbacks.page_routing_callbacks import register_page_routing_callbacks
+from vitalDSP_webapp.callbacks.page_routing_callbacks import (
+    register_page_routing_callbacks,
+)
 from vitalDSP_webapp.callbacks.upload_callbacks import register_upload_callbacks
 
 

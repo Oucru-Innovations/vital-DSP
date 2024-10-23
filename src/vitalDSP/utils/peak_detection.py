@@ -233,13 +233,43 @@ class PeakDetection:
         --------
         >>> signal = np.array([1, 2, 1, 2, 1, 2])
         >>> detector = PeakDetection(signal, method="ecg_r_peak")
-        >>> peaks = detector._ecg_r_peak_detection()
+        >>> peaks = detector.find_peaks()
         >>> print(peaks)
         """
+        # Parameters can be passed via kwargs, with defaults
+        distance = self.kwargs.get("distance", 50)
+        window_size = self.kwargs.get("window_size", 7)
+        threshold_factor = self.kwargs.get("threshold_factor", 1.2)
+        search_window = self.kwargs.get("search_window", 4)
+
+        # First derivative of the signal
         diff_signal = np.diff(self.signal)
+
+        # Cube the derivative to enhance peaks
         squared_signal = diff_signal**2
-        integrator = np.convolve(squared_signal, np.ones(150), "same")
-        return find_peaks(integrator, distance=150, height=np.mean(integrator))
+
+        # Apply a moving window integrator to smooth the squared signal
+        integrator = np.convolve(
+            squared_signal, np.ones(window_size) / window_size, mode="same"
+        )
+
+        # Set the threshold dynamically based on mean and a factor to reduce noise
+        threshold = np.mean(integrator) * threshold_factor
+
+        # Detect R-peaks in the processed signal
+        peaks = find_peaks(integrator, distance=distance, height=threshold)
+
+        # Refinement step: search around each detected peak to find the true maximum
+        refined_peaks = []
+        for peak in peaks:
+            # Define a local search window around the detected peak
+            start = max(0, peak - search_window)
+            end = min(len(self.signal), peak + search_window)
+            # Find the true maximum within this window
+            true_peak = np.argmax(self.signal[start:end]) + start
+            refined_peaks.append(true_peak)
+
+        return np.array(refined_peaks)
 
     def _ecg_derivative_detection(self):
         """

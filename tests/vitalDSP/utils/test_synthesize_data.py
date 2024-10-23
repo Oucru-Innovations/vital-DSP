@@ -54,15 +54,12 @@ def test_generate_ecg_signal():
     N = 256
     Anoise = 0.01
     hrmean = 70
-    ecg_signal, ipeaks = generate_ecg_signal(
+    ecg_signal = generate_ecg_signal(
         sfecg=sfecg, N=N, Anoise=Anoise, hrmean=hrmean
     )
 
     assert isinstance(ecg_signal, np.ndarray)
     assert len(ecg_signal) > 0
-    assert isinstance(ipeaks, np.ndarray)
-    assert len(ipeaks) > 0
-
 
 # Test generate_resp_signal
 def test_generate_resp_signal():
