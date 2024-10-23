@@ -203,7 +203,7 @@ def generate_ecg_signal(
     sampfreqrr = 1
     trr = 1 / sampfreqrr
     rrmean = 60 / hrmean
-    
+
     if duration is not None:
         Nrr = int(duration * hrmean / 60.0)
     else:
