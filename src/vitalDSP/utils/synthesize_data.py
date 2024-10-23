@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.fft import ifft
-from scipy.signal import resample
+# from scipy.fft import ifft
+# from scipy.signal import resample
 import matplotlib.pyplot as plt
 
 # from scipy.integrate import odeint
@@ -187,7 +187,7 @@ def generate_ecg_signal(
     bi = hrfact * np.array(bi)
     ti = np.array([hrfact2, hrfact, 1, hrfact, hrfact2]) * ti
 
-    q = round(sfint / sfecg)
+    # q = round(sfint / sfecg)
     if sfint % sfecg != 0:
         raise ValueError("sfint must be an integer multiple of sfecg")
 
