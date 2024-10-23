@@ -124,7 +124,8 @@ def interp(ys, mul):
 
 def generate_ecg_signal(
     sfecg=256,
-    N=256,
+    N=None,
+    duration=30,
     Anoise=0.0,
     hrmean=60,
     hrstd=1.0,
@@ -142,7 +143,9 @@ def generate_ecg_signal(
     sfecg : int, optional
         ECG sampling frequency in Hz (default is 256).
     N : int, optional
-        Approximate number of heartbeats (default is 256).
+        Approximate number of heartbeats (default is 60).
+    duration : int, optional
+        Approximate number of seconds (default is 30).
     Anoise : float, optional
         Amplitude of additive uniformly distributed measurement noise (default is 0).
     hrmean : float, optional
@@ -200,7 +203,11 @@ def generate_ecg_signal(
     sampfreqrr = 1
     trr = 1 / sampfreqrr
     rrmean = 60 / hrmean
-    Nrr = 2 ** (np.ceil(np.log2(N * rrmean / trr)))
+    
+    if duration is not None:
+        Nrr = int(duration * hrmean / 60.0)
+    else:
+        Nrr = 2 ** (np.ceil(np.log2(N * rrmean / trr)))
 
     rr0 = rrprocess(
         flo,
