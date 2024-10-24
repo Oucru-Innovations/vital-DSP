@@ -1,4 +1,5 @@
 import pytest
+from unittest import mock
 import numpy as np
 from vitalDSP.utils.synthesize_data import (
     generate_sinusoidal,
@@ -60,6 +61,14 @@ def test_generate_ecg_signal():
 
     assert isinstance(ecg_signal, np.ndarray)
     assert len(ecg_signal) > 0
+    
+    ecg_signal_none_duration = generate_ecg_signal(
+        sfecg=sfecg, duration=None, N=N, 
+        Anoise=Anoise, hrmean=hrmean
+    )
+
+    assert isinstance(ecg_signal_none_duration, np.ndarray)
+    assert len(ecg_signal_none_duration) > 0
 
 # Test generate_resp_signal
 def test_generate_resp_signal():
@@ -72,12 +81,14 @@ def test_generate_resp_signal():
 
 
 # Test generate_synthetic_ppg
-def test_generate_synthetic_ppg():
+@mock.patch('matplotlib.pyplot.show')
+def test_generate_synthetic_ppg(mock_show):
     duration = 10.0
     sampling_rate = 1000
     heart_rate = 60
     ppg_signal = generate_synthetic_ppg(
-        duration=duration, sampling_rate=sampling_rate, heart_rate=heart_rate
+        duration=duration, sampling_rate=sampling_rate,
+        display=True,heart_rate=heart_rate,randomize=True,
     )
 
     assert isinstance(ppg_signal, tuple)
@@ -85,12 +96,14 @@ def test_generate_synthetic_ppg():
 
 
 # Test generate_synthetic_ppg_reversed
-def test_generate_synthetic_ppg_reversed():
+@mock.patch('matplotlib.pyplot.show')
+def test_generate_synthetic_ppg_reversed(mock_show):
     duration = 10.0
     sampling_rate = 1000
     heart_rate = 60
     ppg_signal = generate_synthetic_ppg_reversed(
-        duration=duration, sampling_rate=sampling_rate, heart_rate=heart_rate
+        duration=duration, sampling_rate=sampling_rate, 
+        heart_rate=heart_rate, display=True
     )
 
     assert isinstance(ppg_signal, tuple)

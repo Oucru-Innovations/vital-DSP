@@ -104,24 +104,6 @@ def generate_noisy_signal(base_signal, noise_level=0.1):
     return noisy_signal
 
 
-def interp(ys, mul):
-    """
-    handy func
-    :param ys:
-    :param mul:
-    :return:
-    """
-    # linear extrapolation for last (mul - 1) points
-    ys = list(ys)
-    ys.append(2 * ys[-1] - ys[-2])
-    # make interpolation function
-    xs = np.arange(len(ys))
-    fn = interp1d(xs, ys, kind="cubic")
-    # call it on desired data points
-    new_xs = np.arange(len(ys) - 1, step=1.0 / mul)
-    return fn(new_xs)
-
-
 def generate_ecg_signal(
     sfecg=256,
     N=None,
@@ -343,33 +325,6 @@ def rrprocess(flo, fhi, flostd, fhistd, lfhfratio, hrmean, hrstd, sfrr, n):
     # Handle potential NaN values in rr
     rr = rrmean + x * ratio
     return rr
-
-
-def derivsecgsyn(x, t, rr, sfint, ti, ai, bi):
-    # xi = np.cos(ti)
-    # yi = np.sin(ti)
-    ta = np.arctan2(x[1], x[0])
-    r0 = 1.0
-    a0 = 1.0 - np.sqrt(x[0] ** 2 + x[1] ** 2) / r0
-    ip = int(np.floor(t * sfint))
-
-    # Ensure ip is within the bounds of the rr array
-    if ip >= len(rr):
-        ip = len(rr) - 1
-
-    w0 = 2 * np.pi / rr[ip]
-
-    fresp = 0.25
-    zbase = 0.005 * np.sin(2 * np.pi * fresp * t)
-
-    dx1dt = a0 * x[0] - w0 * x[1]
-    dx2dt = a0 * x[1] + w0 * x[0]
-
-    dti = np.remainder(ta - ti, 2 * np.pi)
-    dx3dt = -np.sum(ai * dti * np.exp(-0.5 * (dti / bi) ** 2)) - 1.0 * (x[2] - zbase)
-
-    dxdt = [dx1dt, dx2dt, dx3dt]
-    return dxdt
 
 
 def generate_resp_signal(sampling_rate, duration, frequency=0.2, amplitude=0.5):
