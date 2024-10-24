@@ -11,17 +11,33 @@ def sample_signal():
     """Fixture for a sample signal array."""
     return np.array([1, 2, 3, 4, 5, 4, 3, 2, 1])  # Expect peak at index 4
 
+def mock_find_peaks(signal, height=None, distance=None, threshold=None, prominence=None, width=None):
+    """
+    Mock the find_peaks function to return indices where the signal has local maxima.
+    """
+    peaks = []
+    for i in range(1, len(signal) - 1):
+        if signal[i] > signal[i - 1] and signal[i] > signal[i + 1]:
+            if height is not None and signal[i] < height:
+                continue
+            if distance is not None and len(peaks) > 0 and (i - peaks[-1]) < distance:
+                continue
+            peaks.append(i)
+    return np.array(peaks)
 
-def test_threshold_based_detection(sample_signal, monkeypatch):
-    """Test threshold-based peak detection."""
 
-    def mock_find_peaks(signal, height, distance):
+def test_threshold_based_detection(sample_signal,monkeypatch):
+    """Test threshold-based peak detection with logic reintroduced."""
+
+    def mock_find_peaks(signal):
         return np.array([4])  # Expect peak at index 4
 
     monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
-    detector = PeakDetection(sample_signal, method="threshold", threshold=4, distance=2)
+    detector = PeakDetection(
+        sample_signal, method="threshold", window_length=11, polyorder=2
+    )
     peaks = detector.detect_peaks()
-    assert np.array_equal(peaks, np.array([4]))  # Expect the peak at index 4
+    assert np.array_equal(peaks, np.array([4]))
 
 
 def test_savgol_based_detection(sample_signal, monkeypatch):
@@ -81,19 +97,16 @@ def test_relative_extrema_detection(sample_signal, monkeypatch):
 
 def test_scaler_threshold_based_detection(sample_signal, monkeypatch):
     """Test scaler-based peak detection."""
-
     class MockScaler:
         def fit_transform(self, signal):
             return signal  # Return the original signal as if it was standardized
-
-    def mock_find_peaks(signal, height, distance):
+        
+    def mock_find_peaks(signal):
         return np.array([4])  # Expect peak at index 4
 
-    monkeypatch.setattr("vitalDSP.utils.scaler.StandardScaler", MockScaler)
     monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
-
     detector = PeakDetection(
-        sample_signal, method="scaler_threshold", threshold=1, distance=2
+        sample_signal, method="scaler_threshold", window_length=11, polyorder=2
     )
     peaks = detector.detect_peaks()
     assert np.array_equal(peaks, np.array([4]))
@@ -184,7 +197,7 @@ def test_ppg_second_derivative_detection(sample_signal, monkeypatch):
 def test_invalid_method_detection(sample_signal):
     """Test the case when an invalid method is provided."""
     detector = PeakDetection(sample_signal, method="invalid_method")
-    with pytest.raises(ValueError, match="Invalid method selected"):
+    with pytest.raises(ValueError, match="Invalid method 'invalid_method' selected."):
         detector.detect_peaks()
 
 

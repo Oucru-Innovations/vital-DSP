@@ -45,6 +45,22 @@ class PeakDetection:
         """
         self.signal = signal
         self.method = method
+        # Extract relevant parameters from kwargs and set as instance attributes
+        self.height = kwargs.get("height", None)
+        self.distance = kwargs.get("distance", None)
+        self.threshold = kwargs.get("threshold", None)
+        self.prominence = kwargs.get("prominence", None)
+        self.width = kwargs.get("width", None)
+        self.search_window = kwargs.get("search_window", 4)
+        self.window_length = kwargs.get("window_length", 11)
+        self.polyorder = kwargs.get("polyorder", 2)
+        self.sigma = kwargs.get("sigma", 1)
+        self.order = kwargs.get("order", 1)
+        self.lowcut = kwargs.get("lowcut", 0.5)
+        self.highcut = kwargs.get("highcut", 50)
+        self.fs = kwargs.get("fs", 1.0)
+        self.window_size = kwargs.get("window_size", 7)
+        self.threshold_factor = kwargs.get("threshold_factor", 1.2)
         self.kwargs = kwargs
 
     def detect_peaks(self):
@@ -68,40 +84,55 @@ class PeakDetection:
         >>> peaks = detector.detect_peaks()
         >>> print(peaks)
         """
-        if self.method == "threshold":
-            return self._threshold_based_detection()
-        elif self.method == "savgol":
-            return self._savgol_based_detection()
-        elif self.method == "gaussian":
-            return self._gaussian_based_detection()
-        elif self.method == "rel_extrema":
-            return self._relative_extrema_detection()
-        elif self.method == "scaler_threshold":
-            return self._scaler_threshold_based_detection()
-        elif self.method == "ecg_r_peak":
-            return self._ecg_r_peak_detection()
-        elif self.method == "ecg_derivative":
-            return self._ecg_derivative_detection()
-        elif self.method == "ppg_first_derivative":
-            return self._ppg_first_derivative_detection()
-        elif self.method == "ppg_second_derivative":
-            return self._ppg_second_derivative_detection()
-        elif self.method == "eeg_wavelet":
-            return self._eeg_wavelet_detection()
-        elif self.method == "eeg_bandpass":
-            return self._eeg_bandpass_detection()
-        elif self.method == "resp_autocorrelation":
-            return self._resp_autocorrelation_detection()
-        elif self.method == "resp_zero_crossing":
-            return self._resp_zero_crossing_detection()
-        elif self.method == "abp_systolic":
-            return self._abp_systolic_peak_detection()
-        elif self.method == "abp_diastolic":
-            return self._abp_diastolic_peak_detection()
-        else:
-            raise ValueError(
-                "Invalid method selected. Choose from the provided methods."
-            )
+        method_dict = {
+            "threshold": self._threshold_based_detection,
+            "savgol": self._savgol_based_detection,
+            "gaussian": self._gaussian_based_detection,
+            "rel_extrema": self._relative_extrema_detection,
+            "scaler_threshold": self._scaler_threshold_based_detection,
+            "ecg_r_peak": self._ecg_r_peak_detection,
+            "ecg_derivative": self._ecg_derivative_detection,
+            "ppg_first_derivative": self._ppg_first_derivative_detection,
+            "ppg_second_derivative": self._ppg_second_derivative_detection,
+            "eeg_wavelet": self._eeg_wavelet_detection,
+            "eeg_bandpass": self._eeg_bandpass_detection,
+            "resp_autocorrelation": self._resp_autocorrelation_detection,
+            "resp_zero_crossing": self._resp_zero_crossing_detection,
+            "abp_systolic": self._abp_systolic_peak_detection,
+            "abp_diastolic": self._abp_diastolic_peak_detection,
+        }
+        if self.method not in method_dict:
+            raise ValueError(f"Invalid method '{self.method}' selected.")
+        return method_dict[self.method]()
+
+    def _refine_peaks(self, peaks):
+        """
+        Refine detected peaks by searching for the local maximum within a window.
+
+        Parameters
+        ----------
+        peaks : numpy.ndarray
+            Initial peak indices detected.
+        search_window : int, optional
+            Number of samples around each peak to search for the true maximum.
+
+        Returns
+        -------
+        refined_peaks : numpy.ndarray
+            Refined peak indices.
+        """
+        search_window = self.kwargs.get(
+            "search_window", 4
+        )  # Default search window size is 4
+        refined_peaks = []
+
+        for peak in peaks:
+            start = max(0, peak - search_window)
+            end = min(len(self.signal), peak + search_window)
+            true_peak = np.argmax(self.signal[start:end]) + start
+            refined_peaks.append(true_peak)
+
+        return np.array(refined_peaks)
 
     def _threshold_based_detection(self):
         """
@@ -121,9 +152,15 @@ class PeakDetection:
         >>> peaks = detector._threshold_based_detection()
         >>> print(peaks)
         """
-        threshold = self.kwargs.get("threshold", 0.5)
-        distance = self.kwargs.get("distance", 50)
-        return find_peaks(self.signal, height=threshold, distance=distance)
+        peaks = find_peaks(
+            self.signal,
+            height=self.height,
+            distance=self.distance,
+            threshold=self.threshold,
+            prominence=self.prominence,
+            width=self.width,
+        )
+        return self._refine_peaks(peaks)
 
     def _savgol_based_detection(self):
         """
@@ -143,12 +180,18 @@ class PeakDetection:
         >>> peaks = detector._savgol_based_detection()
         >>> print(peaks)
         """
-        window_length = self.kwargs.get("window_length", 11)
-        polyorder = self.kwargs.get("polyorder", 2)
         smoothed_signal = SignalFiltering.savgol_filter(
-            self.signal, window_length=window_length, polyorder=polyorder
+            self.signal, window_length=self.window_length, polyorder=self.polyorder
         )
-        return find_peaks(smoothed_signal)
+        peaks = find_peaks(
+            smoothed_signal,
+            height=self.height,
+            distance=self.distance,
+            threshold=self.threshold,
+            prominence=self.prominence,
+            width=self.width,
+        )
+        return self._refine_peaks(peaks)
 
     def _gaussian_based_detection(self):
         """
@@ -168,9 +211,18 @@ class PeakDetection:
         >>> peaks = detector._gaussian_based_detection()
         >>> print(peaks)
         """
-        sigma = self.kwargs.get("sigma", 1)
-        smoothed_signal = SignalFiltering.gaussian_filter1d(self.signal, sigma=sigma)
-        return find_peaks(smoothed_signal)
+        smoothed_signal = SignalFiltering.gaussian_filter1d(
+            self.signal, sigma=self.sigma
+        )
+        peaks = find_peaks(
+            smoothed_signal,
+            height=self.height,
+            distance=self.distance,
+            threshold=self.threshold,
+            prominence=self.prominence,
+            width=self.width,
+        )
+        return self._refine_peaks(peaks)
 
     def _relative_extrema_detection(self):
         """
@@ -190,9 +242,8 @@ class PeakDetection:
         >>> peaks = detector._relative_extrema_detection()
         >>> print(peaks)
         """
-        order = self.kwargs.get("order", 1)
-        peaks = argrelextrema(self.signal, np.greater, order=order)
-        return peaks
+        peaks = argrelextrema(self.signal, np.greater, order=self.order)
+        return self._refine_peaks(peaks)
 
     def _scaler_threshold_based_detection(self):
         """
@@ -214,9 +265,15 @@ class PeakDetection:
         """
         scaler = StandardScaler()
         standardized_signal = scaler.fit_transform(self.signal)
-        threshold = self.kwargs.get("threshold", 1)
-        distance = self.kwargs.get("distance", 50)
-        return find_peaks(standardized_signal, height=threshold, distance=distance)
+        peaks = find_peaks(
+            standardized_signal,
+            height=self.height,
+            distance=self.distance,
+            threshold=self.threshold,
+            prominence=self.prominence,
+            width=self.width,
+        )
+        return self._refine_peaks(peaks)
 
     def _ecg_r_peak_detection(self):
         """
@@ -236,12 +293,6 @@ class PeakDetection:
         >>> peaks = detector.find_peaks()
         >>> print(peaks)
         """
-        # Parameters can be passed via kwargs, with defaults
-        distance = self.kwargs.get("distance", 50)
-        window_size = self.kwargs.get("window_size", 7)
-        threshold_factor = self.kwargs.get("threshold_factor", 1.2)
-        search_window = self.kwargs.get("search_window", 4)
-
         # First derivative of the signal
         diff_signal = np.diff(self.signal)
 
@@ -250,26 +301,21 @@ class PeakDetection:
 
         # Apply a moving window integrator to smooth the squared signal
         integrator = np.convolve(
-            squared_signal, np.ones(window_size) / window_size, mode="same"
+            squared_signal, np.ones(self.window_size) / self.window_size, mode="same"
         )
 
         # Set the threshold dynamically based on mean and a factor to reduce noise
-        threshold = np.mean(integrator) * threshold_factor
+        threshold = np.mean(integrator) * self.threshold_factor
 
         # Detect R-peaks in the processed signal
-        peaks = find_peaks(integrator, distance=distance, height=threshold)
-
-        # Refinement step: search around each detected peak to find the true maximum
-        refined_peaks = []
-        for peak in peaks:
-            # Define a local search window around the detected peak
-            start = max(0, peak - search_window)
-            end = min(len(self.signal), peak + search_window)
-            # Find the true maximum within this window
-            true_peak = np.argmax(self.signal[start:end]) + start
-            refined_peaks.append(true_peak)
-
-        return np.array(refined_peaks)
+        peaks = find_peaks(
+            integrator,
+            height=threshold,
+            distance=self.distance,
+            prominence=self.prominence,
+            width=self.width,
+        )
+        return self._refine_peaks(peaks)
 
     def _ecg_derivative_detection(self):
         """
@@ -290,7 +336,15 @@ class PeakDetection:
         >>> print(peaks)
         """
         diff_signal = np.diff(self.signal)
-        return find_peaks(np.abs(diff_signal), height=np.mean(np.abs(diff_signal)))
+        peaks = find_peaks(
+            np.abs(diff_signal),
+            height=np.mean(np.abs(diff_signal)),
+            distance=self.distance,
+            threshold=self.threshold,
+            prominence=self.prominence,
+            width=self.width,
+        )
+        return self._refine_peaks(peaks)
 
     def _ppg_first_derivative_detection(self):
         """
@@ -311,7 +365,15 @@ class PeakDetection:
         >>> print(peaks)
         """
         diff_signal = np.diff(self.signal)
-        return find_peaks(diff_signal, height=np.mean(diff_signal))
+        peaks = find_peaks(
+            diff_signal,
+            height=np.mean(diff_signal),
+            distance=self.distance,
+            threshold=self.threshold,
+            prominence=self.prominence,
+            width=self.width,
+        )
+        return self._refine_peaks(peaks)
 
     def _ppg_second_derivative_detection(self):
         """
@@ -332,7 +394,15 @@ class PeakDetection:
         >>> print(peaks)
         """
         diff_signal = np.diff(self.signal, n=2)
-        return find_peaks(diff_signal, height=np.mean(diff_signal))
+        peaks = find_peaks(
+            diff_signal,
+            height=np.mean(diff_signal),
+            distance=self.distance,
+            threshold=self.threshold,
+            prominence=self.prominence,
+            width=self.width,
+        )
+        return self._refine_peaks(peaks)
 
     def _eeg_wavelet_detection(self):
         """
@@ -353,7 +423,15 @@ class PeakDetection:
         >>> print(peaks)
         """
         wavelet_coeffs = np.abs(np.convolve(self.signal, np.ones(10), "same"))
-        return find_peaks(wavelet_coeffs, height=np.mean(wavelet_coeffs))
+        peaks = find_peaks(
+            wavelet_coeffs,
+            height=np.mean(wavelet_coeffs),
+            distance=self.distance,
+            threshold=self.threshold,
+            prominence=self.prominence,
+            width=self.width,
+        )
+        return self._refine_peaks(peaks)
 
     def _eeg_bandpass_detection(self):
         """
@@ -373,12 +451,19 @@ class PeakDetection:
         >>> peaks = detector._eeg_bandpass_detection()
         >>> print(peaks)
         """
-        lowcut = self.kwargs.get("lowcut", 0.5)
-        highcut = self.kwargs.get("highcut", 50)
-        fs = self.kwargs.get("fs", 1.0)
-        b, a = SignalFiltering.butter(5, [lowcut, highcut], btype="band", fs=fs)
+        b, a = SignalFiltering.butter(
+            5, [self.lowcut, self.highcut], btype="band", fs=self.fs
+        )
         filtered_signal = filtfilt(b, a, self.signal)
-        return find_peaks(filtered_signal, height=np.mean(filtered_signal))
+        peaks = find_peaks(
+            filtered_signal,
+            height=np.mean(filtered_signal),
+            distance=self.distance,
+            threshold=self.threshold,
+            prominence=self.prominence,
+            width=self.width,
+        )
+        return self._refine_peaks(peaks)
 
     def _resp_autocorrelation_detection(self):
         """
@@ -399,7 +484,15 @@ class PeakDetection:
         >>> print(peaks)
         """
         autocorr = np.correlate(self.signal, self.signal, mode="full")
-        return find_peaks(autocorr, distance=len(self.signal) // 2)
+        peaks = find_peaks(
+            autocorr,
+            distance=len(self.signal) // 2,
+            height=self.height,
+            threshold=self.threshold,
+            prominence=self.prominence,
+            width=self.width,
+        )
+        return self._refine_peaks(peaks)
 
     def _resp_zero_crossing_detection(self):
         """
@@ -435,7 +528,7 @@ class PeakDetection:
         # Return every second zero-crossing as a peak
         peaks = zero_crossings[::2]
 
-        return peaks
+        return self._refine_peaks(peaks)
 
     def _abp_systolic_peak_detection(self):
         """
@@ -456,9 +549,17 @@ class PeakDetection:
         >>> print(peaks)
         """
         smoothed_signal = SignalFiltering.savgol_filter(
-            self.signal, window_length=11, polyorder=2
+            self.signal, window_length=self.window_length, polyorder=self.polyorder
         )
-        return find_peaks(smoothed_signal, distance=60)
+        peaks = find_peaks(
+            smoothed_signal,
+            height=self.height,
+            distance=self.distance,
+            threshold=self.threshold,
+            prominence=self.prominence,
+            width=self.width,
+        )
+        return self._refine_peaks(peaks)
 
     def _abp_diastolic_peak_detection(self):
         """
@@ -480,6 +581,14 @@ class PeakDetection:
         """
         inverted_signal = -self.signal
         smoothed_signal = SignalFiltering.savgol_filter(
-            inverted_signal, window_length=11, polyorder=2
+            inverted_signal, window_length=self.window_length, polyorder=self.polyorder
         )
-        return find_peaks(smoothed_signal, distance=60)
+        peaks = find_peaks(
+            smoothed_signal,
+            distance=self.distance,
+            height=self.height,
+            threshold=self.threshold,
+            prominence=self.prominence,
+            width=self.width,
+        )
+        return self._refine_peaks(peaks)
