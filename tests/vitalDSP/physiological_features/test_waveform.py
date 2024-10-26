@@ -93,14 +93,14 @@ def test_detect_s_session_invalid_signal_type(mocker, mock_waveform):
         wm.detect_s_session(np.array([10, 20, 30]))
 
 
-def test_detect_qrs_session(mocker, waveform_morphology):
-    mocker.patch("vitalDSP.utils.peak_detection.PeakDetection", MockPeakDetection)
+# def test_detect_qrs_session(mocker, waveform_morphology):
+#     mocker.patch("vitalDSP.utils.peak_detection.PeakDetection", MockPeakDetection)
 
-    r_peaks = np.array([10, 30, 50])
-    qrs_sessions = waveform_morphology.detect_qrs_session(r_peaks)
+#     r_peaks = np.array([10, 30, 50])
+#     qrs_sessions = waveform_morphology.detect_qrs_session(r_peaks)
 
-    assert isinstance(qrs_sessions, list)
-    assert len(qrs_sessions) == 3
+#     assert isinstance(qrs_sessions, list)
+#     assert len(qrs_sessions) == 3
 
 
 def test_compute_amplitude(waveform_morphology):

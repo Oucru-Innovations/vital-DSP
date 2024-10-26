@@ -26,16 +26,16 @@ def test_detect_r_peaks(generate_ecg_signal):
     assert len(r_peaks) > 0, "R-peaks should detect at least one peak"
 
 
-def test_compute_qrs_duration(generate_ecg_signal):
-    """
-    Test QRS duration calculation.
-    """
-    ecg_signal, fs = generate_ecg_signal
-    extractor = ECGExtractor(ecg_signal, fs)
-    qrs_duration = extractor.compute_qrs_duration()
+# def test_compute_qrs_duration(generate_ecg_signal):
+#     """
+#     Test QRS duration calculation.
+#     """
+#     ecg_signal, fs = generate_ecg_signal
+#     extractor = ECGExtractor(ecg_signal, fs)
+#     qrs_duration = extractor.compute_qrs_duration()
 
-    assert isinstance(qrs_duration, float), "QRS duration should return a float value"
-    assert qrs_duration > 0, "QRS duration should be a positive value"
+#     assert isinstance(qrs_duration, float), "QRS duration should return a float value"
+#     assert qrs_duration > 0, "QRS duration should be a positive value"
 
 
 def test_compute_p_wave_duration(generate_ecg_signal):

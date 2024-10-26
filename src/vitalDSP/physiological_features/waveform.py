@@ -78,6 +78,61 @@ class WaveformMorphology:
         notches = notch_detector.detect_peaks()
         return notches
 
+    def detect_q_valley(self, r_peaks=None):
+        """
+        Detects the Q valley (local minimum) in the ECG waveform just before each R peak.
+
+        Parameters
+        ----------
+        r_peaks : np.array
+            Indices of detected R peaks in the ECG waveform.
+
+        Returns
+        -------
+        q_valleys : list of int
+            Indices of the Q valley (local minimum) for each R peak.
+        """
+        if self.signal_type != "ECG":
+            raise ValueError("Q valleys can only be detected for ECG signals.")
+        if r_peaks is None:
+            detector = PeakDetection(
+                self.waveform,
+                "ecg_r_peak",
+                **{
+                    "distance": 50,
+                    "window_size": 7,
+                    "threshold_factor": 1.6,
+                    "search_window": 6,
+                }
+            )
+            r_peaks = detector.detect_peaks()
+
+        q_valleys = []
+        for i, r_peak in enumerate(r_peaks):
+            # Set the end of the search range to be the R peak
+            search_end = r_peak
+
+            # Determine the start of the search range
+            if i == 0:
+                # For the first R peak, start from the beginning of the signal
+                search_start = max(
+                    0, search_end - int(self.fs * 0.2)
+                )  # Approx 200ms window
+            else:
+                # For subsequent R peaks, set the start as the midpoint to the previous R peak
+                search_start = (r_peaks[i - 1] + r_peak) // 2
+
+            # Ensure the search range is valid
+            if search_start < search_end:
+                # Extract the signal segment within the search range
+                signal_segment = self.waveform[search_start:search_end]
+
+                # Detect the Q valley as the minimum point in the segment
+                q_valley_idx = np.argmin(signal_segment) + search_start
+                q_valleys.append(q_valley_idx)
+
+        return q_valleys
+
     def detect_q_session(self, r_peaks):
         """
         Detects the Q sessions (start and end) in the ECG waveform based on R peaks.
@@ -104,12 +159,51 @@ class WaveformMorphology:
             raise ValueError("Q sessions can only be detected for ECG signals.")
 
         q_sessions = []
+        signal_derivative = np.diff(self.waveform)  # First derivative of the signal
+
         for r_peak in r_peaks:
-            q_start = max(
-                0, r_peak - int(self.fs * 0.04)
-            )  # Example: 40 ms before R peak
-            q_end = r_peak
-            q_sessions.append((q_start, q_end))
+            # Search backward to find the downhill slope, which indicates Q-wave start
+            search_start = r_peak
+            for i in range(
+                r_peak - 1, max(0, r_peak - int(self.fs * 0.2)), -1
+            ):  # Limit to a max of 200ms
+                if (
+                    signal_derivative[i - 1] < 0 and signal_derivative[i] >= 0
+                ):  # Change from downhill to minimum
+                    search_start = i
+                    break
+
+            # Define search end as the R-peak for locating Q-wave
+            search_end = r_peak
+
+            # Find the Q-wave within the determined search window
+            if search_end > search_start:
+                q_wave_idx = search_start + np.argmin(
+                    self.waveform[search_start:search_end]
+                )
+
+                # Locate Q session boundaries more precisely
+                # Start of Q session: keep moving left until we find a rising slope
+                for i in range(q_wave_idx, search_start, -1):
+                    if signal_derivative[i - 1] >= 0 and signal_derivative[i] < 0:
+                        q_start = i
+                        break
+                else:
+                    q_start = search_start  # Fallback if boundary not found
+
+                # End of Q session: continue to the right until we find the slope beginning to rise again
+                for i in range(q_wave_idx, search_end - 1):
+                    if signal_derivative[i] < 0 and signal_derivative[i + 1] >= 0:
+                        q_end = i
+                        break
+                else:
+                    q_end = search_end  # Fallback if boundary not found
+
+                q_sessions.append((q_start, q_end))
+            else:
+                continue
+                # print(f"Skipping R-peak at {r_peak}: invalid search window [{search_start}, {search_end})")
+
         return q_sessions
 
     def detect_r_session(self, r_peaks):
@@ -300,6 +394,177 @@ class WaveformMorphology:
         >>> print(skewness)
         """
         return skew(self.waveform)
+
+    def detect_s_valley(self, r_peaks=None):
+        """
+        Detects the S valleys (local minima after each R peak).
+
+        Parameters
+        ----------
+        r_peaks : list of int
+            Indices of detected R peaks in the ECG waveform.
+
+        Returns
+        -------
+        s_valleys : list of int
+            Indices of the S valleys for each R peak.
+        """
+        if self.signal_type != "ECG":
+            raise ValueError("Q valleys can only be detected for ECG signals.")
+        if r_peaks is None:
+            detector = PeakDetection(
+                self.waveform,
+                "ecg_r_peak",
+                **{
+                    "distance": 50,
+                    "window_size": 7,
+                    "threshold_factor": 1.6,
+                    "search_window": 6,
+                }
+            )
+            r_peaks = detector.detect_peaks()
+
+        s_valleys = []
+
+        for i, r_peak in enumerate(r_peaks):
+            # Set the start of the search range to be the R peak
+            search_start = r_peak
+
+            # Determine the end of the search range
+            if i == len(r_peaks) - 1:
+                # For the last R peak, set the end to the end of the signal or a 200ms window after the R peak
+                search_end = min(
+                    len(self.waveform) - 1, search_start + int(self.fs * 0.2)
+                )  # Approx 200ms window
+            else:
+                # For other R peaks, set the end as the midpoint to the next R peak
+                search_end = (r_peak + r_peaks[i + 1]) // 2
+
+            # Ensure the search range is valid
+            if search_start < search_end:
+                # Extract the signal segment within the search range
+                signal_segment = self.waveform[search_start:search_end]
+
+                # Detect the S valley as the minimum point in the segment
+                s_valley_idx = np.argmin(signal_segment) + search_start
+                s_valleys.append(s_valley_idx)
+
+        return s_valleys
+
+    def detect_p_peak(self, r_peaks=None, q_valleys=None):
+        """
+        Detects the P peak (local maximum) in the ECG waveform just before each Q valley.
+
+        Parameters
+        ----------
+        q_valleys : list of int
+            Indices of detected Q valleys in the ECG waveform.
+
+        Returns
+        -------
+        p_peaks : list of int
+            Indices of the P peaks (local maximum) for each Q valley.
+        """
+        if self.signal_type != "ECG":
+            raise ValueError("P peaks can only be detected for ECG signals.")
+        if r_peaks is None:
+            detector = PeakDetection(
+                self.waveform,
+                "ecg_r_peak",
+                **{
+                    "distance": 50,
+                    "window_size": 7,
+                    "threshold_factor": 1.6,
+                    "search_window": 6,
+                }
+            )
+            r_peaks = detector.detect_peaks()
+        if q_valleys is None:
+            q_valleys = self.detect_q_valley(r_peaks=r_peaks)
+        p_peaks = []
+
+        for i in range(1, len(r_peaks)):
+            # Define search range with midpoint as start and Q valley as end
+            midpoint = (r_peaks[i - 1] + r_peaks[i]) // 2
+            q_valley = q_valleys[i - 1]  # Corresponding Q valley for the R peak pair
+
+            # Ensure search range has positive length
+            if midpoint < q_valley:
+                search_start = midpoint
+                search_end = q_valley
+            else:
+                # Skip if search range is invalid
+                continue
+
+            # Extract signal segment within search range
+            signal_segment = self.waveform[search_start:search_end]
+
+            # Detect the maximum in this segment
+            p_peak_idx = np.argmax(signal_segment) + search_start
+            p_peaks.append(p_peak_idx)
+
+        return p_peaks
+
+    def detect_t_peak(self, r_peaks=None, s_valleys=None):
+        """
+        Detect T peaks (local maxima) between the S valley and the midpoint to the next R peak.
+
+        Parameters
+        ----------
+        r_peaks : list of int
+            Indices of detected R peaks in the ECG waveform.
+        s_valleys : list of int
+            Indices of detected S valleys in the ECG waveform.
+
+        Returns
+        -------
+        t_peaks : list of int
+            Indices of the T peaks for each S valley.
+        """
+        if self.signal_type != "ECG":
+            raise ValueError("T peaks can only be detected for ECG signals.")
+        if r_peaks is None:
+            detector = PeakDetection(
+                self.waveform,
+                "ecg_r_peak",
+                **{
+                    "distance": 50,
+                    "window_size": 7,
+                    "threshold_factor": 1.6,
+                    "search_window": 6,
+                }
+            )
+            r_peaks = detector.detect_peaks()
+        if s_valleys is None:
+            s_valleys = self.detect_s_valley(r_peaks=r_peaks)
+
+        t_peaks = []
+
+        for i in range(len(s_valleys)):
+            # Define S valley as the start of the search range
+            s_valley = s_valleys[i]
+
+            # Determine the end of the search range
+            # For the last S valley, restrict the end point within signal bounds
+            if i < len(r_peaks) - 1:
+                midpoint = (r_peaks[i] + r_peaks[i + 1]) // 2
+            else:
+                # For the last R peak, limit the midpoint to signal length
+                midpoint = len(self.waveform) - 1
+
+            # Check if search range is valid
+            if s_valley < midpoint:
+                search_start = s_valley
+                search_end = midpoint
+
+                # Extract the signal segment within the search range
+                signal_segment = self.waveform[search_start:search_end]
+
+                # Detect the T peak as the maximum point in the segment
+                t_peak_idx = np.argmax(signal_segment) + search_start
+                t_peaks.append(t_peak_idx)
+
+        return t_peaks
 
     def compute_qrs_duration(self):
         """
