@@ -6,7 +6,7 @@ from vitalDSP.preprocess.preprocess_operations import (
     preprocess_signal,
 )
 from vitalDSP.physiological_features.waveform import WaveformMorphology
-
+import warnings
 
 class PhysiologicalFeatureExtractor:
     """
@@ -64,6 +64,10 @@ class PhysiologicalFeatureExtractor:
         >>> troughs = extractor.detect_troughs(peaks)
         >>> print(troughs)
         """
+        warnings.warn(
+        "Deprecated. Please use vitalDSP.physiological_features.waveform.WaveformMorphology instead.",
+        DeprecationWarning
+        )
         troughs = []
         for i in range(len(peaks) - 1):
             # Find the local minimum between two consecutive peaks
@@ -224,7 +228,8 @@ class PhysiologicalFeatureExtractor:
                 peaks = PeakDetection(
                     clean_signal, method="ppg_first_derivative"
                 ).detect_peaks()
-                troughs = morphology.detect_troughs(peaks)
+                waveform = WaveformMorphology(clean_signal, fs=self.fs, signal_type="PPG")
+                troughs = waveform.detect_troughs(systolic_peaks=peaks)
 
                 # Ensure peaks and troughs are numpy arrays
                 peaks = np.array(peaks, dtype=int)

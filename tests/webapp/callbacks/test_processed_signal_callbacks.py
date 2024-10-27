@@ -8,7 +8,7 @@ from vitalDSP_webapp.app import create_dash_app
 # Fixture for setting up the Dash app
 @pytest.fixture
 def dash_app():
-    # Import the app directly from your app file
+    # Import the app directly from app file
     app = create_dash_app()
 
     # Define the layout for testing

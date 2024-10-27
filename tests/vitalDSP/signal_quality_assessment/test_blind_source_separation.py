@@ -72,8 +72,12 @@ def test_pca_artifact_removal():
 
 # Test with a basic set of signals
 def test_jade_ica_basic(monkeypatch):
-    signals = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-
+    # signals = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    np.random.seed(42)
+    signals = np.random.randn(
+        5, 5
+    )  # 5 signals, 5 samples each to make the covariance matrix square
+    
     # Mock whiten_signal to avoid using the actual implementation
     def mock_whiten_signal(signals):
         mean = np.mean(signals, axis=1, keepdims=True)
@@ -85,7 +89,7 @@ def test_jade_ica_basic(monkeypatch):
 
     # Use monkeypatch to replace the whiten_signal function in the module
     monkeypatch.setattr(
-        "src.vitalDSP.signal_quality_assessment.blind_source_separation.whiten_signal",
+        "vitalDSP.signal_quality_assessment.blind_source_separation.whiten_signal",
         mock_whiten_signal,
     )
 
@@ -114,7 +118,7 @@ def test_jade_ica_random_signals(monkeypatch):
         return whitened_signals, np.eye(signals.shape[0])
 
     monkeypatch.setattr(
-        "src.vitalDSP.signal_quality_assessment.blind_source_separation.whiten_signal",
+        "vitalDSP.signal_quality_assessment.blind_source_separation.whiten_signal",
         mock_whiten_signal,
     )
 
@@ -150,7 +154,7 @@ def test_jade_ica_large_iterations(monkeypatch):
         return whitened_signals, np.eye(signals.shape[0])
 
     monkeypatch.setattr(
-        "src.vitalDSP.signal_quality_assessment.blind_source_separation.whiten_signal",
+        "vitalDSP.signal_quality_assessment.blind_source_separation.whiten_signal",
         mock_whiten_signal,
     )
 
@@ -176,7 +180,7 @@ def test_jade_ica_tolerance(monkeypatch):
         return whitened_signals, np.eye(signals.shape[0])
 
     monkeypatch.setattr(
-        "src.vitalDSP.signal_quality_assessment.blind_source_separation.whiten_signal",
+        "vitalDSP.signal_quality_assessment.blind_source_separation.whiten_signal",
         mock_whiten_signal,
     )
 

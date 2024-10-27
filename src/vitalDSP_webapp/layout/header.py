@@ -22,7 +22,7 @@ def Header():
                     [
                         html.Img(
                             src="/assets/logo.png", height="40px"
-                        ),  # Add your logo here
+                        ),  
                         " VitalDSP Dashboard",
                     ],
                     href="#",

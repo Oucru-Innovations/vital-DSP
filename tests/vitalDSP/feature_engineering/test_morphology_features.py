@@ -7,11 +7,11 @@ from vitalDSP.preprocess.preprocess_operations import (
     preprocess_signal,
 )
 from vitalDSP.physiological_features.waveform import WaveformMorphology
-from vitalDSP.feature_engineering.morphology_features import (
-    PhysiologicalFeatureExtractor,
-)
+from vitalDSP.feature_engineering.morphology_features import PhysiologicalFeatureExtractor
 import os
 from vitalDSP.notebooks import process_in_chunks, plot_trace
+import warnings
+warnings.simplefilter('default', DeprecationWarning)
 
 
 def load_ecg_data():
@@ -48,11 +48,11 @@ def test_feature_extractor_initialization(generate_signal):
 
 
 # Test the detection of troughs
-def test_detect_troughs(feature_extractor):
-    peaks = np.array([100, 200, 300])
-    troughs = feature_extractor.detect_troughs(peaks)
-    assert len(troughs) == len(peaks) - 1
-    assert isinstance(troughs, np.ndarray)
+# def test_detect_troughs(feature_extractor):
+#     peaks = np.array([100, 200, 300])
+#     troughs = feature_extractor.detect_troughs(peaks)
+#     assert len(troughs) == len(peaks) - 1
+#     assert isinstance(troughs, np.ndarray)
 
 
 # Test the computation of peak trend

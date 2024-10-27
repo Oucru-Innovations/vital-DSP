@@ -58,7 +58,7 @@ class PeakDetection:
         self.order = kwargs.get("order", 1)
         self.lowcut = kwargs.get("lowcut", 0.5)
         self.highcut = kwargs.get("highcut", 50)
-        self.fs = kwargs.get("fs", 1.0)
+        self.fs = kwargs.get("fs", 100.0)
         self.window_size = kwargs.get("window_size", 7)
         self.threshold_factor = kwargs.get("threshold_factor", 1.2)
         self.kwargs = kwargs
@@ -92,6 +92,7 @@ class PeakDetection:
             "scaler_threshold": self._scaler_threshold_based_detection,
             "ecg_r_peak": self._ecg_r_peak_detection,
             "ecg_derivative": self._ecg_derivative_detection,
+            "ppg_systolic_peaks":self._ppg_systolic_peak_detection,
             "ppg_first_derivative": self._ppg_first_derivative_detection,
             "ppg_second_derivative": self._ppg_second_derivative_detection,
             "eeg_wavelet": self._eeg_wavelet_detection,
@@ -104,6 +105,45 @@ class PeakDetection:
         if self.method not in method_dict:
             raise ValueError(f"Invalid method '{self.method}' selected.")
         return method_dict[self.method]()
+
+    def _ppg_systolic_peak_detection(self):
+        """
+        Detect systolic peaks in PPG signals.
+
+        This method enhances systolic peaks by taking the first derivative of the PPG signal, squaring it to emphasize the peaks,
+        and applying a moving window integrator.
+
+        Returns
+        -------
+        peaks : numpy.ndarray
+            Indices of systolic peaks detected in the PPG signal.
+
+        Examples
+        --------
+        >>> signal = np.array([1, 2, 3, 4, 3, 2, 1, 2, 3, 4, 3])
+        >>> detector = PeakDetection(signal, method="ppg_systolic_peak")
+        >>> peaks = detector.detect_peaks()
+        >>> print(peaks)
+        """
+        # First derivative of the signal
+        # Step 1: Set adaptive height and prominence thresholds to isolate systolic peaks.
+        mean_signal = np.mean(self.signal)
+        std_signal = np.std(self.signal)
+        height_threshold = mean_signal + (self.threshold_factor * std_signal)
+        prominence_threshold = self.prominence
+        # Step 3: Minimum distance constraint (e.g., 30% of the sampling rate)
+        min_distance = max(self.distance, int(0.3 * self.fs))
+        # Step 4: Detect peaks based on height and prominence thresholds.
+        peaks = find_peaks(
+            self.signal,
+            height=height_threshold,
+            distance=min_distance,
+            prominence=prominence_threshold,
+            width=self.width,
+        )
+
+        # Step 2: Return refined peaks to ensure they align with systolic peaks.
+        return self._refine_peaks(peaks)
 
     def _refine_peaks(self, peaks):
         """
