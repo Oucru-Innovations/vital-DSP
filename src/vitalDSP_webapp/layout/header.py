@@ -20,9 +20,7 @@ def Header():
             [
                 dbc.NavbarBrand(
                     [
-                        html.Img(
-                            src="/assets/logo.png", height="40px"
-                        ),  
+                        html.Img(src="/assets/logo.png", height="40px"),
                         " VitalDSP Dashboard",
                     ],
                     href="#",

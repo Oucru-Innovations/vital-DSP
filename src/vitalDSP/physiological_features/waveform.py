@@ -50,12 +50,15 @@ class WaveformMorphology:
         """
         if systolic_peaks is None:
             detector = PeakDetection(
-            self.waveform,"ppg_systolic_peaks", **{
-                "distance": 50, 
-                "window_size": 7, 
-                "threshold_factor":1.6, 
-                "search_window":6,
-                "fs":self.fs}
+                self.waveform,
+                "ppg_systolic_peaks",
+                **{
+                    "distance": 50,
+                    "window_size": 7,
+                    "threshold_factor": 1.6,
+                    "search_window": 6,
+                    "fs": self.fs,
+                }
             )
             systolic_peaks = detector.detect_peaks()
         diastolic_troughs = []
@@ -73,8 +76,12 @@ class WaveformMorphology:
 
             # Calculate the adaptive flatness threshold based on the MAD of the derivative within the search range
             local_derivative = signal_derivative[search_start:search_end]
-            mad_derivative = np.median(np.abs(local_derivative - np.median(local_derivative)))
-            adaptive_threshold = 0.5 * mad_derivative  # Flatness threshold set as 50% of local MAD
+            mad_derivative = np.median(
+                np.abs(local_derivative - np.median(local_derivative))
+            )
+            adaptive_threshold = (
+                0.5 * mad_derivative
+            )  # Flatness threshold set as 50% of local MAD
 
             # Identify flat segments based on the adaptive threshold
             flat_segment = []
@@ -84,7 +91,9 @@ class WaveformMorphology:
 
             # Find the midpoint of the longest flat segment (if multiple segments are detected)
             if flat_segment:
-                flat_segment_groups = np.split(flat_segment, np.where(np.diff(flat_segment) != 1)[0] + 1)
+                flat_segment_groups = np.split(
+                    flat_segment, np.where(np.diff(flat_segment) != 1)[0] + 1
+                )
                 longest_flat_segment = max(flat_segment_groups, key=len)
                 trough_index = longest_flat_segment[len(longest_flat_segment) // 2]
                 diastolic_troughs.append(trough_index)
@@ -112,7 +121,7 @@ class WaveformMorphology:
         #     candidate_troughs = [
         #         idx for idx, slope in enumerate(search_derivative) if slope <= 0
         #     ]
-            
+
         #     if candidate_troughs:
         #         trough_index = candidate_troughs[np.argmin(np.abs(search_derivative[candidate_troughs]))]
         #         diastolic_troughs.append(search_start + trough_index)
@@ -121,7 +130,7 @@ class WaveformMorphology:
     def detect_notches(self, systolic_peaks=None, diastolic_troughs=None):
         """
         Detects the dicrotic notches in a PPG waveform using second derivative.
-        
+
         Parameters
         ----------
         systolic_peaks : np.array
@@ -145,12 +154,15 @@ class WaveformMorphology:
             raise ValueError("Notches can only be detected for PPG signals.")
         if systolic_peaks is None:
             detector = PeakDetection(
-            self.waveform,"ppg_systolic_peaks", **{
-                "distance": 50, 
-                "window_size": 7, 
-                "threshold_factor":1.6, 
-                "search_window":6,
-                "fs":self.fs}
+                self.waveform,
+                "ppg_systolic_peaks",
+                **{
+                    "distance": 50,
+                    "window_size": 7,
+                    "threshold_factor": 1.6,
+                    "search_window": 6,
+                    "fs": self.fs,
+                }
             )
             systolic_peaks = detector.detect_peaks()
         if diastolic_troughs is None:
@@ -166,33 +178,43 @@ class WaveformMorphology:
             trough = diastolic_troughs[i]
 
             # Define the search range: keep it close to the peak, 10-30% of the distance to the trough
-            search_start = peak + int((trough - peak) * 0.1)  # Start 10% toward the trough
-            search_end = peak + int((trough - peak) * 0.3)    # End 30% toward the trough
+            search_start = peak + int(
+                (trough - peak) * 0.1
+            )  # Start 10% toward the trough
+            search_end = peak + int((trough - peak) * 0.3)  # End 30% toward the trough
 
             # Ensure the search range is within bounds
             search_start = min(max(search_start, peak), trough)
             search_end = min(max(search_end, peak), trough)
 
             # Extract search section in the signal and derivatives
-            search_section = self.waveform[search_start:search_end]
-            search_derivative = signal_derivative[search_start:search_end - 1]
-            search_second_derivative = signal_second_derivative[search_start:search_end - 2]
+            # search_section = self.waveform[search_start:search_end]
+            search_derivative = signal_derivative[search_start : search_end - 1]
+            search_second_derivative = signal_second_derivative[
+                search_start : search_end - 2
+            ]
 
             # Identify candidate notches with slope close to zero
             candidate_notches = [
-                idx for idx in range(len(search_derivative))
-                if abs(search_derivative[idx]) < 0.05  # Adjust threshold for "close to zero" slope
+                idx
+                for idx in range(len(search_derivative))
+                if abs(search_derivative[idx])
+                < 0.05  # Adjust threshold for "close to zero" slope
             ]
 
             # Filter candidates where the second derivative indicates leveling (positive values)
             candidate_indices = [
-                idx for idx in candidate_notches
-                if idx < len(search_second_derivative) and search_second_derivative[idx] > 0
+                idx
+                for idx in candidate_notches
+                if idx < len(search_second_derivative)
+                and search_second_derivative[idx] > 0
             ]
 
             # Select the best candidate notch based on minimum absolute slope
             if candidate_indices:
-                best_notch_idx = candidate_indices[np.argmin(np.abs(search_derivative[candidate_indices]))]
+                best_notch_idx = candidate_indices[
+                    np.argmin(np.abs(search_derivative[candidate_indices]))
+                ]
                 notches.append(search_start + best_notch_idx)
 
         return np.array(notches)
@@ -221,7 +243,11 @@ class WaveformMorphology:
 
         for i in range(len(notches)):
             notch = notches[i]
-            trough = diastolic_troughs[i] if i < len(diastolic_troughs) else len(self.waveform) - 1
+            trough = (
+                diastolic_troughs[i]
+                if i < len(diastolic_troughs)
+                else len(self.waveform) - 1
+            )
 
             # Define the initial search range: notch to halfway to the trough
             search_start = notch
@@ -235,14 +261,17 @@ class WaveformMorphology:
             segment_derivative = np.diff(search_segment)
 
             candidate_peaks = [
-                idx for idx in range(1, len(segment_derivative))
+                idx
+                for idx in range(1, len(segment_derivative))
                 if segment_derivative[idx - 1] < 0 and segment_derivative[idx] >= 0
             ]
 
             # Convert candidates to absolute indices and select the most prominent peak if available
             if candidate_peaks:
                 candidate_indices = [search_start + idx for idx in candidate_peaks]
-                diastolic_peak_idx = max(candidate_indices, key=lambda x: self.waveform[x])
+                diastolic_peak_idx = max(
+                    candidate_indices, key=lambda x: self.waveform[x]
+                )
                 diastolic_peaks.append(diastolic_peak_idx)
             else:
                 # Fallback assignment: if no diastolic peak is detected, use the notch as the diastolic peak
@@ -853,7 +882,7 @@ class WaveformMorphology:
         #     self.waveform, method="ppg_second_derivative"
         # )
         # dicrotic_notches = dicrotic_notch_detector.detect_peaks()
-        dicrotic_notches = self.detect_notches(systolic_peaks=systolic_peaks)  
+        dicrotic_notches = self.detect_notches(systolic_peaks=systolic_peaks)
 
         # Compute the time difference between systolic peak and dicrotic notch
         notch_timing = 0.0
@@ -1009,84 +1038,114 @@ class WaveformMorphology:
         curvature = np.abs(second_derivative) / (1 + first_derivative**2) ** (3 / 2)
         return np.mean(curvature)
 
-from vitalDSP.utils.synthesize_data import generate_ecg_signal, generate_synthetic_ppg
-from plotly import graph_objects as go
+# from vitalDSP.utils.synthesize_data import generate_ecg_signal, generate_synthetic_ppg
+# from plotly import graph_objects as go
 
-if __name__ == '__main__':
-    # sfecg = 256
-    # N = 15
-    # Anoise = 0.05
-    # hrmean = 70
-    # ecg_signal = generate_ecg_signal(
-    #     sfecg=sfecg, N=N, Anoise=Anoise, hrmean=hrmean
-    # )
-    
-    # detector = PeakDetection(
-    #     ecg_signal,"ecg_r_peak", **{
-    #         "distance": 50, 
-    #         "window_size": 7, 
-    #         "threshold_factor":1.6, 
-    #         "search_window":6}
-    #     )
+# if __name__ == "__main__":
+#     # sfecg = 256
+#     # N = 15
+#     # Anoise = 0.05
+#     # hrmean = 70
+#     # ecg_signal = generate_ecg_signal(
+#     #     sfecg=sfecg, N=N, Anoise=Anoise, hrmean=hrmean
+#     # )
 
-    # rpeaks = detector.detect_peaks()
+#     # detector = PeakDetection(
+#     #     ecg_signal,"ecg_r_peak", **{
+#     #         "distance": 50,
+#     #         "window_size": 7,
+#     #         "threshold_factor":1.6,
+#     #         "search_window":6}
+#     #     )
 
-    # waveform = WaveformMorphology(ecg_signal, fs=256, signal_type="ECG")
-    # q_valleys = waveform.detect_q_valley()
-    # p_peaks = waveform.detect_p_peak()
-    # s_valleys = waveform.detect_s_valley()
-    # t_peaks = waveform.detect_t_peak()
-        
-    # fig = go.Figure()
-    #     # Plot the ECG signal
-    # fig.add_trace(go.Scatter(x=np.arange(len(ecg_signal)), y=ecg_signal, mode="lines", name="ECG Signal"))
+#     # rpeaks = detector.detect_peaks()
 
-    # # Plot R-peaks
-    # fig.add_trace(go.Scatter(x=rpeaks, y=ecg_signal[rpeaks], mode="markers", name="R Peaks", marker=dict(color="red", size=8)))
-    # fig.add_trace(go.Scatter(x=q_valleys, y=ecg_signal[q_valleys], mode="markers", name="Q Valleys", marker=dict(color="green", size=8)))
-    # fig.add_trace(go.Scatter(x=s_valleys, y=ecg_signal[s_valleys], mode="markers", name="S Valleys", marker=dict(size=8)))
-    # fig.add_trace(go.Scatter(x=p_peaks, y=ecg_signal[p_peaks], mode="markers", name="P Peaks", marker=dict(size=8)))
-    # fig.add_trace(go.Scatter(x=t_peaks, y=ecg_signal[t_peaks], mode="markers", name="T Peaks", marker=dict(size=8)))
-    # fig.update_layout(
-    #         title="ECG Signal with QRS-peaks/valleys and P, T peaks",
-    #         xaxis_title="Samples",
-    #         yaxis_title="Amplitude",
-    #         showlegend=True
-    # )
-    # fig.show()
+#     # waveform = WaveformMorphology(ecg_signal, fs=256, signal_type="ECG")
+#     # q_valleys = waveform.detect_q_valley()
+#     # p_peaks = waveform.detect_p_peak()
+#     # s_valleys = waveform.detect_s_valley()
+#     # t_peaks = waveform.detect_t_peak()
 
-    fs = 100
-    time, ppg_signal = generate_synthetic_ppg(duration=10, sampling_rate=fs, 
-                                            noise_level=0.01,heart_rate=60, display=False)
-    waveform = WaveformMorphology(ppg_signal, fs=fs, signal_type="PPG")
-    detector = PeakDetection(
-        ppg_signal,"ppg_systolic_peaks", **{
-            "distance": 50, 
-            "window_size": 7, 
-            "threshold_factor":1.6, 
-            "search_window":6,
-            "fs":fs}
-    )
-    systolic_peaks = detector.detect_peaks()
-    troughs = waveform.detect_troughs(systolic_peaks=systolic_peaks)
-    notches = waveform.detect_notches(systolic_peaks=systolic_peaks, 
-                                    diastolic_troughs=troughs)
-    diastolic_peaks = waveform.detect_diastolic_peak(notches=notches,
-                                                    diastolic_troughs=troughs)
-    # detector = PeakDetection(
-    #     ppg_signal,"abp_diastolic", **{
-    #         "distance": 50, 
-    #         "window_size": 7, 
-    #         "threshold_factor":1.6, 
-    #         "search_window":6}
-    # )
-    # diastolic_peaks = detector.detect_peaks()
-    
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=time,y=ppg_signal,mode="lines",name="PPG Signal"))
-    fig.add_trace(go.Scatter(x=time[systolic_peaks],y=ppg_signal[systolic_peaks],mode="markers",name="Systolic Peaks"))
-    fig.add_trace(go.Scatter(x=time[troughs],y=ppg_signal[troughs],name="Diastolic Troughs",mode="markers"))
-    fig.add_trace(go.Scatter(x=time[notches],y=ppg_signal[notches],name="Notches",mode="markers"))
-    fig.add_trace(go.Scatter(x=time[diastolic_peaks],y=ppg_signal[diastolic_peaks],name="Diastolic Peaks",mode="markers"))
-    fig.show()
+#     # fig = go.Figure()
+#     #     # Plot the ECG signal
+#     # fig.add_trace(go.Scatter(x=np.arange(len(ecg_signal)), y=ecg_signal, mode="lines", name="ECG Signal"))
+
+#     # # Plot R-peaks
+#     # fig.add_trace(go.Scatter(x=rpeaks, y=ecg_signal[rpeaks], mode="markers", name="R Peaks", marker=dict(color="red", size=8)))
+#     # fig.add_trace(go.Scatter(x=q_valleys, y=ecg_signal[q_valleys], mode="markers", name="Q Valleys", marker=dict(color="green", size=8)))
+#     # fig.add_trace(go.Scatter(x=s_valleys, y=ecg_signal[s_valleys], mode="markers", name="S Valleys", marker=dict(size=8)))
+#     # fig.add_trace(go.Scatter(x=p_peaks, y=ecg_signal[p_peaks], mode="markers", name="P Peaks", marker=dict(size=8)))
+#     # fig.add_trace(go.Scatter(x=t_peaks, y=ecg_signal[t_peaks], mode="markers", name="T Peaks", marker=dict(size=8)))
+#     # fig.update_layout(
+#     #         title="ECG Signal with QRS-peaks/valleys and P, T peaks",
+#     #         xaxis_title="Samples",
+#     #         yaxis_title="Amplitude",
+#     #         showlegend=True
+#     # )
+#     # fig.show()
+
+#     fs = 100
+#     time, ppg_signal = generate_synthetic_ppg(
+#         duration=10, sampling_rate=fs, noise_level=0.01, heart_rate=60, display=False
+#     )
+#     waveform = WaveformMorphology(ppg_signal, fs=fs, signal_type="PPG")
+#     detector = PeakDetection(
+#         ppg_signal,
+#         "ppg_systolic_peaks",
+#         **{
+#             "distance": 50,
+#             "window_size": 7,
+#             "threshold_factor": 1.6,
+#             "search_window": 6,
+#             "fs": fs,
+#         }
+#     )
+#     systolic_peaks = detector.detect_peaks()
+#     troughs = waveform.detect_troughs(systolic_peaks=systolic_peaks)
+#     notches = waveform.detect_notches(
+#         systolic_peaks=systolic_peaks, diastolic_troughs=troughs
+#     )
+#     diastolic_peaks = waveform.detect_diastolic_peak(
+#         notches=notches, diastolic_troughs=troughs
+#     )
+#     # detector = PeakDetection(
+#     #     ppg_signal,"abp_diastolic", **{
+#     #         "distance": 50,
+#     #         "window_size": 7,
+#     #         "threshold_factor":1.6,
+#     #         "search_window":6}
+#     # )
+#     # diastolic_peaks = detector.detect_peaks()
+
+#     fig = go.Figure()
+#     fig.add_trace(go.Scatter(x=time, y=ppg_signal, mode="lines", name="PPG Signal"))
+#     fig.add_trace(
+#         go.Scatter(
+#             x=time[systolic_peaks],
+#             y=ppg_signal[systolic_peaks],
+#             mode="markers",
+#             name="Systolic Peaks",
+#         )
+#     )
+#     fig.add_trace(
+#         go.Scatter(
+#             x=time[troughs],
+#             y=ppg_signal[troughs],
+#             name="Diastolic Troughs",
+#             mode="markers",
+#         )
+#     )
+#     fig.add_trace(
+#         go.Scatter(
+#             x=time[notches], y=ppg_signal[notches], name="Notches", mode="markers"
+#         )
+#     )
+#     fig.add_trace(
+#         go.Scatter(
+#             x=time[diastolic_peaks],
+#             y=ppg_signal[diastolic_peaks],
+#             name="Diastolic Peaks",
+#             mode="markers",
+#         )
+#     )
+#     fig.show()

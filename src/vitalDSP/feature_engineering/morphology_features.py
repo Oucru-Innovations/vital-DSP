@@ -8,6 +8,7 @@ from vitalDSP.preprocess.preprocess_operations import (
 from vitalDSP.physiological_features.waveform import WaveformMorphology
 import warnings
 
+
 class PhysiologicalFeatureExtractor:
     """
     A class to extract various physiological features from ECG and PPG signals, such as durations,
@@ -65,8 +66,8 @@ class PhysiologicalFeatureExtractor:
         >>> print(troughs)
         """
         warnings.warn(
-        "Deprecated. Please use vitalDSP.physiological_features.waveform.WaveformMorphology instead.",
-        DeprecationWarning
+            "Deprecated. Please use vitalDSP.physiological_features.waveform.WaveformMorphology instead.",
+            DeprecationWarning,
         )
         troughs = []
         for i in range(len(peaks) - 1):
@@ -228,7 +229,9 @@ class PhysiologicalFeatureExtractor:
                 peaks = PeakDetection(
                     clean_signal, method="ppg_first_derivative"
                 ).detect_peaks()
-                waveform = WaveformMorphology(clean_signal, fs=self.fs, signal_type="PPG")
+                waveform = WaveformMorphology(
+                    clean_signal, fs=self.fs, signal_type="PPG"
+                )
                 troughs = waveform.detect_troughs(systolic_peaks=peaks)
 
                 # Ensure peaks and troughs are numpy arrays

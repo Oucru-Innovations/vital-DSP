@@ -92,7 +92,7 @@ class PeakDetection:
             "scaler_threshold": self._scaler_threshold_based_detection,
             "ecg_r_peak": self._ecg_r_peak_detection,
             "ecg_derivative": self._ecg_derivative_detection,
-            "ppg_systolic_peaks":self._ppg_systolic_peak_detection,
+            "ppg_systolic_peaks": self._ppg_systolic_peak_detection,
             "ppg_first_derivative": self._ppg_first_derivative_detection,
             "ppg_second_derivative": self._ppg_second_derivative_detection,
             "eeg_wavelet": self._eeg_wavelet_detection,
