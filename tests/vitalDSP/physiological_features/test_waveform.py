@@ -104,21 +104,21 @@ def test_detect_s_session_invalid_signal_type(mocker, mock_waveform):
 #     assert len(qrs_sessions) == 3
 
 
-def test_compute_amplitude(waveform_morphology):
-    amplitude = waveform_morphology.compute_amplitude()
+# def test_compute_amplitude(waveform_morphology):
+#     amplitude = waveform_morphology.compute_amplitude()
 
-    assert isinstance(amplitude, float)
-    assert amplitude > 0
+#     assert isinstance(amplitude, float)
+#     assert amplitude > 0
 
 
-def test_compute_volume(mocker, waveform_morphology):
-    mocker.patch("vitalDSP.utils.peak_detection.PeakDetection", MockPeakDetection)
+# def test_compute_volume(mocker, waveform_morphology):
+#     mocker.patch("vitalDSP.utils.peak_detection.PeakDetection", MockPeakDetection)
 
-    peaks1 = np.array([10, 30, 50])
-    peaks2 = np.array([20, 40, 60])
-    volume = waveform_morphology.compute_volume(peaks1, peaks2, mode="peak")
+#     peaks1 = np.array([10, 30, 50])
+#     peaks2 = np.array([20, 40, 60])
+#     volume = waveform_morphology.compute_volume(peaks1, peaks2, mode="peak")
 
-    assert isinstance(volume, float)
+#     assert isinstance(volume, float)
 
 
 def test_compute_volume_invalid_mode(waveform_morphology):
@@ -127,12 +127,6 @@ def test_compute_volume_invalid_mode(waveform_morphology):
 
     with pytest.raises(ValueError):
         waveform_morphology.compute_volume(peaks1, peaks2, mode="invalid")
-
-
-def test_compute_skewness(waveform_morphology):
-    skewness = waveform_morphology.compute_skewness()
-
-    assert isinstance(skewness, float)
 
 
 def test_compute_qrs_duration(mocker, waveform_morphology):
@@ -150,24 +144,15 @@ def test_compute_qrs_duration_invalid_signal_type(mocker, mock_waveform):
     with pytest.raises(ValueError):
         wm.compute_qrs_duration()
 
+# def test_compute_volume_trough_mode(mocker, waveform_morphology):
+#     mocker.patch("vitalDSP.utils.peak_detection.PeakDetection", MockPeakDetection)
 
-def test_compute_volume_sequence(waveform_morphology):
-    peaks = np.array([10, 30, 50])
-    volume = waveform_morphology.compute_volume_sequence(peaks)
+#     peaks1 = np.array([10, 30, 50])
+#     peaks2 = np.array([15, 35, 55])
+#     volume = waveform_morphology.compute_volume(peaks1, peaks2, mode="trough")
 
-    assert isinstance(volume, float)
-    assert volume > 0  # Ensure volume is computed as a positive value
-
-
-def test_compute_volume_trough_mode(mocker, waveform_morphology):
-    mocker.patch("vitalDSP.utils.peak_detection.PeakDetection", MockPeakDetection)
-
-    peaks1 = np.array([10, 30, 50])
-    peaks2 = np.array([15, 35, 55])
-    volume = waveform_morphology.compute_volume(peaks1, peaks2, mode="trough")
-
-    assert isinstance(volume, float)
-    assert volume >= 0  # Ensure valid volume
+#     assert isinstance(volume, float)
+#     assert volume >= 0  # Ensure valid volume
 
 
 def test_compute_qrs_duration_with_r_peaks_loop(mocker, waveform_morphology):
@@ -220,13 +205,6 @@ def test_compute_eeg_wavelet_features(waveform_morphology):
     assert "theta_power" in wavelet_features
     assert "alpha_power" in wavelet_features
     assert all(isinstance(value, float) for value in wavelet_features.values())
-
-
-def test_compute_slope_sequence(waveform_morphology):
-    slope = waveform_morphology.compute_slope_sequence()
-
-    assert isinstance(slope, float)
-    assert slope != 0  # Ensure the slope is not zero for a non-flat waveform
 
 
 def test_compute_curvature(waveform_morphology):

@@ -13,7 +13,7 @@ class WaveformMorphology:
         signal_type (str): The type of signal ('ECG', 'PPG', 'EEG').
     """
 
-    def __init__(self, waveform, fs=256, signal_type="ECG"):
+    def __init__(self, waveform, fs=256, qrs_ratio=0.05, signal_type="ECG"):
         """
         Initializes the WaveformMorphology object.
 
@@ -25,6 +25,7 @@ class WaveformMorphology:
         self.waveform = np.array(waveform)
         self.fs = fs  # Sampling frequency
         self.signal_type = signal_type  # 'ECG', 'PPG', 'EEG'
+        self.qrs_ratio = qrs_ratio
 
     def detect_troughs(self, systolic_peaks=None):
         """
@@ -317,11 +318,12 @@ class WaveformMorphology:
             if i == 0:
                 # For the first R peak, start from the beginning of the signal
                 search_start = max(
-                    0, search_end - int(self.fs * 0.2)
+                    0, search_end - int(self.fs * self.qrs_ratio)
                 )  # Approx 200ms window
             else:
                 # For subsequent R peaks, set the start as the midpoint to the previous R peak
-                search_start = (r_peaks[i - 1] + r_peak) // 2
+                # search_start = (r_peaks[i - 1] + r_peak) // 2
+                search_start = r_peak - int(self.qrs_ratio * self.fs)
 
             # Ensure the search range is valid
             if search_start < search_end:
@@ -333,268 +335,6 @@ class WaveformMorphology:
                 q_valleys.append(q_valley_idx)
 
         return q_valleys
-
-    def detect_q_session(self, r_peaks):
-        """
-        Detects the Q sessions (start and end) in the ECG waveform based on R peaks.
-
-        Parameters
-        ----------
-        r_peaks : np.array
-            Indices of detected R peaks in the ECG waveform.
-
-        Returns
-        -------
-        q_sessions : list of tuples
-            Each tuple contains the start and end index of a Q session.
-
-        Example
-        -------
-        >>> waveform = np.sin(np.linspace(0, 2*np.pi, 100))  # Simulated ECG signal
-        >>> wm = WaveformMorphology(waveform, signal_type="ECG")
-        >>> r_peaks = PeakDetection(waveform).detect_peaks()
-        >>> q_sessions = wm.detect_q_session(r_peaks)
-        >>> print(f"Q Sessions: {q_sessions}")
-        """
-        if self.signal_type != "ECG":
-            raise ValueError("Q sessions can only be detected for ECG signals.")
-
-        q_sessions = []
-        signal_derivative = np.diff(self.waveform)  # First derivative of the signal
-
-        for r_peak in r_peaks:
-            # Search backward to find the downhill slope, which indicates Q-wave start
-            search_start = r_peak
-            for i in range(
-                r_peak - 1, max(0, r_peak - int(self.fs * 0.2)), -1
-            ):  # Limit to a max of 200ms
-                if (
-                    signal_derivative[i - 1] < 0 and signal_derivative[i] >= 0
-                ):  # Change from downhill to minimum
-                    search_start = i
-                    break
-
-            # Define search end as the R-peak for locating Q-wave
-            search_end = r_peak
-
-            # Find the Q-wave within the determined search window
-            if search_end > search_start:
-                q_wave_idx = search_start + np.argmin(
-                    self.waveform[search_start:search_end]
-                )
-
-                # Locate Q session boundaries more precisely
-                # Start of Q session: keep moving left until we find a rising slope
-                for i in range(q_wave_idx, search_start, -1):
-                    if signal_derivative[i - 1] >= 0 and signal_derivative[i] < 0:
-                        q_start = i
-                        break
-                else:
-                    q_start = search_start  # Fallback if boundary not found
-
-                # End of Q session: continue to the right until we find the slope beginning to rise again
-                for i in range(q_wave_idx, search_end - 1):
-                    if signal_derivative[i] < 0 and signal_derivative[i + 1] >= 0:
-                        q_end = i
-                        break
-                else:
-                    q_end = search_end  # Fallback if boundary not found
-
-                q_sessions.append((q_start, q_end))
-            else:
-                continue
-                # print(f"Skipping R-peak at {r_peak}: invalid search window [{search_start}, {search_end})")
-
-        return q_sessions
-
-    def detect_r_session(self, r_peaks):
-        """
-        Detects the R sessions (start and end) in the ECG waveform.
-
-        Parameters
-        ----------
-        r_peaks : np.array
-            Indices of detected R peaks in the ECG waveform.
-
-        Returns
-        -------
-        r_sessions : list of tuples
-            Each tuple contains the start and end index of an R session.
-
-        Example
-        -------
-        >>> waveform = np.sin(np.linspace(0, 2*np.pi, 100))  # Simulated ECG signal
-        >>> wm = WaveformMorphology(waveform, signal_type="ECG")
-        >>> r_peaks = PeakDetection(waveform).detect_peaks()
-        >>> r_sessions = wm.detect_r_session(r_peaks)
-        >>> print(f"R Sessions: {r_sessions}")
-        """
-        r_sessions = [
-            (r_peak - int(self.fs * 0.02), r_peak + int(self.fs * 0.02))
-            for r_peak in r_peaks
-        ]
-        return r_sessions
-
-    def detect_s_session(self, r_peaks):
-        """
-        Detects the S sessions (start and end) in the ECG waveform based on R peaks.
-
-        Parameters
-        ----------
-        r_peaks : np.array
-            Indices of detected R peaks in the ECG waveform.
-
-        Returns
-        -------
-        s_sessions : list of tuples
-            Each tuple contains the start and end index of an S session.
-
-        Example
-        -------
-        >>> waveform = np.sin(np.linspace(0, 2*np.pi, 100))  # Simulated ECG signal
-        >>> wm = WaveformMorphology(waveform, signal_type="ECG")
-        >>> r_peaks = PeakDetection(waveform).detect_peaks()
-        >>> s_sessions = wm.detect_s_session(r_peaks)
-        >>> print(f"S Sessions: {s_sessions}")
-        """
-        if self.signal_type != "ECG":
-            raise ValueError("S sessions can only be detected for ECG signals.")
-
-        s_sessions = []
-        for r_peak in r_peaks:
-            s_start = r_peak
-            s_end = min(
-                len(self.waveform), r_peak + int(self.fs * 0.04)
-            )  # Example: 40 ms after R peak
-            s_sessions.append((s_start, s_end))
-        return s_sessions
-
-    def detect_qrs_session(self, r_peaks):
-        """
-        Detects the QRS complex sessions (start and end) in the ECG waveform.
-
-        Parameters
-        ----------
-        r_peaks : np.array
-            Indices of detected R peaks in the ECG waveform.
-
-        Returns
-        -------
-        qrs_sessions : list of tuples
-            Each tuple contains the start and end index of a QRS session.
-
-        Example
-        -------
-        >>> waveform = np.sin(np.linspace(0, 2*np.pi, 100))  # Simulated ECG signal
-        >>> wm = WaveformMorphology(waveform, signal_type="ECG")
-        >>> r_peaks = PeakDetection(waveform).detect_peaks()
-        >>> qrs_sessions = wm.detect_qrs_session(r_peaks)
-        >>> print(f"QRS Sessions: {qrs_sessions}")
-        """
-        q_sessions = self.detect_q_session(r_peaks)
-        s_sessions = self.detect_s_session(r_peaks)
-
-        qrs_sessions = [(q[0], s[1]) for q, s in zip(q_sessions, s_sessions)]
-        return qrs_sessions
-
-    def compute_amplitude(self):
-        """
-        Computes the amplitude (max-min) of the waveform, representing the peak-to-peak range.
-
-        Returns:
-            float: The amplitude of the waveform.
-
-        Example:
-            >>> waveform = [0.5, 0.8, 1.2, 0.9, 0.7]
-            >>> wm = WaveformMorphology(waveform, signal_type="ECG")
-            >>> amplitude = wm.compute_amplitude()
-            >>> print(f"Amplitude: {amplitude}")
-        """
-        return np.max(self.waveform) - np.min(self.waveform)
-
-    def compute_volume(self, peaks1, peaks2, mode="peak"):
-        """
-        Compute the area under the curve between two sets of peaks.
-
-        Parameters
-        ----------
-        peaks1 : numpy.ndarray
-            The first set of peaks (e.g., systolic peaks).
-        peaks2 : numpy.ndarray
-            The second set of peaks (e.g., diastolic peaks).
-        mode : str, optional
-            The type of area computation method ("peak" or "trough"). Default is "peak".
-
-        Returns
-        -------
-        volume : float
-            The mean area between the two sets of peaks.
-
-        Examples
-        --------
-        >>> signal = np.random.randn(1000)
-        >>> peaks1 = np.array([100, 200, 300])
-        >>> peaks2 = np.array([150, 250, 350])
-        >>> extractor = PhysiologicalFeatureExtractor(signal)
-        >>> volume = extractor.compute_volume(peaks1, peaks2)
-        >>> print(volume)
-        """
-        if mode == "peak":
-            areas = [
-                np.trapz(self.waveform[p1:p2])
-                for p1, p2 in zip(peaks1, peaks2)
-                if p1 < p2
-            ]
-        elif mode == "trough":
-            areas = [
-                np.trapz(self.waveform[min(p, t) : max(p, t)])
-                for p, t in zip(peaks1, peaks2)
-            ]
-        else:
-            raise ValueError("Volume mode must be 'peak' or 'trough'.")
-        return np.mean(areas) if areas else 0.0
-
-    def compute_volume_sequence(self, peaks):
-        """
-        Computes the area under the waveform for a given peak, typically used to analyze
-        the volume of QRS complexes (ECG) or systolic/diastolic volumes (PPG).
-
-        Args:
-            peaks (np.array): Indices of detected peaks.
-
-        Returns:
-            float: The computed area (AUC) for the given peaks.
-
-        Example:
-            >>> peaks = [1, 5, 9]
-            >>> volume = wm.compute_volume(peaks)
-            >>> print(f"Volume: {volume}")
-        """
-        auc = 0.0
-        for peak in peaks:
-            if peak > 0 and peak < len(self.waveform) - 1:
-                auc += np.trapz(
-                    self.waveform[peak - 1 : peak + 2]
-                )  # AUC for one peak region
-        return auc
-
-    def compute_skewness(self):
-        """
-        Compute the skewness of the signal.
-
-        Returns
-        -------
-        skewness : float
-            The skewness of the signal.
-
-        Examples
-        --------
-        >>> signal = np.random.randn(1000)
-        >>> extractor = PhysiologicalFeatureExtractor(signal)
-        >>> skewness = extractor.compute_skewness()
-        >>> print(skewness)
-        """
-        return skew(self.waveform)
 
     def detect_s_valley(self, r_peaks=None):
         """
@@ -635,11 +375,12 @@ class WaveformMorphology:
             if i == len(r_peaks) - 1:
                 # For the last R peak, set the end to the end of the signal or a 200ms window after the R peak
                 search_end = min(
-                    len(self.waveform) - 1, search_start + int(self.fs * 0.2)
-                )  # Approx 200ms window
+                    len(self.waveform) - 1, search_start + int(self.fs * 0.1)
+                )
             else:
                 # For other R peaks, set the end as the midpoint to the next R peak
-                search_end = (r_peak + r_peaks[i + 1]) // 2
+                # search_end = (r_peak + r_peaks[i + 1]) // 2
+                search_end = r_peak + int(self.qrs_ratio * self.fs)
 
             # Ensure the search range is valid
             if search_start < search_end:
@@ -687,7 +428,11 @@ class WaveformMorphology:
         for i in range(1, len(r_peaks)):
             # Define search range with midpoint as start and Q valley as end
             midpoint = (r_peaks[i - 1] + r_peaks[i]) // 2
+
             q_valley = q_valleys[i - 1]  # Corresponding Q valley for the R peak pair
+            # Trick to shift the starting point of the search range
+            if q_valley < midpoint:
+                q_valley = q_valleys[i]
 
             # Ensure search range has positive length
             if midpoint < q_valley:
@@ -766,6 +511,444 @@ class WaveformMorphology:
                 t_peaks.append(t_peak_idx)
 
         return t_peaks
+
+    def detect_q_session(self, p_peaks=None, q_valleys=None, r_peaks=None):
+        """
+        Detects the Q sessions (start and end) in the ECG waveform based on R peaks.
+
+        Parameters
+        ----------
+        r_peaks : np.array
+            Indices of detected R peaks in the ECG waveform.
+
+        Returns
+        -------
+        q_sessions : list of tuples
+            Each tuple contains the start and end index of a Q session.
+
+        Example
+        -------
+        >>> waveform = np.sin(np.linspace(0, 2*np.pi, 100))  # Simulated ECG signal
+        >>> wm = WaveformMorphology(waveform, signal_type="ECG")
+        >>> r_peaks = PeakDetection(waveform).detect_peaks()
+        >>> q_sessions = wm.detect_q_session(r_peaks)
+        >>> print(f"Q Sessions: {q_sessions}")
+        """
+        if self.signal_type != "ECG":
+            raise ValueError("Q sessions can only be detected for ECG signals.")
+        if r_peaks is None:
+            detector = PeakDetection(
+                self.waveform,
+                "ecg_r_peak",
+                **{
+                    "distance": 50,
+                    "window_size": 7,
+                    "threshold_factor": 1.6,
+                    "search_window": 6,
+                }
+            )
+            r_peaks = detector.detect_peaks()
+        if q_valleys is None:
+            q_valleys = self.detect_q_valley(r_peaks=r_peaks)
+        if p_peaks is None:
+            p_peaks = self.detect_p_peak(r_peaks=r_peaks, q_valleys=q_valleys)
+        q_sessions = []
+
+        # Trick to ensure that P peak comes before Q valley at the start
+        if q_valleys[0] < p_peaks[0]:
+            q_valleys = q_valleys[
+                1:
+            ]  # Skip the first Q valley if it comes before the first P peak
+            r_peaks = r_peaks[1:]  # Also skip the corresponding first R peak
+
+        # Iterate over detected peaks and valleys
+        for i in range(len(q_valleys)):
+            # Ensure indices are within valid bounds
+            if i < len(p_peaks) and i < len(r_peaks):
+                # Define start of Q session as the midpoint between P peak and Q valley
+                start = (p_peaks[i] + q_valleys[i]) // 2
+
+                # Set search range from Q valley to R peak
+                search_start = q_valleys[i]
+                search_end = r_peaks[i]
+
+                # Check for valid search range
+                if search_end > search_start:
+                    # Find the end of Q session: closest point to start signal value within search range
+                    start_value = self.waveform[start]
+                    end = search_start + np.argmin(
+                        np.abs(self.waveform[search_start:search_end] - start_value)
+                    )
+
+                    # Append the session to the q_sessions list
+                    q_sessions.append((start, end))
+
+        return q_sessions
+
+    def detect_s_session(self, t_peaks=None, s_valleys=None, r_peaks=None):
+        """
+        Detects the S sessions (start and end) in the ECG waveform based on R peaks.
+
+        Parameters
+        ----------
+        r_peaks : np.array
+            Indices of detected R peaks in the ECG waveform.
+
+        Returns
+        -------
+        s_sessions : list of tuples
+            Each tuple contains the start and end index of an S session.
+
+        Example
+        -------
+        >>> waveform = np.sin(np.linspace(0, 2*np.pi, 100))  # Simulated ECG signal
+        >>> wm = WaveformMorphology(waveform, signal_type="ECG")
+        >>> r_peaks = PeakDetection(waveform).detect_peaks()
+        >>> s_sessions = wm.detect_s_session(r_peaks)
+        >>> print(f"S Sessions: {s_sessions}")
+        """
+        if self.signal_type != "ECG":
+            raise ValueError("S sessions can only be detected for ECG signals.")
+        if r_peaks is None:
+            detector = PeakDetection(
+                self.waveform,
+                "ecg_r_peak",
+                **{
+                    "distance": 50,
+                    "window_size": 7,
+                    "threshold_factor": 1.6,
+                    "search_window": 6,
+                }
+            )
+            r_peaks = detector.detect_peaks()
+        if s_valleys is None:
+            s_valleys = self.detect_s_valley(r_peaks=r_peaks)
+        if t_peaks is None:
+            t_peaks = self.detect_t_peak(r_peaks=r_peaks, s_valleys=s_valleys)
+
+        s_sessions = []
+        # Ensure all input arrays are aligned in size
+        for i in range(1, min(len(r_peaks), len(s_valleys), len(t_peaks))):
+            r_peak = r_peaks[i]
+            s_valley = s_valleys[i]
+            t_peak = t_peaks[i]
+
+            # Calculate the midpoint between S valley and T peak for the end point
+            s_end = s_valley + (t_peak - s_valley) // 2
+
+            # Determine the start point within the range from R peak to S valley,
+            # choosing the point closest in value to s_end
+            # Ensure the search range is valid and not empty
+            if r_peak < s_valley:
+                search_range = self.waveform[r_peak:s_valley]
+                if len(search_range) > 0:
+                    # Find the start point within the search range closest to s_end's value
+                    start_index_within_range = np.argmin(
+                        np.abs(search_range - self.waveform[s_end])
+                    )
+                    s_start = r_peak + start_index_within_range
+
+                    # Only add the session if s_start is before s_end
+                    if s_start < s_end:
+                        s_sessions.append((s_start, s_end))
+
+        return s_sessions
+
+    def detect_r_session(self, rpeaks=None, q_session=None, s_session=None):
+        """
+        Detects the R session (start and end) in the ECG waveform based on Q and S sessions.
+
+        Parameters
+        ----------
+        q_session : tuple
+            The start and end index of the Q session.
+        s_session : tuple
+            The start and end index of the S session.
+
+        Returns
+        -------
+        r_sessions : list of tuples
+            Each tuple contains the start and end index of an R session.
+        """
+        if q_session is None:
+            q_session = self.detect_q_session(r_peaks=rpeaks)
+        if s_session is None:
+            s_session = self.detect_s_session(r_peaks=rpeaks)
+        # Ensure all input arrays are aligned in size
+        if len(q_session) == 0 or len(s_session) == 0:
+            return []
+        r_sessions = []
+
+        # Ensure all input arrays are aligned in size and skip the first item to avoid boundary issues
+        for i in range(min(len(q_session), len(s_session))):
+            q_end = q_session[i][1]
+            s_start = s_session[i][0]
+
+            # Ensure there is a valid interval for the R session
+            if q_end < s_start:
+                r_sessions.append((q_end, s_start))
+
+        return r_sessions
+
+    def detect_qrs_session(self, rpeaks=None, q_session=None, s_session=None):
+        """
+        Detects the QRS complex sessions (start and end) in the ECG waveform.
+
+        Parameters
+        ----------
+        r_peaks : np.array
+            Indices of detected R peaks in the ECG waveform.
+
+        Returns
+        -------
+        qrs_sessions : list of tuples
+            Each tuple contains the start and end index of a QRS session.
+
+        Example
+        -------
+        >>> waveform = np.sin(np.linspace(0, 2*np.pi, 100))  # Simulated ECG signal
+        >>> wm = WaveformMorphology(waveform, signal_type="ECG")
+        >>> r_peaks = PeakDetection(waveform).detect_peaks()
+        >>> qrs_sessions = wm.detect_qrs_session(r_peaks)
+        >>> print(f"QRS Sessions: {qrs_sessions}")
+        """
+        if q_session is None:
+            q_session = self.detect_q_session(r_peaks=rpeaks)
+        if s_session is None:
+            s_session = self.detect_s_session(r_peaks=rpeaks)
+        # Ensure all input arrays are aligned in size
+        if len(q_session) == 0 or len(s_session) == 0:
+            return []
+
+        qrs_sessions = [(q[0], s[1]) for q, s in zip(q_session, s_session)]
+        return qrs_sessions
+
+    def compute_amplitude(self, interval_type="R-to-S", signal_type="ECG"):
+        """
+        Computes the amplitude (max-min) of the waveform for specified intervals.
+
+        Parameters
+        ----------
+        interval_type : str, optional
+            The interval type to calculate the amplitude for:
+            - For ECG:
+            - "R-to-S": Between R peak and S valley.
+            - "R-to-Q": Between Q valley and R peak.
+            - "P-to-Q": Between P peak and Q valley.
+            - "T-to-S": Between S valley and T peak.
+            - For PPG:
+            - "Sys-to-Notch": Between systolic peak and dicrotic notch.
+            - "Notch-to-Dia": Between dicrotic notch and diastolic peak.
+            - "Sys-to-Dia": Between systolic and diastolic peaks.
+
+        signal_type : str, optional
+            The type of signal: "ECG" or "PPG". Default is "ECG".
+
+        Returns
+        -------
+        List[float]: A list of amplitude values for each interval within a single complex.
+
+        Examples
+        --------
+        >>> amplitude_values = wm.compute_amplitude(interval_type="R-to-S", signal_type="ECG")
+        >>> print(f"Amplitude values for each complex in R-to-S interval: {amplitude_values}")
+        """
+
+        if signal_type == "ECG":
+            # Set peaks and valleys for ECG intervals
+            if interval_type == "R-to-S":
+                peaks = self.r_peaks
+                valleys = self.s_valleys
+                require_peak_first = True
+            elif interval_type == "R-to-Q":
+                peaks = self.r_peaks
+                valleys = self.q_valleys
+                require_peak_first = False
+            elif interval_type == "P-to-Q":
+                peaks = self.p_peaks
+                valleys = self.q_valleys
+                require_peak_first = True
+            elif interval_type == "T-to-S":
+                peaks = self.t_peaks
+                valleys = self.s_valleys
+                require_peak_first = False
+            else:
+                raise ValueError("Invalid interval_type for ECG.")
+
+        elif signal_type == "PPG":
+            # Set points for PPG intervals
+            if interval_type == "Sys-to-Notch":
+                peaks = self.sys_peaks
+                valleys = self.dicrotic_notches
+                require_peak_first = True
+            elif interval_type == "Notch-to-Dia":
+                peaks = self.dicrotic_notches
+                valleys = self.dia_peaks
+                require_peak_first = False
+            elif interval_type == "Sys-to-Dia":
+                peaks = self.sys_peaks
+                valleys = self.dia_peaks
+                require_peak_first = True
+            else:
+                raise ValueError("Invalid interval_type for PPG.")
+        else:
+            raise ValueError("signal_type must be 'ECG' or 'PPG'.")
+
+        # Compute amplitude for each interval
+        amplitudes = []
+        for peak, valley in zip(peaks, valleys):
+            if (require_peak_first and peak < valley) or (
+                not require_peak_first and valley < peak
+            ):
+                amplitude = abs(self.waveform[peak] - self.waveform[valley])
+                amplitudes.append(amplitude)
+
+        return amplitudes
+
+    def compute_volume(self, interval_type="P-to-T", signal_type="ECG", mode="peak"):
+        """
+        Compute the area under the curve between two sets of peaks and valleys for specified intervals.
+
+        Parameters
+        ----------
+        interval_type : str, optional
+            The interval type to calculate the volume for:
+            - For ECG:
+            - "P-to-T": Entire complex from P peak to T peak.
+            - "R-to-S": Between R peak and S valley.
+            - "R-to-Q": Between Q valley and R peak.
+            - "P-to-Q": Between P peak and Q valley.
+            - "T-to-S": Between S valley and T peak.
+            - For PPG:
+            - "Sys-to-Notch": Between systolic peak and dicrotic notch.
+            - "Notch-to-Dia": Between dicrotic notch and diastolic peak.
+            - "Sys-to-Dia": Between systolic and diastolic peaks.
+
+            Default is "P-to-T" for ECG and "Sys-to-Notch" for PPG.
+
+        signal_type : str, optional
+            The type of signal: "ECG" or "PPG". Default is "ECG".
+
+        mode : str, optional
+            The area computation method ("peak" or "trough"). Default is "peak".
+            - "peak": Computes the area under the curve.
+            - "trough": Computes the area bounded by troughs.
+
+        Returns
+        -------
+        List[float]: A list of volume values, each representing the area for the specified interval
+                    within a single complex.
+
+        Examples
+        --------
+        >>> volume_values = wm.compute_volume(interval_type="R-to-S", signal_type="ECG")
+        >>> print(f"Volume values for each complex in R-to-S interval: {volume_values}")
+        """
+
+        if signal_type == "ECG":
+            # Set peaks and valleys for ECG intervals
+            if interval_type == "P-to-T":
+                start_points = self.p_peaks
+                end_points = self.t_peaks
+                require_peak_first = True
+            elif interval_type == "R-to-S":
+                start_points = self.r_peaks
+                end_points = self.s_valleys
+                require_peak_first = True
+            elif interval_type == "R-to-Q":
+                start_points = self.q_valleys
+                end_points = self.r_peaks
+                require_peak_first = False
+            elif interval_type == "P-to-Q":
+                start_points = self.p_peaks
+                end_points = self.q_valleys
+                require_peak_first = True
+            elif interval_type == "T-to-S":
+                start_points = self.s_valleys
+                end_points = self.t_peaks
+                require_peak_first = False
+            else:
+                raise ValueError("Invalid interval_type for ECG.")
+
+        elif signal_type == "PPG":
+            # Set points for PPG intervals
+            if interval_type == "Sys-to-Notch":
+                start_points = self.sys_peaks
+                end_points = self.dicrotic_notches
+                require_peak_first = True
+            elif interval_type == "Notch-to-Dia":
+                start_points = self.dicrotic_notches
+                end_points = self.dia_peaks
+                require_peak_first = False
+            elif interval_type == "Sys-to-Dia":
+                start_points = self.sys_peaks
+                end_points = self.dia_peaks
+                require_peak_first = True
+            else:
+                raise ValueError("Invalid interval_type for PPG.")
+        else:
+            raise ValueError("signal_type must be 'ECG' or 'PPG'.")
+
+        # Compute area for each interval
+        volumes = []
+        for start, end in zip(start_points, end_points):
+            if (require_peak_first and start < end) or (
+                not require_peak_first and end < start
+            ):
+                if mode == "peak":
+                    volume = np.trapz(
+                        self.waveform[start : end + 1]
+                    )  # Integrate over interval
+                elif mode == "trough":
+                    volume = np.trapz(
+                        self.waveform[min(start, end) : max(start, end) + 1]
+                    )
+                else:
+                    raise ValueError("Volume mode must be 'peak' or 'trough'.")
+                volumes.append(volume)
+
+        return volumes
+
+    def compute_skewness(self, signal_type="ECG"):
+        """
+        Compute the skewness of each complex in the signal.
+
+        Parameters
+        ----------
+        signal_type : str, optional
+            The type of signal, either "ECG" or "PPG". Default is "ECG".
+
+        Returns
+        -------
+        List[float]: A list of skewness values, one for each complex.
+
+        Examples
+        --------
+        >>> signal = np.random.randn(1000)
+        >>> extractor = PhysiologicalFeatureExtractor(signal)
+        >>> skewness_values = extractor.compute_skewness()
+        >>> print(f"Skewness values for each complex: {skewness_values}")
+        """
+
+        # Define complex points based on signal type
+        if signal_type == "ECG":
+            starts = self.p_peaks
+            ends = self.t_peaks
+        elif signal_type == "PPG":
+            starts = self.sys_peaks
+            ends = self.dia_peaks
+        else:
+            raise ValueError("signal_type must be 'ECG' or 'PPG'.")
+
+        # Compute skewness for each complex
+        skewness_values = []
+        for start, end in zip(starts, ends):
+            # Ensure valid intervals
+            if end > start:
+                complex_segment = self.waveform[start : end + 1]
+                skewness_values.append(skew(complex_segment))
+
+        return skewness_values
 
     def compute_qrs_duration(self):
         """
@@ -1004,22 +1187,6 @@ class WaveformMorphology:
             raise ValueError("Slope mode must be 'peak' or 'trough'.")
         return np.mean(slopes) if slopes else 0.0
 
-    def compute_slope_sequence(self):
-        """
-        Computes the slope of the waveform by calculating its first derivative.
-
-        Returns:
-            float: The average slope of the waveform.
-
-        Example:
-            >>> signal = [0.5, 0.7, 1.0, 0.8, 0.6]
-            >>> wm = WaveformMorphology(signal)
-            >>> slope = wm.compute_slope()
-            >>> print(f"Slope: {slope}")
-        """
-        slope = np.gradient(self.waveform)
-        return np.mean(slope)
-
     def compute_curvature(self):
         """
         Computes the curvature of the waveform by analyzing its second derivative.
@@ -1038,114 +1205,175 @@ class WaveformMorphology:
         curvature = np.abs(second_derivative) / (1 + first_derivative**2) ** (3 / 2)
         return np.mean(curvature)
 
+
 # from vitalDSP.utils.synthesize_data import generate_ecg_signal, generate_synthetic_ppg
 # from plotly import graph_objects as go
+# from vitalDSP.notebooks import process_in_chunks
+# import os
 
 # if __name__ == "__main__":
-#     # sfecg = 256
-#     # N = 15
-#     # Anoise = 0.05
-#     # hrmean = 70
+#     # Function to plot Q sessions
+#     sfecg = 256
+#     N = 15
+#     Anoise = 0.05
+#     hrmean = 70
+#     fs = 256
+#     duration = 60
+#     step_size = fs * 20
+#     FILE_PATH = os.path.join("sample_data", "public", "ecg_small.csv")
+#     ecg_signal, date_col = process_in_chunks(FILE_PATH, data_type='ecg', fs=fs)
+#     ecg_signal = np.array(ecg_signal)
+
 #     # ecg_signal = generate_ecg_signal(
 #     #     sfecg=sfecg, N=N, Anoise=Anoise, hrmean=hrmean
 #     # )
 
-#     # detector = PeakDetection(
-#     #     ecg_signal,"ecg_r_peak", **{
-#     #         "distance": 50,
-#     #         "window_size": 7,
-#     #         "threshold_factor":1.6,
-#     #         "search_window":6}
-#     #     )
-
-#     # rpeaks = detector.detect_peaks()
-
-#     # waveform = WaveformMorphology(ecg_signal, fs=256, signal_type="ECG")
-#     # q_valleys = waveform.detect_q_valley()
-#     # p_peaks = waveform.detect_p_peak()
-#     # s_valleys = waveform.detect_s_valley()
-#     # t_peaks = waveform.detect_t_peak()
-
-#     # fig = go.Figure()
-#     #     # Plot the ECG signal
-#     # fig.add_trace(go.Scatter(x=np.arange(len(ecg_signal)), y=ecg_signal, mode="lines", name="ECG Signal"))
-
-#     # # Plot R-peaks
-#     # fig.add_trace(go.Scatter(x=rpeaks, y=ecg_signal[rpeaks], mode="markers", name="R Peaks", marker=dict(color="red", size=8)))
-#     # fig.add_trace(go.Scatter(x=q_valleys, y=ecg_signal[q_valleys], mode="markers", name="Q Valleys", marker=dict(color="green", size=8)))
-#     # fig.add_trace(go.Scatter(x=s_valleys, y=ecg_signal[s_valleys], mode="markers", name="S Valleys", marker=dict(size=8)))
-#     # fig.add_trace(go.Scatter(x=p_peaks, y=ecg_signal[p_peaks], mode="markers", name="P Peaks", marker=dict(size=8)))
-#     # fig.add_trace(go.Scatter(x=t_peaks, y=ecg_signal[t_peaks], mode="markers", name="T Peaks", marker=dict(size=8)))
-#     # fig.update_layout(
-#     #         title="ECG Signal with QRS-peaks/valleys and P, T peaks",
-#     #         xaxis_title="Samples",
-#     #         yaxis_title="Amplitude",
-#     #         showlegend=True
-#     # )
-#     # fig.show()
-
-#     fs = 100
-#     time, ppg_signal = generate_synthetic_ppg(
-#         duration=10, sampling_rate=fs, noise_level=0.01, heart_rate=60, display=False
-#     )
-#     waveform = WaveformMorphology(ppg_signal, fs=fs, signal_type="PPG")
 #     detector = PeakDetection(
-#         ppg_signal,
-#         "ppg_systolic_peaks",
-#         **{
+#         ecg_signal,"ecg_r_peak", **{
 #             "distance": 50,
 #             "window_size": 7,
-#             "threshold_factor": 1.6,
-#             "search_window": 6,
-#             "fs": fs,
-#         }
-#     )
-#     systolic_peaks = detector.detect_peaks()
-#     troughs = waveform.detect_troughs(systolic_peaks=systolic_peaks)
-#     notches = waveform.detect_notches(
-#         systolic_peaks=systolic_peaks, diastolic_troughs=troughs
-#     )
-#     diastolic_peaks = waveform.detect_diastolic_peak(
-#         notches=notches, diastolic_troughs=troughs
-#     )
-#     # detector = PeakDetection(
-#     #     ppg_signal,"abp_diastolic", **{
-#     #         "distance": 50,
-#     #         "window_size": 7,
-#     #         "threshold_factor":1.6,
-#     #         "search_window":6}
-#     # )
-#     # diastolic_peaks = detector.detect_peaks()
+#             "threshold_factor":1.6,
+#             "search_window":6}
+#         )
+
+#     rpeaks = detector.detect_peaks()
+
+#     waveform = WaveformMorphology(ecg_signal, fs=256, signal_type="ECG")
+#     q_valleys = waveform.detect_q_valley(r_peaks=rpeaks)
+#     p_peaks = waveform.detect_p_peak(r_peaks=rpeaks,q_valleys=q_valleys)
+#     s_valleys = waveform.detect_s_valley(r_peaks=rpeaks)
+#     t_peaks = waveform.detect_t_peak(r_peaks=rpeaks, s_valleys=s_valleys)
+#     q_sessions = waveform.detect_q_session(p_peaks, q_valleys, rpeaks)
+#     s_sessions = waveform.detect_s_session(t_peaks, s_valleys, rpeaks)
 
 #     fig = go.Figure()
-#     fig.add_trace(go.Scatter(x=time, y=ppg_signal, mode="lines", name="PPG Signal"))
-#     fig.add_trace(
-#         go.Scatter(
-#             x=time[systolic_peaks],
-#             y=ppg_signal[systolic_peaks],
-#             mode="markers",
-#             name="Systolic Peaks",
-#         )
-#     )
-#     fig.add_trace(
-#         go.Scatter(
-#             x=time[troughs],
-#             y=ppg_signal[troughs],
-#             name="Diastolic Troughs",
-#             mode="markers",
-#         )
-#     )
-#     fig.add_trace(
-#         go.Scatter(
-#             x=time[notches], y=ppg_signal[notches], name="Notches", mode="markers"
-#         )
-#     )
-#     fig.add_trace(
-#         go.Scatter(
-#             x=time[diastolic_peaks],
-#             y=ppg_signal[diastolic_peaks],
-#             name="Diastolic Peaks",
-#             mode="markers",
-#         )
+#         # Plot the ECG signal
+#     fig.add_trace(go.Scatter(x=np.arange(len(ecg_signal)), y=ecg_signal, mode="lines", name="ECG Signal"))
+
+#     # Plot R-peaks
+#     fig.add_trace(go.Scatter(x=rpeaks, y=ecg_signal[rpeaks], mode="markers", name="R Peaks", marker=dict(color="red", size=8)))
+#     fig.add_trace(go.Scatter(x=q_valleys, y=ecg_signal[q_valleys], mode="markers", name="Q Valleys", marker=dict(color="green", size=8)))
+#     fig.add_trace(go.Scatter(x=s_valleys, y=ecg_signal[s_valleys], mode="markers", name="S Valleys", marker=dict(size=8)))
+#     fig.add_trace(go.Scatter(x=p_peaks, y=ecg_signal[p_peaks], mode="markers", name="P Peaks", marker=dict(size=8)))
+#     fig.add_trace(go.Scatter(x=t_peaks, y=ecg_signal[t_peaks], mode="markers", name="T Peaks", marker=dict(size=8)))
+
+#     # Define margin for highlighting
+#     margin = 10  # Adjust this value as needed for visual spacing
+#     # Highlight each Q session with lines above and below
+#     for (start, end) in q_sessions:
+#         x_vals = np.arange(start, end + 1)
+#         y_vals = ecg_signal[start:end + 1]
+
+#         # Upper boundary trace
+#         fig.add_trace(go.Scatter(
+#             x=x_vals,
+#             y=y_vals + margin,  # Shift upward by margin
+#             mode="lines",
+#             line=dict(color="mediumaquamarine", dash="solid"),
+#             showlegend=False
+#         ))
+
+#         # Lower boundary trace
+#         fig.add_trace(go.Scatter(
+#             x=x_vals,
+#             y=y_vals - margin,  # Shift downward by margin
+#             mode="lines",
+#             line=dict(color="mediumaquamarine", dash="solid"),
+#             showlegend=False
+#         ))
+
+#     for (start, end) in s_sessions:
+#         x_vals = np.arange(start, end + 1)
+#         y_vals = ecg_signal[start:end + 1]
+
+#         # Upper boundary trace
+#         fig.add_trace(go.Scatter(
+#             x=x_vals,
+#             y=y_vals + margin,  # Shift upward by margin
+#             mode="lines",
+#             line=dict(color="seagreen", dash="solid"),
+#             showlegend=False
+#         ))
+
+#         # Lower boundary trace
+#         fig.add_trace(go.Scatter(
+#             x=x_vals,
+#             y=y_vals - margin,  # Shift downward by margin
+#             mode="lines",
+#             line=dict(color="seagreen", dash="solid"),
+#             showlegend=False
+#         ))
+
+#     fig.update_layout(
+#             title="ECG Signal with QRS-peaks/valleys and P, T peaks",
+#             xaxis_title="Samples",
+#             yaxis_title="Amplitude",
+#             showlegend=True
 #     )
 #     fig.show()
+
+#     # fs = 100
+#     # time, ppg_signal = generate_synthetic_ppg(
+#     #     duration=10, sampling_rate=fs, noise_level=0.01, heart_rate=60, display=False
+#     # )
+#     # waveform = WaveformMorphology(ppg_signal, fs=fs, signal_type="PPG")
+#     # detector = PeakDetection(
+#     #     ppg_signal,
+#     #     "ppg_systolic_peaks",
+#     #     **{
+#     #         "distance": 50,
+#     #         "window_size": 7,
+#     #         "threshold_factor": 1.6,
+#     #         "search_window": 6,
+#     #         "fs": fs,
+#     #     }
+#     # )
+#     # systolic_peaks = detector.detect_peaks()
+#     # troughs = waveform.detect_troughs(systolic_peaks=systolic_peaks)
+#     # notches = waveform.detect_notches(
+#     #     systolic_peaks=systolic_peaks, diastolic_troughs=troughs
+#     # )
+#     # diastolic_peaks = waveform.detect_diastolic_peak(
+#     #     notches=notches, diastolic_troughs=troughs
+#     # )
+#     # # detector = PeakDetection(
+#     # #     ppg_signal,"abp_diastolic", **{
+#     # #         "distance": 50,
+#     # #         "window_size": 7,
+#     # #         "threshold_factor":1.6,
+#     # #         "search_window":6}
+#     # # )
+#     # # diastolic_peaks = detector.detect_peaks()
+
+#     # fig = go.Figure()
+#     # fig.add_trace(go.Scatter(x=time, y=ppg_signal, mode="lines", name="PPG Signal"))
+#     # fig.add_trace(
+#     #     go.Scatter(
+#     #         x=time[systolic_peaks],
+#     #         y=ppg_signal[systolic_peaks],
+#     #         mode="markers",
+#     #         name="Systolic Peaks",
+#     #     )
+#     # )
+#     # fig.add_trace(
+#     #     go.Scatter(
+#     #         x=time[troughs],
+#     #         y=ppg_signal[troughs],
+#     #         name="Diastolic Troughs",
+#     #         mode="markers",
+#     #     )
+#     # )
+#     # fig.add_trace(
+#     #     go.Scatter(
+#     #         x=time[notches], y=ppg_signal[notches], name="Notches", mode="markers"
+#     #     )
+#     # )
+#     # fig.add_trace(
+#     #     go.Scatter(
+#     #         x=time[diastolic_peaks],
+#     #         y=ppg_signal[diastolic_peaks],
+#     #         name="Diastolic Peaks",
+#     #         mode="markers",
+#     #     )
+#     # )
+#     # fig.show()

@@ -198,24 +198,24 @@ def test_ecg_qrs_detection():
 #         assert np.isnan(value) or value == 0, f"{key} should be NaN or 0 for a flatline signal."
 
 
-def test_ecg_t_wave_area(feature_extractor_ecg, preprocess_config):
-    # Load the ECG data from CSV
-    waveform = load_ecg_data()
+# def test_ecg_t_wave_area(feature_extractor_ecg, preprocess_config):
+#     # Load the ECG data from CSV
+#     waveform = load_ecg_data()
 
-    # Ensure that the extractor can handle the real waveform data
-    features = feature_extractor_ecg.extract_features(
-        signal_type="ECG", preprocess_config=preprocess_config
-    )
+#     # Ensure that the extractor can handle the real waveform data
+#     features = feature_extractor_ecg.extract_features(
+#         signal_type="ECG", preprocess_config=preprocess_config
+#     )
 
-    # Check that features is a dictionary
-    assert isinstance(features, dict)
+#     # Check that features is a dictionary
+#     assert isinstance(features, dict)
 
-    # Check that t_wave_area is in the features and is a valid number
-    assert "t_wave_area" in features, "t_wave_area should be a key in the features."
+#     # Check that t_wave_area is in the features and is a valid number
+#     assert "t_wave_area" in features, "t_wave_area should be a key in the features."
 
-    # Ensure the value is finite and non-negative
-    assert np.isfinite(features["t_wave_area"]), "T-wave area should be a finite value."
-    assert features["t_wave_area"] >= 0, "T-wave area should be non-negative."
+#     # Ensure the value is finite and non-negative
+#     assert np.isfinite(features["t_wave_area"]), "T-wave area should be a finite value."
+#     assert features["t_wave_area"] >= 0, "T-wave area should be non-negative."
 
 
 def test_extract_features_no_peaks(preprocess_config):
