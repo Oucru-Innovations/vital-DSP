@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.stats import linregress
-from vitalDSP.utils.peak_detection import PeakDetection
+# from vitalDSP.utils.peak_detection import PeakDetection
 from vitalDSP.preprocess.preprocess_operations import (
     PreprocessConfig,
     preprocess_signal,
@@ -226,12 +226,10 @@ class PhysiologicalFeatureExtractor:
                     "diastolic_amplitude_variability": np.nan,
                 }
                 # Detect peaks and troughs in the PPG signal
-                peaks = PeakDetection(
-                    clean_signal, method="ppg_first_derivative"
-                ).detect_peaks()
                 waveform = WaveformMorphology(
                     clean_signal, fs=self.fs, signal_type="PPG"
                 )
+                peaks = waveform.systolic_peaks
                 troughs = waveform.detect_troughs(systolic_peaks=peaks)
 
                 # Ensure peaks and troughs are numpy arrays
@@ -339,46 +337,15 @@ class PhysiologicalFeatureExtractor:
                     "signal_skewness": np.nan,
                     "peak_trend_slope": np.nan,
                 }
-                # Detect R-peaks in the ECG signal
-                peak_detector = PeakDetection(clean_signal, method="ecg_r_peak")
-                r_peaks = peak_detector.detect_peaks()
-                r_peaks = np.array(r_peaks, dtype=int)
 
-                # Detect Q and S points around R peaks
-                q_points = []
-                s_points = []
-                for r_peak in r_peaks:
-                    # Q point detection (40 ms before R peak)
-                    q_start = max(0, r_peak - int(self.fs * 0.04))
-                    q_end = r_peak
-                    q_segment = clean_signal[q_start:q_end]
-                    if len(q_segment) > 0:
-                        q_point = np.argmin(q_segment) + q_start
-                        q_points.append(q_point)
-                    else:
-                        q_points.append(q_start)
-
-                    # S point detection (40 ms after R peak)
-                    s_start = r_peak
-                    s_end = min(len(clean_signal), r_peak + int(self.fs * 0.04))
-                    s_segment = clean_signal[s_start:s_end]
-                    if len(s_segment) > 0:
-                        s_point = np.argmin(s_segment) + s_start
-                        s_points.append(s_point)
-                    else:
-                        s_points.append(s_end)
-
-                # Compute QRS durations
-                # qrs_durations = [
-                #     (s_points[i] - q_points[i]) / self.fs
-                #     for i in range(len(r_peaks))
-                #     if s_points[i] > q_points[i]
-                # ]
-                qrs_durations = morphology.compute_qrs_duration()
+                qrs_durations = morphology.compute_duration(mode="QRS")
 
                 qrs_duration = np.mean(qrs_durations) if qrs_durations else 0.0
 
                 # Compute QRS areas
+                r_peaks = morphology.r_peaks
+                q_points = morphology.detect_q_valley()
+                s_points = morphology.detect_s_valley()
                 qrs_areas = [
                     np.trapz(clean_signal[q_points[i] : s_points[i]])
                     for i in range(len(r_peaks))

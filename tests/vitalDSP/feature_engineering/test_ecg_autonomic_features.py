@@ -72,19 +72,24 @@ def test_compute_qt_interval(generate_ecg_signal):
     extractor = ECGExtractor(ecg_signal, fs)
     qt_interval = extractor.compute_qt_interval()
 
-    assert isinstance(qt_interval, float), "QT interval should return a float value"
-    assert qt_interval > 0, "QT interval should be a positive value"
+    assert isinstance(
+        qt_interval, np.ndarray
+    ), "QT interval should return a NumPy array"
+    assert np.all(qt_interval > 0), "All values in QT Interval should be positive"
 
 
-def test_compute_st_segment(generate_ecg_signal):
+def test_compute_st_interval(generate_ecg_signal):
     """
     Test ST segment calculation.
     """
     ecg_signal, fs = generate_ecg_signal
     extractor = ECGExtractor(ecg_signal, fs)
-    st_segment = extractor.compute_st_segment()
+    st_interval = extractor.compute_st_interval()
 
-    assert isinstance(st_segment, float), "ST segment should return a float value"
+    assert isinstance(
+        st_interval, np.ndarray
+    ), "ST interval should return a NumPy array"
+    assert np.all(st_interval > 0), "All values in ST Interval should be positive"
 
 
 def test_detect_arrhythmias(generate_ecg_signal):

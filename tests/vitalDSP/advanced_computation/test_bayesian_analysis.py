@@ -118,12 +118,6 @@ def test_optimize(sample_bayesian_optimization):
     # Test the optimization process
     best_x, best_y = sample_bayesian_optimization.optimize(n_iter=5, random_seed=42)
 
-    # Add debug prints to see what's happening
-    print("Best X:", best_x)
-    print("Best Y:", best_y)
-    print("X_samples:", sample_bayesian_optimization.X_samples)
-    print("Y_samples:", sample_bayesian_optimization.Y_samples)
-
     assert 0 <= best_x <= 2  # Ensure the best parameter is within the bounds
     assert isinstance(best_y.item(), float)  # Ensure best_y is a valid float value
     assert (

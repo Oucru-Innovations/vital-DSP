@@ -36,10 +36,6 @@ def cross_corr_features(sample_signals, monkeypatch):
 def test_compute_cross_correlation(cross_corr_features):
     cross_corr, lag = cross_corr_features.compute_cross_correlation(mode="full")
 
-    # Debugging outputs
-    print(f"Cross-Correlation Array: {cross_corr}")
-    print(f"Lag: {lag}")
-
     assert isinstance(cross_corr, np.ndarray)
     assert isinstance(lag, int)  # Now lag should always be an int
 
@@ -59,10 +55,6 @@ def test_compute_cross_correlation(cross_corr_features):
 
 def test_compute_normalized_cross_correlation(cross_corr_features):
     norm_corr, lag = cross_corr_features.compute_normalized_cross_correlation()
-
-    # Debugging outputs
-    print(f"Normalized Cross-Correlation Array: {norm_corr}")
-    print(f"Lag: {lag}")
 
     assert isinstance(norm_corr, np.ndarray)
     assert isinstance(lag, int)

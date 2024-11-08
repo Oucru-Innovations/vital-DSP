@@ -116,7 +116,7 @@ def test_ecg_r_peak_detection(sample_signal, monkeypatch):
     """Test ECG R-peak detection."""
 
     def mock_find_peaks(signal, height, distance):
-        print(f"Signal passed to find_peaks: {signal}")
+        # print(f"Signal passed to find_peaks: {signal}")
         # Assuming the real signal should generate a peak at index 4
         return np.array([4])  # Simulate detecting a peak at index 4
 
@@ -136,7 +136,7 @@ def test_ecg_derivative_detection(sample_signal, monkeypatch):
     """Test ECG derivative-based peak detection."""
 
     def mock_find_peaks(signal, height):
-        print(f"Signal passed to find_peaks: {signal}")
+        # print(f"Signal passed to find_peaks: {signal}")
         # Simulate detecting a peak at index 4
         return np.array([4])
 
@@ -156,7 +156,7 @@ def test_ppg_first_derivative_detection(sample_signal, monkeypatch):
     """Test PPG first derivative-based peak detection."""
 
     def mock_find_peaks(signal, height):
-        print(f"Signal passed to find_peaks: {signal}")
+        # print(f"Signal passed to find_peaks: {signal}")
         # Simulate detecting a peak at index 4
         return np.array([4])
 
@@ -176,7 +176,7 @@ def test_ppg_second_derivative_detection(sample_signal, monkeypatch):
     """Test PPG second derivative-based peak detection."""
 
     def mock_find_peaks(signal, height):
-        print(f"Signal passed to find_peaks: {signal}")
+        # print(f"Signal passed to find_peaks: {signal}")
         # Simulate detecting a peak only at index 4
         return np.array([4])
 
@@ -220,7 +220,7 @@ def test_eeg_wavelet_detection(sample_signal, monkeypatch):
     """Test EEG wavelet-based peak detection."""
 
     def mock_find_peaks(signal, height):
-        print(f"Signal passed to find_peaks: {signal}")
+        # print(f"Signal passed to find_peaks: {signal}")
         # Simulate detecting a peak at index 4
         return np.array([4])
 
@@ -233,7 +233,7 @@ def test_eeg_wavelet_detection(sample_signal, monkeypatch):
 
     detector = PeakDetection(sample_signal, method="eeg_wavelet")
     peaks = detector.detect_peaks()
-    print(f"EEG wavelet detection peaks: {peaks}")
+    # print(f"EEG wavelet detection peaks: {peaks}")
     assert np.array_equal(peaks, np.array([4]))
 
 
@@ -241,7 +241,7 @@ def test_eeg_bandpass_detection(sample_signal, monkeypatch):
     """Test EEG bandpass-based peak detection."""
 
     def mock_find_peaks(signal, height):
-        print(f"Signal passed to find_peaks: {signal}")
+        # print(f"Signal passed to find_peaks: {signal}")
         return np.array([4])
 
     def mock_filtfilt(b, a, signal):
@@ -262,7 +262,7 @@ def test_eeg_bandpass_detection(sample_signal, monkeypatch):
         sample_signal, method="eeg_bandpass", lowcut=0.5, highcut=50, fs=100
     )
     peaks = detector.detect_peaks()
-    print(f"EEG bandpass detection peaks: {peaks}")
+    # print(f"EEG bandpass detection peaks: {peaks}")
     assert np.array_equal(peaks, np.array([4]))
 
 
@@ -270,7 +270,7 @@ def test_resp_autocorrelation_detection(sample_signal, monkeypatch):
     """Test respiratory autocorrelation-based peak detection."""
 
     def mock_find_peaks(signal, distance):
-        print(f"Signal passed to find_peaks: {signal}")
+        # print(f"Signal passed to find_peaks: {signal}")
         return np.array([4])
 
     def mock_correlate(signal1, signal2, mode):
@@ -282,7 +282,7 @@ def test_resp_autocorrelation_detection(sample_signal, monkeypatch):
 
     detector = PeakDetection(sample_signal, method="resp_autocorrelation")
     peaks = detector.detect_peaks()
-    print(f"Respiratory autocorrelation detection peaks: {peaks}")
+    # print(f"Respiratory autocorrelation detection peaks: {peaks}")
     # assert np.array_equal(peaks, np.array([4]))
     assert len(peaks) >= 0
 
@@ -305,7 +305,7 @@ def test_abp_systolic_peak_detection(sample_signal, monkeypatch):
     """Test ABP systolic peak detection."""
 
     def mock_find_peaks(signal, distance):
-        print(f"Signal passed to find_peaks: {signal}")
+        # print(f"Signal passed to find_peaks: {signal}")
         return np.array([4])
 
     def mock_savgol_filter(signal, window_length, polyorder):
@@ -320,7 +320,7 @@ def test_abp_systolic_peak_detection(sample_signal, monkeypatch):
 
     detector = PeakDetection(sample_signal, method="abp_systolic")
     peaks = detector.detect_peaks()
-    print(f"ABP systolic detection peaks: {peaks}")
+    # print(f"ABP systolic detection peaks: {peaks}")
     assert np.array_equal(peaks, np.array([4]))
 
 
@@ -328,7 +328,7 @@ def test_abp_diastolic_peak_detection(sample_signal, monkeypatch):
     """Test ABP diastolic peak detection."""
 
     def mock_find_peaks(signal, distance):
-        print(f"Signal passed to find_peaks: {signal}")
+        # print(f"Signal passed to find_peaks: {signal}")
         return np.array([4])
 
     def mock_savgol_filter(signal, window_length, polyorder):
@@ -343,5 +343,5 @@ def test_abp_diastolic_peak_detection(sample_signal, monkeypatch):
 
     detector = PeakDetection(sample_signal, method="abp_diastolic")
     peaks = detector.detect_peaks()
-    print(f"ABP diastolic detection peaks: {peaks}")
+    # print(f"ABP diastolic detection peaks: {peaks}")
     assert np.array_equal(peaks, np.array([4]))

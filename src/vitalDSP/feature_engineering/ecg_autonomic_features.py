@@ -70,7 +70,7 @@ class ECGExtractor:
         if r_peaks is None:
             r_peaks = self.detect_r_peaks()  # Detect R-peaks first
         p_waves = self.morphology.detect_q_session(r_peaks)
-        if not p_waves:
+        if p_waves.size == 0:
             return 0.0
         durations = [(end - start) / self.fs for start, end in p_waves]
         return np.mean(durations)
@@ -85,7 +85,7 @@ class ECGExtractor:
         if r_peaks is None:
             r_peaks = self.detect_r_peaks()  # Detect R-peaks first
         pr_intervals = self.morphology.detect_q_session(r_peaks)
-        if not pr_intervals:
+        if pr_intervals.size == 0:
             return 0.0
         durations = [(end - start) / self.fs for start, end in pr_intervals]
         return np.mean(durations)
@@ -123,19 +123,42 @@ class ECGExtractor:
         Returns:
             float: QT interval in seconds.
         """
-        qrs_duration = (
-            self.morphology.compute_qrs_duration()
-        )  # No arguments passed here
-        return qrs_duration
+        q_valleys = self.morphology.detect_q_valley()
+        t_peaks = self.morphology.detect_t_peak()
+        if q_valleys[0] > t_peaks[0]:
+            t_peaks = t_peaks[1:]  # skip the first peak
+        sessions = []
+        for i in range(min(len(q_valleys), len(t_peaks))):
+            q_start = q_valleys[i]
+            t_end = t_peaks[i]
+            # Ensure there is a valid interval for the R session
+            if q_start < t_end:
+                sessions.append((q_start, t_end))
+        sessions = np.array(sessions)
 
-    def compute_st_segment(self):
+        return self.morphology.compute_duration(sessions=sessions, mode="Custom")
+
+    def compute_st_interval(self):
         """
         Computes the ST segment elevation or depression.
 
         Returns:
             float: Mean ST segment deviation from baseline.
         """
-        return self.morphology.compute_qrs_duration()
+        s_valleys = self.morphology.detect_s_valley()
+        t_peaks = self.morphology.detect_t_peak()
+        if s_valleys[0] > t_peaks[0]:
+            t_peaks = t_peaks[1:]  # skip the first peak
+        sessions = []
+        for i in range(min(len(s_valleys), len(t_peaks))):
+            s_start = s_valleys[i]
+            t_end = t_peaks[i]
+            # Ensure there is a valid interval for the R session
+            if s_start < t_end:
+                sessions.append((s_start, t_end))
+        sessions = np.array(sessions)
+
+        return self.morphology.compute_duration(sessions=sessions, mode="Custom")
 
     def detect_arrhythmias(self, r_peaks=None):
         """

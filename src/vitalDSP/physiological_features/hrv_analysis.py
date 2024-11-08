@@ -3,6 +3,7 @@ from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
 from vitalDSP.physiological_features.frequency_domain import FrequencyDomainFeatures
 from vitalDSP.physiological_features.nonlinear import NonlinearFeatures
 from vitalDSP.transforms.beats_transformation import RRTransformation
+import logging as logger
 
 
 class HRVFeatures:
@@ -112,7 +113,7 @@ class HRVFeatures:
                 features[feature] = method()
             except Exception as e:
                 features[feature] = np.nan
-                print(f"Error computing {feature}: {e}")
+                logger.error(f"Error computing {feature}: {e}")
 
         # Frequency-domain features
         freq_features = FrequencyDomainFeatures(self.nn_intervals, fs=4)

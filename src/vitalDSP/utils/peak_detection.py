@@ -32,6 +32,7 @@ class PeakDetection:
             - 'scaler_threshold'
             - 'ecg_r_peak'
             - 'ecg_derivative'
+            - 'ppg_systolic_peaks'
             - 'ppg_first_derivative'
             - 'ppg_second_derivative'
             - 'eeg_wavelet'

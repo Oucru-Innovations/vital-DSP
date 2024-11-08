@@ -71,7 +71,6 @@ class HealthReportVisualizer:
         # Check if we have valid values to compute the normal range
         if not valid_values:
             raise ValueError(f"All values for feature '{feature}' are NaN or Inf.")
-        # print(valid_values)
         # Compute new normal_min and normal_max based on valid values
         normal_min = min(valid_values)
         normal_max = max(valid_values)
