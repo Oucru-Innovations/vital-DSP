@@ -1,7 +1,7 @@
 import numpy as np
 import warnings
 import functools
-
+import logging as logger
 
 def deprecated(reason):
     def decorator(func):
@@ -312,7 +312,7 @@ def grangercausalitytests(data, max_lag, verbose=False):
         results[lag] = {"ssr_ftest": f_statistic}
 
         if verbose:
-            print(f"Lag: {lag}, F-statistic: {f_statistic}")
+            logger.info(f"Lag: {lag}, F-statistic: {f_statistic}")
 
     return results
 

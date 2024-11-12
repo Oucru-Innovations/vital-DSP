@@ -16,7 +16,7 @@ class PostInstallCommand(install):
 
 setup(
     name='vitalDSP', 
-    version='0.1.1rc25',  
+    version='0.1.1rc26',  
     author='van-koha',  
     author_email='vital.data@oucru.org', 
     description='A comprehensive toolkit for Digital Signal Processing in healthcare applications.',
@@ -37,6 +37,7 @@ setup(
     python_requires='>=3.9',  # Python version requirement
     package_data={
         'vitalDSP.health_analysis': ['feature_config.yml'],  # Include YAML file
+        "vitalDSP.notebooks": ["*.csv"],  # specify the file patterns
     },
     install_requires=[
         'numpy>=1.19.2',

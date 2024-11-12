@@ -132,7 +132,7 @@ class HRVFeatures:
                 features[feature] = method()
             except Exception as e:
                 features[feature] = np.nan
-                print(f"Error computing {feature}: {e}")
+                logger.error(f"Error computing {feature}: {e}")
 
         # Nonlinear features
         nonlinear_features = NonlinearFeatures(self.signal, self.fs)
@@ -157,7 +157,7 @@ class HRVFeatures:
                     features[feature] = method()
             except Exception as e:
                 features[feature] = np.nan
-                print(f"Error computing {feature}: {e}")
+                logger.error(f"Error computing {feature}: {e}")
 
         try:
             if include_complex_methods:
@@ -180,7 +180,7 @@ class HRVFeatures:
                 features["determinism"] = None
                 features["laminarity"] = None
         except Exception as e:
-            print(f"Error computing complex features: {e}")
+            logger.error(f"Error computing complex features: {e}")
             features["sample_entropy"] = None
             features["approximate_entropy"] = None
             features["recurrence_rate"] = None

@@ -1540,7 +1540,16 @@ class WaveformMorphology:
                     raise ValueError(
                         "QRS area computation failed due to invalid sub-interval areas."
                     )
-
+                # Check if the lengths of the two areas are equal
+                min_length = min(len(areas_r_to_q), len(areas_r_to_s))
+                if len(areas_r_to_q) != len(areas_r_to_s):
+                    # Log a warning if lengths differ
+                    logger.warning(
+                        "Mismatch in lengths for R-to-Q and R-to-S areas. Truncating to minimum length."
+                    )
+                    # Truncate both arrays to the minimum length to align them
+                    areas_r_to_q = areas_r_to_q[:min_length]
+                    areas_r_to_s = areas_r_to_s[:min_length]
                 # Sum the R-to-Q and R-to-S areas to get QRS area
                 areas = np.array(areas_r_to_q) + np.array(areas_r_to_s)
 
@@ -1672,7 +1681,7 @@ class WaveformMorphology:
             logger.error(f"Unexpected error in get_signal_skewness: {e}")
             return np.nan
 
-    def get_peak_trend_slope(self, peaks, method="linear_regression", window_size=5):
+    def get_peak_trend_slope(self, peaks=None, method="linear_regression", window_size=5):
         """
         Calculate the trend slope of peak values using specified method.
 
@@ -1750,7 +1759,7 @@ class WaveformMorphology:
         interval_type="Sys-to-Baseline",
         baseline_method="moving_average",
         signal_type="PPG",
-        method="std",
+        method="std_dev",
     ):
         """
         Calculates the variability in amplitude over the specified interval or baseline comparison.
@@ -1791,7 +1800,7 @@ class WaveformMorphology:
                 amplitudes = amplitudes.flatten()
 
             # Ensure amplitudes is a valid, non-empty array
-            if not amplitudes or len(amplitudes) == 0:
+            if amplitudes is None or amplitudes.size == 0:
                 raise ValueError(
                     "No amplitudes calculated; ensure peaks and baselines are detected properly."
                 )
@@ -1863,6 +1872,16 @@ class WaveformMorphology:
                     "R-to-S or R-to-Q amplitude array is empty or invalid."
                 )
 
+            # Check if the lengths of the two areas are equal
+            min_length = min(len(rs_amplitudes), len(qr_amplitudes))
+            if len(rs_amplitudes) != len(qr_amplitudes):
+                # Log a warning if lengths differ
+                logger.warning(
+                    "Mismatch in lengths for R-to-Q and R-to-S areas. Truncating to minimum length."
+                )
+                # Truncate both arrays to the minimum length to align them
+                rs_amplitudes = rs_amplitudes[:min_length]
+                qr_amplitudes = qr_amplitudes[:min_length]
             # Calculate maximum amplitude between R-S and R-Q intervals using vectorized operation
             qrs_amplitudes = np.maximum(rs_amplitudes, qr_amplitudes)
 
