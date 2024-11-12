@@ -1,7 +1,9 @@
 import numpy as np
 from vitalDSP.utils.peak_detection import PeakDetection
+from vitalDSP.preprocess.preprocess_operations import estimate_baseline
 from scipy.stats import skew
 import logging as logger
+from scipy.stats import linregress
 
 
 class WaveformMorphology:
@@ -62,6 +64,10 @@ class WaveformMorphology:
         self.q_valleys = None
         self.s_valleys = None
         self.diastolic_troughs = None
+        self.diastolic_peaks = None
+        self.t_peaks = None
+        self.p_peaks = None
+        self.dicrotic_notches = None
 
     def detect_troughs(self, systolic_peaks=None):
         """
@@ -623,7 +629,7 @@ class WaveformMorphology:
         self.s_sessions = s_sessions  # Store the detected S sessions for future use
         return s_sessions
 
-    def detect_r_session(self, rpeaks=None, q_session=None, s_session=None):
+    def detect_r_session(self, rpeaks=None, q_sessions=None, s_sessions=None):
         """
         Detects the R session (start and end) in the ECG waveform based on Q and S sessions.
 
@@ -641,19 +647,26 @@ class WaveformMorphology:
         """
         if rpeaks is None:
             rpeaks = self.r_peaks
-        if q_session is None:
-            q_session = self.detect_q_session(r_peaks=rpeaks)
-        if s_session is None:
-            s_session = self.detect_s_session(r_peaks=rpeaks)
-        # Ensure all input arrays are aligned in size
-        if len(q_session) == 0 or len(s_session) == 0:
-            return []
+        if q_sessions is None:
+            q_sessions = self.detect_q_session(r_peaks=rpeaks)
+        if s_sessions is None:
+            s_sessions = self.detect_s_session(r_peaks=rpeaks)
+
+        # Explicitly check if q_sessions and s_sessions are None or empty
+        if (
+            q_sessions is None
+            or len(q_sessions) == 0
+            or s_sessions is None
+            or len(self.s_sessions) == 0
+        ):
+            return np.array([])
+
         r_sessions = []
 
         # Ensure all input arrays are aligned in size and skip the first item to avoid boundary issues
-        for i in range(min(len(q_session), len(s_session))):
-            q_end = q_session[i][1]
-            s_start = s_session[i][0]
+        for i in range(min(len(q_sessions), len(s_sessions))):
+            q_end = q_sessions[i][1]
+            s_start = s_sessions[i][0]
 
             # Ensure there is a valid interval for the R session
             if q_end < s_start:
@@ -757,7 +770,13 @@ class WaveformMorphology:
         self.ecg_sessions = ecg_sessions
         return ecg_sessions
 
-    def compute_amplitude(self, interval_type="R-to-S", signal_type="ECG"):
+    def compute_amplitude(
+        self,
+        interval_type="R-to-S",
+        baseline_method="moving_average",
+        compare_to_baseline=False,
+        signal_type="ECG",
+    ):
         """
         Computes the amplitude (max-min) of the waveform for specified intervals.
 
@@ -770,13 +789,22 @@ class WaveformMorphology:
             - "R-to-Q": Between Q valley and R peak.
             - "P-to-Q": Between P peak and Q valley.
             - "T-to-S": Between S valley and T peak.
+            - "T-to-Baseline": Between T peak and baseline.
+            - "R-to-Baseline": Between R peak and baseline.
+            - "S-to-Baseline": Between S valley and baseline.
             - For PPG:
             - "Sys-to-Notch": Between systolic peak and dicrotic notch.
             - "Notch-to-Dia": Between dicrotic notch and diastolic peak.
             - "Sys-to-Dia": Between systolic and diastolic peaks.
+            - "Sys-to-Baseline": Between systolic peak and baseline.
+            - "Notch-to-Baseline": Between dicrotic notch and baseline.
+            - "Dia-to-Baseline": Between diastolic peak and baseline.
 
         signal_type : str, optional
             The type of signal: "ECG" or "PPG". Default is "ECG".
+
+        compare_to_baseline : bool, optional
+            If True, compute amplitudes relative to a baseline.
 
         Returns
         -------
@@ -787,6 +815,8 @@ class WaveformMorphology:
         >>> amplitude_values = wm.compute_amplitude(interval_type="R-to-S", signal_type="ECG")
         >>> print(f"Amplitude values for each complex in R-to-S interval: {amplitude_values}")
         """
+        # Baseline calculation
+        baseline = estimate_baseline(self.waveform, self.fs, method=baseline_method)
 
         # Automatically compute peaks and valleys if they are not already computed
         if signal_type == "ECG":
@@ -810,6 +840,16 @@ class WaveformMorphology:
                 if self.t_peaks is None:
                     self.detect_t_peak()
                 peaks, valleys, require_peak_first = self.t_peaks, self.s_valleys, False
+            elif interval_type == "T-to-Baseline":
+                if self.t_peaks is None:
+                    self.detect_t_peak()
+                peaks, valleys, require_peak_first = self.t_peaks, None, False
+            elif interval_type == "R-to-Baseline":
+                peaks, valleys, require_peak_first = self.r_peaks, None, False
+            elif interval_type == "S-to-Baseline":
+                if self.s_valleys is None:
+                    self.detect_s_valley()
+                peaks, valleys, require_peak_first = self.s_valleys, None, False
             else:
                 raise ValueError("Invalid interval_type for ECG.")
         elif signal_type == "PPG":
@@ -839,21 +879,37 @@ class WaveformMorphology:
                     self.diastolic_peaks,
                     True,
                 )
+            elif interval_type == "Sys-to-Baseline":
+                peaks, valleys, require_peak_first = self.systolic_peaks, None, False
+            elif interval_type == "Notch-to-Baseline":
+                if self.dicrotic_notches is None:
+                    self.detect_dicrotic_notches()
+                peaks, valleys, require_peak_first = self.dicrotic_notches, None, False
+            elif interval_type == "Dia-to-Baseline":
+                if self.diastolic_peaks is None:
+                    self.detect_diastolic_peak()
+                peaks, valleys, require_peak_first = self.diastolic_peaks, None, False
             else:
                 raise ValueError("Invalid interval_type for PPG.")
         else:
-            raise ValueError("signal_type must be 'ECG' or 'PPG'.")
+            raise ValueError("Invalid signal type. Supported types are ECG, PPG, EEG.")
 
-        # Compute amplitude for each interval
+        # Compute amplitude for each interval or baseline comparison
         amplitudes = []
-        for peak, valley in zip(peaks, valleys):
-            if (require_peak_first and peak < valley) or (
-                not require_peak_first and valley < peak
-            ):
-                amplitude = abs(self.waveform[peak] - self.waveform[valley])
+        for i, peak in enumerate(peaks):
+            if valleys is None:
+                # Baseline comparison only
+                amplitude = abs(self.waveform[peak] - baseline)
                 amplitudes.append(amplitude)
+            elif i < len(valleys):
+                valley = valleys[i]
+                if (require_peak_first and peak < valley) or (
+                    not require_peak_first and valley < peak
+                ):
+                    amplitude = abs(self.waveform[peak] - self.waveform[valley])
+                    amplitudes.append(amplitude)
 
-        return amplitudes
+        return np.array(amplitudes)
 
     def compute_volume(self, interval_type="P-to-T", signal_type="ECG", mode="peak"):
         """
@@ -969,7 +1025,7 @@ class WaveformMorphology:
                     raise ValueError("Volume mode must be 'peak' or 'trough'.")
                 volumes.append(volume)
 
-        return volumes
+        return np.array(volumes)
 
     def compute_skewness(self, signal_type="ECG"):
         """
@@ -1011,9 +1067,9 @@ class WaveformMorphology:
                 complex_segment = self.waveform[start : end + 1]
                 skewness_values.append(skew(complex_segment))
 
-        return skewness_values
+        return np.array(skewness_values)
 
-    def compute_duration(self, sessions=None, mode="QRS"):
+    def compute_duration(self, sessions=None, mode="Custom"):
         """
         Computes the duration of the QRS complex in an ECG waveform.
 
@@ -1039,7 +1095,7 @@ class WaveformMorphology:
             elif mode == "QRS":
                 sessions = self.detect_qrs_session()
         session_durations = [
-            (session[1] - session[0]) / self.fs for session in sessions[:-1]
+            (session[1] - session[0]) / self.fs for session in sessions
         ]
         return np.array(session_durations)
 
@@ -1287,3 +1343,595 @@ class WaveformMorphology:
             curvatures.append(curvature)
 
         return np.array(curvatures)
+
+    def get_duration(
+        self,
+        start_points=None,
+        end_points=None,
+        session_type="systolic",
+        summary_type="mean",
+    ):
+        """
+        Computes the duration based on detected start and end points for a specified session type.
+
+        Parameters
+        ----------
+        start_points : list, optional
+            List of detected start indices in the signal. If None, defaults based on `session_type`.
+        end_points : list, optional
+            List of detected end indices in the signal. If None, defaults based on `session_type`.
+        session_type : str, optional
+            Specifies the type of session: "systolic", "diastolic", "qrs", or "Custom".
+            - For "systolic" and "diastolic", appropriate start and end points will be detected if not provided.
+            - For "qrs", QRS sessions are automatically detected and do not require start or end points.
+            - For "Custom", start and end points must be provided as arguments.
+        summary_type : str, optional
+            Type of summary to apply to the computed durations. Options are 'mean', 'median',
+            '2nd_quartile', '3rd_quartile', or 'full' (returns all durations).
+
+        Returns
+        -------
+        float or list
+            The summarized duration based on `summary_type`, or a list of durations if `summary_type` is 'full'.
+
+        Notes
+        -----
+        Logs an error and returns NaN if no valid sessions are detected or if an invalid summary type is provided.
+        """
+        valid_summary_types = ["mean", "median", "sum"]
+        if summary_type not in valid_summary_types:
+            raise ValueError(
+                "Invalid summary_type. Supported types are 'mean', 'median', and 'sum'."
+            )
+        try:
+            # Handle each session type to determine start and end points
+            if session_type == "systolic":
+                start_points = (
+                    start_points if start_points is not None else self.detect_troughs()
+                )
+                end_points = (
+                    end_points
+                    if end_points is not None
+                    else self.detect_dicrotic_notches(diastolic_troughs=start_points)
+                )
+            elif session_type == "diastolic":
+                start_points = (
+                    start_points
+                    if start_points is not None
+                    else self.detect_dicrotic_notches()
+                )
+                end_points = (
+                    end_points if end_points is not None else self.detect_troughs()
+                )
+            elif session_type == "qrs":
+                sessions = self.detect_qrs_session()
+                if not sessions:
+                    raise ValueError("No valid QRS sessions for duration calculation.")
+                return self._summarize_list(
+                    self.compute_duration(sessions), summary_type
+                )
+            elif session_type == "Custom":
+                if start_points is None or end_points is None:
+                    raise ValueError(
+                        "For 'Custom' session type, start_points and end_points must be provided."
+                    )
+            else:
+                raise ValueError(f"Unsupported session type: {session_type}")
+
+            # Validate start and end points
+            if not start_points or not end_points:
+                raise ValueError(
+                    "Start or end points detection returned an empty list."
+                )
+
+            # Adjust lists for alignment (e.g., if the first end point is before the first start point)
+            if session_type in ["systolic", "diastolic", "Custom"]:
+                if end_points[0] < start_points[0]:
+                    end_points = end_points[1:]
+                min_length = min(len(start_points), len(end_points))
+
+                if min_length == 0:
+                    raise ValueError(
+                        f"No valid pairs of start and end points for {session_type} duration calculation."
+                    )
+
+                # Compute durations based on aligned start and end points
+                sessions = [
+                    (start, end)
+                    for start, end in zip(
+                        start_points[:min_length], end_points[:min_length]
+                    )
+                    if end > start
+                ]
+                if not sessions:
+                    raise ValueError(
+                        f"No valid durations computed for {session_type} sessions."
+                    )
+
+                durations = self.compute_duration(sessions)
+                return self._summarize_list(durations, summary_type)
+
+        except ValueError as e:
+            logger.error(f"Value error in get_duration for {session_type} session: {e}")
+            return np.nan
+        except Exception as e:
+            logger.error(
+                f"Unexpected error in get_duration for {session_type} session: {e}"
+            )
+            return np.nan
+
+    def _summarize_list(self, values, summary_type):
+        """
+        Helper function to apply summary type to a list of values.
+
+        Parameters
+        ----------
+        values : list
+            List of values to summarize.
+        summary_type : str
+            Summary type: 'mean', 'median', '2nd_quartile', '3rd_quartile', or 'full'.
+
+        Returns
+        -------
+        float or list
+            The summarized value or the original list if `summary_type` is 'full'.
+        """
+        if summary_type == "mean":
+            return np.mean(values)
+        elif summary_type == "median":
+            return np.median(values)
+        elif summary_type == "2nd_quartile":
+            return np.percentile(values, 25)
+        elif summary_type == "3rd_quartile":
+            return np.percentile(values, 75)
+        elif summary_type == "full":
+            return values
+        else:
+            raise ValueError(f"Unsupported summary type: {summary_type}")
+
+    def get_area(self, interval_type, signal_type="PPG", summary_type="mean"):
+        """
+        Computes the area of the specified interval in the signal with the chosen summary type.
+
+        Parameters
+        ----------
+        interval_type : str
+            Type of interval to compute the area for. Options include:
+            - For PPG: "Sys-to-Notch", "Notch-to-Dia", "Sys-to-Dia"
+            - For ECG: "R-to-Q", "R-to-S", "QRS", "T-to-S"
+        signal_type : str, optional
+            The type of signal: "PPG" or "ECG". Default is "PPG".
+        summary_type : str, optional
+            Specifies the summary statistic to return:
+            - 'mean': Mean of all areas
+            - 'median': Median of all areas
+            - '2nd_quartile': 25th percentile (1st quartile)
+            - '3rd_quartile': 75th percentile (3rd quartile)
+            - 'full': Returns all areas as a list
+            Default is 'mean'.
+
+        Returns
+        -------
+        float or list
+            The summary statistic for the area, or the list of all areas if `summary_type` is 'full'.
+            Returns NaN if an error occurs.
+
+        Notes
+        -----
+        Logs an error and returns NaN if the area computation fails or if an invalid summary type is provided.
+        """
+        valid_summary_types = ["mean", "median", "sum"]
+        if summary_type not in valid_summary_types:
+            raise ValueError(
+                "Invalid summary_type. Supported types are 'mean', 'median', and 'sum'."
+            )
+        try:
+            # If interval type is "QRS", compute combined area in a single step
+            if interval_type == "QRS" and signal_type == "ECG":
+                areas_r_to_q = self.compute_volume(
+                    interval_type="R-to-Q", signal_type=signal_type
+                )
+                areas_r_to_s = self.compute_volume(
+                    interval_type="R-to-S", signal_type=signal_type
+                )
+
+                # Ensure valid areas for both sub-intervals
+                if areas_r_to_q is None or areas_r_to_s is None:
+                    raise ValueError(
+                        "QRS area computation failed due to invalid sub-interval areas."
+                    )
+
+                # Sum the R-to-Q and R-to-S areas to get QRS area
+                areas = np.array(areas_r_to_q) + np.array(areas_r_to_s)
+
+            # For all other cases, compute volume directly
+            else:
+                areas = self.compute_volume(
+                    interval_type=interval_type, signal_type=signal_type
+                )
+
+            # Validate computed areas
+            if (
+                areas is None
+                or not isinstance(areas, (list, np.ndarray))
+                or len(areas) == 0
+            ):
+                raise ValueError(
+                    f"Computed areas for {interval_type} are None or empty."
+                )
+
+            # Apply the requested summary type
+            return self._summarize_list(areas, summary_type)
+
+        except ValueError as e:
+            logger.error(f"Value error in get_area for {interval_type} interval: {e}")
+            return np.nan
+        except Exception as e:
+            logger.error(
+                f"Unexpected error in get_area for {interval_type} interval: {e}"
+            )
+            return np.nan
+
+    def get_slope(self, slope_type="systolic", window=5, summary_type="mean"):
+        """
+        Computes the slope of the specified type (systolic, diastolic, QRS) using the chosen summary type.
+
+        Parameters
+        ----------
+        slope_type : str, optional
+            The type of slope to calculate. Options are:
+            - "systolic": Slope from systolic peaks.
+            - "diastolic": Slope from diastolic peaks.
+            - "qrs": Slope from QRS R peaks.
+            Default is "systolic".
+        window : int, optional
+            The window size for slope calculation. Default is 5.
+        summary_type : str, optional
+            Specifies the summary statistic to return:
+            - 'mean': Mean of all slopes
+            - 'median': Median of all slopes
+            - '2nd_quartile': 25th percentile (1st quartile)
+            - '3rd_quartile': 75th percentile (3rd quartile)
+            - 'full': Returns all slopes as a list
+            Default is 'mean'.
+
+        Returns
+        -------
+        float or list
+            The summary statistic for the slopes, or the list of slopes if `summary_type` is 'full'.
+            Returns NaN if an error occurs.
+        """
+        try:
+            # Determine the option based on slope_type
+            options_map = {
+                "systolic": "systolic_peaks",
+                "diastolic": "diastolic_peaks",
+                "qrs": "r_peaks",
+            }
+
+            if slope_type not in options_map:
+                raise ValueError(f"Unsupported slope type: {slope_type}")
+
+            # Compute slopes based on specified option
+            slopes = self.compute_slope(option=options_map[slope_type], window=window)
+
+            # Validate slopes array
+            if (
+                slopes is None
+                or not isinstance(slopes, (list, np.ndarray))
+                or len(slopes) == 0
+            ):
+                raise ValueError(f"Computed slopes for {slope_type} are None or empty.")
+
+            # Apply the specified summary type
+            return self._summarize_list(slopes, summary_type)
+
+        except ValueError as e:
+            logger.error(f"Value error in get_slope for {slope_type}: {e}")
+            return np.nan
+        except Exception as e:
+            logger.error(f"Unexpected error in get_slope for {slope_type}: {e}")
+            return np.nan
+
+    def get_signal_skewness(self, signal_type="PPG", summary_type="mean"):
+        """
+        Computes the skewness of the signal based on the specified signal type and summary type.
+
+        Parameters
+        ----------
+        signal_type : str, optional
+            Type of signal to compute skewness for (e.g., 'PPG' or 'ECG'). Default is 'PPG'.
+        summary_type : str, optional
+            Type of summary to apply to the computed skewness values. Options are 'mean', 'median',
+            '2nd_quartile', '3rd_quartile', or 'full' (returns all skewness values).
+
+        Returns
+        -------
+        float or list
+            The summarized skewness value, or a list of skewness values if summary_type is 'full'.
+        """
+        try:
+            # Calculate skewness based on the signal type
+            skewness_list = self.compute_skewness(signal_type=signal_type)
+
+            # Ensure skewness_list is a valid, non-empty list or array
+            if skewness_list is None or not isinstance(
+                skewness_list, (list, np.ndarray)
+            ):
+                raise ValueError("Computed skewness is None or invalid.")
+
+            if len(skewness_list) == 0:
+                raise ValueError("Computed skewness is an empty array.")
+
+            return self._summarize_list(skewness_list, summary_type)
+
+        except ValueError as e:
+            logger.error(f"Value error in get_signal_skewness: {e}")
+            return np.nan
+        except Exception as e:
+            logger.error(f"Unexpected error in get_signal_skewness: {e}")
+            return np.nan
+
+    def get_peak_trend_slope(self, peaks, method="linear_regression", window_size=5):
+        """
+        Calculate the trend slope of peak values using specified method.
+
+        Parameters
+        ----------
+        peaks : list or np.ndarray
+            The y-values of detected peaks (peak amplitudes).
+        method : str, optional
+            The method to calculate trend slope. Options are 'linear_regression',
+            'moving_average', and 'rate_of_change'. Default is 'linear_regression'.
+        window_size : int, optional
+            The window size for moving average calculation. Used only when method='moving_average'.
+            Default is 5.
+
+        Returns
+        -------
+        float or np.ndarray
+            The calculated trend slope. If 'moving_average' method is selected, returns an array of slopes.
+        """
+        try:
+            if peaks is None:
+                if self.signal_type == "ECG":
+                    peaks = self.r_peaks
+                if self.signal_type == "PPG":
+                    peaks = self.systolic_peaks
+            if peaks.size == 0:
+                return 0.0
+            # Check if peaks is a valid array-like input
+            if not isinstance(peaks, (list, np.ndarray)) or len(peaks) == 0:
+                raise ValueError("Peaks data is None, invalid, or empty.")
+
+            peaks = np.array(peaks)  # Ensure peaks is an np.ndarray
+
+            if method == "linear_regression":
+                # Use linear regression to compute the slope of the trend
+                x = np.arange(len(peaks))
+                slope, _, _, _, _ = linregress(x, peaks)
+                return slope
+
+            elif method == "moving_average":
+                # Compute the slope based on the moving average trend
+                if len(peaks) < window_size:
+                    raise ValueError(
+                        "Window size is greater than the number of peak values."
+                    )
+
+                moving_averages = np.convolve(
+                    peaks, np.ones(window_size) / window_size, mode="valid"
+                )
+                slopes = np.diff(moving_averages) / window_size
+                return np.mean(slopes)
+
+            elif method == "rate_of_change":
+                # Calculate the overall rate of change across the entire signal
+                if len(peaks) < 2:
+                    raise ValueError(
+                        "Rate of change requires at least two peak values."
+                    )
+
+                overall_slope = (peaks[-1] - peaks[0]) / (len(peaks) - 1)
+                return overall_slope
+
+            else:
+                raise ValueError(f"Unsupported method: {method}")
+
+        except ValueError as e:
+            logger.error(f"Value error in get_peak_trend_slope: {e}")
+            return np.nan
+        except Exception as e:
+            logger.error(f"Unexpected error in get_peak_trend_slope: {e}")
+            return np.nan
+
+    def get_amplitude_variability(
+        self,
+        interval_type="Sys-to-Baseline",
+        baseline_method="moving_average",
+        signal_type="PPG",
+        method="std",
+    ):
+        """
+        Calculates the variability in amplitude over the specified interval or baseline comparison.
+
+        Parameters
+        ----------
+        interval_type : str
+            The interval type for amplitude calculation, with default "Sys-to-Baseline".
+
+        signal_type : str
+            The type of signal: "PPG" or "ECG".
+
+        method : str, optional
+            The method to calculate variability: "std" for standard deviation or "cv" for coefficient of variation.
+
+        Returns
+        -------
+        float : Variability of the amplitudes.
+
+        Examples
+        --------
+        >>> variability = wm.get_amplitude_variability(interval_type="Sys-to-Baseline", signal_type="PPG")
+        >>> print(f"Amplitude variability (Sys-to-Baseline): {variability}")
+        """
+        # Early validation for method
+        valid_methods = ["std_dev", "cv", "interquartile_range"]
+        if method not in valid_methods:
+            raise ValueError(f"Unsupported variability method: {method}")
+        try:
+            # Compute amplitudes based on the interval and signal type
+            amplitudes = self.compute_amplitude(
+                interval_type=interval_type,
+                signal_type=signal_type,
+                baseline_method=baseline_method,
+            )
+            # Flatten amplitudes if needed
+            if isinstance(amplitudes, np.ndarray) and amplitudes.ndim > 1:
+                amplitudes = amplitudes.flatten()
+
+            # Ensure amplitudes is a valid, non-empty array
+            if not amplitudes or len(amplitudes) == 0:
+                raise ValueError(
+                    "No amplitudes calculated; ensure peaks and baselines are detected properly."
+                )
+
+            if method == "std_dev":
+                # Standard deviation of amplitude variability
+                variability = np.std(amplitudes)
+
+            elif method == "cv":
+                # Coefficient of Variation (CV)
+                mean_amplitude = np.mean(amplitudes)
+                if mean_amplitude == 0:
+                    raise ValueError(
+                        "Mean amplitude is zero, cannot compute coefficient of variation."
+                    )
+                variability = np.std(amplitudes) / mean_amplitude
+
+            elif method == "interquartile_range":
+                # Interquartile Range (IQR)
+                q1 = np.percentile(amplitudes, 25)
+                q3 = np.percentile(amplitudes, 75)
+                variability = q3 - q1
+
+            return variability
+
+        except ValueError as e:
+            logger.error(f"Value error in get_systolic_amplitude_variability: {e}")
+            return np.nan
+        except Exception as e:
+            logger.error(f"Unexpected error in get_systolic_amplitude_variability: {e}")
+            return np.nan
+
+    def get_qrs_amplitude(self, summary_type="mean"):
+        """
+        Calculates the QRS amplitude by finding the maximum amplitude
+        between the R-to-S and R-to-Q intervals.
+
+        Parameters
+        ----------
+        summary_type : str, optional
+            Specifies the summary statistic to return:
+            - 'mean': Mean of all QRS amplitudes
+            - 'median': Median of all QRS amplitudes
+            - '2nd_quartile': 25th percentile (1st quartile)
+            - '3rd_quartile': 75th percentile (3rd quartile)
+            - 'full': Returns all QRS amplitudes as a list
+            Default is 'mean'.
+
+        Returns
+        -------
+        float or list
+            The summary statistic for QRS amplitude, or the list of amplitudes if `summary_type` is 'full'.
+            Returns NaN if an error occurs.
+
+        Notes
+        -----
+        Logs an error and returns NaN if an invalid summary type is provided or if amplitude computation fails.
+        """
+        if np.all(self.waveform == 0):
+            return 0
+        try:
+            # Compute R-to-S and R-to-Q amplitudes
+            rs_amplitudes = np.array(self.compute_amplitude(interval_type="R-to-S"))
+            qr_amplitudes = np.array(self.compute_amplitude(interval_type="R-to-Q"))
+
+            # Verify amplitude arrays are valid and non-empty
+            if rs_amplitudes.size == 0 or qr_amplitudes.size == 0:
+                raise ValueError(
+                    "R-to-S or R-to-Q amplitude array is empty or invalid."
+                )
+
+            # Calculate maximum amplitude between R-S and R-Q intervals using vectorized operation
+            qrs_amplitudes = np.maximum(rs_amplitudes, qr_amplitudes)
+
+            return self._summarize_list(qrs_amplitudes, summary_type)
+
+        except ValueError as e:
+            logger.error(f"Value error in get_qrs_amplitude: {e}")
+            return np.nan
+        except Exception as e:
+            logger.error(f"Unexpected error in get_qrs_amplitude: {e}")
+            return np.nan
+
+    def get_heart_rate(self, summary_type="mean"):
+        """
+        Computes the heart rate based on R-R intervals.
+
+        Parameters
+        ----------
+        summary_type : str, optional
+            Specifies the summary statistic to return:
+            - 'mean': Mean heart rate
+            - 'median': Median heart rate
+            - '2nd_quartile': 25th percentile (1st quartile)
+            - '3rd_quartile': 75th percentile (3rd quartile)
+            - 'full': Returns all computed heart rates as a list
+            Default is 'mean'.
+
+        Returns
+        -------
+        float or list
+            The summary statistic for heart rates, or a list of all heart rates if `summary_type` is 'full'.
+            Returns NaN if an error occurs.
+
+        Notes
+        -----
+        Logs an error and returns NaN if an invalid summary type is provided or if heart rate computation fails.
+        """
+        try:
+            # Compute R-R intervals in seconds
+            if self.signal_type == "ECG":
+                rr_intervals = np.diff(self.r_peaks) / self.fs
+            else:
+                rr_intervals = np.diff(self.systolic_peaks) / self.fs
+
+            # Ensure rr_intervals is valid and non-empty
+            if rr_intervals.size == 0:
+                raise ValueError("No R-R intervals found; cannot compute heart rate.")
+
+            # Calculate heart rates from R-R intervals (in beats per minute)
+            heart_rates = 60 / rr_intervals
+
+            # Dictionary to map summary types to computations
+            summary_methods = {
+                "mean": np.mean(heart_rates),
+                "median": np.median(heart_rates),
+                "2nd_quartile": np.percentile(heart_rates, 25),
+                "3rd_quartile": np.percentile(heart_rates, 75),
+                "full": heart_rates.tolist(),
+            }
+
+            # Retrieve and return the computed summary based on the selected type
+            if summary_type in summary_methods:
+                return summary_methods[summary_type]
+            else:
+                raise ValueError(f"Unsupported summary type: {summary_type}")
+
+        except ValueError as e:
+            logger.error(f"Value error in get_heart_rate: {e}")
+            return np.nan
+        except Exception as e:
+            logger.error(f"Unexpected error in get_heart_rate: {e}")
+            return np.nan

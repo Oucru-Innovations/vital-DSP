@@ -6,7 +6,7 @@ from vitalDSP.preprocess.noise_reduction import (
     moving_average_denoising,
 )
 from vitalDSP.filtering.signal_filtering import SignalFiltering
-from scipy.signal import butter, filtfilt
+from scipy.signal import butter, filtfilt, medfilt
 import numpy as np
 
 
@@ -237,3 +237,48 @@ def respiratory_filtering(signal, sampling_rate, lowcut=0.1, highcut=0.5, order=
     )
     filtered_signal = filtfilt(b, a, signal)
     return filtered_signal
+
+
+def estimate_baseline(signal, fs, method="moving_average", window_size=5):
+    """
+    Estimate a stable baseline for a physiological signal.
+
+    Parameters
+    ----------
+    signal : np.ndarray
+        The physiological signal (e.g., PPG or ECG).
+    fs : float
+        Sampling frequency of the signal in Hz.
+    method : str, optional
+        Method for baseline estimation. Options are 'moving_average', 'low_pass',
+        'polynomial_fit', 'median_filter', and 'wavelet'. Default is 'moving_average'.
+    window_size : int, optional
+        Window size in seconds for moving average or median filter. Default is 5.
+
+    Returns
+    -------
+    baseline : np.ndarray
+        The estimated baseline of the signal.
+    """
+    if method == "moving_average":
+        baseline = np.convolve(
+            signal, np.ones(int(fs * window_size)) / (fs * window_size), mode="same"
+        )
+
+    elif method == "low_pass":
+        cutoff = 0.5  # Adjust cutoff frequency as needed (0.5 Hz for baseline trends)
+        b, a = butter(2, cutoff / (0.5 * fs), btype="low")
+        baseline = filtfilt(b, a, signal)
+
+    elif method == "polynomial_fit":
+        x = np.arange(len(signal))
+        poly_coeff = np.polyfit(x, signal, 2)  # 2nd-degree polynomial
+        baseline = np.polyval(poly_coeff, x)
+
+    elif method == "median_filter":
+        baseline = medfilt(signal, kernel_size=int(fs * window_size))
+
+    else:
+        raise ValueError(f"Unsupported baseline estimation method: {method}")
+
+    return baseline
