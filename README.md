@@ -1,6 +1,8 @@
 
 # Healthcare DSP Toolkit
 
+A comprehensive toolkit for Digital Signal Processing (DSP) in healthcare applications
+
 ![GitHub stars](https://img.shields.io/github/stars/Oucru-Innovations/vital-DSP?style=social)
 ![Build Status](https://github.com/Oucru-Innovations/vital-DSP/actions/workflows/ci.yml/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/Oucru-Innovations/vital-DSP/badge.svg)](https://coveralls.io/github/Oucru-Innovations/vital-DSP)
