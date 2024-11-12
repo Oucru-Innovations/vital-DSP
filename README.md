@@ -4,16 +4,17 @@
 ![GitHub stars](https://img.shields.io/github/stars/Oucru-Innovations/vital-DSP?style=social)
 ![Build Status](https://github.com/Oucru-Innovations/vital-DSP/actions/workflows/ci.yml/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/Oucru-Innovations/vital-DSP/badge.svg)](https://coveralls.io/github/Oucru-Innovations/vital-DSP)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
+<!-- [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) -->
+![GitHub License](https://img.shields.io/github/license/Oucru-Innovations/vital-DSP)
 ![Python Versions](https://img.shields.io/badge/python-3.9%2B-blue)
 [![Documentation Status](https://readthedocs.org/projects/vital-dsp/badge/?version=latest)](https://vital-dsp.readthedocs.io/en/latest/?badge=latest)
 ![PyPI Downloads](https://img.shields.io/pypi/dm/vitalDSP)
 [![PyPI version](https://badge.fury.io/py/vitalDSP.svg)](https://badge.fury.io/py/vitalDSP)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Oucru-Innovations/vital-DSP/blob/main/docs/source/notebooks/synthesize_data.ipynb)
 
 <!-- [![Coverage Status](https://coveralls.io/repos/github/Oucru-Innovations/vital-DSP/badge.svg?branch=main)](https://coveralls.io/github/Oucru-Innovations/vital-DSP?branch=main) -->
 <!-- [![codecov](https://codecov.io/gh/Oucru-Innovations/vital-DSP/branch/main/graph/badge.svg)](https://codecov.io/gh/Oucru-Innovations/vital-DSP) -->
-<!-- ![GitHub License](https://img.shields.io/github/license/Oucru-Innovations/vital-DSP) -->
+
 
 This repository contains a comprehensive toolkit for Digital Signal Processing (DSP) in healthcare applications. It includes traditional DSP methods as well as advanced machine learning (ML) and deep learning (DL) inspired techniques. The toolkit is designed to process a wide range of physiological signals, such as ECG, EEG, PPG, and respiratory signals, with applications in monitoring, anomaly detection, and signal quality assessment.
 
@@ -60,6 +61,11 @@ This method ensures that you are using the most up-to-date codebase from the rep
 
 ## Usage
 Please read the [instruction in the documentation](https://vital-DSP.readthedocs.io/en/latest/?badge=latest) for detailed usage examples and module descriptions.
+
+## Example Notebooks on Google Colab
+- **[Synthetic Data & Peak Detection](https://colab.research.google.com/github/Oucru-Innovations/vital-DSP/blob/main/docs/source/notebooks/synthesize_data.ipynb)**: Peak Detection, Synthetic Signal (ECG, PPG).
+- **[Health Report Analysis](https://colab.research.google.com/github/Oucru-Innovations/vital-DSP/blob/main/docs/source/notebooks/health_report_analysis.ipynb)**: Generate Health Report from ECG and PPG data.
+- **[Signal Quality Indices](https://colab.research.google.com/github/Oucru-Innovations/vital-DSP/blob/main/docs/source/notebooks/signal_quality_index.ipynb)**: Signal Quality Assurance, SNR, Artifact Detection.
 
 ## Documentation
 Comprehensive documentation for each module is available in the `docs/` directory, covering usage examples, API references, and more.
