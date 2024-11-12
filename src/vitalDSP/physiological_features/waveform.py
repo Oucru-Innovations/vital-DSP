@@ -1681,7 +1681,9 @@ class WaveformMorphology:
             logger.error(f"Unexpected error in get_signal_skewness: {e}")
             return np.nan
 
-    def get_peak_trend_slope(self, peaks=None, method="linear_regression", window_size=5):
+    def get_peak_trend_slope(
+        self, peaks=None, method="linear_regression", window_size=5
+    ):
         """
         Calculate the trend slope of peak values using specified method.
 

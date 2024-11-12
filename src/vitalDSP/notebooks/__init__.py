@@ -6,23 +6,27 @@ import ast
 import datetime as dt
 import pkg_resources
 
+
 def load_sample_ecg():
     # Get the path to the file in the package resources
-    data_path = pkg_resources.resource_filename('vitalDSP.notebooks', "ecg.csv")
-    signal_col, date_col = process_in_chunks(data_path,data_type='ecg', fs=256)
+    data_path = pkg_resources.resource_filename("vitalDSP.notebooks", "ecg.csv")
+    signal_col, date_col = process_in_chunks(data_path, data_type="ecg", fs=256)
     return signal_col, date_col
+
 
 def load_sample_ecg_small():
     # Get the path to the file in the package resources
-    data_path = pkg_resources.resource_filename('vitalDSP.notebooks', "ecg_small.csv")
-    signal_col, date_col = process_in_chunks(data_path,data_type='ecg', fs=256)
+    data_path = pkg_resources.resource_filename("vitalDSP.notebooks", "ecg_small.csv")
+    signal_col, date_col = process_in_chunks(data_path, data_type="ecg", fs=256)
     return signal_col, date_col
+
 
 def load_sample_ppg():
     # Get the path to the file in the package resources
-    data_path = pkg_resources.resource_filename('vitalDSP.notebooks', "ppg.csv")
-    signal_col, date_col = process_in_chunks(data_path,data_type='ppg', fs=100)
+    data_path = pkg_resources.resource_filename("vitalDSP.notebooks", "ppg.csv")
+    signal_col, date_col = process_in_chunks(data_path, data_type="ppg", fs=100)
     return signal_col, date_col
+
 
 def get_flat(x, flat):
     flat.extend(ast.literal_eval(x))

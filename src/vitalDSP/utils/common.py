@@ -3,6 +3,7 @@ import warnings
 import functools
 import logging as logger
 
+
 def deprecated(reason):
     def decorator(func):
         @functools.wraps(func)
