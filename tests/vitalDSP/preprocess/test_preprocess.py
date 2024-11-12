@@ -1,6 +1,10 @@
 import numpy as np
 import pytest
-from vitalDSP.preprocess.preprocess_operations import preprocess_signal
+from vitalDSP.preprocess.preprocess_operations import (
+    preprocess_signal,
+    estimate_baseline,
+    respiratory_filtering
+)
 from vitalDSP.preprocess.noise_reduction import (
     wavelet_denoising,
     savgol_denoising,
@@ -147,4 +151,24 @@ def test_preprocess_bandpass_moving_average(test_signal):
         noise_reduction_method="moving_average",
     )
     assert len(preprocessed_signal) == len(test_signal)
+    
+    signal_baseline = estimate_baseline(preprocessed_signal,
+                                        sampling_rate,
+                                        method="low_pass")
+    assert len(signal_baseline) == len(test_signal)
+    signal_baseline = estimate_baseline(preprocessed_signal,
+                                        sampling_rate,
+                                        method="polynomial_fit")
+    assert len(signal_baseline) == len(test_signal)
+    signal_baseline = estimate_baseline(preprocessed_signal,
+                                        sampling_rate,
+                                        method="median_filter")
+    assert len(signal_baseline) == len(test_signal)
+    with pytest.raises(
+        ValueError,
+        match="Unsupported baseline estimation method: invalid",
+    ):
+        estimate_baseline(preprocessed_signal,
+                        sampling_rate,
+                        method="invalid")
     # assert np.var(preprocessed_signal) < np.var(test_signal)

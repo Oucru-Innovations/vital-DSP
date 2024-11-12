@@ -1,3 +1,4 @@
+import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
@@ -12,6 +13,10 @@ from collections import Counter
 from scipy.interpolate import make_interp_spline
 from vitalDSP.utils.common import find_peaks
 import logging
+
+matplotlib.use("Agg")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class HealthReportVisualizer:

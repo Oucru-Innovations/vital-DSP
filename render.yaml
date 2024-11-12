@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: vital-DSP
+    env: docker
+    dockerfilePath: ./src/Dockerfile
+    dockerContext: ./src
+    dockerCommand: python vitalDSP_webapp/run_webapp.py
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHONPATH
+        value: /app:/app/vitalDSP
+      - key: PORT
+        value: 8000
+      - key: PYTHONUNBUFFERED
+        value: 1
+      - key: PYTHONDONTWRITEBYTECODE
+        value: 1

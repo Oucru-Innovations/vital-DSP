@@ -16,14 +16,14 @@ class PostInstallCommand(install):
 
 setup(
     name='vitalDSP', 
-    version='0.1.1rc26',  
+    version='0.1.2',  
     author='van-koha',  
     author_email='vital.data@oucru.org', 
     description='A comprehensive toolkit for Digital Signal Processing in healthcare applications.',
     long_description=open('README.md').read(),  # Use the README file as the long description
     long_description_content_type='text/markdown',  # The format of the long description (markdown in this case)
     url='https://github.com/Oucru-Innovations/vital-DSP',  
-    packages=find_packages(where='src',include=['vitalDSP', 'vitalDSP.*', 'webapp', 'webapp.*']),  # Find all packages in the 'src' directory
+    packages=find_packages(where='src',include=['vitalDSP', 'vitalDSP.*', 'vitalDSP_webapp', 'vitalDSP_webapp.*']),  # Find all packages in the 'src' directory
     package_dir={'': 'src'},  # Tell setuptools that all packages are under 'src'
     classifiers=[
         'Programming Language :: Python :: 3',

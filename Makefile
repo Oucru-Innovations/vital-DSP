@@ -17,6 +17,31 @@ PANDOC_OUTPUT=$(DOCS_DIR)/Documentation.pdf
 # Default target: Run all tests
 all: test build coverage lint html upload webapp
 
+# Fast test targets for CI/CD
+test-fast:
+	python run_tests.py fast
+
+test-ci:
+	python run_tests.py ci
+
+test-unit:
+	python run_tests.py unit
+
+test-core:
+	python run_tests.py core
+
+test-webapp:
+	python run_tests.py webapp
+
+test-coverage:
+	python run_tests.py coverage
+
+test-full:
+	python run_tests.py full
+
+test-parallel:
+	python run_tests.py parallel
+
 # Use conditional syntax to handle different OS
 ifeq ($(OS),Windows_NT)
     # PYTHONPATH_SET = set PYTHONPATH=$(SRC_DIR) &&
@@ -31,11 +56,12 @@ test:
 # $(PYTHONPATH_SET) pytest --cov=$(SRC_DIR) --cov-config=.coveragerc --cov-report=html:$(COV_DIR)
 # Run tests with coverage using .coveragerc
 coverage:	
-	pytest --cov=$(SRC_DIR) --cov-config=.coveragerc --cov-report=html:$(COV_DIR)
+	pytest --cov=$(SRC_DIR) --cov-config=.coveragerc --cov-report=term-missing --cov-report=html:$(COV_DIR) 
 
 # Lint the code using flake8 with custom config
+# Note: F401 (unused imports) is ignored in .flake8 config
 lint:
-	flake8 --config=.flake8 $(SRC_DIR)
+	python -m flake8 --config=.flake8 $(SRC_DIR)
 
 # Build the distribution packages
 build:

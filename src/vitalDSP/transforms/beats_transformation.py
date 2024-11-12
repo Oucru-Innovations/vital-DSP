@@ -1,8 +1,13 @@
 import numpy as np
 
 # from scipy.signal import find_peaks
-from vitalDSP.utils.common import find_peaks
+# from vitalDSP.utils.common import find_peaks
+from vitalDSP.physiological_features.waveform import WaveformMorphology
 from vitalDSP.transforms.vital_transformation import VitalTransformation
+from vitalDSP.preprocess.preprocess_operations import (
+    PreprocessConfig,
+    preprocess_signal,
+)
 from vitalDSP.utils.interpolations import (
     linear_interpolation,
     spline_interpolation,
@@ -35,7 +40,7 @@ class RRTransformation:
 
     Methods
     -------
-    compute_rr_intervals(options=None)
+    compute_rr_intervals(preprocess_config=None, peak_config=None)
         Compute the RR intervals after applying transformations and peak detection.
     remove_invalid_rr_intervals(rr_intervals, min_rr=0.3, max_rr=2.0)
         Remove invalid RR intervals based on physiological constraints and trends.
@@ -45,7 +50,7 @@ class RRTransformation:
         Apply enhancements to the RR intervals, such as peak enhancement.
     """
 
-    def __init__(self, signal, fs, signal_type="ecg", options=None):
+    def __init__(self, signal, fs, signal_type="ECG", options=None):
         """
         Initialize the RRTransformation class.
 
@@ -69,35 +74,53 @@ class RRTransformation:
         self.transformer = VitalTransformation(signal, fs=fs, signal_type=signal_type)
         self.transformed_signal = self.transformer.apply_transformations(self.options)
 
-    def compute_rr_intervals(self, options=None):
+    def compute_rr_intervals(self, preprocess_config=None, peak_config=None):
         """
         Compute the RR intervals after applying transformations and peak detection.
 
         Parameters
         ----------
-        options : dict, optional
-            Options to customize peak detection. Default uses scipy's `find_peaks`.
+        preprocess_config : PreprocessConfig, optional
+            Configuration for signal preprocessing. If None, default settings are used.
+        peak_config : dict, optional
+            Configuration for peak detection parameters. If None, default settings are used.
 
         Returns
         -------
         rr_intervals : np.array
             The RR intervals computed from the detected peaks.
         """
-        if options is None:
-            options = {
-                "lowcut": 0.5,
-                "highcut": 30,
-                "filter_order": 4,
-                "filter_type": "butter",
-            }
+        if preprocess_config is None:
+            preprocess_config = PreprocessConfig()
 
-        # Detect peaks in the transformed signal
-        height = options.get("height", None)
-        distance = options.get(
-            "distance", int(0.6 * self.fs)
-        )  # Minimum distance between peaks
-        peaks = find_peaks(self.transformed_signal, height=height, distance=distance)
+        # Preprocess the signal
+        clean_signal = preprocess_signal(
+            signal=self.signal,
+            sampling_rate=self.fs,
+            filter_type=preprocess_config.filter_type,
+            lowcut=preprocess_config.lowcut,
+            highcut=preprocess_config.highcut,
+            order=preprocess_config.order,
+            noise_reduction_method=preprocess_config.noise_reduction_method,
+            wavelet_name=preprocess_config.wavelet_name,
+            level=preprocess_config.level,
+            window_length=preprocess_config.window_length,
+            polyorder=preprocess_config.polyorder,
+            kernel_size=preprocess_config.kernel_size,
+            sigma=preprocess_config.sigma,
+            respiratory_mode=preprocess_config.respiratory_mode,
+        )
 
+        waveform = WaveformMorphology(
+            waveform=clean_signal,
+            fs=self.fs,
+            signal_type=self.signal_type,
+            peak_config=peak_config,
+        )
+        if waveform.signal_type == "ECG":
+            peaks = waveform.r_peaks
+        else:
+            peaks = waveform.systolic_peaks
         if len(peaks) == 0:
             raise ValueError(
                 "No peaks detected in the signal. RR interval computation failed."
@@ -286,6 +309,12 @@ class RRTransformation:
         3. Impute missing values.
         4. Apply enhancement (if needed).
 
+        Parameters
+        ----------
+        remove_invalid : bool, optional
+            Whether to remove invalid RR intervals. Default is True.
+        impute_invalid : bool, optional
+            Whether to impute missing RR intervals. Default is True.
         Returns
         -------
         final_rr_intervals : np.array

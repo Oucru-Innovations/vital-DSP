@@ -132,6 +132,9 @@ class VitalTransformation:
                 "advanced_filtering",
             ]
 
+        # Filter out options that aren't actual methods
+        method_order = [m for m in method_order if not m.endswith("_options")]
+
         for method in method_order:
             if method == "artifact_removal":
                 self.apply_artifact_removal(

@@ -1,6 +1,10 @@
 import numpy as np
 import pytest
+import warnings
 from vitalDSP.transforms.chroma_stft import ChromaSTFT
+
+# Mark all tests in this module as unit tests
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
 from vitalDSP.transforms.dct_wavelet_fusion import DCTWaveletFusion
 from vitalDSP.transforms.discrete_cosine_transform import DiscreteCosineTransform
 from vitalDSP.transforms.fourier_transform import FourierTransform
@@ -19,6 +23,14 @@ from vitalDSP.transforms.vital_transformation import (
     VitalTransformation,
 )  # Assuming VitalTransformation is in vitalDSP.transformation
 from vitalDSP.filtering.advanced_signal_filtering import AdvancedSignalFiltering
+
+# Filter out expected complex warnings from wavelet operations
+# Note: np.ComplexWarning was deprecated and removed in newer NumPy versions
+try:
+    warnings.filterwarnings("ignore", category=np.ComplexWarning, message="Casting complex values to real discards the imaginary part")
+except AttributeError:
+    # ComplexWarning no longer exists in newer NumPy versions
+    pass
 
 
 # @pytest.fixture

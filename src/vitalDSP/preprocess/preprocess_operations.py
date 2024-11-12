@@ -276,7 +276,9 @@ def estimate_baseline(signal, fs, method="moving_average", window_size=5):
         baseline = np.polyval(poly_coeff, x)
 
     elif method == "median_filter":
-        baseline = medfilt(signal, kernel_size=int(fs * window_size))
+        kernel_size = int(2 * window_size + 1)
+        # kernel_size=int(fs * window_size)
+        baseline = medfilt(signal, kernel_size=kernel_size)
 
     else:
         raise ValueError(f"Unsupported baseline estimation method: {method}")

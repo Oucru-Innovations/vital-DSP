@@ -1,9 +1,21 @@
 import pytest
 import numpy as np
+from unittest.mock import patch, MagicMock
 from vitalDSP.visualization.artefact_removal_visualization import (
     ArtifactRemovalVisualization,
 )
 from vitalDSP.filtering.artifact_removal import ArtifactRemoval
+
+# Mark all tests in this module as visualization tests
+pytestmark = [pytest.mark.unit, pytest.mark.visualization]
+
+# Mock plotting functions to prevent display issues in CI
+@pytest.fixture(autouse=True)
+def mock_plotting():
+    """Mock plotting functions to prevent display issues in headless CI environment."""
+    with patch('plotly.graph_objs.Figure.show') as mock_show:
+        mock_show.return_value = None
+        yield mock_show
 
 
 @pytest.fixture

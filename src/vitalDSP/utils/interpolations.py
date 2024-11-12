@@ -122,7 +122,7 @@ def forward_fill(intervals):
     >>> forward_fill(np.array([0.8, np.nan, 0.82, np.nan, 0.85]))
     """
     rr_series = pd.Series(intervals)
-    return rr_series.fillna(method="ffill").fillna(method="bfill").to_numpy()
+    return rr_series.ffill().bfill().to_numpy()
 
 
 def backward_fill(intervals):
@@ -144,7 +144,7 @@ def backward_fill(intervals):
     >>> backward_fill(np.array([0.8, np.nan, 0.82, np.nan, 0.85]))
     """
     rr_series = pd.Series(intervals)
-    return rr_series.fillna(method="bfill").fillna(method="ffill").to_numpy()
+    return rr_series.bfill().ffill().to_numpy()
 
 
 def rolling_mean_imputation(intervals, window=5):
@@ -173,5 +173,5 @@ def rolling_mean_imputation(intervals, window=5):
         rr_series.rolling(window, min_periods=1).mean()
     )
     # Forward and backward fill for edge cases (start and end NaNs)
-    intervals_imputed = intervals_imputed.fillna(method="ffill").fillna(method="bfill")
+    intervals_imputed = intervals_imputed.ffill().bfill()
     return intervals_imputed.to_numpy()

@@ -18,6 +18,10 @@ from vitalDSP.feature_engineering.ecg_autonomic_features import ECGExtractor
 from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 from unittest.mock import patch
 
+# Filter out runtime warnings for expected edge cases
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="invalid value encountered in.*")
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="divide by zero encountered.*")
+
 # Mock logger to prevent logging during tests
 logger = logging.getLogger("vitalDSP.feature_engineering.ecg_autonomic_features")
 

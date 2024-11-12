@@ -1,6 +1,9 @@
 
 # Healthcare DSP Toolkit
 
+A comprehensive toolkit for Digital Signal Processing (DSP) in healthcare applications
+
+[![DOI](https://zenodo.org/badge/845712551.svg)](https://doi.org/10.5281/zenodo.14613751)
 ![GitHub stars](https://img.shields.io/github/stars/Oucru-Innovations/vital-DSP?style=social)
 ![Build Status](https://github.com/Oucru-Innovations/vital-DSP/actions/workflows/ci.yml/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/Oucru-Innovations/vital-DSP/badge.svg)](https://coveralls.io/github/Oucru-Innovations/vital-DSP)
@@ -23,7 +26,7 @@ This repository contains a comprehensive toolkit for Digital Signal Processing (
 - **Transforms**: Fourier Transform, DCT, Wavelet Transform, and various fusion methods.
 - **Time-Domain Analysis**: Peak detection, envelope detection, ZCR, and advanced segmentation techniques.
 - **Advanced Methods**: EMD, sparse signal processing, Bayesian optimization, and more.
-- **Neuro-Signal Processing**: EEG band power analysis, ERP detection, cognitive load measurement.
+- **Neuro-Signal Processing**: EEG band power analysis, ERP detection, cognitive load measurement. (To be implemented)
 - **Respiratory Analysis**: Automated respiratory rate calculation, sleep apnea detection, and multi-sensor fusion.
 - **Signal Quality Assessment**: SNR calculation, artifact detection/removal, and adaptive methods.
 - **Monitoring and Alert Systems**: Real-time anomaly detection, multi-parameter monitoring, and alert correlation.
@@ -59,6 +62,12 @@ python setup.py install
 ```
 This method ensures that you are using the most up-to-date codebase from the repository.
 
+## Applications in Healthcare
+vitalDSP can be applied across various healthcare use cases:
+- **Remote Patient Monitoring**: Analyze ECG and PPG signals for real-time insights into patient health.
+- **Stress and Anxiety Detection**: Monitor heart rate variability to assess stress levels.
+- **Sleep Apnea Detection**: Use respiratory signals to identify breathing irregularities during sleep.
+
 ## Usage
 Please read the [instruction in the documentation](https://vital-DSP.readthedocs.io/en/latest/?badge=latest) for detailed usage examples and module descriptions.
 
@@ -71,7 +80,12 @@ Please read the [instruction in the documentation](https://vital-DSP.readthedocs
 Comprehensive documentation for each module is available in the `docs/` directory, covering usage examples, API references, and more.
 
 ## Contributing
-We welcome contributions! Please read the [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on how to contribute to this project.
+We welcome contributions! Please read the [CONTRIBUTING](CONTRIBUTING.md) file for guidelines on how to contribute to this project.
+
+## Community and Support
+Join our community to share ideas, ask questions, and get support:
+- **GitHub Discussions**: [Join the conversation](https://github.com/Oucru-Innovations/vital-DSP/discussions)
+- **Report Issues**: Found a bug? [Open an issue](https://github.com/Oucru-Innovations/vital-DSP/issues)
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

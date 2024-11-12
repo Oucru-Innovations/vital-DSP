@@ -19,7 +19,7 @@ def sample_ecg_signal():
 @pytest.fixture
 def rr_transformation(sample_ecg_signal):
     # Create an instance of the RRTransformation with mock data
-    return RRTransformation(signal=sample_ecg_signal, fs=100, signal_type="ecg")
+    return RRTransformation(signal=sample_ecg_signal, fs=100, signal_type="ECG")
 
 
 def test_compute_rr_intervals_valid_case(rr_transformation):
