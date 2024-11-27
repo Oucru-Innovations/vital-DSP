@@ -712,7 +712,7 @@ class WaveformMorphology:
 
     def detect_ppg_session(self, troughs=None):
         if troughs is None:
-            troughs = self.diastolic_troughs
+            troughs = self.detect_troughs(systolic_peaks=self.systolic_peaks)
         ppg_sessions = [
             (trough_start, trough_end)
             for trough_start, trough_end in zip(troughs[:-1], troughs[1:])

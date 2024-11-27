@@ -1,7 +1,8 @@
 import numpy as np
 
 # from scipy.signal import find_peaks
-from vitalDSP.utils.common import find_peaks
+# from vitalDSP.utils.common import find_peaks
+from vitalDSP.physiological_features.waveform import WaveformMorphology
 from vitalDSP.transforms.vital_transformation import VitalTransformation
 from vitalDSP.utils.interpolations import (
     linear_interpolation,
@@ -45,7 +46,7 @@ class RRTransformation:
         Apply enhancements to the RR intervals, such as peak enhancement.
     """
 
-    def __init__(self, signal, fs, signal_type="ecg", options=None):
+    def __init__(self, signal, fs, signal_type="ECG", options=None):
         """
         Initialize the RRTransformation class.
 
@@ -83,21 +84,27 @@ class RRTransformation:
         rr_intervals : np.array
             The RR intervals computed from the detected peaks.
         """
-        if options is None:
-            options = {
-                "lowcut": 0.5,
-                "highcut": 30,
-                "filter_order": 4,
-                "filter_type": "butter",
-            }
+        # if options is None:
+        #     options = {
+        #         "lowcut": 0.5,
+        #         "highcut": 30,
+        #         "filter_order": 4,
+        #         "filter_type": "butter",
+        #     }
 
-        # Detect peaks in the transformed signal
-        height = options.get("height", None)
-        distance = options.get(
-            "distance", int(0.6 * self.fs)
-        )  # Minimum distance between peaks
-        peaks = find_peaks(self.transformed_signal, height=height, distance=distance)
-
+        # # Detect peaks in the transformed signal
+        # height = options.get("height", None)
+        # distance = options.get(
+        #     "distance", int(0.6 * self.fs)
+        # )  # Minimum distance between peaks
+        # peaks = find_peaks(self.transformed_signal, height=height, distance=distance)
+        waveform = WaveformMorphology(
+            waveform=self.signal, fs=self.fs, signal_type=self.signal_type
+        )
+        if waveform.signal_type == "ECG":
+            peaks = waveform.r_peaks
+        else:
+            peaks = waveform.systolic_peaks
         if len(peaks) == 0:
             raise ValueError(
                 "No peaks detected in the signal. RR interval computation failed."
@@ -286,6 +293,12 @@ class RRTransformation:
         3. Impute missing values.
         4. Apply enhancement (if needed).
 
+        Parameters
+        ----------
+        remove_invalid : bool, optional
+            Whether to remove invalid RR intervals. Default is True.
+        impute_invalid : bool, optional
+            Whether to impute missing RR intervals. Default is True.
         Returns
         -------
         final_rr_intervals : np.array
