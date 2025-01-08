@@ -2,6 +2,7 @@
 # Healthcare DSP Toolkit
 
 A comprehensive toolkit for Digital Signal Processing (DSP) in healthcare applications
+
 [![DOI](https://zenodo.org/badge/845712551.svg)](https://doi.org/10.5281/zenodo.14613751)
 ![GitHub stars](https://img.shields.io/github/stars/Oucru-Innovations/vital-DSP?style=social)
 ![Build Status](https://github.com/Oucru-Innovations/vital-DSP/actions/workflows/ci.yml/badge.svg)
