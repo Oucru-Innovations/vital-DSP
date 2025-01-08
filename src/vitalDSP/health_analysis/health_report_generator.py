@@ -8,6 +8,8 @@ import logging
 
 # from vitalDSP.health_analysis.file_io import FileIO
 import numpy as np
+import multiprocessing
+from functools import lru_cache
 
 
 class HealthReportGenerator:
@@ -49,6 +51,41 @@ class HealthReportGenerator:
         )
         self.logger = logging.getLogger(__name__)
 
+    @staticmethod
+    def downsample(values, factor=10):
+        """
+        Downsample large datasets by selecting every nth value.
+        Args:
+            values (list or np.array): The dataset to downsample.
+            factor (int): The downsampling factor.
+        Returns:
+            np.array: The downsampled dataset.
+        """
+        return values[::factor]
+
+    @staticmethod
+    def batch_visualization(visualizer, feature_data, output_dir, processes=4):
+        """
+        Generate visualizations in parallel batches with limited processes.
+        Args:
+            visualizer (HealthReportVisualizer): The visualizer instance.
+            feature_data (dict): Dictionary of features and their values.
+            output_dir (str): Directory to save the visualizations.
+            processes (int): Number of processes for parallel visualization.
+        Returns:
+            dict: Paths to the generated visualizations.
+        """
+        def generate_visualizations_batch(args):
+            feature, values = args
+            return feature, visualizer.create_visualizations({feature: values}, output_dir)
+
+        with multiprocessing.Pool(processes) as pool:
+            results = pool.map(
+                generate_visualizations_batch, feature_data.items()
+            )
+
+        return {feature: paths for feature, paths in results}
+
     def generate(self, filter_status="all", output_dir=None):
         """
         Generates the complete health report by interpreting the features, generating visualizations, and rendering an HTML report.
@@ -83,7 +120,13 @@ class HealthReportGenerator:
                         raise ValueError(
                             f"All values for feature '{feature_name}' are NaN or Inf"
                         )
-
+                    # Downsample data to reduce memory overhead for large datasets
+                    if len(values) > 1000:
+                        self.logger.warning(logging.UserWarning,
+                            f"Downsampling feature '{feature_name}' to reduce memory usage"
+                        )
+                        values = self.downsample(values)
+                    
                     # Calculate the mean of the feature's values
                     mean_value = np.mean(values)
 
@@ -126,12 +169,19 @@ class HealthReportGenerator:
             self.logger.error(f"Error in processing feature interpretations: {e}")
 
         # Step 2: Generate visualizations for all features
-        visualizations = self.visualizer.create_visualizations(
-            self.feature_data, output_dir=output_dir
-        )
+        # visualizations = self.visualizer.create_visualizations(
+        #     self.feature_data, output_dir=output_dir
+        # )
+        try:
+            visualizations = self.batch_visualization(
+                self.visualizer, self.feature_data, output_dir, processes=4
+            )
+        except Exception as e:
+            self.logger.error(f"Error generating visualizations: {e}")
+            visualizations = {}
 
         try:
-            # Step 4: Render the report
+            # Step 3: Render the report
             report_html = render_report(segment_values, visualizations)
         except Exception as e:
             # Log the error if report rendering fails
