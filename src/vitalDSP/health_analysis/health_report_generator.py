@@ -9,7 +9,8 @@ import logging
 # from vitalDSP.health_analysis.file_io import FileIO
 import numpy as np
 import multiprocessing
-from functools import lru_cache
+
+# from functools import lru_cache
 
 
 class HealthReportGenerator:
@@ -75,14 +76,15 @@ class HealthReportGenerator:
         Returns:
             dict: Paths to the generated visualizations.
         """
+
         def generate_visualizations_batch(args):
             feature, values = args
-            return feature, visualizer.create_visualizations({feature: values}, output_dir)
+            return feature, visualizer.create_visualizations(
+                {feature: values}, output_dir
+            )
 
         with multiprocessing.Pool(processes) as pool:
-            results = pool.map(
-                generate_visualizations_batch, feature_data.items()
-            )
+            results = pool.map(generate_visualizations_batch, feature_data.items())
 
         return {feature: paths for feature, paths in results}
 
@@ -122,11 +124,12 @@ class HealthReportGenerator:
                         )
                     # Downsample data to reduce memory overhead for large datasets
                     if len(values) > 1000:
-                        self.logger.warning(logging.UserWarning,
-                            f"Downsampling feature '{feature_name}' to reduce memory usage"
+                        self.logger.warning(
+                            logging.UserWarning,
+                            f"Downsampling feature '{feature_name}' to reduce memory usage",
                         )
                         values = self.downsample(values)
-                    
+
                     # Calculate the mean of the feature's values
                     mean_value = np.mean(values)
 
