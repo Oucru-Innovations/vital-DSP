@@ -171,7 +171,9 @@ class PhysiologicalFeatureExtractor:
             respiratory_mode=preprocess_config.respiratory_mode,
         )
 
-    def extract_features(self, signal_type="ECG", preprocess_config=None):
+    def extract_features(
+        self, signal_type="ECG", preprocess_config=None, peak_config=None, options=None
+    ):
         """
         Extract all physiological features from the signal for either ECG or PPG.
 
@@ -181,6 +183,8 @@ class PhysiologicalFeatureExtractor:
             The type of signal ("ECG" or "PPG"). Default is "ECG".
         preprocess_config : PreprocessConfig, optional
             The configuration object for signal preprocessing. If None, default settings are used.
+        peak_config : dict, optional
+            Configuration for peak detection parameters. If None, default settings are used.
 
         Returns
         -------
@@ -215,7 +219,11 @@ class PhysiologicalFeatureExtractor:
         # Initialize the morphology class
         try:
             morphology = WaveformMorphology(
-                clean_signal, fs=self.fs, signal_type=signal_type
+                clean_signal,
+                fs=self.fs,
+                signal_type=signal_type,
+                peak_config=peak_config,
+                options=options,
             )
         except Exception as e:
             logger.error(f"Error initializing morphology: {e}")
@@ -251,10 +259,30 @@ class PhysiologicalFeatureExtractor:
                         interval_type="Notch-to-Dia", signal_type="PPG"
                     ),
                     "systolic_slope": morphology.get_slope(
-                        slope_type="systolic", window=5
+                        slope_type="systolic",
+                        window=(
+                            peak_config["window_size"]
+                            if "window_size" in peak_config
+                            else 5
+                        ),
+                        slope_unit=(
+                            peak_config["slope_unit"]
+                            if "slope_unit" in peak_config
+                            else "radians"
+                        ),
                     ),
                     "diastolic_slope": morphology.get_slope(
-                        slope_type="systolic", window=5
+                        slope_type="diastolic",
+                        window=(
+                            peak_config["window_size"]
+                            if "window_size" in peak_config
+                            else 5
+                        ),
+                        slope_unit=(
+                            peak_config["slope_unit"]
+                            if "slope_unit" in peak_config
+                            else "radians"
+                        ),
                     ),
                     "signal_skewness": morphology.get_signal_skewness(),
                     "peak_trend_slope": morphology.get_peak_trend_slope(),

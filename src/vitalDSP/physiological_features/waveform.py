@@ -1,9 +1,10 @@
 import numpy as np
 from vitalDSP.utils.peak_detection import PeakDetection
 from vitalDSP.preprocess.preprocess_operations import estimate_baseline
-from scipy.stats import skew
+from scipy.stats import skew, linregress
 import logging as logger
-from scipy.stats import linregress
+from scipy.signal import savgol_filter
+from vitalDSP.transforms.vital_transformation import VitalTransformation
 
 
 class WaveformMorphology:
@@ -14,47 +15,137 @@ class WaveformMorphology:
         waveform (np.array): The waveform signal (ECG, PPG, EEG).
         fs (int): The sampling frequency of the signal in Hz. Default is 1000 Hz.
         signal_type (str): The type of signal ('ECG', 'PPG', 'EEG').
+        simple_mode (bool, optional): If True, uses simplified diastolic peak detection (midpoint-based). Default is True.
     """
 
-    def __init__(self, waveform, fs=256, qrs_ratio=0.05, signal_type="ECG"):
+    def __init__(
+        self,
+        waveform,
+        fs=256,
+        qrs_ratio=0.05,
+        signal_type="ECG",
+        peak_config=None,
+        simple_mode=True,
+        options=None,
+    ):
         """
         Initializes the WaveformMorphology object.
 
         Args:
             waveform (np.array): The waveform signal.
-            fs (int): The sampling frequency of the signal in Hz. Default is 1000 Hz.
+            fs (int): The sampling frequency of the signal in Hz. Default is 256 Hz.
+            qrs_ratio (float): The ratio for QRS detection. Default is 0.05.
             signal_type (str): The type of signal (ECG, PPG, EEG).
+            peak_config : dict, optional
+                Configuration for peak detection parameters. If None, default settings are used.
+                For ECG: {
+                    "distance": 50,
+                    "window_size": 7,
+                    "threshold_factor": 1.6,
+                    "search_window": 6,
+                }
+                For PPG: {
+                    "distance": 50,
+                    "window_size": 7,
+                    "threshold_factor": 0.8,
+                    "search_window": 6,
+                    "fs": fs,
+                    "dicrotic_config": {
+                        "slope_quartile_factor": 0.25,
+                        "search_range_start": 0.1,
+                        "search_range_end": 0.3,
+                    },
+                    "diastolic_config": {  # New settings for diastolic peaks
+                        "search_range_start": 0.2,  # Start 20% after notch
+                        "search_range_end": 0.8,    # End 80% before trough
+                        "min_height_factor": 0.1,   # Min height as fraction of notch-to-trough amp
+                        "min_distance": 5           # Min samples from notch
+                    }
+                }
         """
         self.waveform = np.array(waveform)
         self.fs = fs  # Sampling frequency
         self.signal_type = signal_type  # 'ECG', 'PPG', 'EEG'
         self.qrs_ratio = qrs_ratio
+        self.simple_mode = simple_mode
+        self._cache = {}  # Cache for computed results
+
+        # Precompute derivatives for reuse
+        self._signal_derivative = np.diff(self.waveform)
+        self._signal_second_derivative = np.diff(self._signal_derivative)
+        # self._smoothed_signal = savgol_filter(self.waveform, window_length=5, polyorder=2)
+        if options is not None:
+            # options = {
+            # 'artifact_removal': 'baseline_correction',
+            # 'artifact_removal_options': {'cutoff': 0.5},
+            # 'bandpass_filter': {'lowcut': 0.2, 'highcut': 10, 'filter_order': 4, 'filter_type': 'butter'},
+            # 'detrending': {'detrend_type': 'linear'},
+            # 'normalization': {'normalization_range': (0, 20)},
+            # "smoothing": {
+            #     "smoothing_method": "moving_average",
+            #     "window_size": 5,
+            #     "iterations": 2,
+            # },
+            # 'enhancement': {'enhance_method': 'square'},
+            # 'advanced_filtering': {'filter_type': 'kalman_filter', 'options': {'R': 0.1, 'Q': 0.01}},
+            # }
+            method_order = options.keys()
+            transformer = VitalTransformation(
+                self.waveform, fs=fs, signal_type=signal_type
+            )
+            self._smoothed_signal = transformer.apply_transformations(
+                options, method_order
+            )
+        else:
+            self._smoothed_signal = savgol_filter(
+                self.waveform, window_length=5, polyorder=2
+            )
+
+        # Default peak detection configurations
+        default_ecg_config = {
+            "distance": 50,
+            "window_size": 7,
+            "threshold_factor": 1.6,
+            "search_window": 6,
+        }
+
+        default_ppg_config = {
+            "distance": 50,
+            "window_size": 7,
+            "threshold_factor": 0.8,
+            "search_window": 6,
+            "fs": self.fs,
+            "dicrotic_config": {
+                "slope_quartile_factor": 0.25,
+                "search_range_start": 0.1,
+                "search_range_end": 0.3,
+            },
+            "diastolic_config": {
+                "search_range_start": 0.2,
+                "search_range_end": 0.8,
+                "min_height_factor": 0.1,
+                "min_distance": 5,
+                "min_distance_to_trough": 5,  # New: Min distance from trough
+                "slope_window": 3,  # New: Window for slope calculation
+            },
+        }
+
+        # Store the configuration for later use
+        self.peak_config = (
+            peak_config
+            if peak_config is not None
+            else (default_ecg_config if signal_type == "ECG" else default_ppg_config)
+        )
 
         if signal_type == "ECG":
-            detector = PeakDetection(
-                self.waveform,
-                "ecg_r_peak",
-                **{
-                    "distance": 50,
-                    "window_size": 7,
-                    "threshold_factor": 1.6,
-                    "search_window": 6,
-                },
-            )
+            detector = PeakDetection(self.waveform, "ecg_r_peak", **(self.peak_config))
             self.r_peaks = detector.detect_peaks()
         elif signal_type == "PPG":
             detector = PeakDetection(
-                self.waveform,
-                "ppg_systolic_peaks",
-                **{
-                    "distance": 50,
-                    "window_size": 7,
-                    "threshold_factor": 1.6,
-                    "search_window": 6,
-                    "fs": self.fs,
-                },
+                self.waveform, "ppg_systolic_peaks", **(self.peak_config)
             )
             self.systolic_peaks = detector.detect_peaks()
+
         elif signal_type == "EEG":
             detector = PeakDetection(self.waveform)
             self.eeg_peaks = detector.detect_peaks()
@@ -69,9 +160,17 @@ class WaveformMorphology:
         self.p_peaks = None
         self.dicrotic_notches = None
 
+    def _cache_result(self, key, method, *args, **kwargs):
+        """Cache the result of a method call."""
+        cache_key = (key, tuple(args), frozenset(kwargs.items()))
+        if cache_key not in self._cache:
+            self._cache[cache_key] = method(*args, **kwargs)
+        return self._cache[cache_key]
+
     def detect_troughs(self, systolic_peaks=None):
         """
         Detects the troughs (valleys) in the PPG waveform between systolic peaks.
+        In simple_mode, uses the minimum value between adjacent peaks; otherwise, uses flat segment detection.
 
         Parameters
         ----------
@@ -93,47 +192,59 @@ class WaveformMorphology:
         """
         if self.signal_type != "PPG":
             logger.warning(
-                "This function is designed to work with PPG signals. \
-                Other signal types may result in unexpected behaviour"
+                "This function is designed to work with PPG signals. "
+                "Other signal types may result in unexpected behaviour"
             )
         if systolic_peaks is None:
             systolic_peaks = self.systolic_peaks
+
         diastolic_troughs = []
-        signal_derivative = np.diff(self.waveform)
 
-        for i in range(len(systolic_peaks) - 1):
-            # Define the search range between two adjacent systolic peaks
-            peak_start = systolic_peaks[i]
-            peak_end = systolic_peaks[i + 1]
-            search_start = peak_start + (peak_end - peak_start) // 2
-            search_end = peak_end
+        if self.simple_mode:
+            # Simple mode: Find the minimum value between adjacent systolic peaks
+            for i in range(len(systolic_peaks) - 1):
+                peak_start = systolic_peaks[i]
+                peak_end = systolic_peaks[i + 1]
+                if peak_end <= peak_start:
+                    continue
+                segment = self.waveform[peak_start:peak_end]
+                trough_idx = peak_start + np.argmin(segment)  # Index of minimum value
+                diastolic_troughs.append(trough_idx)
+        else:
+            # Original mode: Use derivative and flat segments
+            signal_derivative = np.diff(self.waveform)
+            for i in range(len(systolic_peaks) - 1):
+                peak_start = systolic_peaks[i]
+                peak_end = systolic_peaks[i + 1]
+                search_start = peak_start + (peak_end - peak_start) // 2
+                search_end = peak_end
 
-            if search_start >= search_end or search_start < 0:
-                continue
+                if search_start >= search_end or search_start < 0:
+                    continue
 
-            # Calculate the adaptive flatness threshold based on the MAD of the derivative within the search range
-            local_derivative = signal_derivative[search_start:search_end]
-            mad_derivative = np.median(
-                np.abs(local_derivative - np.median(local_derivative))
-            )
-            adaptive_threshold = (
-                0.5 * mad_derivative
-            )  # Flatness threshold set as 50% of local MAD
-
-            # Identify flat segments based on the adaptive threshold
-            flat_segment = []
-            for j in range(search_start, search_end - 1):
-                if abs(signal_derivative[j]) < adaptive_threshold:
-                    flat_segment.append(j)
-
-            # Find the midpoint of the longest flat segment (if multiple segments are detected)
-            if flat_segment:
-                flat_segment_groups = np.split(
-                    flat_segment, np.where(np.diff(flat_segment) != 1)[0] + 1
+                # Calculate adaptive flatness threshold based on MAD of the derivative
+                local_derivative = signal_derivative[search_start:search_end]
+                mad_derivative = np.median(
+                    np.abs(local_derivative - np.median(local_derivative))
                 )
-                longest_flat_segment = max(flat_segment_groups, key=len)
-                trough_index = longest_flat_segment[len(longest_flat_segment) // 2]
-                diastolic_troughs.append(trough_index)
+                adaptive_threshold = 0.5 * mad_derivative  # 50% of local MAD
+
+                # Identify flat segments
+                flat_segment = [
+                    j
+                    for j in range(search_start, search_end - 1)
+                    if abs(signal_derivative[j]) < adaptive_threshold
+                ]
+
+                # Find midpoint of the longest flat segment
+                if flat_segment:
+                    flat_segment_groups = np.split(
+                        flat_segment, np.where(np.diff(flat_segment) != 1)[0] + 1
+                    )
+                    longest_flat_segment = max(flat_segment_groups, key=len)
+                    trough_index = longest_flat_segment[len(longest_flat_segment) // 2]
+                    diastolic_troughs.append(trough_index)
+
         diastolic_troughs = np.array(diastolic_troughs)
         self.diastolic_troughs = diastolic_troughs
         return diastolic_troughs
@@ -180,13 +291,6 @@ class WaveformMorphology:
         -------
         notches : np.array
             Indices of detected dicrotic notches in the PPG waveform.
-
-        Example
-        -------
-        >>> waveform = np.sin(np.linspace(0, 2*np.pi, 100))  # Simulated PPG signal
-        >>> wm = WaveformMorphology(waveform, signal_type="PPG")
-        >>> notches = wm.detect_notches()
-        >>> print(f"Dicrotic Notches: {notches}")
         """
         if self.signal_type != "PPG":
             raise ValueError("Notches can only be detected for PPG signals.")
@@ -194,56 +298,88 @@ class WaveformMorphology:
             systolic_peaks = self.systolic_peaks
         if diastolic_troughs is None:
             diastolic_troughs = self.detect_troughs(systolic_peaks=systolic_peaks)
+
         notches = []
-
-        # Calculate the first and second derivatives of the signal
         signal_derivative = np.diff(self.waveform)
-        signal_second_derivative = np.diff(signal_derivative)
+        min_length = min(len(systolic_peaks) - 1, len(diastolic_troughs))
+        systolic_peaks = systolic_peaks[: min_length + 1]
+        diastolic_troughs = diastolic_troughs[:min_length]
 
-        for i in range(min(len(systolic_peaks), len(diastolic_troughs))):
-            peak = systolic_peaks[i]
-            trough = diastolic_troughs[i]
+        if self.simple_mode:
+            # Simple mode: Full range, closest to zero derivative
+            for i in range(min_length):
+                peak = systolic_peaks[i]
+                trough = diastolic_troughs[i]
+                if trough <= peak:
+                    notches.append(peak + (trough - peak) // 2)  # Fallback to midpoint
+                    continue
 
-            # Define the search range: keep it close to the peak, 10-30% of the distance to the trough
-            search_start = peak + int(
-                (trough - peak) * 0.1
-            )  # Start 10% toward the trough
-            search_end = peak + int((trough - peak) * 0.3)  # End 30% toward the trough
+                # search_start = peak
+                # search_end = trough
+                # search_deriv = signal_derivative[search_start:search_end]
+                interval_length = trough - peak
+                search_start = peak + int(
+                    interval_length * 0.15
+                )  # Start of 2nd quarter
+                search_end = peak + int(interval_length * 0.45)  # End of 3rd quarter
+                search_start = min(max(search_start, peak + 1), trough - 1)
+                search_end = min(max(search_end, search_start + 1), trough)
+                search_deriv = signal_derivative[search_start:search_end]
 
-            # Ensure the search range is within bounds
-            search_start = min(max(search_start, peak), trough)
-            search_end = min(max(search_end, peak), trough)
+                if search_deriv.size > 0:
+                    notch_idx = search_start + np.argmin(
+                        np.abs(search_deriv)
+                    )  # Closest to zero
+                    notches.append(
+                        max(peak + 1, min(notch_idx, trough - 1) - 2)
+                    )  # Ensure bounds
+                else:
+                    notches.append(peak + (trough - peak) // 2)  # Fallback if empty
 
-            # Extract search section in the signal and derivatives
-            # search_section = self.waveform[search_start:search_end]
-            search_derivative = signal_derivative[search_start : search_end - 1]
-            search_second_derivative = signal_second_derivative[
-                search_start : search_end - 2
-            ]
+            notches = np.array(notches)
+            target_length = len(diastolic_troughs)
+            if len(notches) < target_length and target_length - len(notches) <= 1:
+                # Impute missing notches with derivative closest to zero
+                for i in range(len(notches), target_length):
+                    peak = systolic_peaks[i]
+                    trough = diastolic_troughs[i]
+                    if trough <= peak:
+                        imputed_notch = peak + (trough - peak) // 3
+                    else:
+                        search_deriv = signal_derivative[peak:trough]
+                        min_deriv_idx = np.argmin(np.abs(search_deriv))
+                        imputed_notch = peak + min_deriv_idx
+                        imputed_notch = max(peak + 1, min(imputed_notch, trough - 1))
+                    notches = np.append(notches, imputed_notch)
+        else:
+            # Non-simple mode: Search 2nd and 3rd quarters (25% to 75%) of [peak, trough]
+            for i in range(min_length):
+                peak = systolic_peaks[i]
+                trough = diastolic_troughs[i]
+                if trough <= peak:
+                    notches.append(peak + (trough - peak) // 2)
+                    continue
 
-            # Identify candidate notches with slope close to zero
-            candidate_notches = [
-                idx
-                for idx in range(len(search_derivative))
-                if abs(search_derivative[idx])
-                < 0.05  # Adjust threshold for "close to zero" slope
-            ]
+                # Divide [peak, trough] into 4 parts, take 2nd and 3rd (25% to 75%)
+                interval_length = trough - peak
+                search_start = peak + int(
+                    interval_length * 0.25
+                )  # Start of 2nd quarter
+                search_end = peak + int(interval_length * 0.75)  # End of 3rd quarter
+                search_start = min(max(search_start, peak + 1), trough - 1)
+                search_end = min(max(search_end, search_start + 1), trough)
 
-            # Filter candidates where the second derivative indicates leveling (positive values)
-            candidate_indices = [
-                idx
-                for idx in candidate_notches
-                if idx < len(search_second_derivative)
-                and search_second_derivative[idx] > 0
-            ]
+                search_deriv = signal_derivative[search_start:search_end]
+                if search_deriv.size > 0:
+                    notch_idx = search_start + np.argmin(
+                        np.abs(search_deriv)
+                    )  # Closest to zero
+                    notches.append(max(search_start, min(notch_idx, search_end - 1)))
+                else:
+                    notches.append(search_start + (search_end - search_start) // 2)
 
-            # Select the best candidate notch based on minimum absolute slope
-            if candidate_indices:
-                best_notch_idx = candidate_indices[
-                    np.argmin(np.abs(search_derivative[candidate_indices]))
-                ]
-                notches.append(search_start + best_notch_idx)
-        notches = np.array(notches)
+        # Sort and ensure length consistency
+        notches = np.sort(notches)[: len(diastolic_troughs)]
         self.dicrotic_notches = notches
         return notches
 
@@ -263,52 +399,234 @@ class WaveformMorphology:
         diastolic_peaks : list of int
             Indices of diastolic peaks detected in the PPG signal.
         """
+        if self.signal_type != "PPG":
+            raise ValueError("Diastolic peaks can only be detected for PPG signals.")
         if diastolic_troughs is None:
             diastolic_troughs = self.detect_troughs(systolic_peaks=self.systolic_peaks)
         if notches is None:
             notches = self.detect_dicrotic_notches(
                 systolic_peaks=self.systolic_peaks, diastolic_troughs=diastolic_troughs
             )
+
+        # Get diastolic config from peak_config
+        # diastolic_config = self.peak_config.get(
+        #     "diastolic_config",
+        #     {
+        #         "search_range_start": 0.2,
+        #         "search_range_end": 0.4,
+        #         "min_height_factor": 0.1,
+        #         "min_distance": 8,
+        #         "min_distance_to_trough": 8,
+        #         "slope_window": 5,
+        #     },
+        # )
+
+        diastolic_peaks = []
+        min_length = min(len(notches), len(diastolic_troughs))
+        notches = notches[:min_length]
+        diastolic_troughs = diastolic_troughs[:min_length]
+
+        signal_derivative = np.diff(self.waveform)
+        signal_second_derivative = np.diff(signal_derivative)
         diastolic_peaks = []
 
-        for i in range(len(notches)):
-            notch = notches[i]
-            trough = (
-                diastolic_troughs[i]
-                if i < len(diastolic_troughs)
-                else len(self.waveform) - 1
-            )
+        if self.simple_mode:
+            # Simple mode: Full range [notch, trough], find flattest derivative
+            for i in range(min_length):
+                notch = notches[i]
+                trough = diastolic_troughs[i]
+                if trough <= notch + 2:  # Need at least 3 points for derivative
+                    diastolic_peaks.append(notch + (trough - notch) // 2)
+                    continue
 
-            # Define the initial search range: notch to halfway to the trough
-            search_start = notch
-            search_end = notch + (trough - notch) // 2
+                # search_start = notch
+                # search_end = trough
+                # Divide [notch, trough] into parts, take 2nd and 3rd (20% to 45%)
+                interval_length = trough - notch
+                search_start = notch + int(
+                    interval_length * 0.1
+                )  # Start of 2nd quarter
+                search_end = notch + int(interval_length * 0.45)  # End of 3rd quarter
+                search_start = min(max(search_start, notch + 1), trough - 1)
+                search_end = min(max(search_end, search_start + 1), trough)
 
-            if search_end <= search_start or search_end > len(self.waveform):
-                diastolic_peaks.append(notch)
-                continue
+                search_deriv = signal_derivative[search_start:search_end]
+                if search_deriv.size > 0:
+                    min_deriv_idx = np.argmin(np.abs(search_deriv))
+                    peak_idx = search_start + min_deriv_idx + 2  # Shift forth 2 units
+                    peak_idx = max(
+                        notch + 1, min(peak_idx, trough - 1)
+                    )  # Ensure bounds
+                    diastolic_peaks.append(peak_idx)
+                else:
+                    diastolic_peaks.append(notch + (trough - notch) // 3)
+        else:
+            # Non-simple mode: Search 2nd and 3rd quarters (25% to 75%) of [notch, trough]
+            for i in range(min_length):
+                notch = notches[i]
+                trough = diastolic_troughs[i]
+                if trough <= notch + 2:  # Need at least 3 points for derivative
+                    diastolic_peaks.append(notch + (trough - notch) // 2)
+                    continue
 
-            search_segment = self.waveform[search_start:search_end]
-            segment_derivative = np.diff(search_segment)
+                # Divide [notch, trough] into 4 parts, take 2nd and 3rd (25% to 75%)
+                interval_length = trough - notch
+                search_start = notch + int(
+                    interval_length * 0.25
+                )  # Start of 2nd quarter
+                search_end = notch + int(interval_length * 0.75)  # End of 3rd quarter
+                search_start = min(max(search_start, notch + 1), trough - 1)
+                search_end = min(max(search_end, search_start + 1), trough)
 
-            candidate_peaks = [
-                idx
-                for idx in range(1, len(segment_derivative))
-                if segment_derivative[idx - 1] < 0 and segment_derivative[idx] >= 0
-            ]
+                search_deriv = signal_second_derivative[search_start:search_end]
+                if search_deriv.size > 0:
+                    min_deriv_idx = np.argmin(np.abs(search_deriv))
+                    peak_idx = search_start + min_deriv_idx + 2  # Shift forth 3 units
+                    peak_idx = max(
+                        search_start, min(peak_idx, search_end - 1)
+                    )  # Ensure bounds
+                    diastolic_peaks.append(peak_idx)
+                else:
+                    diastolic_peaks.append(
+                        search_start + (search_end - search_start) // 2
+                    )
 
-            # Convert candidates to absolute indices and select the most prominent peak if available
-            if candidate_peaks:
-                candidate_indices = [search_start + idx for idx in candidate_peaks]
-                diastolic_peak_idx = max(
-                    candidate_indices, key=lambda x: self.waveform[x]
-                )
-                diastolic_peaks.append(diastolic_peak_idx)
-            else:
-                # Fallback assignment: if no diastolic peak is detected, use the notch as the diastolic peak
-                diastolic_peaks.append(notch)
         diastolic_peaks = np.array(diastolic_peaks)
         self.diastolic_peaks = diastolic_peaks
         return diastolic_peaks
+        # # signal_derivative = np.diff(self.waveform)
+
+        # # Light smoothing to stabilize slope detection
+        # # smoothed_signal = savgol_filter(self.waveform, window_length=5, polyorder=2)
+        # smoothed_signal = self._smoothed_signal
+
+        # for i in range(min_length):
+        #     notch = notches[i]
+        #     trough = diastolic_troughs[i]
+        #     min_dist = diastolic_config["min_distance"]
+        #     min_dist_trough = diastolic_config["min_distance_to_trough"]
+
+        #     if trough <= notch + min_dist + min_dist_trough:
+        #         diastolic_peaks.append(notch + (trough - notch) // 2)
+        #         continue
+
+        #     search_start = notch + min_dist
+        #     search_end = trough - min_dist_trough
+
+        #     if (
+        #         search_end <= search_start + 2
+        #     ):  # Ensure at least 3 samples for slope calc
+        #         diastolic_peaks.append(notch + (trough - notch) // 2)
+        #         continue
+
+        #     if self.simple_mode:
+        #         # Simple mode: Find point with smallest slope
+        #         search_segment = smoothed_signal[search_start:search_end]
+        #         slopes = np.abs(np.diff(search_segment))  # Absolute slope
+        #         if len(slopes) > 0:
+        #             min_slope_idx = np.argmin(slopes)
+        #             peak_idx = search_start + min_slope_idx
+        #             # Ensure it's not too close to boundaries
+        #             if peak_idx < search_start + 1 or peak_idx > search_end - 1:
+        #                 peak_idx = search_start + (search_end - search_start) // 2
+        #             diastolic_peaks.append(peak_idx)
+        #         else:
+        #             diastolic_peaks.append(notch + (trough - notch) // 2)
+        #     else:
+        #         # Non-simple mode: Use find_peaks
+        #         search_segment = self.waveform[search_start:search_end]
+        #         notch_value = self.waveform[notch]
+        #         trough_value = self.waveform[trough]
+        #         min_height = (notch_value - trough_value) * diastolic_config[
+        #             "min_height_factor"
+        #         ] + trough_value
+
+        #         peaks, _ = find_peaks(
+        #             search_segment,
+        #             height=min_height,
+        #             distance=diastolic_config["min_distance"],
+        #         )
+
+        #         if peaks.size > 0:
+        #             peak_idx = search_start + peaks[0]
+        #             diastolic_peaks.append(peak_idx)
+        #         else:
+        #             peak_idx = search_start + np.argmax(search_segment)
+        #             diastolic_peaks.append(peak_idx)
+
+        # # min_length = min(len(notches), len(diastolic_troughs))
+        # # notches = notches[:min_length]
+        # # diastolic_troughs = diastolic_troughs[:min_length]
+
+        # # for i in range(min_length):
+        # #     notch = notches[i]
+        # #     trough = diastolic_troughs[i]
+        # #     if trough <= notch:
+        # #         diastolic_peaks.append(notch)  # Fallback to notch
+        # #         continue
+
+        # #     # Search full range from notch to trough
+        # #     search_segment = self.waveform[notch:trough]
+        # #     peak_idx = notch + np.argmax(search_segment)  # Find max value
+        # #     diastolic_peaks.append(peak_idx)
+
+        # diastolic_peaks = np.array(diastolic_peaks)
+        # self.diastolic_peaks = diastolic_peaks
+        # return diastolic_peaks
+
+        # for i in range(len(notches)):
+        #     notch = notches[i]
+        #     trough = (
+        #         diastolic_troughs[i]
+        #         if i < len(diastolic_troughs)
+        #         else len(self.waveform) - 1
+        #     )
+
+        #     # Define the initial search range: notch to halfway to the trough
+        #     search_start = notch
+        #     search_end = notch + (trough - notch) // 2
+
+        #     if search_end <= search_start or search_end > len(self.waveform):
+        #         diastolic_peaks.append(notch)
+        #         continue
+
+        #     search_segment = self.waveform[search_start:search_end]
+        #     segment_derivative = np.diff(search_segment)
+
+        #     candidate_peaks = [
+        #         idx
+        #         for idx in range(1, len(segment_derivative))
+        #         if segment_derivative[idx - 1] < 0 and segment_derivative[idx] >= 0
+        #     ]
+
+        #     # Convert candidates to absolute indices and select the most prominent peak if available
+        #     if candidate_peaks:
+        #         candidate_indices = [search_start + idx for idx in candidate_peaks]
+        #         diastolic_peak_idx = max(
+        #             candidate_indices, key=lambda x: self.waveform[x]
+        #         )
+        #         diastolic_peaks.append(diastolic_peak_idx)
+        #     else:
+        #         # Fallback assignment: if no diastolic peak is detected, use the notch as the diastolic peak
+        #         diastolic_peaks.append(notch)
+
+        # # min_length = min(len(notches), len(diastolic_troughs))
+        # # notches = notches[:min_length]
+        # # diastolic_troughs = diastolic_troughs[:min_length]
+
+        # # for i in range(min_length):
+        # #     notch = notches[i]
+        # #     trough = diastolic_troughs[i]
+        # #     if trough <= notch:
+        # #         diastolic_peaks.append(notch)  # Fallback if order is wrong
+        # #         continue
+        # #     search_segment = self.waveform[notch:trough]
+        # #     peak_idx = notch + np.argmax(search_segment)  # Find max in full range
+        # #     diastolic_peaks.append(peak_idx)
+
+        # diastolic_peaks = np.array(diastolic_peaks)
+        # self.diastolic_peaks = diastolic_peaks
+        # return diastolic_peaks
 
     def detect_q_valley(self, r_peaks=None):
         """
@@ -686,7 +1004,7 @@ class WaveformMorphology:
 
         Returns
         -------
-        qrs_sessions : list of tuples
+        qrs_sessions : np.ndarray
             Each tuple contains the start and end index of a QRS session.
 
         Example
@@ -705,19 +1023,32 @@ class WaveformMorphology:
             s_session = self.detect_s_session(r_peaks=rpeaks)
         # Ensure all input arrays are aligned in size
         if len(q_session) == 0 or len(s_session) == 0:
-            return []
+            return np.array([])
 
         qrs_sessions = [(q[0], s[1]) for q, s in zip(q_session, s_session)]
-        return qrs_sessions
+        return np.array(qrs_sessions)
 
     def detect_ppg_session(self, troughs=None):
+        """
+        Detects PPG sessions between consecutive troughs.
+
+        Parameters
+        ----------
+        troughs : np.array, optional
+            Indices of detected troughs in the PPG waveform.
+
+        Returns
+        -------
+        np.ndarray
+            Array of tuples containing start and end indices of PPG sessions.
+        """
         if troughs is None:
             troughs = self.detect_troughs(systolic_peaks=self.systolic_peaks)
         ppg_sessions = [
             (trough_start, trough_end)
             for trough_start, trough_end in zip(troughs[:-1], troughs[1:])
         ]
-        return ppg_sessions
+        return np.array(ppg_sessions)
 
     def detect_ecg_session(self, p_peaks=None, t_peaks=None):
         """
@@ -869,7 +1200,7 @@ class WaveformMorphology:
                 peaks, valleys, require_peak_first = (
                     self.dicrotic_notches,
                     self.diastolic_peaks,
-                    False,
+                    False,  # Keep as False since we want volume when notch comes before diastolic peak
                 )
             elif interval_type == "Sys-to-Dia":
                 if self.diastolic_peaks is None:
@@ -929,6 +1260,7 @@ class WaveformMorphology:
             - "Sys-to-Notch": Between systolic peak and dicrotic notch.
             - "Notch-to-Dia": Between dicrotic notch and diastolic peak.
             - "Sys-to-Dia": Between systolic and diastolic peaks.
+            - "Sys-to-Sys": Between consecutive systolic peaks (full PPG complex).
 
             Default is "P-to-T" for ECG and "Sys-to-Notch" for PPG.
 
@@ -1002,6 +1334,15 @@ class WaveformMorphology:
                     self.diastolic_peaks,
                     True,
                 )
+            elif interval_type == "Sys-to-Sys":
+                # Full PPG complex: consecutive systolic peaks
+                if self.systolic_peaks is None or len(self.systolic_peaks) < 2:
+                    raise ValueError(
+                        "At least two systolic peaks required for Sys-to-Sys interval."
+                    )
+                peaks = self.systolic_peaks[:-1]  # Start points
+                valleys = self.systolic_peaks[1:]  # End points
+                require_peak_first = True
             else:
                 raise ValueError("Invalid interval_type for PPG.")
         else:
@@ -1011,8 +1352,8 @@ class WaveformMorphology:
         volumes = []
         for start, end in zip(peaks, valleys):
             if (require_peak_first and start < end) or (
-                not require_peak_first and end < start
-            ):
+                not require_peak_first and start < end
+            ):  # Changed condition to always check start < end
                 if mode == "peak":
                     volume = np.trapz(
                         self.waveform[start : end + 1]
@@ -1176,7 +1517,7 @@ class WaveformMorphology:
             "alpha_power": np.sum(alpha),
         }
 
-    def compute_slope(self, points=None, option=None, window=3):
+    def compute_slope(self, points=None, option=None, window=3, slope_unit="radians"):
         """
         Compute the slope of the waveform at specified points or critical points.
 
@@ -1239,6 +1580,14 @@ class WaveformMorphology:
                     if self.diastolic_peaks is not None
                     else self.detect_diastolic_peak()
                 )
+                # from plotly import graph_objects as go
+                # fig = go.Figure()
+                # fig.add_trace(go.Scatter(x=np.arange(len(self.waveform)), y=self.waveform, mode='lines'))
+                # fig.add_trace(go.Scatter(x=self.dicrotic_notches, y=self.waveform[self.dicrotic_notches], mode='markers', name='Dicrotic Notches'))
+                # fig.add_trace(go.Scatter(x=self.diastolic_peaks, y=self.waveform[self.diastolic_peaks], mode='markers', name='Diastolic Peaks'))
+                # fig.add_trace(go.Scatter(x=self.systolic_peaks, y=self.waveform[self.systolic_peaks], mode='markers', name='Systolic Peaks'))
+                # fig.add_trace(go.Scatter(x=self.diastolic_troughs, y=self.waveform[self.diastolic_troughs], mode='markers', name='Diastolic Troughs'))
+                # fig.show()
             else:
                 raise ValueError(f"Invalid option '{option}' for critical points.")
 
@@ -1247,9 +1596,35 @@ class WaveformMorphology:
 
         slopes = []
         for point in points:
+            # Define the window around the point
             start = max(0, point - window)
             end = min(len(self.waveform) - 1, point + window)
-            slope = (self.waveform[end] - self.waveform[start]) / (end - start)
+            if end <= start + 1:  # Need at least 2 points for a slope
+                slopes.append(0.0)  # Flat slope if window is too small
+                continue
+
+            # Extract segment and corresponding x-axis (in samples)
+            x = np.arange(start, end + 1)
+            y = self.waveform[start : end + 1]
+
+            # Fit a line using least-squares (polyfit degree 1)
+            coeffs = np.polyfit(x, y, 1)  # coeffs[0] is slope, coeffs[1] is intercept
+            raw_slope = coeffs[0]  # Slope in signal units per sample
+
+            # Convert to angle based on sampling frequency-adjusted x-axis
+            # dx = (end - start) / self.fs  # Time span in seconds
+            # dy = self.waveform[end] - self.waveform[start]  # Amplitude change
+            # raw_slope = dy / dx  # Slope in signal units per second
+
+            if slope_unit == "degrees":
+                slope = np.degrees(np.arctan(raw_slope))  # Convert to degrees
+            elif slope_unit == "radians":
+                slope = np.arctan(raw_slope)  # Convert to radians
+            elif slope_unit == "raw":
+                slope = raw_slope  # Keep as signal units per sample
+            else:
+                raise ValueError("slope_unit must be 'degrees', 'radians', or 'raw'.")
+
             slopes.append(slope)
 
         return np.array(slopes)
@@ -1419,7 +1794,12 @@ class WaveformMorphology:
                 raise ValueError(f"Unsupported session type: {session_type}")
 
             # Validate start and end points
-            if not start_points or not end_points:
+            if (
+                start_points is None
+                or end_points is None
+                or len(start_points) == 0
+                or len(end_points) == 0
+            ):
                 raise ValueError(
                     "Start or end points detection returned an empty list."
                 )
@@ -1534,26 +1914,32 @@ class WaveformMorphology:
                 areas_r_to_s = self.compute_volume(
                     interval_type="R-to-S", signal_type=signal_type
                 )
-
-                # Ensure valid areas for both sub-intervals
                 if areas_r_to_q is None or areas_r_to_s is None:
                     raise ValueError(
                         "QRS area computation failed due to invalid sub-interval areas."
                     )
-                # Check if the lengths of the two areas are equal
                 min_length = min(len(areas_r_to_q), len(areas_r_to_s))
                 if len(areas_r_to_q) != len(areas_r_to_s):
-                    # Log a warning if lengths differ
-                    logger.warning(
-                        "Mismatch in lengths for R-to-Q and R-to-S areas. Truncating to minimum length."
-                    )
-                    # Truncate both arrays to the minimum length to align them
                     areas_r_to_q = areas_r_to_q[:min_length]
                     areas_r_to_s = areas_r_to_s[:min_length]
-                # Sum the R-to-Q and R-to-S areas to get QRS area
                 areas = np.array(areas_r_to_q) + np.array(areas_r_to_s)
 
-            # For all other cases, compute volume directly
+            elif interval_type == "Notch-to-Dia" and signal_type == "PPG":
+                areas_sys_to_sys = self.compute_volume(
+                    interval_type="Sys-to-Sys", signal_type=signal_type
+                )
+                areas_sys_to_notch = self.compute_volume(
+                    interval_type="Sys-to-Notch", signal_type=signal_type
+                )
+                if areas_sys_to_sys is None or areas_sys_to_notch is None:
+                    raise ValueError(
+                        "Notch-to-Dia computation failed due to invalid Sys-to-Sys or Sys-to-Notch areas."
+                    )
+                min_length = min(len(areas_sys_to_sys), len(areas_sys_to_notch))
+                if len(areas_sys_to_sys) != len(areas_sys_to_notch):
+                    areas_sys_to_sys = areas_sys_to_sys[:min_length]
+                    areas_sys_to_notch = areas_sys_to_notch[:min_length]
+                areas = np.array(areas_sys_to_sys) - np.array(areas_sys_to_notch)
             else:
                 areas = self.compute_volume(
                     interval_type=interval_type, signal_type=signal_type
@@ -1569,7 +1955,9 @@ class WaveformMorphology:
                     f"Computed areas for {interval_type} are None or empty."
                 )
 
-            # Apply the requested summary type
+            # Normalize by sampling frequency to get area in amplitude × seconds
+            areas = areas / self.fs
+
             return self._summarize_list(areas, summary_type)
 
         except ValueError as e:
@@ -1581,7 +1969,9 @@ class WaveformMorphology:
             )
             return np.nan
 
-    def get_slope(self, slope_type="systolic", window=5, summary_type="mean"):
+    def get_slope(
+        self, slope_type="systolic", window=5, summary_type="mean", slope_unit="radians"
+    ):
         """
         Computes the slope of the specified type (systolic, diastolic, QRS) using the chosen summary type.
 
@@ -1622,7 +2012,9 @@ class WaveformMorphology:
                 raise ValueError(f"Unsupported slope type: {slope_type}")
 
             # Compute slopes based on specified option
-            slopes = self.compute_slope(option=options_map[slope_type], window=window)
+            slopes = self.compute_slope(
+                option=options_map[slope_type], window=window, slope_unit=slope_unit
+            )
 
             # Validate slopes array
             if (
