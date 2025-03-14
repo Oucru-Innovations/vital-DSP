@@ -965,18 +965,25 @@ class WaveformMorphology:
         """
         if rpeaks is None:
             rpeaks = self.r_peaks
+
+        # If q_sessions or s_sessions are explicitly provided as empty arrays, respect that
+        if (q_sessions is not None and len(q_sessions) == 0) or (s_sessions is not None and len(s_sessions) == 0):
+            return np.array([])
+
+        # Only try to get sessions from instance if they weren't provided
         if q_sessions is None:
-            q_sessions = self.detect_q_session(r_peaks=rpeaks)
+            q_sessions = self.q_sessions
         if s_sessions is None:
+            s_sessions = self.s_sessions
+
+        # If sessions are None or empty, try to detect them
+        if q_sessions is None or len(q_sessions) == 0:
+            q_sessions = self.detect_q_session(r_peaks=rpeaks)
+        if s_sessions is None or len(s_sessions) == 0:
             s_sessions = self.detect_s_session(r_peaks=rpeaks)
 
-        # Explicitly check if q_sessions and s_sessions are None or empty
-        if (
-            q_sessions is None
-            or len(q_sessions) == 0
-            or s_sessions is None
-            or len(self.s_sessions) == 0
-        ):
+        # If still empty after detection, return empty array
+        if len(q_sessions) == 0 or len(s_sessions) == 0:
             return np.array([])
 
         r_sessions = []
