@@ -61,13 +61,13 @@ jobs:
         run: make pandoc
 
       - name: Upload Coverage Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: cov_html
 
       - name: Upload Documentation
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: documentation
           path: $(DOCS_DIR)
