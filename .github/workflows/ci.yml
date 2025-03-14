@@ -31,7 +31,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov flake8 pandoc pandas httpx pytest-mock pytest-asyncio
+          pip install pytest==8.1.1 pytest-cov==4.1.0 coverage==7.4.0 flake8 pandoc pandas httpx pytest-mock pytest-asyncio
           pip install setuptools wheel twine sphinx coveralls responses
           pip install dash dash[testing]
           pip install selenium webdriver-manager
