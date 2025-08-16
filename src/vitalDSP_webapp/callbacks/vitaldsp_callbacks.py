@@ -443,12 +443,42 @@ def generate_analysis_results(raw_data, filtered_data, time_axis, sampling_freq,
         
         # Basic statistics
         results.append(html.H6("📊 Signal Statistics", className="mb-2"))
-        results.append(html.P([
-            f"Mean: {np.mean(raw_signal):.2f} | ",
-            f"Std: {np.std(raw_signal):.2f} | ",
-            f"Min: {np.min(raw_signal):.2f} | ",
-            f"Max: {np.max(raw_signal):.2f}"
-        ], className="mb-2"))
+        results.append(dbc.Table([
+            html.Thead([
+                html.Tr([
+                    html.Th("Metric", className="text-center"),
+                    html.Th("Value", className="text-center"),
+                    html.Th("Unit", className="text-center")
+                ])
+            ]),
+            html.Tbody([
+                html.Tr([
+                    html.Td("Mean", className="fw-bold"),
+                    html.Td(f"{np.mean(raw_signal):.2f}", className="text-end"),
+                    html.Td("Signal Units", className="text-muted")
+                ]),
+                html.Tr([
+                    html.Td("Standard Deviation", className="fw-bold"),
+                    html.Td(f"{np.std(raw_signal):.2f}", className="text-end"),
+                    html.Td("Signal Units", className="text-muted")
+                ]),
+                html.Tr([
+                    html.Td("Minimum", className="fw-bold"),
+                    html.Td(f"{np.min(raw_signal):.2f}", className="text-end"),
+                    html.Td("Signal Units", className="text-muted")
+                ]),
+                html.Tr([
+                    html.Td("Maximum", className="fw-bold"),
+                    html.Td(f"{np.max(raw_signal):.2f}", className="text-end"),
+                    html.Td("Signal Units", className="text-muted")
+                ]),
+                html.Tr([
+                    html.Td("RMS", className="fw-bold"),
+                    html.Td(f"{np.sqrt(np.mean(raw_signal**2)):.2f}", className="text-end"),
+                    html.Td("Signal Units", className="text-muted")
+                ])
+            ])
+        ], bordered=True, hover=True, responsive=True, className="mb-3"))
         
         # Peak detection and heart rate
         if "peaks" in analysis_options:
@@ -460,11 +490,37 @@ def generate_analysis_results(raw_data, filtered_data, time_axis, sampling_freq,
                 
                 results.append(html.Hr())
                 results.append(html.H6("❤️ Heart Rate Analysis", className="mb-2"))
-                results.append(html.P([
-                    f"Detected {len(peaks)} peaks | ",
-                    f"Average RR: {np.mean(rr_intervals):.3f}s | ",
-                    f"Heart Rate: {heart_rate:.1f} BPM"
-                ], className="mb-2"))
+                results.append(dbc.Table([
+                    html.Thead([
+                        html.Tr([
+                            html.Th("Metric", className="text-center"),
+                            html.Th("Value", className="text-center"),
+                            html.Th("Unit", className="text-center")
+                        ])
+                    ]),
+                    html.Tbody([
+                        html.Tr([
+                            html.Td("Detected Peaks", className="fw-bold"),
+                            html.Td(f"{len(peaks)}", className="text-end"),
+                            html.Td("Count", className="text-muted")
+                        ]),
+                        html.Tr([
+                            html.Td("Average RR Interval", className="fw-bold"),
+                            html.Td(f"{np.mean(rr_intervals):.3f}", className="text-end"),
+                            html.Td("Seconds", className="text-muted")
+                        ]),
+                        html.Tr([
+                            html.Td("Heart Rate", className="fw-bold"),
+                            html.Td(f"{heart_rate:.1f}", className="text-end"),
+                            html.Td("BPM", className="text-muted")
+                        ]),
+                        html.Tr([
+                            html.Td("RR Standard Deviation", className="fw-bold"),
+                            html.Td(f"{np.std(rr_intervals):.3f}", className="text-end"),
+                            html.Td("Seconds", className="text-muted")
+                        ])
+                    ])
+                ], bordered=True, hover=True, responsive=True, className="mb-3"))
         
         # Signal quality assessment
         if "quality" in analysis_options:
@@ -482,11 +538,38 @@ def generate_analysis_results(raw_data, filtered_data, time_axis, sampling_freq,
             
             results.append(html.Hr())
             results.append(html.H6("🎯 Signal Quality", className="mb-2"))
-            results.append(html.P([
-                f"SNR: {snr_db:.1f} dB | ",
-                f"Artifacts: {artifact_count} | ",
-                f"Quality: {'Excellent' if snr_db > 20 else 'Good' if snr_db > 15 else 'Fair' if snr_db > 10 else 'Poor'}"
-            ], className="mb-2"))
+            results.append(dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Metric", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Quality", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Signal-to-Noise Ratio", className="fw-bold"),
+                        html.Td(f"{snr_db:.1f} dB", className="text-end"),
+                        html.Td(html.Span(
+                            'Excellent' if snr_db > 20 else 'Good' if snr_db > 15 else 'Fair' if snr_db > 10 else 'Poor',
+                            className=f"badge {'bg-success' if snr_db > 20 else 'bg-info' if snr_db > 15 else 'bg-warning' if snr_db > 10 else 'bg-danger'}"
+                        ), className="text-center")
+                    ]),
+                    html.Tr([
+                        html.Td("Detected Artifacts", className="fw-bold"),
+                        html.Td(f"{artifact_count}", className="text-end"),
+                        html.Td(html.Span(
+                            'Low' if artifact_count < 5 else 'Medium' if artifact_count < 15 else 'High',
+                            className=f"badge {'bg-success' if artifact_count < 5 else 'bg-warning' if artifact_count < 15 else 'bg-danger'}"
+                        ), className="text-center")
+                    ]),
+                    html.Tr([
+                        html.Td("Signal Range", className="fw-bold"),
+                        html.Td(f"{np.max(raw_signal) - np.min(raw_signal):.2f}", className="text-end"),
+                        html.Td("Signal Units", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3"))
         
         # Filtering results
         if filtered_data is not None and not filtered_data.equals(raw_data):
@@ -498,10 +581,38 @@ def generate_analysis_results(raw_data, filtered_data, time_axis, sampling_freq,
             filtered_power = np.mean(filtered_signal**2)
             power_reduction = (raw_power - filtered_power) / raw_power * 100
             
-            results.append(html.P([
-                f"Power reduction: {power_reduction:.1f}% | ",
-                f"Signal preserved: {100 - power_reduction:.1f}%"
-            ], className="mb-2"))
+            results.append(dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Metric", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Status", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Power Reduction", className="fw-bold"),
+                        html.Td(f"{power_reduction:.1f}%", className="text-end"),
+                        html.Td(html.Span(
+                            'High' if power_reduction > 30 else 'Medium' if power_reduction > 15 else 'Low',
+                            className=f"badge {'bg-success' if power_reduction > 30 else 'bg-warning' if power_reduction > 15 else 'bg-info'}"
+                        ), className="text-center")
+                    ]),
+                    html.Tr([
+                        html.Td("Signal Preserved", className="fw-bold"),
+                        html.Td(f"{100 - power_reduction:.1f}%", className="text-end"),
+                        html.Td(html.Span(
+                            'Excellent' if (100 - power_reduction) > 85 else 'Good' if (100 - power_reduction) > 70 else 'Fair',
+                            className=f"badge {'bg-success' if (100 - power_reduction) > 85 else 'bg-info' if (100 - power_reduction) > 70 else 'bg-warning'}"
+                        ), className="text-center")
+                    ]),
+                    html.Tr([
+                        html.Td("Filtering Efficiency", className="fw-bold"),
+                        html.Td(f"{power_reduction / (100 - power_reduction):.2f}", className="text-end"),
+                        html.Td("Ratio", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3"))
         
         return html.Div(results)
         

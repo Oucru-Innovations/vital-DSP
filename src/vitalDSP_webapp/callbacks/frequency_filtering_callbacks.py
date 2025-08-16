@@ -1896,22 +1896,77 @@ def generate_frequency_analysis_results(signal_data, sampling_freq, analysis_typ
         # Results section
         html.Div([
             html.H6("📊 Quantitative Results", className="mb-2"),
-            html.Ul([html.Li(result, className="mb-1") for result in results])
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Metric", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Unit", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td(result.split(":")[0], className="fw-bold"),
+                        html.Td(result.split(":")[1].strip(), className="text-end"),
+                        html.Td("Hz" if "Hz" in result else "dB" if "dB" in result else "Count" if "Count" in result else "Ratio", className="text-muted")
+                    ]) for result in results
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3")
         ], className="mb-4"),
         
         # Insights section
         html.Div([
             html.H6("💡 vitalDSP Insights", className="mb-2"),
-            html.Ul([html.Li(insight, className="mb-1 text-info") for insight in insights])
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Insight Type", className="text-center"),
+                        html.Th("Description", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("🔍 Analysis", className="fw-bold text-info"),
+                        html.Td(insight, className="text-start")
+                    ]) for insight in insights
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3", color="info")
         ], className="mb-3"),
         
         # Analysis type info
         html.Div([
             html.H6("🔍 Analysis Configuration", className="mb-2"),
-            html.P(f"Analysis Type: {analysis_type.upper()}", className="mb-1"),
-            html.P(f"Sampling Frequency: {sampling_freq} Hz", className="mb-1"),
-            html.P(f"Signal Length: {len(signal_data)} samples", className="mb-1"),
-            html.P(f"Time Duration: {len(signal_data)/sampling_freq:.2f} seconds", className="mb-1")
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Parameter", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Unit", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Analysis Type", className="fw-bold"),
+                        html.Td(analysis_type.upper(), className="text-center"),
+                        html.Td("-", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Sampling Frequency", className="fw-bold"),
+                        html.Td(f"{sampling_freq}", className="text-end"),
+                        html.Td("Hz", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Signal Length", className="fw-bold"),
+                        html.Td(f"{len(signal_data)}", className="text-end"),
+                        html.Td("Samples", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Time Duration", className="fw-bold"),
+                        html.Td(f"{len(signal_data)/sampling_freq:.2f}", className="text-end"),
+                        html.Td("Seconds", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3", color="light")
         ], className="text-muted")
     ])
     
@@ -2108,21 +2163,76 @@ def generate_filter_quality_metrics(original_signal, filtered_signal, sampling_f
         # Metrics section
         html.Div([
             html.H6("📊 Quantitative Metrics", className="mb-2"),
-            html.Ul([html.Li(metric, className="mb-1") for metric in metrics])
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Metric", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Unit", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td(metric.split(":")[0], className="fw-bold"),
+                        html.Td(metric.split(":")[1].strip(), className="text-end"),
+                        html.Td("dB" if "dB" in metric else "%" if "%" in metric else "Ratio" if "Ratio" in metric else "Score" if "Score" in metric else "Error" if "Error" in metric else "-", className="text-muted")
+                    ]) for metric in metrics
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3")
         ], className="mb-4"),
         
         # Insights section
         html.Div([
             html.H6("💡 vitalDSP Insights", className="mb-2"),
-            html.Ul([html.Li(insight, className="mb-1 text-info") for insight in insights])
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Insight Type", className="text-center"),
+                        html.Th("Description", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("🔍 Analysis", className="fw-bold text-info"),
+                        html.Td(insight, className="text-start")
+                    ]) for insight in insights
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3", color="info")
         ], className="mb-3"),
         
         # Signal comparison
         html.Div([
             html.H6("📈 Signal Comparison", className="mb-2"),
-            html.P(f"Original Signal: {len(original_signal)} samples, RMS: {original_rms:.3e}", className="mb-1"),
-            html.P(f"Filtered Signal: {len(filtered_signal)} samples, RMS: {filtered_rms:.3e}", className="mb-1"),
-            html.P(f"Processing Ratio: {len(filtered_signal)/len(original_signal):.3f}", className="mb-1")
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Signal Type", className="text-center"),
+                        html.Th("Samples", className="text-center"),
+                        html.Th("RMS", className="text-center"),
+                        html.Th("Energy", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Original Signal", className="fw-bold"),
+                        html.Td(f"{len(original_signal)}", className="text-end"),
+                        html.Td(f"{original_rms:.3e}", className="text-end"),
+                        html.Td(f"{original_energy:.3e}", className="text-end")
+                    ]),
+                    html.Tr([
+                        html.Td("Filtered Signal", className="fw-bold"),
+                        html.Td(f"{len(filtered_signal)}", className="text-end"),
+                        html.Td(f"{filtered_rms:.3e}", className="text-end"),
+                        html.Td(f"{filtered_energy:.3e}", className="text-end")
+                    ]),
+                    html.Tr([
+                        html.Td("Processing Ratio", className="fw-bold"),
+                        html.Td(f"{len(filtered_signal)/len(original_signal):.3f}", className="text-end"),
+                        html.Td(f"{filtered_rms/original_rms:.3f}", className="text-end"),
+                        html.Td(f"{filtered_energy/original_energy:.3f}", className="text-end")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3", color="light")
         ], className="text-muted")
     ])
     
