@@ -27,8 +27,8 @@ async def test_uvicorn_server():
                 response.status_code == 200
             ), "Uvicorn should serve Dash homepage successfully."
             assert (
-                "Vital-DSP Dashboard" in response.text
-            ), "Dash homepage should contain 'Vital-DSP Dashboard'."
+                "Vital-DSP Comprehensive Dashboard" in response.text
+            ), "Dash homepage should contain 'Vital-DSP Comprehensive Dashboard'."
 
             # Test the FastAPI route
             response = await client.get(

@@ -1,0 +1,144 @@
+/* Custom CSS for enhanced vitalDSP plots */
+
+/* Ensure plot containers are properly sized */
+.js-plotly-plot {
+    overflow: visible !important;
+}
+
+/* Plot container wrapper */
+.plot-container-wrapper {
+    overflow: visible !important;
+    padding: 20px !important;
+    margin: 0 !important;
+}
+
+/* Card body overflow fix */
+.card-body {
+    overflow: visible !important;
+    padding: 1rem !important;
+}
+
+/* Frequency analysis plots */
+#freq-main-plot .js-plotly-plot {
+    height: 650px !important;
+    min-height: 600px !important;
+}
+
+#freq-time-freq-plot .js-plotly-plot {
+    height: 750px !important;
+    min-height: 700px !important;
+}
+
+#freq-analysis-plots .js-plotly-plot {
+    height: 400px !important;
+    min-height: 350px !important;
+}
+
+/* Filtering plots */
+#filter-original-plot .js-plotly-plot,
+#filter-filtered-plot .js-plotly-plot {
+    height: 750px !important;
+    min-height: 700px !important;
+}
+
+#filter-comparison-plot .js-plotly-plot {
+    height: 500px !important;
+    min-height: 450px !important;
+}
+
+#filter-quality-plots .js-plotly-plot {
+    height: 400px !important;
+    min-height: 350px !important;
+}
+
+/* Ensure plotly graphs are responsive */
+.plotly-graph-div {
+    width: 100% !important;
+    height: 100% !important;
+    overflow: visible !important;
+}
+
+/* Fix for plotly responsive behavior */
+.plotly-graph-div .js-plotly-plot {
+    overflow: visible !important;
+}
+
+/* Ensure proper sizing for enhanced plots */
+.plotly-graph-div .plot-container {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: inherit !important;
+}
+
+/* Fix for subplot layouts */
+.plot-container {
+    overflow: visible !important;
+}
+
+/* Ensure proper spacing for multi-panel plots */
+.plotly .main-svg {
+    overflow: visible !important;
+}
+
+/* Fix for plotly annotations */
+.plotly .annotation {
+    overflow: visible !important;
+}
+
+/* Fix for plotly subplot layouts */
+.plotly .subplot {
+    overflow: visible !important;
+}
+
+.plotly .subplot .main-svg {
+    overflow: visible !important;
+}
+
+/* Ensure proper spacing between subplots */
+.plotly .subplot .main-svg {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Fix for plotly legends */
+.plotly .legend {
+    overflow: visible !important;
+}
+
+/* Fix for plotly axes */
+.plotly .axis {
+    overflow: visible !important;
+}
+
+/* Responsive design for different screen sizes */
+@media (max-width: 768px) {
+    #freq-main-plot .js-plotly-plot,
+    #freq-time-freq-plot .js-plotly-plot,
+    #filter-original-plot .js-plotly-plot,
+    #filter-filtered-plot .js-plotly-plot {
+        height: 600px !important;
+        min-height: 550px !important;
+    }
+    
+    #freq-analysis-plots .js-plotly-plot,
+    #filter-quality-plots .js-plotly-plot {
+        height: 350px !important;
+        min-height: 300px !important;
+    }
+}
+
+@media (max-width: 576px) {
+    #freq-main-plot .js-plotly-plot,
+    #freq-time-freq-plot .js-plotly-plot,
+    #filter-original-plot .js-plotly-plot,
+    #filter-filtered-plot .js-plotly-plot {
+        height: 500px !important;
+        min-height: 450px !important;
+    }
+    
+    #freq-analysis-plots .js-plotly-plot,
+    #filter-quality-plots .js-plotly-plot {
+        height: 300px !important;
+        min-height: 250px !important;
+    }
+}

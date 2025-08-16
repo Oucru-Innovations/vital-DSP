@@ -10,24 +10,26 @@ def register_sidebar_callbacks(app):
     @app.callback(
         [
             Output("sidebar", "className"),  # Toggle sidebar class
-            Output("toggle-icon", "className"),  # Toggle icon class
-            Output("page-content", "style"),
-        ],  # Adjust content margin based on sidebar state
+            Output("sidebar-toggle-icon", "className"),  # Toggle icon class
+        ],
         [Input("sidebar-toggle", "n_clicks")],
     )
     def toggle_sidebar(n_clicks):
         """
         Toggles the sidebar's width and the toggle button icon.
         """
+        if n_clicks is None:
+            n_clicks = 0
+            
         if n_clicks % 2 == 0:
+            # Expanded state
             return (
-                "sidebar-expanded",
-                "fas fa-bars",
-                {"margin-left": "250px", "padding": "2rem 1rem"},
-            )  # Expanded
+                "sidebar sidebar-expanded",
+                "fas fa-bars"
+            )
         else:
+            # Collapsed state
             return (
-                "sidebar-collapsed",
-                "fas fa-arrow-right",
-                {"margin-left": "80px", "padding": "2rem 1rem"},
-            )  # Collapsed
+                "sidebar sidebar-collapsed",
+                "fas fa-arrow-right"
+            )

@@ -29,11 +29,11 @@ async def test_dash_homepage(dash_client):
     """
     # Mock response for http://localhost/
     responses.add(
-        responses.GET, "http://localhost/", body="Vital-DSP Dashboard", status=200
+        responses.GET, "http://localhost/", body="Vital-DSP Comprehensive Dashboard", status=200
     )
 
     response = dash_client.get("http://localhost/")
     assert response.status_code == 200, "Dash homepage should load successfully."
     assert (
-        "Vital-DSP Dashboard" in response.text
-    ), "Homepage should contain 'Vital-DSP Dashboard'."
+        "Vital-DSP Comprehensive Dashboard" in response.text
+    ), "Homepage should contain 'Vital-DSP Comprehensive Dashboard'."

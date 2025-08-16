@@ -23,6 +23,12 @@ def center_signal(signal):
     >>> centered_signal, mean_signal = center_signal(signal)
     >>> print(centered_signal)
     """
+    signal = np.atleast_2d(signal)
+    
+    # Check for NaN values
+    if np.isnan(signal).any():
+        raise ValueError("Input signal contains NaN values. Please clean the data before processing.")
+    
     mean_signal = np.mean(signal, axis=1, keepdims=True)
     centered_signal = signal - mean_signal
     return centered_signal, mean_signal
@@ -51,6 +57,11 @@ def whiten_signal(signal):
     >>> print(whitened_signal)
     """
     signal = np.atleast_2d(signal)
+    
+    # Check for NaN values
+    if np.isnan(signal).any():
+        raise ValueError("Input signal contains NaN values. Please clean the data before processing.")
+    
     cov = np.cov(signal, rowvar=False)
 
     # Add a small positive constant to avoid numerical instability
@@ -88,6 +99,10 @@ def ica_artifact_removal(signals, max_iter=1000, tol=1e-5):
     >>> print(separated_signals)
     """
     signals = np.atleast_2d(signals)
+    
+    # Check for NaN values
+    if np.isnan(signals).any():
+        raise ValueError("Input signals contain NaN values. Please clean the data before processing.")
 
     # Center the signals
     centered_signals, _ = center_signal(signals)
@@ -139,6 +154,12 @@ def pca_artifact_removal(signals, n_components=None):
     >>> reduced_signals = pca_artifact_removal(signals, n_components=1)
     >>> print(reduced_signals)
     """
+    signals = np.atleast_2d(signals)
+    
+    # Check for NaN values
+    if np.isnan(signals).any():
+        raise ValueError("Input signals contain NaN values. Please clean the data before processing.")
+    
     # Center the signals
     centered_signals, mean_signal = center_signal(signals)
 
@@ -185,6 +206,10 @@ def jade_ica(signals, max_iter=1000, tol=1e-5):
     >>> print(separated_signals)
     """
     signals = np.atleast_2d(signals)
+
+    # Check for NaN values
+    if np.isnan(signals).any():
+        raise ValueError("Input signals contain NaN values. Please clean the data before processing.")
 
     # Ensure there are at least two signals
     if signals.shape[0] < 2:

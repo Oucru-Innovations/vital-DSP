@@ -431,7 +431,8 @@ def generate_synthetic_ppg_reversed(
         plt.title("Synthetic PPG Signal")
         plt.xlabel("Time (s)")
         plt.ylabel("Amplitude")
-        plt.show()
+        if display:
+            plt.show()
 
     return time, ppg_signal
 
@@ -535,6 +536,102 @@ def generate_synthetic_ppg(
         plt.title("Synthetic PPG Signal")
         plt.xlabel("Time (s)")
         plt.ylabel("Amplitude")
-        plt.show()
+        if display:
+            plt.show()
 
     return time, ppg_signal
+
+
+class SynthesizeData:
+    """
+    A class that provides access to all signal synthesis functions.
+    This class wraps the individual functions for easier access and organization.
+    """
+
+    @staticmethod
+    def generate_sinusoidal(frequency, sampling_rate, duration, amplitude=1.0, phase=0.0):
+        """Generate a sinusoidal wave."""
+        return generate_sinusoidal(frequency, sampling_rate, duration, amplitude, phase)
+
+    @staticmethod
+    def generate_square_wave(frequency, sampling_rate, duration, amplitude=1.0, duty_cycle=0.5):
+        """Generate a square wave."""
+        return generate_square_wave(frequency, sampling_rate, duration, amplitude, duty_cycle)
+
+    @staticmethod
+    def generate_noisy_signal(base_signal, noise_level=0.1):
+        """Add Gaussian noise to a base signal."""
+        return generate_noisy_signal(base_signal, noise_level)
+
+    @staticmethod
+    def generate_ecg_signal(
+        duration=10,
+        sampling_rate=1000,
+        heart_rate=60,
+        noise_level=0.01,
+        qrs_width=0.08,
+        t_wave_amplitude=0.3,
+        p_wave_amplitude=0.25,
+        randomize=False,
+        display=False,
+    ):
+        """Generate a synthetic ECG signal."""
+        return generate_ecg_signal(
+            duration, sampling_rate, heart_rate, noise_level,
+            qrs_width, t_wave_amplitude, p_wave_amplitude,
+            randomize, display
+        )
+
+    @staticmethod
+    def generate_resp_signal(sampling_rate, duration, frequency=0.2, amplitude=0.5):
+        """Generate a synthetic respiratory signal."""
+        return generate_resp_signal(sampling_rate, duration, frequency, amplitude)
+
+    @staticmethod
+    def generate_synthetic_ppg_reversed(
+        duration=10,
+        sampling_rate=1000,
+        heart_rate=60,
+        noise_level=0.01,
+        diastolic_amplitude=0.8,
+        diastolic_width=0.15,
+        dicrotic_notch_depth=0.6,
+        dicrotic_notch_delay=0.2,
+        randomize=False,
+        display=False,
+    ):
+        """Generate a synthetic PPG signal with reversed parameters."""
+        return generate_synthetic_ppg_reversed(
+            duration, sampling_rate, heart_rate, noise_level,
+            diastolic_amplitude, diastolic_width, dicrotic_notch_depth,
+            dicrotic_notch_delay, randomize, display
+        )
+
+    @staticmethod
+    def generate_synthetic_ppg(
+        duration=10,
+        sampling_rate=1000,
+        heart_rate=60,
+        noise_level=0.01,
+        diastolic_amplitude=0.8,
+        diastolic_width=0.15,
+        dicrotic_notch_depth=0.6,
+        dicrotic_notch_delay=0.2,
+        randomize=False,
+        display=False,
+    ):
+        """Generate a synthetic PPG signal."""
+        return generate_synthetic_ppg(
+            duration, sampling_rate, heart_rate, noise_level,
+            diastolic_amplitude, diastolic_width, dicrotic_notch_depth,
+            dicrotic_notch_delay, randomize, display
+        )
+
+    @staticmethod
+    def generate_ppg_data(duration=50, fs=1000):
+        """Generate synthetic PPG data for testing."""
+        t = np.linspace(0, duration, int(duration * fs))
+        # Simple PPG-like signal
+        signal = np.sin(2 * np.pi * 1.2 * t) * np.exp(-0.1 * t) + 0.5 * np.sin(2 * np.pi * 0.8 * t)
+        signal += 0.1 * np.random.randn(len(signal))
+        return t, signal

@@ -2,7 +2,7 @@ import numpy as np
 
 # from scipy.spatial.distance import cdist
 from scipy.spatial import KDTree
-
+from scipy.spatial import distance as sp_distance
 
 class NonlinearFeatures:
     """
@@ -73,29 +73,25 @@ class NonlinearFeatures:
 
         # Normalize the signal to have zero mean and unit variance
         signal = (signal - np.mean(signal)) / np.std(signal)
-        r *= np.std(signal)  # Scale tolerance to the signal's standard deviation
+        r *= np.std(signal)  # Scale tolerance; std=1 after normalization, so unchanged
 
         # Create embedded vectors for dimensions m and m+1
         embedded_m = np.array([signal[i : i + m] for i in range(N - m + 1)])
         embedded_m1 = np.array([signal[i : i + m + 1] for i in range(N - m)])
 
-        def _count_similar(template, data, r):
-            distances = np.max(np.abs(data - template), axis=1)
-            return np.sum(distances < r)
+        def _phi(embedded, tol):
+            n = len(embedded)
+            if n <= 1:
+                return 0.0
+            tree = KDTree(embedded)
+            # Use <= tol; adjust tol slightly if strict < is needed, but for practicality, use <=
+            counts = tree.query_ball_point(embedded, r=tol, p=np.inf, return_length=True)
+            total_double = np.sum(counts) - n  # Subtract self-matches
+            num_pairs = n * (n - 1) / 2.0
+            return total_double / (2.0 * num_pairs) if num_pairs > 0 else 0.0
 
-        # Count similar patterns for m
-        count_m = 0
-        for i in range(len(embedded_m)):
-            template = embedded_m[i]
-            count_m += _count_similar(template, embedded_m[i + 1 :], r)
-        phi_m = count_m / ((N - m + 1) * (N - m) / 2)
-
-        # Count similar patterns for m+1
-        count_m1 = 0
-        for i in range(len(embedded_m1)):
-            template = embedded_m1[i]
-            count_m1 += _count_similar(template, embedded_m1[i + 1 :], r)
-        phi_m1 = count_m1 / ((N - m) * (N - m - 1) / 2)
+        phi_m = _phi(embedded_m, r)
+        phi_m1 = _phi(embedded_m1, r)
 
         if phi_m == 0 or phi_m1 == 0:
             return 0  # Avoid log of zero
@@ -483,3 +479,22 @@ class NonlinearFeatures:
             "determinism": det,
             "laminarity": laminarity,
         }
+
+import pandas as pd
+import os
+if __name__ == "__main__":
+    ppg_signal = np.random.rand(1000)
+    fname = '20190109T151032.026+0700_1050000_1080000.csv'
+    PATH = 'D:\Workspace\Data\\24EIa\output\sample'
+    
+    ppg_signal = pd.read_csv(os.path.join(PATH, fname))['PLETH'].values
+    fs = 100
+    features = NonlinearFeatures(ppg_signal, fs)
+    sample_entropy = features.compute_sample_entropy()
+    approximate_entropy = features.compute_approximate_entropy()
+    fractal_dimension = features.compute_fractal_dimension()
+    lyapunov_exponent = features.compute_lyapunov_exponent()
+    dfa = features.compute_dfa()
+    poincare_features = features.compute_poincare_features()
+    recurrence_features = features.compute_recurrence_features()
+    print(f"Sample Entropy: {sample_entropy}, Approximate Entropy: {approximate_entropy}, Fractal Dimension: {fractal_dimension}, Lyapunov Exponent: {lyapunov_exponent}, DFA: {dfa}, Poincaré Features: {poincare_features}, Recurrence Features: {recurrence_features}")
