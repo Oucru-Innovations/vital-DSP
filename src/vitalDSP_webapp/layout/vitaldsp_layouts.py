@@ -1639,8 +1639,140 @@ def respiratory_layout():
 def features_layout():
     """Create the features page layout."""
     return html.Div([
-        html.H1("🎯 Feature Engineering", className="text-center mb-4"),
-        html.P("Feature engineering tools coming soon...", className="text-center text-muted")
+        # Header Section
+        html.Div([
+            html.H1("🎯 Feature Engineering", className="text-center mb-4"),
+            html.P("Comprehensive feature extraction and analysis using vitalDSP feature engineering modules", 
+                   className="text-center text-muted mb-4")
+        ]),
+        
+        # Configuration Section
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("⚙️ Analysis Configuration", className="mb-0"),
+                        html.Small("Configure feature extraction parameters", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Signal Type", className="form-label"),
+                                dcc.Dropdown(
+                                    id="features-signal-type",
+                                    options=[
+                                        {"label": "PPG Signal", "value": "ppg"},
+                                        {"label": "ECG Signal", "value": "ecg"},
+                                        {"label": "Both Signals", "value": "both"}
+                                    ],
+                                    value="ppg",
+                                    placeholder="Select signal type"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("Preprocessing Options", className="form-label"),
+                                dcc.Checklist(
+                                    id="features-preprocessing",
+                                    options=[
+                                        {"label": "Bandpass Filter", "value": "bandpass"},
+                                        {"label": "Denoising", "value": "denoising"},
+                                        {"label": "Baseline Correction", "value": "baseline"}
+                                    ],
+                                    value=["bandpass"],
+                                    inline=True
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        dbc.Button(
+                            "🚀 Analyze Features",
+                            id="features-analyze-btn",
+                            color="primary",
+                            size="lg",
+                            className="w-100"
+                        )
+                    ])
+                ], className="mb-4")
+            ], md=4),
+            
+            # Information Section
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("ℹ️ Available Features", className="mb-0"),
+                        html.Small("Feature engineering modules in vitalDSP", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        html.Div([
+                            html.H6("🧠 Autonomic Features", className="text-primary"),
+                            html.Ul([
+                                html.Li("Respiratory Rate Variability (RRV)"),
+                                html.Li("Respiratory Sinus Arrhythmia (RSA)"),
+                                html.Li("Fractal Dimension"),
+                                html.Li("Detrended Fluctuation Analysis (DFA)")
+                            ]),
+                            html.H6("📊 Morphology Features", className="text-success"),
+                            html.Ul([
+                                html.Li("Peak and Trough Detection"),
+                                html.Li("Peak Trend Analysis"),
+                                html.Li("Waveform Morphology Analysis")
+                            ]),
+                            html.H6("💡 Light-Based Features", className="text-warning"),
+                            html.Ul([
+                                html.Li("SpO2 Estimation"),
+                                html.Li("Perfusion Index (PI)"),
+                                html.Li("Respiratory Rate from PPG"),
+                                html.Li("Photoplethysmogram Ratio (PPR)")
+                            ]),
+                            html.H6("🔗 Synchronization Features", className="text-info"),
+                            html.Ul([
+                                html.Li("Pulse Transit Time (PTT)"),
+                                html.Li("Pulse Arrival Time (PAT)"),
+                                html.Li("Electromechanical Delay (EMD)"),
+                                html.Li("ECG-PPG Synchronization")
+                            ]),
+                            html.H6("❤️ ECG Features", className="text-danger"),
+                            html.Ul([
+                                html.Li("P-wave Duration"),
+                                html.Li("PR Interval"),
+                                html.Li("QRS Duration"),
+                                html.Li("ST Segment"),
+                                html.Li("QT Interval"),
+                                html.Li("Arrhythmia Detection")
+                            ])
+                        ])
+                    ])
+                ])
+            ], md=8)
+        ]),
+        
+        # Analysis Results Section
+        html.Div(id="features-analysis-results", className="mb-4"),
+        
+        # Visualization Section
+        dbc.Card([
+            dbc.CardHeader([
+                html.H4("📊 Feature Analysis Visualization", className="mb-0"),
+                html.Small("Comprehensive feature analysis plots and results", className="text-muted")
+            ]),
+            dbc.CardBody([
+                dcc.Loading(
+                    dcc.Graph(
+                        id="features-analysis-plots",
+                        style={"height": "800px"},
+                        config={
+                            "displayModeBar": True,
+                            "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],
+                            "displaylogo": False
+                        }
+                    ),
+                    type="default"
+                )
+            ])
+        ]),
+        
+        # Stores for data management
+        dcc.Store(id="store-features-data"),
+        dcc.Store(id="store-features-features")
     ])
 
 
