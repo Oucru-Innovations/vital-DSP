@@ -421,32 +421,193 @@ def frequency_layout():
                             ], className="mb-3")
                         ]),
                         
+                        # PSD Parameters
+                        html.Div(id="psd-params", children=[
+                            html.H6("Power Spectral Density Parameters", className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("PSD Window (s)", className="form-label"),
+                                    dcc.Input(
+                                        id="psd-window",
+                                        type="number",
+                                        value=2.0,
+                                        min=0.5,
+                                        max=10.0,
+                                        step=0.5,
+                                        placeholder="2.0",
+                                        style={"width": "100%"}
+                                    )
+                                ], md=4),
+                                dbc.Col([
+                                    html.Label("PSD Overlap (%)", className="form-label"),
+                                    dcc.Slider(
+                                        id="psd-overlap",
+                                        min=0,
+                                        max=95,
+                                        step=5,
+                                        value=50,
+                                        marks={i: str(i) for i in [0, 25, 50, 75, 95]},
+                                        className="mb-3"
+                                    )
+                                ], md=4),
+                                dbc.Col([
+                                    html.Label("Max Frequency (Hz)", className="form-label"),
+                                    dcc.Input(
+                                        id="psd-freq-max",
+                                        type="number",
+                                        value=25.0,
+                                        min=1.0,
+                                        max=100.0,
+                                        step=1.0,
+                                        placeholder="25.0",
+                                        style={"width": "100%"}
+                                    )
+                                ], md=4)
+                            ], className="mb-3"),
+                            
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Log Scale", className="form-label"),
+                                    dcc.Checklist(
+                                        id="psd-log-scale",
+                                        options=[{"label": "dB Scale", "value": "on"}],
+                                        value=["on"],
+                                        style={"marginTop": "8px"}
+                                    )
+                                ], md=4),
+                                dbc.Col([
+                                    html.Label("Normalize", className="form-label"),
+                                    dcc.Checklist(
+                                        id="psd-normalize",
+                                        options=[{"label": "Normalize PSD", "value": "on"}],
+                                        value=[],
+                                        style={"marginTop": "8px"}
+                                    )
+                                ], md=4),
+                                dbc.Col([
+                                    html.Label("Channel", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="psd-channel",
+                                        options=[
+                                            {"label": "Signal", "value": "signal"},
+                                            {"label": "RED", "value": "red"},
+                                            {"label": "IR", "value": "ir"},
+                                            {"label": "Waveform", "value": "waveform"}
+                                        ],
+                                        value="signal",
+                                        clearable=False,
+                                        style={"width": "100%"}
+                                    )
+                                ], md=4)
+                            ], className="mb-3")
+                        ], className="mb-4"),
+                        
                         # STFT Parameters
                         html.Div(id="stft-params", children=[
                             html.H6("STFT Parameters", className="mb-3"),
                             dbc.Row([
                                 dbc.Col([
                                     html.Label("Window Size", className="form-label"),
-                                    dcc.Slider(
+                                    dcc.Input(
                                         id="stft-window-size",
-                                        min=64,
-                                        max=512,
-                                        step=64,
+                                        type="number",
                                         value=256,
-                                        marks={i: str(i) for i in [64, 128, 256, 512]},
+                                        min=32,
+                                        max=2048,
+                                        step=32,
+                                        placeholder="256",
+                                        style={"width": "100%"}
+                                    )
+                                ], md=4),
+                                dbc.Col([
+                                    html.Label("Hop Size", className="form-label"),
+                                    dcc.Input(
+                                        id="stft-hop-size",
+                                        type="number",
+                                        value=128,
+                                        min=16,
+                                        max=1024,
+                                        step=16,
+                                        placeholder="128",
+                                        style={"width": "100%"}
+                                    )
+                                ], md=4),
+                                dbc.Col([
+                                    html.Label("Window Type", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="stft-window-type",
+                                        options=[
+                                            {"label": "Hann", "value": "hann"},
+                                            {"label": "Hamming", "value": "hamming"},
+                                            {"label": "Blackman", "value": "blackman"},
+                                            {"label": "Kaiser", "value": "kaiser"},
+                                            {"label": "Gaussian", "value": "gaussian"},
+                                            {"label": "Rectangular", "value": "rectangular"}
+                                        ],
+                                        value="hann",
+                                        clearable=False,
+                                        style={"width": "100%"}
+                                    )
+                                ], md=4)
+                            ], className="mb-3"),
+                            
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Overlap (%)", className="form-label"),
+                                    dcc.Slider(
+                                        id="stft-overlap",
+                                        min=0,
+                                        max=95,
+                                        step=5,
+                                        value=50,
+                                        marks={i: str(i) for i in [0, 25, 50, 75, 95]},
                                         className="mb-3"
                                     )
                                 ], md=6),
                                 dbc.Col([
-                                    html.Label("Hop Size", className="form-label"),
-                                    dcc.Slider(
-                                        id="stft-hop-size",
-                                        min=32,
-                                        max=256,
-                                        step=32,
-                                        value=128,
-                                        marks={i: str(i) for i in [32, 64, 128, 256]},
-                                        className="mb-3"
+                                    html.Label("Scaling", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="stft-scaling",
+                                        options=[
+                                            {"label": "Density", "value": "density"},
+                                            {"label": "Spectrum", "value": "spectrum"}
+                                        ],
+                                        value="density",
+                                        clearable=False,
+                                        style={"width": "100%"}
+                                    )
+                                ], md=6)
+                            ], className="mb-3"),
+                            
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Frequency Range (Hz)", className="form-label"),
+                                    dcc.Input(
+                                        id="stft-freq-max",
+                                        type="number",
+                                        value=50,
+                                        min=1,
+                                        max=200,
+                                        step=1,
+                                        placeholder="50",
+                                        style={"width": "100%"}
+                                    )
+                                ], md=6),
+                                dbc.Col([
+                                    html.Label("Colormap", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="stft-colormap",
+                                        options=[
+                                            {"label": "Viridis", "value": "Viridis"},
+                                            {"label": "Plasma", "value": "Plasma"},
+                                            {"label": "Inferno", "value": "Inferno"},
+                                            {"label": "Magma", "value": "Magma"},
+                                            {"label": "Jet", "value": "Jet"},
+                                            {"label": "Hot", "value": "Hot"}
+                                        ],
+                                        value="Viridis",
+                                        clearable=False,
+                                        style={"width": "100%"}
                                     )
                                 ], md=6)
                             ], className="mb-3")
@@ -577,17 +738,40 @@ def frequency_layout():
                     ], style={"overflow": "visible"})
                 ], className="mb-4"),
                 
-                # Time-Frequency Plot
+                # Power Spectral Density Plot
                 dbc.Card([
                     dbc.CardHeader([
-                        html.H4("⏰ Time-Frequency Analysis", className="mb-0"),
-                        html.Small("STFT or wavelet scalogram visualization", className="text-muted")
+                        html.H4("📊 Power Spectral Density", className="mb-0"),
+                        html.Small("Enhanced PSD analysis with configurable parameters", className="text-muted")
                     ]),
                     dbc.CardBody([
                         dcc.Loading(
                             dcc.Graph(
-                                id="freq-time-freq-plot",
-                                style={"height": "750px", "minHeight": "700px", "overflow": "visible"},
+                                id="freq-psd-plot",
+                                style={"height": "400px", "minHeight": "350px", "overflow": "visible"},
+                                config={
+                                    "displayModeBar": True,
+                                    "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],
+                                    "displaylogo": False,
+                                    "responsive": True
+                                }
+                            ),
+                            type="default"
+                        )
+                    ], style={"overflow": "visible"})
+                ], className="mb-4"),
+                
+                # Spectrogram Plot
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🎵 Spectrogram Analysis", className="mb-0"),
+                        html.Small("Time-frequency representation with advanced controls", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Loading(
+                            dcc.Graph(
+                                id="freq-spectrogram-plot",
+                                style={"height": "400px", "minHeight": "350px", "overflow": "visible"},
                                 config={
                                     "displayModeBar": True,
                                     "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],

@@ -23,7 +23,8 @@ def register_frequency_filtering_callbacks(app):
     # Frequency Domain Analysis Callback
     @app.callback(
         [Output("freq-main-plot", "figure"),
-         Output("freq-time-freq-plot", "figure"),
+         Output("freq-psd-plot", "figure"),
+         Output("freq-spectrogram-plot", "figure"),
          Output("freq-analysis-results", "children"),
          Output("freq-peak-analysis-table", "children"),
          Output("freq-band-power-table", "children"),
@@ -43,8 +44,21 @@ def register_frequency_filtering_callbacks(app):
          State("freq-analysis-type", "value"),
          State("fft-window-type", "value"),
          State("fft-n-points", "value"),
+         # PSD Parameters
+         State("psd-window", "value"),
+         State("psd-overlap", "value"),
+         State("psd-freq-max", "value"),
+         State("psd-log-scale", "value"),
+         State("psd-normalize", "value"),
+         State("psd-channel", "value"),
+         # STFT Parameters
          State("stft-window-size", "value"),
          State("stft-hop-size", "value"),
+         State("stft-window-type", "value"),
+         State("stft-overlap", "value"),
+         State("stft-scaling", "value"),
+         State("stft-freq-max", "value"),
+         State("stft-colormap", "value"),
          State("wavelet-type", "value"),
          State("wavelet-levels", "value"),
          State("freq-min", "value"),
@@ -52,8 +66,12 @@ def register_frequency_filtering_callbacks(app):
          State("freq-analysis-options", "value")]
     )
     def frequency_domain_callback(pathname, n_clicks, slider_value, nudge_m10, nudge_m1, nudge_p1, nudge_p10,
-                                start_time, end_time, analysis_type, fft_window, fft_n_points, stft_window_size,
-                                stft_hop_size, wavelet_type, wavelet_levels, freq_min, freq_max, analysis_options):
+                                start_time, end_time, analysis_type, fft_window, fft_n_points,
+                                # PSD parameters
+                                psd_window, psd_overlap, psd_freq_max, psd_log_scale, psd_normalize, psd_channel,
+                                # STFT parameters
+                                stft_window_size, stft_hop_size, stft_window_type, stft_overlap, stft_scaling,
+                                stft_freq_max, stft_colormap, wavelet_type, wavelet_levels, freq_min, freq_max, analysis_options):
         """Unified callback for frequency domain analysis."""
         ctx = callback_context
         
@@ -68,7 +86,8 @@ def register_frequency_filtering_callbacks(app):
         # Only run this when we're on the frequency domain page
         if pathname != "/frequency":
             logger.info("Not on frequency page, returning empty figures")
-            return create_empty_figure(), create_empty_figure(), "Navigate to Frequency page", create_empty_figure(), None, None
+            empty_figs = [create_empty_figure() for _ in range(3)]
+            return empty_figs + ["Navigate to Frequency page", create_empty_figure(), None, None, None, None, None]
         
         # If this is the first time loading the page (no button clicks), show a message
         if not ctx.triggered or ctx.triggered[0]["prop_id"].split(".")[0] == "url":
@@ -90,7 +109,8 @@ def register_frequency_filtering_callbacks(app):
             
             if not all_data:
                 logger.warning("No data found in service")
-                return create_empty_figure(), create_empty_figure(), "No data available. Please upload and process data first.", create_empty_figure(), None, None
+                empty_figs = [create_empty_figure() for _ in range(3)]
+                return empty_figs + ["No data available. Please upload and process data first.", create_empty_figure(), None, None, None, None, None]
             
             # Get the most recent data entry
             latest_data_id = list(all_data.keys())[-1]
@@ -99,11 +119,13 @@ def register_frequency_filtering_callbacks(app):
             # Get column mapping
             column_mapping = data_service.get_column_mapping(latest_data_id)
             if not column_mapping:
-                return create_empty_figure(), create_empty_figure(), "Please process your data on the Upload page first", create_empty_figure(), None, None
+                empty_figs = [create_empty_figure() for _ in range(3)]
+                return empty_figs + ["Please process your data on the Upload page first", create_empty_figure(), None, None, None, None, None]
                 
             df = data_service.get_data(latest_data_id)
             if df is None or df.empty:
-                return create_empty_figure(), create_empty_figure(), "Data is empty or corrupted.", create_empty_figure(), None, None
+                empty_figs = [create_empty_figure() for _ in range(3)]
+                return empty_figs + ["Data is empty or corrupted.", create_empty_figure(), None, None, None, None, None]
             
             # Get sampling frequency
             sampling_freq = latest_data.get('info', {}).get('sampling_freq', 1000)
@@ -145,16 +167,12 @@ def register_frequency_filtering_callbacks(app):
             # Perform frequency domain analysis based on selected type
             if analysis_type == "fft":
                 main_plot = create_fft_plot(signal_data, sampling_freq, fft_window, fft_n_points, freq_min, freq_max)
-                time_freq_plot = create_empty_figure()
             elif analysis_type == "stft":
                 main_plot = create_stft_plot(signal_data, sampling_freq, stft_window_size, stft_hop_size, freq_min, freq_max)
-                time_freq_plot = create_stft_spectrogram(signal_data, sampling_freq, stft_window_size, stft_hop_size)
             elif analysis_type == "wavelet":
                 main_plot = create_wavelet_plot(signal_data, sampling_freq, wavelet_type, wavelet_levels, freq_min, freq_max)
-                time_freq_plot = create_wavelet_scalogram(signal_data, sampling_freq, wavelet_type, wavelet_levels)
             else:
                 main_plot = create_fft_plot(signal_data, sampling_freq, fft_window, fft_n_points, freq_min, freq_max)
-                time_freq_plot = create_empty_figure()
             
             # Generate analysis results
             analysis_results = generate_frequency_analysis_results(signal_data, sampling_freq, analysis_type, analysis_options)
@@ -186,14 +204,36 @@ def register_frequency_filtering_callbacks(app):
                 }
             }
             
-            return main_plot, time_freq_plot, analysis_results, peak_table, band_power_table, stability_table, harmonics_table, frequency_data, time_freq_data
+            # Debug logging for PSD parameters
+            logger.info(f"PSD Callback - Window: {psd_window}, Overlap: {psd_overlap}, Freq max: {psd_freq_max}")
+            logger.info(f"PSD Callback - Log scale: {psd_log_scale}, Normalize: {psd_normalize}, Channel: {psd_channel}")
+            
+            # Set default values for PSD parameters if they're None
+            psd_window = psd_window or 2.0
+            psd_overlap = psd_overlap or 50
+            psd_freq_max = psd_freq_max or 25.0
+            psd_log_scale = psd_log_scale or []
+            psd_normalize = psd_normalize or []
+            psd_channel = psd_channel or "signal"
+            
+            # Create PSD plot
+            psd_plot = create_enhanced_psd_plot(signal_data, sampling_freq, psd_window, psd_overlap/100, 
+                                               psd_freq_max, psd_log_scale, psd_normalize, psd_channel, column_mapping)
+            
+            # Create spectrogram plot
+            spectrogram_plot = create_enhanced_spectrogram_plot(signal_data, sampling_freq, stft_window_size, 
+                                                              stft_overlap/100, stft_freq_max, stft_colormap, 
+                                                              stft_scaling, stft_window_type)
+            
+            return main_plot, psd_plot, spectrogram_plot, analysis_results, peak_table, band_power_table, stability_table, harmonics_table, frequency_data, time_freq_data
             
         except Exception as e:
             logger.error(f"Error in frequency domain callback: {e}")
             import traceback
             traceback.print_exc()
             error_msg = f"Error in analysis: {str(e)}"
-            return create_empty_figure(), create_empty_figure(), error_msg, error_msg, error_msg, error_msg, error_msg, None, None
+            empty_figs = [create_empty_figure() for _ in range(3)]
+            return empty_figs + [error_msg, error_msg, error_msg, error_msg, error_msg, None, None]
     
     # Advanced Filtering Callback
     @app.callback(
@@ -3062,3 +3102,168 @@ def create_frequency_harmonics_table(signal_data, sampling_freq, analysis_type, 
             html.H6("🎵 Harmonic Analysis", className="text-muted"),
             html.P(f"Error creating harmonic analysis: {str(e)}", className="text-danger")
         ])
+
+
+def create_enhanced_psd_plot(signal_data, sampling_freq, window_sec, overlap, freq_max, log_scale, normalize, channel, column_mapping):
+    """Create enhanced PSD plot for frequency domain analysis."""
+    try:
+        if signal_data is None or len(signal_data) == 0:
+            return create_empty_figure()
+        
+        # Validate parameters
+        window_sec = window_sec or 2.0
+        overlap = overlap or 0.5
+        freq_max = freq_max or 25.0
+        
+        # For now, use the main signal_data since we don't have access to the full dataframe here
+        # In a future enhancement, we could pass the full dataframe and extract specific channels
+        signal = signal_data  # Use the main signal data
+        
+        # Validate signal data
+        if len(signal) < 100:
+            logger.warning(f"PSD Plot - Signal too short: {len(signal)} samples")
+            return create_empty_figure()
+        
+        # Debug logging
+        logger.info(f"PSD Plot - Signal length: {len(signal)}, Sampling freq: {sampling_freq}")
+        logger.info(f"PSD Plot - Window: {window_sec}s, Overlap: {overlap}, Freq max: {freq_max}")
+        logger.info(f"PSD Plot - Log scale: {log_scale}, Normalize: {normalize}, Channel: {channel}")
+        
+        # Compute enhanced PSD
+        from scipy import signal as scipy_signal
+        
+        # Calculate window size and overlap
+        nperseg = int(window_sec * sampling_freq)
+        noverlap = int(overlap * nperseg)
+        
+        # Ensure minimum window size
+        nperseg = max(64, min(nperseg, len(signal)//4))
+        
+        # Compute PSD with Welch method
+        freqs, psd = scipy_signal.welch(signal, fs=sampling_freq, nperseg=nperseg, noverlap=noverlap)
+        
+        # Limit frequency range
+        freq_mask = freqs <= freq_max
+        freqs = freqs[freq_mask]
+        psd = psd[freq_mask]
+        
+        # Apply normalization if requested
+        if normalize and len(normalize) > 0:
+            psd = psd / np.max(psd)
+        
+        # Apply log scale if requested
+        if log_scale and len(log_scale) > 0:
+            psd = 10 * np.log10(psd + 1e-10)
+        
+        # Create plot
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=freqs,
+            y=psd,
+            mode='lines',
+            name=f'PSD ({channel.upper()})',
+            line=dict(color='#e74c3c', width=2)
+        ))
+        
+        y_title = "Power Spectral Density (dB)" if log_scale else "Power Spectral Density"
+        title = f"Enhanced PSD Analysis - {channel.upper()} (Window: {window_sec}s, Overlap: {overlap*100:.0f}%)"
+        
+        fig.update_layout(
+            template="plotly_white",
+            title=title,
+            xaxis_title="Frequency (Hz)",
+            yaxis_title=y_title,
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40),
+            showlegend=True
+        )
+        
+        # Limit x-axis to frequency range
+        fig.update_xaxes(range=[0, freq_max])
+        
+        return fig
+        
+    except ImportError:
+        logger.warning("SciPy not available, returning empty PSD plot")
+        return create_empty_figure()
+    except Exception as e:
+        logger.error(f"Error creating enhanced PSD plot: {e}")
+        return create_empty_figure()
+
+
+def create_enhanced_spectrogram_plot(signal_data, sampling_freq, window_size, overlap, freq_max, colormap, scaling, window_type):
+    """Create enhanced spectrogram plot for frequency domain analysis."""
+    try:
+        if signal_data is None or len(signal_data) == 0:
+            return create_empty_figure()
+        
+        # Validate parameters
+        window_size = window_size or 256
+        overlap = overlap or 0.5
+        freq_max = freq_max or 50
+        colormap = colormap or "Viridis"
+        scaling = scaling or "density"
+        
+        # Compute spectrogram
+        from scipy import signal as scipy_signal
+        
+        # Calculate overlap in samples
+        noverlap = int(overlap * window_size)
+        
+        # Ensure minimum window size
+        window_size = max(64, min(window_size, len(signal_data)//4))
+        
+        # Apply window function if specified
+        if window_type == "hann":
+            window = scipy_signal.windows.hann(window_size)
+        elif window_type == "hamming":
+            window = scipy_signal.windows.hamming(window_size)
+        elif window_type == "blackman":
+            window = scipy_signal.windows.blackman(window_size)
+        elif window_type == "kaiser":
+            window = scipy_signal.windows.kaiser(window_size, beta=14)
+        elif window_type == "gaussian":
+            window = scipy_signal.windows.gaussian(window_size, std=window_size/8)
+        else:
+            window = None  # Rectangular window
+        
+        freqs, times, Sxx = scipy_signal.spectrogram(
+            signal_data, fs=sampling_freq, nperseg=window_size, noverlap=noverlap,
+            scaling=scaling, window=window
+        )
+        
+        # Limit frequency range
+        freq_mask = freqs <= freq_max
+        freqs = freqs[freq_mask]
+        Sxx = Sxx[freq_mask, :]
+        
+        # Convert to dB
+        Sxx_db = 10 * np.log10(Sxx + 1e-10)
+        
+        # Create plot
+        fig = go.Figure(data=go.Heatmap(
+            z=Sxx_db,
+            x=times,
+            y=freqs,
+            colorscale=colormap,
+            zmin=Sxx_db.min(),
+            zmax=Sxx_db.max()
+        ))
+        
+        fig.update_layout(
+            template="plotly_white",
+            title=f"Enhanced Spectrogram - {window_type.title()} Window (Window: {window_size}, Overlap: {overlap*100:.0f}%)",
+            xaxis_title="Time (s)",
+            yaxis_title="Frequency (Hz)",
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
+        
+        return fig
+        
+    except ImportError:
+        logger.warning("SciPy not available, returning empty spectrogram plot")
+        return create_empty_figure()
+    except Exception as e:
+        logger.error(f"Error creating enhanced spectrogram plot: {e}")
+        return create_empty_figure()

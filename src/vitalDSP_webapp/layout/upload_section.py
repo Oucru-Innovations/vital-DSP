@@ -413,8 +413,8 @@ def create_data_preview(data_info):
                 # Raw Signals Tab
                 dbc.Tab([
                     html.Div(id="signal-preview-plot-container", children=[
-                        dcc.Graph(
-                            id="signal-preview-plot",
+            dcc.Graph(
+                id="signal-preview-plot",
                             figure=data_info.get("preview_plot", {}),
                             style={"height": "600px"},
                             config={"displayModeBar": True}
@@ -433,74 +433,234 @@ def create_data_preview(data_info):
                     ])
                 ], label="Filtered Signals", tab_id="filtered-signals"),
                 
-                # Frequency Domain Tab with Spectrogram
+                # Frequency Domain Tab with Enhanced PSD & Spectrogram Analysis
                 dbc.Tab([
                     html.Div([
+                        # PSD (Power Spectral Density) Controls
+                        dbc.Card([
+                            dbc.CardHeader([
+                                html.H6("📊 Power Spectral Density (PSD) Controls", className="mb-0")
+                            ]),
+                            dbc.CardBody([
+                                dbc.Row([
+                                    dbc.Col([
+                                        html.Label("PSD Window (s)", className="form-label"),
+                                        dcc.Input(
+                                            id="psd-window",
+                                            type="number",
+                                            value=2.0,
+                                            min=0.5,
+                                            max=10.0,
+                                            step=0.5,
+                                            style={"width": "100%"}
+                                        )
+                                    ], md=3),
+                                    dbc.Col([
+                                        html.Label("PSD Overlap (0-0.95)", className="form-label"),
+                                        dcc.Input(
+                                            id="psd-overlap",
+                                            type="number",
+                                            value=0.5,
+                                            min=0.0,
+                                            max=0.95,
+                                            step=0.05,
+                                            style={"width": "100%"}
+                                        )
+                                    ], md=3),
+                                    dbc.Col([
+                                        html.Label("Max Frequency (Hz)", className="form-label"),
+                                        dcc.Input(
+                                            id="psd-freq-max",
+                                            type="number",
+                                            value=25.0,
+                                            min=1.0,
+                                            max=100.0,
+                                            step=1.0,
+                                            style={"width": "100%"}
+                                        )
+                                    ], md=3),
+                                    dbc.Col([
+                                        html.Label("Log Scale", className="form-label"),
+                                        dcc.Checklist(
+                                            id="psd-log-scale",
+                                            options=[{"label": "dB Scale", "value": "on"}],
+                                            value=["on"],
+                                            style={"marginTop": "8px"}
+                                        )
+                                    ], md=3)
+                                ], className="mb-3"),
+                                
+                                dbc.Row([
+                                    dbc.Col([
+                                        html.Label("Show PSD", className="form-label"),
+                                        dcc.Checklist(
+                                            id="show-psd",
+                                            options=[{"label": "Enable PSD Analysis", "value": "on"}],
+                                            value=["on"],
+                                            style={"marginTop": "8px"}
+                                        )
+                                    ], md=4),
+                                    dbc.Col([
+                                        html.Label("Channel Selection", className="form-label"),
+                                        dcc.Checklist(
+                                            id="psd-channels",
+                                            options=[
+                                                {"label": "RED Channel", "value": "red"},
+                                                {"label": "IR Channel", "value": "ir"},
+                                                {"label": "Waveform", "value": "waveform"}
+                                            ],
+                                            value=["red", "ir", "waveform"],
+                                            style={"marginTop": "8px"}
+                                        )
+                                    ], md=4),
+                                    dbc.Col([
+                                        html.Label("Normalize", className="form-label"),
+                                        dcc.Checklist(
+                                            id="psd-normalize",
+                                            options=[{"label": "Normalize PSD", "value": "on"}],
+                                            value=[],
+                                            style={"marginTop": "8px"}
+                                        )
+                                    ], md=4)
+                                ])
+                            ])
+                        ], className="mb-4"),
+                        
                         # Spectrogram Controls
+                        dbc.Card([
+                            dbc.CardHeader([
+                                html.H6("🎵 Spectrogram Controls", className="mb-0")
+                            ]),
+                            dbc.CardBody([
+                                dbc.Row([
+                                    dbc.Col([
+                                        html.Label("Spectrogram Window (s)", className="form-label"),
+                                        dcc.Input(
+                                            id="spectrogram-window",
+                                            type="number",
+                                            value=2.0,
+                                            min=0.5,
+                                            max=10.0,
+                                            step=0.5,
+                                            style={"width": "100%"}
+                                        )
+                                    ], md=3),
+                                    dbc.Col([
+                                        html.Label("Overlap (0-0.95)", className="form-label"),
+                                        dcc.Input(
+                                            id="spectrogram-overlap",
+                                            type="number",
+                                            value=0.5,
+                                            min=0.0,
+                                            max=0.95,
+                                            step=0.05,
+                                            style={"width": "100%"}
+                                        )
+                                    ], md=3),
+                                    dbc.Col([
+                                        html.Label("Frequency Range (Hz)", className="form-label"),
+                                        dcc.Input(
+                                            id="spectrogram-freq-max",
+                                            type="number",
+                                            value=20.0,
+                                            min=1.0,
+                                            max=50.0,
+                                            step=1.0,
+                                            style={"width": "100%"}
+                                        )
+                                    ], md=3),
+                                    dbc.Col([
+                                        html.Label("Show Spectrogram", className="form-label"),
+                                        dcc.Checklist(
+                                            id="show-spectrogram",
+                                            options=[{"label": "Enable", "value": "on"}],
+                                            value=["on"],
+                                            style={"marginTop": "8px"}
+                                        )
+                                    ], md=3)
+                                ], className="mb-3"),
+                                
+                                dbc.Row([
+                                    dbc.Col([
+                                        html.Label("Colormap", className="form-label"),
+                                        dcc.Dropdown(
+                                            id="spectrogram-colormap",
+                                            options=[
+                                                {"label": "Viridis", "value": "Viridis"},
+                                                {"label": "Plasma", "value": "Plasma"},
+                                                {"label": "Inferno", "value": "Inferno"},
+                                                {"label": "Magma", "value": "Magma"},
+                                                {"label": "Jet", "value": "Jet"},
+                                                {"label": "Hot", "value": "Hot"}
+                                            ],
+                                            value="Viridis",
+                                            clearable=False,
+                                            style={"width": "100%"}
+                                        )
+                                    ], md=4),
+                                    dbc.Col([
+                                        html.Label("Scaling", className="form-label"),
+                                        dcc.Dropdown(
+                                            id="spectrogram-scaling",
+                                            options=[
+                                                {"label": "Density", "value": "density"},
+                                                {"label": "Spectrum", "value": "spectrum"}
+                                            ],
+                                            value="density",
+                                            clearable=False,
+                                            style={"width": "100%"}
+                                        )
+                                    ], md=4),
+                                    dbc.Col([
+                                        html.Label("Channel", className="form-label"),
+                                        dcc.Dropdown(
+                                            id="spectrogram-channel",
+                                            options=[
+                                                {"label": "IR Channel (Recommended)", "value": "ir"},
+                                                {"label": "RED Channel", "value": "red"},
+                                                {"label": "Waveform", "value": "waveform"}
+                                            ],
+                                            value="ir",
+                                            clearable=False,
+                                            style={"width": "100%"}
+                                        )
+                                    ], md=4)
+                                ])
+                            ])
+                        ], className="mb-4"),
+                        
+                        # Analysis Results
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Spectrogram Window (s)", className="form-label"),
-                                dcc.Input(
-                                    id="spectrogram-window",
-                                    type="number",
-                                    value=2.0,
-                                    min=0.5,
-                                    max=10.0,
-                                    step=0.5,
-                                    style={"width": "100%"}
-                                )
-                            ], md=3),
+                                # Frequency Domain Plot (PSD)
+                                html.Div(id="frequency-domain-plot-container", children=[
+                                    dcc.Graph(
+                                        id="frequency-domain-plot",
+                                        style={"height": "400px"},
+                                        config={"displayModeBar": True}
+                                    )
+                                ])
+                            ], md=6),
                             dbc.Col([
-                                html.Label("Overlap (0-0.95)", className="form-label"),
-                                dcc.Input(
-                                    id="spectrogram-overlap",
-                                    type="number",
-                                    value=0.5,
-                                    min=0.0,
-                                    max=0.95,
-                                    step=0.05,
-                                    style={"width": "100%"}
-                                )
-                            ], md=3),
-                            dbc.Col([
-                                html.Label("Show Spectrogram", className="form-label"),
-                                dcc.Checklist(
-                                    id="show-spectrogram",
-                                    options=[{"label": "Enable", "value": "on"}],
-                                    value=["on"],
-                                    style={"marginTop": "8px"}
-                                )
-                            ], md=3),
-                            dbc.Col([
-                                html.Label("Frequency Range", className="form-label"),
-                                dcc.Input(
-                                    id="spectrogram-freq-max",
-                                    type="number",
-                                    value=20.0,
-                                    min=1.0,
-                                    max=50.0,
-                                    step=1.0,
-                                    style={"width": "100%"}
-                                )
-                            ], md=3)
+                                # Spectrogram Plot
+                                html.Div(id="spectrogram-plot-container", children=[
+                                    dcc.Graph(
+                                        id="spectrogram-plot",
+                                        style={"height": "400px"},
+                                        config={"displayModeBar": True}
+                                    )
+                                ])
+                            ], md=6)
                         ], className="mb-3"),
                         
-                        # Frequency Domain Plot
-                        html.Div(id="frequency-domain-plot-container", children=[
-                            dcc.Graph(
-                                id="frequency-domain-plot",
-                                style={"height": "400px"},
-                                config={"displayModeBar": True}
-                            )
-                        ]),
-                        
-                        # Spectrogram Plot
-                        html.Div(id="spectrogram-plot-container", children=[
-                            dcc.Graph(
-                                id="spectrogram-plot",
-                                style={"height": "400px"},
-                                config={"displayModeBar": True}
-                            )
+                        # Frequency Analysis Summary
+                        dbc.Card([
+                            dbc.CardHeader([
+                                html.H6("📈 Frequency Analysis Summary", className="mb-0")
+                            ]),
+                            dbc.CardBody([
+                                html.Div(id="frequency-analysis-summary", className="d-flex flex-wrap gap-2")
+                            ])
                         ])
                     ])
                 ], label="Frequency Domain", tab_id="frequency-domain"),

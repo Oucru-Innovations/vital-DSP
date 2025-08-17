@@ -42,10 +42,23 @@ def register_preview_callbacks(app):
          Input("preview-filter-order", "value"),
          Input("preview-filter-low", "value"),
          Input("preview-filter-high", "value"),
+         # PSD Controls
+         Input("psd-window", "value"),
+         Input("psd-overlap", "value"),
+         Input("psd-freq-max", "value"),
+         Input("psd-log-scale", "value"),
+         Input("show-psd", "value"),
+         Input("psd-channels", "value"),
+         Input("psd-normalize", "value"),
+         # Spectrogram Controls
          Input("spectrogram-window", "value"),
          Input("spectrogram-overlap", "value"),
          Input("show-spectrogram", "value"),
          Input("spectrogram-freq-max", "value"),
+         Input("spectrogram-colormap", "value"),
+         Input("spectrogram-scaling", "value"),
+         Input("spectrogram-channel", "value"),
+         # HR Analysis Controls
          Input("hr-source", "value"),
          Input("hr-min", "value"),
          Input("hr-max", "value"),
@@ -61,8 +74,15 @@ def register_preview_callbacks(app):
          State("waveform-column", "value")]
     )
     def update_preview_plots(n_clicks, filter_family, filter_response, filter_order, 
-                           filter_low, filter_high, spec_window, spec_overlap, show_spec,
-                           spec_freq_max, hr_source, hr_min, hr_max, peak_prom,
+                           filter_low, filter_high, 
+                           # PSD parameters
+                           psd_window, psd_overlap, psd_freq_max, psd_log_scale, 
+                           show_psd, psd_channels, psd_normalize,
+                           # Spectrogram parameters
+                           spec_window, spec_overlap, show_spec, spec_freq_max,
+                           spec_colormap, spec_scaling, spec_channel,
+                           # HR parameters
+                           hr_source, hr_min, hr_max, peak_prom,
                            data_store, config_store, start_row, end_row, time_col, 
                            signal_col, red_col, ir_col, waveform_col):
         """Update all preview plots and analysis based on settings and data range."""
@@ -107,10 +127,18 @@ def register_preview_callbacks(app):
                                                       filter_family, filter_response, filter_order,
                                                       filter_low, filter_high, sampling_freq)
             
-            freq_fig = create_frequency_domain_plot(window_df, column_mapping, sampling_freq)
+            # Enhanced frequency domain plot with PSD controls
+            freq_fig = create_enhanced_frequency_domain_plot(
+                window_df, column_mapping, sampling_freq,
+                psd_window, psd_overlap, psd_freq_max, psd_log_scale,
+                show_psd, psd_channels, psd_normalize
+            ) if show_psd else create_empty_figure()
             
-            spec_fig = create_spectrogram_plot(window_df, column_mapping, sampling_freq,
-                                             spec_window, spec_overlap, spec_freq_max) if show_spec else create_empty_figure()
+            # Enhanced spectrogram with advanced controls
+            spec_fig = create_enhanced_spectrogram_plot(
+                window_df, column_mapping, sampling_freq,
+                spec_window, spec_overlap, spec_freq_max, spec_colormap, spec_scaling, spec_channel
+            ) if show_spec else create_empty_figure()
             
             # Dual-source analytics
             rtrend_fig = create_r_trend_spo2_plot(window_df, column_mapping, sampling_freq,
@@ -178,6 +206,69 @@ def register_preview_callbacks(app):
         marks = {i: str(i) for i in range(0, max_rows + 1, step)}
         
         return 0, max_rows, [0, min(1000, max_rows)], marks
+    
+    @app.callback(
+        Output("frequency-analysis-summary", "children"),
+        [Input("psd-window", "value"),
+         Input("psd-overlap", "value"),
+         Input("psd-freq-max", "value"),
+         Input("psd-log-scale", "value"),
+         Input("show-psd", "value"),
+         Input("psd-channels", "value"),
+         Input("psd-normalize", "value"),
+         Input("spectrogram-window", "value"),
+         Input("spectrogram-overlap", "value"),
+         Input("spectrogram-freq-max", "value"),
+         Input("spectrogram-channel", "value")],
+        [State("store-uploaded-data", "data"),
+         State("store-data-config", "data")]
+    )
+    def update_frequency_analysis_summary(psd_window, psd_overlap, psd_freq_max, psd_log_scale,
+                                        show_psd, psd_channels, psd_normalize,
+                                        spec_window, spec_overlap, spec_freq_max, spec_channel,
+                                        data_store, config_store):
+        """Update frequency analysis summary with current parameters."""
+        try:
+            if not data_store or not config_store:
+                return []
+            
+            df = pd.DataFrame(data_store.get("dataframe", []))
+            if df.empty:
+                return []
+            
+            sampling_freq = config_store.get("sampling_freq", 100)
+            
+            summary = []
+            
+            # PSD Analysis Summary
+            if show_psd:
+                summary.append(html.Span(f"PSD: {psd_window or 2.0}s window", className="badge bg-primary"))
+                summary.append(html.Span(f"Overlap: {(psd_overlap or 0.5)*100:.0f}%", className="badge bg-info"))
+                summary.append(html.Span(f"Freq: 0-{psd_freq_max or 25.0} Hz", className="badge bg-secondary"))
+                if psd_log_scale:
+                    summary.append(html.Span("dB Scale", className="badge bg-success"))
+                if psd_normalize:
+                    summary.append(html.Span("Normalized", className="badge bg-warning"))
+                if psd_channels:
+                    summary.append(html.Span(f"Channels: {len(psd_channels)}", className="badge bg-dark"))
+            
+            # Spectrogram Summary
+            if spec_window and spec_overlap and spec_freq_max:
+                summary.append(html.Span(f"Spec: {spec_window}s window", className="badge bg-primary"))
+                summary.append(html.Span(f"Overlap: {spec_overlap*100:.0f}%", className="badge bg-info"))
+                summary.append(html.Span(f"Range: 0-{spec_freq_max} Hz", className="badge bg-secondary"))
+                if spec_channel:
+                    summary.append(html.Span(f"Channel: {spec_channel.upper()}", className="badge bg-success"))
+            
+            # Signal Info
+            summary.append(html.Span(f"Fs: {sampling_freq} Hz", className="badge bg-info"))
+            summary.append(html.Span(f"Data: {len(df):,} samples", className="badge bg-secondary"))
+            
+            return summary
+            
+        except Exception as e:
+            logger.error(f"Error updating frequency analysis summary: {e}")
+            return [html.Span("Error generating summary", className="badge bg-danger")]
 
 
 def create_filtered_signals_plot(df, column_mapping, filter_family, filter_response, 
@@ -321,6 +412,173 @@ def create_frequency_domain_plot(df, column_mapping, sampling_freq):
         return create_empty_figure()
 
 
+def create_enhanced_frequency_domain_plot(df, column_mapping, sampling_freq, window_sec, 
+                                        overlap, freq_max, log_scale, show_psd, 
+                                        channels, normalize):
+    """Create enhanced frequency domain plot with configurable PSD parameters."""
+    try:
+        if df is None or df.empty or not show_psd:
+            return create_empty_figure()
+        
+        fig = go.Figure()
+        
+        # Validate parameters
+        window_sec = window_sec or 2.0
+        overlap = overlap or 0.5
+        freq_max = freq_max or 25.0
+        
+        # Add PSD for selected channels
+        if channels and 'red' in channels and column_mapping.get('red') and column_mapping['red'] in df.columns:
+            red_signal = df[column_mapping['red']].values
+            freqs, psd_red = compute_enhanced_psd(red_signal, sampling_freq, window_sec, overlap, freq_max)
+            
+            if normalize:
+                psd_red = psd_red / np.max(psd_red)
+            
+            if log_scale:
+                psd_red = 10 * np.log10(psd_red + 1e-10)
+            
+            fig.add_trace(go.Scatter(
+                x=freqs,
+                y=psd_red,
+                mode='lines',
+                name=f"RED {column_mapping['red']}",
+                line=dict(color='#e74c3c', width=2)
+            ))
+        
+        if channels and 'ir' in channels and column_mapping.get('ir') and column_mapping['ir'] in df.columns:
+            ir_signal = df[column_mapping['ir']].values
+            freqs, psd_ir = compute_enhanced_psd(ir_signal, sampling_freq, window_sec, overlap, freq_max)
+            
+            if normalize:
+                psd_ir = psd_ir / np.max(psd_ir)
+            
+            if log_scale:
+                psd_ir = 10 * np.log10(psd_ir + 1e-10)
+            
+            fig.add_trace(go.Scatter(
+                x=freqs,
+                y=psd_ir,
+                mode='lines',
+                name=f"IR {column_mapping['ir']}",
+                line=dict(color='#f39c12', width=2)
+            ))
+        
+        if channels and 'waveform' in channels and column_mapping.get('waveform') and column_mapping['waveform'] in df.columns:
+            waveform_signal = df[column_mapping['waveform']].values
+            freqs, psd_waveform = compute_enhanced_psd(waveform_signal, sampling_freq, window_sec, overlap, freq_max)
+            
+            if normalize:
+                psd_waveform = psd_waveform / np.max(psd_waveform)
+            
+            if log_scale:
+                psd_waveform = 10 * np.log10(psd_waveform + 1e-10)
+            
+            fig.add_trace(go.Scatter(
+                x=freqs,
+                y=psd_waveform,
+                mode='lines',
+                name=f"Waveform {column_mapping['waveform']}",
+                line=dict(color='#3498db', width=2)
+            ))
+        
+        y_title = "Power Spectral Density (dB)" if log_scale else "Power Spectral Density"
+        title = f"Enhanced PSD Analysis (Window: {window_sec}s, Overlap: {overlap*100:.0f}%)"
+        
+        fig.update_layout(
+            template="plotly_white",
+            title=title,
+            xaxis_title="Frequency (Hz)",
+            yaxis_title=y_title,
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40),
+            showlegend=True
+        )
+        
+        # Limit x-axis to frequency range
+        fig.update_xaxes(range=[0, freq_max])
+        
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error creating enhanced frequency domain plot: {e}")
+        return create_empty_figure()
+
+
+def create_enhanced_spectrogram_plot(df, column_mapping, sampling_freq, window_sec, 
+                                   overlap, freq_max, colormap, scaling, channel):
+    """Create enhanced spectrogram plot with advanced controls."""
+    try:
+        if df is None or df.empty:
+            return create_empty_figure()
+        
+        # Select channel based on preference
+        signal_col = None
+        if channel == 'ir' and column_mapping.get('ir') and column_mapping['ir'] in df.columns:
+            signal_col = column_mapping['ir']
+        elif channel == 'red' and column_mapping.get('red') and column_mapping['red'] in df.columns:
+            signal_col = column_mapping['red']
+        elif channel == 'waveform' and column_mapping.get('waveform') and column_mapping['waveform'] in df.columns:
+            signal_col = column_mapping['waveform']
+        else:
+            # Fallback to any available channel
+            signal_col = column_mapping.get('ir') or column_mapping.get('red') or column_mapping.get('waveform')
+        
+        if not signal_col or signal_col not in df.columns:
+            return create_empty_figure()
+        
+        signal = df[signal_col].values
+        
+        # Compute spectrogram
+        from scipy import signal as scipy_signal
+        
+        nperseg = int(window_sec * sampling_freq)
+        noverlap = int(overlap * nperseg)
+        
+        # Ensure minimum window size
+        nperseg = max(64, min(nperseg, len(signal)//4))
+        
+        freqs, times, Sxx = scipy_signal.spectrogram(
+            signal, fs=sampling_freq, nperseg=nperseg, noverlap=noverlap,
+            scaling=scaling
+        )
+        
+        # Limit frequency range
+        freq_mask = freqs <= freq_max
+        freqs = freqs[freq_mask]
+        Sxx = Sxx[freq_mask, :]
+        
+        # Convert to dB
+        Sxx_db = 10 * np.log10(Sxx + 1e-10)
+        
+        fig = go.Figure(data=go.Heatmap(
+            z=Sxx_db,
+            x=times,
+            y=freqs,
+            colorscale=colormap,
+            zmin=Sxx_db.min(),
+            zmax=Sxx_db.max()
+        ))
+        
+        fig.update_layout(
+            template="plotly_white",
+            title=f"Enhanced Spectrogram - {signal_col} (Window: {window_sec}s, Overlap: {overlap*100:.0f}%)",
+            xaxis_title="Time (s)",
+            yaxis_title="Frequency (Hz)",
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
+        
+        return fig
+        
+    except ImportError:
+        logger.warning("SciPy not available, returning empty spectrogram")
+        return create_empty_figure()
+    except Exception as e:
+        logger.error(f"Error creating enhanced spectrogram: {e}")
+        return create_empty_figure()
+
+
 def generate_preview_insights(df, column_mapping, sampling_freq, filter_family, 
                              filter_response, filter_order, filter_low, filter_high):
     """Generate insights similar to sample_tool."""
@@ -434,6 +692,40 @@ def compute_psd(signal, sampling_freq):
     except Exception as e:
         logger.error(f"Error computing PSD: {e}")
         freqs = np.linspace(0, sampling_freq/2, 100)
+        psd = np.random.rand(100)
+        return freqs, psd
+
+
+def compute_enhanced_psd(signal, sampling_freq, window_sec, overlap, freq_max):
+    """Compute enhanced power spectral density with configurable parameters."""
+    try:
+        from scipy import signal as scipy_signal
+        
+        # Calculate window size and overlap
+        nperseg = int(window_sec * sampling_freq)
+        noverlap = int(overlap * nperseg)
+        
+        # Ensure minimum window size
+        nperseg = max(64, min(nperseg, len(signal)//4))
+        
+        # Compute PSD with Welch method
+        freqs, psd = scipy_signal.welch(signal, fs=sampling_freq, nperseg=nperseg, noverlap=noverlap)
+        
+        # Limit frequency range
+        freq_mask = freqs <= freq_max
+        freqs = freqs[freq_mask]
+        psd = psd[freq_mask]
+        
+        return freqs, psd
+        
+    except ImportError:
+        logger.warning("SciPy not available, returning dummy PSD")
+        freqs = np.linspace(0, freq_max, 100)
+        psd = np.random.rand(100)
+        return freqs, psd
+    except Exception as e:
+        logger.error(f"Error computing enhanced PSD: {e}")
+        freqs = np.linspace(0, freq_max, 100)
         psd = np.random.rand(100)
         return freqs, psd
 
