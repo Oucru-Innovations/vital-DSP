@@ -25,7 +25,10 @@ def register_frequency_filtering_callbacks(app):
         [Output("freq-main-plot", "figure"),
          Output("freq-time-freq-plot", "figure"),
          Output("freq-analysis-results", "children"),
-         Output("freq-analysis-plots", "figure"),
+         Output("freq-peak-analysis-table", "children"),
+         Output("freq-band-power-table", "children"),
+         Output("freq-stability-table", "children"),
+         Output("freq-harmonics-table", "children"),
          Output("store-frequency-data", "data"),
          Output("store-time-freq-data", "data")],
         [Input("url", "pathname"),
@@ -156,8 +159,11 @@ def register_frequency_filtering_callbacks(app):
             # Generate analysis results
             analysis_results = generate_frequency_analysis_results(signal_data, sampling_freq, analysis_type, analysis_options)
             
-            # Create analysis plots
-            analysis_plots = create_frequency_analysis_plots(signal_data, sampling_freq, analysis_type, analysis_options)
+            # Generate detailed table components
+            peak_table = create_frequency_peak_analysis_table(signal_data, sampling_freq, analysis_type, analysis_options)
+            band_power_table = create_frequency_band_power_table(signal_data, sampling_freq, analysis_type, analysis_options)
+            stability_table = create_frequency_stability_table(signal_data, sampling_freq, analysis_type, analysis_options)
+            harmonics_table = create_frequency_harmonics_table(signal_data, sampling_freq, analysis_type, analysis_options)
             
             # Store processed data
             frequency_data = {
@@ -180,13 +186,14 @@ def register_frequency_filtering_callbacks(app):
                 }
             }
             
-            return main_plot, time_freq_plot, analysis_results, analysis_plots, frequency_data, time_freq_data
+            return main_plot, time_freq_plot, analysis_results, peak_table, band_power_table, stability_table, harmonics_table, frequency_data, time_freq_data
             
         except Exception as e:
             logger.error(f"Error in frequency domain callback: {e}")
             import traceback
             traceback.print_exc()
-            return create_empty_figure(), create_empty_figure(), f"Error in analysis: {str(e)}", create_empty_figure(), None, None
+            error_msg = f"Error in analysis: {str(e)}"
+            return create_empty_figure(), create_empty_figure(), error_msg, error_msg, error_msg, error_msg, error_msg, None, None
     
     # Advanced Filtering Callback
     @app.callback(
@@ -2591,3 +2598,467 @@ def create_simple_frequency_plot(signal_data, sampling_freq, title):
     except Exception as e:
         logger.error(f"Error creating simple frequency plot: {e}")
         return create_empty_figure()
+
+
+def create_frequency_peak_analysis_table(signal_data, sampling_freq, analysis_type, analysis_options):
+    """Create a comprehensive peak frequency analysis table."""
+    if "peak_freq" not in analysis_options:
+        return html.Div([
+            html.H6("🔍 Peak Frequency Analysis", className="text-muted"),
+            html.P("Peak frequency detection not selected in analysis options.", className="text-muted")
+        ])
+    
+    try:
+        from scipy.fft import rfft, rfftfreq
+        from scipy.signal import find_peaks
+        
+        # Perform FFT
+        fft_result = np.abs(rfft(signal_data))
+        freqs = rfftfreq(len(signal_data), 1/sampling_freq)
+        
+        # Find peaks in frequency domain
+        peaks, properties = find_peaks(fft_result, prominence=0.1 * np.max(fft_result), distance=10)
+        
+        if len(peaks) == 0:
+            return html.Div([
+                html.H6("🔍 Peak Frequency Analysis", className="text-muted"),
+                html.P("No significant frequency peaks detected.", className="text-muted")
+            ])
+        
+        # Get top peaks
+        top_peaks_idx = peaks[np.argsort(fft_result[peaks])[-10:]]  # Top 10 peaks
+        top_peaks_freq = freqs[top_peaks_idx]
+        top_peaks_mag = fft_result[top_peaks_idx]
+        
+        # Sort by frequency
+        sorted_indices = np.argsort(top_peaks_freq)
+        sorted_freqs = top_peaks_freq[sorted_indices]
+        sorted_mags = top_peaks_mag[sorted_indices]
+        
+        return html.Div([
+            html.H6("🔍 Peak Frequency Analysis", className="text-primary mb-3"),
+            
+            # Summary metrics
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{len(peaks)}", className="text-center text-primary mb-0"),
+                            html.Small("Total Peaks", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-primary")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{sorted_freqs[0]:.2f}", className="text-center text-success mb-0"),
+                            html.Small("Lowest Peak (Hz)", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-success")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{sorted_freqs[-1]:.2f}", className="text-center text-warning mb-0"),
+                            html.Small("Highest Peak (Hz)", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-warning")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{np.mean(sorted_mags):.2f}", className="text-center text-info mb-0"),
+                            html.Small("Avg Magnitude", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-info")
+                ], md=3)
+            ], className="mb-3"),
+            
+            # Peak details table
+            html.H6("Top Frequency Peaks", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Rank", className="text-center"),
+                        html.Th("Frequency (Hz)", className="text-center"),
+                        html.Th("Magnitude", className="text-center"),
+                        html.Th("Period (s)", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td(f"#{i+1}", className="fw-bold"),
+                        html.Td(f"{freq:.2f}", className="text-center"),
+                        html.Td(f"{mag:.2f}", className="text-center"),
+                        html.Td(f"{1/freq:.3f}" if freq > 0 else "∞", className="text-center")
+                    ]) for i, (freq, mag) in enumerate(zip(sorted_freqs, sorted_mags))
+                ])
+            ], bordered=True, hover=True, responsive=True, size="sm")
+        ])
+        
+    except Exception as e:
+        logger.error(f"Error creating peak frequency analysis table: {e}")
+        return html.Div([
+            html.H6("🔍 Peak Frequency Analysis", className="text-muted"),
+            html.P(f"Error creating peak analysis: {str(e)}", className="text-danger")
+        ])
+
+
+def create_frequency_band_power_table(signal_data, sampling_freq, analysis_type, analysis_options):
+    """Create a comprehensive band power analysis table."""
+    if "band_power" not in analysis_options:
+        return html.Div([
+            html.H6("⚡ Band Power Analysis", className="text-muted"),
+            html.P("Band power analysis not selected in analysis options.", className="text-muted")
+        ])
+    
+    try:
+        from scipy.fft import rfft, rfftfreq
+        
+        # Perform FFT
+        fft_result = np.abs(rfft(signal_data))
+        freqs = rfftfreq(len(signal_data), 1/sampling_freq)
+        
+        # Define frequency bands
+        bands = {
+            "Delta (0.5-4 Hz)": (0.5, 4),
+            "Theta (4-8 Hz)": (4, 8),
+            "Alpha (8-13 Hz)": (8, 13),
+            "Beta (13-30 Hz)": (13, 30),
+            "Gamma (30-100 Hz)": (30, 100)
+        }
+        
+        band_powers = {}
+        total_power = np.sum(fft_result**2)
+        
+        for band_name, (low_freq, high_freq) in bands.items():
+            # Find frequencies in this band
+            band_mask = (freqs >= low_freq) & (freqs <= high_freq)
+            if np.any(band_mask):
+                band_power = np.sum(fft_result[band_mask]**2)
+                band_percentage = (band_power / total_power) * 100
+                band_powers[band_name] = (band_power, band_percentage)
+            else:
+                band_powers[band_name] = (0, 0)
+        
+        return html.Div([
+            html.H6("⚡ Band Power Analysis", className="text-success mb-3"),
+            
+            # Summary metrics
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{total_power:.2e}", className="text-center text-primary mb-0"),
+                            html.Small("Total Power", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-primary")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{max(band_powers.values(), key=lambda x: x[1])[1]:.1f}%", className="text-center text-success mb-0"),
+                            html.Small("Dominant Band", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-success")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{min(band_powers.values(), key=lambda x: x[1])[1]:.1f}%", className="text-center text-warning mb-0"),
+                            html.Small("Weakest Band", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-warning")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{len(bands)}", className="text-center text-info mb-0"),
+                            html.Small("Total Bands", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-info")
+                ], md=3)
+            ], className="mb-3"),
+            
+            # Band power table
+            html.H6("Frequency Band Powers", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Frequency Band", className="text-center"),
+                        html.Th("Power", className="text-center"),
+                        html.Th("Percentage", className="text-center"),
+                        html.Th("Status", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td(band_name, className="fw-bold"),
+                        html.Td(f"{power:.2e}", className="text-end"),
+                        html.Td(f"{percentage:.1f}%", className="text-end"),
+                        html.Td(html.Span(
+                            'Dominant' if percentage > 30 else 'Strong' if percentage > 20 else 'Medium' if percentage > 10 else 'Weak',
+                            className=f"badge {'bg-success' if percentage > 30 else 'bg-info' if percentage > 20 else 'bg-warning' if percentage > 10 else 'bg-secondary'}"
+                        ), className="text-center")
+                    ]) for band_name, (power, percentage) in band_powers.items()
+                ])
+            ], bordered=True, hover=True, responsive=True, size="sm")
+        ])
+        
+    except Exception as e:
+        logger.error(f"Error creating band power analysis table: {e}")
+        return html.Div([
+            html.H6("⚡ Band Power Analysis", className="text-muted"),
+            html.P(f"Error creating band power analysis: {str(e)}", className="text-danger")
+        ])
+
+
+def create_frequency_stability_table(signal_data, sampling_freq, analysis_type, analysis_options):
+    """Create a comprehensive frequency stability analysis table."""
+    if "freq_stability" not in analysis_options:
+        return html.Div([
+            html.H6("📊 Frequency Stability", className="text-muted"),
+            html.P("Frequency stability analysis not selected in analysis options.", className="text-muted")
+        ])
+    
+    try:
+        from scipy.fft import rfft, rfftfreq
+        
+        # Perform FFT
+        fft_result = np.abs(rfft(signal_data))
+        freqs = rfftfreq(len(signal_data), 1/sampling_freq)
+        
+        # Calculate stability metrics
+        dominant_freq_idx = np.argmax(fft_result)
+        dominant_freq = freqs[dominant_freq_idx]
+        dominant_magnitude = fft_result[dominant_freq_idx]
+        
+        # Calculate bandwidth around dominant frequency
+        half_max = dominant_magnitude / 2
+        bandwidth_mask = fft_result >= half_max
+        bandwidth = np.max(freqs[bandwidth_mask]) - np.min(freqs[bandwidth_mask])
+        
+        # Calculate frequency spread
+        freq_spread = np.std(freqs)
+        
+        # Calculate stability score (inverse of spread)
+        stability_score = 1 / (1 + freq_spread)
+        
+        # Calculate frequency consistency
+        peak_freqs = freqs[fft_result > 0.5 * np.max(fft_result)]
+        freq_consistency = 1 - (np.std(peak_freqs) / np.mean(peak_freqs)) if np.mean(peak_freqs) > 0 else 0
+        
+        return html.Div([
+            html.H6("📊 Frequency Stability Analysis", className="text-info mb-3"),
+            
+            # Summary metrics
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{dominant_freq:.2f} Hz", className="text-center text-primary mb-0"),
+                            html.Small("Dominant Frequency", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-primary")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{bandwidth:.2f} Hz", className="text-center text-success mb-0"),
+                            html.Small("Bandwidth", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-success")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{stability_score:.3f}", className="text-center text-warning mb-0"),
+                            html.Small("Stability Score", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-warning")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{freq_consistency:.3f}", className="text-center text-info mb-0"),
+                            html.Small("Consistency", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-info")
+                ], md=3)
+            ], className="mb-3"),
+            
+            # Stability metrics table
+            html.H6("Stability Metrics", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Metric", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Interpretation", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Dominant Frequency", className="fw-bold"),
+                        html.Td(f"{dominant_freq:.2f} Hz", className="text-end"),
+                        html.Td("Primary frequency component", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Bandwidth", className="fw-bold"),
+                        html.Td(f"{bandwidth:.2f} Hz", className="text-end"),
+                        html.Td(html.Span(
+                            'Narrow' if bandwidth < 5 else 'Medium' if bandwidth < 15 else 'Wide',
+                            className=f"badge {'bg-success' if bandwidth < 5 else 'bg-warning' if bandwidth < 15 else 'bg-danger'}"
+                        ), className="text-center")
+                    ]),
+                    html.Tr([
+                        html.Td("Frequency Spread", className="fw-bold"),
+                        html.Td(f"{freq_spread:.2f} Hz", className="text-end"),
+                        html.Td(html.Span(
+                            'Low' if freq_spread < 10 else 'Medium' if freq_spread < 25 else 'High',
+                            className=f"badge {'bg-success' if freq_spread < 10 else 'bg-warning' if freq_spread < 25 else 'bg-danger'}"
+                        ), className="text-center")
+                    ]),
+                    html.Tr([
+                        html.Td("Stability Score", className="fw-bold"),
+                        html.Td(f"{stability_score:.3f}", className="text-end"),
+                        html.Td(html.Span(
+                            'High' if stability_score > 0.8 else 'Medium' if stability_score > 0.5 else 'Low',
+                            className=f"badge {'bg-success' if stability_score > 0.8 else 'bg-warning' if stability_score > 0.5 else 'bg-danger'}"
+                        ), className="text-center")
+                    ]),
+                    html.Tr([
+                        html.Td("Frequency Consistency", className="fw-bold"),
+                        html.Td(f"{freq_consistency:.3f}", className="text-end"),
+                        html.Td(html.Span(
+                            'High' if freq_consistency > 0.8 else 'Medium' if freq_consistency > 0.5 else 'Low',
+                            className=f"badge {'bg-success' if freq_consistency > 0.8 else 'bg-warning' if freq_consistency > 0.5 else 'bg-danger'}"
+                        ), className="text-center")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, size="sm")
+        ])
+        
+    except Exception as e:
+        logger.error(f"Error creating frequency stability table: {e}")
+        return html.Div([
+            html.H6("📊 Frequency Stability", className="text-muted"),
+            html.P(f"Error creating stability analysis: {str(e)}", className="text-danger")
+        ])
+
+
+def create_frequency_harmonics_table(signal_data, sampling_freq, analysis_type, analysis_options):
+    """Create a comprehensive harmonic analysis table."""
+    if "harmonics" not in analysis_options:
+        return html.Div([
+            html.H6("🎵 Harmonic Analysis", className="text-muted"),
+            html.P("Harmonic analysis not selected in analysis options.", className="text-muted")
+        ])
+    
+    try:
+        from scipy.fft import rfft, rfftfreq
+        
+        # Perform FFT
+        fft_result = np.abs(rfft(signal_data))
+        freqs = rfftfreq(len(signal_data), 1/sampling_freq)
+        
+        # Find fundamental frequency
+        peak_idx = np.argmax(fft_result)
+        fundamental_freq = freqs[peak_idx]
+        fundamental_mag = fft_result[peak_idx]
+        
+        # Find harmonics
+        harmonics = []
+        for i in range(2, 6):  # 2nd to 5th harmonic
+            harmonic_freq = fundamental_freq * i
+            # Find closest frequency bin
+            harmonic_idx = np.argmin(np.abs(freqs - harmonic_freq))
+            harmonic_mag = fft_result[harmonic_idx]
+            harmonics.append((i, harmonic_freq, harmonic_mag))
+        
+        # Calculate harmonic ratios
+        harmonic_ratios = []
+        for harmonic_num, harmonic_freq, harmonic_mag in harmonics:
+            ratio = harmonic_mag / fundamental_mag if fundamental_mag > 0 else 0
+            harmonic_ratios.append((harmonic_num, harmonic_freq, harmonic_mag, ratio))
+        
+        return html.Div([
+            html.H6("🎵 Harmonic Analysis", className="text-secondary mb-3"),
+            
+            # Summary metrics
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{fundamental_freq:.2f} Hz", className="text-center text-primary mb-0"),
+                            html.Small("Fundamental Freq", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-primary")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{fundamental_mag:.2e}", className="text-center text-success mb-0"),
+                            html.Small("Fundamental Mag", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-success")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{len(harmonics)}", className="text-center text-warning mb-0"),
+                            html.Small("Harmonics Found", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-warning")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{np.mean([ratio for _, _, _, ratio in harmonic_ratios]):.3f}", className="text-center text-info mb-0"),
+                            html.Small("Avg Harmonic Ratio", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-info")
+                ], md=3)
+            ], className="mb-3"),
+            
+            # Harmonic details table
+            html.H6("Harmonic Components", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Harmonic", className="text-center"),
+                        html.Th("Frequency (Hz)", className="text-center"),
+                        html.Th("Magnitude", className="text-center"),
+                        html.Th("Ratio to Fundamental", className="text-center"),
+                        html.Th("Strength", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td(f"Fundamental", className="fw-bold"),
+                        html.Td(f"{fundamental_freq:.2f}", className="text-center"),
+                        html.Td(f"{fundamental_mag:.2e}", className="text-center"),
+                        html.Td("1.000", className="text-center"),
+                        html.Td(html.Span("Strong", className="badge bg-success"), className="text-center")
+                    ])
+                ] + [
+                    html.Tr([
+                        html.Td(f"{harmonic_num}nd", className="fw-bold"),
+                        html.Td(f"{harmonic_freq:.2f}", className="text-center"),
+                        html.Td(f"{harmonic_mag:.2e}", className="text-center"),
+                        html.Td(f"{ratio:.3f}", className="text-center"),
+                        html.Td(html.Span(
+                            'Strong' if ratio > 0.5 else 'Medium' if ratio > 0.2 else 'Weak',
+                            className=f"badge {'bg-success' if ratio > 0.5 else 'bg-warning' if ratio > 0.2 else 'bg-secondary'}"
+                        ), className="text-center")
+                    ]) for harmonic_num, harmonic_freq, harmonic_mag, ratio in harmonic_ratios
+                ])
+            ], bordered=True, hover=True, responsive=True, size="sm")
+        ])
+        
+    except Exception as e:
+        logger.error(f"Error creating harmonic analysis table: {e}")
+        return html.Div([
+            html.H6("🎵 Harmonic Analysis", className="text-muted"),
+            html.P(f"Error creating harmonic analysis: {str(e)}", className="text-danger")
+        ])

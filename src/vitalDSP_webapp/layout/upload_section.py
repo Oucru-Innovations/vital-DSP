@@ -162,6 +162,17 @@ def upload_layout():
                                     clearable=True
                                 )
                             ], md=6)
+                        ], className="mb-3"),
+                        
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Waveform (PLETH)", className="form-label"),
+                                dcc.Dropdown(
+                                    id="waveform-column",
+                                    placeholder="Select PLETH column...",
+                                    clearable=True
+                                )
+                            ], md=6)
                         ], className="mb-4"),
                         
                         # Action Buttons
@@ -261,10 +272,13 @@ def create_data_preview(data_info):
             
             # Quick Plot Preview
             html.H6("Signal Preview", className="mb-3"),
-            dcc.Graph(
-                id="signal-preview-plot",
-                style={"height": "300px"},
-                config={"displayModeBar": False}
-            )
+            html.Div(id="signal-preview-plot-container", children=[
+                dcc.Graph(
+                    id="signal-preview-plot",
+                    figure=data_info.get("preview_plot", {}),  # Use the preview plot if available
+                    style={"height": "600px"},  # Increased height for three subplots
+                    config={"displayModeBar": True}  # Enable display mode bar for better interaction
+                )
+            ])
         ])
     ])

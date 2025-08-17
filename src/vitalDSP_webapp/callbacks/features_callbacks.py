@@ -1468,7 +1468,19 @@ def register_features_callbacks(app):
             logger.info("=== END RAW FEATURES ===")
             
             # Create plots
-            plots = create_comprehensive_feature_plots(signal_data, features, sampling_freq)
+            try:
+                # Try enhanced plots first, fallback to comprehensive plots if needed
+                try:
+                    plots = create_enhanced_feature_plots(signal_data, features, sampling_freq)
+                    logger.info("Enhanced feature plots created successfully")
+                except Exception as enhanced_e:
+                    logger.warning(f"Enhanced plots failed, using comprehensive plots: {enhanced_e}")
+                    plots = create_comprehensive_feature_plots(signal_data, features, sampling_freq)
+                    logger.info("Comprehensive feature plots created successfully")
+            except Exception as e:
+                logger.error(f"Failed to create plots: {e}")
+                plots = create_empty_figure()
+                plots.update_layout(title="Feature Analysis Results (Plot Creation Failed)")
             
             # Ensure plots is defined
             if plots is None:
@@ -1481,11 +1493,9 @@ def register_features_callbacks(app):
                 plots = clean_plotly_figure(plots)
                 logger.info("Plotly figure cleaned successfully")
                 
-                # Test JSON serialization of the cleaned plots
+                # Test JSON serialization but keep original plots for display
                 plots_serializable = test_json_serialization(plots, "cleaned plots")
-                if plots_serializable != plots:
-                    plots = plots_serializable
-                    logger.info("Plots converted to serializable format")
+                logger.info("Plot serialization test passed")
                 
             except Exception as e:
                 logger.error(f"Failed to clean Plotly figure: {e}")
@@ -1835,12 +1845,20 @@ def features_analysis_callback_enhanced(n_clicks, pathname, signal_type, preproc
         # Step 14: Create comprehensive feature plots
         logger.info("🔄 Step 14: Creating comprehensive feature plots...")
         try:
-            plots = create_comprehensive_feature_plots(signal_data, features, sampling_freq)
+            # Try enhanced plots first, fallback to comprehensive plots if needed
+            try:
+                plots = create_enhanced_feature_plots(signal_data, features, sampling_freq)
+                logger.info("✓ Enhanced feature plots created successfully")
+            except Exception as enhanced_e:
+                logger.warning(f"⚠ Enhanced plots failed, using comprehensive plots: {enhanced_e}")
+                plots = create_comprehensive_feature_plots(signal_data, features, sampling_freq)
+                logger.info("✓ Comprehensive feature plots created successfully")
+            
             if plots is None:
                 logger.warning("⚠ Failed to create plots, using empty figure")
                 plots = create_empty_figure()
                 plots.update_layout(title="Feature Analysis Results (No Plots Available)")
-            logger.info("✓ Feature plots created successfully")
+            
             callback_stats['steps_completed'].append("plot_creation")
         except Exception as e:
             logger.error(f"✗ Plot creation failed: {e}")
@@ -1858,13 +1876,12 @@ def features_analysis_callback_enhanced(n_clicks, pathname, signal_type, preproc
             logger.error(f"✗ Plot cleaning failed: {e}")
             callback_stats['errors'].append(f"Plot cleaning failed: {e}")
         
-        # Step 16: Test JSON serialization of plots
+        # Step 16: Test JSON serialization of plots (but keep original for display)
         logger.info("🔄 Step 16: Testing JSON serialization of plots...")
         try:
+            # Test serialization but keep original plots for display
             plots_serializable = test_json_serialization(plots, "cleaned plots")
-            if plots_serializable != plots:
-                plots = plots_serializable
-                logger.info("✓ Plots converted to serializable format")
+            logger.info("✓ Plot serialization test passed")
             callback_stats['steps_completed'].append("plot_serialization_test")
         except Exception as e:
             logger.error(f"✗ Plot serialization test failed: {e}")
@@ -1926,9 +1943,9 @@ def features_analysis_callback_enhanced(n_clicks, pathname, signal_type, preproc
             if latest_data_clean is None:
                 latest_data_clean = {"error": "Failed to clean data"}
             
-            # Test serialization of all return values
+            # Test serialization of all return values (but keep plots as Figure objects)
             test_json_serialization(results_html, "results_html")
-            test_json_serialization(plots, "plots")
+            # Don't test plots here - they need to remain as Plotly Figure objects for display
             test_json_serialization(latest_data_clean, "latest_data_clean")
             test_json_serialization(features_serializable, "features_serializable")
             logger.info("✓ All return values are JSON serializable")
@@ -1936,16 +1953,15 @@ def features_analysis_callback_enhanced(n_clicks, pathname, signal_type, preproc
         except Exception as e:
             logger.error(f"✗ JSON serialization test failed: {e}")
             callback_stats['errors'].append(f"JSON serialization test failed: {e}")
-            # If any value fails, convert to string representation
+            # If any value fails, convert to string representation (but keep plots as Figure objects)
             if not isinstance(results_html, str):
                 results_html = str(results_html)
-            if not isinstance(plots, (dict, str)):
-                plots = str(plots)
+            # Don't convert plots to string - they need to remain as Figure objects
             if not isinstance(latest_data_clean, dict):
                 latest_data_clean = str(latest_data_clean)
             if not isinstance(features_serializable, dict):
                 features_serializable = str(features_serializable)
-            logger.info("Converted non-serializable values to strings")
+            logger.info("Converted non-serializable values to strings (except plots)")
         
         # Step 22: Final variable validation
         logger.info("🔄 Step 22: Final variable validation...")
@@ -1958,6 +1974,12 @@ def features_analysis_callback_enhanced(n_clicks, pathname, signal_type, preproc
             latest_data_clean = {"error": "No data available"}
         if 'features_serializable' not in locals() or features_serializable is None:
             features_serializable = {"error": "No features available"}
+        
+        # Ensure plots is a valid Plotly Figure object for display
+        if not hasattr(plots, 'to_dict'):
+            logger.warning("⚠ Plots is not a valid Plotly Figure, creating empty figure")
+            plots = create_empty_figure()
+            plots.update_layout(title="Feature Analysis Results (Plot Display Error)")
         
         # Final callback statistics
         end_time = pd.Timestamp.now()
@@ -1981,6 +2003,8 @@ def features_analysis_callback_enhanced(n_clicks, pathname, signal_type, preproc
         logger.info(f"✓ Errors encountered: {len(callback_stats['errors'])}")
         logger.info(f"✓ Warnings encountered: {len(callback_stats['warnings'])}")
         logger.info(f"✓ Performance metrics: {callback_stats['performance_metrics']}")
+        logger.info(f"✓ Final plots type: {type(plots)}")
+        logger.info(f"✓ Plots has to_dict method: {hasattr(plots, 'to_dict')}")
         
         # Add callback metadata to features
         if isinstance(features_serializable, dict):
@@ -2367,3 +2391,276 @@ def create_error_summary(errors, warnings):
         html.H5("📋 Analysis Summary", className="mb-3"),
         html.Div(error_sections)
     ], className="mb-4")
+
+def create_enhanced_feature_plots(signal_data, features, sampling_freq):
+    """Create enhanced feature plots with tables for feature summaries."""
+    logger.info("=== CREATING ENHANCED FEATURE PLOTS WITH TABLES ===")
+    
+    try:
+        # Create subplots with better layout - now with tables
+        fig = make_subplots(
+            rows=3, cols=2,
+            subplot_titles=(
+                "📈 Original Signal",
+                "📊 Feature Summary Table",
+                "🧠 Autonomic Features Table",
+                "🔬 Morphology Features Table",
+                "💡 Light Features Table",
+                "🔄 Synchronization Features Table"
+            ),
+            specs=[
+                [{"type": "scatter"}, {"type": "table"}],
+                [{"type": "table"}, {"type": "table"}],
+                [{"type": "table"}, {"type": "table"}]
+            ],
+            vertical_spacing=0.08,
+            horizontal_spacing=0.08
+        )
+        
+        # Original signal plot
+        time_axis = (np.arange(len(signal_data)) / sampling_freq).tolist()
+        signal_data_list = signal_data.tolist()
+        
+        fig.add_trace(
+            go.Scatter(
+                x=time_axis,
+                y=signal_data_list,
+                mode='lines',
+                name='Signal',
+                line=dict(color='#1f77b4', width=2),
+                hovertemplate='<b>Time:</b> %{x:.3f}s<br><b>Amplitude:</b> %{y:.2f}<extra></extra>'
+            ),
+            row=1, col=1
+        )
+        
+        # Feature Summary Table
+        feature_names = []
+        feature_values = []
+        feature_types = []
+        
+        for key, value in features.items():
+            if key.startswith('_') or key in ['error', 'warning']:
+                continue
+            if isinstance(value, (int, float)) and value is not None:
+                feature_names.append(key.replace('_', ' ').title())
+                feature_values.append(f"{float(value):.4f}")
+                feature_types.append(type(value).__name__)
+        
+        if feature_names:
+            fig.add_trace(
+                go.Table(
+                    header=dict(
+                        values=["Feature", "Value", "Type"],
+                        fill_color='#ff7f0e',
+                        font=dict(color='white', size=12),
+                        align='center'
+                    ),
+                    cells=dict(
+                        values=[feature_names, feature_values, feature_types],
+                        fill_color='white',
+                        font=dict(size=11),
+                        align='center',
+                        height=30
+                    )
+                ),
+                row=1, col=2
+            )
+        
+        # Autonomic Features Table
+        autonomic_features = ['rrv', 'rsa', 'fractal_dimension', 'dfa']
+        autonomic_names = ['RRV', 'RSA', 'Fractal Dimension', 'DFA']
+        autonomic_values = []
+        autonomic_status = []
+        
+        for feature in autonomic_features:
+            value = features.get(feature)
+            if value is not None:
+                autonomic_values.append(f"{float(value):.4f}")
+                autonomic_status.append("✓ Available")
+            else:
+                autonomic_values.append("N/A")
+                autonomic_status.append("✗ Not Available")
+        
+        fig.add_trace(
+            go.Table(
+                header=dict(
+                    values=["Autonomic Feature", "Value", "Status"],
+                    fill_color='#2ca02c',
+                    font=dict(color='white', size=12),
+                    align='center'
+                ),
+                cells=dict(
+                    values=[autonomic_names, autonomic_values, autonomic_status],
+                    fill_color='white',
+                    font=dict(size=11),
+                    align='center',
+                    height=30
+                )
+            ),
+            row=2, col=1
+        )
+        
+        # Morphology Features Table
+        morphology_features = [
+            'systolic_duration', 'diastolic_duration', 'systolic_area', 
+            'diastolic_area', 'systolic_slope', 'diastolic_slope',
+            'signal_skewness', 'peak_trend_slope', 'heart_rate',
+            'systolic_amplitude_variability', 'diastolic_amplitude_variability'
+        ]
+        morphology_names = [
+            'Systolic Duration', 'Diastolic Duration', 'Systolic Area',
+            'Diastolic Area', 'Systolic Slope', 'Diastolic Slope',
+            'Signal Skewness', 'Peak Trend Slope', 'Heart Rate',
+            'Systolic Amp Var', 'Diastolic Amp Var'
+        ]
+        morphology_values = []
+        morphology_status = []
+        
+        for feature in morphology_features:
+            value = features.get(feature)
+            if value is not None and not (isinstance(value, float) and (np.isnan(value) or np.isinf(value))):
+                if isinstance(value, float):
+                    morphology_values.append(f"{float(value):.4f}")
+                else:
+                    morphology_values.append(str(value))
+                morphology_status.append("✓ Available")
+            else:
+                morphology_values.append("N/A")
+                morphology_status.append("✗ Not Available")
+        
+        fig.add_trace(
+            go.Table(
+                header=dict(
+                    values=["Morphology Feature", "Value", "Status"],
+                    fill_color='#9467bd',
+                    font=dict(color='white', size=12),
+                    align='center'
+                ),
+                cells=dict(
+                    values=[morphology_names, morphology_values, morphology_status],
+                    fill_color='white',
+                    font=dict(size=10),
+                    align='center',
+                    height=25
+                )
+            ),
+            row=2, col=2
+        )
+        
+        # Light Features Table
+        light_features = ['spo2', 'perfusion_index', 'respiratory_rate_ppg', 'ppr', 'ac_dc_ratio']
+        light_names = ['SpO2', 'Perfusion Index', 'Respiratory Rate (PPG)', 'PPR', 'AC/DC Ratio']
+        light_values = []
+        light_status = []
+        
+        for feature in light_features:
+            value = features.get(feature)
+            if value is not None and not (isinstance(value, float) and (np.isnan(value) or np.isinf(value))):
+                if isinstance(value, float):
+                    light_values.append(f"{float(value):.4f}")
+                else:
+                    light_values.append(str(value))
+                light_status.append("✓ Available")
+            else:
+                light_values.append("N/A")
+                light_status.append("✗ Not Available")
+        
+        fig.add_trace(
+            go.Table(
+                header=dict(
+                    values=["Light Feature", "Value", "Status"],
+                    fill_color='#d62728',
+                    font=dict(color='white', size=12),
+                    align='center'
+                ),
+                cells=dict(
+                    values=[light_names, light_values, light_status],
+                    fill_color='white',
+                    font=dict(size=11),
+                    align='center',
+                    height=30
+                )
+            ),
+            row=3, col=1
+        )
+        
+        # Synchronization Features Table
+        sync_features = ['ecg_ppg_sync', 'cross_correlation', 'phase_synchronization', 'coherence']
+        sync_names = ['ECG-PPG Sync', 'Cross Correlation', 'Phase Sync', 'Coherence']
+        sync_values = []
+        sync_status = []
+        
+        for feature in sync_features:
+            value = features.get(feature)
+            if value is not None and not (isinstance(value, float) and (np.isnan(value) or np.isinf(value))):
+                if isinstance(value, float):
+                    sync_values.append(f"{float(value):.4f}")
+                else:
+                    sync_values.append(str(value))
+                sync_status.append("✓ Available")
+            else:
+                sync_values.append("N/A")
+                sync_status.append("✗ Not Available")
+        
+        fig.add_trace(
+            go.Table(
+                header=dict(
+                    values=["Sync Feature", "Value", "Status"],
+                    fill_color='#17a2b8',
+                    font=dict(color='white', size=12),
+                    align='center'
+                ),
+                cells=dict(
+                    values=[sync_names, sync_values, sync_status],
+                    fill_color='white',
+                    font=dict(size=11),
+                    align='center',
+                    height=30
+                )
+            ),
+            row=3, col=2
+        )
+        
+        # Update layout for better appearance
+        fig.update_layout(
+            title=dict(
+                text="🎯 Comprehensive Feature Analysis Results",
+                x=0.5,
+                font=dict(size=20, color='#2c3e50')
+            ),
+            showlegend=True,
+            height=900,  # Increased height for tables
+            template='plotly_white',
+            font=dict(family="Arial, sans-serif", size=12),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            margin=dict(t=100, b=50, l=50, r=50)
+        )
+        
+        # Update axes labels and styling (only for the signal plot)
+        fig.update_xaxes(title_text="Time (s)", row=1, col=1)
+        fig.update_yaxes(title_text="Amplitude", row=1, col=1)
+        
+        # Add grid lines for signal plot
+        fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#f0f0f0', row=1, col=1)
+        fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#f0f0f0', row=1, col=1)
+        
+        logger.info("✓ Enhanced feature plots with tables created successfully")
+        return fig
+        
+    except Exception as e:
+        logger.error(f"✗ Failed to create enhanced feature plots with tables: {e}")
+        # Return a simple fallback plot
+        fallback_fig = go.Figure()
+        fallback_fig.add_annotation(
+            text="Failed to create feature plots",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5, showarrow=False,
+            font=dict(size=16, color="red")
+        )
+        fallback_fig.update_layout(
+            title="Feature Analysis Results (Plot Creation Failed)",
+            plot_bgcolor='white',
+            paper_bgcolor='white'
+        )
+        return fallback_fig

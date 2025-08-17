@@ -706,28 +706,39 @@ def generate_comprehensive_respiratory_analysis(signal_data, time_axis, sampling
             
             # Continue with basic statistics
         else:
-            logger.info("Initializing vitalDSP RespiratoryAnalysis...")
-            resp_analysis = RespiratoryAnalysis(signal_data, sampling_freq)
-            logger.info("RespiratoryAnalysis initialized successfully")
+            try:
+                logger.info("Initializing vitalDSP RespiratoryAnalysis...")
+                resp_analysis = RespiratoryAnalysis(signal_data, sampling_freq)
+                logger.info("RespiratoryAnalysis initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize RespiratoryAnalysis: {e}")
+                logger.info("Falling back to basic analysis")
+                resp_analysis = None
+                results.append(html.H5("⚠️ Fallback Analysis", className="text-warning"))
+                results.append(html.P("vitalDSP initialization failed. Using basic signal analysis.", className="text-muted"))
         
         # Create preprocessing configuration
         if PreprocessConfig is None:
             logger.error("PreprocessConfig module not available - using default settings")
             preprocess_config = None
         else:
-            logger.info("Creating preprocessing configuration...")
-            preprocess_config = PreprocessConfig(
-                filter_type='bandpass',
-                lowcut=low_cut,
-                highcut=high_cut,
-                respiratory_mode=True,
-                preprocess=True
-            )
-            logger.info(f"PreprocessConfig created: {preprocess_config}")
+            try:
+                logger.info("Creating preprocessing configuration...")
+                preprocess_config = PreprocessConfig(
+                    filter_type='bandpass',
+                    lowcut=low_cut,
+                    highcut=high_cut,
+                    respiratory_mode=True
+                )
+                logger.info(f"PreprocessConfig created: {preprocess_config}")
+            except Exception as config_error:
+                logger.error(f"Failed to create PreprocessConfig: {config_error}")
+                logger.info("Using default preprocessing settings")
+                preprocess_config = None
         
         # Respiratory Rate Estimation using multiple methods
         logger.info(f"Processing estimation methods: {estimation_methods}")
-        if estimation_methods:
+        if estimation_methods and resp_analysis is not None:
             logger.info("Adding respiratory rate estimation header...")
             results.append(html.H5("🫁 Respiratory Rate Estimation", className="mb-3"))
             
@@ -736,30 +747,43 @@ def generate_comprehensive_respiratory_analysis(signal_data, time_axis, sampling
                 try:
                     if method == "peaks":
                         logger.info("Computing respiratory rate using peaks method...")
-                        rr = resp_analysis.compute_respiratory_rate(
-                            method="peaks",
-                            min_breath_duration=min_breath_duration,
-                            max_breath_duration=max_breath_duration,
-                            preprocess_config=preprocess_config
-                        )
-                        logger.info(f"Peaks method result: {rr:.2f} BPM")
-                        results.append(html.Div([
-                            html.Strong("Peak Detection Method: "),
-                            html.Span(f"{rr:.2f} BPM", className="text-success")
-                        ], className="mb-2"))
+                        try:
+                            rr = resp_analysis.compute_respiratory_rate(
+                                method="peaks",
+                                min_breath_duration=min_breath_duration,
+                                max_breath_duration=max_breath_duration,
+                                preprocess_config=preprocess_config
+                            )
+                            logger.info(f"Peaks method result: {rr:.2f} BPM")
+                            results.append(html.Div([
+                                html.Strong("Peak Detection Method: "),
+                                html.Span(f"{rr:.2f} BPM", className="text-success")
+                            ], className="mb-2"))
+                        except Exception as e:
+                            logger.error(f"Peaks method failed: {e}")
+                            results.append(html.Div([
+                                html.Strong("Peak Detection Method: "),
+                                html.Span("Failed", className="text-danger")
+                            ], className="mb-2"))
                         
                     elif method == "zero_crossing":
-                        rr = resp_analysis.compute_respiratory_rate(
-                            method="zero_crossing",
-                            min_breath_duration=min_breath_duration,
-                            max_breath_duration=max_breath_duration,
-                            preprocess_config=preprocess_config
-                        )
-                        results.append(html.Div([
-                            html.Strong("Zero Crossing Method: "),
-                            html.Span(f"{rr:.2f} BPM", className="text-success")
-                        ], className="mb-2"))
-                        
+                        try:
+                            rr = resp_analysis.compute_respiratory_rate(
+                                method="zero_crossing",
+                                min_breath_duration=min_breath_duration,
+                                max_breath_duration=max_breath_duration,
+                                preprocess_config=preprocess_config
+                            )
+                            results.append(html.Div([
+                                html.Strong("Zero Crossing Method: "),
+                                html.Span(f"{rr:.2f} BPM", className="text-success")
+                            ], className="mb-2"))
+                        except Exception as e:
+                            logger.error(f"Zero crossing method failed: {e}")
+                            results.append(html.Div([
+                                html.Strong("Zero Crossing Method: "),
+                                html.Span("Failed", className="text-danger")
+                            ], className="mb-2"))
                     elif method == "time_domain":
                         if time_domain_rr is None:
                             logger.warning("time_domain_rr function not available")
@@ -838,6 +862,11 @@ def generate_comprehensive_respiratory_analysis(signal_data, time_axis, sampling
                         html.Strong(f"{method.replace('_', ' ').title()} Method: "),
                         html.Span("Failed", className="text-danger")
                     ], className="mb-2"))
+        
+        elif estimation_methods and resp_analysis is None:
+            logger.warning("Estimation methods requested but RespiratoryAnalysis not available")
+            results.append(html.H5("⚠️ Respiratory Rate Estimation", className="text-warning"))
+            results.append(html.P("vitalDSP RespiratoryAnalysis not available. Cannot perform advanced estimation methods.", className="text-muted"))
         
         # Advanced Analysis Features
         logger.info(f"Processing advanced options: {advanced_options}")

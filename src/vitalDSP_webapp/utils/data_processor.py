@@ -140,7 +140,8 @@ class DataProcessor:
             'time': None,
             'signal': None,
             'red': None,
-            'ir': None
+            'ir': None,
+            'waveform': None
         }
         
         for col in columns:
@@ -163,6 +164,10 @@ class DataProcessor:
             # IR channel detection
             if any(pattern in col_lower for pattern in column_mapping.IR_PATTERNS):
                 mapping['ir'] = col
+            
+            # Waveform (PLETH) detection
+            if any(pattern in col_lower for pattern in column_mapping.WAVEFORM_PATTERNS):
+                mapping['waveform'] = col
         
         # If no specific signal column found, use first numeric column
         if not mapping['signal'] and len(df.columns) > 0:

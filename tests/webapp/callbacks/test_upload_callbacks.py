@@ -159,6 +159,32 @@ class TestUploadCallbacks:
         assert "red_only" in str(status)
         assert "IR" not in str(status)  # Should not show IR since it's None
 
+    def test_create_processing_success_status_with_waveform(self):
+        """Test creating processing success status with waveform column."""
+        data_store = {
+            'info': {
+                'rows': 1500,
+                'filename': 'waveform_data.csv'
+            }
+        }
+        config_store = {
+            'sampling_freq': 1000,
+            'time_unit': 'ms'
+        }
+        column_mapping = {
+            'time': 'timestamp',
+            'signal': 'main_signal',
+            'red': 'red_channel',
+            'ir': 'ir_channel',
+            'waveform': 'pleth_waveform'
+        }
+        
+        status = create_processing_success_status(data_store, config_store, column_mapping)
+        
+        assert "pleth_waveform" in str(status)
+        assert "Waveform" in str(status)
+        assert "1000 Hz" in str(status)
+
     @patch('vitalDSP_webapp.callbacks.upload_callbacks.create_data_preview')
     def test_create_data_preview_section_basic(self, mock_create_preview):
         """Test creating data preview section with basic data."""
@@ -181,7 +207,7 @@ class TestUploadCallbacks:
             'quality': np.random.randn(100)
         })
         
-        result = create_data_preview_section(data_info, df)
+        result = create_data_preview_section(data_info, df, None)
         
         assert result == mock_preview
         mock_create_preview.assert_called_once()
@@ -206,7 +232,7 @@ class TestUploadCallbacks:
             'quality': np.random.randn(500)
         })
         
-        result = create_data_preview_section(data_info, df)
+        result = create_data_preview_section(data_info, df, None)
         
         assert result == mock_preview
         mock_create_preview.assert_called_once()
@@ -234,7 +260,7 @@ class TestUploadCallbacks:
             'description': ['Description ' + str(i) for i in range(100)]
         })
         
-        result = create_data_preview_section(data_info, df)
+        result = create_data_preview_section(data_info, df, None)
         
         assert result == mock_preview
         mock_create_preview.assert_called_once()
@@ -255,7 +281,7 @@ class TestUploadCallbacks:
         # Create empty DataFrame
         df = pd.DataFrame()
         
-        result = create_data_preview_section(data_info, df)
+        result = create_data_preview_section(data_info, df, None)
         
         assert result == mock_preview
         mock_create_preview.assert_called_once()

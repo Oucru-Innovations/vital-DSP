@@ -249,26 +249,27 @@ def time_domain_layout():
                     ])
                 ], className="mb-4"),
                 
-                # Analysis Results
+                # Analysis Results - Reorganized for Better Display
                 dbc.Card([
                     dbc.CardHeader([
                         html.H4("📊 Analysis Results", className="mb-0"),
                         html.Small("Key metrics and insights from your signal", className="text-muted")
                     ]),
                     dbc.CardBody([
-                        html.Div(id="analysis-results", className="mb-3"),
-                        dcc.Loading(
-                            dcc.Graph(
-                                id="analysis-plots",
-                                style={"height": "300px"},
-                                config={
-                                    "displayModeBar": True,
-                                    "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],
-                                    "displaylogo": False
-                                }
-                            ),
-                            type="default"
-                        )
+                        # Main analysis results
+                        html.Div(id="analysis-results", className="mb-4"),
+                        
+                        # Peak Analysis Table
+                        html.Div(id="peak-analysis-table", className="mb-4"),
+                        
+                        # Signal Quality Table
+                        html.Div(id="signal-quality-table", className="mb-4"),
+                        
+                        # Filtering Results Table
+                        html.Div(id="filtering-results-table", className="mb-4"),
+                        
+                        # Additional Metrics Table
+                        html.Div(id="additional-metrics-table", className="mb-4")
                     ])
                 ])
             ], md=9)
@@ -599,26 +600,27 @@ def frequency_layout():
                     ], style={"overflow": "visible"})
                 ], className="mb-4"),
                 
-                # Analysis Results
+                # Analysis Results - Reorganized for Better Display
                 dbc.Card([
                     dbc.CardHeader([
                         html.H4("📈 Frequency Analysis Results", className="mb-0"),
                         html.Small("Key frequency metrics and insights", className="text-muted")
                     ]),
                     dbc.CardBody([
-                        html.Div(id="freq-analysis-results", className="mb-3"),
-                        dcc.Loading(
-                            dcc.Graph(
-                                id="freq-analysis-plots",
-                                style={"height": "400px"},
-                                config={
-                                    "displayModeBar": True,
-                                    "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],
-                                    "displaylogo": False
-                                }
-                            ),
-                            type="default"
-                        )
+                        # Main analysis results
+                        html.Div(id="freq-analysis-results", className="mb-4"),
+                        
+                        # Peak Frequency Analysis Table
+                        html.Div(id="freq-peak-analysis-table", className="mb-4"),
+                        
+                        # Band Power Analysis Table
+                        html.Div(id="freq-band-power-table", className="mb-4"),
+                        
+                        # Frequency Stability Table
+                        html.Div(id="freq-stability-table", className="mb-4"),
+                        
+                        # Harmonic Analysis Table
+                        html.Div(id="freq-harmonics-table", className="mb-4")
                     ])
                 ])
             ], md=9)
@@ -1646,8 +1648,9 @@ def features_layout():
                    className="text-center text-muted mb-4")
         ]),
         
-        # Configuration Section
+        # Configuration Section - Balanced Layout
         dbc.Row([
+            # Left Panel - Analysis Configuration
             dbc.Col([
                 dbc.Card([
                     dbc.CardHeader([
@@ -1655,46 +1658,53 @@ def features_layout():
                         html.Small("Configure feature extraction parameters", className="text-muted")
                     ]),
                     dbc.CardBody([
-                        dbc.Row([
-                            dbc.Col([
-                                html.Label("Signal Type", className="form-label"),
-                                dcc.Dropdown(
-                                    id="features-signal-type",
-                                    options=[
-                                        {"label": "PPG Signal", "value": "ppg"},
-                                        {"label": "ECG Signal", "value": "ecg"},
-                                        {"label": "Both Signals", "value": "both"}
-                                    ],
-                                    value="ppg",
-                                    placeholder="Select signal type"
-                                )
-                            ], md=6),
-                            dbc.Col([
-                                html.Label("Preprocessing Options", className="form-label"),
-                                dcc.Checklist(
-                                    id="features-preprocessing",
-                                    options=[
-                                        {"label": "Bandpass Filter", "value": "bandpass"},
-                                        {"label": "Denoising", "value": "denoising"},
-                                        {"label": "Baseline Correction", "value": "baseline"}
-                                    ],
-                                    value=["bandpass"],
-                                    inline=True
-                                )
-                            ], md=6)
-                        ], className="mb-3"),
+                        # Signal Type Selection
+                        html.Label("Signal Type", className="form-label fw-bold"),
+                        dcc.Dropdown(
+                            id="features-signal-type",
+                            options=[
+                                {"label": "PPG Signal", "value": "ppg"},
+                                {"label": "ECG Signal", "value": "ecg"},
+                                {"label": "Both Signals", "value": "both"}
+                            ],
+                            value="ppg",
+                            placeholder="Select signal type",
+                            className="mb-3"
+                        ),
+                        
+                        # Preprocessing Options
+                        html.Label("Preprocessing Options", className="form-label fw-bold"),
+                        dcc.Checklist(
+                            id="features-preprocessing",
+                            options=[
+                                {"label": "Bandpass Filter", "value": "bandpass"},
+                                {"label": "Denoising", "value": "denoising"},
+                                {"label": "Baseline Correction", "value": "baseline"}
+                            ],
+                            value=["bandpass"],
+                            className="mb-4"
+                        ),
+                        
+                        # Analysis Button
                         dbc.Button(
                             "🚀 Analyze Features",
                             id="features-analyze-btn",
                             color="primary",
                             size="lg",
-                            className="w-100"
-                        )
+                            className="w-100 shadow-sm"
+                        ),
+                        
+                        # Quick Info
+                        html.Hr(className="my-3"),
+                        html.Div([
+                            html.Small("💡 Tip: Select signal type and preprocessing options, then click analyze to extract comprehensive features.", 
+                                     className="text-muted fst-italic")
+                        ])
                     ])
-                ], className="mb-4")
-            ], md=4),
+                ], className="mb-4 shadow-sm")
+            ], md=5),
             
-            # Information Section
+            # Right Panel - Available Features (Compact)
             dbc.Col([
                 dbc.Card([
                     dbc.CardHeader([
@@ -1702,47 +1712,58 @@ def features_layout():
                         html.Small("Feature engineering modules in vitalDSP", className="text-muted")
                     ]),
                     dbc.CardBody([
+                        # Compact feature display in columns
+                        dbc.Row([
+                            # Left column
+                            dbc.Col([
+                                html.H6("🧠 Autonomic", className="text-primary mb-2 fw-bold"),
+                                html.Div([
+                                    html.Small("• RRV, RSA", className="d-block text-muted mb-1"),
+                                    html.Small("• Fractal Dimension", className="d-block text-muted mb-1"),
+                                    html.Small("• DFA Analysis", className="d-block text-muted")
+                                ], className="mb-3 p-2 bg-light rounded"),
+                                
+                                html.H6("📊 Morphology", className="text-success mb-2 fw-bold"),
+                                html.Div([
+                                    html.Small("• Peak Detection", className="d-block text-muted mb-1"),
+                                    html.Small("• Trend Analysis", className="d-block text-muted mb-1"),
+                                    html.Small("• Waveform Analysis", className="d-block text-muted")
+                                ], className="mb-3 p-2 bg-light rounded")
+                            ], md=6),
+                            
+                            # Right column
+                            dbc.Col([
+                                html.H6("💡 Light-Based", className="text-warning mb-2 fw-bold"),
+                                html.Div([
+                                    html.Small("• SpO2, PI", className="d-block text-muted mb-1"),
+                                    html.Small("• Respiratory Rate", className="d-block text-muted mb-1"),
+                                    html.Small("• PPR Ratio", className="d-block text-muted")
+                                ], className="mb-3 p-2 bg-light rounded"),
+                                
+                                html.H6("🔗 Synchronization", className="text-info mb-2 fw-bold"),
+                                html.Div([
+                                    html.Small("• PTT, PAT", className="d-block text-muted mb-1"),
+                                    html.Small("• EMD", className="d-block text-muted mb-1"),
+                                    html.Small("• ECG-PPG Sync", className="d-block text-muted")
+                                ], className="mb-3 p-2 bg-light rounded")
+                            ], md=6)
+                        ]),
+                        
+                        # ECG Features in a compact row
+                        html.Hr(className="my-3"),
+                        html.H6("❤️ ECG Features", className="text-danger mb-2 fw-bold"),
                         html.Div([
-                            html.H6("🧠 Autonomic Features", className="text-primary"),
-                            html.Ul([
-                                html.Li("Respiratory Rate Variability (RRV)"),
-                                html.Li("Respiratory Sinus Arrhythmia (RSA)"),
-                                html.Li("Fractal Dimension"),
-                                html.Li("Detrended Fluctuation Analysis (DFA)")
-                            ]),
-                            html.H6("📊 Morphology Features", className="text-success"),
-                            html.Ul([
-                                html.Li("Peak and Trough Detection"),
-                                html.Li("Peak Trend Analysis"),
-                                html.Li("Waveform Morphology Analysis")
-                            ]),
-                            html.H6("💡 Light-Based Features", className="text-warning"),
-                            html.Ul([
-                                html.Li("SpO2 Estimation"),
-                                html.Li("Perfusion Index (PI)"),
-                                html.Li("Respiratory Rate from PPG"),
-                                html.Li("Photoplethysmogram Ratio (PPR)")
-                            ]),
-                            html.H6("🔗 Synchronization Features", className="text-info"),
-                            html.Ul([
-                                html.Li("Pulse Transit Time (PTT)"),
-                                html.Li("Pulse Arrival Time (PAT)"),
-                                html.Li("Electromechanical Delay (EMD)"),
-                                html.Li("ECG-PPG Synchronization")
-                            ]),
-                            html.H6("❤️ ECG Features", className="text-danger"),
-                            html.Ul([
-                                html.Li("P-wave Duration"),
-                                html.Li("PR Interval"),
-                                html.Li("QRS Duration"),
-                                html.Li("ST Segment"),
-                                html.Li("QT Interval"),
-                                html.Li("Arrhythmia Detection")
-                            ])
-                        ])
+                            html.Small("P-wave, PR, QRS, ST, QT, Arrhythmia Detection", className="text-muted")
+                        ], className="p-2 bg-light rounded"),
+                        
+                        # Feature count summary
+                        html.Hr(className="my-3"),
+                        html.Div([
+                            html.Small("📊 Total: 25+ features across 5 categories", className="text-success fw-bold")
+                        ], className="text-center")
                     ])
-                ])
-            ], md=8)
+                ], className="mb-4 shadow-sm")
+            ], md=7)
         ]),
         
         # Analysis Results Section

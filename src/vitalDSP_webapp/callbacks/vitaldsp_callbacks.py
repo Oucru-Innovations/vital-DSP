@@ -24,7 +24,10 @@ def register_vitaldsp_callbacks(app):
         [Output("main-signal-plot", "figure"),
          Output("filtered-signal-plot", "figure"),
          Output("analysis-results", "children"),
-         Output("analysis-plots", "figure"),
+         Output("peak-analysis-table", "children"),
+         Output("signal-quality-table", "children"),
+         Output("filtering-results-table", "children"),
+         Output("additional-metrics-table", "children"),
          Output("store-time-domain-data", "data"),
          Output("store-filtered-data", "data")],
         [Input("url", "pathname"),
@@ -155,11 +158,17 @@ def register_vitaldsp_callbacks(app):
                                                        sampling_freq, analysis_options or ["peaks", "hr", "quality"], column_mapping)
             logger.info("Analysis results generated successfully")
             
-            # Create analysis plots
-            logger.info("Creating analysis plots...")
-            analysis_plots = create_analysis_plots(windowed_data, filtered_data, time_axis, 
-                                                  sampling_freq, analysis_options or ["peaks", "hr", "quality"], column_mapping)
-            logger.info("Analysis plots created successfully")
+            # Generate detailed table components
+            logger.info("Generating detailed table components...")
+            peak_table = create_peak_analysis_table(windowed_data, filtered_data, time_axis, 
+                                                   sampling_freq, analysis_options or ["peaks", "hr", "quality"], column_mapping)
+            quality_table = create_signal_quality_table(windowed_data, filtered_data, time_axis, 
+                                                      sampling_freq, analysis_options or ["peaks", "hr", "quality"], column_mapping)
+            filtering_table = create_filtering_results_table(windowed_data, filtered_data, time_axis, 
+                                                           sampling_freq, analysis_options or ["peaks", "hr", "quality"], column_mapping)
+            additional_table = create_additional_metrics_table(windowed_data, filtered_data, time_axis, 
+                                                             sampling_freq, analysis_options or ["peaks", "hr", "quality"], column_mapping)
+            logger.info("Table components generated successfully")
             
             # Store processed data
             time_domain_data = {
@@ -177,17 +186,18 @@ def register_vitaldsp_callbacks(app):
                     "low_freq": low_freq,
                     "high_freq": high_freq,
                     "order": filter_order
+                    }
                 }
-            }
             
             logger.info("Time domain analysis completed successfully")
-            return main_plot, filtered_plot, analysis_results, analysis_plots, time_domain_data, filtered_data_store
+            return main_plot, filtered_plot, analysis_results, peak_table, quality_table, filtering_table, additional_table, time_domain_data, filtered_data_store
             
         except Exception as e:
             logger.error(f"Error in time domain callback: {e}")
             import traceback
             traceback.print_exc()
-            return create_empty_figure(), create_empty_figure(), f"Error in analysis: {str(e)}", create_empty_figure(), None, None
+            error_msg = f"Error in analysis: {str(e)}"
+            return create_empty_figure(), create_empty_figure(), error_msg, error_msg, error_msg, error_msg, error_msg, None, None
     
     @app.callback(
         [Output("start-time", "value"),
@@ -754,3 +764,598 @@ def create_analysis_plots(raw_data, filtered_data, time_axis, sampling_freq, ana
     except Exception as e:
         logger.error(f"Error creating analysis plots: {e}")
         return create_empty_figure()
+
+
+def create_peak_analysis_table(raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping):
+    """Create a comprehensive peak analysis table."""
+    if "peaks" not in analysis_options:
+        return html.Div([
+            html.H6("❤️ Peak Analysis", className="text-muted"),
+            html.P("Peak analysis not selected in analysis options.", className="text-muted")
+        ])
+    
+    try:
+        # Find signal column
+        numeric_cols = raw_data.select_dtypes(include=[np.number]).columns
+        if len(numeric_cols) == 0:
+            return html.Div([
+                html.H6("❤️ Peak Analysis", className="text-muted"),
+                html.P("No numeric data available for peak analysis.", className="text-muted")
+            ])
+            
+        signal_col = numeric_cols[0]
+        raw_signal = raw_data[signal_col].values
+        
+        # Peak detection
+        peaks, properties = signal.find_peaks(raw_signal, prominence=0.1 * np.std(raw_signal))
+        
+        if len(peaks) < 2:
+            return html.Div([
+                html.H6("❤️ Peak Analysis", className="text-muted"),
+                html.P("Insufficient peaks detected for analysis.", className="text-muted")
+            ])
+        
+        # Calculate metrics
+        rr_intervals = np.diff(time_axis[peaks])
+        heart_rates = 60 / rr_intervals
+        peak_amplitudes = raw_signal[peaks]
+        
+        # Create peak details table
+        peak_details = []
+        for i, (peak_time, peak_amp, rr_int, hr) in enumerate(zip(time_axis[peaks], peak_amplitudes, 
+                                                                   np.append(rr_intervals, np.nan), 
+                                                                   np.append(heart_rates, np.nan))):
+            peak_details.append([
+                f"P{i+1}",
+                f"{peak_time:.3f}s",
+                f"{peak_amp:.3f}",
+                f"{rr_int:.3f}s" if not np.isnan(rr_int) else "N/A",
+                f"{hr:.1f} BPM" if not np.isnan(hr) else "N/A"
+            ])
+        
+        return html.Div([
+            html.H6("❤️ Peak Analysis", className="text-primary mb-3"),
+            
+            # Summary metrics
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{len(peaks)}", className="text-center text-primary mb-0"),
+                            html.Small("Total Peaks", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-primary")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{np.mean(heart_rates):.1f}", className="text-center text-success mb-0"),
+                            html.Small("Mean HR (BPM)", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-success")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{np.std(heart_rates):.1f}", className="text-center text-warning mb-0"),
+                            html.Small("HR Std (BPM)", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-warning")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{np.mean(rr_intervals):.3f}", className="text-center text-info mb-0"),
+                            html.Small("Mean RR (s)", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-info")
+                ], md=3)
+            ], className="mb-3"),
+            
+            # Peak details table
+            html.H6("Peak Details", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Peak", className="text-center"),
+                        html.Th("Time (s)", className="text-center"),
+                        html.Th("Amplitude", className="text-center"),
+                        html.Th("RR Interval (s)", className="text-center"),
+                        html.Th("Heart Rate (BPM)", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td(detail[0], className="fw-bold"),
+                        html.Td(detail[1], className="text-center"),
+                        html.Td(detail[2], className="text-center"),
+                        html.Td(detail[3], className="text-center"),
+                        html.Td(detail[4], className="text-center")
+                    ]) for detail in peak_details[:20]  # Limit to first 20 peaks
+                ])
+            ], bordered=True, hover=True, responsive=True, size="sm", className="mb-3"),
+            
+            # Additional peak statistics
+            html.H6("Peak Statistics", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Metric", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Unit", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Peak Amplitude Range", className="fw-bold"),
+                        html.Td(f"{np.max(peak_amplitudes) - np.min(peak_amplitudes):.3f}", className="text-end"),
+                        html.Td("Signal Units", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Peak Amplitude Mean", className="fw-bold"),
+                        html.Td(f"{np.mean(peak_amplitudes):.3f}", className="text-end"),
+                        html.Td("Signal Units", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Peak Amplitude Std", className="fw-bold"),
+                        html.Td(f"{np.std(peak_amplitudes):.3f}", className="text-end"),
+                        html.Td("Signal Units", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("RR Interval Std", className="fw-bold"),
+                        html.Td(f"{np.std(rr_intervals):.3f}", className="text-end"),
+                        html.Td("Seconds", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, size="sm")
+        ])
+        
+    except Exception as e:
+        logger.error(f"Error creating peak analysis table: {e}")
+        return html.Div([
+            html.H6("❤️ Peak Analysis", className="text-muted"),
+            html.P(f"Error creating peak analysis: {str(e)}", className="text-danger")
+        ])
+
+
+def create_signal_quality_table(raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping):
+    """Create a comprehensive signal quality assessment table."""
+    if "quality" not in analysis_options:
+        return html.Div([
+            html.H6("🎯 Signal Quality", className="text-muted"),
+            html.P("Signal quality assessment not selected in analysis options.", className="text-muted")
+        ])
+    
+    try:
+        # Find signal column
+        numeric_cols = raw_data.select_dtypes(include=[np.number]).columns
+        if len(numeric_cols) == 0:
+            return html.Div([
+                html.H6("🎯 Signal Quality", className="text-muted"),
+                html.P("No numeric data available for quality assessment.", className="text-muted")
+            ])
+            
+        signal_col = numeric_cols[0]
+        raw_signal = raw_data[signal_col].values
+        
+        # Calculate quality metrics
+        signal_power = np.mean(raw_signal**2)
+        noise_power = np.var(raw_signal)
+        snr_db = 10 * np.log10(signal_power / noise_power) if noise_power > 0 else 0
+        
+        # Artifact detection using IQR method
+        q75, q25 = np.percentile(raw_signal, [75, 25])
+        iqr = q75 - q25
+        lower_bound = q25 - 1.5 * iqr
+        upper_bound = q75 + 1.5 * iqr
+        artifact_count = np.sum((raw_signal < lower_bound) | (raw_signal > upper_bound))
+        artifact_percentage = (artifact_count / len(raw_signal)) * 100
+        
+        # Signal stability metrics
+        moving_std = []
+        window_size = int(0.5 * sampling_freq)
+        for i in range(0, len(raw_signal) - window_size, window_size // 4):
+            window = raw_signal[i:i + window_size]
+            moving_std.append(np.std(window))
+        
+        stability_score = 1 - (np.std(moving_std) / np.mean(moving_std)) if np.mean(moving_std) > 0 else 0
+        
+        return html.Div([
+            html.H6("🎯 Signal Quality Assessment", className="text-success mb-3"),
+            
+            # Quality score cards
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{snr_db:.1f} dB", className="text-center text-primary mb-0"),
+                            html.Small("Signal-to-Noise Ratio", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-primary")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{artifact_percentage:.1f}%", className="text-center text-warning mb-0"),
+                            html.Small("Artifact Percentage", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-warning")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{stability_score:.2f}", className="text-center text-success mb-0"),
+                            html.Small("Stability Score", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-success")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{len(raw_signal)}", className="text-center text-info mb-0"),
+                            html.Small("Total Samples", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-info")
+                ], md=3)
+            ], className="mb-3"),
+            
+            # Quality metrics table
+            html.H6("Quality Metrics", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Metric", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Quality", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Signal-to-Noise Ratio", className="fw-bold"),
+                        html.Td(f"{snr_db:.1f} dB", className="text-end"),
+                        html.Td(html.Span(
+                            'Excellent' if snr_db > 20 else 'Good' if snr_db > 15 else 'Fair' if snr_db > 10 else 'Poor',
+                            className=f"badge {'bg-success' if snr_db > 20 else 'bg-info' if snr_db > 15 else 'bg-warning' if snr_db > 10 else 'bg-danger'}"
+                        ), className="text-center")
+                    ]),
+                    html.Tr([
+                        html.Td("Detected Artifacts", className="fw-bold"),
+                        html.Td(f"{artifact_count} ({artifact_percentage:.1f}%)", className="text-end"),
+                        html.Td(html.Span(
+                            'Low' if artifact_percentage < 5 else 'Medium' if artifact_percentage < 15 else 'High',
+                            className=f"badge {'bg-success' if artifact_percentage < 5 else 'bg-warning' if artifact_percentage < 15 else 'bg-danger'}"
+                        ), className="text-center")
+                    ]),
+                    html.Tr([
+                        html.Td("Signal Stability", className="fw-bold"),
+                        html.Td(f"{stability_score:.2f}", className="text-end"),
+                        html.Td(html.Span(
+                            'High' if stability_score > 0.8 else 'Medium' if stability_score > 0.6 else 'Low',
+                            className=f"badge {'bg-success' if stability_score > 0.8 else 'bg-warning' if stability_score > 0.6 else 'bg-danger'}"
+                        ), className="text-center")
+                    ]),
+                    html.Tr([
+                        html.Td("Signal Range", className="fw-bold"),
+                        html.Td(f"{np.max(raw_signal) - np.min(raw_signal):.3f}", className="text-end"),
+                        html.Td("Signal Units", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Signal Power", className="fw-bold"),
+                        html.Td(f"{signal_power:.3f}", className="text-end"),
+                        html.Td("Signal Units²", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, size="sm")
+        ])
+        
+    except Exception as e:
+        logger.error(f"Error creating signal quality table: {e}")
+        return html.Div([
+            html.H6("🎯 Signal Quality", className="text-muted"),
+            html.P(f"Error creating quality assessment: {str(e)}", className="text-danger")
+        ])
+
+
+def create_filtering_results_table(raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping):
+    """Create a comprehensive filtering results table."""
+    try:
+        # Check if filtering was applied
+        if filtered_data is None or filtered_data.equals(raw_data):
+            return html.Div([
+                html.H6("🔧 Filtering Results", className="text-muted"),
+                html.P("No filtering applied or filtering parameters not configured.", className="text-muted")
+            ])
+        
+        # Find signal column
+        numeric_cols = raw_data.select_dtypes(include=[np.number]).columns
+        if len(numeric_cols) == 0:
+            return html.Div([
+                html.H6("🔧 Filtering Results", className="text-muted"),
+                html.P("No numeric data available for filtering analysis.", className="text-muted")
+            ])
+            
+        signal_col = numeric_cols[0]
+        raw_signal = raw_data[signal_col].values
+        filtered_signal = filtered_data[signal_col].values
+        
+        # Calculate filtering metrics
+        raw_power = np.mean(raw_signal**2)
+        filtered_power = np.mean(filtered_signal**2)
+        power_reduction = (raw_power - filtered_power) / raw_power * 100 if raw_power > 0 else 0
+        
+        # Frequency domain analysis
+        raw_fft = np.abs(np.fft.rfft(raw_signal))
+        filtered_fft = np.abs(np.fft.rfft(filtered_signal))
+        freqs = np.fft.rfftfreq(len(raw_signal), 1/sampling_freq)
+        
+        # Calculate frequency-specific improvements
+        low_freq_mask = freqs < 1.0  # Below 1 Hz
+        mid_freq_mask = (freqs >= 1.0) & (freqs < 10.0)  # 1-10 Hz
+        high_freq_mask = freqs >= 10.0  # Above 10 Hz
+        
+        low_freq_improvement = np.mean(filtered_fft[low_freq_mask]) / np.mean(raw_fft[low_freq_mask]) if np.mean(raw_fft[low_freq_mask]) > 0 else 1
+        mid_freq_improvement = np.mean(filtered_fft[mid_freq_mask]) / np.mean(raw_fft[mid_freq_mask]) if np.mean(raw_fft[mid_freq_mask]) > 0 else 1
+        high_freq_improvement = np.mean(filtered_fft[high_freq_mask]) / np.mean(raw_fft[high_freq_mask]) if np.mean(raw_fft[high_freq_mask]) > 0 else 1
+        
+        return html.Div([
+            html.H6("🔧 Filtering Results", className="text-info mb-3"),
+            
+            # Filtering summary cards
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{power_reduction:.1f}%", className="text-center text-primary mb-0"),
+                            html.Small("Power Reduction", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-primary")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{low_freq_improvement:.2f}x", className="text-center text-success mb-0"),
+                            html.Small("Low Freq Improvement", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-success")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{mid_freq_improvement:.2f}x", className="text-center text-warning mb-0"),
+                            html.Small("Mid Freq Improvement", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-warning")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{high_freq_improvement:.2f}x", className="text-center text-info mb-0"),
+                            html.Small("High Freq Improvement", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-info")
+                ], md=3)
+            ], className="mb-3"),
+            
+            # Filtering metrics table
+            html.H6("Filtering Metrics", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Metric", className="text-center"),
+                        html.Th("Raw Signal", className="text-center"),
+                        html.Th("Filtered Signal", className="text-center"),
+                        html.Th("Improvement", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Signal Power", className="fw-bold"),
+                        html.Td(f"{raw_power:.3f}", className="text-end"),
+                        html.Td(f"{filtered_power:.3f}", className="text-end"),
+                        html.Td(f"{(filtered_power/raw_power)*100:.1f}%" if raw_power > 0 else "N/A", className="text-end")
+                    ]),
+                    html.Tr([
+                        html.Td("Signal Variance", className="fw-bold"),
+                        html.Td(f"{np.var(raw_signal):.3f}", className="text-end"),
+                        html.Td(f"{np.var(filtered_signal):.3f}", className="text-end"),
+                        html.Td(f"{(np.var(filtered_signal)/np.var(raw_signal))*100:.1f}%" if np.var(raw_signal) > 0 else "N/A", className="text-end")
+                    ]),
+                    html.Tr([
+                        html.Td("Peak-to-Peak", className="fw-bold"),
+                        html.Td(f"{np.max(raw_signal) - np.min(raw_signal):.3f}", className="text-end"),
+                        html.Td(f"{np.max(filtered_signal) - np.min(filtered_signal):.3f}", className="text-end"),
+                        html.Td("N/A", className="text-end")
+                    ]),
+                    html.Tr([
+                        html.Td("Low Freq Content", className="fw-bold"),
+                        html.Td(f"{np.mean(raw_fft[low_freq_mask]):.3f}", className="text-end"),
+                        html.Td(f"{np.mean(filtered_fft[low_freq_mask]):.3f}", className="text-end"),
+                        html.Td(f"{low_freq_improvement:.2f}x", className="text-end")
+                    ]),
+                    html.Tr([
+                        html.Td("Mid Freq Content", className="fw-bold"),
+                        html.Td(f"{np.mean(raw_fft[mid_freq_mask]):.3f}", className="text-end"),
+                        html.Td(f"{np.mean(filtered_fft[mid_freq_mask]):.3f}", className="text-end"),
+                        html.Td(f"{mid_freq_improvement:.2f}x", className="text-end")
+                    ]),
+                    html.Tr([
+                        html.Td("High Freq Content", className="fw-bold"),
+                        html.Td(f"{np.mean(raw_fft[high_freq_mask]):.3f}", className="text-end"),
+                        html.Td(f"{np.mean(filtered_fft[high_freq_mask]):.3f}", className="text-end"),
+                        html.Td(f"{high_freq_improvement:.2f}x", className="text-end")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, size="sm")
+        ])
+        
+    except Exception as e:
+        logger.error(f"Error creating filtering results table: {e}")
+        return html.Div([
+            html.H6("🔧 Filtering Results", className="text-muted"),
+            html.P(f"Error creating filtering results: {str(e)}", className="text-danger")
+        ])
+
+
+def create_additional_metrics_table(raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping):
+    """Create additional metrics and insights table."""
+    try:
+        # Find signal column
+        numeric_cols = raw_data.select_dtypes(include=[np.number]).columns
+        if len(numeric_cols) == 0:
+            return html.Div([
+                html.H6("📊 Additional Metrics", className="text-muted"),
+                html.P("No numeric data available for additional metrics.", className="text-muted")
+            ])
+            
+        signal_col = numeric_cols[0]
+        raw_signal = raw_data[signal_col].values
+        
+        # Calculate additional metrics
+        signal_skewness = np.mean(((raw_signal - np.mean(raw_signal)) / np.std(raw_signal))**3) if np.std(raw_signal) > 0 else 0
+        signal_kurtosis = np.mean(((raw_signal - np.mean(raw_signal)) / np.std(raw_signal))**4) if np.std(raw_signal) > 0 else 0
+        
+        # Zero crossing rate
+        zero_crossings = np.sum(np.diff(np.signbit(raw_signal - np.mean(raw_signal))))
+        zero_crossing_rate = zero_crossings / len(raw_signal)
+        
+        # Signal complexity (approximate entropy)
+        def approximate_entropy(signal, m=2, r=0.2):
+            try:
+                N = len(signal)
+                if N < m + 2:
+                    return 0
+                
+                # Normalize signal
+                signal_norm = (signal - np.mean(signal)) / np.std(signal)
+                r = r * np.std(signal_norm)
+                
+                # Calculate phi(m) and phi(m+1)
+                phi_m = 0
+                phi_m1 = 0
+                
+                for i in range(N - m + 1):
+                    pattern_m = signal_norm[i:i+m]
+                    count_m = 0
+                    count_m1 = 0
+                    
+                    for j in range(N - m + 1):
+                        if np.all(np.abs(pattern_m - signal_norm[j:j+m]) <= r):
+                            count_m += 1
+                        if j < N - m:
+                            if np.all(np.abs(pattern_m - signal_norm[j:j+m+1][:m]) <= r):
+                                count_m1 += 1
+                    
+                    phi_m += np.log(count_m / (N - m + 1))
+                    phi_m1 += np.log(count_m1 / (N - m + 1))
+                
+                phi_m /= (N - m + 1)
+                phi_m1 /= (N - m + 1)
+                
+                return phi_m - phi_m1
+            except:
+                return 0
+        
+        complexity = approximate_entropy(raw_signal)
+        
+        return html.Div([
+            html.H6("📊 Additional Metrics & Insights", className="text-secondary mb-3"),
+            
+            # Additional metrics cards
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{signal_skewness:.3f}", className="text-center text-primary mb-0"),
+                            html.Small("Skewness", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-primary")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{signal_kurtosis:.3f}", className="text-center text-success mb-0"),
+                            html.Small("Kurtosis", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-success")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{zero_crossing_rate:.3f}", className="text-center text-warning mb-0"),
+                            html.Small("Zero Crossing Rate", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-warning")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{complexity:.3f}", className="text-center text-info mb-0"),
+                            html.Small("Complexity", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-info")
+                ], md=3)
+            ], className="mb-3"),
+            
+            # Additional metrics table
+            html.H6("Statistical Metrics", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Metric", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Interpretation", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Signal Skewness", className="fw-bold"),
+                        html.Td(f"{signal_skewness:.3f}", className="text-end"),
+                        html.Td(html.Span(
+                            'Symmetric' if abs(signal_skewness) < 0.5 else 'Right Skewed' if signal_skewness > 0.5 else 'Left Skewed',
+                            className=f"badge {'bg-success' if abs(signal_skewness) < 0.5 else 'bg-warning'}"
+                        ), className="text-center")
+                    ]),
+                    html.Tr([
+                        html.Td("Signal Kurtosis", className="fw-bold"),
+                        html.Td(f"{signal_kurtosis:.3f}", className="text-end"),
+                        html.Td(html.Span(
+                            'Normal' if abs(signal_kurtosis - 3) < 1 else 'Heavy Tailed' if signal_kurtosis > 4 else 'Light Tailed',
+                            className=f"badge {'bg-success' if abs(signal_kurtosis - 3) < 1 else 'bg-warning'}"
+                        ), className="text-center")
+                    ]),
+                    html.Tr([
+                        html.Td("Zero Crossing Rate", className="fw-bold"),
+                        html.Td(f"{zero_crossing_rate:.3f}", className="text-end"),
+                        html.Td(html.Span(
+                            'High Frequency' if zero_crossing_rate > 0.3 else 'Medium Frequency' if zero_crossing_rate > 0.1 else 'Low Frequency',
+                            className=f"badge {'bg-danger' if zero_crossing_rate > 0.3 else 'bg-warning' if zero_crossing_rate > 0.1 else 'bg-success'}"
+                        ), className="text-center")
+                    ]),
+                    html.Tr([
+                        html.Td("Signal Complexity", className="fw-bold"),
+                        html.Td(f"{complexity:.3f}", className="text-end"),
+                        html.Td(html.Span(
+                            'High' if complexity > 1.0 else 'Medium' if complexity > 0.5 else 'Low',
+                            className=f"badge {'bg-danger' if complexity > 1.0 else 'bg-warning' if complexity > 0.5 else 'bg-success'}"
+                        ), className="text-center")
+                    ]),
+                    html.Tr([
+                        html.Td("Signal Duration", className="fw-bold"),
+                        html.Td(f"{len(raw_signal)/sampling_freq:.2f}s", className="text-end"),
+                        html.Td("Duration", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Sampling Frequency", className="fw-bold"),
+                        html.Td(f"{sampling_freq} Hz", className="text-end"),
+                        html.Td("Frequency", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, size="sm")
+        ])
+        
+    except Exception as e:
+        logger.error(f"Error creating additional metrics table: {e}")
+        return html.Div([
+            html.H6("📊 Additional Metrics", className="text-muted"),
+            html.P(f"Error creating additional metrics: {str(e)}", className="text-danger")
+        ])

@@ -69,6 +69,7 @@ class ColumnMapping:
     PPG_PATTERNS: List[str] = None
     RED_PATTERNS: List[str] = None
     IR_PATTERNS: List[str] = None
+    WAVEFORM_PATTERNS: List[str] = None
     
     # ECG-specific patterns
     ECG_PATTERNS: List[str] = None
@@ -89,6 +90,9 @@ class ColumnMapping:
         
         if self.IR_PATTERNS is None:
             self.IR_PATTERNS = ['ir', 'ir_adc', 'ir_adc_value']
+        
+        if self.WAVEFORM_PATTERNS is None:
+            self.WAVEFORM_PATTERNS = ['waveform', 'pleth', 'plethysmography', 'signal']
         
         if self.ECG_PATTERNS is None:
             self.ECG_PATTERNS = ['ecg', 'electrocardiogram', 'lead']

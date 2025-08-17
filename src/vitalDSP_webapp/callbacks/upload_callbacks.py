@@ -9,6 +9,7 @@ import json
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+from plotly.subplots import make_subplots
 from dash import Input, Output, State, callback_context, no_update, html
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
@@ -122,7 +123,17 @@ def register_upload_callbacks(app):
                 "time_unit": time_unit,
                 "filename": data_info["filename"]
             }
-            preview = create_data_preview_section(data_info, df)
+            # Create column mapping from auto-detected results
+            mapping = DataProcessor.auto_detect_columns(df)
+            column_mapping = {
+                'time': mapping.get('time'),
+                'signal': mapping.get('signal'),
+                'red': mapping.get('red'),
+                'ir': mapping.get('ir'),
+                'waveform': mapping.get('waveform')
+            }
+            
+            preview = create_data_preview_section(data_info, df, column_mapping)
             
             return status, data_store, config_store, preview
             
@@ -135,18 +146,19 @@ def register_upload_callbacks(app):
         [Output("time-column", "options"),
          Output("signal-column", "options"),
          Output("red-column", "options"),
-         Output("ir-column", "options")],
+         Output("ir-column", "options"),
+         Output("waveform-column", "options")],
         [Input("store-uploaded-data", "data")]
     )
     def update_column_options(data_store):
         """Update column dropdown options based on uploaded data."""
         if not data_store or "columns" not in data_store:
-            return [], [], [], []
+            return [], [], [], [], []
             
         columns = data_store.get("columns", [])
         options = [{"label": col, "value": col} for col in columns]
         
-        return options, options, options, options
+        return options, options, options, options, options
     
     @app.callback(
         [Output("btn-process-data", "disabled"),
@@ -166,7 +178,8 @@ def register_upload_callbacks(app):
         [Output("time-column", "value"),
          Output("signal-column", "value"),
          Output("red-column", "value"),
-         Output("ir-column", "value")],
+         Output("ir-column", "value"),
+         Output("waveform-column", "value")],
         [Input("btn-auto-detect", "n_clicks")],
         [State("store-uploaded-data", "data")]
     )
@@ -179,11 +192,11 @@ def register_upload_callbacks(app):
             df = pd.DataFrame(data_store.get("dataframe", []))
             mapping = DataProcessor.auto_detect_columns(df)
             
-            return mapping['time'], mapping['signal'], mapping['red'], mapping['ir']
+            return mapping['time'], mapping['signal'], mapping['red'], mapping['ir'], mapping.get('waveform')
             
         except Exception as e:
             logger.error(f"Error in auto-detection: {str(e)}")
-            return no_update, no_update, no_update, no_update
+            return no_update, no_update, no_update, no_update, no_update
     
     @app.callback(
         Output("processing-status", "children"),
@@ -193,9 +206,10 @@ def register_upload_callbacks(app):
          State("time-column", "value"),
          State("signal-column", "value"),
          State("red-column", "value"),
-         State("ir-column", "value")]
+         State("ir-column", "value"),
+         State("waveform-column", "value")]
     )
-    def process_data(n_clicks, data_store, config_store, time_col, signal_col, red_col, ir_col):
+    def process_data(n_clicks, data_store, config_store, time_col, signal_col, red_col, ir_col, waveform_col):
         """Process the uploaded data with selected column mapping."""
         logger.info("=== PROCESS DATA CALLBACK TRIGGERED ===")
         logger.info(f"n_clicks: {n_clicks}")
@@ -205,6 +219,7 @@ def register_upload_callbacks(app):
         logger.info(f"signal_col: {signal_col}")
         logger.info(f"red_col: {red_col}")
         logger.info(f"ir_col: {ir_col}")
+        logger.info(f"waveform_col: {waveform_col}")
         
         if not n_clicks or not data_store:
             logger.warning("No n_clicks or no data_store - raising PreventUpdate")
@@ -224,7 +239,8 @@ def register_upload_callbacks(app):
                 "time": time_col,
                 "signal": signal_col,
                 "red": red_col,
-                "ir": ir_col
+                "ir": ir_col,
+                "waveform": waveform_col
             }
             logger.info(f"Column mapping created: {column_mapping}")
             
@@ -278,6 +294,56 @@ def register_upload_callbacks(app):
             logger.error(f"Error in data processing: {str(e)}")
             return create_error_status(f"An error occurred while processing the data: {str(e)}")
 
+    # Signal Preview Plot Callback
+    @app.callback(
+        Output("signal-preview-plot", "figure"),
+        [Input("store-uploaded-data", "data"),
+         Input("store-data-config", "data"),
+         Input("time-column", "value"),
+         Input("signal-column", "value"),
+         Input("red-column", "value"),
+         Input("ir-column", "value"),
+         Input("waveform-column", "value")]
+    )
+    def update_signal_preview_plot(uploaded_data, data_config, time_col, signal_col, red_col, ir_col, waveform_col):
+        """Update the signal preview plot when data is uploaded or column mapping changes."""
+        try:
+            logger.info(f"=== SIGNAL PREVIEW CALLBACK TRIGGERED ===")
+            logger.info(f"uploaded_data keys: {list(uploaded_data.keys()) if uploaded_data else 'None'}")
+            logger.info(f"time_col: {time_col}, signal_col: {signal_col}, red_col: {red_col}, ir_col: {ir_col}, waveform_col: {waveform_col}")
+            
+            if not uploaded_data:
+                logger.info("No uploaded data, returning empty figure")
+                return create_empty_figure()
+            
+            # Get the data from the store - use 'dataframe' key
+            df = pd.DataFrame(uploaded_data.get('dataframe', []))
+            logger.info(f"DataFrame shape: {df.shape}, columns: {df.columns.tolist()}")
+            
+            if df.empty:
+                logger.info("DataFrame is empty, returning empty figure")
+                return create_empty_figure()
+            
+            # Create column mapping from current selections
+            column_mapping = {
+                'time': time_col,
+                'signal': signal_col,
+                'red': red_col,
+                'ir': ir_col,
+                'waveform': waveform_col
+            }
+            logger.info(f"Column mapping: {column_mapping}")
+            
+            # Create and return the signal preview plot with column mapping
+            logger.info("Creating signal preview plot...")
+            result = create_signal_preview_plot(df, column_mapping)
+            logger.info("Signal preview plot created successfully")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error updating signal preview plot: {e}")
+            return create_empty_figure()
+
 
 def create_success_status(data_info):
     """Create success status message."""
@@ -318,7 +384,8 @@ def create_processing_success_status(data_store, config_store, column_mapping):
             html.Strong("Column Mapping: "),
             f"Time: {column_mapping['time']}, Signal: {column_mapping['signal']}"
         ] + ([] if not column_mapping['red'] else [f", RED: {column_mapping['red']}"]) + 
-        ([] if not column_mapping['ir'] else [f", IR: {column_mapping['ir']}"])),
+        ([] if not column_mapping['ir'] else [f", IR: {column_mapping['ir']}"]) +
+        ([] if not column_mapping.get('waveform') else [f", Waveform: {column_mapping['waveform']}"])),
         html.P([
             html.Strong("Sampling Rate: "),
             f"{config_store['sampling_freq']} Hz"
@@ -326,7 +393,7 @@ def create_processing_success_status(data_store, config_store, column_mapping):
     ], color="success", className="mt-3")
 
 
-def create_data_preview_section(data_info, df):
+def create_data_preview_section(data_info, df, column_mapping=None):
     """Create the data preview section."""
     from ..layout.upload_section import create_data_preview
     
@@ -342,36 +409,240 @@ def create_data_preview_section(data_info, df):
     
     # Create signal preview plot
     if len(df.columns) > 0:
+        # Use the enhanced signal preview function with column mapping
+        fig = create_signal_preview_plot(df, column_mapping)
+        
+        # Update the data info with the plot
+        data_info["preview_plot"] = fig
+        data_info["preview_table"] = table
+        
+        # Use the existing create_data_preview function
+        return create_data_preview(data_info)
+    
+    # Fallback if no numeric data
+    return create_data_preview(data_info)
+
+
+def create_signal_preview_plot(df, column_mapping=None):
+    """Create a signal preview plot for the upload screen showing RED, IR, and waveform channels."""
+    try:
+        logger.info(f"=== CREATE_SIGNAL_PREVIEW_PLOT CALLED ===")
+        logger.info(f"DataFrame shape: {df.shape}, columns: {df.columns.tolist()}")
+        logger.info(f"Column mapping: {column_mapping}")
+        
+        if df is None or df.empty:
+            logger.info("DataFrame is None or empty, returning empty figure")
+            return create_empty_figure()
+        
+        # Find numeric columns
         numeric_cols = df.select_dtypes(include=[np.number]).columns
-        if len(numeric_cols) > 0:
-            signal_col = numeric_cols[0]
-            # Sample data for plot (limit points to avoid performance issues)
-            plot_data = df.head(app_config.MAX_PLOT_POINTS)
+        logger.info(f"Numeric columns found: {numeric_cols.tolist()}")
+        
+        if len(numeric_cols) == 0:
+            logger.info("No numeric columns found, returning empty figure")
+            return create_empty_figure()
+        
+        # Sample data for plot (limit points to avoid performance issues)
+        max_points = 1000
+        if len(df) > max_points:
+            step = len(df) // max_points
+            plot_data = df.iloc[::step]
+        else:
+            plot_data = df
+        
+        # Create subplots for RED, IR, and waveform channels (like sample_tool)
+        
+        # Determine subplot titles based on available data
+        if column_mapping and column_mapping.get('red') and column_mapping.get('ir') and column_mapping.get('waveform'):
+            # All three channels mapped
+            subplot_titles = (
+                f"Raw {column_mapping['red']}", 
+                f"Raw {column_mapping['ir']}", 
+                f"Raw {column_mapping['waveform']}"
+            )
+        elif column_mapping and column_mapping.get('red') and column_mapping.get('ir'):
+            # Only RED and IR mapped
+            subplot_titles = (
+                f"Raw {column_mapping['red']}", 
+                f"Raw {column_mapping['ir']}", 
+                "Raw Waveform (PLETH)"
+            )
+        elif column_mapping and column_mapping.get('red'):
+            # Only RED mapped
+            subplot_titles = (
+                f"Raw {column_mapping['red']}", 
+                "Raw IR Channel", 
+                "Raw Waveform (PLETH)"
+            )
+        else:
+            # Use generic titles
+            subplot_titles = ("Raw RED Channel", "Raw IR Channel", "Raw Waveform (PLETH)")
+        
+        fig = make_subplots(
+            rows=3,
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.05,
+            subplot_titles=subplot_titles
+        )
+        
+        # Add traces for all three channels
+        if column_mapping and column_mapping.get('red') and column_mapping.get('ir') and column_mapping.get('waveform'):
+            # All three channels mapped - use actual column names
+            red_col = column_mapping['red']
+            ir_col = column_mapping['ir']
+            waveform_col = column_mapping['waveform']
             
-            fig = go.Figure()
+            if red_col in df.columns:
+                fig.add_trace(go.Scatter(
+                    x=plot_data.index,
+                    y=plot_data[red_col],
+                    mode='lines',
+                    name=f"Raw {red_col}",
+                    line=dict(color='#e74c3c', width=1.5)
+                ), row=1, col=1)
+            
+            if ir_col in df.columns:
+                fig.add_trace(go.Scatter(
+                    x=plot_data.index,
+                    y=plot_data[ir_col],
+                    mode='lines',
+                    name=f"Raw {ir_col}",
+                    line=dict(color='#f39c12', width=1.5)
+                ), row=2, col=1)
+            
+            if waveform_col in df.columns:
+                fig.add_trace(go.Scatter(
+                    x=plot_data.index,
+                    y=plot_data[waveform_col],
+                    mode='lines',
+                    name=f"Raw {waveform_col}",
+                    line=dict(color='#3498db', width=1.5)
+                ), row=3, col=1)
+                
+        elif len(numeric_cols) >= 3:
+            # Use first three numeric columns
+            red_col = numeric_cols[0]
+            ir_col = numeric_cols[1]
+            waveform_col = numeric_cols[2]
+            
+            fig.add_trace(go.Scatter(
+                x=plot_data.index,
+                y=plot_data[red_col],
+                mode='lines',
+                name=f"Raw {red_col}",
+                line=dict(color='#e74c3c', width=1.5)
+            ), row=1, col=1)
+            
+            fig.add_trace(go.Scatter(
+                x=plot_data.index,
+                y=plot_data[ir_col],
+                mode='lines',
+                name=f"Raw {ir_col}",
+                line=dict(color='#f39c12', width=1.5)
+            ), row=2, col=1)
+            
+            fig.add_trace(go.Scatter(
+                x=plot_data.index,
+                y=plot_data[waveform_col],
+                mode='lines',
+                name=f"Raw {waveform_col}",
+                line=dict(color='#3498db', width=1.5)
+            ), row=3, col=1)
+        elif len(numeric_cols) >= 2:
+            # Use first two numeric columns
+            col1 = numeric_cols[0]
+            col2 = numeric_cols[1]
+            
+            fig.add_trace(go.Scatter(
+                x=plot_data.index,
+                y=plot_data[col1],
+                mode='lines',
+                name=f"Raw {col1}",
+                line=dict(color='#e74c3c', width=1.5)
+            ), row=1, col=1)
+            
+            fig.add_trace(go.Scatter(
+                x=plot_data.index,
+                y=plot_data[col2],
+                mode='lines',
+                name=f"Raw {col2}",
+                line=dict(color='#f39c12', width=1.5)
+            ), row=2, col=1)
+            
+            # Empty third subplot
+            fig.add_trace(go.Scatter(x=[], y=[], mode='lines', name="No data"), row=3, col=1)
+        else:
+            # Use first numeric column for all three subplots
+            signal_col = numeric_cols[0]
+            
             fig.add_trace(go.Scatter(
                 x=plot_data.index,
                 y=plot_data[signal_col],
                 mode='lines',
-                name=signal_col,
-                line=dict(color=ui_styles.PRIMARY_COLOR, width=1)
-            ))
+                name=f"Raw {signal_col}",
+                line=dict(color='#e74c3c', width=1.5)
+            ), row=1, col=1)
             
-            fig.update_layout(
-                title=f"Signal Preview: {signal_col}",
-                xaxis_title="Sample Index",
-                yaxis_title="Amplitude",
-                template="plotly_white",
-                height=300,
-                margin=dict(l=40, r=40, t=60, b=40),
-                showlegend=False
-            )
+            fig.add_trace(go.Scatter(
+                x=plot_data.index,
+                y=plot_data[signal_col],
+                mode='lines',
+                name=f"Raw {signal_col}",
+                line=dict(color='#f39c12', width=1.5)
+            ), row=2, col=1)
             
-            # Update the data info with the plot
-            data_info["preview_plot"] = fig
-            data_info["preview_table"] = table
-            
-            return create_data_preview(data_info)
-    
-    # Fallback if no numeric data
-    return create_data_preview(data_info)
+            fig.add_trace(go.Scatter(
+                x=plot_data.index,
+                y=plot_data[signal_col],
+                mode='lines',
+                name=f"Raw {signal_col}",
+                line=dict(color='#3498db', width=1.5)
+            ), row=3, col=1)
+        
+        # Configure axes labels and rangeslider (like sample_tool)
+        fig.update_xaxes(title_text="Sample Index", row=3, col=1, rangeslider={"visible": True})
+        fig.update_yaxes(title_text="ADC", row=1, col=1)
+        fig.update_yaxes(title_text="ADC", row=2, col=1)
+        fig.update_yaxes(title_text="ADC", row=3, col=1)
+        
+        # Apply layout styling (like sample_tool)
+        fig.update_layout(
+            template="plotly_white",
+            title=f"Signal Preview ({len(df):,} rows)",
+            hovermode="x unified",
+            height=600,  # Increased height for three subplots like sample_tool
+            margin=dict(l=40, r=40, t=60, b=40),
+            showlegend=False
+        )
+        
+        logger.info(f"Signal preview plot created successfully with {len(fig.data)} traces")
+        logger.info(f"Plot layout: {fig.layout.title.text}, height: {fig.layout.height}")
+        
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error creating signal preview plot: {e}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return create_empty_figure()
+
+
+def create_empty_figure():
+    """Create an empty figure for when no data is available."""
+    fig = go.Figure()
+    fig.add_annotation(
+        text="No data available<br>Please upload data first",
+        xref="paper", yref="paper",
+        x=0.5, y=0.5, showarrow=False,
+        font=dict(size=16, color="gray")
+    )
+    fig.update_layout(
+        template="plotly_white",
+        height=300,
+        margin=dict(l=40, r=40, t=40, b=40),
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+    )
+    return fig
