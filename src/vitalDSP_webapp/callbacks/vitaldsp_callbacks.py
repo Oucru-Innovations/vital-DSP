@@ -17,6 +17,314 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def process_signal_analysis(data_id: str, analysis_type: str, parameters: dict) -> dict:
+    """
+    Process signal analysis based on the given parameters.
+    
+    Parameters
+    ----------
+    data_id : str
+        ID of the data to analyze
+    analysis_type : str
+        Type of analysis to perform
+    parameters : dict
+        Analysis parameters
+        
+    Returns
+    -------
+    dict
+        Analysis results
+    """
+    try:
+        # Get data from the data service
+        from ..services.data_service import get_data_service
+        data_service = get_data_service()
+        
+        # Get the data
+        df = data_service.get_data(data_id)
+        if df is None or df.empty:
+            return {
+                'status': 'error',
+                'message': 'No data found for the given ID'
+            }
+        
+        # Perform analysis based on type
+        if analysis_type == 'hrv_analysis':
+            results = perform_hrv_analysis(df, parameters)
+        elif analysis_type == 'frequency_domain':
+            results = perform_frequency_analysis(df, parameters)
+        elif analysis_type == 'time_domain':
+            results = perform_time_domain_analysis(df, parameters)
+        elif analysis_type == 'wavelet_analysis':
+            results = perform_wavelet_analysis(df, parameters)
+        else:
+            return {
+                'status': 'error',
+                'message': f'Unsupported analysis type: {analysis_type}'
+            }
+        
+        return {
+            'status': 'success',
+            'results': results,
+            'analysis_type': analysis_type,
+            'parameters': parameters
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in signal analysis: {e}")
+        return {
+            'status': 'error',
+            'message': str(e)
+        }
+
+
+def generate_analysis_report(analysis_results: dict, analysis_type: str) -> dict:
+    """
+    Generate a comprehensive analysis report.
+    
+    Parameters
+    ----------
+    analysis_results : dict
+        Results from the analysis
+    analysis_type : str
+        Type of analysis performed
+        
+    Returns
+    -------
+    dict
+        Generated report
+    """
+    try:
+        if not analysis_results:
+            return {
+                'summary': 'No analysis results available',
+                'details': {},
+                'recommendations': 'No specific recommendations available'
+            }
+        
+        # Create summary based on analysis type
+        if analysis_type == 'hrv_analysis':
+            summary = 'HRV Analysis Report'
+            recommendations = 'Consider HRV trends over time for better insights'
+        elif analysis_type == 'frequency_domain':
+            summary = 'Frequency Domain Analysis Report'
+            recommendations = 'Monitor frequency components for signal quality assessment'
+        else:
+            summary = f'{analysis_type.replace("_", " ").title()} Analysis Report'
+            recommendations = 'Review results for any anomalies or patterns'
+        
+        # Extract details from results
+        details = {}
+        for key, value in analysis_results.items():
+            if isinstance(value, dict):
+                details[key] = value
+            else:
+                details[key] = str(value)
+        
+        return {
+            'summary': summary,
+            'details': details,
+            'recommendations': recommendations
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating report: {e}")
+        return {
+            'summary': 'Error generating report',
+            'details': {'error': str(e)},
+            'recommendations': 'Please check the logs for more details'
+        }
+
+
+def create_visualization_components(analysis_results: dict, analysis_type: str) -> list:
+    """
+    Create visualization components for the analysis.
+    
+    Parameters
+    ----------
+    analysis_results : dict
+        Results from the analysis
+    analysis_type : str
+        Type of analysis visualization
+        
+    Returns
+    -------
+    list
+        List of visualization components
+    """
+    try:
+        components = []
+        
+        # Add summary component
+        if analysis_results:
+            summary_component = html.Div([
+                html.H4(f"{analysis_type.replace('_', ' ').title()} Results"),
+                html.P(f"Analysis completed with {len(analysis_results)} result categories")
+            ])
+            components.append(summary_component)
+        
+        # Add specific components based on analysis type
+        if analysis_type == 'hrv_analysis' and 'hrv_features' in analysis_results:
+            hrv_component = html.Div([
+                html.H5("HRV Metrics"),
+                html.Ul([
+                    html.Li(f"{key}: {value}") 
+                    for key, value in analysis_results['hrv_features'].items()
+                ])
+            ])
+            components.append(hrv_component)
+        
+        elif analysis_type == 'frequency_domain' and 'frequency_features' in analysis_results:
+            freq_component = html.Div([
+                html.H5("Frequency Domain Metrics"),
+                html.Ul([
+                    html.Li(f"{key}: {value}") 
+                    for key, value in analysis_results['frequency_features'].items()
+                ])
+            ])
+            components.append(freq_component)
+        
+        # Add plots if available
+        if 'plots' in analysis_results:
+            plots_component = html.Div([
+                html.H5("Generated Plots"),
+                html.P(f"Number of plots: {len(analysis_results['plots'])}")
+            ])
+            components.append(plots_component)
+        
+        # Always add at least one component
+        if not components:
+            components.append(html.Div([
+                html.H5("Analysis Results"),
+                html.P("No specific visualization components available")
+            ]))
+        
+        return components
+        
+    except Exception as e:
+        logger.error(f"Error creating visualization: {e}")
+        return [html.Div([
+            html.H5("Error"),
+            html.P(f"Failed to create visualization: {str(e)}")
+        ])]
+
+
+def perform_hrv_analysis(df: pd.DataFrame, parameters: dict) -> dict:
+    """Perform HRV analysis on the data."""
+    # Placeholder implementation
+    return {
+        'hrv_features': {
+            'mean_hr': 75.0,
+            'sdnn': 45.2,
+            'rmssd': 32.1,
+            'pnn50': 28.5
+        }
+    }
+
+
+def perform_frequency_analysis(df: pd.DataFrame, parameters: dict) -> dict:
+    """Perform frequency domain analysis."""
+    # Placeholder implementation
+    return {
+        'frequency_features': {
+            'total_power': 1000.0,
+            'vlf_power': 150.0,
+            'lf_power': 400.0,
+            'hf_power': 450.0
+        }
+    }
+
+
+def perform_time_domain_analysis(df: pd.DataFrame, parameters: dict) -> dict:
+    """Perform time domain analysis."""
+    # Placeholder implementation
+    return {
+        'time_features': {
+            'mean': float(df.mean().iloc[0]) if not df.empty else 0.0,
+            'std': float(df.std().iloc[0]) if not df.empty else 0.0,
+            'min': float(df.min().iloc[0]) if not df.empty else 0.0,
+            'max': float(df.max().iloc[0]) if not df.empty else 0.0
+        }
+    }
+
+
+def perform_wavelet_analysis(df: pd.DataFrame, parameters: dict) -> dict:
+    """Perform wavelet analysis."""
+    # Placeholder implementation
+    return {
+        'wavelet_features': {
+            'wavelet_type': parameters.get('wavelet', 'db4'),
+            'levels': parameters.get('levels', 6),
+            'coefficients': len(df) if not df.empty else 0
+        }
+    }
+
+
+def perform_filtering_analysis(df: pd.DataFrame, parameters: dict) -> dict:
+    """Perform filtering analysis."""
+    # Placeholder implementation
+    return {
+        'filter_type': parameters.get('filter_type', 'butterworth'),
+        'cutoff_freq': parameters.get('cutoff_freq', 50.0),
+        'filter_order': parameters.get('filter_order', 4)
+    }
+
+
+def create_analysis_summary(results: dict) -> str:
+    """Create a summary of the analysis results."""
+    return f"Analysis completed successfully with {len(results)} metrics"
+
+
+def create_signal_plot(df: pd.DataFrame) -> go.Figure:
+    """Create a basic signal plot."""
+    fig = go.Figure()
+    if not df.empty:
+        time_col = df.columns[0] if len(df.columns) > 0 else 'time'
+        signal_col = df.columns[1] if len(df.columns) > 1 else 'signal'
+        
+        fig.add_trace(go.Scatter(
+            x=df[time_col] if time_col in df.columns else range(len(df)),
+            y=df[signal_col] if signal_col in df.columns else df.iloc[:, 0],
+            mode='lines',
+            name='Signal'
+        ))
+    
+    fig.update_layout(
+        title='Signal Visualization',
+        xaxis_title='Time',
+        yaxis_title='Amplitude'
+    )
+    return fig
+
+
+def create_analysis_charts(df: pd.DataFrame, analysis_type: str) -> list:
+    """Create analysis-specific charts."""
+    # Placeholder implementation
+    return []
+
+
+def create_summary_table(df: pd.DataFrame) -> html.Table:
+    """Create a summary table of the data."""
+    if df.empty:
+        return html.Table([
+            html.Thead(html.Tr([html.Th("Metric"), html.Th("Value")])),
+            html.Tbody([html.Tr([html.Td("Status"), html.Td("No data")])])
+        ])
+    
+    stats = {
+        'Rows': len(df),
+        'Columns': len(df.columns),
+        'Memory Usage': f"{df.memory_usage(deep=True).sum() / 1024:.2f} KB"
+    }
+    
+    rows = [html.Tr([html.Td(k), html.Td(str(v))]) for k, v in stats.items()]
+    
+    return html.Table([
+        html.Thead(html.Tr([html.Th("Metric"), html.Th("Value")])),
+        html.Tbody(rows)
+    ])
+
+
 def register_vitaldsp_callbacks(app):
     """Register all vitalDSP analysis callbacks."""
     

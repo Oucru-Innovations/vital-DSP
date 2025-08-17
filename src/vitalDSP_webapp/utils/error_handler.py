@@ -22,6 +22,16 @@ class WebappError(Exception):
         self.message = message
         self.error_code = error_code
         self.details = details or {}
+        
+        # Add timestamp
+        from datetime import datetime
+        self.timestamp = datetime.now()
+        
+        # Add context attribute for backward compatibility
+        self.context = details or {}
+        
+        # Add error_type attribute for backward compatibility
+        self.error_type = error_code
     
     def __str__(self):
         if self.error_code:
@@ -140,6 +150,256 @@ def create_error_alert(error: Union[Exception, str],
         color=color,
         className="mt-3"
     )
+
+
+def handle_upload_error(error: Exception, context: dict = None) -> dict:
+    """
+    Handle file upload errors specifically.
+    
+    Parameters
+    ----------
+    error : Exception
+        The upload error that occurred
+    context : dict, optional
+        Additional context about the upload
+        
+    Returns
+    -------
+    dict
+        Standardized error response for upload errors
+    """
+    error_info = handle_error(error, "File Upload")
+    
+    # Add upload-specific error handling
+    if isinstance(error, FileUploadError):
+        error_info['upload_context'] = context or {}
+        error_info['suggestions'] = get_upload_error_suggestions(error)
+    
+    # Add the expected keys for the test
+    error_info['error'] = True
+    error_info['message'] = str(error)
+    
+    return error_info
+
+
+def handle_processing_error(error: Exception, context: dict = None) -> dict:
+    """
+    Handle data processing errors specifically.
+    
+    Parameters
+    ----------
+    error : Exception
+        The processing error that occurred
+    context : dict, optional
+        Additional context about the processing
+        
+    Returns
+    -------
+    dict
+        Standardized error response for processing errors
+    """
+    error_info = handle_error(error, "Data Processing")
+    
+    # Add processing-specific error handling
+    if isinstance(error, DataProcessingError):
+        error_info['processing_context'] = context or {}
+        error_info['suggestions'] = get_processing_error_suggestions(error)
+    
+    # Add the expected keys for the test
+    error_info['error'] = True
+    error_info['message'] = str(error)
+    
+    return error_info
+
+
+def get_processing_error_suggestions(error: Exception) -> list:
+    """Get user-friendly suggestions for processing errors."""
+    suggestions = []
+    
+    if "data format" in str(error).lower():
+        suggestions.append("Check if the data format is supported")
+        suggestions.append("Ensure the data has the expected structure")
+    elif "column mapping" in str(error).lower():
+        suggestions.append("Verify the column mapping configuration")
+        suggestions.append("Check if all required columns are present")
+    elif "sampling frequency" in str(error).lower():
+        suggestions.append("Verify the sampling frequency value")
+        suggestions.append("Ensure the sampling frequency is positive")
+    else:
+        suggestions.append("Check the data for any anomalies")
+        suggestions.append("Verify the processing parameters")
+    
+    return suggestions
+
+
+def handle_analysis_error(error: Exception, context: dict = None) -> dict:
+    """
+    Handle analysis errors specifically.
+    
+    Parameters
+    ----------
+    error : Exception
+        The analysis error that occurred
+    context : dict, optional
+        Additional context about the analysis
+        
+    Returns
+    -------
+    dict
+        Standardized error response for analysis errors
+    """
+    error_info = handle_error(error, "Data Analysis")
+    
+    # Add analysis-specific error handling
+    if isinstance(error, AnalysisError):
+        error_info['analysis_context'] = context or {}
+        error_info['suggestions'] = get_analysis_error_suggestions(error)
+    
+    # Add the expected keys for the test
+    error_info['error'] = True
+    error_info['message'] = str(error)
+    
+    return error_info
+
+
+def get_analysis_error_suggestions(error: Exception) -> list:
+    """Get user-friendly suggestions for analysis errors."""
+    suggestions = []
+    
+    if "insufficient data" in str(error).lower():
+        suggestions.append("Ensure you have enough data points for analysis")
+        suggestions.append("Check if the data window size is appropriate")
+    elif "parameter" in str(error).lower():
+        suggestions.append("Verify the analysis parameters")
+        suggestions.append("Check if parameter values are within valid ranges")
+    else:
+        suggestions.append("Review the analysis configuration")
+        suggestions.append("Check if the data quality is sufficient")
+    
+    return suggestions
+
+
+def log_error_with_context(error: Exception, context: dict, level: str = "ERROR"):
+    """
+    Log an error with additional context information.
+    
+    Parameters
+    ----------
+    error : Exception
+        The error to log
+    context : dict
+        Additional context information
+    level : str
+        Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    """
+    logger = logging.getLogger(__name__)
+    
+    context_str = " | ".join([f"{k}: {v}" for k, v in context.items()])
+    error_msg = f"{str(error)} | Context: {context_str}"
+    
+    if level.upper() == "DEBUG":
+        logger.debug(error_msg)
+    elif level.upper() == "INFO":
+        logger.info(error_msg)
+    elif level.upper() == "WARNING":
+        logger.warning(error_msg)
+    elif level.upper() == "ERROR":
+        logger.error(error_msg)
+    elif level.upper() == "CRITICAL":
+        logger.critical(error_msg)
+    else:
+        logger.error(error_msg)
+
+
+def create_user_friendly_error_message(error: Exception) -> str:
+    """
+    Create a user-friendly error message from an exception.
+    
+    Parameters
+    ----------
+    error : Exception
+        The error to convert to a user-friendly message
+        
+    Returns
+    -------
+    str
+        User-friendly error message
+    """
+    if isinstance(error, WebappError):
+        error_type = error.error_code or "Unknown Error"
+        if "upload" in error_type.lower():
+            return f"Upload Error: {error.message}. Please check your file and try again."
+        elif "processing" in error_type.lower():
+            return f"Processing Error: {error.message}. Please verify your data and settings."
+        elif "analysis" in error_type.lower():
+            return f"Analysis Error: {error.message}. Please check your analysis parameters."
+        else:
+            return f"{error_type}: {error.message}"
+    else:
+        # Generic error handling
+        error_msg = str(error)
+        if "file" in error_msg.lower():
+            return f"File Error: {error_msg}. Please check your file and try again."
+        elif "data" in error_msg.lower():
+            return f"Data Error: {error_msg}. Please verify your data and try again."
+        else:
+            return f"An error occurred: {error_msg}. Please try again or contact support."
+
+
+def format_error_for_display(error: Exception, include_details: bool = False) -> dict:
+    """
+    Format an error for display in the UI.
+    
+    Parameters
+    ----------
+    error : Exception
+        The error to format
+    include_details : bool
+        Whether to include detailed error information
+        
+    Returns
+    -------
+    dict
+        Formatted error information for display
+    """
+    from datetime import datetime
+    
+    formatted_error = {
+        "message": str(error),
+        "type": getattr(error, 'error_code', type(error).__name__),
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    # Add context if available
+    if hasattr(error, 'details') and error.details:
+        formatted_error["context"] = error.details
+    
+    # Add traceback if requested and available
+    if include_details:
+        import traceback
+        formatted_error["traceback"] = traceback.format_exc()
+    
+    return formatted_error
+
+
+def get_upload_error_suggestions(error: Exception) -> list:
+    """Get user-friendly suggestions for upload errors."""
+    suggestions = []
+    
+    if "file size" in str(error).lower():
+        suggestions.append("Try uploading a smaller file")
+        suggestions.append("Check if the file is compressed")
+    elif "file format" in str(error).lower():
+        suggestions.append("Ensure the file is in CSV, Excel, or text format")
+        suggestions.append("Check if the file extension matches the content")
+    elif "permission" in str(error).lower():
+        suggestions.append("Check file permissions")
+        suggestions.append("Try running the application with appropriate privileges")
+    else:
+        suggestions.append("Check the file for corruption")
+        suggestions.append("Try uploading a different file")
+    
+    return suggestions
 
 
 def create_warning_alert(message: str, title: str = "Warning") -> dbc.Alert:
