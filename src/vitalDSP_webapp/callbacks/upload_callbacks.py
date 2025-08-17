@@ -412,7 +412,7 @@ def create_data_preview_section(data_info, df, column_mapping=None):
         # Use the enhanced signal preview function with column mapping
         fig = create_signal_preview_plot(df, column_mapping)
         
-        # Update the data info with the plot
+        # Update the data info with the plot and table
         data_info["preview_plot"] = fig
         data_info["preview_table"] = table
         

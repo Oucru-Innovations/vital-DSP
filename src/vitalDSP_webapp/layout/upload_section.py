@@ -210,7 +210,8 @@ def upload_layout():
         # Stores for data management
         dcc.Store(id="store-uploaded-data"),
         dcc.Store(id="store-data-config"),
-        dcc.Store(id="store-column-mapping")
+        dcc.Store(id="store-column-mapping"),
+        dcc.Store(id="store-preview-window", data={"start": 0, "end": 1000})
     ])
 
 
@@ -268,17 +269,185 @@ def create_data_preview(data_info):
             
             # Data Table Preview
             html.H6("Data Preview (First 10 rows)", className="mb-3"),
-            html.Div(id="data-table-preview", className="table-responsive"),
+            html.Div(id="data-table-preview", className="table-responsive", children=[
+                data_info.get("preview_table", html.P("No table data available"))
+            ]),
             
-            # Quick Plot Preview
-            html.H6("Signal Preview", className="mb-3"),
-            html.Div(id="signal-preview-plot-container", children=[
-                dcc.Graph(
-                    id="signal-preview-plot",
-                    figure=data_info.get("preview_plot", {}),  # Use the preview plot if available
-                    style={"height": "600px"},  # Increased height for three subplots
-                    config={"displayModeBar": True}  # Enable display mode bar for better interaction
-                )
+            # Advanced Preview Controls (like sample_tool)
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.H6("🎛️ Filter Controls", className="mb-0")
+                        ]),
+                        dbc.CardBody([
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Filter Family", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="preview-filter-family",
+                                        value="butter",
+                                        options=[
+                                            {"label": "Butterworth", "value": "butter"},
+                                            {"label": "Chebyshev I", "value": "cheby1"},
+                                            {"label": "Chebyshev II", "value": "cheby2"},
+                                            {"label": "Elliptic", "value": "ellip"},
+                                            {"label": "Bessel", "value": "bessel"},
+                                        ],
+                                        clearable=False,
+                                        style={"width": "100%"}
+                                    )
+                                ], md=4),
+                                dbc.Col([
+                                    html.Label("Response Type", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="preview-filter-response",
+                                        value="bandpass",
+                                        options=[
+                                            {"label": "Bandpass", "value": "bandpass"},
+                                            {"label": "Bandstop (Notch)", "value": "bandstop"},
+                                            {"label": "Lowpass", "value": "lowpass"},
+                                            {"label": "Highpass", "value": "highpass"},
+                                        ],
+                                        clearable=False,
+                                        style={"width": "100%"}
+                                    )
+                                ], md=4),
+                                dbc.Col([
+                                    html.Label("Order", className="form-label"),
+                                    dcc.Input(
+                                        id="preview-filter-order",
+                                        type="number",
+                                        value=4,
+                                        min=1,
+                                        max=10,
+                                        step=1,
+                                        style={"width": "100%"}
+                                    )
+                                ], md=4)
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Low Freq (Hz)", className="form-label"),
+                                    dcc.Input(
+                                        id="preview-filter-low",
+                                        type="number",
+                                        value=0.5,
+                                        min=0.1,
+                                        step=0.1,
+                                        style={"width": "100%"}
+                                    )
+                                ], md=6),
+                                dbc.Col([
+                                    html.Label("High Freq (Hz)", className="form-label"),
+                                    dcc.Input(
+                                        id="preview-filter-high",
+                                        type="number",
+                                        value=8.0,
+                                        min=0.1,
+                                        step=0.1,
+                                        style={"width": "100%"}
+                                    )
+                                ], md=6)
+                            ])
+                        ])
+                    ])
+                ], md=6),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardHeader([
+                            html.H6("📊 Data Range Selection", className="mb-0")
+                        ]),
+                        dbc.CardBody([
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Start Row", className="form-label"),
+                                    dcc.Input(
+                                        id="preview-start-row",
+                                        type="number",
+                                        value=0,
+                                        min=0,
+                                        step=100,
+                                        style={"width": "100%"}
+                                    )
+                                ], md=6),
+                                dbc.Col([
+                                    html.Label("End Row", className="form-label"),
+                                    dcc.Input(
+                                        id="preview-end-row",
+                                        type="number",
+                                        value=1000,
+                                        min=0,
+                                        step=100,
+                                        style={"width": "100%"}
+                                    )
+                                ], md=6)
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Range Slider", className="form-label"),
+                                    dcc.RangeSlider(
+                                        id="preview-range-slider",
+                                        min=0,
+                                        max=data_info.get('rows', 1000),
+                                        step=100,
+                                        value=[0, min(1000, data_info.get('rows', 1000))],
+                                        marks={i: str(i) for i in range(0, data_info.get('rows', 1000) + 1, 500)},
+                                        pushable=100,
+                                        updatemode="mouseup"
+                                    )
+                                ])
+                            ]),
+                            dbc.Row([
+                                dbc.Col([
+                                    dbc.Button("Apply Range", id="preview-apply-range", color="primary", className="w-100")
+                                ])
+                            ], className="mt-2")
+                        ])
+                    ])
+                ], md=6)
+            ], className="mb-4"),
+            
+            # Signal Preview with Tabs (like sample_tool)
+            dbc.Tabs([
+                dbc.Tab([
+                    html.Div(id="signal-preview-plot-container", children=[
+                        dcc.Graph(
+                            id="signal-preview-plot",
+                            figure=data_info.get("preview_plot", {}),
+                            style={"height": "600px"},
+                            config={"displayModeBar": True}
+                        )
+                    ])
+                ], label="Raw Signals", tab_id="raw-signals"),
+                dbc.Tab([
+                    html.Div(id="filtered-signals-plot-container", children=[
+                        dcc.Graph(
+                            id="filtered-signals-plot",
+                            style={"height": "600px"},
+                            config={"displayModeBar": True}
+                        )
+                    ])
+                ], label="Filtered Signals", tab_id="filtered-signals"),
+                dbc.Tab([
+                    html.Div(id="frequency-domain-plot-container", children=[
+                        dcc.Graph(
+                            id="frequency-domain-plot",
+                            style={"height": "600px"},
+                            config={"displayModeBar": True}
+                        )
+                    ])
+                ], label="Frequency Domain", tab_id="frequency-domain")
+            ], id="preview-tabs", className="mb-4"),
+            
+            # Insights Panel (like sample_tool)
+            dbc.Card([
+                dbc.CardHeader([
+                    html.H6("🧠 Insights & Analysis", className="mb-0")
+                ]),
+                dbc.CardBody([
+                    html.Div(id="preview-insights", className="d-flex flex-wrap gap-2")
+                ])
             ])
         ])
     ])
