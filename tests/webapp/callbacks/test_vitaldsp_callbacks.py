@@ -11,12 +11,8 @@ from dash import html, dcc
 src_path = Path(__file__).parent.parent.parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
-from vitalDSP_webapp.callbacks.vitaldsp_callbacks import (
-    register_vitaldsp_callbacks,
-    process_signal_analysis,
-    generate_analysis_report,
-    create_visualization_components
-)
+# Import the module directly and access functions as attributes
+import vitalDSP_webapp.callbacks.vitaldsp_callbacks as vitaldsp_module
 
 
 class TestVitalDSPCallbacks:
@@ -49,7 +45,7 @@ class TestVitalDSPCallbacks:
         mock_callback.side_effect = lambda *args, **kwargs: lambda func: func
         
         with patch('vitalDSP_webapp.callbacks.vitaldsp_callbacks.app.callback', mock_callback):
-            register_vitaldsp_callbacks(self.mock_app)
+            vitaldsp_module.register_vitaldsp_callbacks(self.mock_app)
             
             # Check that callbacks were registered
             assert mock_callback.call_count > 0
@@ -61,7 +57,7 @@ class TestVitalDSPCallbacks:
         mock_get_service.return_value = mock_service
         mock_service.get_data.return_value = self.test_df
         
-        result = process_signal_analysis(
+        result = vitaldsp_module.process_signal_analysis(
             'test123', 
             'hrv_analysis', 
             {'window_size': 300}
@@ -78,7 +74,7 @@ class TestVitalDSPCallbacks:
         mock_get_service.return_value = mock_service
         mock_service.get_data.return_value = None
         
-        result = process_signal_analysis(
+        result = vitaldsp_module.process_signal_analysis(
             'test123', 
             'hrv_analysis', 
             {'window_size': 300}
@@ -94,7 +90,7 @@ class TestVitalDSPCallbacks:
         mock_get_service.return_value = mock_service
         mock_service.get_data.return_value = self.test_df
         
-        result = process_signal_analysis(
+        result = vitaldsp_module.process_signal_analysis(
             'test123', 
             'invalid_analysis', 
             {}
@@ -110,7 +106,7 @@ class TestVitalDSPCallbacks:
         mock_get_service.return_value = mock_service
         mock_service.get_data.return_value = self.test_df
         
-        result = process_signal_analysis(
+        result = vitaldsp_module.process_signal_analysis(
             'test123', 
             'hrv_analysis', 
             {'window_size': 300, 'overlap': 0.5}
@@ -126,7 +122,7 @@ class TestVitalDSPCallbacks:
         mock_get_service.return_value = mock_service
         mock_service.get_data.return_value = self.test_df
         
-        result = process_signal_analysis(
+        result = vitaldsp_module.process_signal_analysis(
             'test123', 
             'frequency_domain', 
             {'window_size': 512, 'overlap': 0.5}
@@ -142,7 +138,7 @@ class TestVitalDSPCallbacks:
         mock_get_service.return_value = mock_service
         mock_service.get_data.return_value = self.test_df
         
-        result = process_signal_analysis(
+        result = vitaldsp_module.process_signal_analysis(
             'test123', 
             'time_domain', 
             {'window_size': 100}
@@ -158,7 +154,7 @@ class TestVitalDSPCallbacks:
         mock_get_service.return_value = mock_service
         mock_service.get_data.return_value = self.test_df
         
-        result = process_signal_analysis(
+        result = vitaldsp_module.process_signal_analysis(
             'test123', 
             'wavelet_analysis', 
             {'wavelet': 'db4', 'levels': 6}
@@ -181,7 +177,7 @@ class TestVitalDSPCallbacks:
             }
         }
         
-        report = generate_analysis_report(analysis_results, 'hrv_analysis')
+        report = vitaldsp_module.generate_analysis_report(analysis_results, 'hrv_analysis')
         
         assert isinstance(report, dict)
         assert 'summary' in report
@@ -190,7 +186,7 @@ class TestVitalDSPCallbacks:
 
     def test_generate_analysis_report_empty_results(self):
         """Test analysis report generation with empty results."""
-        report = generate_analysis_report({}, 'hrv_analysis')
+        report = vitaldsp_module.generate_analysis_report({}, 'hrv_analysis')
         
         assert report['summary'] == 'No analysis results available'
         assert report['details'] == {}
@@ -207,7 +203,7 @@ class TestVitalDSPCallbacks:
             }
         }
         
-        report = generate_analysis_report(analysis_results, 'hrv_analysis')
+        report = vitaldsp_module.generate_analysis_report(analysis_results, 'hrv_analysis')
         
         assert 'HRV Analysis Report' in report['summary']
         assert 'mean_hr' in str(report['details'])
@@ -224,7 +220,7 @@ class TestVitalDSPCallbacks:
             }
         }
         
-        report = generate_analysis_report(analysis_results, 'frequency_domain')
+        report = vitaldsp_module.generate_analysis_report(analysis_results, 'frequency_domain')
         
         assert 'Frequency Domain Analysis' in report['summary']
         assert 'total_power' in str(report['details'])
@@ -237,7 +233,7 @@ class TestVitalDSPCallbacks:
             'plots': {'hrv_plot': 'plot_data'}
         }
         
-        components = create_visualization_components(analysis_results, 'hrv_analysis')
+        components = vitaldsp_module.create_visualization_components(analysis_results, 'hrv_analysis')
         
         assert isinstance(components, list)
         assert len(components) > 0
@@ -248,7 +244,7 @@ class TestVitalDSPCallbacks:
             'hrv_features': {'mean_hr': 75.5}
         }
         
-        components = create_visualization_components(analysis_results, 'hrv_analysis')
+        components = vitaldsp_module.create_visualization_components(analysis_results, 'hrv_analysis')
         
         assert isinstance(components, list)
         # Should still create some components even without plots
@@ -267,7 +263,7 @@ class TestVitalDSPCallbacks:
             }
         }
         
-        components = create_visualization_components(analysis_results, 'hrv_analysis')
+        components = vitaldsp_module.create_visualization_components(analysis_results, 'hrv_analysis')
         
         assert isinstance(components, list)
         assert len(components) > 0
@@ -287,7 +283,7 @@ class TestVitalDSPCallbacks:
             }
         }
         
-        components = create_visualization_components(analysis_results, 'frequency_domain')
+        components = vitaldsp_module.create_visualization_components(analysis_results, 'frequency_domain')
         
         assert isinstance(components, list)
         assert len(components) > 0
@@ -308,35 +304,35 @@ class TestVitalDSPCallbacks:
         ]
         
         for params in param_combinations:
-            result = process_signal_analysis('test123', 'hrv_analysis', params)
+            result = vitaldsp_module.process_signal_analysis('test123', 'hrv_analysis', params)
             assert result['status'] == 'success'
 
     def test_generate_analysis_report_edge_cases(self):
         """Test analysis report generation with edge cases."""
         # Test with None results
-        report = generate_analysis_report(None, 'hrv_analysis')
+        report = vitaldsp_module.generate_analysis_report(None, 'hrv_analysis')
         assert 'No analysis results available' in report['summary']
         
         # Test with string results
-        report = generate_analysis_report("string results", 'hrv_analysis')
+        report = vitaldsp_module.generate_analysis_report("string results", 'hrv_analysis')
         assert 'Invalid results format' in report['summary']
         
         # Test with empty analysis type
-        report = generate_analysis_report({}, '')
+        report = vitaldsp_module.generate_analysis_report({}, '')
         assert 'Unknown analysis type' in report['summary']
 
     def test_create_visualization_components_edge_cases(self):
         """Test visualization component creation with edge cases."""
         # Test with None results
-        components = create_visualization_components(None, 'hrv_analysis')
+        components = vitaldsp_module.create_visualization_components(None, 'hrv_analysis')
         assert isinstance(components, list)
         
         # Test with empty results
-        components = create_visualization_components({}, 'hrv_analysis')
+        components = vitaldsp_module.create_visualization_components({}, 'hrv_analysis')
         assert isinstance(components, list)
         
         # Test with invalid analysis type
-        components = create_visualization_components({'data': 'test'}, 'invalid_type')
+        components = vitaldsp_module.create_visualization_components({'data': 'test'}, 'invalid_type')
         assert isinstance(components, list)
 
     @patch('vitalDSP_webapp.callbacks.vitaldsp_callbacks.get_data_service')
@@ -346,7 +342,7 @@ class TestVitalDSPCallbacks:
         mock_get_service.return_value = mock_service
         mock_service.get_data.side_effect = Exception("Service error")
         
-        result = process_signal_analysis('test123', 'hrv_analysis', {})
+        result = vitaldsp_module.process_signal_analysis('test123', 'hrv_analysis', {})
         
         assert result['status'] == 'error'
         assert 'Service error' in result['message']

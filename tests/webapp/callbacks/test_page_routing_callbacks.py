@@ -30,13 +30,24 @@ class TestPageRoutingCallbacks:
         
         # Check first callback (display_page)
         first_call = self.mock_app.callback.call_args_list[0]
-        assert first_call[1]['Output'] == ("page-content", "children")
-        assert first_call[1]['Input'] == [("url", "pathname")]
+        # The Output and Input are passed as Output and Input objects
+        first_output = first_call[0][0]
+        first_input = first_call[0][1]
+        assert first_output.component_id == "page-content"
+        assert first_output.component_property == "children"
+        assert len(first_input) == 1
+        assert first_input[0].component_id == "url"
+        assert first_input[0].component_property == "pathname"
         
         # Check second callback (test_routing)
         second_call = self.mock_app.callback.call_args_list[1]
-        assert second_call[1]['Output'] == ("page-content", "style")
-        assert second_call[1]['Input'] == [("url", "pathname")]
+        second_output = second_call[0][0]
+        second_input = second_call[0][1]
+        assert second_output.component_id == "page-content"
+        assert second_output.component_property == "style"
+        assert len(second_input) == 1
+        assert second_input[0].component_id == "url"
+        assert second_input[0].component_property == "pathname"
     
     def test_display_page_home(self):
         """Test display_page function for home page."""

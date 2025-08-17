@@ -11,12 +11,8 @@ from dash import html
 src_path = Path(__file__).parent.parent.parent.parent / "src"
 sys.path.insert(0, str(src_path))
 
-from vitalDSP_webapp.callbacks.upload_callbacks import (
-    create_success_status, 
-    create_error_status, 
-    create_processing_success_status,
-    create_data_preview_section
-)
+# Import the module directly and access functions as attributes
+import vitalDSP_webapp.callbacks.upload_callbacks as upload_module
 from vitalDSP_webapp.config.settings import app_config
 
 
@@ -33,7 +29,7 @@ class TestUploadCallbacks:
             'quality_status': 'Good'
         }
         
-        status = create_success_status(data_info)
+        status = upload_module.create_success_status(data_info)
         
         assert isinstance(status, dbc.Alert)
         assert status.color == "success"
@@ -54,7 +50,7 @@ class TestUploadCallbacks:
             'quality_status': 'Excellent'
         }
         
-        status = create_success_status(data_info)
+        status = upload_module.create_success_status(data_info)
         
         assert "1,000,000" in str(status)  # Check for formatted large number
         assert "150.75 MB" in str(status)
@@ -65,7 +61,7 @@ class TestUploadCallbacks:
         """Test creating a basic error status."""
         message = "File format not supported"
         
-        status = create_error_status(message)
+        status = upload_module.create_error_status(message)
         
         assert isinstance(status, dbc.Alert)
         assert status.color == "danger"
@@ -76,7 +72,7 @@ class TestUploadCallbacks:
         """Test creating error status with a long error message."""
         long_message = "This is a very long error message that contains multiple sentences and should be displayed properly in the error alert component."
         
-        status = create_error_status(long_message)
+        status = upload_module.create_error_status(long_message)
         
         assert isinstance(status, dbc.Alert)
         assert long_message in str(status)
@@ -100,7 +96,7 @@ class TestUploadCallbacks:
             'ir': None
         }
         
-        status = create_processing_success_status(data_store, config_store, column_mapping)
+        status = upload_module.create_processing_success_status(data_store, config_store, column_mapping)
         
         assert isinstance(status, dbc.Alert)
         assert status.color == "success"
@@ -129,7 +125,7 @@ class TestUploadCallbacks:
             'ir': 'ir_channel'
         }
         
-        status = create_processing_success_status(data_store, config_store, column_mapping)
+        status = upload_module.create_processing_success_status(data_store, config_store, column_mapping)
         
         assert "red_channel" in str(status)
         assert "ir_channel" in str(status)
@@ -154,7 +150,7 @@ class TestUploadCallbacks:
             'ir': None
         }
         
-        status = create_processing_success_status(data_store, config_store, column_mapping)
+        status = upload_module.create_processing_success_status(data_store, config_store, column_mapping)
         
         assert "red_only" in str(status)
         assert "IR" not in str(status)  # Should not show IR since it's None
@@ -179,7 +175,7 @@ class TestUploadCallbacks:
             'waveform': 'pleth_waveform'
         }
         
-        status = create_processing_success_status(data_store, config_store, column_mapping)
+        status = upload_module.create_processing_success_status(data_store, config_store, column_mapping)
         
         assert "pleth_waveform" in str(status)
         assert "Waveform" in str(status)
@@ -207,7 +203,7 @@ class TestUploadCallbacks:
             'quality': np.random.randn(100)
         })
         
-        result = create_data_preview_section(data_info, df, None)
+        result = upload_module.create_data_preview_section(data_info, df, None)
         
         assert result == mock_preview
         mock_create_preview.assert_called_once()
@@ -232,7 +228,7 @@ class TestUploadCallbacks:
             'quality': np.random.randn(500)
         })
         
-        result = create_data_preview_section(data_info, df, None)
+        result = upload_module.create_data_preview_section(data_info, df, None)
         
         assert result == mock_preview
         mock_create_preview.assert_called_once()
@@ -260,7 +256,7 @@ class TestUploadCallbacks:
             'description': ['Description ' + str(i) for i in range(100)]
         })
         
-        result = create_data_preview_section(data_info, df, None)
+        result = upload_module.create_data_preview_section(data_info, df, None)
         
         assert result == mock_preview
         mock_create_preview.assert_called_once()
@@ -281,7 +277,7 @@ class TestUploadCallbacks:
         # Create empty DataFrame
         df = pd.DataFrame()
         
-        result = create_data_preview_section(data_info, df, None)
+        result = upload_module.create_data_preview_section(data_info, df, None)
         
         assert result == mock_preview
         mock_create_preview.assert_called_once()
@@ -297,7 +293,7 @@ class TestUploadCallbacks:
             'quality_status': 'Unknown'
         }
         
-        status_zero = create_success_status(data_info_zero)
+        status_zero = upload_module.create_success_status(data_info_zero)
         assert "0" in str(status_zero)
         assert "0.00 MB" in str(status_zero)
         assert "0.0s" in str(status_zero)
@@ -311,7 +307,7 @@ class TestUploadCallbacks:
             'quality_status': 'Poor'
         }
         
-        status_small = create_success_status(data_info_small)
+        status_small = upload_module.create_success_status(data_info_small)
         assert "1" in str(status_small)
         assert "0.00 MB" in str(status_small)
         assert "0.0s" in str(status_small)
@@ -319,17 +315,17 @@ class TestUploadCallbacks:
     def test_create_error_status_edge_cases(self):
         """Test edge cases for error status creation."""
         # Test with empty message
-        status_empty = create_error_status("")
+        status_empty = upload_module.create_error_status("")
         assert isinstance(status_empty, dbc.Alert)
         
         # Test with special characters
         special_message = "Error with special chars: !@#$%^&*()_+-=[]{}|;':\",./<>?"
-        status_special = create_error_status(special_message)
+        status_special = upload_module.create_error_status(special_message)
         assert special_message in str(status_special)
         
         # Test with HTML-like content
         html_message = "<script>alert('xss')</script>"
-        status_html = create_error_status(html_message)
+        status_html = upload_module.create_error_status(html_message)
         assert html_message in str(status_html)
 
     def test_create_processing_success_status_edge_cases(self):
@@ -352,6 +348,6 @@ class TestUploadCallbacks:
             'ir': None
         }
         
-        status = create_processing_success_status(data_store, config_store, column_mapping)
+        status = upload_module.create_processing_success_status(data_store, config_store, column_mapping)
         assert isinstance(status, dbc.Alert)
         assert "0 Hz" in str(status)
