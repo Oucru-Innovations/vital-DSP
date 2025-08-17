@@ -25,13 +25,31 @@ def register_preview_callbacks(app):
     @app.callback(
         [Output("filtered-signals-plot", "figure"),
          Output("frequency-domain-plot", "figure"),
+         Output("spectrogram-plot", "figure"),
+         Output("r-trend-spo2-plot", "figure"),
+         Output("coherence-plot", "figure"),
+         Output("lissajous-plot", "figure"),
+         Output("average-beat-plot", "figure"),
+         Output("sdppg-plot", "figure"),
+         Output("hr-trend-plot", "figure"),
+         Output("ibi-histogram-plot", "figure"),
+         Output("poincare-plot", "figure"),
+         Output("cross-correlation-plot", "figure"),
          Output("preview-insights", "children")],
         [Input("preview-apply-range", "n_clicks"),
          Input("preview-filter-family", "value"),
          Input("preview-filter-response", "value"),
          Input("preview-filter-order", "value"),
          Input("preview-filter-low", "value"),
-         Input("preview-filter-high", "value")],
+         Input("preview-filter-high", "value"),
+         Input("spectrogram-window", "value"),
+         Input("spectrogram-overlap", "value"),
+         Input("show-spectrogram", "value"),
+         Input("spectrogram-freq-max", "value"),
+         Input("hr-source", "value"),
+         Input("hr-min", "value"),
+         Input("hr-max", "value"),
+         Input("peak-prominence", "value")],
         [State("store-uploaded-data", "data"),
          State("store-data-config", "data"),
          State("preview-start-row", "value"),
@@ -43,21 +61,25 @@ def register_preview_callbacks(app):
          State("waveform-column", "value")]
     )
     def update_preview_plots(n_clicks, filter_family, filter_response, filter_order, 
-                           filter_low, filter_high, data_store, config_store,
-                           start_row, end_row, time_col, signal_col, red_col, ir_col, waveform_col):
-        """Update preview plots based on filter settings and data range."""
+                           filter_low, filter_high, spec_window, spec_overlap, show_spec,
+                           spec_freq_max, hr_source, hr_min, hr_max, peak_prom,
+                           data_store, config_store, start_row, end_row, time_col, 
+                           signal_col, red_col, ir_col, waveform_col):
+        """Update all preview plots and analysis based on settings and data range."""
         try:
-            logger.info("=== PREVIEW PLOTS CALLBACK TRIGGERED ===")
+            logger.info("=== COMPREHENSIVE PREVIEW PLOTS CALLBACK TRIGGERED ===")
             
             if not data_store or not config_store:
                 logger.info("No data store or config store, returning empty figures")
-                return create_empty_figure(), create_empty_figure(), []
+                empty_figs = [create_empty_figure() for _ in range(12)]
+                return empty_figs + [[]]
             
             # Get data from store
             df = pd.DataFrame(data_store.get("dataframe", []))
             if df.empty:
                 logger.info("DataFrame is empty, returning empty figures")
-                return create_empty_figure(), create_empty_figure(), []
+                empty_figs = [create_empty_figure() for _ in range(12)]
+                return empty_figs + [[]]
             
             # Get sampling frequency
             sampling_freq = config_store.get("sampling_freq", 100)
@@ -80,25 +102,48 @@ def register_preview_callbacks(app):
             window_df = df.iloc[start_row:end_row].copy()
             logger.info(f"Data window: {start_row} to {end_row}, shape: {window_df.shape}")
             
-            # Create filtered signals plot
+            # Create all plots
             filtered_fig = create_filtered_signals_plot(window_df, column_mapping, 
                                                       filter_family, filter_response, filter_order,
                                                       filter_low, filter_high, sampling_freq)
             
-            # Create frequency domain plot
             freq_fig = create_frequency_domain_plot(window_df, column_mapping, sampling_freq)
+            
+            spec_fig = create_spectrogram_plot(window_df, column_mapping, sampling_freq,
+                                             spec_window, spec_overlap, spec_freq_max) if show_spec else create_empty_figure()
+            
+            # Dual-source analytics
+            rtrend_fig = create_r_trend_spo2_plot(window_df, column_mapping, sampling_freq,
+                                                 filter_family, filter_response, filter_order,
+                                                 filter_low, filter_high)
+            coherence_fig = create_coherence_plot(window_df, column_mapping, sampling_freq)
+            lissajous_fig = create_lissajous_plot(window_df, column_mapping, sampling_freq)
+            avgbeat_fig = create_average_beat_plot(window_df, column_mapping, sampling_freq)
+            sdppg_fig = create_sdppg_plot(window_df, column_mapping, sampling_freq)
+            
+            # Dynamics analysis
+            hr_trend_fig = create_hr_trend_plot(window_df, column_mapping, sampling_freq,
+                                              hr_source, hr_min, hr_max, peak_prom)
+            ibi_hist_fig = create_ibi_histogram_plot(window_df, column_mapping, sampling_freq,
+                                                    hr_source, hr_min, hr_max, peak_prom)
+            poincare_fig = create_poincare_plot(window_df, column_mapping, sampling_freq,
+                                              hr_source, hr_min, hr_max, peak_prom)
+            xcorr_fig = create_cross_correlation_plot(window_df, column_mapping, sampling_freq)
             
             # Generate insights
             insights = generate_preview_insights(window_df, column_mapping, sampling_freq,
                                               filter_family, filter_response, filter_order,
                                               filter_low, filter_high)
             
-            logger.info("Preview plots and insights generated successfully")
-            return filtered_fig, freq_fig, insights
+            logger.info("All preview plots and analysis generated successfully")
+            return [filtered_fig, freq_fig, spec_fig, rtrend_fig, coherence_fig, lissajous_fig,
+                   avgbeat_fig, sdppg_fig, hr_trend_fig, ibi_hist_fig, poincare_fig, xcorr_fig,
+                   insights]
             
         except Exception as e:
             logger.error(f"Error updating preview plots: {e}")
-            return create_empty_figure(), create_empty_figure(), []
+            empty_figs = [create_empty_figure() for _ in range(12)]
+            return empty_figs + [[]]
     
     @app.callback(
         [Output("preview-start-row", "value"),
@@ -516,3 +561,668 @@ def create_empty_figure():
         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
     )
     return fig
+
+
+# ============================================================================
+# ADVANCED ANALYSIS FUNCTIONS (like sample_tool)
+# ============================================================================
+
+def create_spectrogram_plot(df, column_mapping, sampling_freq, window_sec, overlap, freq_max):
+    """Create spectrogram plot for frequency analysis."""
+    try:
+        if df is None or df.empty:
+            return create_empty_figure()
+        
+        # Use IR channel for spectrogram (most reliable for heart rate)
+        signal_col = column_mapping.get('ir') or column_mapping.get('red') or column_mapping.get('waveform')
+        if not signal_col or signal_col not in df.columns:
+            return create_empty_figure()
+        
+        signal = df[signal_col].values
+        
+        # Compute spectrogram
+        from scipy import signal as scipy_signal
+        
+        nperseg = int(window_sec * sampling_freq)
+        noverlap = int(overlap * nperseg)
+        
+        freqs, times, Sxx = scipy_signal.spectrogram(
+            signal, fs=sampling_freq, nperseg=nperseg, noverlap=noverlap,
+            scaling='density'
+        )
+        
+        # Limit frequency range
+        freq_mask = freqs <= freq_max
+        freqs = freqs[freq_mask]
+        Sxx = Sxx[freq_mask, :]
+        
+        # Convert to dB
+        Sxx_db = 10 * np.log10(Sxx + 1e-10)
+        
+        fig = go.Figure(data=go.Heatmap(
+            z=Sxx_db,
+            x=times,
+            y=freqs,
+            colorscale='Viridis',
+            zmin=Sxx_db.min(),
+            zmax=Sxx_db.max()
+        ))
+        
+        fig.update_layout(
+            template="plotly_white",
+            title=f"Spectrogram ({window_sec}s window, {overlap*100:.0f}% overlap)",
+            xaxis_title="Time (s)",
+            yaxis_title="Frequency (Hz)",
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
+        
+        return fig
+        
+    except ImportError:
+        logger.warning("SciPy not available, returning empty spectrogram")
+        return create_empty_figure()
+    except Exception as e:
+        logger.error(f"Error creating spectrogram: {e}")
+        return create_empty_figure()
+
+
+def create_r_trend_spo2_plot(df, column_mapping, sampling_freq, filter_family, 
+                            filter_response, filter_order, filter_low, filter_high):
+    """Create R-trend and SpO2 plot."""
+    try:
+        if not column_mapping.get('red') or not column_mapping.get('ir'):
+            return create_empty_figure()
+        
+        red_signal = df[column_mapping['red']].values
+        ir_signal = df[column_mapping['ir']].values
+        
+        # Apply filter to get AC components
+        red_ac = apply_filter(red_signal, filter_family, filter_response, 
+                            filter_order, filter_low, filter_high, sampling_freq)
+        ir_ac = apply_filter(ir_signal, filter_family, filter_response, 
+                           filter_order, filter_low, filter_high, sampling_freq)
+        
+        # Calculate R-ratio over time windows
+        window_size = int(2 * sampling_freq)  # 2-second windows
+        r_ratios = []
+        spo2_values = []
+        time_points = []
+        
+        for i in range(0, len(red_ac) - window_size, window_size):
+            red_window = red_ac[i:i+window_size]
+            ir_window = ir_ac[i:i+window_size]
+            
+            red_rms = np.sqrt(np.mean(red_window**2))
+            ir_rms = np.sqrt(np.mean(ir_window**2))
+            
+            if ir_rms > 0:
+                r_ratio = red_rms / ir_rms
+                spo2 = 100 - (r_ratio * 20)  # Simplified SpO2
+                spo2 = max(70, min(100, spo2))
+                
+                r_ratios.append(r_ratio)
+                spo2_values.append(spo2)
+                time_points.append(i / sampling_freq)
+        
+        if not r_ratios:
+            return create_empty_figure()
+        
+        fig = go.Figure()
+        
+        # R-ratio trace
+        fig.add_trace(go.Scatter(
+            x=time_points,
+            y=r_ratios,
+            mode='lines+markers',
+            name='R-ratio',
+            line=dict(color='#e74c3c', width=2),
+            yaxis='y'
+        ))
+        
+        # SpO2 trace (secondary y-axis)
+        fig.add_trace(go.Scatter(
+            x=time_points,
+            y=spo2_values,
+            mode='lines+markers',
+            name='SpO₂ (%)',
+            line=dict(color='#3498db', width=2),
+            yaxis='y2'
+        ))
+        
+        fig.update_layout(
+            template="plotly_white",
+            title="R-trend & SpO₂ Analysis",
+            xaxis_title="Time (s)",
+            yaxis=dict(title="R-ratio", side="left"),
+            yaxis2=dict(title="SpO₂ (%)", side="right", overlaying="y"),
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40),
+            showlegend=True
+        )
+        
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error creating R-trend plot: {e}")
+        return create_empty_figure()
+
+
+def create_coherence_plot(df, column_mapping, sampling_freq):
+    """Create coherence analysis plot between RED and IR channels."""
+    try:
+        if not column_mapping.get('red') or not column_mapping.get('ir'):
+            return create_empty_figure()
+        
+        red_signal = df[column_mapping['red']].values
+        ir_signal = df[column_mapping['ir']].values
+        
+        from scipy import signal as scipy_signal
+        
+        freqs, coherence = scipy_signal.coherence(red_signal, ir_signal, fs=sampling_freq)
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=freqs,
+            y=coherence,
+            mode='lines',
+            name='Coherence',
+            line=dict(color='#9b59b6', width=2)
+        ))
+        
+        fig.update_layout(
+            template="plotly_white",
+            title="RED-IR Coherence Analysis",
+            xaxis_title="Frequency (Hz)",
+            yaxis_title="Coherence",
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40),
+            yaxis=dict(range=[0, 1])
+        )
+        
+        return fig
+        
+    except ImportError:
+        logger.warning("SciPy not available, returning empty coherence plot")
+        return create_empty_figure()
+    except Exception as e:
+        logger.error(f"Error creating coherence plot: {e}")
+        return create_empty_figure()
+
+
+def create_lissajous_plot(df, column_mapping, sampling_freq):
+    """Create Lissajous plot (RED vs IR)."""
+    try:
+        if not column_mapping.get('red') or not column_mapping.get('ir'):
+            return create_empty_figure()
+        
+        red_signal = df[column_mapping['red']].values
+        ir_signal = df[column_mapping['ir']].values
+        
+        # Normalize signals
+        red_norm = (red_signal - np.mean(red_signal)) / np.std(red_signal)
+        ir_norm = (ir_signal - np.mean(ir_signal)) / np.std(ir_signal)
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=red_norm,
+            y=ir_norm,
+            mode='markers',
+            name='RED vs IR',
+            marker=dict(
+                color=np.arange(len(red_norm)),
+                colorscale='Viridis',
+                size=2,
+                opacity=0.7
+            )
+        ))
+        
+        fig.update_layout(
+            template="plotly_white",
+            title="Lissajous Plot (RED vs IR)",
+            xaxis_title="RED Channel (normalized)",
+            yaxis_title="IR Channel (normalized)",
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
+        
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error creating Lissajous plot: {e}")
+        return create_empty_figure()
+
+
+def create_average_beat_plot(df, column_mapping, sampling_freq):
+    """Create average beat analysis plot."""
+    try:
+        signal_col = column_mapping.get('waveform') or column_mapping.get('ir') or column_mapping.get('red')
+        if not signal_col or signal_col not in df.columns:
+            return create_empty_figure()
+        
+        signal = df[signal_col].values
+        
+        # Simple peak detection for beat segmentation
+        from scipy import signal as scipy_signal
+        
+        peaks, _ = scipy_signal.find_peaks(signal, height=np.mean(signal) + np.std(signal))
+        
+        if len(peaks) < 3:
+            return create_empty_figure()
+        
+        # Extract beats around peaks
+        beat_length = int(1.5 * sampling_freq)  # 1.5 seconds per beat
+        beats = []
+        
+        for peak in peaks:
+            start = max(0, peak - beat_length//2)
+            end = min(len(signal), peak + beat_length//2)
+            beat = signal[start:end]
+            
+            # Pad to consistent length
+            if len(beat) < beat_length:
+                beat = np.pad(beat, (0, beat_length - len(beat)), mode='edge')
+            else:
+                beat = beat[:beat_length]
+            
+            beats.append(beat)
+        
+        if not beats:
+            return create_empty_figure()
+        
+        # Calculate average beat
+        avg_beat = np.mean(beats, axis=0)
+        std_beat = np.std(beats, axis=0)
+        
+        time_axis = np.linspace(0, beat_length/sampling_freq, beat_length)
+        
+        fig = go.Figure()
+        
+        # Average beat
+        fig.add_trace(go.Scatter(
+            x=time_axis,
+            y=avg_beat,
+            mode='lines',
+            name='Average Beat',
+            line=dict(color='#e74c3c', width=2)
+        ))
+        
+        # Standard deviation envelope
+        fig.add_trace(go.Scatter(
+            x=time_axis,
+            y=avg_beat + std_beat,
+            mode='lines',
+            name='+1σ',
+            line=dict(color='#3498db', width=1, dash='dash'),
+            showlegend=False
+        ))
+        
+        fig.add_trace(go.Scatter(
+            x=time_axis,
+            y=avg_beat - std_beat,
+            mode='lines',
+            name='-1σ',
+            line=dict(color='#3498db', width=1, dash='dash'),
+            fill='tonexty',
+            fillcolor='rgba(52, 152, 219, 0.1)',
+            showlegend=False
+        ))
+        
+        fig.update_layout(
+            template="plotly_white",
+            title=f"Average Beat Analysis ({len(beats)} beats)",
+            xaxis_title="Time (s)",
+            yaxis_title="Amplitude",
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
+        
+        return fig
+        
+    except ImportError:
+        logger.warning("SciPy not available, returning empty average beat plot")
+        return create_empty_figure()
+    except Exception as e:
+        logger.error(f"Error creating average beat plot: {e}")
+        return create_empty_figure()
+
+
+def create_sdppg_plot(df, column_mapping, sampling_freq):
+    """Create SDPPG (Second Derivative Photoplethysmography) plot."""
+    try:
+        signal_col = column_mapping.get('waveform') or column_mapping.get('ir') or column_mapping.get('red')
+        if not signal_col or signal_col not in df.columns:
+            return create_empty_figure()
+        
+        signal = df[signal_col].values
+        
+        # Calculate second derivative
+        from scipy import signal as scipy_signal
+        
+        # Apply smoothing first
+        smoothed = scipy_signal.savgol_filter(signal, window_length=21, polyorder=3)
+        
+        # First derivative
+        first_deriv = np.gradient(smoothed)
+        
+        # Second derivative
+        second_deriv = np.gradient(first_deriv)
+        
+        # Normalize
+        second_deriv_norm = second_deriv / np.max(np.abs(second_deriv))
+        
+        time_axis = np.arange(len(signal)) / sampling_freq
+        
+        fig = go.Figure()
+        
+        # Original signal
+        fig.add_trace(go.Scatter(
+            x=time_axis,
+            y=signal,
+            mode='lines',
+            name='Original Signal',
+            line=dict(color='#e74c3c', width=1),
+            yaxis='y'
+        ))
+        
+        # Second derivative
+        fig.add_trace(go.Scatter(
+            x=time_axis,
+            y=second_deriv_norm * np.std(signal) + np.mean(signal),
+            mode='lines',
+            name='SDPPG',
+            line=dict(color='#3498db', width=2),
+            yaxis='y2'
+        ))
+        
+        fig.update_layout(
+            template="plotly_white",
+            title="SDPPG Analysis",
+            xaxis_title="Time (s)",
+            yaxis=dict(title="Original Signal", side="left"),
+            yaxis2=dict(title="SDPPG (normalized)", side="right", overlaying="y"),
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40),
+            showlegend=True
+        )
+        
+        return fig
+        
+    except ImportError:
+        logger.warning("SciPy not available, returning empty SDPPG plot")
+        return create_empty_figure()
+    except Exception as e:
+        logger.error(f"Error creating SDPPG plot: {e}")
+        return create_empty_figure()
+
+
+def create_hr_trend_plot(df, column_mapping, sampling_freq, hr_source, hr_min, hr_max, peak_prom):
+    """Create heart rate trend plot."""
+    try:
+        signal_col = column_mapping.get(hr_source) or column_mapping.get('ir')
+        if not signal_col or signal_col not in df.columns:
+            return create_empty_figure()
+        
+        signal = df[signal_col].values
+        
+        # Peak detection for heart rate
+        from scipy import signal as scipy_signal
+        
+        # Apply bandpass filter for heart rate range
+        hr_min_freq = hr_min / 60
+        hr_max_freq = hr_max / 60
+        
+        b, a = scipy_signal.butter(4, [hr_min_freq, hr_max_freq], btype='band', fs=sampling_freq)
+        filtered = scipy_signal.filtfilt(b, a, signal)
+        
+        # Find peaks
+        peaks, _ = scipy_signal.find_peaks(
+            filtered, 
+            prominence=peak_prom * np.std(filtered),
+            distance=int(0.5 * sampling_freq)  # Minimum 0.5s between peaks
+        )
+        
+        if len(peaks) < 2:
+            return create_empty_figure()
+        
+        # Calculate heart rate from peak intervals
+        peak_times = peaks / sampling_freq
+        intervals = np.diff(peak_times)
+        heart_rates = 60 / intervals  # Convert to BPM
+        
+        # Filter out unrealistic values
+        valid_mask = (heart_rates >= hr_min) & (heart_rates <= hr_max)
+        valid_times = peak_times[1:][valid_mask]
+        valid_hr = heart_rates[valid_mask]
+        
+        if len(valid_hr) == 0:
+            return create_empty_figure()
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=valid_times,
+            y=valid_hr,
+            mode='lines+markers',
+            name='Heart Rate',
+            line=dict(color='#e74c3c', width=2),
+            marker=dict(size=4)
+        ))
+        
+        fig.update_layout(
+            template="plotly_white",
+            title="Heart Rate Trend",
+            xaxis_title="Time (s)",
+            yaxis_title="Heart Rate (BPM)",
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40),
+            yaxis=dict(range=[hr_min, hr_max])
+        )
+        
+        return fig
+        
+    except ImportError:
+        logger.warning("SciPy not available, returning empty HR trend plot")
+        return create_empty_figure()
+    except Exception as e:
+        logger.error(f"Error creating HR trend plot: {e}")
+        return create_empty_figure()
+
+
+def create_ibi_histogram_plot(df, column_mapping, sampling_freq, hr_source, hr_min, hr_max, peak_prom):
+    """Create IBI (Inter-Beat Interval) histogram plot."""
+    try:
+        signal_col = column_mapping.get(hr_source) or column_mapping.get('ir')
+        if not signal_col or signal_col not in df.columns:
+            return create_empty_figure()
+        
+        signal = df[signal_col].values
+        
+        # Peak detection (same as HR trend)
+        from scipy import signal as scipy_signal
+        
+        hr_min_freq = hr_min / 60
+        hr_max_freq = hr_max / 60
+        
+        b, a = scipy_signal.butter(4, [hr_min_freq, hr_max_freq], btype='band', fs=sampling_freq)
+        filtered = scipy_signal.filtfilt(b, a, signal)
+        
+        peaks, _ = scipy_signal.find_peaks(
+            filtered, 
+            prominence=peak_prom * np.std(filtered),
+            distance=int(0.5 * sampling_freq)
+        )
+        
+        if len(peaks) < 2:
+            return create_empty_figure()
+        
+        # Calculate IBI
+        peak_times = peaks / sampling_freq
+        intervals = np.diff(peak_times) * 1000  # Convert to milliseconds
+        
+        # Filter realistic intervals
+        valid_intervals = intervals[(intervals >= 300) & (intervals <= 3000)]  # 300ms to 3s
+        
+        if len(valid_intervals) == 0:
+            return create_empty_figure()
+        
+        fig = go.Figure()
+        fig.add_trace(go.Histogram(
+            x=valid_intervals,
+            nbinsx=20,
+            name='IBI Distribution',
+            marker_color='#3498db',
+            opacity=0.7
+        ))
+        
+        fig.update_layout(
+            template="plotly_white",
+            title="Inter-Beat Interval Histogram",
+            xaxis_title="IBI (ms)",
+            yaxis_title="Count",
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40),
+            showlegend=False
+        )
+        
+        return fig
+        
+    except ImportError:
+        logger.warning("SciPy not available, returning empty IBI histogram plot")
+        return create_empty_figure()
+    except Exception as e:
+        logger.error(f"Error creating IBI histogram plot: {e}")
+        return create_empty_figure()
+
+
+def create_poincare_plot(df, column_mapping, sampling_freq, hr_source, hr_min, hr_max, peak_prom):
+    """Create Poincaré plot for heart rate variability analysis."""
+    try:
+        signal_col = column_mapping.get(hr_source) or column_mapping.get('ir')
+        if not signal_col or signal_col not in df.columns:
+            return create_empty_figure()
+        
+        signal = df[signal_col].values
+        
+        # Peak detection (same as HR trend)
+        from scipy import signal as scipy_signal
+        
+        hr_min_freq = hr_min / 60
+        hr_max_freq = hr_max / 60
+        
+        b, a = scipy_signal.butter(4, [hr_min_freq, hr_max_freq], btype='band', fs=sampling_freq)
+        filtered = scipy_signal.filtfilt(b, a, signal)
+        
+        peaks, _ = scipy_signal.find_peaks(
+            filtered, 
+            prominence=peak_prom * np.std(filtered),
+            distance=int(0.5 * sampling_freq)
+        )
+        
+        if len(peaks) < 3:
+            return create_empty_figure()
+        
+        # Calculate IBI
+        peak_times = peaks / sampling_freq
+        intervals = np.diff(peak_times) * 1000  # Convert to milliseconds
+        
+        # Filter realistic intervals
+        valid_intervals = intervals[(intervals >= 300) & (intervals <= 3000)]
+        
+        if len(valid_intervals) < 2:
+            return create_empty_figure()
+        
+        # Create Poincaré plot (IBI_n vs IBI_{n+1})
+        x = valid_intervals[:-1]
+        y = valid_intervals[1:]
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=x,
+            y=y,
+            mode='markers',
+            name='Poincaré Plot',
+            marker=dict(
+                color=np.arange(len(x)),
+                colorscale='Viridis',
+                size=6,
+                opacity=0.7
+            )
+        ))
+        
+        # Add identity line
+        min_val = min(x.min(), y.min())
+        max_val = max(x.max(), y.max())
+        fig.add_trace(go.Scatter(
+            x=[min_val, max_val],
+            y=[min_val, max_val],
+            mode='lines',
+            name='Identity Line',
+            line=dict(color='red', width=1, dash='dash')
+        ))
+        
+        fig.update_layout(
+            template="plotly_white",
+            title="Poincaré Plot (IBI_n vs IBI_{n+1})",
+            xaxis_title="IBI_n (ms)",
+            yaxis_title="IBI_{n+1} (ms)",
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
+        
+        return fig
+        
+    except ImportError:
+        logger.warning("SciPy not available, returning empty Poincaré plot")
+        return create_empty_figure()
+    except Exception as e:
+        logger.error(f"Error creating Poincaré plot: {e}")
+        return create_empty_figure()
+
+
+def create_cross_correlation_plot(df, column_mapping, sampling_freq):
+    """Create cross-correlation plot between RED and IR channels."""
+    try:
+        if not column_mapping.get('red') or not column_mapping.get('ir'):
+            return create_empty_figure()
+        
+        red_signal = df[column_mapping['red']].values
+        ir_signal = df[column_mapping['ir']].values
+        
+        from scipy import signal as scipy_signal
+        
+        # Calculate cross-correlation
+        correlation = scipy_signal.correlate(red_signal, ir_signal, mode='full')
+        lags = scipy_signal.correlation_lags(len(red_signal), len(ir_signal), mode='full')
+        
+        # Convert lags to time
+        lag_times = lags / sampling_freq
+        
+        # Normalize correlation
+        correlation_norm = correlation / np.max(np.abs(correlation))
+        
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=lag_times,
+            y=correlation_norm,
+            mode='lines',
+            name='Cross-correlation',
+            line=dict(color='#e67e22', width=2)
+        ))
+        
+        fig.update_layout(
+            template="plotly_white",
+            title="RED-IR Cross-correlation",
+            xaxis_title="Lag Time (s)",
+            yaxis_title="Correlation",
+            height=400,
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
+        
+        return fig
+        
+    except ImportError:
+        logger.warning("SciPy not available, returning empty cross-correlation plot")
+        return create_empty_figure()
+    except Exception as e:
+        logger.error(f"Error creating cross-correlation plot: {e}")
+        return create_empty_figure()

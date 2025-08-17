@@ -408,8 +408,9 @@ def create_data_preview(data_info):
                 ], md=6)
             ], className="mb-4"),
             
-            # Signal Preview with Tabs (like sample_tool)
+            # Advanced Analysis Tabs (like sample_tool)
             dbc.Tabs([
+                # Raw Signals Tab
                 dbc.Tab([
                     html.Div(id="signal-preview-plot-container", children=[
                         dcc.Graph(
@@ -420,6 +421,8 @@ def create_data_preview(data_info):
                         )
                     ])
                 ], label="Raw Signals", tab_id="raw-signals"),
+                
+                # Filtered Signals Tab
                 dbc.Tab([
                     html.Div(id="filtered-signals-plot-container", children=[
                         dcc.Graph(
@@ -429,15 +432,229 @@ def create_data_preview(data_info):
                         )
                     ])
                 ], label="Filtered Signals", tab_id="filtered-signals"),
+                
+                # Frequency Domain Tab with Spectrogram
                 dbc.Tab([
-                    html.Div(id="frequency-domain-plot-container", children=[
-                        dcc.Graph(
-                            id="frequency-domain-plot",
-                            style={"height": "600px"},
-                            config={"displayModeBar": True}
-                        )
+                    html.Div([
+                        # Spectrogram Controls
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Spectrogram Window (s)", className="form-label"),
+                                dcc.Input(
+                                    id="spectrogram-window",
+                                    type="number",
+                                    value=2.0,
+                                    min=0.5,
+                                    max=10.0,
+                                    step=0.5,
+                                    style={"width": "100%"}
+                                )
+                            ], md=3),
+                            dbc.Col([
+                                html.Label("Overlap (0-0.95)", className="form-label"),
+                                dcc.Input(
+                                    id="spectrogram-overlap",
+                                    type="number",
+                                    value=0.5,
+                                    min=0.0,
+                                    max=0.95,
+                                    step=0.05,
+                                    style={"width": "100%"}
+                                )
+                            ], md=3),
+                            dbc.Col([
+                                html.Label("Show Spectrogram", className="form-label"),
+                                dcc.Checklist(
+                                    id="show-spectrogram",
+                                    options=[{"label": "Enable", "value": "on"}],
+                                    value=["on"],
+                                    style={"marginTop": "8px"}
+                                )
+                            ], md=3),
+                            dbc.Col([
+                                html.Label("Frequency Range", className="form-label"),
+                                dcc.Input(
+                                    id="spectrogram-freq-max",
+                                    type="number",
+                                    value=20.0,
+                                    min=1.0,
+                                    max=50.0,
+                                    step=1.0,
+                                    style={"width": "100%"}
+                                )
+                            ], md=3)
+                        ], className="mb-3"),
+                        
+                        # Frequency Domain Plot
+                        html.Div(id="frequency-domain-plot-container", children=[
+                            dcc.Graph(
+                                id="frequency-domain-plot",
+                                style={"height": "400px"},
+                                config={"displayModeBar": True}
+                            )
+                        ]),
+                        
+                        # Spectrogram Plot
+                        html.Div(id="spectrogram-plot-container", children=[
+                            dcc.Graph(
+                                id="spectrogram-plot",
+                                style={"height": "400px"},
+                                config={"displayModeBar": True}
+                            )
+                        ])
                     ])
-                ], label="Frequency Domain", tab_id="frequency-domain")
+                ], label="Frequency Domain", tab_id="frequency-domain"),
+                
+                # Dual-source Analytics Tab
+                dbc.Tab([
+                    html.Div([
+                        dbc.Tabs([
+                            dbc.Tab([
+                                html.Div(id="r-trend-spo2-container", children=[
+                                    dcc.Graph(
+                                        id="r-trend-spo2-plot",
+                                        style={"height": "400px"},
+                                        config={"displayModeBar": True}
+                                    )
+                                ])
+                            ], label="R-trend & SpO₂", tab_id="r-trend"),
+                            dbc.Tab([
+                                html.Div(id="coherence-container", children=[
+                                    dcc.Graph(
+                                        id="coherence-plot",
+                                        style={"height": "400px"},
+                                        config={"displayModeBar": True}
+                                    )
+                                ])
+                            ], label="Coherence", tab_id="coherence"),
+                            dbc.Tab([
+                                html.Div(id="lissajous-container", children=[
+                                    dcc.Graph(
+                                        id="lissajous-plot",
+                                        style={"height": "400px"},
+                                        config={"displayModeBar": True}
+                                    )
+                                ])
+                            ], label="Lissajous", tab_id="lissajous"),
+                            dbc.Tab([
+                                html.Div(id="average-beat-container", children=[
+                                    dcc.Graph(
+                                        id="average-beat-plot",
+                                        style={"height": "400px"},
+                                        config={"displayModeBar": True}
+                                    )
+                                ])
+                            ], label="Average Beat", tab_id="average-beat"),
+                            dbc.Tab([
+                                html.Div(id="sdppg-container", children=[
+                                    dcc.Graph(
+                                        id="sdppg-plot",
+                                        style={"height": "400px"},
+                                        config={"displayModeBar": True}
+                                    )
+                                ])
+                            ], label="SDPPG", tab_id="sdppg")
+                        ], id="dual-source-tabs")
+                    ])
+                ], label="Dual-source Analytics", tab_id="dual-source"),
+                
+                # Dynamics (HR/IBI) Tab
+                dbc.Tab([
+                    html.Div([
+                        # HR Analysis Controls
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("HR Source", className="form-label"),
+                                dcc.Dropdown(
+                                    id="hr-source",
+                                    options=[
+                                        {"label": "IR (default)", "value": "ir"},
+                                        {"label": "RED", "value": "red"}
+                                    ],
+                                    value="ir",
+                                    clearable=False,
+                                    style={"width": "100%"}
+                                )
+                            ], md=3),
+                            dbc.Col([
+                                html.Label("HR Min (bpm)", className="form-label"),
+                                dcc.Input(
+                                    id="hr-min",
+                                    type="number",
+                                    value=40,
+                                    min=20,
+                                    max=200,
+                                    step=5,
+                                    style={"width": "100%"}
+                                )
+                            ], md=3),
+                            dbc.Col([
+                                html.Label("HR Max (bpm)", className="form-label"),
+                                dcc.Input(
+                                    id="hr-max",
+                                    type="number",
+                                    value=200,
+                                    min=60,
+                                    max=300,
+                                    step=5,
+                                    style={"width": "100%"}
+                                )
+                            ], md=3),
+                            dbc.Col([
+                                html.Label("Peak Prominence", className="form-label"),
+                                dcc.Input(
+                                    id="peak-prominence",
+                                    type="number",
+                                    value=2.0,
+                                    min=0.1,
+                                    max=10.0,
+                                    step=0.1,
+                                    style={"width": "100%"}
+                                )
+                            ], md=3)
+                        ], className="mb-3"),
+                        
+                        # Dynamics Analysis Tabs
+                        dbc.Tabs([
+                            dbc.Tab([
+                                html.Div(id="hr-trend-container", children=[
+                                    dcc.Graph(
+                                        id="hr-trend-plot",
+                                        style={"height": "400px"},
+                                        config={"displayModeBar": True}
+                                    )
+                                ])
+                            ], label="HR Trend", tab_id="hr-trend"),
+                            dbc.Tab([
+                                html.Div(id="ibi-histogram-container", children=[
+                                    dcc.Graph(
+                                        id="ibi-histogram-plot",
+                                        style={"height": "400px"},
+                                        config={"displayModeBar": True}
+                                    )
+                                ])
+                            ], label="IBI Histogram", tab_id="ibi-histogram"),
+                            dbc.Tab([
+                                html.Div(id="poincare-container", children=[
+                                    dcc.Graph(
+                                        id="poincare-plot",
+                                        style={"height": "400px"},
+                                        config={"displayModeBar": True}
+                                    )
+                                ])
+                            ], label="Poincaré", tab_id="poincare"),
+                            dbc.Tab([
+                                html.Div(id="cross-correlation-container", children=[
+                                    dcc.Graph(
+                                        id="cross-correlation-plot",
+                                        style={"height": "400px"},
+                                        config={"displayModeBar": True}
+                                    )
+                                ])
+                            ], label="Cross-correlation", tab_id="cross-correlation")
+                        ], id="dynamics-tabs")
+                    ])
+                ], label="Dynamics (HR/IBI)", tab_id="dynamics")
             ], id="preview-tabs", className="mb-4"),
             
             # Insights Panel (like sample_tool)
