@@ -1,11 +1,13 @@
 """
 Services module for vitalDSP webapp.
+
+This module provides a clean, modular structure for all service components
+used in the application.
 """
 
-from .data_service import DataService, get_data_service, data_service
+# Data services
+from .data.data_service import get_data_service
 
 __all__ = [
-    'DataService',
     'get_data_service',
-    'data_service'
 ]

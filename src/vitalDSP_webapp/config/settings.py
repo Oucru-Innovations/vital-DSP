@@ -36,6 +36,7 @@ class AppConfig:
     # UI settings
     THEME: str = "light"
     SIDEBAR_WIDTH: int = 280
+    SIDEBAR_COLLAPSED_WIDTH: int = 70
     HEADER_HEIGHT: int = 64
     
     # Signal quality thresholds

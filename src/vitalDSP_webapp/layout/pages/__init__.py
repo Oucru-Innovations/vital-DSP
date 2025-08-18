@@ -1,18 +1,11 @@
 """
-Layout module for vitalDSP webapp.
+Page layouts for vitalDSP webapp.
 
-This module provides a clean, modular structure for all layout components
-used in the Dash application.
+This module contains layouts for various application pages.
 """
 
-# Common components
-from .common.header import Header
-from .common.sidebar import Sidebar
-from .common.footer import Footer
-
-# Page layouts
-from .pages.upload_page import upload_layout
-from .pages.analysis_pages import (
+from .upload_page import upload_layout
+from .analysis_pages import (
     time_domain_layout,
     frequency_layout,
     filtering_layout,
@@ -27,12 +20,6 @@ from .pages.analysis_pages import (
 )
 
 __all__ = [
-    # Common components
-    'Header',
-    'Sidebar',
-    'Footer',
-    
-    # Page layouts
     'upload_layout',
     'time_domain_layout',
     'frequency_layout',

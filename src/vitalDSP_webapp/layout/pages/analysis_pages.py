@@ -1,0 +1,2874 @@
+"""
+Analysis pages layout for vitalDSP webapp.
+
+This module provides layouts for various analysis pages.
+"""
+
+from dash import html, dcc
+import dash_bootstrap_components as dbc
+
+
+def time_domain_layout():
+    """Create the time domain analysis page layout."""
+    return html.Div([
+        # Page Header
+        html.Div([
+            html.H1("⏱️ Time Domain Analysis", className="text-center mb-4"),
+            html.P([
+                "Analyze your PPG/ECG signals in the time domain with interactive plots, ",
+                "filtering, and comprehensive analysis tools."
+            ], className="text-center text-muted mb-5")
+        ], className="mb-4"),
+        
+        # Main Analysis Section
+        dbc.Row([
+            # Left Panel - Controls & Parameters
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🎛️ Analysis Controls", className="mb-0"),
+                        html.Small("Configure analysis parameters and filters", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        # Data Selection
+                        html.H6("Data Selection", className="mb-3"),
+                        dbc.Select(
+                            id="data-source-select",
+                            options=[
+                                {"label": "Uploaded Data", "value": "uploaded"},
+                                {"label": "Sample Data", "value": "sample"}
+                            ],
+                            value="uploaded",
+                            className="mb-3"
+                        ),
+                        
+                        # Time Window Controls
+                        html.H6("Time Window", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Start Time (s)", className="form-label"),
+                                dbc.Input(
+                                    id="start-time",
+                                    type="number",
+                                    value=0,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="0"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("End Time (s)", className="form-label"),
+                                dbc.Input(
+                                    id="end-time",
+                                    type="number",
+                                    value=10,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="10"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # Quick Window Navigation
+                        html.Div([
+                            dbc.Button("⏪ -10s", id="btn-nudge-m10", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("⏪ -1s", id="btn-nudge-m1", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("+1s ⏩", id="btn-nudge-p1", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("+10s ⏩", id="btn-nudge-p10", color="secondary", size="sm")
+                        ], className="mb-3"),
+                        
+                        # Range Slider for Time Window
+                        html.Label("Time Range Slider", className="form-label"),
+                        dcc.RangeSlider(
+                            id="time-range-slider",
+                            min=0,
+                            max=100,
+                            step=0.1,
+                            value=[0, 10],
+                            allowCross=False,
+                            pushable=1,
+                            updatemode="mouseup",
+                            className="mb-4"
+                        ),
+                        
+                        # Filtering Controls
+                        html.H6("Signal Filtering", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Filter Type", className="form-label"),
+                                dcc.Dropdown(
+                                    id="filter-family",
+                                    options=[
+                                        {"label": "Butterworth", "value": "butter"},
+                                        {"label": "Chebyshev I", "value": "cheby1"},
+                                        {"label": "Chebyshev II", "value": "cheby2"},
+                                        {"label": "Elliptic", "value": "ellip"},
+                                        {"label": "Bessel", "value": "bessel"}
+                                    ],
+                                    value="butter",
+                                    clearable=False,
+                                    className="mb-2"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("Response", className="form-label"),
+                                dcc.Dropdown(
+                                    id="filter-response",
+                                    options=[
+                                        {"label": "Bandpass", "value": "bandpass"},
+                                        {"label": "Bandstop (Notch)", "value": "bandstop"},
+                                        {"label": "Lowpass", "value": "lowpass"},
+                                        {"label": "Highpass", "value": "highpass"}
+                                    ],
+                                    value="bandpass",
+                                    clearable=False,
+                                    className="mb-2"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Low Freq (Hz)", className="form-label"),
+                                dbc.Input(
+                                    id="filter-low-freq",
+                                    type="number",
+                                    value=0.5,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="0.5"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("High Freq (Hz)", className="form-label"),
+                                dbc.Input(
+                                    id="filter-high-freq",
+                                    type="number",
+                                    value=40,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="40"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Order", className="form-label"),
+                                dcc.Slider(
+                                    id="filter-order",
+                                    min=2,
+                                    max=10,
+                                    step=1,
+                                    value=4,
+                                    marks={i: str(i) for i in [2, 4, 6, 8, 10]},
+                                    className="mb-3"
+                                )
+                            ], md=12)
+                        ]),
+                        
+                        # Analysis Options
+                        html.H6("Analysis Options", className="mb-3"),
+                        dcc.Checklist(
+                            id="analysis-options",
+                            options=[
+                                {"label": "Peak Detection", "value": "peaks"},
+                                {"label": "Heart Rate Calculation", "value": "hr"},
+                                {"label": "Signal Quality Assessment", "value": "quality"},
+                                {"label": "Artifact Detection", "value": "artifacts"},
+                                {"label": "Trend Analysis", "value": "trend"}
+                            ],
+                            value=["peaks", "hr", "quality"],
+                            className="mb-3"
+                        ),
+                        
+                        # Action Buttons
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Button(
+                                    "🔄 Update Analysis",
+                                    id="btn-update-analysis",
+                                    color="primary",
+                                    className="w-100"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                dbc.Button(
+                                    "📊 Export Results",
+                                    id="btn-export-results",
+                                    color="success",
+                                    outline=True,
+                                    className="w-100"
+                                )
+                            ], md=6)
+                        ])
+                    ])
+                ], className="h-100")
+            ], md=4),
+            
+            # Right Panel - Plots & Results
+            dbc.Col([
+                # Main Signal Plot
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("📈 Raw Signal", className="mb-0"),
+                        html.Small("Time domain representation of your signal", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Loading(
+                            dcc.Graph(
+                                id="main-signal-plot",
+                                style={"height": "400px"},
+                                config={
+                                    "displayModeBar": True,
+                                    "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],
+                                    "displaylogo": False
+                                }
+                            ),
+                            type="default"
+                        )
+                    ])
+                ], className="mb-4"),
+                
+                # Filtered Signal Plot
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🔧 Filtered Signal", className="mb-0"),
+                        html.Small("Signal after applying selected filters", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Loading(
+                            dcc.Graph(
+                                id="filtered-signal-plot",
+                                style={"height": "400px"},
+                                config={
+                                    "displayModeBar": True,
+                                    "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],
+                                    "displaylogo": False
+                                }
+                            ),
+                            type="default"
+                        )
+                    ])
+                ], className="mb-4"),
+                
+                # Analysis Results - Reorganized for Better Display
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("📊 Analysis Results", className="mb-0"),
+                        html.Small("Key metrics and insights from your signal", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        # Main analysis results
+                        html.Div(id="analysis-results", className="mb-4"),
+                        
+                        # Peak Analysis Table
+                        html.Div(id="peak-analysis-table", className="mb-4"),
+                        
+                        # Signal Quality Table
+                        html.Div(id="signal-quality-table", className="mb-4"),
+                        
+                        # Filtering Results Table
+                        html.Div(id="filtering-results-table", className="mb-4"),
+                        
+                        # Additional Metrics Table
+                        html.Div(id="additional-metrics-table", className="mb-4")
+                    ])
+                ])
+            ], md=9)
+        ]),
+        
+        # Bottom Section - Additional Analysis
+        html.Div(id="additional-analysis-section", className="mt-4"),
+        
+        # Stores for data management
+        dcc.Store(id="store-time-domain-data"),
+        dcc.Store(id="store-filtered-data"),
+        dcc.Store(id="store-analysis-results")
+    ])
+
+
+def frequency_layout():
+    """Create the frequency domain analysis layout."""
+    return html.Div([
+        # Page Header
+        html.Div([
+            html.H1("📊 Frequency Domain Analysis", className="text-center mb-4"),
+            html.P([
+                "Analyze your PPG/ECG signals in the frequency domain with FFT, PSD, STFT, ",
+                "and wavelet analysis. Explore signal characteristics, harmonics, and frequency content."
+            ], className="text-center text-muted mb-5")
+        ], className="mb-4"),
+        
+        # Main Analysis Section
+        dbc.Row([
+            # Left Panel - Controls & Parameters
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🎛️ Analysis Controls", className="mb-0"),
+                        html.Small("Configure frequency analysis parameters", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        # Analysis Type Selection
+                        html.H6("Analysis Type", className="mb-3"),
+                        dcc.Dropdown(
+                            id="freq-analysis-type",
+                            options=[
+                                {"label": "Fast Fourier Transform (FFT)", "value": "FFT"},
+                                {"label": "Power Spectral Density (PSD)", "value": "PSD"},
+                                {"label": "Short-Time Fourier Transform (STFT)", "value": "STFT"},
+                                {"label": "Wavelet Analysis", "value": "Wavelet"}
+                            ],
+                            value="FFT",
+                            className="mb-3"
+                        ),
+                        
+                        # Time Window Controls
+                        html.H6("Time Window", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Start Time (s)", className="form-label"),
+                                dbc.Input(
+                                    id="freq-start-time",
+                                    type="number",
+                                    value=0,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="0"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("End Time (s)", className="form-label"),
+                                dbc.Input(
+                                    id="freq-end-time",
+                                    type="number",
+                                    value=10,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="10"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # Quick Window Navigation
+                        html.Div([
+                            dbc.Button("⏪ -10s", id="freq-btn-nudge-m10", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("⏪ -1s", id="freq-btn-nudge-m1", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("+1s ⏩", id="freq-btn-nudge-p1", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("+10s ⏩", id="freq-btn-nudge-p10", color="secondary", size="sm")
+                        ], className="mb-3"),
+                        
+                        # Range Slider for Time Window
+                        html.Label("Time Range Slider", className="form-label"),
+                        dcc.RangeSlider(
+                            id="freq-time-range-slider",
+                            min=0,
+                            max=100,
+                            step=0.1,
+                            value=[0, 10],
+                            allowCross=False,
+                            pushable=1,
+                            updatemode="mouseup",
+                            className="mb-4"
+                        ),
+                        
+                        # FFT Parameters
+                        html.H6("FFT Parameters", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Window Type", className="form-label"),
+                                dcc.Dropdown(
+                                    id="fft-window-type",
+                                    options=[
+                                        {"label": "Hann", "value": "hann"},
+                                        {"label": "Hamming", "value": "hamming"},
+                                        {"label": "Blackman", "value": "blackman"},
+                                        {"label": "None", "value": "none"}
+                                    ],
+                                    value="hann",
+                                    className="mb-3"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("N Points", className="form-label"),
+                                dbc.Input(
+                                    id="fft-n-points",
+                                    type="number",
+                                    value=1024,
+                                    min=64,
+                                    step=64,
+                                    placeholder="1024"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # PSD Parameters
+                        html.H6("PSD Parameters", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Window", className="form-label"),
+                                dcc.Dropdown(
+                                    id="psd-window",
+                                    options=[
+                                        {"label": "Hann", "value": "hann"},
+                                        {"label": "Hamming", "value": "hamming"},
+                                        {"label": "Blackman", "value": "blackman"}
+                                    ],
+                                    value="hann",
+                                    className="mb-3"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("Overlap", className="form-label"),
+                                dcc.Slider(
+                                    id="psd-overlap",
+                                    min=0,
+                                    max=0.9,
+                                    step=0.1,
+                                    value=0.5,
+                                    marks={0: "0", 0.5: "0.5", 0.9: "0.9"},
+                                    className="mb-3"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # PSD Frequency Range
+                        html.H6("PSD Frequency Range", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Min Freq (Hz)", className="form-label"),
+                                dbc.Input(
+                                    id="psd-freq-min",
+                                    type="number",
+                                    value=0,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="0"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("Max Freq (Hz)", className="form-label"),
+                                dbc.Input(
+                                    id="psd-freq-max",
+                                    type="number",
+                                    value=25,
+                                    min=0.1,
+                                    step=1,
+                                    placeholder="25"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # PSD Options
+                        html.H6("PSD Options", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Log Scale", className="form-label"),
+                                dcc.Checklist(
+                                    id="psd-log-scale",
+                                    options=[{"label": "dB Scale", "value": "on"}],
+                                    value=["on"],
+                                    className="mb-3"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("Normalize", className="form-label"),
+                                dcc.Checklist(
+                                    id="psd-normalize",
+                                    options=[{"label": "Normalize PSD", "value": "on"}],
+                                    value=[],
+                                    className="mb-3"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Channel", className="form-label"),
+                                dcc.Dropdown(
+                                    id="psd-channel",
+                                    options=[
+                                        {"label": "Signal", "value": "signal"},
+                                        {"label": "RED", "value": "red"},
+                                        {"label": "IR", "value": "ir"},
+                                        {"label": "Waveform", "value": "waveform"}
+                                    ],
+                                    value="signal",
+                                    clearable=False,
+                                    className="mb-3"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # STFT Parameters
+                        html.H6("STFT Parameters", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Window Size", className="form-label"),
+                                dbc.Input(
+                                    id="stft-window-size",
+                                    type="number",
+                                    value=256,
+                                    min=64,
+                                    step=64,
+                                    placeholder="256"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("Hop Size", className="form-label"),
+                                dbc.Input(
+                                    id="stft-hop-size",
+                                    type="number",
+                                    value=64,
+                                    min=16,
+                                    step=16,
+                                    placeholder="64"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Window Type", className="form-label"),
+                                dcc.Dropdown(
+                                    id="stft-window-type",
+                                    options=[
+                                        {"label": "Hann", "value": "hann"},
+                                        {"label": "Hamming", "value": "hamming"},
+                                        {"label": "Blackman", "value": "blackman"},
+                                        {"label": "Kaiser", "value": "kaiser"},
+                                        {"label": "Gaussian", "value": "gaussian"},
+                                        {"label": "Rectangular", "value": "rectangular"}
+                                    ],
+                                    value="hann",
+                                    className="mb-3"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("Overlap", className="form-label"),
+                                dcc.Slider(
+                                    id="stft-overlap",
+                                    min=0,
+                                    max=0.9,
+                                    step=0.1,
+                                    value=0.5,
+                                    marks={0: "0", 0.5: "0.5", 0.9: "0.9"},
+                                    className="mb-3"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Scaling", className="form-label"),
+                                dcc.Dropdown(
+                                    id="stft-scaling",
+                                    options=[
+                                        {"label": "Density", "value": "density"},
+                                        {"label": "Spectrum", "value": "spectrum"}
+                                    ],
+                                    value="density",
+                                    className="mb-3"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("Max Freq (Hz)", className="form-label"),
+                                dbc.Input(
+                                    id="stft-freq-max",
+                                    type="number",
+                                    value=50,
+                                    min=0.1,
+                                    step=1,
+                                    placeholder="50"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Colormap", className="form-label"),
+                                dcc.Dropdown(
+                                    id="stft-colormap",
+                                    options=[
+                                        {"label": "Viridis", "value": "viridis"},
+                                        {"label": "Plasma", "value": "plasma"},
+                                        {"label": "Inferno", "value": "inferno"},
+                                        {"label": "Magma", "value": "magma"},
+                                        {"label": "Jet", "value": "jet"},
+                                        {"label": "Hot", "value": "hot"},
+                                        {"label": "Cool", "value": "cool"}
+                                    ],
+                                    value="viridis",
+                                    className="mb-3"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # Wavelet Parameters
+                        html.H6("Wavelet Parameters", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Wavelet Type", className="form-label"),
+                                dcc.Dropdown(
+                                    id="wavelet-type",
+                                    options=[
+                                        {"label": "Daubechies (db4)", "value": "db4"},
+                                        {"label": "Symlets (sym4)", "value": "sym4"},
+                                        {"label": "Coiflets (coif4)", "value": "coif4"},
+                                        {"label": "Haar", "value": "haar"},
+                                        {"label": "Mexican Hat", "value": "mexh"},
+                                        {"label": "Morlet", "value": "morl"}
+                                    ],
+                                    value="db4",
+                                    className="mb-3"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("Decomposition Levels", className="form-label"),
+                                dcc.Input(
+                                    id="wavelet-levels",
+                                    type="number",
+                                    value=4,
+                                    min=1,
+                                    max=10,
+                                    step=1,
+                                    placeholder="4"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # Frequency Range
+                        html.H6("Frequency Range", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Min Freq (Hz)", className="form-label"),
+                                dbc.Input(
+                                    id="freq-min",
+                                    type="number",
+                                    value=0,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="0"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("Max Freq (Hz)", className="form-label"),
+                                dbc.Input(
+                                    id="freq-max",
+                                    type="number",
+                                    value=100,
+                                    min=0.1,
+                                    step=1,
+                                    placeholder="100"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # Analysis Options
+                        html.H6("Analysis Options", className="mb-3"),
+                        dcc.Checklist(
+                            id="freq-analysis-options",
+                            options=[
+                                {"label": "Peak Detection", "value": "peak_detection"},
+                                {"label": "Harmonic Analysis", "value": "harmonic_analysis"},
+                                {"label": "Band Power Analysis", "value": "band_power"},
+                                {"label": "Stability Analysis", "value": "stability"}
+                            ],
+                            value=["peak_detection", "harmonic_analysis"],
+                            className="mb-4"
+                        ),
+                        
+                        # Main Analysis Button
+                        dbc.Button(
+                            "📊 Analyze Frequency Domain",
+                            id="freq-btn-update-analysis",
+                            color="primary",
+                            size="lg",
+                            className="w-100 mb-3"
+                        )
+                    ])
+                ], className="h-100")
+            ], md=4),
+            
+            # Right Panel - Results & Plots
+            dbc.Col([
+                # Main Frequency Plot
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📈 Main Frequency Analysis", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id="freq-main-plot",
+                            style={"height": "400px"},
+                            config={"displayModeBar": True, "displaylogo": False}
+                        )
+                    ])
+                ], className="mb-4"),
+                
+                # PSD Plot
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📊 Power Spectral Density", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id="freq-psd-plot",
+                            style={"height": "300px"},
+                            config={"displayModeBar": True, "displaylogo": False}
+                        )
+                    ])
+                ], className="mb-4"),
+                
+                # Spectrogram Plot
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("🌊 Time-Frequency Analysis", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id="freq-spectrogram-plot",
+                            style={"height": "300px"},
+                            config={"displayModeBar": True, "displaylogo": False}
+                        )
+                    ])
+                ], className="mb-4")
+            ], md=8)
+        ]),
+        
+        # Analysis Results Section
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📋 Analysis Results", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="freq-analysis-results")
+                    ])
+                ])
+            ], md=6),
+            
+            # Peak Analysis Table
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("🔍 Peak Analysis", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="freq-peak-analysis-table")
+                    ])
+                ])
+            ], md=6)
+        ], className="mb-4"),
+        
+        # Additional Analysis Tables
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📊 Frequency Band Power", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="freq-band-power-table")
+                    ])
+                ])
+            ], md=4),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("⚖️ Signal Stability", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="freq-stability-table")
+                    ])
+                ])
+            ], md=4),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("🎵 Harmonics Analysis", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="freq-harmonics-table")
+                    ])
+                ])
+            ], md=4)
+        ], className="mb-4"),
+        
+        # Data Storage
+        dcc.Store(id="store-frequency-data"),
+        dcc.Store(id="store-time-freq-data")
+    ])
+
+
+def filtering_layout():
+    """Create the filtering analysis layout."""
+    return html.Div([
+        html.Div([
+            html.H2("Signal Filtering", className="mb-4"),
+            html.P("Apply various filters to the signal"),
+            
+            # Filter controls
+            html.Div([
+                html.H4("Filter Configuration", className="mb-3"),
+                html.Div([
+                    html.Div([
+                        html.Label("Filter Type:", className="form-label"),
+                        dbc.Select(
+                            id="filter-type",
+                            options=[
+                                {"label": "Low Pass", "value": "lowpass"},
+                                {"label": "High Pass", "value": "highpass"},
+                                {"label": "Band Pass", "value": "bandpass"}
+                            ],
+                            value="lowpass"
+                        )
+                    ], className="me-3"),
+                    html.Div([
+                        html.Label("Cutoff Frequency (Hz):", className="form-label"),
+                        dbc.Input(
+                            id="cutoff-freq",
+                            type="number",
+                            placeholder="100",
+                            min=1,
+                            step=1
+                        )
+                    ], className="me-3"),
+                    html.Div([
+                        html.Label("Filter Order:", className="form-label"),
+                        dbc.Input(
+                            id="filter-order",
+                            type="number",
+                            placeholder="4",
+                            min=1,
+                            max=10,
+                            step=1
+                        )
+                    ], className="me-3")
+                ], className="d-flex mb-3"),
+                
+                dbc.Button(
+                    "Apply Filter",
+                    id="btn-apply-filter",
+                    color="primary"
+                )
+            ], className="mb-4"),
+            
+            # Results section
+            html.Div([
+                html.H4("Results", className="mb-3"),
+                html.Div([
+                    html.Div([
+                        dcc.Graph(id="frequency-filtered-signal-plot", style={"height": "400px"})
+                    ], className="col-md-6"),
+                    html.Div([
+                        dcc.Graph(id="filter-response-plot", style={"height": "400px"})
+                    ], className="col-md-6")
+                ], className="row mb-4"),
+                html.Div([
+                    html.Div(id="filter-stats")
+                ], className="col-12")
+            ])
+        ], className="container")
+    ])
+
+
+def physiological_layout():
+    """Create the physiological analysis layout."""
+    return html.Div([
+        # Page Header
+        html.Div([
+            html.H1("💓 Physiological Features Analysis", className="text-center mb-4"),
+            html.P([
+                "Extract comprehensive physiological features from your PPG/ECG signals including ",
+                "heart rate variability (HRV), morphology analysis, and advanced physiological metrics."
+            ], className="text-center text-muted mb-5")
+        ], className="mb-4"),
+        
+        # Main Analysis Section
+        dbc.Row([
+            # Left Panel - Controls & Parameters
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🎛️ Analysis Controls", className="mb-0"),
+                        html.Small("Configure physiological analysis parameters", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        # Signal Type Selection
+                        html.H6("Signal Type", className="mb-3"),
+                        dcc.Dropdown(
+                            id="physio-signal-type",
+                            options=[
+                                {"label": "Auto-detect", "value": "auto"},
+                                {"label": "PPG (Photoplethysmography)", "value": "ppg"},
+                                {"label": "ECG (Electrocardiography)", "value": "ecg"},
+                                {"label": "Respiratory", "value": "respiratory"}
+                            ],
+                            value="auto",
+                            className="mb-3"
+                        ),
+                        
+                        # Time Window Controls
+                        html.H6("Time Window", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Start Time (s)", className="form-label"),
+                                dbc.Input(
+                                    id="physio-start-time",
+                                    type="number",
+                                    value=0,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="0"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("End Time (s)", className="form-label"),
+                                dbc.Input(
+                                    id="physio-end-time",
+                                    type="number",
+                                    value=10,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="10"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # Quick Window Navigation
+                        html.Div([
+                            dbc.Button("⏪ -10s", id="physio-btn-nudge-m10", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("⏪ -1s", id="physio-btn-nudge-m1", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("+1s ⏩", id="physio-btn-nudge-p1", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("+10s ⏩", id="physio-btn-nudge-p10", color="secondary", size="sm")
+                        ], className="mb-3"),
+                        
+                        # Range Slider for Time Window
+                        html.Label("Time Range Slider", className="form-label"),
+                        dcc.RangeSlider(
+                            id="physio-time-range-slider",
+                            min=0,
+                            max=100,
+                            step=0.1,
+                            value=[0, 10],
+                            allowCross=False,
+                            pushable=1,
+                            updatemode="mouseup",
+                            className="mb-4"
+                        ),
+                        
+                        # Analysis Categories
+                        html.H6("Analysis Categories", className="mb-3"),
+                        dcc.Checklist(
+                            id="physio-analysis-categories",
+                            options=[
+                                {"label": "Heart Rate Variability (HRV)", "value": "hrv"},
+                                {"label": "Morphology Analysis", "value": "morphology"},
+                                {"label": "Signal Quality", "value": "quality"},
+                                {"label": "Trend Analysis", "value": "trend"}
+                            ],
+                            value=["hrv", "morphology"],
+                            className="mb-3"
+                        ),
+                        
+                        # HRV Analysis Options
+                        html.H6("HRV Analysis Options", className="mb-3"),
+                        dcc.Checklist(
+                            id="physio-hrv-options",
+                            options=[
+                                {"label": "Time Domain Metrics", "value": "time_domain"},
+                                {"label": "Frequency Domain Metrics", "value": "frequency_domain"},
+                                {"label": "Non-linear Metrics", "value": "nonlinear"},
+                                {"label": "Poincaré Plot", "value": "poincare"}
+                            ],
+                            value=["time_domain", "frequency_domain"],
+                            className="mb-3"
+                        ),
+                        
+                        # Morphology Options
+                        html.H6("Morphology Analysis", className="mb-3"),
+                        dcc.Checklist(
+                            id="physio-morphology-options",
+                            options=[
+                                {"label": "Peak Detection", "value": "peak_detection"},
+                                {"label": "Waveform Analysis", "value": "waveform"},
+                                {"label": "Amplitude Analysis", "value": "amplitude"},
+                                {"label": "Duration Analysis", "value": "duration"}
+                            ],
+                            value=["peak_detection", "amplitude"],
+                            className="mb-3"
+                        ),
+                        
+                        # Advanced Options
+                        html.H6("Advanced Options", className="mb-3"),
+                        dcc.Checklist(
+                            id="physio-advanced-options",
+                            options=[
+                                {"label": "Artifact Detection", "value": "artifact_detection"},
+                                {"label": "Signal Enhancement", "value": "signal_enhancement"},
+                                {"label": "Multi-lead Analysis", "value": "multilead"},
+                                {"label": "Cross-correlation", "value": "cross_correlation"}
+                            ],
+                            value=["artifact_detection"],
+                            className="mb-3"
+                        ),
+                        
+                        # Main Analysis Button
+                        dbc.Button(
+                            "💓 Analyze Physiological Features",
+                            id="physio-btn-update-analysis",
+                            color="primary",
+                            size="lg",
+                            className="w-100 mb-3"
+                        )
+                    ])
+                ], className="h-100")
+            ], md=4),
+            
+            # Right Panel - Results & Plots
+            dbc.Col([
+                # Main Signal Plot
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📈 Main Signal Analysis", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id="physio-main-signal-plot",
+                            style={"height": "400px"},
+                            config={"displayModeBar": True, "displaylogo": False}
+                        )
+                    ])
+                ], className="mb-4"),
+                
+                # Analysis Results
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📋 Analysis Results", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="physio-analysis-results")
+                    ])
+                ], className="mb-4"),
+                
+                # Analysis Plots
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📊 Detailed Analysis Plots", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id="physio-analysis-plots",
+                            style={"height": "400px"},
+                            config={"displayModeBar": True, "displaylogo": False}
+                        )
+                    ])
+                ], className="mb-4")
+            ], md=8)
+        ]),
+        
+        # Data Storage
+        dcc.Store(id="store-physio-data"),
+        dcc.Store(id="store-physio-features")
+    ])
+
+
+def respiratory_layout():
+    """Create the respiratory analysis layout."""
+    return html.Div([
+        html.Div([
+            html.H2("🫁 Respiratory Analysis", className="mb-4"),
+            html.P("Analyze respiratory patterns and estimate respiratory rate using advanced vitalDSP algorithms"),
+            
+            # Analysis Controls
+            html.Div([
+                html.H4("Analysis Configuration", className="mb-3"),
+                
+                # Signal Type Selection
+                html.Div([
+                    html.Label("Signal Type:", className="form-label"),
+                    dcc.Dropdown(
+                        id="resp-signal-type",
+                        options=[
+                            {"label": "Auto-detect", "value": "auto"},
+                            {"label": "Respiratory", "value": "respiratory"},
+                            {"label": "Cardiac", "value": "cardiac"}
+                        ],
+                        value="auto",
+                        className="mb-3"
+                    )
+                ], className="mb-3"),
+                
+                # Estimation Methods
+                html.Div([
+                    html.Label("Estimation Methods:", className="form-label"),
+                    dcc.Checklist(
+                        id="resp-estimation-methods",
+                        options=[
+                            {"label": "Peak Detection", "value": "peak_detection"},
+                            {"label": "FFT Based", "value": "fft_based"},
+                            {"label": "Frequency Domain", "value": "frequency_domain"},
+                            {"label": "Time Domain", "value": "time_domain"}
+                        ],
+                        value=["peak_detection"],
+                        className="mb-3"
+                    )
+                ], className="mb-3"),
+                
+                # Advanced Options
+                html.Div([
+                    html.Label("Advanced Options:", className="form-label"),
+                    dcc.Checklist(
+                        id="resp-advanced-options",
+                        options=[
+                            {"label": "Sleep Apnea Detection", "value": "sleep_apnea"},
+                            {"label": "Multimodal Analysis", "value": "multimodal"},
+                            {"label": "PPG-ECG Fusion", "value": "ppg_ecg_fusion"},
+                            {"label": "Respiratory-Cardiac Fusion", "value": "resp_cardiac_fusion"}
+                        ],
+                        value=[],
+                        className="mb-3"
+                    )
+                ], className="mb-3"),
+                
+                # Preprocessing Options
+                html.Div([
+                    html.Label("Preprocessing:", className="form-label"),
+                    dcc.Checklist(
+                        id="resp-preprocessing-options",
+                        options=[
+                            {"label": "Detrend", "value": "detrend"},
+                            {"label": "Normalize", "value": "normalize"},
+                            {"label": "Filter", "value": "filter"},
+                            {"label": "Smooth", "value": "smooth"}
+                        ],
+                        value=[],
+                        className="mb-3"
+                    )
+                ], className="mb-3"),
+                
+                # Filter Parameters
+                html.Div([
+                    html.H6("Filter Parameters", className="mb-2"),
+                    html.Div([
+                        html.Div([
+                            html.Label("Low Cutoff (Hz):", className="form-label"),
+                            dbc.Input(
+                                id="resp-low-cut",
+                                type="number",
+                                placeholder="0.1",
+                                min=0,
+                                step=0.1
+                            )
+                        ], className="me-2"),
+                        html.Div([
+                            html.Label("High Cutoff (Hz):", className="form-label"),
+                            dbc.Input(
+                                id="resp-high-cut",
+                                type="number",
+                                placeholder="0.5",
+                                min=0,
+                                step=0.1
+                            )
+                        ], className="me-2")
+                    ], className="d-flex mb-3")
+                ], className="mb-3"),
+                
+                # Breath Duration Constraints
+                html.Div([
+                    html.H6("Breath Duration Constraints", className="mb-2"),
+                    html.Div([
+                        html.Div([
+                            html.Label("Min Duration (s):", className="form-label"),
+                            dbc.Input(
+                                id="resp-min-breath-duration",
+                                type="number",
+                                placeholder="1.0",
+                                min=0.1,
+                                step=0.1
+                            )
+                        ], className="me-2"),
+                        html.Div([
+                            html.Label("Max Duration (s):", className="form-label"),
+                            dbc.Input(
+                                id="resp-max-breath-duration",
+                                type="number",
+                                placeholder="10.0",
+                                min=0.1,
+                                step=0.1
+                            )
+                        ], className="me-2")
+                    ], className="d-flex mb-3")
+                ], className="mb-3"),
+                
+                # Time Window Controls
+                html.Div([
+                    html.H6("Time Window", className="mb-2"),
+                    html.Div([
+                        html.Div([
+                            html.Label("Start Time (s):", className="form-label"),
+                            dbc.Input(
+                                id="resp-start-time",
+                                type="number",
+                                value=0,
+                                min=0,
+                                step=0.1,
+                                placeholder="0"
+                            )
+                        ], className="me-2"),
+                        html.Div([
+                            html.Label("End Time (s):", className="form-label"),
+                            dbc.Input(
+                                id="resp-end-time",
+                                type="number",
+                                value=10,
+                                min=0,
+                                step=0.1,
+                                placeholder="10"
+                            )
+                        ], className="me-2")
+                    ], className="d-flex mb-3"),
+                    
+                    # Quick Window Navigation
+                    html.Div([
+                        dbc.Button("⏪ -10s", id="resp-btn-nudge-m10", color="secondary", size="sm", className="me-1"),
+                        dbc.Button("⏪ -1s", id="resp-btn-nudge-m1", color="secondary", size="sm", className="me-1"),
+                        dbc.Button("+1s ⏩", id="resp-btn-nudge-p1", color="secondary", size="sm", className="me-1"),
+                        dbc.Button("+10s ⏩", id="resp-btn-nudge-p10", color="secondary", size="sm")
+                    ], className="mb-3"),
+                    
+                    # Range Slider for Time Window
+                    html.Label("Time Range Slider", className="form-label"),
+                    dcc.RangeSlider(
+                        id="resp-time-range-slider",
+                        min=0,
+                        max=100,
+                        step=0.1,
+                        value=[0, 10],
+                        allowCross=False,
+                        pushable=1,
+                        updatemode="mouseup",
+                        className="mb-4"
+                    )
+                ], className="mb-4"),
+                
+                # Analysis Button
+                dbc.Button(
+                    "Analyze Respiratory Signal",
+                    id="resp-analyze-btn",
+                    color="primary",
+                    size="lg",
+                    className="w-100 mb-4"
+                )
+            ], className="mb-4"),
+            
+            # Results Section
+            html.Div([
+                html.H4("Analysis Results", className="mb-3"),
+                
+                # Main Plot
+                html.Div([
+                    html.H6("Respiratory Signal", className="mb-2"),
+                    dcc.Graph(id="resp-main-plot", style={"height": "400px"})
+                ], className="mb-4"),
+                
+                # Analysis Results and Plots
+                html.Div([
+                    html.Div([
+                        html.H6("Analysis Summary", className="mb-2"),
+                        html.Div(id="resp-analysis-results")
+                    ], className="col-md-6"),
+                    html.Div([
+                        html.H6("Comprehensive Analysis", className="mb-2"),
+                        dcc.Graph(id="resp-analysis-plots", style={"height": "400px"})
+                    ], className="col-md-6")
+                ], className="row mb-4"),
+                
+                # Data Stores
+                dcc.Store(id="resp-data-store"),
+                dcc.Store(id="resp-features-store")
+            ])
+        ], className="container")
+    ])
+
+
+def features_layout():
+    """Create the advanced features layout."""
+    return html.Div([
+        # Page Header
+        html.Div([
+            html.H1("🚀 Advanced Feature Engineering", className="text-center mb-4"),
+            html.P([
+                "Extract comprehensive signal processing features including statistical, spectral, ",
+                "temporal, and morphological characteristics for advanced signal analysis."
+            ], className="text-center text-muted mb-5")
+        ], className="mb-4"),
+        
+        # Main Analysis Section
+        dbc.Row([
+            # Left Panel - Controls & Parameters
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🎛️ Feature Configuration", className="mb-0"),
+                        html.Small("Configure feature extraction parameters", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        # Signal Type Selection
+                        html.H6("Signal Type", className="mb-3"),
+                        dcc.Dropdown(
+                            id="features-signal-type",
+                            options=[
+                                {"label": "Auto-detect", "value": "auto"},
+                                {"label": "PPG (Photoplethysmography)", "value": "ppg"},
+                                {"label": "ECG (Electrocardiography)", "value": "ecg"},
+                                {"label": "Respiratory", "value": "respiratory"},
+                                {"label": "General Signal", "value": "general"}
+                            ],
+                            value="auto",
+                            className="mb-3"
+                        ),
+                        
+                        # Preprocessing Options
+                        html.H6("Preprocessing Options", className="mb-3"),
+                        dcc.Checklist(
+                            id="features-preprocessing",
+                            options=[
+                                {"label": "Detrending", "value": "detrend"},
+                                {"label": "Normalization", "value": "normalize"},
+                                {"label": "Filtering", "value": "filter"},
+                                {"label": "Outlier Removal", "value": "outlier_removal"},
+                                {"label": "Smoothing", "value": "smoothing"}
+                            ],
+                            value=["detrend", "normalize"],
+                            className="mb-3"
+                        ),
+                        
+                        # Feature Categories
+                        html.H6("Feature Categories", className="mb-3"),
+                        dcc.Checklist(
+                            id="features-categories",
+                            options=[
+                                {"label": "Statistical Features", "value": "statistical"},
+                                {"label": "Spectral Features", "value": "spectral"},
+                                {"label": "Temporal Features", "value": "temporal"},
+                                {"label": "Morphological Features", "value": "morphological"},
+                                {"label": "Entropy Features", "value": "entropy"},
+                                {"label": "Fractal Features", "value": "fractal"}
+                            ],
+                            value=["statistical", "spectral"],
+                            className="mb-3"
+                        ),
+                        
+                        # Advanced Options
+                        html.H6("Advanced Options", className="mb-3"),
+                        dcc.Checklist(
+                            id="features-advanced-options",
+                            options=[
+                                {"label": "Cross-correlation", "value": "cross_correlation"},
+                                {"label": "Phase Analysis", "value": "phase_analysis"},
+                                {"label": "Non-linear Features", "value": "nonlinear"},
+                                {"label": "Wavelet Features", "value": "wavelet"},
+                                {"label": "Machine Learning Features", "value": "ml_features"}
+                            ],
+                            value=["cross_correlation"],
+                            className="mb-3"
+                        ),
+                        
+                        # Main Analysis Button
+                        dbc.Button(
+                            "🚀 Analyze Features",
+                            id="features-analyze-btn",
+                            color="primary",
+                            size="lg",
+                            className="w-100 mb-3"
+                        )
+                    ])
+                ], className="h-100")
+            ], md=4),
+            
+            # Right Panel - Results & Plots
+            dbc.Col([
+                # Analysis Results
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📋 Feature Analysis Results", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="features-analysis-results")
+                    ])
+                ], className="mb-4"),
+                
+                # Analysis Plots
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📊 Feature Analysis Plots", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id="features-analysis-plots",
+                            style={"height": "500px"},
+                            config={"displayModeBar": True, "displaylogo": False}
+                        )
+                    ])
+                ], className="mb-4")
+            ], md=8)
+        ]),
+        
+        # Data Storage
+        dcc.Store(id="store-features-data"),
+        dcc.Store(id="store-features-features")
+    ])
+
+
+def transforms_layout():
+    """Create the comprehensive signal transforms layout."""
+    return html.Div([
+        # Page Header
+        html.Div([
+            html.H1("🔄 Signal Transforms", className="text-center mb-4"),
+            html.P([
+                "Apply various signal transformations including FFT, wavelet, Hilbert, STFT, ",
+                "and other advanced transforms for comprehensive signal analysis."
+            ], className="text-center text-muted mb-5")
+        ], className="mb-4"),
+        
+        # Main Analysis Section
+        dbc.Row([
+            # Left Panel - Controls & Parameters
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🎛️ Transform Configuration", className="mb-0"),
+                        html.Small("Configure signal transformation parameters", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        # Signal Type Selection
+                        html.H6("Signal Type", className="mb-3"),
+                        dcc.Dropdown(
+                            id="transforms-signal-type",
+                            options=[
+                                {"label": "Auto-detect", "value": "auto"},
+                                {"label": "PPG (Photoplethysmography)", "value": "ppg"},
+                                {"label": "ECG (Electrocardiography)", "value": "ecg"},
+                                {"label": "Respiratory", "value": "respiratory"},
+                                {"label": "General Signal", "value": "general"}
+                            ],
+                            value="auto",
+                            className="mb-3"
+                        ),
+                        
+                        # Time Window Configuration
+                        html.H6("Time Window", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Start Time (s)", className="form-label"),
+                                dbc.Input(
+                                    id="transforms-start-time",
+                                    type="number",
+                                    value=0,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="0"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("End Time (s)", className="form-label"),
+                                dbc.Input(
+                                    id="transforms-end-time",
+                                    type="number",
+                                    value=10,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="10"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # Quick Window Navigation
+                        html.Div([
+                            dbc.Button("⏪ -10s", id="transforms-btn-nudge-m10", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("⏪ -1s", id="transforms-btn-nudge-m1", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("+1s ⏩", id="transforms-btn-nudge-p1", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("+10s ⏩", id="transforms-btn-nudge-p10", color="secondary", size="sm")
+                        ], className="mb-3"),
+                        
+                        # Range Slider for Time Window
+                        html.Label("Time Range Slider", className="form-label"),
+                        dcc.RangeSlider(
+                            id="transforms-time-range-slider",
+                            min=0,
+                            max=100,
+                            step=0.1,
+                            value=[0, 10],
+                            allowCross=False,
+                            pushable=1,
+                            updatemode="mouseup",
+                            className="mb-4"
+                        ),
+                        
+                        # Transform Type Selection
+                        html.H6("Transform Type", className="mb-3"),
+                        dcc.Dropdown(
+                            id="transforms-type",
+                            options=[
+                                {"label": "Fast Fourier Transform (FFT)", "value": "fft"},
+                                {"label": "Short-Time Fourier Transform (STFT)", "value": "stft"},
+                                {"label": "Wavelet Transform", "value": "wavelet"},
+                                {"label": "Hilbert Transform", "value": "hilbert"},
+                                {"label": "Mel-Frequency Cepstral Coefficients (MFCC)", "value": "mfcc"},
+                                {"label": "Principal Component Analysis (PCA)", "value": "pca"},
+                                {"label": "Independent Component Analysis (ICA)", "value": "ica"},
+                                {"label": "Z-Transform", "value": "z_transform"},
+                                {"label": "Laplace Transform", "value": "laplace"}
+                            ],
+                            value="fft",
+                            className="mb-3"
+                        ),
+                        
+                        # Transform-Specific Parameters
+                        html.Div(id="transforms-parameters", children=[
+                            # FFT Parameters
+                            html.Div(id="fft-params", children=[
+                                html.H6("FFT Parameters", className="mb-3"),
+                                dbc.Row([
+                                    dbc.Col([
+                                        html.Label("Window Type", className="form-label"),
+                                        dcc.Dropdown(
+                                            id="fft-window-type",
+                                            options=[
+                                                {"label": "Rectangular", "value": "rectangular"},
+                                                {"label": "Hamming", "value": "hamming"},
+                                                {"label": "Hann", "value": "hann"},
+                                                {"label": "Blackman", "value": "blackman"},
+                                                {"label": "Kaiser", "value": "kaiser"}
+                                            ],
+                                            value="hann",
+                                            className="mb-3"
+                                        )
+                                    ], md=6),
+                                    dbc.Col([
+                                        html.Label("N Points", className="form-label"),
+                                        dbc.Input(
+                                            id="fft-n-points",
+                                            type="number",
+                                            value=1024,
+                                            min=64,
+                                            step=64,
+                                            placeholder="1024"
+                                        )
+                                    ], md=6)
+                                ], className="mb-3")
+                            ])
+                        ], className="mb-4"),
+                        
+                        # Analysis Options
+                        html.H6("Analysis Options", className="mb-3"),
+                        dcc.Checklist(
+                            id="transforms-analysis-options",
+                            options=[
+                                {"label": "Magnitude Spectrum", "value": "magnitude"},
+                                {"label": "Phase Spectrum", "value": "phase"},
+                                {"label": "Power Spectrum", "value": "power"},
+                                {"label": "Log Scale", "value": "log_scale"},
+                                {"label": "Peak Detection", "value": "peak_detection"},
+                                {"label": "Frequency Bands", "value": "frequency_bands"}
+                            ],
+                            value=["magnitude", "power"],
+                            className="mb-4"
+                        ),
+                        
+                        # Main Analysis Button
+                        dbc.Button(
+                            "🔄 Apply Transform",
+                            id="transforms-analyze-btn",
+                            color="primary",
+                            size="lg",
+                            className="w-100 mb-3"
+                        )
+                    ])
+                ], className="h-100")
+            ], md=4),
+            
+            # Right Panel - Results & Plots
+            dbc.Col([
+                # Main Transform Plot
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📈 Main Transform Result", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id="transforms-main-plot",
+                            style={"height": "400px"},
+                            config={"displayModeBar": True, "displaylogo": False}
+                        )
+                    ])
+                ], className="mb-4"),
+                
+                # Additional Analysis Plots
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📊 Additional Analysis", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id="transforms-analysis-plots",
+                            style={"height": "400px"},
+                            config={"displayModeBar": True, "displaylogo": False}
+                        )
+                    ])
+                ], className="mb-4")
+            ], md=8)
+        ]),
+        
+        # Analysis Results Section
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📋 Transform Results", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="transforms-analysis-results")
+                    ])
+                ])
+            ], md=6),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("🔍 Peak Analysis", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="transforms-peak-analysis")
+                    ])
+                ])
+            ], md=6)
+        ], className="mb-4"),
+        
+        # Frequency Band Analysis
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📊 Frequency Band Analysis", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="transforms-frequency-bands")
+                    ])
+                ])
+            ], md=12)
+        ], className="mb-4"),
+        
+        # Data Storage
+        dcc.Store(id="store-transforms-data"),
+        dcc.Store(id="store-transforms-results")
+    ])
+
+
+def quality_layout():
+    """Create the comprehensive signal quality assessment layout."""
+    return html.Div([
+        # Page Header
+        html.Div([
+            html.H1("🎯 Signal Quality Assessment", className="text-center mb-4"),
+            html.P([
+                "Comprehensive signal quality assessment including SNR, artifact detection, ",
+                "baseline wander, and other quality metrics for optimal signal analysis."
+            ], className="text-center text-muted mb-5")
+        ], className="mb-4"),
+        
+        # Main Analysis Section
+        dbc.Row([
+            # Left Panel - Controls & Parameters
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🎛️ Quality Assessment Configuration", className="mb-0"),
+                        html.Small("Configure quality assessment parameters", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        # Signal Type Selection
+                        html.H6("Signal Type", className="mb-3"),
+                        dcc.Dropdown(
+                            id="quality-signal-type",
+                            options=[
+                                {"label": "Auto-detect", "value": "auto"},
+                                {"label": "PPG (Photoplethysmography)", "value": "ppg"},
+                                {"label": "ECG (Electrocardiography)", "value": "ecg"},
+                                {"label": "Respiratory", "value": "respiratory"},
+                                {"label": "General Signal", "value": "general"}
+                            ],
+                            value="auto",
+                            className="mb-3"
+                        ),
+                        
+                        # Time Window Configuration
+                        html.H6("Time Window", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Start Time (s)", className="form-label"),
+                                dbc.Input(
+                                    id="quality-start-time",
+                                    type="number",
+                                    value=0,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="0"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("End Time (s)", className="form-label"),
+                                dbc.Input(
+                                    id="quality-end-time",
+                                    type="number",
+                                    value=10,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="10"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # Quick Window Navigation
+                        html.Div([
+                            dbc.Button("⏪ -10s", id="quality-btn-nudge-m10", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("⏪ -1s", id="quality-btn-nudge-m1", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("+1s ⏩", id="quality-btn-nudge-p1", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("+10s ⏩", id="quality-btn-nudge-p10", color="secondary", size="sm")
+                        ], className="mb-3"),
+                        
+                        # Range Slider for Time Window
+                        html.Label("Time Range Slider", className="form-label"),
+                        dcc.RangeSlider(
+                            id="quality-time-range-slider",
+                            min=0,
+                            max=100,
+                            step=0.1,
+                            value=[0, 10],
+                            allowCross=False,
+                            pushable=1,
+                            updatemode="mouseup",
+                            className="mb-4"
+                        ),
+                        
+                        # Quality Metrics Selection
+                        html.H6("Quality Metrics", className="mb-3"),
+                        dcc.Checklist(
+                            id="quality-metrics",
+                            options=[
+                                {"label": "Signal-to-Noise Ratio (SNR)", "value": "snr"},
+                                {"label": "Artifact Detection", "value": "artifacts"},
+                                {"label": "Baseline Wander", "value": "baseline_wander"},
+                                {"label": "Motion Artifacts", "value": "motion_artifacts"},
+                                {"label": "Signal Amplitude", "value": "amplitude"},
+                                {"label": "Signal Stability", "value": "stability"},
+                                {"label": "Frequency Content", "value": "frequency_content"},
+                                {"label": "Peak Detection Quality", "value": "peak_quality"},
+                                {"label": "Signal Continuity", "value": "continuity"},
+                                {"label": "Outlier Detection", "value": "outliers"}
+                            ],
+                            value=["snr", "artifacts", "baseline_wander"],
+                            className="mb-3"
+                        ),
+                        
+                        # Assessment Parameters
+                        html.H6("Assessment Parameters", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("SNR Threshold (dB)", className="form-label"),
+                                dbc.Input(
+                                    id="quality-snr-threshold",
+                                    type="number",
+                                    value=10,
+                                    min=0,
+                                    step=1,
+                                    placeholder="10"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("Artifact Threshold", className="form-label"),
+                                dbc.Input(
+                                    id="quality-artifact-threshold",
+                                    type="number",
+                                    value=0.1,
+                                    min=0,
+                                    step=0.01,
+                                    placeholder="0.1"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # Advanced Options
+                        html.H6("Advanced Options", className="mb-3"),
+                        dcc.Checklist(
+                            id="quality-advanced-options",
+                            options=[
+                                {"label": "Adaptive Thresholding", "value": "adaptive_threshold"},
+                                {"label": "Multi-scale Analysis", "value": "multiscale"},
+                                {"label": "Statistical Analysis", "value": "statistical"},
+                                {"label": "Machine Learning Assessment", "value": "ml_assessment"},
+                                {"label": "Real-time Monitoring", "value": "realtime"}
+                            ],
+                            value=["adaptive_threshold", "multiscale"],
+                            className="mb-4"
+                        ),
+                        
+                        # Main Analysis Button
+                        dbc.Button(
+                            "🎯 Assess Signal Quality",
+                            id="quality-analyze-btn",
+                            color="primary",
+                            size="lg",
+                            className="w-100 mb-3"
+                        )
+                    ])
+                ], className="h-100")
+            ], md=4),
+            
+            # Right Panel - Results & Plots
+            dbc.Col([
+                # Main Quality Plot
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📈 Signal Quality Overview", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id="quality-main-plot",
+                            style={"height": "400px"},
+                            config={"displayModeBar": True, "displaylogo": False}
+                        )
+                    ])
+                ], className="mb-4"),
+                
+                # Quality Metrics Visualization
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📊 Quality Metrics Visualization", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id="quality-metrics-plot",
+                            style={"height": "400px"},
+                            config={"displayModeBar": True, "displaylogo": False}
+                        )
+                    ])
+                ], className="mb-4")
+            ], md=8)
+        ]),
+        
+        # Quality Assessment Results
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📋 Quality Assessment Results", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="quality-assessment-results")
+                    ])
+                ])
+            ], md=6),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("⚠️ Quality Issues & Recommendations", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="quality-issues-recommendations")
+                    ])
+                ])
+            ], md=6)
+        ], className="mb-4"),
+        
+        # Detailed Quality Analysis
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("🔍 Detailed Quality Analysis", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="quality-detailed-analysis")
+                    ])
+                ])
+            ], md=12)
+        ], className="mb-4"),
+        
+        # Quality Score Dashboard
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📊 Quality Score Dashboard", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="quality-score-dashboard")
+                    ])
+                ])
+            ], md=12)
+        ], className="mb-4"),
+        
+        # Data Storage
+        dcc.Store(id="store-quality-data"),
+        dcc.Store(id="store-quality-results")
+    ])
+
+
+def advanced_layout():
+    """Create the comprehensive advanced analysis layout."""
+    return html.Div([
+        # Page Header
+        html.Div([
+            html.H1("🧠 Advanced Analysis", className="text-center mb-4"),
+            html.P([
+                "Advanced signal processing methods including machine learning, deep learning, ",
+                "ensemble methods, and cutting-edge analysis techniques for research applications."
+            ], className="text-center text-muted mb-5")
+        ], className="mb-4"),
+        
+        # Main Analysis Section
+        dbc.Row([
+            # Left Panel - Controls & Parameters
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🎛️ Advanced Analysis Configuration", className="mb-0"),
+                        html.Small("Configure advanced analysis parameters", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        # Signal Type Selection
+                        html.H6("Signal Type", className="mb-3"),
+                        dcc.Dropdown(
+                            id="advanced-signal-type",
+                            options=[
+                                {"label": "Auto-detect", "value": "auto"},
+                                {"label": "PPG (Photoplethysmography)", "value": "ppg"},
+                                {"label": "ECG (Electrocardiography)", "value": "ecg"},
+                                {"label": "Respiratory", "value": "respiratory"},
+                                {"label": "General Signal", "value": "general"},
+                                {"label": "Multi-modal", "value": "multimodal"}
+                            ],
+                            value="auto",
+                            className="mb-3"
+                        ),
+                        
+                        # Time Window Configuration
+                        html.H6("Time Window", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Start Time (s)", className="form-label"),
+                                dbc.Input(
+                                    id="advanced-start-time",
+                                    type="number",
+                                    value=0,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="0"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("End Time (s)", className="form-label"),
+                                dbc.Input(
+                                    id="advanced-end-time",
+                                    type="number",
+                                    value=10,
+                                    min=0,
+                                    step=0.1,
+                                    placeholder="10"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # Quick Window Navigation
+                        html.Div([
+                            dbc.Button("⏪ -10s", id="advanced-btn-nudge-m10", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("⏪ -1s", id="advanced-btn-nudge-m1", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("+1s ⏩", id="advanced-btn-nudge-p1", color="secondary", size="sm", className="me-1"),
+                            dbc.Button("+10s ⏩", id="advanced-btn-nudge-p10", color="secondary", size="sm")
+                        ], className="mb-3"),
+                        
+                        # Range Slider for Time Window
+                        html.Label("Time Range Slider", className="form-label"),
+                        dcc.RangeSlider(
+                            id="advanced-time-range-slider",
+                            min=0,
+                            max=100,
+                            step=0.1,
+                            value=[0, 10],
+                            allowCross=False,
+                            pushable=1,
+                            updatemode="mouseup",
+                            className="mb-4"
+                        ),
+                        
+                        # Analysis Categories
+                        html.H6("Analysis Categories", className="mb-3"),
+                        dcc.Checklist(
+                            id="advanced-analysis-categories",
+                            options=[
+                                {"label": "Machine Learning Analysis", "value": "ml_analysis"},
+                                {"label": "Deep Learning Models", "value": "deep_learning"},
+                                {"label": "Ensemble Methods", "value": "ensemble"},
+                                {"label": "Pattern Recognition", "value": "pattern_recognition"},
+                                {"label": "Anomaly Detection", "value": "anomaly_detection"},
+                                {"label": "Classification", "value": "classification"},
+                                {"label": "Regression Analysis", "value": "regression"},
+                                {"label": "Clustering", "value": "clustering"},
+                                {"label": "Dimensionality Reduction", "value": "dimensionality_reduction"},
+                                {"label": "Time Series Forecasting", "value": "forecasting"}
+                            ],
+                            value=["ml_analysis", "pattern_recognition"],
+                            className="mb-3"
+                        ),
+                        
+                        # Machine Learning Options
+                        html.H6("Machine Learning Options", className="mb-3"),
+                        dcc.Checklist(
+                            id="advanced-ml-options",
+                            options=[
+                                {"label": "Support Vector Machines (SVM)", "value": "svm"},
+                                {"label": "Random Forest", "value": "random_forest"},
+                                {"label": "Neural Networks", "value": "neural_networks"},
+                                {"label": "Gradient Boosting", "value": "gradient_boosting"},
+                                {"label": "K-Means Clustering", "value": "kmeans"},
+                                {"label": "Principal Component Analysis (PCA)", "value": "pca"},
+                                {"label": "Independent Component Analysis (ICA)", "value": "ica"},
+                                {"label": "Hidden Markov Models (HMM)", "value": "hmm"},
+                                {"label": "Gaussian Mixture Models (GMM)", "value": "gmm"},
+                                {"label": "Autoencoders", "value": "autoencoders"}
+                            ],
+                            value=["svm", "random_forest"],
+                            className="mb-3"
+                        ),
+                        
+                        # Deep Learning Options
+                        html.H6("Deep Learning Options", className="mb-3"),
+                        dcc.Checklist(
+                            id="advanced-deep-learning-options",
+                            options=[
+                                {"label": "Convolutional Neural Networks (CNN)", "value": "cnn"},
+                                {"label": "Recurrent Neural Networks (RNN)", "value": "rnn"},
+                                {"label": "Long Short-Term Memory (LSTM)", "value": "lstm"},
+                                {"label": "Gated Recurrent Units (GRU)", "value": "gru"},
+                                {"label": "Transformer Models", "value": "transformer"},
+                                {"label": "Autoencoders", "value": "autoencoders"},
+                                {"label": "Generative Adversarial Networks (GAN)", "value": "gan"},
+                                {"label": "Attention Mechanisms", "value": "attention"},
+                                {"label": "Transfer Learning", "value": "transfer_learning"},
+                                {"label": "Federated Learning", "value": "federated_learning"}
+                            ],
+                            value=["cnn", "lstm"],
+                            className="mb-3"
+                        ),
+                        
+                        # Advanced Parameters
+                        html.H6("Advanced Parameters", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Cross-validation Folds", className="form-label"),
+                                dbc.Input(
+                                    id="advanced-cv-folds",
+                                    type="number",
+                                    value=5,
+                                    min=2,
+                                    max=10,
+                                    step=1,
+                                    placeholder="5"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                html.Label("Random State", className="form-label"),
+                                dbc.Input(
+                                    id="advanced-random-state",
+                                    type="number",
+                                    value=42,
+                                    min=0,
+                                    step=1,
+                                    placeholder="42"
+                                )
+                            ], md=6)
+                        ], className="mb-3"),
+                        
+                        # Model Configuration
+                        html.H6("Model Configuration", className="mb-3"),
+                        dcc.Checklist(
+                            id="advanced-model-config",
+                            options=[
+                                {"label": "Hyperparameter Tuning", "value": "hyperparameter_tuning"},
+                                {"label": "Feature Selection", "value": "feature_selection"},
+                                {"label": "Model Interpretability", "value": "interpretability"},
+                                {"label": "Model Validation", "value": "validation"},
+                                {"label": "Performance Metrics", "value": "performance_metrics"},
+                                {"label": "Confusion Matrix", "value": "confusion_matrix"},
+                                {"label": "ROC Analysis", "value": "roc_analysis"},
+                                {"label": "Learning Curves", "value": "learning_curves"}
+                            ],
+                            value=["hyperparameter_tuning", "feature_selection"],
+                            className="mb-4"
+                        ),
+                        
+                        # Main Analysis Button
+                        dbc.Button(
+                            "🧠 Run Advanced Analysis",
+                            id="advanced-analyze-btn",
+                            color="primary",
+                            size="lg",
+                            className="w-100 mb-3"
+                        )
+                    ])
+                ], className="h-100")
+            ], md=4),
+            
+            # Right Panel - Results & Plots
+            dbc.Col([
+                # Main Analysis Plot
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📈 Advanced Analysis Results", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id="advanced-main-plot",
+                            style={"height": "400px"},
+                            config={"displayModeBar": True, "displaylogo": False}
+                        )
+                    ])
+                ], className="mb-4"),
+                
+                # Model Performance Visualization
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📊 Model Performance & Metrics", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id="advanced-performance-plot",
+                            style={"height": "400px"},
+                            config={"displayModeBar": True, "displaylogo": False}
+                        )
+                    ])
+                ], className="mb-4")
+            ], md=8)
+        ]),
+        
+        # Analysis Results Section
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📋 Analysis Summary", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="advanced-analysis-summary")
+                    ])
+                ])
+            ], md=6),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("🔍 Model Details", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="advanced-model-details")
+                    ])
+                ])
+            ], md=6)
+        ], className="mb-4"),
+        
+        # Performance Metrics
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📊 Performance Metrics", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="advanced-performance-metrics")
+                    ])
+                ])
+            ], md=6),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("🎯 Feature Importance", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="advanced-feature-importance")
+                    ])
+                ])
+            ], md=6)
+        ], className="mb-4"),
+        
+        # Advanced Visualizations
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("🌊 Advanced Visualizations", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id="advanced-visualizations",
+                            style={"height": "500px"},
+                            config={"displayModeBar": True, "displaylogo": False}
+                        )
+                    ])
+                ])
+            ], md=12)
+        ], className="mb-4"),
+        
+        # Data Storage
+        dcc.Store(id="store-advanced-data"),
+        dcc.Store(id="store-advanced-results")
+    ])
+
+
+def health_report_layout():
+    """Create the comprehensive health report generation layout."""
+    return html.Div([
+        # Page Header
+        html.Div([
+            html.H1("📋 Health Report Generator", className="text-center mb-4"),
+            html.P([
+                "Generate comprehensive health reports with customizable templates, ",
+                "professional formatting, and multiple export formats for clinical and research use."
+            ], className="text-center text-muted mb-5")
+        ], className="mb-4"),
+        
+        # Main Configuration Section
+        dbc.Row([
+            # Left Panel - Report Configuration
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("⚙️ Report Configuration", className="mb-0"),
+                        html.Small("Configure report generation parameters", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        # Report Type Selection
+                        html.H6("Report Type", className="mb-3"),
+                        dcc.Dropdown(
+                            id="health-report-type",
+                            options=[
+                                {"label": "Comprehensive Health Assessment", "value": "comprehensive"},
+                                {"label": "Cardiovascular Health Report", "value": "cardiovascular"},
+                                {"label": "Respiratory Health Report", "value": "respiratory"},
+                                {"label": "General Wellness Report", "value": "wellness"},
+                                {"label": "Research Summary Report", "value": "research"},
+                                {"label": "Clinical Assessment Report", "value": "clinical"},
+                                {"label": "Fitness & Performance Report", "value": "fitness"},
+                                {"label": "Custom Report", "value": "custom"}
+                            ],
+                            value="comprehensive",
+                            className="mb-3"
+                        ),
+                        
+                        # Data Selection
+                        html.H6("Data Selection", className="mb-3"),
+                        dcc.Dropdown(
+                            id="health-report-data-selection",
+                            options=[
+                                {"label": "All Available Data", "value": "all"},
+                                {"label": "Most Recent Session", "value": "recent"},
+                                {"label": "Specific Time Range", "value": "time_range"},
+                                {"label": "Selected Analysis Results", "value": "selected"}
+                            ],
+                            value="recent",
+                            className="mb-3"
+                        ),
+                        
+                        # Time Range Configuration (if applicable)
+                        html.Div(id="health-report-time-config", children=[
+                            html.H6("Time Range", className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Start Date", className="form-label"),
+                                    dcc.DatePickerSingle(
+                                        id="health-report-start-date",
+                                        date=None,
+                                        display_format="DD/MM/YYYY"
+                                    )
+                                ], md=6),
+                                dbc.Col([
+                                    html.Label("End Date", className="form-label"),
+                                    dcc.DatePickerSingle(
+                                        id="health-report-end-date",
+                                        date=None,
+                                        display_format="DD/MM/YYYY"
+                                    )
+                                ], md=6)
+                            ], className="mb-3")
+                        ], className="mb-4"),
+                        
+                        # Report Sections
+                        html.H6("Report Sections", className="mb-3"),
+                        dcc.Checklist(
+                            id="health-report-sections",
+                            options=[
+                                {"label": "Executive Summary", "value": "executive_summary"},
+                                {"label": "Data Overview", "value": "data_overview"},
+                                {"label": "Vital Signs Analysis", "value": "vital_signs"},
+                                {"label": "Physiological Features", "value": "physiological_features"},
+                                {"label": "Signal Quality Assessment", "value": "signal_quality"},
+                                {"label": "Trend Analysis", "value": "trend_analysis"},
+                                {"label": "Risk Assessment", "value": "risk_assessment"},
+                                {"label": "Recommendations", "value": "recommendations"},
+                                {"label": "Technical Details", "value": "technical_details"},
+                                {"label": "References & Methodology", "value": "references"}
+                            ],
+                            value=["executive_summary", "vital_signs", "physiological_features", "recommendations"],
+                            className="mb-3"
+                        ),
+                        
+                        # Report Customization
+                        html.H6("Report Customization", className="mb-3"),
+                        dcc.Checklist(
+                            id="health-report-customization",
+                            options=[
+                                {"label": "Include Charts & Graphs", "value": "include_charts"},
+                                {"label": "Include Statistical Tables", "value": "include_tables"},
+                                {"label": "Include Raw Data Summary", "value": "include_raw_data"},
+                                {"label": "Include Comparison Analysis", "value": "include_comparison"},
+                                {"label": "Include Annotations", "value": "include_annotations"},
+                                {"label": "Include Quality Metrics", "value": "include_quality"},
+                                {"label": "Include Confidence Intervals", "value": "include_confidence"},
+                                {"label": "Include Trend Predictions", "value": "include_predictions"}
+                            ],
+                            value=["include_charts", "include_tables", "include_quality"],
+                            className="mb-3"
+                        ),
+                        
+                        # Report Format
+                        html.H6("Report Format", className="mb-3"),
+                        dcc.RadioItems(
+                            id="health-report-format",
+                            options=[
+                                {"label": "PDF Document", "value": "pdf"},
+                                {"label": "HTML Report", "value": "html"},
+                                {"label": "Word Document", "value": "docx"},
+                                {"label": "LaTeX Document", "value": "latex"},
+                                {"label": "Markdown", "value": "markdown"}
+                            ],
+                            value="pdf",
+                            className="mb-3"
+                        ),
+                        
+                        # Report Style
+                        html.H6("Report Style", className="mb-3"),
+                        dcc.Dropdown(
+                            id="health-report-style",
+                            options=[
+                                {"label": "Professional Medical", "value": "medical"},
+                                {"label": "Research Paper", "value": "research"},
+                                {"label": "Executive Summary", "value": "executive"},
+                                {"label": "Technical Report", "value": "technical"},
+                                {"label": "Patient-Friendly", "value": "patient"},
+                                {"label": "Custom Style", "value": "custom"}
+                            ],
+                            value="medical",
+                            className="mb-4"
+                        ),
+                        
+                        # Generate Report Button
+                        dbc.Button(
+                            "📋 Generate Health Report",
+                            id="health-report-generate-btn",
+                            color="primary",
+                            size="lg",
+                            className="w-100 mb-3"
+                        )
+                    ])
+                ], className="h-100")
+            ], md=4),
+            
+            # Right Panel - Report Preview & Export
+            dbc.Col([
+                # Report Preview
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("👁️ Report Preview", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="health-report-preview")
+                    ])
+                ], className="mb-4"),
+                
+                # Report Actions
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📤 Report Actions", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div([
+                            dbc.Button("💾 Save Report", id="health-report-save-btn", color="success", className="me-2 mb-2"),
+                            dbc.Button("📧 Email Report", id="health-report-email-btn", color="info", className="me-2 mb-2"),
+                            dbc.Button("🖨️ Print Report", id="health-report-print-btn", color="secondary", className="me-2 mb-2"),
+                            dbc.Button("📱 Mobile View", id="health-report-mobile-btn", color="warning", className="me-2 mb-2")
+                        ], className="text-center")
+                    ])
+                ], className="mb-4")
+            ], md=8)
+        ]),
+        
+        # Report Content Sections
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📊 Report Content", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="health-report-content")
+                    ])
+                ])
+            ], md=12)
+        ], className="mb-4"),
+        
+        # Report Templates
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📋 Report Templates", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="health-report-templates")
+                    ])
+                ])
+            ], md=6),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("⚙️ Template Settings", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="health-report-template-settings")
+                    ])
+                ])
+            ], md=6)
+        ], className="mb-4"),
+        
+        # Report History
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📚 Report History", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="health-report-history")
+                    ])
+                ])
+            ], md=12)
+        ], className="mb-4"),
+        
+        # Data Storage
+        dcc.Store(id="store-health-report-data"),
+        dcc.Store(id="store-health-report-config")
+    ])
+
+
+def settings_layout():
+    """Create the comprehensive settings layout."""
+    return html.Div([
+        # Page Header
+        html.Div([
+            html.H1("⚙️ Settings", className="text-center mb-4"),
+            html.P([
+                "Configure application settings, user preferences, analysis parameters, ",
+                "and system configuration for optimal performance and user experience."
+            ], className="text-center text-muted mb-5")
+        ], className="mb-4"),
+        
+        # Settings Navigation Tabs
+        dbc.Tabs([
+            # General Settings Tab
+            dbc.Tab([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🌐 General Settings", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col([
+                                html.H6("Application Settings", className="mb-3"),
+                                html.Div([
+                                    html.Label("Theme", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="settings-theme",
+                                        options=[
+                                            {"label": "Light Theme", "value": "light"},
+                                            {"label": "Dark Theme", "value": "dark"},
+                                            {"label": "Auto (System)", "value": "auto"}
+                                        ],
+                                        value="light",
+                                        className="mb-3"
+                                    ),
+                                    html.Label("Language", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="settings-language",
+                                        options=[
+                                            {"label": "English", "value": "en"},
+                                            {"label": "Spanish", "value": "es"},
+                                            {"label": "French", "value": "fr"},
+                                            {"label": "German", "value": "de"},
+                                            {"label": "Chinese", "value": "zh"}
+                                        ],
+                                        value="en",
+                                        className="mb-3"
+                                    ),
+                                    html.Label("Time Zone", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="settings-timezone",
+                                        options=[
+                                            {"label": "UTC", "value": "UTC"},
+                                            {"label": "EST (UTC-5)", "value": "EST"},
+                                            {"label": "PST (UTC-8)", "value": "PST"},
+                                            {"label": "GMT (UTC+0)", "value": "GMT"},
+                                            {"label": "CET (UTC+1)", "value": "CET"}
+                                        ],
+                                        value="UTC",
+                                        className="mb-3"
+                                    )
+                                ])
+                            ], md=6),
+                            dbc.Col([
+                                html.H6("Display Settings", className="mb-3"),
+                                html.Div([
+                                    html.Label("Default Page Size", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="settings-page-size",
+                                        options=[
+                                            {"label": "10 items", "value": 10},
+                                            {"label": "25 items", "value": 25},
+                                            {"label": "50 items", "value": 50},
+                                            {"label": "100 items", "value": 100}
+                                        ],
+                                        value=25,
+                                        className="mb-3"
+                                    ),
+                                    html.Label("Auto-refresh Interval (seconds)", className="form-label"),
+                                    dcc.Input(
+                                        id="settings-auto-refresh",
+                                        type="number",
+                                        value=30,
+                                        min=0,
+                                        step=5,
+                                        placeholder="30"
+                                    ),
+                                    html.Div([
+                                        dcc.Checklist(
+                                            id="settings-display-options",
+                                            options=[
+                                                {"label": "Show Tooltips", "value": "tooltips"},
+                                                {"label": "Show Loading Indicators", "value": "loading"},
+                                                {"label": "Show Debug Information", "value": "debug"},
+                                                {"label": "Compact Mode", "value": "compact"}
+                                            ],
+                                            value=["tooltips", "loading"],
+                                            className="mt-3"
+                                        )
+                                    ])
+                                ])
+                            ], md=6)
+                        ])
+                    ])
+                ])
+            ], label="General", tab_id="general-settings"),
+            
+            # Analysis Settings Tab
+            dbc.Tab([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("📊 Analysis Settings", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col([
+                                html.H6("Default Analysis Parameters", className="mb-3"),
+                                html.Div([
+                                    html.Label("Default Sampling Frequency (Hz)", className="form-label"),
+                                    dcc.Input(
+                                        id="settings-default-sampling-freq",
+                                        type="number",
+                                        value=1000,
+                                        min=100,
+                                        step=100,
+                                        placeholder="1000"
+                                    ),
+                                    html.Label("Default FFT Points", className="form-label"),
+                                    dcc.Input(
+                                        id="settings-default-fft-points",
+                                        type="number",
+                                        value=1024,
+                                        min=256,
+                                        step=256,
+                                        placeholder="1024"
+                                    ),
+                                    html.Label("Default Window Type", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="settings-default-window",
+                                        options=[
+                                            {"label": "Hann", "value": "hann"},
+                                            {"label": "Hamming", "value": "hamming"},
+                                            {"label": "Blackman", "value": "blackman"},
+                                            {"label": "Rectangular", "value": "rectangular"}
+                                        ],
+                                        value="hann",
+                                        className="mb-3"
+                                    )
+                                ])
+                            ], md=6),
+                            dbc.Col([
+                                html.H6("Analysis Options", className="mb-3"),
+                                html.Div([
+                                    html.Label("Peak Detection Threshold", className="form-label"),
+                                    dcc.Input(
+                                        id="settings-peak-threshold",
+                                        type="number",
+                                        value=0.5,
+                                        min=0.1,
+                                        max=1.0,
+                                        step=0.1,
+                                        placeholder="0.5"
+                                    ),
+                                    html.Label("Quality Assessment Threshold", className="form-label"),
+                                    dcc.Input(
+                                        id="settings-quality-threshold",
+                                        type="number",
+                                        value=0.7,
+                                        min=0.1,
+                                        max=1.0,
+                                        step=0.1,
+                                        placeholder="0.7"
+                                    ),
+                                    html.Div([
+                                        dcc.Checklist(
+                                            id="settings-analysis-options",
+                                            options=[
+                                                {"label": "Auto-detect Signal Type", "value": "auto_detect"},
+                                                {"label": "Enable Advanced Features", "value": "advanced_features"},
+                                                {"label": "Enable Real-time Processing", "value": "realtime"},
+                                                {"label": "Enable Batch Processing", "value": "batch_processing"}
+                                            ],
+                                            value=["auto_detect", "advanced_features"],
+                                            className="mt-3"
+                                        )
+                                    ])
+                                ])
+                            ], md=6)
+                        ])
+                    ])
+                ])
+            ], label="Analysis", tab_id="analysis-settings"),
+            
+            # Data Settings Tab
+            dbc.Tab([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("💾 Data Settings", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col([
+                                html.H6("Data Management", className="mb-3"),
+                                html.Div([
+                                    html.Label("Maximum File Size (MB)", className="form-label"),
+                                    dcc.Input(
+                                        id="settings-max-file-size",
+                                        type="number",
+                                        value=100,
+                                        min=10,
+                                        max=1000,
+                                        step=10,
+                                        placeholder="100"
+                                    ),
+                                    html.Label("Auto-save Interval (minutes)", className="form-label"),
+                                    dcc.Input(
+                                        id="settings-auto-save",
+                                        type="number",
+                                        value=5,
+                                        min=1,
+                                        max=60,
+                                        step=1,
+                                        placeholder="5"
+                                    ),
+                                    html.Label("Data Retention Period (days)", className="form-label"),
+                                    dcc.Input(
+                                        id="settings-data-retention",
+                                        type="number",
+                                        value=30,
+                                        min=1,
+                                        max=365,
+                                        step=1,
+                                        placeholder="30"
+                                    )
+                                ])
+                            ], md=6),
+                            dbc.Col([
+                                html.H6("Export Settings", className="mb-3"),
+                                html.Div([
+                                    html.Label("Default Export Format", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="settings-export-format",
+                                        options=[
+                                            {"label": "CSV", "value": "csv"},
+                                            {"label": "Excel", "value": "excel"},
+                                            {"label": "JSON", "value": "json"},
+                                            {"label": "MATLAB", "value": "matlab"},
+                                            {"label": "Python Pickle", "value": "pickle"}
+                                        ],
+                                        value="csv",
+                                        className="mb-3"
+                                    ),
+                                    html.Label("Default Image Format", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="settings-image-format",
+                                        options=[
+                                            {"label": "PNG", "value": "png"},
+                                            {"label": "JPEG", "value": "jpeg"},
+                                            {"label": "SVG", "value": "svg"},
+                                            {"label": "PDF", "value": "pdf"}
+                                        ],
+                                        value="png",
+                                        className="mb-3"
+                                    ),
+                                    html.Div([
+                                        dcc.Checklist(
+                                            id="settings-export-options",
+                                            options=[
+                                                {"label": "Include Metadata", "value": "metadata"},
+                                                {"label": "High Quality Images", "value": "high_quality"},
+                                                {"label": "Compress Exports", "value": "compress"},
+                                                {"label": "Auto-export Results", "value": "auto_export"}
+                                            ],
+                                            value=["metadata", "high_quality"],
+                                            className="mt-3"
+                                        )
+                                    ])
+                                ])
+                            ], md=6)
+                        ])
+                    ])
+                ])
+            ], label="Data", tab_id="data-settings"),
+            
+            # System Settings Tab
+            dbc.Tab([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🔧 System Settings", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col([
+                                html.H6("Performance Settings", className="mb-3"),
+                                html.Div([
+                                    html.Label("Maximum CPU Usage (%)", className="form-label"),
+                                    dcc.Input(
+                                        id="settings-cpu-usage",
+                                        type="number",
+                                        value=80,
+                                        min=10,
+                                        max=100,
+                                        step=10,
+                                        placeholder="80"
+                                    ),
+                                    html.Label("Memory Limit (GB)", className="form-label"),
+                                    dcc.Input(
+                                        id="settings-memory-limit",
+                                        type="number",
+                                        value=4,
+                                        min=1,
+                                        max=32,
+                                        step=1,
+                                        placeholder="4"
+                                    ),
+                                    html.Label("Parallel Processing Threads", className="form-label"),
+                                    dcc.Input(
+                                        id="settings-parallel-threads",
+                                        type="number",
+                                        value=4,
+                                        min=1,
+                                        max=16,
+                                        step=1,
+                                        placeholder="4"
+                                    )
+                                ])
+                            ], md=6),
+                            dbc.Col([
+                                html.H6("Security & Privacy", className="mb-3"),
+                                html.Div([
+                                    html.Label("Session Timeout (minutes)", className="form-label"),
+                                    dcc.Input(
+                                        id="settings-session-timeout",
+                                        type="number",
+                                        value=60,
+                                        min=15,
+                                        max=480,
+                                        step=15,
+                                        placeholder="60"
+                                    ),
+                                    html.Div([
+                                        dcc.Checklist(
+                                            id="settings-security-options",
+                                            options=[
+                                                {"label": "Enable HTTPS", "value": "https"},
+                                                {"label": "Data Encryption", "value": "encryption"},
+                                                {"label": "Audit Logging", "value": "audit_log"},
+                                                {"label": "Two-Factor Authentication", "value": "2fa"}
+                                            ],
+                                            value=["https", "encryption"],
+                                            className="mt-3"
+                                        )
+                                    ])
+                                ])
+                            ], md=6)
+                        ])
+                    ])
+                ])
+            ], label="System", tab_id="system-settings")
+        ], id="settings-tabs", className="mb-4"),
+        
+        # Settings Actions
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("💾 Settings Actions", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div([
+                            dbc.Button("💾 Save Settings", id="settings-save-btn", color="success", className="me-2 mb-2"),
+                            dbc.Button("🔄 Reset to Defaults", id="settings-reset-btn", color="warning", className="me-2 mb-2"),
+                            dbc.Button("📤 Export Settings", id="settings-export-btn", color="info", className="me-2 mb-2"),
+                            dbc.Button("📥 Import Settings", id="settings-import-btn", color="secondary", className="me-2 mb-2")
+                        ], className="text-center")
+                    ])
+                ])
+            ], md=6),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("📊 Settings Status", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="settings-status")
+                    ])
+                ])
+            ], md=6)
+        ], className="mb-4"),
+        
+        # Data Storage
+        dcc.Store(id="store-settings-data"),
+        dcc.Store(id="store-settings-config")
+    ])

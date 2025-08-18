@@ -1,3 +1,9 @@
+"""
+Main application module for vitalDSP webapp.
+
+This module provides the main Dash and FastAPI application setup.
+"""
+
 from dash import Dash, html, dcc
 from fastapi import FastAPI
 from starlette.middleware.wsgi import WSGIMiddleware
@@ -6,26 +12,24 @@ import dash_bootstrap_components as dbc
 # Import configuration
 from vitalDSP_webapp.config.settings import app_config, ui_styles
 
-# Import layout components
-from vitalDSP_webapp.layout.header import Header
-from vitalDSP_webapp.layout.footer import Footer
-from vitalDSP_webapp.layout.sidebar import Sidebar
+# Import layout components from new modular structure
+from vitalDSP_webapp.layout import Header, Sidebar, Footer
 
 # Import FastAPI routes
 from vitalDSP_webapp.api.endpoints import router as api_router
 
-# Import callbacks
-from vitalDSP_webapp.callbacks.app_callbacks import register_sidebar_callbacks
-from vitalDSP_webapp.callbacks.page_routing_callbacks import (
+# Import callbacks from new modular structure
+from vitalDSP_webapp.callbacks import (
+    register_sidebar_callbacks,
     register_page_routing_callbacks,
+    register_upload_callbacks,
+    register_vitaldsp_callbacks,
+    register_frequency_filtering_callbacks,
+    register_respiratory_callbacks,
+    register_physiological_callbacks,
+    register_features_callbacks,
+    register_preview_callbacks
 )
-from vitalDSP_webapp.callbacks.upload_callbacks import register_upload_callbacks
-from vitalDSP_webapp.callbacks.vitaldsp_callbacks import register_vitaldsp_callbacks
-from vitalDSP_webapp.callbacks.frequency_filtering_callbacks import register_frequency_filtering_callbacks
-from vitalDSP_webapp.callbacks.physiological_callbacks import register_physiological_callbacks
-from vitalDSP_webapp.callbacks.respiratory_callbacks import register_respiratory_callbacks
-from vitalDSP_webapp.callbacks.features_callbacks import register_features_callbacks
-from vitalDSP_webapp.callbacks.preview_callbacks import register_preview_callbacks
 
 
 def create_dash_app() -> Dash:
@@ -36,11 +40,6 @@ def create_dash_app() -> Dash:
     -------
     app : Dash
         A Dash application object configured with layout and callbacks.
-
-    Example
-    -------
-    >>> dash_app = create_dash_app()
-    >>> dash_app.run_server(debug=True)
     """
     # Initialize Dash app with Bootstrap CSS theme
     app = Dash(
@@ -82,7 +81,8 @@ def create_dash_app() -> Dash:
                     "padding": ui_styles.SECTION_MARGIN,
                     "backgroundColor": "#ffffff",
                     "minHeight": f"calc(100vh - {app_config.HEADER_HEIGHT}px)",
-                    "zIndex": 100
+                    "zIndex": 100,
+                    "transition": "left 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
                 },
                 children=[
                     # Default welcome content - will be replaced by routing callback
@@ -130,8 +130,8 @@ def create_dash_app() -> Dash:
     register_upload_callbacks(app)
     register_vitaldsp_callbacks(app)  # Register vitalDSP analysis callbacks
     register_frequency_filtering_callbacks(app)  # Register frequency and filtering callbacks
-    register_physiological_callbacks(app)  # Register physiological features callbacks
     register_respiratory_callbacks(app)  # Register respiratory analysis callbacks
+    register_physiological_callbacks(app)  # Register physiological features callbacks
     register_features_callbacks(app)  # Register feature engineering callbacks
     register_preview_callbacks(app)  # Register preview callbacks
 
@@ -147,11 +147,6 @@ def create_fastapi_app() -> FastAPI:
     -------
     fastapi_app : FastAPI
         A FastAPI application object with Dash integrated at the root ("/") and FastAPI at "/api/".
-
-    Example
-    -------
-    >>> fastapi_app = create_fastapi_app()
-    >>> uvicorn.run(fastapi_app, host="0.0.0.0", port=8000)
     """
     # Initialize the FastAPI app
     fastapi_app = FastAPI(

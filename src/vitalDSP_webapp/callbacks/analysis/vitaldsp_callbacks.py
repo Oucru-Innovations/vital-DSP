@@ -1,0 +1,2225 @@
+"""
+Analysis callbacks for vitalDSP core functionality.
+
+This module handles the main vitalDSP analysis callbacks including time domain,
+frequency domain, and signal processing operations.
+"""
+
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from dash import Input, Output, State, callback_context, no_update, html, dcc
+from dash.exceptions import PreventUpdate
+import dash_bootstrap_components as dbc
+from scipy import signal
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def create_empty_figure():
+    """Create an empty figure for error cases."""
+    fig = go.Figure()
+    fig.add_annotation(
+        text="No data available or error occurred",
+        xref="paper", yref="paper",
+        x=0.5, y=0.5, showarrow=False,
+        font=dict(size=16, color="gray")
+    )
+    fig.update_layout(
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        plot_bgcolor="white"
+    )
+    return fig
+
+
+def create_time_domain_plot(signal_data, time_axis, sampling_freq, peaks=None, filtered_signal=None):
+    """Create the main time domain plot."""
+    try:
+        fig = go.Figure()
+        
+        # Add main signal
+        fig.add_trace(go.Scatter(
+            x=time_axis,
+            y=signal_data,
+            mode='lines',
+            name='Original Signal',
+            line=dict(color='blue', width=1)
+        ))
+        
+        # Add filtered signal if available
+        if filtered_signal is not None:
+            fig.add_trace(go.Scatter(
+                x=time_axis,
+                y=filtered_signal,
+                mode='lines',
+                name='Filtered Signal',
+                line=dict(color='red', width=1, dash='dash')
+            ))
+        
+        # Add peaks if available
+        if peaks is not None and len(peaks) > 0:
+            fig.add_trace(go.Scatter(
+                x=time_axis[peaks],
+                y=signal_data[peaks],
+                mode='markers',
+                name='Detected Peaks',
+                marker=dict(color='red', size=8, symbol='diamond')
+            ))
+        
+        fig.update_layout(
+            title="Time Domain Signal Analysis",
+            xaxis_title="Time (seconds)",
+            yaxis_title="Amplitude",
+            showlegend=True,
+            height=400
+        )
+        
+        return fig
+    except Exception as e:
+        logger.error(f"Error creating time domain plot: {e}")
+        return create_empty_figure()
+
+
+def create_peak_analysis_plot(signal_data, time_axis, peaks, sampling_freq):
+    """Create peak analysis plot."""
+    try:
+        if peaks is None or len(peaks) == 0:
+            return create_empty_figure()
+        
+        fig = make_subplots(
+            rows=2, cols=1,
+            subplot_titles=("Peak Detection", "Peak Intervals"),
+            vertical_spacing=0.1
+        )
+        
+        # Peak detection plot
+        fig.add_trace(
+            go.Scatter(x=time_axis, y=signal_data, mode='lines', name='Signal'),
+            row=1, col=1
+        )
+        fig.add_trace(
+            go.Scatter(x=time_axis[peaks], y=signal_data[peaks], 
+                      mode='markers', name='Peaks', marker=dict(color='red', size=8)),
+            row=1, col=1
+        )
+        
+        # Peak intervals plot
+        if len(peaks) > 1:
+            intervals = np.diff(peaks) / sampling_freq
+            interval_times = time_axis[peaks[1:]]
+            fig.add_trace(
+                go.Scatter(x=interval_times, y=intervals, mode='lines+markers', 
+                          name='Peak Intervals', line=dict(color='green')),
+                row=2, col=1
+            )
+        
+        fig.update_xaxes(title_text="Time (seconds)", row=1, col=1)
+        fig.update_yaxes(title_text="Amplitude", row=1, col=1)
+        fig.update_xaxes(title_text="Time (seconds)", row=2, col=1)
+        fig.update_yaxes(title_text="Interval (seconds)", row=2, col=1)
+        
+        fig.update_layout(height=400, showlegend=True)
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error creating peak analysis plot: {e}")
+        return create_empty_figure()
+
+
+def create_main_signal_plot(data, time_axis, sampling_freq, analysis_options, column_mapping):
+    """Create the main signal plot with optional annotations."""
+    try:
+        logger.info("=== CREATE MAIN SIGNAL PLOT ===")
+        logger.info(f"Data shape: {data.shape}")
+        logger.info(f"Data columns: {list(data.columns)}")
+        logger.info(f"Column mapping: {column_mapping}")
+        logger.info(f"Time axis shape: {time_axis.shape if hasattr(time_axis, 'shape') else 'No shape'}")
+        logger.info(f"Time axis range: {time_axis[0] if len(time_axis) > 0 else 'Empty'} to {time_axis[-1] if len(time_axis) > 0 else 'Empty'}")
+        logger.info(f"Sampling frequency: {sampling_freq}")
+        logger.info(f"Analysis options: {analysis_options}")
+        
+        fig = go.Figure()
+        
+        # Use column mapping to get the correct columns
+        time_col = column_mapping.get('time')
+        signal_col = column_mapping.get('signal')
+        
+        logger.info(f"Initial time column from mapping: {time_col}")
+        logger.info(f"Initial signal column from mapping: {signal_col}")
+        
+        # Try to find alternative signal columns if the primary one is not available
+        if not signal_col:
+            # Look for common signal column names
+            potential_signal_cols = ['waveform', 'pleth', 'pl', 'signal', 'ppg', 'ecg', 'red', 'ir']
+            for col in potential_signal_cols:
+                if col in [c.lower() for c in data.columns]:
+                    signal_col = [c for c in data.columns if c.lower() == col][0]
+                    logger.info(f"Found alternative signal column: {signal_col}")
+                    break
+        
+        if not time_col:
+            # If no time column specified, use the first numeric column or index
+            numeric_cols = data.select_dtypes(include=[np.number]).columns
+            if len(numeric_cols) > 0:
+                time_col = numeric_cols[0]
+                logger.info(f"Using first numeric column as time: {time_col}")
+            else:
+                time_col = 'index'
+                logger.info("Using index as time column")
+        
+        logger.info(f"Final time column: {time_col}")
+        logger.info(f"Final signal column: {signal_col}")
+        
+        if not time_col or not signal_col:
+            logger.error("Missing time or signal column in column mapping")
+            return create_empty_figure()
+        
+        if time_col not in data.columns and time_col != 'index':
+            logger.error(f"Time column {time_col} not found in data columns: {list(data.columns)}")
+            return create_empty_figure()
+            
+        if signal_col not in data.columns:
+            logger.error(f"Signal column {signal_col} not found in data columns: {list(data.columns)}")
+            return create_empty_figure()
+        
+        # Get signal data
+        signal_data = data[signal_col].values
+        logger.info(f"Signal data shape: {signal_data.shape}")
+        logger.info(f"Signal data type: {signal_data.dtype}")
+        logger.info(f"Signal data range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
+        logger.info(f"Signal data mean: {np.mean(signal_data):.3f}")
+        logger.info(f"Signal data std: {np.std(signal_data):.3f}")
+        logger.info(f"First 10 signal values: {signal_data[:10]}")
+        
+        # Handle time data
+        if time_col == 'index':
+            time_data = time_axis
+            logger.info(f"Using provided time axis, shape: {time_data.shape}")
+        else:
+            time_data = data[time_col].values
+            logger.info(f"Using column time data, shape: {time_data.shape}")
+            logger.info(f"Time data range: {np.min(time_data):.3f} to {np.max(time_data):.3f}")
+        
+        # Ensure time_data and signal_data have the same length
+        if len(time_data) != len(signal_data):
+            logger.warning(f"Time data length ({len(time_data)}) != Signal data length ({len(signal_data)})")
+            # Use the shorter length
+            min_length = min(len(time_data), len(signal_data))
+            time_data = time_data[:min_length]
+            signal_data = signal_data[:min_length]
+            logger.info(f"Truncated both arrays to length: {min_length}")
+        
+        # Check for valid data
+        if len(signal_data) == 0:
+            logger.error("Signal data is empty")
+            return create_empty_figure()
+        
+        if np.all(signal_data == signal_data[0]):
+            logger.warning(f"All signal values are identical: {signal_data[0]}")
+        
+        # Create main signal trace
+        fig.add_trace(go.Scatter(
+            x=time_data,
+            y=signal_data,
+            mode='lines',
+            name=f'Raw Signal ({signal_col})',
+            line=dict(color='#1f77b4', width=2),
+            hovertemplate='<b>Time:</b> %{x:.3f}s<br><b>Amplitude:</b> %{y:.3f}<extra></extra>'
+        ))
+        
+        # Add peak annotations if requested
+        if analysis_options and "peaks" in analysis_options:
+            try:
+                # Use adaptive threshold for peak detection
+                mean_val = np.mean(signal_data)
+                std_val = np.std(signal_data)
+                threshold = mean_val + 2 * std_val
+                min_distance = int(sampling_freq * 0.1)  # Minimum 0.1 seconds between peaks
+                
+                logger.info(f"Peak detection - threshold: {threshold:.3f}, min_distance: {min_distance}")
+                peaks, properties = signal.find_peaks(signal_data, height=threshold, distance=min_distance, prominence=0.1 * std_val)
+                logger.info(f"Detected {len(peaks)} peaks")
+                
+                if len(peaks) > 0:
+                    fig.add_trace(go.Scatter(
+                        x=time_data[peaks],
+                        y=signal_data[peaks],
+                        mode='markers',
+                        name='Detected Peaks',
+                        marker=dict(color='red', size=8, symbol='diamond'),
+                        hovertemplate='<b>Peak Time:</b> %{x:.3f}s<br><b>Amplitude:</b> %{y:.3f}<extra></extra>'
+                    ))
+                    logger.info(f"Added {len(peaks)} peak markers to plot")
+            except Exception as e:
+                logger.error(f"Error in peak detection: {e}")
+        
+        # Update layout
+        fig.update_layout(
+            title=f"Raw Signal ({signal_col}) with Peak Detection",
+            xaxis_title="Time (seconds)",
+            yaxis_title=f"Amplitude ({signal_col})",
+            template="plotly_white",
+            height=400,
+            showlegend=True,
+            hovermode='x unified'
+        )
+        
+        logger.info("Main signal plot created successfully")
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error creating main signal plot: {e}")
+        import traceback
+        traceback.print_exc()
+        return create_empty_figure()
+
+
+def create_filtered_signal_plot(filtered_data, time_axis, sampling_freq, column_mapping):
+    """Create the filtered signal plot."""
+    try:
+        logger.info("=== CREATE FILTERED SIGNAL PLOT ===")
+        logger.info(f"Filtered data shape: {filtered_data.shape}")
+        logger.info(f"Filtered data columns: {list(filtered_data.columns)}")
+        logger.info(f"Column mapping: {column_mapping}")
+        logger.info(f"Time axis shape: {time_axis.shape if hasattr(time_axis, 'shape') else 'No shape'}")
+        logger.info(f"Time axis range: {time_axis[0] if len(time_axis) > 0 else 'Empty'} to {time_axis[-1] if len(time_axis) > 0 else 'Empty'}")
+        logger.info(f"Sampling frequency: {sampling_freq}")
+        
+        fig = go.Figure()
+        
+        # Use column mapping to get the correct columns
+        time_col = column_mapping.get('time')
+        signal_col = column_mapping.get('signal')
+        
+        # Try to find alternative signal columns if the primary one is not available
+        if not signal_col:
+            # Look for common signal column names
+            potential_signal_cols = ['waveform', 'pleth', 'pl', 'signal', 'ppg', 'ecg', 'red', 'ir']
+            for col in potential_signal_cols:
+                if col in [c.lower() for c in filtered_data.columns]:
+                    signal_col = [c for c in filtered_data.columns if c.lower() == col][0]
+                    logger.info(f"Found alternative signal column: {signal_col}")
+                    break
+        
+        if not time_col:
+            # If no time column specified, use the first numeric column or index
+            numeric_cols = filtered_data.select_dtypes(include=[np.number]).columns
+            if len(numeric_cols) > 0:
+                time_col = numeric_cols[0]
+                logger.info(f"Using first numeric column as time: {time_col}")
+            else:
+                time_col = 'index'
+                logger.info("Using index as time column")
+        
+        logger.info(f"Final time column: {time_col}")
+        logger.info(f"Final signal column: {signal_col}")
+        
+        if not time_col or not signal_col:
+            logger.error("Missing time or signal column in column mapping")
+            return create_empty_figure()
+        
+        if time_col not in filtered_data.columns and time_col != 'index':
+            logger.error(f"Time column {time_col} not found in filtered data columns: {list(filtered_data.columns)}")
+            return create_empty_figure()
+            
+        if signal_col not in filtered_data.columns:
+            logger.error(f"Signal column {signal_col} not found in filtered data columns: {list(filtered_data.columns)}")
+            return create_empty_figure()
+        
+        # Get signal data
+        signal_data = filtered_data[signal_col].values
+        logger.info(f"Filtered signal data shape: {signal_data.shape}")
+        logger.info(f"Filtered signal data type: {signal_data.dtype}")
+        logger.info(f"Filtered signal data range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
+        logger.info(f"Filtered signal data mean: {np.mean(signal_data):.3f}")
+        logger.info(f"Filtered signal data std: {np.std(signal_data):.3f}")
+        logger.info(f"First 10 filtered signal values: {signal_data[:10]}")
+        
+        # Handle time data
+        if time_col == 'index':
+            time_data = time_axis
+            logger.info(f"Using provided time axis, shape: {time_data.shape}")
+        else:
+            time_data = filtered_data[time_col].values
+            logger.info(f"Using column time data, shape: {time_data.shape}")
+            logger.info(f"Time data range: {np.min(time_data):.3f} to {np.max(time_data):.3f}")
+        
+        # Ensure time_data and signal_data have the same length
+        if len(time_data) != len(signal_data):
+            logger.warning(f"Time data length ({len(time_data)}) != Signal data length ({len(signal_data)})")
+            # Use the shorter length
+            min_length = min(len(time_data), len(signal_data))
+            time_data = time_data[:min_length]
+            signal_data = signal_data[:min_length]
+            logger.info(f"Truncated both arrays to length: {min_length}")
+        
+        # Check for valid data
+        if len(signal_data) == 0:
+            logger.error("Filtered signal data is empty")
+            return create_empty_figure()
+        
+        if np.all(signal_data == signal_data[0]):
+            logger.warning(f"All filtered signal values are identical: {signal_data[0]}")
+        
+        # Create filtered signal trace
+        fig.add_trace(go.Scatter(
+            x=time_data,
+            y=signal_data,
+            mode='lines',
+            name=f'Filtered Signal ({signal_col})',
+            line=dict(color='#2ca02c', width=2),
+            hovertemplate='<b>Time:</b> %{x:.3f}s<br><b>Amplitude:</b> %{y:.3f}<extra></extra>'
+        ))
+        
+        # Update layout
+        fig.update_layout(
+            title=f"Filtered Signal ({signal_col})",
+            xaxis_title="Time (seconds)",
+            yaxis_title=f"Amplitude ({signal_col})",
+            template="plotly_white",
+            height=400,
+            showlegend=True,
+            hovermode='x unified'
+        )
+        
+        logger.info("Filtered signal plot created successfully")
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error creating filtered signal plot: {e}")
+        import traceback
+        traceback.print_exc()
+        return create_empty_figure()
+
+
+def generate_analysis_results(raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping):
+    """Generate analysis results and insights."""
+    if not analysis_options:
+        return "No analysis options selected"
+    
+    results = []
+    
+    try:
+        # Find signal column
+        signal_col = column_mapping.get('signal')
+        if not signal_col or signal_col not in raw_data.columns:
+            return "Signal column not found in data"
+            
+        raw_signal = raw_data[signal_col].values
+        filtered_signal = filtered_data if filtered_data is not None else raw_signal
+        
+        # Basic statistics
+        results.append(html.H6("📊 Signal Statistics", className="mb-2"))
+        results.append(dbc.Table([
+            html.Thead([
+                html.Tr([
+                    html.Th("Metric", className="text-center"),
+                    html.Th("Value", className="text-center"),
+                    html.Th("Unit", className="text-center")
+                ])
+            ]),
+            html.Tbody([
+                html.Tr([
+                    html.Td("Mean", className="fw-bold"),
+                    html.Td(f"{np.mean(raw_signal):.2f}", className="text-end"),
+                    html.Td("Signal Units", className="text-muted")
+                ]),
+                html.Tr([
+                    html.Td("Standard Deviation", className="fw-bold"),
+                    html.Td(f"{np.std(raw_signal):.2f}", className="text-end"),
+                    html.Td("Signal Units", className="text-muted")
+                ]),
+                html.Tr([
+                    html.Td("Minimum", className="fw-bold"),
+                    html.Td(f"{np.min(raw_signal):.2f}", className="text-end"),
+                    html.Td("Signal Units", className="text-muted")
+                ]),
+                html.Tr([
+                    html.Td("Maximum", className="fw-bold"),
+                    html.Td(f"{np.max(raw_signal):.2f}", className="text-end"),
+                    html.Td("Signal Units", className="text-muted")
+                ]),
+                html.Tr([
+                    html.Td("RMS", className="fw-bold"),
+                    html.Td(f"{np.sqrt(np.mean(raw_signal**2)):.2f}", className="text-end"),
+                    html.Td("Signal Units", className="text-muted")
+                ])
+            ])
+        ], bordered=True, hover=True, responsive=True, className="mb-3"))
+        
+        # Peak detection and heart rate analysis
+        if "peaks" in analysis_options:
+            try:
+                from scipy.signal import find_peaks
+                # Use adaptive threshold for peak detection
+                mean_val = np.mean(raw_signal)
+                std_val = np.std(raw_signal)
+                threshold = mean_val + 2 * std_val
+                
+                # Find peaks with minimum distance constraint
+                min_distance = int(sampling_freq * 0.1)  # Minimum 0.1 seconds between peaks
+                peaks, properties = find_peaks(raw_signal, height=threshold, distance=min_distance, prominence=0.1 * std_val)
+                
+                if len(peaks) > 1:
+                    # Calculate RR intervals
+                    rr_intervals = np.diff(time_axis[peaks])
+                    heart_rate = 60 / np.mean(rr_intervals)
+                    
+                    results.append(html.Hr())
+                    results.append(html.H6("❤️ Heart Rate Analysis", className="mb-2"))
+                    results.append(dbc.Table([
+                        html.Thead([
+                            html.Tr([
+                                html.Th("Metric", className="text-center"),
+                                html.Th("Value", className="text-center"),
+                                html.Th("Unit", className="text-center")
+                            ])
+                        ]),
+                        html.Tbody([
+                            html.Tr([
+                                html.Td("Detected Peaks", className="fw-bold"),
+                                html.Td(f"{len(peaks)}", className="text-end"),
+                                html.Td("Count", className="text-muted")
+                            ]),
+                            html.Tr([
+                                html.Td("Average RR Interval", className="fw-bold"),
+                                html.Td(f"{np.mean(rr_intervals):.3f}", className="text-end"),
+                                html.Td("Seconds", className="text-muted")
+                            ]),
+                            html.Tr([
+                                html.Td("Heart Rate", className="fw-bold"),
+                                html.Td(f"{heart_rate:.1f}", className="text-end"),
+                                html.Td("BPM", className="text-muted")
+                            ]),
+                            html.Tr([
+                                html.Td("RR Standard Deviation", className="fw-bold"),
+                                html.Td(f"{np.std(rr_intervals):.3f}", className="text-end"),
+                                html.Td("Seconds", className="text-muted")
+                            ]),
+                            html.Tr([
+                                html.Td("pNN50", className="fw-bold"),
+                                html.Td(f"{np.sum(np.abs(np.diff(rr_intervals)) > 0.05) / len(rr_intervals) * 100:.1f}", className="text-end"),
+                                html.Td("%", className="text-muted")
+                            ])
+                        ])
+                    ], bordered=True, hover=True, responsive=True, className="mb-3"))
+                else:
+                    results.append(html.Hr())
+                    results.append(html.H6("❤️ Heart Rate Analysis", className="mb-2"))
+                    results.append(html.P("Insufficient peaks detected for heart rate analysis", className="text-muted"))
+                    
+            except Exception as e:
+                logger.error(f"Peak detection failed: {e}")
+                results.append(html.Hr())
+                results.append(html.H6("❤️ Heart Rate Analysis", className="mb-2"))
+                results.append(html.P(f"Error in peak detection: {str(e)}", className="text-danger"))
+        
+        # Signal quality assessment
+        if "quality" in analysis_options:
+            try:
+                # Calculate SNR
+                signal_power = np.mean(raw_signal**2)
+                noise_power = np.var(raw_signal)
+                snr_db = 10 * np.log10(signal_power / noise_power) if noise_power > 0 else 0
+                
+                # Artifact detection using IQR method
+                q75, q25 = np.percentile(raw_signal, [75, 25])
+                iqr = q75 - q25
+                lower_bound = q25 - 1.5 * iqr
+                upper_bound = q75 + 1.5 * iqr
+                artifact_count = np.sum((raw_signal < lower_bound) | (raw_signal > upper_bound))
+                artifact_percentage = (artifact_count / len(raw_signal)) * 100
+                
+                # Signal stability (coefficient of variation)
+                stability_score = (np.std(raw_signal) / np.mean(raw_signal)) * 100 if np.mean(raw_signal) != 0 else 0
+                
+                results.append(html.Hr())
+                results.append(html.H6("🎯 Signal Quality Assessment", className="mb-2"))
+                results.append(dbc.Table([
+                    html.Thead([
+                        html.Tr([
+                            html.Th("Metric", className="text-center"),
+                            html.Th("Value", className="text-center"),
+                            html.Th("Quality", className="text-center")
+                        ])
+                    ]),
+                    html.Tbody([
+                        html.Tr([
+                            html.Td("Signal-to-Noise Ratio", className="fw-bold"),
+                            html.Td(f"{snr_db:.1f} dB", className="text-end"),
+                            html.Td(html.Span(
+                                'Excellent' if snr_db > 20 else 'Good' if snr_db > 15 else 'Fair' if snr_db > 10 else 'Poor',
+                                className=f"badge {'bg-success' if snr_db > 20 else 'bg-info' if snr_db > 15 else 'bg-warning' if snr_db > 10 else 'bg-danger'}"
+                            ), className="text-center")
+                        ]),
+                        html.Tr([
+                            html.Td("Detected Artifacts", className="fw-bold"),
+                            html.Td(f"{artifact_count} ({artifact_percentage:.1f}%)", className="text-end"),
+                            html.Td(html.Span(
+                                'Low' if artifact_percentage < 5 else 'Medium' if artifact_percentage < 15 else 'High',
+                                className=f"badge {'bg-success' if artifact_percentage < 5 else 'bg-warning' if artifact_percentage < 15 else 'bg-danger'}"
+                            ), className="text-center")
+                        ]),
+                        html.Tr([
+                            html.Td("Signal Stability", className="fw-bold"),
+                            html.Td(f"{stability_score:.1f}%", className="text-end"),
+                            html.Td(html.Span(
+                                'Excellent' if stability_score < 10 else 'Good' if stability_score < 20 else 'Fair' if stability_score < 30 else 'Poor',
+                                className=f"badge {'bg-success' if stability_score < 10 else 'bg-info' if stability_score < 20 else 'bg-warning' if stability_score < 30 else 'bg-danger'}"
+                            ), className="text-center")
+                        ]),
+                        html.Tr([
+                            html.Td("Signal Range", className="fw-bold"),
+                            html.Td(f"{np.max(raw_signal) - np.min(raw_signal):.2f}", className="text-end"),
+                            html.Td("Signal Units", className="text-muted")
+                        ])
+                    ])
+                ], bordered=True, hover=True, responsive=True, className="mb-3"))
+                
+            except Exception as e:
+                logger.error(f"Signal quality assessment failed: {e}")
+                results.append(html.Hr())
+                results.append(html.H6("🎯 Signal Quality Assessment", className="mb-2"))
+                results.append(html.P(f"Error in quality assessment: {str(e)}", className="text-danger"))
+        
+        # Filtering results comparison
+        if filtered_data is not None and not np.array_equal(raw_signal, filtered_signal):
+            try:
+                results.append(html.Hr())
+                results.append(html.H6("🔧 Filtering Results", className="mb-2"))
+                
+                # Calculate power reduction
+                raw_power = np.mean(raw_signal**2)
+                filtered_power = np.mean(filtered_signal**2)
+                power_reduction = (raw_power - filtered_power) / raw_power * 100 if raw_power > 0 else 0
+                
+                # Calculate frequency-specific improvements
+                raw_fft = np.abs(np.fft.rfft(raw_signal))
+                filtered_fft = np.abs(np.fft.rfft(filtered_signal))
+                freqs = np.fft.rfftfreq(len(raw_signal), 1/sampling_freq)
+                
+                # Low frequency improvement (0-5 Hz)
+                low_freq_mask = freqs <= 5
+                low_freq_improvement = np.mean(raw_fft[low_freq_mask]) - np.mean(filtered_fft[low_freq_mask])
+                
+                # High frequency improvement (40+ Hz)
+                high_freq_mask = freqs >= 40
+                high_freq_improvement = np.mean(raw_fft[high_freq_mask]) - np.mean(filtered_fft[high_freq_mask])
+                
+                results.append(dbc.Table([
+                    html.Thead([
+                        html.Tr([
+                            html.Th("Metric", className="text-center"),
+                            html.Th("Value", className="text-center"),
+                            html.Th("Description", className="text-center")
+                        ])
+                    ]),
+                    html.Tbody([
+                        html.Tr([
+                            html.Td("Power Reduction", className="fw-bold"),
+                            html.Td(f"{power_reduction:.1f}%", className="text-end"),
+                            html.Td("Overall signal power change", className="text-muted")
+                        ]),
+                        html.Tr([
+                            html.Td("Low Freq Improvement", className="fw-bold"),
+                            html.Td(f"{low_freq_improvement:.3f}", className="text-end"),
+                            html.Td("Low frequency noise reduction", className="text-muted")
+                        ]),
+                        html.Tr([
+                            html.Td("High Freq Improvement", className="fw-bold"),
+                            html.Td(f"{high_freq_improvement:.3f}", className="text-end"),
+                            html.Td("High frequency noise reduction", className="text-muted")
+                        ])
+                    ])
+                ], bordered=True, hover=True, responsive=True, className="mb-3"))
+                
+            except Exception as e:
+                logger.error(f"Filtering results analysis failed: {e}")
+                results.append(html.Hr())
+                results.append(html.H6("🔧 Filtering Results", className="mb-2"))
+                results.append(html.P(f"Error in filtering analysis: {str(e)}", className="text-danger"))
+        
+        return html.Div(results)
+        
+    except Exception as e:
+        logger.error(f"Error generating analysis results: {e}")
+        return f"Error in analysis: {str(e)}"
+
+
+def create_peak_analysis_table(raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping):
+    """Create comprehensive peak analysis table."""
+    try:
+        signal_col = column_mapping.get('signal')
+        if not signal_col or signal_col not in raw_data.columns:
+            return "Signal column not found in data"
+            
+        raw_signal = raw_data[signal_col].values
+        
+        if "peaks" not in analysis_options:
+            return html.Div([
+                html.H6("🔍 Peak Analysis", className="text-muted"),
+                html.P("Peak detection not enabled in analysis options", className="text-muted")
+            ])
+        
+        # Detect peaks with advanced parameters
+        from scipy.signal import find_peaks
+        mean_val = np.mean(raw_signal)
+        std_val = np.std(raw_signal)
+        threshold = mean_val + 2 * std_val
+        min_distance = int(sampling_freq * 0.1)  # Minimum 0.1 seconds between peaks
+        
+        peaks, properties = find_peaks(raw_signal, height=threshold, distance=min_distance, 
+                                     prominence=0.1 * std_val, width=0.01 * sampling_freq)
+        
+        if len(peaks) < 2:
+            return html.Div([
+                html.H6("🔍 Peak Analysis", className="text-muted"),
+                html.P("Insufficient peaks detected for analysis", className="text-muted")
+            ])
+        
+        # Calculate RR intervals and heart rate variability
+        rr_intervals = np.diff(time_axis[peaks])
+        heart_rates = 60 / rr_intervals
+        
+        # HRV metrics
+        mean_rr = np.mean(rr_intervals)
+        sdnn = np.std(rr_intervals)
+        rmssd = np.sqrt(np.mean(np.diff(rr_intervals)**2))
+        
+        # pNN50 calculation
+        nn_intervals = rr_intervals
+        nn_diff = np.abs(np.diff(nn_intervals))
+        pnn50 = np.sum(nn_diff > 0.05) / len(nn_diff) * 100
+        
+        # Peak properties
+        peak_amplitudes = raw_signal[peaks]
+        peak_heights = properties.get('peak_heights', peak_amplitudes)
+        peak_prominences = properties.get('prominences', np.zeros_like(peaks))
+        peak_widths = properties.get('widths', np.zeros_like(peaks)) / sampling_freq
+        
+        return html.Div([
+            html.H6("🔍 Peak Analysis Summary", className="text-primary mb-3"),
+            
+            # Summary metrics
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{len(peaks)}", className="text-center text-primary mb-0"),
+                            html.Small("Total Peaks", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-primary")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{np.mean(heart_rates):.1f}", className="text-center text-success mb-0"),
+                            html.Small("Mean HR (BPM)", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-success")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{sdnn:.2f}", className="text-center text-warning mb-0"),
+                            html.Small("SDNN (ms)", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-warning")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{pnn50:.1f}%", className="text-center text-info mb-0"),
+                            html.Small("pNN50", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-info")
+                ], md=3)
+            ], className="mb-3"),
+            
+            # HRV metrics table
+            html.H6("Heart Rate Variability Metrics", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Metric", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Unit", className="text-center"),
+                        html.Th("Description", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Mean RR Interval", className="fw-bold"),
+                        html.Td(f"{mean_rr:.3f}", className="text-end"),
+                        html.Td("Seconds", className="text-muted"),
+                        html.Td("Average RR interval", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("SDNN", className="fw-bold"),
+                        html.Td(f"{sdnn:.3f}", className="text-end"),
+                        html.Td("Seconds", className="text-muted"),
+                        html.Td("Standard deviation of RR intervals", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("RMSSD", className="fw-bold"),
+                        html.Td(f"{rmssd:.3f}", className="text-end"),
+                        html.Td("Seconds", className="text-muted"),
+                        html.Td("Root mean square of RR differences", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("pNN50", className="fw-bold"),
+                        html.Td(f"{pnn50:.1f}", className="text-end"),
+                        html.Td("%", className="text-muted"),
+                        html.Td("Percentage of RR differences > 50ms", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Heart Rate Range", className="fw-bold"),
+                        html.Td(f"{np.max(heart_rates):.1f} - {np.min(heart_rates):.1f}", className="text-end"),
+                        html.Td("BPM", className="text-muted"),
+                        html.Td("Min-Max heart rate", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3"),
+            
+            # Peak properties table
+            html.H6("Peak Properties", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Property", className="text-center"),
+                        html.Th("Mean", className="text-center"),
+                        html.Th("Std Dev", className="text-center"),
+                        html.Th("Min", className="text-center"),
+                        html.Th("Max", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Peak Amplitude", className="fw-bold"),
+                        html.Td(f"{np.mean(peak_amplitudes):.3f}", className="text-end"),
+                        html.Td(f"{np.std(peak_amplitudes):.3f}", className="text-end"),
+                        html.Td(f"{np.min(peak_amplitudes):.3f}", className="text-end"),
+                        html.Td(f"{np.max(peak_amplitudes):.3f}", className="text-end")
+                    ]),
+                    html.Tr([
+                        html.Td("Peak Prominence", className="fw-bold"),
+                        html.Td(f"{np.mean(peak_prominences):.3f}", className="text-end"),
+                        html.Td(f"{np.std(peak_prominences):.3f}", className="text-end"),
+                        html.Td(f"{np.min(peak_prominences):.3f}", className="text-end"),
+                        html.Td(f"{np.max(peak_prominences):.3f}", className="text-end")
+                    ]),
+                    html.Tr([
+                        html.Td("Peak Width", className="fw-bold"),
+                        html.Td(f"{np.mean(peak_widths):.3f}", className="text-end"),
+                        html.Td(f"{np.std(peak_widths):.3f}", className="text-end"),
+                        html.Td(f"{np.min(peak_widths):.3f}", className="text-end"),
+                        html.Td(f"{np.max(peak_widths):.3f}", className="text-end")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, size="sm")
+        ])
+        
+    except Exception as e:
+        logger.error(f"Error creating peak analysis table: {e}")
+        return f"Error in peak analysis: {str(e)}"
+
+
+def create_signal_quality_table(raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping):
+    """Create comprehensive signal quality assessment table."""
+    try:
+        signal_col = column_mapping.get('signal')
+        if not signal_col or signal_col not in raw_data.columns:
+            return "Signal column not found in data"
+            
+        raw_signal = raw_data[signal_col].values
+        
+        if "quality" not in analysis_options:
+            return html.Div([
+                html.H6("🎯 Signal Quality Assessment", className="text-muted"),
+                html.P("Signal quality assessment not enabled in analysis options", className="text-muted")
+            ])
+        
+        # Calculate comprehensive quality metrics
+        # SNR calculation
+        signal_power = np.mean(raw_signal**2)
+        noise_power = np.var(raw_signal)
+        snr_db = 10 * np.log10(signal_power / noise_power) if noise_power > 0 else 0
+        
+        # Artifact detection using IQR method
+        q75, q25 = np.percentile(raw_signal, [75, 25])
+        iqr = q75 - q25
+        lower_bound = q25 - 1.5 * iqr
+        upper_bound = q75 + 1.5 * iqr
+        artifact_count = np.sum((raw_signal < lower_bound) | (raw_signal > upper_bound))
+        artifact_percentage = (artifact_count / len(raw_signal)) * 100
+        
+        # Baseline wander detection (low frequency drift)
+        from scipy.signal import savgol_filter
+        try:
+            # Use Savitzky-Golay filter to estimate baseline
+            window_length = min(51, len(raw_signal) // 10 * 2 + 1)  # Ensure odd number
+            if window_length >= 3:
+                baseline = savgol_filter(raw_signal, window_length, 1)
+                baseline_wander = np.std(raw_signal - baseline)
+                baseline_wander_percentage = (baseline_wander / np.std(raw_signal)) * 100
+            else:
+                baseline_wander = 0
+                baseline_wander_percentage = 0
+        except:
+            baseline_wander = 0
+            baseline_wander_percentage = 0
+        
+        # Motion artifact detection (sudden amplitude changes)
+        signal_diff = np.abs(np.diff(raw_signal))
+        motion_threshold = np.mean(signal_diff) + 2 * np.std(signal_diff)
+        motion_artifacts = np.sum(signal_diff > motion_threshold)
+        motion_artifact_percentage = (motion_artifacts / len(signal_diff)) * 100
+        
+        # Signal stability (coefficient of variation)
+        stability_score = (np.std(raw_signal) / np.mean(raw_signal)) * 100 if np.mean(raw_signal) != 0 else 0
+        
+        # Frequency content analysis
+        fft_vals = np.abs(np.fft.rfft(raw_signal))
+        freqs = np.fft.rfftfreq(len(raw_signal), 1/sampling_freq)
+        
+        # Power in different frequency bands
+        dc_power = np.sum(fft_vals[freqs <= 0.5])  # DC to 0.5 Hz
+        low_freq_power = np.sum(fft_vals[(freqs > 0.5) & (freqs <= 5)])  # 0.5-5 Hz
+        mid_freq_power = np.sum(fft_vals[(freqs > 5) & (freqs <= 40)])  # 5-40 Hz
+        high_freq_power = np.sum(fft_vals[freqs > 40])  # >40 Hz
+        
+        total_power = np.sum(fft_vals)
+        dc_percentage = (dc_power / total_power) * 100 if total_power > 0 else 0
+        low_freq_percentage = (low_freq_power / total_power) * 100 if total_power > 0 else 0
+        mid_freq_percentage = (mid_freq_power / total_power) * 100 if total_power > 0 else 0
+        high_freq_percentage = (high_freq_power / total_power) * 100 if total_power > 0 else 0
+        
+        # Peak detection quality
+        from scipy.signal import find_peaks
+        try:
+            peaks, properties = find_peaks(raw_signal, prominence=0.1 * np.std(raw_signal))
+            peak_quality = len(peaks) / (len(raw_signal) / sampling_freq)  # peaks per second
+        except:
+            peak_quality = 0
+        
+        # Signal continuity (gaps detection)
+        signal_diff_norm = np.abs(np.diff(raw_signal)) / (np.max(raw_signal) - np.min(raw_signal))
+        continuity_score = np.sum(signal_diff_norm < 0.1) / len(signal_diff_norm) * 100
+        
+        # Outlier detection
+        z_scores = np.abs((raw_signal - np.mean(raw_signal)) / np.std(raw_signal))
+        outliers = np.sum(z_scores > 3)
+        outlier_percentage = (outliers / len(raw_signal)) * 100
+        
+        return html.Div([
+            html.H6("🎯 Signal Quality Assessment", className="text-primary mb-3"),
+            
+            # Quality summary cards
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{snr_db:.1f} dB", className="text-center text-primary mb-0"),
+                            html.Small("SNR", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-primary")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{artifact_percentage:.1f}%", className="text-center text-success mb-0"),
+                            html.Small("Artifacts", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-success")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{stability_score:.1f}%", className="text-center text-warning mb-0"),
+                            html.Small("Stability", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-warning")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{continuity_score:.1f}%", className="text-center text-info mb-0"),
+                            html.Small("Continuity", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-info")
+                ], md=3)
+            ], className="mb-3"),
+            
+            # Main quality metrics table
+            html.H6("Quality Metrics", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Metric", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Quality", className="text-center"),
+                        html.Th("Description", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Signal-to-Noise Ratio", className="fw-bold"),
+                        html.Td(f"{snr_db:.1f} dB", className="text-end"),
+                        html.Td(html.Span(
+                            'Excellent' if snr_db > 20 else 'Good' if snr_db > 15 else 'Fair' if snr_db > 10 else 'Poor',
+                            className=f"badge {'bg-success' if snr_db > 20 else 'bg-info' if snr_db > 15 else 'bg-warning' if snr_db > 10 else 'bg-danger'}"
+                        ), className="text-center"),
+                        html.Td("Signal quality indicator", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Detected Artifacts", className="fw-bold"),
+                        html.Td(f"{artifact_count} ({artifact_percentage:.1f}%)", className="text-end"),
+                        html.Td(html.Span(
+                            'Low' if artifact_percentage < 5 else 'Medium' if artifact_percentage < 15 else 'High',
+                            className=f"badge {'bg-success' if artifact_percentage < 5 else 'bg-warning' if artifact_percentage < 15 else 'bg-danger'}"
+                        ), className="text-center"),
+                        html.Td("Statistical outliers", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Baseline Wander", className="fw-bold"),
+                        html.Td(f"{baseline_wander_percentage:.1f}%", className="text-end"),
+                        html.Td(html.Span(
+                            'Low' if baseline_wander_percentage < 10 else 'Medium' if baseline_wander_percentage < 25 else 'High',
+                            className=f"badge {'bg-success' if baseline_wander_percentage < 10 else 'bg-warning' if baseline_wander_percentage < 25 else 'bg-danger'}"
+                        ), className="text-center"),
+                        html.Td("Low frequency drift", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Motion Artifacts", className="fw-bold"),
+                        html.Td(f"{motion_artifacts} ({motion_artifact_percentage:.1f}%)", className="text-end"),
+                        html.Td(html.Span(
+                            'Low' if motion_artifact_percentage < 5 else 'Medium' if motion_artifact_percentage < 15 else 'High',
+                            className=f"badge {'bg-success' if motion_artifact_percentage < 5 else 'bg-warning' if motion_artifact_percentage < 15 else 'bg-danger'}"
+                        ), className="text-center"),
+                        html.Td("Sudden amplitude changes", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Signal Stability", className="fw-bold"),
+                        html.Td(f"{stability_score:.1f}%", className="text-end"),
+                        html.Td(html.Span(
+                            'Excellent' if stability_score < 10 else 'Good' if stability_score < 20 else 'Fair' if stability_score < 30 else 'Poor',
+                            className=f"badge {'bg-success' if stability_score < 10 else 'bg-info' if stability_score < 20 else 'bg-warning' if stability_score < 30 else 'bg-danger'}"
+                        ), className="text-center"),
+                        html.Td("Coefficient of variation", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Signal Continuity", className="fw-bold"),
+                        html.Td(f"{continuity_score:.1f}%", className="text-end"),
+                        html.Td(html.Span(
+                            'Excellent' if continuity_score > 90 else 'Good' if continuity_score > 80 else 'Fair' if continuity_score > 70 else 'Poor',
+                            className=f"badge {'bg-success' if continuity_score > 90 else 'bg-info' if continuity_score > 80 else 'bg-warning' if continuity_score > 70 else 'bg-danger'}"
+                        ), className="text-center"),
+                        html.Td("Smooth signal transitions", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Outlier Percentage", className="fw-bold"),
+                        html.Td(f"{outlier_percentage:.1f}%", className="text-end"),
+                        html.Td(html.Span(
+                            'Low' if outlier_percentage < 1 else 'Medium' if outlier_percentage < 5 else 'High',
+                            className=f"badge {'bg-success' if outlier_percentage < 1 else 'bg-warning' if outlier_percentage < 5 else 'bg-danger'}"
+                        ), className="text-center"),
+                        html.Td("Z-score > 3 outliers", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3"),
+            
+            # Frequency content analysis
+            html.H6("Frequency Content Analysis", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Frequency Band", className="text-center"),
+                        html.Th("Power", className="text-center"),
+                        html.Th("Percentage", className="text-center"),
+                        html.Th("Description", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("DC (0-0.5 Hz)", className="fw-bold"),
+                        html.Td(f"{dc_power:.2e}", className="text-end"),
+                        html.Td(f"{dc_percentage:.1f}%", className="text-end"),
+                        html.Td("Baseline and drift", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Low (0.5-5 Hz)", className="fw-bold"),
+                        html.Td(f"{low_freq_power:.2e}", className="text-end"),
+                        html.Td(f"{low_freq_percentage:.1f}%", className="text-end"),
+                        html.Td("Respiratory and slow variations", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Mid (5-40 Hz)", className="fw-bold"),
+                        html.Td(f"{mid_freq_power:.2e}", className="text-end"),
+                        html.Td(f"{mid_freq_percentage:.1f}%", className="text-end"),
+                        html.Td("Cardiac and physiological", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("High (>40 Hz)", className="fw-bold"),
+                        html.Td(f"{high_freq_power:.2e}", className="text-end"),
+                        html.Td(f"{high_freq_percentage:.1f}%", className="text-end"),
+                        html.Td("Noise and artifacts", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, size="sm")
+        ])
+        
+    except Exception as e:
+        logger.error(f"Error creating signal quality table: {e}")
+        return f"Error in signal quality assessment: {str(e)}"
+
+
+def create_filtering_results_table(raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping):
+    """Create comprehensive filtering results table."""
+    try:
+        signal_col = column_mapping.get('signal')
+        if not signal_col or signal_col not in raw_data.columns:
+            return "Signal column not found in data"
+            
+        raw_signal = raw_data[signal_col].values
+        
+        # Check if we have filtered data to compare
+        if filtered_data is None or np.array_equal(raw_signal, filtered_data):
+            return html.Div([
+                html.H6("🔧 Filtering Results", className="text-muted"),
+                html.P("No filtering applied or filtered data identical to raw data", className="text-muted")
+            ])
+        
+        # Calculate comprehensive filtering metrics
+        # Power analysis
+        raw_power = np.mean(raw_signal**2)
+        filtered_power = np.mean(filtered_data**2)
+        power_reduction = (raw_power - filtered_power) / raw_power * 100 if raw_power > 0 else 0
+        
+        # RMS analysis
+        raw_rms = np.sqrt(np.mean(raw_signal**2))
+        filtered_rms = np.sqrt(np.mean(filtered_data**2))
+        rms_reduction = (raw_rms - filtered_rms) / raw_rms * 100 if raw_rms > 0 else 0
+        
+        # Frequency domain analysis
+        raw_fft = np.abs(np.fft.rfft(raw_signal))
+        filtered_fft = np.abs(np.fft.rfft(filtered_data))
+        freqs = np.fft.rfftfreq(len(raw_signal), 1/sampling_freq)
+        
+        # Power in different frequency bands
+        # DC and very low frequency (0-0.5 Hz)
+        dc_mask = freqs <= 0.5
+        dc_reduction = np.mean(raw_fft[dc_mask]) - np.mean(filtered_fft[dc_mask])
+        dc_reduction_percent = (dc_reduction / np.mean(raw_fft[dc_mask])) * 100 if np.mean(raw_fft[dc_mask]) > 0 else 0
+        
+        # Low frequency (0.5-5 Hz) - respiratory and slow variations
+        low_freq_mask = (freqs > 0.5) & (freqs <= 5)
+        low_freq_reduction = np.mean(raw_fft[low_freq_mask]) - np.mean(filtered_fft[low_freq_mask])
+        low_freq_reduction_percent = (low_freq_reduction / np.mean(raw_fft[low_freq_mask])) * 100 if np.mean(raw_fft[low_freq_mask]) > 0 else 0
+        
+        # Mid frequency (5-40 Hz) - cardiac and physiological
+        mid_freq_mask = (freqs > 5) & (freqs <= 40)
+        mid_freq_reduction = np.mean(raw_fft[mid_freq_mask]) - np.mean(filtered_fft[mid_freq_mask])
+        mid_freq_reduction_percent = (mid_freq_reduction / np.mean(raw_fft[mid_freq_mask])) * 100 if np.mean(raw_fft[mid_freq_mask]) > 0 else 0
+        
+        # High frequency (>40 Hz) - noise and artifacts
+        high_freq_mask = freqs > 40
+        high_freq_reduction = np.mean(raw_fft[high_freq_mask]) - np.mean(filtered_fft[high_freq_mask])
+        high_freq_reduction_percent = (high_freq_reduction / np.mean(raw_fft[high_freq_mask])) * 100 if np.mean(raw_fft[high_freq_mask]) > 0 else 0
+        
+        # Signal-to-noise ratio improvement
+        raw_snr = 10 * np.log10(raw_power / np.var(raw_signal)) if np.var(raw_signal) > 0 else 0
+        filtered_snr = 10 * np.log10(filtered_power / np.var(filtered_data)) if np.var(filtered_data) > 0 else 0
+        snr_improvement = filtered_snr - raw_snr
+        
+        # Peak preservation analysis
+        from scipy.signal import find_peaks
+        try:
+            # Detect peaks in both signals
+            raw_peaks, _ = find_peaks(raw_signal, prominence=0.1 * np.std(raw_signal))
+            filtered_peaks, _ = find_peaks(filtered_data, prominence=0.1 * np.std(filtered_data))
+            
+            peak_preservation = len(filtered_peaks) / len(raw_peaks) * 100 if len(raw_peaks) > 0 else 0
+            
+            # Peak amplitude preservation
+            if len(raw_peaks) > 0 and len(filtered_peaks) > 0:
+                raw_peak_amps = raw_signal[raw_peaks]
+                filtered_peak_amps = filtered_data[filtered_peaks]
+                amplitude_preservation = np.mean(filtered_peak_amps) / np.mean(raw_peak_amps) * 100 if np.mean(raw_peak_amps) > 0 else 0
+            else:
+                amplitude_preservation = 0
+        except:
+            peak_preservation = 0
+            amplitude_preservation = 0
+        
+        # Phase distortion analysis
+        raw_phase = np.angle(np.fft.fft(raw_signal))
+        filtered_phase = np.angle(np.fft.fft(filtered_data))
+        phase_distortion = np.mean(np.abs(raw_phase - filtered_phase))
+        
+        # Group delay analysis (simplified)
+        try:
+            # Calculate group delay as derivative of phase
+            raw_group_delay = np.gradient(raw_phase)
+            filtered_group_delay = np.gradient(filtered_phase)
+            group_delay_variation = np.std(filtered_group_delay - raw_group_delay)
+        except:
+            group_delay_variation = 0
+        
+        return html.Div([
+            html.H6("🔧 Filtering Results Analysis", className="text-primary mb-3"),
+            
+            # Summary metrics cards
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{power_reduction:.1f}%", className="text-center text-primary mb-0"),
+                            html.Small("Power Reduction", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-primary")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{snr_improvement:.1f} dB", className="text-center text-success mb-0"),
+                            html.Small("SNR Improvement", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-success")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{peak_preservation:.1f}%", className="text-center text-warning mb-0"),
+                            html.Small("Peak Preservation", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-warning")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{phase_distortion:.3f}", className="text-center text-info mb-0"),
+                            html.Small("Phase Distortion", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-info")
+                ], md=3)
+            ], className="mb-3"),
+            
+            # Overall filtering metrics
+            html.H6("Overall Filtering Performance", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Metric", className="text-center"),
+                        html.Th("Raw Signal", className="text-center"),
+                        html.Th("Filtered Signal", className="text-center"),
+                        html.Th("Improvement", className="text-center"),
+                        html.Th("Description", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Signal Power", className="fw-bold"),
+                        html.Td(f"{raw_power:.3f}", className="text-end"),
+                        html.Td(f"{filtered_power:.3f}", className="text-end"),
+                        html.Td(f"{power_reduction:.1f}%", className="text-end"),
+                        html.Td("Mean squared amplitude", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("RMS Amplitude", className="fw-bold"),
+                        html.Td(f"{raw_rms:.3f}", className="text-end"),
+                        html.Td(f"{filtered_rms:.3f}", className="text-end"),
+                        html.Td(f"{rms_reduction:.1f}%", className="text-end"),
+                        html.Td("Root mean square amplitude", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Signal-to-Noise", className="fw-bold"),
+                        html.Td(f"{raw_snr:.1f} dB", className="text-end"),
+                        html.Td(f"{filtered_snr:.1f} dB", className="text-end"),
+                        html.Td(f"{snr_improvement:.1f} dB", className="text-end"),
+                        html.Td("Signal quality improvement", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Peak Count", className="fw-bold"),
+                        html.Td(f"{len(raw_peaks) if 'raw_peaks' in locals() else 'N/A'}", className="text-end"),
+                        html.Td(f"{len(filtered_peaks) if 'filtered_peaks' in locals() else 'N/A'}", className="text-end"),
+                        html.Td(f"{peak_preservation:.1f}%", className="text-end"),
+                        html.Td("Peak detection preservation", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3"),
+            
+            # Frequency-specific improvements
+            html.H6("Frequency-Domain Improvements", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Frequency Band", className="text-center"),
+                        html.Th("Raw Power", className="text-center"),
+                        html.Th("Filtered Power", className="text-center"),
+                        html.Th("Reduction", className="text-center"),
+                        html.Th("Description", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("DC (0-0.5 Hz)", className="fw-bold"),
+                        html.Td(f"{np.mean(raw_fft[dc_mask]):.3f}", className="text-end"),
+                        html.Td(f"{np.mean(filtered_fft[dc_mask]):.3f}", className="text-end"),
+                        html.Td(f"{dc_reduction_percent:.1f}%", className="text-end"),
+                        html.Td("Baseline and drift reduction", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Low (0.5-5 Hz)", className="fw-bold"),
+                        html.Td(f"{np.mean(raw_fft[low_freq_mask]):.3f}", className="text-end"),
+                        html.Td(f"{np.mean(filtered_fft[low_freq_mask]):.3f}", className="text-end"),
+                        html.Td(f"{low_freq_reduction_percent:.1f}%", className="text-end"),
+                        html.Td("Respiratory noise reduction", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Mid (5-40 Hz)", className="fw-bold"),
+                        html.Td(f"{np.mean(raw_fft[mid_freq_mask]):.3f}", className="text-end"),
+                        html.Td(f"{np.mean(filtered_fft[mid_freq_mask]):.3f}", className="text-end"),
+                        html.Td(f"{mid_freq_reduction_percent:.1f}%", className="text-end"),
+                        html.Td("Cardiac signal preservation", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("High (>40 Hz)", className="fw-bold"),
+                        html.Td(f"{np.mean(raw_fft[high_freq_mask]):.3f}", className="text-end"),
+                        html.Td(f"{np.mean(filtered_fft[high_freq_mask]):.3f}", className="text-end"),
+                        html.Td(f"{high_freq_reduction_percent:.1f}%", className="text-end"),
+                        html.Td("High frequency noise reduction", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3"),
+            
+            # Signal integrity metrics
+            html.H6("Signal Integrity Metrics", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Metric", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Td("Quality", className="text-center"),
+                        html.Th("Description", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Peak Amplitude Preservation", className="fw-bold"),
+                        html.Td(f"{amplitude_preservation:.1f}%", className="text-end"),
+                        html.Td(html.Span(
+                            'Excellent' if amplitude_preservation > 95 else 'Good' if amplitude_preservation > 90 else 'Fair' if amplitude_preservation > 80 else 'Poor',
+                            className=f"badge {'bg-success' if amplitude_preservation > 95 else 'bg-info' if amplitude_preservation > 90 else 'bg-warning' if amplitude_preservation > 80 else 'bg-danger'}"
+                        ), className="text-center"),
+                        html.Td("Peak height preservation", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Phase Distortion", className="fw-bold"),
+                        html.Td(f"{phase_distortion:.3f} rad", className="text-end"),
+                        html.Td(html.Span(
+                            'Excellent' if phase_distortion < 0.1 else 'Good' if phase_distortion < 0.3 else 'Fair' if phase_distortion < 0.5 else 'Poor',
+                            className=f"badge {'bg-success' if phase_distortion < 0.1 else 'bg-info' if phase_distortion < 0.3 else 'bg-warning' if phase_distortion < 0.5 else 'bg-danger'}"
+                        ), className="text-center"),
+                        html.Td("Phase response distortion", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Group Delay Variation", className="fw-bold"),
+                        html.Td(f"{group_delay_variation:.3f}", className="text-end"),
+                        html.Td(html.Span(
+                            'Excellent' if group_delay_variation < 0.1 else 'Good' if group_delay_variation < 0.3 else 'Fair' if group_delay_variation < 0.5 else 'Poor',
+                            className=f"badge {'bg-success' if group_delay_variation < 0.1 else 'bg-info' if group_delay_variation < 0.3 else 'bg-warning' if group_delay_variation < 0.5 else 'bg-danger'}"
+                        ), className="text-center"),
+                        html.Td("Group delay consistency", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, size="sm")
+        ])
+        
+    except Exception as e:
+        logger.error(f"Error creating filtering results table: {e}")
+        return f"Error in filtering analysis: {str(e)}"
+
+
+def create_additional_metrics_table(raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping):
+    """Create comprehensive additional metrics table."""
+    try:
+        signal_col = column_mapping.get('signal')
+        if not signal_col or signal_col not in raw_data.columns:
+            return "Signal column not found in data"
+            
+        raw_signal = raw_data[signal_col].values
+        
+        # Statistical measures
+        signal_mean = np.mean(raw_signal)
+        signal_std = np.std(raw_signal)
+        signal_min = np.min(raw_signal)
+        signal_max = np.max(raw_signal)
+        signal_range = signal_max - signal_min
+        signal_median = np.median(raw_signal)
+        signal_skewness = float(pd.Series(raw_signal).skew())
+        signal_kurtosis = float(pd.Series(raw_signal).kurtosis())
+        
+        # Entropy measures
+        # Shannon entropy
+        hist, bins = np.histogram(raw_signal, bins=50, density=True)
+        hist = hist[hist > 0]  # Remove zero bins
+        shannon_entropy = -np.sum(hist * np.log2(hist))
+        
+        # Approximate entropy (simplified)
+        try:
+            from scipy.stats import entropy
+            approx_entropy = entropy(hist) if len(hist) > 1 else 0
+        except:
+            approx_entropy = 0
+        
+        # Fractal dimension (simplified Higuchi method)
+        try:
+            def higuchi_fractal_dimension(signal, k_max=8):
+                """Calculate Higuchi fractal dimension."""
+                N = len(signal)
+                L = []
+                x = []
+                
+                for k in range(1, k_max + 1):
+                    Lk = 0
+                    for m in range(k):
+                        Lmk = 0
+                        for i in range(1, int((N - m) / k)):
+                            Lmk += abs(signal[m + i * k] - signal[m + (i - 1) * k])
+                        Lmk = Lmk * (N - 1) / (k ** 2 * int((N - m) / k))
+                        Lk += Lmk
+                    Lk /= k
+                    L.append(Lk)
+                    x.append([np.log(1.0 / k), 1])
+                
+                # Linear fit to get slope
+                x = np.array(x)
+                L = np.log(L)
+                slope = np.polyfit(x[:, 0], L, 1)[0]
+                return slope
+        except:
+            higuchi_fd = 0
+        else:
+            try:
+                higuchi_fd = higuchi_fractal_dimension(raw_signal)
+            except:
+                higuchi_fd = 0
+        
+        # Trend analysis
+        x_trend = np.arange(len(raw_signal))
+        trend_coeffs = np.polyfit(x_trend, raw_signal, 1)
+        trend_slope = trend_coeffs[0]
+        trend_intercept = trend_coeffs[1]
+        
+        # Calculate R-squared for trend
+        trend_line = np.polyval(trend_coeffs, x_trend)
+        ss_res = np.sum((raw_signal - trend_line) ** 2)
+        ss_tot = np.sum((raw_signal - np.mean(raw_signal)) ** 2)
+        trend_r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+        
+        # Spectral features
+        fft_vals = np.abs(np.fft.rfft(raw_signal))
+        freqs = np.fft.rfftfreq(len(raw_signal), 1/sampling_freq)
+        
+        # Dominant frequency
+        dominant_freq_idx = np.argmax(fft_vals)
+        dominant_freq = freqs[dominant_freq_idx]
+        dominant_power = fft_vals[dominant_freq_idx]
+        
+        # Spectral centroid
+        spectral_centroid = np.sum(freqs * fft_vals) / np.sum(fft_vals) if np.sum(fft_vals) > 0 else 0
+        
+        # Spectral bandwidth
+        spectral_bandwidth = np.sqrt(np.sum(((freqs - spectral_centroid) ** 2) * fft_vals) / np.sum(fft_vals)) if np.sum(fft_vals) > 0 else 0
+        
+        # Spectral rolloff (frequency below which 85% of energy is contained)
+        cumulative_power = np.cumsum(fft_vals)
+        total_power = cumulative_power[-1]
+        rolloff_threshold = 0.85 * total_power
+        rolloff_idx = np.where(cumulative_power >= rolloff_threshold)[0]
+        spectral_rolloff = freqs[rolloff_idx[0]] if len(rolloff_idx) > 0 else 0
+        
+        # Temporal features
+        # Zero crossing rate
+        zero_crossings = np.sum(np.diff(np.signbit(raw_signal - signal_mean)))
+        zero_crossing_rate = zero_crossings / len(raw_signal)
+        
+        # Peak-to-peak amplitude
+        peak_to_peak = signal_max - signal_min
+        
+        # Crest factor
+        crest_factor = signal_max / np.sqrt(np.mean(raw_signal**2)) if np.mean(raw_signal**2) > 0 else 0
+        
+        # Form factor
+        form_factor = np.sqrt(np.mean(raw_signal**2)) / np.mean(np.abs(raw_signal)) if np.mean(np.abs(raw_signal)) > 0 else 0
+        
+        # Morphological features
+        # Signal complexity (based on number of local extrema)
+        from scipy.signal import argrelextrema
+        try:
+            local_maxima = argrelextrema(raw_signal, np.greater, order=3)[0]
+            local_minima = argrelextrema(raw_signal, np.less, order=3)[0]
+            complexity_score = (len(local_maxima) + len(local_minima)) / len(raw_signal)
+        except:
+            complexity_score = 0
+        
+        # Signal regularity (inverse of complexity)
+        regularity_score = 1 - complexity_score if complexity_score <= 1 else 0
+        
+        # Cross-correlation with filtered signal (if available)
+        if filtered_data is not None and not np.array_equal(raw_signal, filtered_data):
+            try:
+                from scipy.signal import correlate
+                correlation = correlate(raw_signal, filtered_data, mode='full')
+                max_correlation = np.max(correlation)
+                correlation_coefficient = max_correlation / (np.std(raw_signal) * np.std(filtered_data) * len(raw_signal))
+            except:
+                correlation_coefficient = 0
+        else:
+            correlation_coefficient = 1.0  # Perfect correlation if no filtering
+        
+        return html.Div([
+            html.H6("📈 Additional Metrics & Advanced Features", className="text-primary mb-3"),
+            
+            # Summary metrics cards
+            dbc.Row([
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{signal_skewness:.3f}", className="text-center text-primary mb-0"),
+                            html.Small("Skewness", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-primary")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{signal_kurtosis:.3f}", className="text-center text-success mb-0"),
+                            html.Small("Kurtosis", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-success")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{trend_slope:.3f}", className="text-center text-warning mb-0"),
+                            html.Small("Trend Slope", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-warning")
+                ], md=3),
+                dbc.Col([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H4(f"{dominant_freq:.2f} Hz", className="text-center text-info mb-0"),
+                            html.Small("Dominant Freq", className="text-center d-block text-muted")
+                        ])
+                    ], className="text-center border-info")
+                ], md=3)
+            ], className="mb-3"),
+            
+            # Statistical measures
+            html.H6("Statistical Measures", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Metric", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Description", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Mean", className="fw-bold"),
+                        html.Td(f"{signal_mean:.3f}", className="text-end"),
+                        html.Td("Central tendency", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Median", className="fw-bold"),
+                        html.Td(f"{signal_median:.3f}", className="text-end"),
+                        html.Td("Middle value", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Standard Deviation", className="fw-bold"),
+                        html.Td(f"{signal_std:.3f}", className="text-end"),
+                        html.Td("Variability measure", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Range", className="fw-bold"),
+                        html.Td(f"{signal_range:.3f}", className="text-end"),
+                        html.Td("Min to max spread", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Skewness", className="fw-bold"),
+                        html.Td(f"{signal_skewness:.3f}", className="text-end"),
+                        html.Td("Distribution asymmetry", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Kurtosis", className="fw-bold"),
+                        html.Td(f"{signal_kurtosis:.3f}", className="text-end"),
+                        html.Td("Distribution peakedness", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3"),
+            
+            # Spectral features
+            html.H6("Spectral Features", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Feature", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Description", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Dominant Frequency", className="fw-bold"),
+                        html.Td(f"{dominant_freq:.2f} Hz", className="text-end"),
+                        html.Td("Peak frequency component", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Dominant Power", className="fw-bold"),
+                        html.Td(f"{dominant_power:.2e}", className="text-end"),
+                        html.Td("Power at dominant frequency", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Spectral Centroid", className="fw-bold"),
+                        html.Td(f"{spectral_centroid:.2f} Hz", className="text-end"),
+                        html.Td("Frequency center of mass", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Spectral Bandwidth", className="fw-bold"),
+                        html.Td(f"{spectral_bandwidth:.2f} Hz", className="text-end"),
+                        html.Td("Frequency spread", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Spectral Rolloff", className="fw-bold"),
+                        html.Td(f"{spectral_rolloff:.2f} Hz", className="text-end"),
+                        html.Td("85% energy frequency", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3"),
+            
+            # Temporal and morphological features
+            html.H6("Temporal & Morphological Features", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Feature", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Description", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Zero Crossing Rate", className="fw-bold"),
+                        html.Td(f"{zero_crossing_rate:.3f}", className="text-end"),
+                        html.Td("Signal oscillation frequency", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Peak-to-Peak", className="fw-bold"),
+                        html.Td(f"{peak_to_peak:.3f}", className="text-end"),
+                        html.Td("Amplitude range", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Crest Factor", className="fw-bold"),
+                        html.Td(f"{crest_factor:.3f}", className="text-end"),
+                        html.Td("Peak to RMS ratio", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Form Factor", className="fw-bold"),
+                        html.Td(f"{form_factor:.3f}", className="text-end"),
+                        html.Td("RMS to mean absolute ratio", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Complexity Score", className="fw-bold"),
+                        html.Td(f"{complexity_score:.3f}", className="text-end"),
+                        html.Td("Local extrema density", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Regularity Score", className="fw-bold"),
+                        html.Td(f"{regularity_score:.3f}", className="text-end"),
+                        html.Td("Signal smoothness", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, className="mb-3"),
+            
+            # Advanced features
+            html.H6("Advanced Features", className="mb-2"),
+            dbc.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th("Feature", className="text-center"),
+                        html.Th("Value", className="text-center"),
+                        html.Th("Description", className="text-center")
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([
+                        html.Td("Shannon Entropy", className="fw-bold"),
+                        html.Td(f"{shannon_entropy:.3f}", className="text-end"),
+                        html.Td("Information content", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Approximate Entropy", className="fw-bold"),
+                        html.Td(f"{approx_entropy:.3f}", className="text-end"),
+                        html.Td("Signal complexity measure", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Fractal Dimension", className="fw-bold"),
+                        html.Td(f"{higuchi_fd:.3f}", className="text-end"),
+                        html.Td("Signal self-similarity", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Trend R²", className="fw-bold"),
+                        html.Td(f"{trend_r_squared:.3f}", className="text-end"),
+                        html.Td("Linear trend fit quality", className="text-muted")
+                    ]),
+                    html.Tr([
+                        html.Td("Correlation Coefficient", className="fw-bold"),
+                        html.Td(f"{correlation_coefficient:.3f}", className="text-end"),
+                        html.Td("Raw vs filtered correlation", className="text-muted")
+                    ])
+                ])
+            ], bordered=True, hover=True, responsive=True, size="sm")
+        ])
+        
+    except Exception as e:
+        logger.error(f"Error creating additional metrics table: {e}")
+        return f"Error in additional metrics: {str(e)}"
+
+
+def generate_time_domain_stats(signal_data, time_axis, sampling_freq, peaks=None, filtered_signal=None):
+    """Generate comprehensive time domain statistics."""
+    try:
+        results = []
+        
+        # Basic statistics
+        results.append(html.H5("Signal Statistics"))
+        results.append(html.P(f"Duration: {time_axis[-1]:.2f} seconds"))
+        results.append(html.P(f"Sampling Frequency: {sampling_freq} Hz"))
+        results.append(html.P(f"Signal Length: {len(signal_data)} samples"))
+        results.append(html.P(f"Mean Amplitude: {np.mean(signal_data):.4f}"))
+        results.append(html.P(f"Std Amplitude: {np.std(signal_data):.4f}"))
+        results.append(html.P(f"Min Amplitude: {np.min(signal_data):.4f}"))
+        results.append(html.P(f"Max Amplitude: {np.max(signal_data):.4f}"))
+        results.append(html.P(f"Peak-to-Peak: {np.max(signal_data) - np.min(signal_data):.4f}"))
+        results.append(html.P(f"RMS: {np.sqrt(np.mean(signal_data**2)):.4f}"))
+        
+        # Peak analysis
+        if peaks is not None and len(peaks) > 0:
+            results.append(html.Hr())
+            results.append(html.H6("Peak Analysis"))
+            results.append(html.P(f"Number of Peaks: {len(peaks)}"))
+            
+            if len(peaks) > 1:
+                intervals = np.diff(peaks) / sampling_freq
+                results.append(html.P(f"Mean Peak Interval: {np.mean(intervals):.3f} seconds"))
+                results.append(html.P(f"Peak Rate: {60/np.mean(intervals):.1f} peaks/minute"))
+                results.append(html.P(f"Peak Interval Std: {np.std(intervals):.3f} seconds"))
+        
+        # Filter information
+        if filtered_signal is not None:
+            results.append(html.Hr())
+            results.append(html.H6("Filter Information"))
+            results.append(html.P("Signal has been filtered"))
+            results.append(html.P(f"Filtered Signal RMS: {np.sqrt(np.mean(filtered_signal**2)):.4f}"))
+        
+        return html.Div(results)
+        
+    except Exception as e:
+        logger.error(f"Error generating time domain stats: {e}")
+        return html.Div([html.H5("Error"), html.P(f"Failed to generate stats: {str(e)}")])
+
+
+def apply_filter(signal_data, sampling_freq, filter_family, filter_response, low_freq, high_freq, filter_order):
+    """Apply filter to the signal."""
+    try:
+        # Normalize cutoff frequencies
+        nyquist = sampling_freq / 2
+        low_freq_norm = low_freq / nyquist
+        high_freq_norm = high_freq / nyquist
+        
+        # Ensure cutoff frequencies are within valid range
+        low_freq_norm = max(0.001, min(low_freq_norm, 0.999))
+        high_freq_norm = max(0.001, min(high_freq_norm, 0.999))
+        
+        # Determine filter type based on response
+        if filter_response == "bandpass":
+            btype = 'band'
+            cutoff = [low_freq_norm, high_freq_norm]
+        elif filter_response == "bandstop":
+            btype = 'bandstop'
+            cutoff = [low_freq_norm, high_freq_norm]
+        elif filter_response == "lowpass":
+            btype = 'low'
+            cutoff = high_freq_norm
+        elif filter_response == "highpass":
+            btype = 'high'
+            cutoff = low_freq_norm
+        else:
+            # Default to bandpass
+            btype = 'band'
+            cutoff = [low_freq_norm, high_freq_norm]
+        
+        # Apply filter based on family
+        if filter_family == "butter":
+            b, a = signal.butter(filter_order, cutoff, btype=btype)
+        elif filter_family == "cheby1":
+            b, a = signal.cheby1(filter_order, 1, cutoff, btype=btype)
+        elif filter_family == "cheby2":
+            b, a = signal.cheby2(filter_order, 40, cutoff, btype=btype)
+        elif filter_family == "ellip":
+            b, a = signal.ellip(filter_order, 1, 40, cutoff, btype=btype)
+        elif filter_family == "bessel":
+            b, a = signal.bessel(filter_order, cutoff, btype=btype)
+        else:
+            # Default to Butterworth
+            b, a = signal.butter(filter_order, cutoff, btype=btype)
+        
+        # Apply filter
+        filtered_signal = signal.filtfilt(b, a, signal_data)
+        return filtered_signal
+        
+    except Exception as e:
+        logger.error(f"Error applying filter: {e}")
+        return signal_data
+
+
+def detect_peaks(signal_data, sampling_freq):
+    """Detect peaks in the signal."""
+    try:
+        # Calculate adaptive threshold
+        mean_val = np.mean(signal_data)
+        std_val = np.std(signal_data)
+        threshold = mean_val + 2 * std_val
+        
+        # Find peaks with minimum distance constraint
+        min_distance = int(sampling_freq * 0.1)  # Minimum 0.1 seconds between peaks
+        peaks, _ = signal.find_peaks(signal_data, height=threshold, distance=min_distance)
+        
+        return peaks
+        
+    except Exception as e:
+        logger.error(f"Error detecting peaks: {e}")
+        return np.array([])
+
+
+def register_vitaldsp_callbacks(app):
+    """Register all vitalDSP analysis callbacks."""
+    
+    @app.callback(
+        [Output("main-signal-plot", "figure"),
+         Output("filtered-signal-plot", "figure"),
+         Output("analysis-results", "children"),
+         Output("peak-analysis-table", "children"),
+         Output("signal-quality-table", "children"),
+         Output("filtering-results-table", "children"),
+         Output("additional-metrics-table", "children"),
+         Output("store-time-domain-data", "data"),
+         Output("store-filtered-data", "data")],
+        [Input("btn-update-analysis", "n_clicks"),
+         Input("time-range-slider", "value"),
+         Input("btn-nudge-m10", "n_clicks"),
+         Input("btn-nudge-m1", "n_clicks"),
+         Input("btn-nudge-p1", "n_clicks"),
+         Input("btn-nudge-p10", "n_clicks"),
+         Input("url", "pathname")],
+        [State("start-time", "value"),
+         State("end-time", "value"),
+         State("filter-family", "value"),
+         State("filter-response", "value"),
+         State("filter-low-freq", "value"),
+         State("filter-high-freq", "value"),
+         State("filter-order", "value"),
+         State("analysis-options", "value")]
+    )
+    def analyze_time_domain(n_clicks, slider_value, nudge_m10, nudge_m1, nudge_p1, nudge_p10,
+                           pathname, start_time, end_time, filter_family, filter_response,
+                           filter_low_freq, filter_high_freq, filter_order, analysis_options):
+        """Main time domain analysis callback."""
+        logger.info("=== TIME DOMAIN ANALYSIS CALLBACK ===")
+        
+        # Get trigger information
+        ctx = callback_context
+        if not ctx.triggered:
+            trigger_id = "initial_load"
+        else:
+            trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        
+        logger.info(f"Trigger ID: {trigger_id}")
+        logger.info(f"Pathname: {pathname}")
+        
+        # Only run this when we're on the time domain page
+        if pathname != "/time-domain":
+            logger.info("Not on time domain page, returning empty figures")
+            return create_empty_figure(), create_empty_figure(), "Navigate to Time Domain Analysis page", "Navigate to Time Domain Analysis page", "Navigate to Time Domain Analysis page", "Navigate to Time Domain Analysis page", "Navigate to Time Domain Analysis page", None, None
+        
+        # If this is the first time loading the page (no button clicks), show a message
+        if not ctx.triggered or ctx.triggered[0]["prop_id"].split(".")[0] == "url":
+            logger.info("First time loading time domain page, attempting to load data")
+        
+        try:
+            # Get data from the data service
+            logger.info("Attempting to get data service...")
+            from vitalDSP_webapp.services.data.data_service import get_data_service
+            data_service = get_data_service()
+            logger.info("Data service retrieved successfully")
+            
+            # Get the most recent data
+            logger.info("Retrieving all data from service...")
+            all_data = data_service.get_all_data()
+            logger.info(f"All data keys: {list(all_data.keys()) if all_data else 'None'}")
+            
+            if not all_data:
+                logger.warning("No data found in service")
+                return create_empty_figure(), create_empty_figure(), "No data available. Please upload and process data first.", "No data available. Please upload and process data first.", "No data available. Please upload and process data first.", "No data available. Please upload and process data first.", "No data available. Please upload and process data first.", None, None
+            
+            # Get the most recent data entry
+            latest_data_id = list(all_data.keys())[-1]
+            latest_data = all_data[latest_data_id]
+            logger.info(f"Latest data ID: {latest_data_id}")
+            logger.info(f"Latest data info: {latest_data.get('info', 'No info')}")
+            
+            # Get column mapping
+            logger.info("Retrieving column mapping...")
+            column_mapping = data_service.get_column_mapping(latest_data_id)
+            logger.info(f"Column mapping: {column_mapping}")
+            
+            if not column_mapping:
+                logger.warning("Data has not been processed yet - no column mapping found")
+                return create_empty_figure(), create_empty_figure(), "Please process your data on the Upload page first (configure column mapping)", "Please process your data on the Upload page first (configure column mapping)", "Please process your data on the Upload page first (configure column mapping)", "Please process your data on the Upload page first (configure column mapping)", "Please process your data on the Upload page first (configure column mapping)", None, None
+                
+            # Get the actual data
+            logger.info("Retrieving data frame...")
+            df = data_service.get_data(latest_data_id)
+            logger.info(f"Data frame shape: {df.shape if df is not None else 'None'}")
+            logger.info(f"Data frame columns: {list(df.columns) if df is not None else 'None'}")
+            logger.info(f"Data frame info: {df.info() if df is not None else 'None'}")
+            logger.info(f"Data frame head: {df.head() if df is not None else 'None'}")
+            
+            if df is None or df.empty:
+                logger.warning("Data frame is empty")
+                return create_empty_figure(), create_empty_figure(), "Data is empty or corrupted.", "Data is empty or corrupted.", "Data is empty or corrupted.", "Data is empty or corrupted.", "Data is empty or corrupted.", None, None
+            
+            # Get sampling frequency from the data info
+            sampling_freq = latest_data.get('info', {}).get('sampling_freq', 1000)
+            logger.info(f"Sampling frequency: {sampling_freq}")
+            
+            # Handle time window adjustments for nudge buttons
+            if trigger_id in ["btn-nudge-m10", "btn-nudge-m1", "btn-nudge-p1", "btn-nudge-p10"]:
+                if not start_time or not end_time:
+                    start_time, end_time = 0, 10
+                    
+                if trigger_id == "btn-nudge-m10":
+                    start_time = max(0, start_time - 10)
+                    end_time = max(10, end_time - 10)
+                elif trigger_id == "btn-nudge-m1":
+                    start_time = max(0, start_time - 1)
+                    end_time = max(1, end_time - 1)
+                elif trigger_id == "btn-nudge-p1":
+                    start_time = start_time + 1
+                    end_time = end_time + 1
+                elif trigger_id == "btn-nudge-p10":
+                    start_time = start_time + 10
+                    end_time = end_time + 10
+                
+                logger.info(f"Time window adjusted: {start_time} to {end_time}")
+            
+            # Set default time window if not specified
+            if not start_time or not end_time:
+                start_time, end_time = 0, 10
+                logger.info(f"Using default time window: {start_time} to {end_time}")
+            
+            # Apply time window
+            start_sample = int(start_time * sampling_freq)
+            end_sample = int(end_time * sampling_freq)
+            logger.info(f"Sample range: {start_sample} to {end_sample}")
+            
+            # Ensure we don't exceed data bounds
+            if start_sample >= len(df):
+                logger.warning(f"Start sample {start_sample} >= data length {len(df)}, adjusting to 0")
+                start_sample = 0
+            if end_sample > len(df):
+                logger.warning(f"End sample {end_sample} > data length {len(df)}, adjusting to {len(df)}")
+                end_sample = len(df)
+            
+            windowed_data = df.iloc[start_sample:end_sample].copy()
+            logger.info(f"Windowed data shape: {windowed_data.shape}")
+            logger.info(f"Windowed data columns: {list(windowed_data.columns)}")
+            logger.info(f"Windowed data head: {windowed_data.head()}")
+            
+            # Create time axis
+            time_axis = np.arange(len(windowed_data)) / sampling_freq
+            logger.info(f"Time axis shape: {time_axis.shape}")
+            logger.info(f"Time axis range: {time_axis[0]:.3f} to {time_axis[-1]:.3f}")
+            
+            # Get signal column
+            signal_column = column_mapping.get('signal')
+            logger.info(f"Signal column from mapping: {signal_column}")
+            logger.info(f"Available columns in windowed data: {list(windowed_data.columns)}")
+            logger.info(f"Column mapping keys: {list(column_mapping.keys())}")
+            logger.info(f"Column mapping values: {list(column_mapping.values())}")
+            
+            if not signal_column or signal_column not in windowed_data.columns:
+                logger.warning(f"Signal column {signal_column} not found in data")
+                # Try to find alternative signal columns
+                potential_signal_cols = ['waveform', 'pleth', 'pl', 'signal', 'ppg', 'ecg', 'red', 'ir']
+                for col in potential_signal_cols:
+                    if col in [c.lower() for c in windowed_data.columns]:
+                        signal_column = [c for c in windowed_data.columns if c.lower() == col][0]
+                        logger.info(f"Found alternative signal column: {signal_column}")
+                        break
+                
+                if not signal_column:
+                    logger.error("No suitable signal column found")
+                    return create_empty_figure(), create_empty_figure(), "No suitable signal column found in data.", "No suitable signal column found in data.", "No suitable signal column found in data.", "No suitable signal column found in data.", "No suitable signal column found in data.", None, None
+            
+            signal_data = windowed_data[signal_column].values
+            logger.info(f"Signal data shape: {signal_data.shape}")
+            logger.info(f"Signal data range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
+            logger.info(f"Signal data mean: {np.mean(signal_data):.3f}")
+            logger.info(f"Signal data std: {np.std(signal_data):.3f}")
+            logger.info(f"First 10 signal values: {signal_data[:10]}")
+            logger.info(f"Last 10 signal values: {signal_data[-10:]}")
+            
+            # Check for data issues
+            if len(signal_data) == 0:
+                logger.error("Signal data is empty after windowing")
+                return create_empty_figure(), create_empty_figure(), "Signal data is empty after windowing.", "Signal data is empty after windowing.", "Signal data is empty after windowing.", "Signal data is empty after windowing.", "Signal data is empty after windowing.", None, None
+            
+            if np.all(signal_data == signal_data[0]):
+                logger.warning(f"All signal values are identical: {signal_data[0]}")
+            
+            # Apply filtering if requested
+            filtered_signal = None
+            if filter_family and filter_response and filter_low_freq and filter_high_freq and filter_order:
+                logger.info("Applying filter to signal...")
+                logger.info(f"Filter params: {filter_family}, {filter_response}, {filter_low_freq}-{filter_high_freq} Hz, order {filter_order}")
+                filtered_signal = apply_filter(signal_data, sampling_freq, filter_family, 
+                                            filter_response, filter_low_freq, filter_high_freq, filter_order)
+                logger.info("Filter applied successfully")
+                logger.info(f"Filtered signal shape: {filtered_signal.shape if filtered_signal is not None else 'None'}")
+                if filtered_signal is not None:
+                    logger.info(f"Filtered signal range: {np.min(filtered_signal):.3f} to {np.max(filtered_signal):.3f}")
+            else:
+                logger.info("No filter parameters provided, using raw signal")
+            
+            # Detect peaks if requested
+            peaks = None
+            if analysis_options and "peaks" in analysis_options:
+                logger.info("Detecting peaks in signal...")
+                peaks = detect_peaks(signal_data, sampling_freq)
+                logger.info(f"Detected {len(peaks)} peaks")
+            else:
+                logger.info("Peak detection not requested")
+            
+            # Create main signal plot
+            logger.info("Creating main signal plot...")
+            logger.info(f"Calling create_main_signal_plot with column_mapping: {column_mapping}")
+            main_plot = create_main_signal_plot(windowed_data, time_axis, sampling_freq, analysis_options or ["peaks", "hr", "quality"], column_mapping)
+            logger.info("Main signal plot created successfully")
+            
+            # Create filtered signal plot
+            logger.info("Creating filtered signal plot...")
+            if filtered_signal is not None:
+                # Create a DataFrame with filtered data for the plot
+                filtered_df = windowed_data.copy()
+                filtered_df[signal_column] = filtered_signal
+                filtered_plot = create_filtered_signal_plot(filtered_df, time_axis, sampling_freq, column_mapping)
+            else:
+                filtered_plot = create_filtered_signal_plot(windowed_data, time_axis, sampling_freq, column_mapping)
+            logger.info("Filtered signal plot created successfully")
+            
+            # Store processed data
+            time_domain_data = {
+                "raw_data": windowed_data.to_dict("records"),
+                "time_axis": time_axis.tolist(),
+                "sampling_freq": sampling_freq,
+                "window": [start_time, end_time]
+            }
+            
+            filtered_data_store = {
+                "filtered_data": windowed_data.to_dict("records") if filtered_signal is not None else None,
+                "filter_params": {
+                    "family": filter_family,
+                    "response": filter_response,
+                    "low_freq": filter_low_freq,
+                    "high_freq": filter_high_freq,
+                    "order": filter_order
+                }
+            }
+            
+            # Generate analysis results
+            analysis_results = generate_analysis_results(windowed_data, filtered_signal, time_axis, 
+                                                       sampling_freq, analysis_options or ["peaks", "hr", "quality"], column_mapping)
+            
+            # Generate detailed table components
+            peak_table = create_peak_analysis_table(windowed_data, filtered_signal, time_axis, 
+                                                   sampling_freq, analysis_options or ["peaks", "hr", "quality"], column_mapping)
+            quality_table = create_signal_quality_table(windowed_data, filtered_signal, time_axis, 
+                                                      sampling_freq, analysis_options or ["peaks", "hr", "quality"], column_mapping)
+            filtering_table = create_filtering_results_table(windowed_data, filtered_signal, time_axis, 
+                                                           sampling_freq, analysis_options or ["peaks", "hr", "quality"], column_mapping)
+            additional_table = create_additional_metrics_table(windowed_data, filtered_signal, time_axis, 
+                                                             sampling_freq, analysis_options or ["peaks", "hr", "quality"], column_mapping)
+            
+            logger.info("Time domain analysis completed successfully")
+            logger.info("Returning results:")
+            logger.info(f"  - Main plot: {type(main_plot)}")
+            logger.info(f"  - Filtered plot: {type(filtered_plot)}")
+            logger.info(f"  - Analysis results: {type(analysis_results)}")
+            logger.info(f"  - Peak table: {type(peak_table)}")
+            logger.info(f"  - Quality table: {type(quality_table)}")
+            logger.info(f"  - Filtering table: {type(filtering_table)}")
+            logger.info(f"  - Additional table: {type(additional_table)}")
+            logger.info(f"  - Data: {type(time_domain_data)}")
+            logger.info(f"  - Filtered data: {type(filtered_data_store)}")
+            
+            return main_plot, filtered_plot, analysis_results, peak_table, quality_table, filtering_table, additional_table, time_domain_data, filtered_data_store
+            
+        except Exception as e:
+            logger.error(f"Error in time domain analysis callback: {e}")
+            import traceback
+            traceback.print_exc()
+            error_msg = f"Error in analysis: {str(e)}"
+            return create_empty_figure(), create_empty_figure(), error_msg, error_msg, error_msg, error_msg, error_msg, None, None
+    
+    @app.callback(
+        [Output("start-time", "value"),
+         Output("end-time", "value")],
+        [Input("time-range-slider", "value")]
+    )
+    def update_time_inputs(slider_value):
+        """Update time input fields based on slider."""
+        if not slider_value:
+            return no_update, no_update
+        return slider_value[0], slider_value[1]
+    
+    @app.callback(
+        [Output("time-range-slider", "min"),
+         Output("time-range-slider", "max"),
+         Output("time-range-slider", "value")],
+        [Input("url", "pathname")]
+    )
+    def update_time_slider_range(pathname):
+        """Update time slider range based on data duration."""
+        logger.info("=== UPDATE TIME SLIDER RANGE ===")
+        logger.info(f"Pathname: {pathname}")
+        
+        # Only run this when we're on the time domain page
+        if pathname != "/time-domain":
+            return 0, 100, [0, 10]
+        
+        try:
+            # Get data from the data service
+            from vitalDSP_webapp.services.data.data_service import get_data_service
+            data_service = get_data_service()
+            
+            # Get the most recent data
+            all_data = data_service.get_all_data()
+            if not all_data:
+                logger.warning("No data found in service")
+                return 0, 100, [0, 10]
+            
+            # Get the most recent data entry
+            latest_data_id = list(all_data.keys())[-1]
+            latest_data = all_data[latest_data_id]
+            
+            # Get the actual data
+            df = data_service.get_data(latest_data_id)
+            if df is None or df.empty:
+                logger.warning("Data frame is empty")
+                return 0, 100, [0, 10]
+            
+            # Get sampling frequency from the data info
+            sampling_freq = latest_data.get('info', {}).get('sampling_freq', 1000)
+            
+            max_time = len(df) / sampling_freq
+            logger.info(f"Max time: {max_time}, Sampling freq: {sampling_freq}")
+            
+            return 0, max_time, [0, min(10, max_time)]
+            
+        except Exception as e:
+            logger.error(f"Error updating time slider range: {e}")
+            return 0, 100, [0, 10]
+
+
+    @app.callback(
+        [Output("frequency-plot", "figure"),
+         Output("frequency-stats", "children")],
+        [Input("btn-analyze-frequency", "n_clicks")],
+        [State("store-uploaded-data", "data"),
+         State("store-data-config", "data")]
+    )
+    def analyze_frequency_domain(n_clicks, data_store, config_store):
+        """Analyze frequency domain characteristics of the signal."""
+        if not n_clicks or not data_store or not config_store:
+            raise PreventUpdate
+            
+        try:
+            # Extract data
+            df = pd.DataFrame(data_store["data"])
+            sampling_freq = config_store["sampling_freq"]
+            
+            # Get signal data
+            signal_data = df.iloc[:, 1].values
+            
+            # Compute FFT
+            fft_result = np.fft.fft(signal_data)
+            fft_freq = np.fft.fftfreq(len(signal_data), 1/sampling_freq)
+            
+            # Get positive frequencies only
+            positive_freq_mask = fft_freq > 0
+            fft_freq = fft_freq[positive_freq_mask]
+            fft_magnitude = np.abs(fft_result[positive_freq_mask])
+            
+            # Find dominant frequency
+            dominant_freq_idx = np.argmax(fft_magnitude)
+            dominant_freq = fft_freq[dominant_freq_idx]
+            
+            # Create plot
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=fft_freq,
+                y=fft_magnitude,
+                mode='lines',
+                name='FFT Magnitude',
+                line=dict(color='red')
+            ))
+            
+            fig.update_layout(
+                title="Frequency Domain Analysis",
+                xaxis_title="Frequency (Hz)",
+                yaxis_title="Magnitude",
+                showlegend=True
+            )
+            
+            # Create stats display
+            stats = html.Div([
+                html.H5("Frequency Domain Statistics"),
+                html.P(f"Dominant Frequency: {dominant_freq:.2f} Hz"),
+                html.P(f"Sampling Frequency: {sampling_freq} Hz"),
+                html.P(f"Nyquist Frequency: {sampling_freq/2:.2f} Hz"),
+                html.P(f"Frequency Resolution: {fft_freq[1] - fft_freq[0]:.4f} Hz")
+            ])
+            
+            return fig, stats
+            
+        except Exception as e:
+            logger.error(f"Error in frequency domain analysis: {e}")
+            error_fig = go.Figure()
+            error_fig.add_annotation(
+                text=f"Error: {str(e)}",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False
+            )
+            error_stats = html.Div([
+                html.H5("Error"),
+                html.P(f"Analysis failed: {str(e)}")
+            ])
+            return error_fig, error_stats
+
