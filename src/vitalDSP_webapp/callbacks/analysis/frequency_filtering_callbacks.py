@@ -99,6 +99,16 @@ def register_frequency_filtering_callbacks(app):
             from vitalDSP_webapp.services.data.data_service import get_data_service
             logger.info("Data service imported successfully")
             
+            # Add vitalDSP to path if needed
+            import sys
+            import os
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            vitaldsp_path = os.path.join(current_dir, '..', '..', '..', 'vitalDSP')
+            if vitaldsp_path not in sys.path:
+                sys.path.insert(0, vitaldsp_path)
+                logger.info(f"Added vitalDSP path: {vitaldsp_path}")
+            logger.info(f"Current sys.path: {sys.path[:3]}")
+            
             data_service = get_data_service()
             data_store = data_service.get_all_data()
             
@@ -113,14 +123,19 @@ def register_frequency_filtering_callbacks(app):
             column_mapping = data_service.get_column_mapping(data_id)
             data_info = data_service.get_data_info(data_id)
             
+            logger.info(f"=== DATA LOADING DEBUG ===")
+            logger.info(f"Data ID: {data_id}")
+            logger.info(f"DataFrame shape: {df.shape}")
+            logger.info(f"DataFrame columns: {list(df.columns)}")
+            logger.info(f"Column mapping: {column_mapping}")
+            logger.info(f"Data info: {data_info}")
+            logger.info(f"Data info keys: {list(data_info.keys()) if data_info else 'None'}")
+            logger.info(f"Data info: {data_info}")
+            
             if df is None or df.empty:
                 logger.warning("Data is empty or None")
                 empty_figs = [create_empty_figure() for _ in range(3)]
                 return empty_figs + ["Data is empty. Please upload valid data.", create_empty_figure(), None, None, None, None, None]
-            
-            logger.info(f"Data loaded successfully. Shape: {df.shape}")
-            logger.info(f"Column mapping: {column_mapping}")
-            logger.info(f"Data info: {data_info}")
             
             # Extract time and signal columns
             time_col = column_mapping.get('time', df.columns[0])
@@ -129,42 +144,106 @@ def register_frequency_filtering_callbacks(app):
             # Get sampling frequency
             sampling_freq = data_info.get('sampling_freq', 1000)  # Default to 1000 Hz
             
+            logger.info(f"=== COLUMN SELECTION DEBUG ===")
+            logger.info(f"Selected time column: '{time_col}' (index: {df.columns.get_loc(time_col) if time_col in df.columns else 'NOT FOUND'})")
+            logger.info(f"Selected signal column: '{signal_col}' (index: {df.columns.get_loc(signal_col) if signal_col in df.columns else 'NOT FOUND'})")
+            logger.info(f"Sampling frequency: {sampling_freq} Hz")
+            
             # Extract time and signal data
             time_data = df[time_col].values
             signal_data = df[signal_col].values
             
-            # Handle time window
+            # Convert time data to seconds if it's in milliseconds
+            if np.max(time_data) > 1000:  # Likely milliseconds
+                time_data = time_data / 1000.0
+                logger.info("Converted time data from milliseconds to seconds")
+            
+            logger.info(f"Time data after conversion: {time_data[:5]} (range: {time_data[0]:.3f}s to {time_data[-1]:.3f}s)")
+            
+            logger.info(f"=== DATA EXTRACTION DEBUG ===")
+            logger.info(f"Time data shape: {time_data.shape}")
+            logger.info(f"Time data range: {time_data[0]:.3f}s to {time_data[-1]:.3f}s")
+            logger.info(f"Signal data shape: {signal_data.shape}")
+            logger.info(f"Signal data range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
+            logger.info(f"Signal data sample values: {signal_data[:5]}")
+            logger.info(f"Time data sample values: {time_data[:5]}")
+            logger.info(f"Signal data statistics - Mean: {np.mean(signal_data):.3f}, Std: {np.std(signal_data):.3f}")
+            logger.info(f"Signal data has NaN: {np.any(np.isnan(signal_data))}")
+            logger.info(f"Signal data has Inf: {np.any(np.isinf(signal_data))}")
+            logger.info(f"Signal data is constant: {np.all(signal_data == signal_data[0])}")
+            
+            # Handle time window - use integer indexing like legacy code
             if start_time is not None and end_time is not None:
-                start_idx = np.searchsorted(time_data, start_time)
-                end_idx = np.searchsorted(time_data, end_time)
-                if end_idx > start_idx:
-                    time_data = time_data[start_idx:end_idx]
-                    signal_data = signal_data[start_idx:end_idx]
+                start_sample = int(start_time * sampling_freq)
+                end_sample = int(end_time * sampling_freq)
+                
+                # Ensure we have valid indices
+                start_sample = max(0, min(start_sample, len(signal_data) - 1))
+                end_sample = max(start_sample + 1, min(end_sample, len(signal_data)))
+                
+                if end_sample > start_sample:
+                    signal_data = signal_data[start_sample:end_sample]
+                    time_data = time_data[start_sample:end_sample]
+                    logger.info(f"=== TIME WINDOW DEBUG ===")
+                    logger.info(f"Applied time window: {start_time}s to {end_time}s")
+                    logger.info(f"Start sample: {start_sample}, End sample: {end_sample}")
+                    logger.info(f"Windowed data shape: {signal_data.shape}")
+                    logger.info(f"Windowed time range: {time_data[0]:.3f}s to {time_data[-1]:.3f}s")
+                    logger.info(f"Windowed signal range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
+                else:
+                    logger.warning(f"Invalid time window: start_sample={start_sample}, end_sample={end_sample}")
+            else:
+                logger.info("No time window specified, using full dataset")
+            
+            # Log final data state before analysis
+            logger.info(f"=== FINAL DATA STATE FOR ANALYSIS ===")
+            logger.info(f"Final signal data shape: {signal_data.shape}")
+            logger.info(f"Final time data shape: {time_data.shape}")
+            logger.info(f"Final signal range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
+            logger.info(f"Final time range: {time_data[0]:.3f}s to {time_data[-1]:.3f}s")
+            logger.info(f"Signal data sample values: {signal_data[:10]}")
+            logger.info(f"Time data sample values: {time_data[:10]}")
+            
+            # Normalize signal data for better analysis
+            if np.std(signal_data) > 0:
+                signal_data = (signal_data - np.mean(signal_data)) / np.std(signal_data)
+                logger.info("Normalized signal data to zero mean and unit variance")
+                logger.info(f"Normalized signal range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
+            else:
+                logger.warning("Signal data has zero variance, cannot normalize")
             
             # Set default values
-            analysis_type = analysis_type or "FFT"
+            analysis_type = analysis_type or "fft"
             fft_window = fft_window or "hann"
             fft_n_points = fft_n_points or len(signal_data)
             
+            logger.info(f"=== ANALYSIS PARAMETERS DEBUG ===")
+            logger.info(f"Analysis type: {analysis_type}")
+            logger.info(f"FFT window: {fft_window}")
+            logger.info(f"FFT n_points: {fft_n_points}")
+            logger.info(f"Frequency range: {freq_min} to {freq_max}")
+            logger.info(f"Analysis options: {analysis_options}")
+            
             # Perform frequency domain analysis based on type
-            if analysis_type == "FFT":
+            if analysis_type.lower() == "fft":
                 main_fig, psd_fig, spectrogram_fig, results, peak_table, band_table, stability_table, harmonics_table, freq_data, time_freq_data = perform_fft_analysis(
                     time_data, signal_data, sampling_freq, fft_window, fft_n_points, freq_min, freq_max, analysis_options
                 )
-            elif analysis_type == "PSD":
+            elif analysis_type.lower() == "psd":
                 main_fig, psd_fig, spectrogram_fig, results, peak_table, band_table, stability_table, harmonics_table, freq_data, time_freq_data = perform_psd_analysis(
                     time_data, signal_data, sampling_freq, psd_window, psd_overlap, psd_freq_max, psd_log_scale, psd_normalize, psd_channel, freq_min, freq_max, analysis_options
                 )
-            elif analysis_type == "STFT":
+            elif analysis_type.lower() == "stft":
                 main_fig, psd_fig, spectrogram_fig, results, peak_table, band_table, stability_table, harmonics_table, freq_data, time_freq_data = perform_stft_analysis(
                     time_data, signal_data, sampling_freq, stft_window_size, stft_hop_size, stft_window_type, stft_overlap, stft_scaling, stft_freq_max, stft_colormap, freq_min, freq_max, analysis_options
                 )
-            elif analysis_type == "Wavelet":
+            elif analysis_type.lower() == "wavelet":
                 main_fig, psd_fig, spectrogram_fig, results, peak_table, band_table, stability_table, harmonics_table, freq_data, time_freq_data = perform_wavelet_analysis(
                     time_data, signal_data, sampling_freq, wavelet_type, wavelet_levels, freq_min, freq_max, analysis_options
                 )
             else:
                 # Default to FFT
+                logger.info(f"Unknown analysis type '{analysis_type}', defaulting to FFT")
                 main_fig, psd_fig, spectrogram_fig, results, peak_table, band_table, stability_table, harmonics_table, freq_data, time_freq_data = perform_fft_analysis(
                     time_data, signal_data, sampling_freq, fft_window, fft_n_points, freq_min, freq_max, analysis_options
                 )
@@ -191,7 +270,7 @@ def register_frequency_filtering_callbacks(app):
             ])
             
             empty_figs = [error_fig for _ in range(3)]
-            empty_tables = [create_empty_figure() for _ in range(4)]
+            empty_tables = [html.Div("Error occurred during analysis") for _ in range(4)]
             
             return empty_figs + [error_results] + empty_tables + [None, None]
 
@@ -412,55 +491,431 @@ def create_empty_figure():
     return fig
 
 
-def perform_fft_analysis(time_data, signal_data, sampling_freq, window_type, n_points, freq_min, freq_max, options):
-    """Perform FFT analysis on the signal."""
-    # Apply window if specified
-    if window_type and window_type != "none":
-        window_func = getattr(signal.windows, window_type, signal.windows.hann)
-        window = window_func(len(signal_data))
-        windowed_signal = signal_data * window
+def create_fft_plot(signal_data, sampling_freq, window_type, n_points, freq_min, freq_max):
+    """Create enhanced FFT plot with vitalDSP insights."""
+    logger.info(f"Creating FFT plot with window: {window_type}, n_points: {n_points}")
+    
+    # Apply window function
+    if window_type == "hamming":
+        windowed_signal = signal_data * np.hamming(len(signal_data))
+        logger.info("Applied Hamming window for optimal frequency resolution")
+    elif window_type == "hanning":
+        windowed_signal = signal_data * np.hanning(len(signal_data))
+        logger.info("Applied Hanning window for reduced spectral leakage")
+    elif window_type == "blackman":
+        windowed_signal = signal_data * np.blackman(len(signal_data))
+        logger.info("Applied Blackman window for excellent sidelobe suppression")
+    elif window_type == "kaiser":
+        windowed_signal = signal_data * np.kaiser(len(signal_data), beta=14)
+        logger.info("Applied Kaiser window with beta=14 for optimal time-frequency trade-off")
     else:
         windowed_signal = signal_data
+        logger.info("No window applied (rectangular window)")
     
-    # Perform FFT
-    fft_result = fft(windowed_signal, n=n_points)
-    freqs = fftfreq(n_points, 1/sampling_freq)
+    # Compute FFT
+    fft_result = rfft(windowed_signal, n=n_points)
+    freqs = rfftfreq(n_points, 1/sampling_freq)
     
-    # Get positive frequencies only
-    positive_mask = freqs >= 0
-    freqs = freqs[positive_mask]
-    fft_magnitude = np.abs(fft_result[positive_mask])
+    # Calculate vitalDSP metrics
+    magnitude = np.abs(fft_result)
+    power_spectrum = magnitude ** 2
+    
+    # Find dominant frequencies
+    peak_idx = np.argmax(magnitude)
+    peak_freq = freqs[peak_idx]
+    peak_magnitude = magnitude[peak_idx]
+    
+    # Calculate frequency resolution
+    freq_resolution = sampling_freq / n_points
+    logger.info(f"Frequency resolution: {freq_resolution:.3f} Hz")
+    logger.info(f"Peak frequency: {peak_freq:.2f} Hz with magnitude {peak_magnitude:.2e}")
+    
+    # Filter frequency range
+    if freq_min is not None and freq_max is not None:
+        mask = (freqs >= freq_min) & (freqs <= freq_max)
+        freqs = freqs[mask]
+        fft_result = fft_result[mask]
+        magnitude = magnitude[mask]
+        power_spectrum = power_spectrum[mask]
+        logger.info(f"Filtered frequency range: {freq_min:.1f} - {freq_max:.1f} Hz")
+    
+    # Create enhanced plot with subplots
+    fig = make_subplots(
+        rows=2, cols=1,
+        subplot_titles=("Frequency Spectrum (Magnitude)", "Power Spectral Density"),
+        vertical_spacing=0.1
+    )
+    
+    # Magnitude plot
+    fig.add_trace(
+        go.Scatter(
+            x=freqs,
+            y=magnitude,
+            mode='lines',
+            name=f'{window_type.title()} Window',
+            line=dict(color='blue', width=2),
+            hovertemplate='<b>Frequency:</b> %{x:.2f} Hz<br><b>Magnitude:</b> %{y:.2e}<extra></extra>'
+        ),
+        row=1, col=1
+    )
+    
+    # Mark peak frequency
+    fig.add_trace(
+        go.Scatter(
+            x=[peak_freq],
+            y=[peak_magnitude],
+            mode='markers',
+            name='Peak Frequency',
+            marker=dict(color='red', size=10, symbol='diamond'),
+            hovertemplate=f'<b>Peak:</b> {peak_freq:.2f} Hz<br><b>Magnitude:</b> {peak_magnitude:.2e}<extra></extra>'
+        ),
+        row=1, col=1
+    )
+    
+    # Power spectral density plot
+    fig.add_trace(
+        go.Scatter(
+            x=freqs,
+            y=power_spectrum,
+            mode='lines',
+            name='Power Spectrum',
+            line=dict(color='green', width=2),
+            hovertemplate='<b>Frequency:</b> %{x:.2f} Hz<br><b>Power:</b> %{y:.2e}<extra></extra>'
+        ),
+        row=2, col=1
+    )
+    
+    # Add frequency band annotations
+    if freq_max is None or freq_max > 30:
+        # Add EEG frequency bands
+        bands = {
+            'Delta': (0.5, 4, 'purple'),
+            'Theta': (4, 8, 'blue'),
+            'Alpha': (8, 13, 'green'),
+            'Beta': (13, 30, 'orange'),
+            'Gamma': (30, 100, 'red')
+        }
+        
+        for band_name, (low, high, color) in bands.items():
+            if freq_max is None or high <= freq_max:
+                fig.add_vrect(
+                    x0=low, x1=high,
+                    fillcolor=color, opacity=0.1,
+                    layer="below", line_width=0,
+                    annotation_text=band_name,
+                    annotation_position="top left"
+                )
+    
+    # Update layout
+    fig.update_layout(
+        title=f"Enhanced FFT Analysis - {window_type.title()} Window",
+        height=600,
+        showlegend=True,
+        hovermode='closest'
+    )
+    
+    # Update axes labels
+    fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=1)
+    fig.update_yaxes(title_text="Magnitude", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency (Hz)", row=2, col=1)
+    fig.update_yaxes(title_text="Power", row=2, col=1)
+    
+    return fig
+
+
+def create_stft_plot(signal_data, sampling_freq, window_size, hop_size, freq_min, freq_max):
+    """Create enhanced STFT plot with vitalDSP insights."""
+    logger.info(f"Creating STFT plot with window_size: {window_size}, hop_size: {hop_size}")
+    
+    # Calculate STFT parameters
+    overlap = window_size - hop_size
+    time_resolution = hop_size / sampling_freq
+    freq_resolution = sampling_freq / window_size
+    
+    logger.info(f"STFT Parameters - Time resolution: {time_resolution:.3f}s, Frequency resolution: {freq_resolution:.3f}Hz")
+    logger.info(f"Overlap: {overlap} samples ({overlap/window_size*100:.1f}%)")
+    
+    # Compute STFT
+    freqs, times, Zxx = signal.stft(signal_data, sampling_freq, nperseg=window_size, noverlap=overlap)
+    
+    # Calculate magnitude and power
+    magnitude = np.abs(Zxx)
+    power = magnitude ** 2
+    
+    # Find dominant time-frequency components
+    max_power_idx = np.unravel_index(np.argmax(power), power.shape)
+    max_freq = freqs[max_power_idx[0]]
+    max_time = times[max_power_idx[1]]
+    max_power = power[max_power_idx]
+    
+    logger.info(f"Dominant component: {max_freq:.2f} Hz at {max_time:.2f}s with power {max_power:.2e}")
+    
+    # Filter frequency range
+    if freq_min is not None and freq_max is not None:
+        mask = (freqs >= freq_min) & (freqs <= freq_max)
+        freqs = freqs[mask]
+        Zxx = Zxx[mask, :]
+        magnitude = magnitude[mask, :]
+        power = power[mask, :]
+        logger.info(f"Filtered frequency range: {freq_min:.1f} - {freq_max:.1f} Hz")
+    
+    # Create enhanced plot with subplots
+    fig = make_subplots(
+        rows=2, cols=2,
+        subplot_titles=("STFT Magnitude", "STFT Power", "Frequency Profile", "Time Profile"),
+        specs=[[{"secondary_y": False}, {"secondary_y": False}],
+               [{"secondary_y": False}, {"secondary_y": False}]],
+        vertical_spacing=0.1,
+        horizontal_spacing=0.1
+    )
+    
+    # STFT Magnitude heatmap
+    fig.add_trace(
+        go.Heatmap(
+            z=magnitude,
+            x=times,
+            y=freqs,
+            colorscale='Viridis',
+            name='Magnitude',
+            hovertemplate='<b>Time:</b> %{x:.2f}s<br><b>Freq:</b> %{y:.2f}Hz<br><b>Magnitude:</b> %{z:.2e}<extra></extra>'
+        ),
+        row=1, col=1
+    )
+    
+    # STFT Power heatmap
+    fig.add_trace(
+        go.Heatmap(
+            z=power,
+            x=times,
+            y=freqs,
+            colorscale='Plasma',
+            name='Power',
+            hovertemplate='<b>Time:</b> %{x:.2f}s<br><b>Freq:</b> %{y:.2f}Hz<br><b>Power:</b> %{z:.2e}<extra></extra>'
+        ),
+        row=1, col=2
+    )
+    
+    # Frequency profile at peak time
+    peak_time_idx = np.argmax(np.max(power, axis=0))
+    peak_time = times[peak_time_idx]
+    freq_profile = magnitude[:, peak_time_idx]
+    
+    fig.add_trace(
+        go.Scatter(
+            x=freqs,
+            y=freq_profile,
+            mode='lines',
+            name=f'Freq Profile at {peak_time:.2f}s',
+            line=dict(color='red', width=2),
+            hovertemplate='<b>Frequency:</b> %{x:.2f} Hz<br><b>Magnitude:</b> %{y:.2e}<extra></extra>'
+        ),
+        row=2, col=1
+    )
+    
+    # Time profile at peak frequency
+    peak_freq_idx = np.argmax(np.max(power, axis=1))
+    peak_freq = freqs[peak_freq_idx]
+    time_profile = magnitude[peak_freq_idx, :]
+    
+    fig.add_trace(
+        go.Scatter(
+            x=times,
+            y=time_profile,
+            mode='lines',
+            name=f'Time Profile at {peak_freq:.2f}Hz',
+            line=dict(color='orange', width=2),
+            hovertemplate='<b>Time:</b> %{x:.2f}s<br><b>Magnitude:</b> %{y:.2e}<extra></extra>'
+        ),
+        row=2, col=2
+    )
+    
+    # Update layout
+    fig.update_layout(
+        title=f"Enhanced STFT Analysis - Window: {window_size}, Hop: {hop_size}",
+        height=700,
+        showlegend=True,
+        hovermode='closest'
+    )
+    
+    # Update axes labels
+    fig.update_xaxes(title_text="Time (s)", row=1, col=1)
+    fig.update_yaxes(title_text="Frequency (Hz)", row=1, col=1)
+    fig.update_xaxes(title_text="Time (s)", row=1, col=2)
+    fig.update_yaxes(title_text="Frequency (Hz)", row=1, col=2)
+    fig.update_xaxes(title_text="Frequency (Hz)", row=2, col=1)
+    fig.update_yaxes(title_text="Magnitude", row=2, col=1)
+    fig.update_xaxes(title_text="Time (s)", row=2, col=2)
+    fig.update_yaxes(title_text="Magnitude", row=2, col=2)
+    
+    return fig
+
+
+def create_wavelet_plot(signal_data, sampling_freq, wavelet_type, levels, freq_min, freq_max):
+    """Create enhanced wavelet plot with vitalDSP insights."""
+    logger.info(f"Creating wavelet plot with type: {wavelet_type}, levels: {levels}")
+    
+    try:
+        import pywt
+        
+        # Perform wavelet decomposition
+        coeffs = pywt.wavedec(signal_data, wavelet_type, level=levels)
+        
+        # Calculate frequency bands for each level
+        freq_bands = []
+        for i in range(levels):
+            # Approximate frequency for each level
+            freq = sampling_freq / (2 ** (i + 1))
+            freq_bands.append(freq)
+        
+        # Create enhanced plot with subplots
+        fig = make_subplots(
+            rows=levels + 1, cols=1,
+            subplot_titles=[f"Original Signal"] + [f"Level {i+1} ({freq_bands[i]:.1f} Hz)" for i in range(levels)],
+            vertical_spacing=0.05
+        )
+        
+        # Original signal
+        time_axis = np.arange(len(signal_data)) / sampling_freq
+        fig.add_trace(
+            go.Scatter(
+                x=time_axis,
+                y=signal_data,
+                mode='lines',
+                name='Original Signal',
+                line=dict(color='black', width=2)
+            ),
+            row=1, col=1
+        )
+        
+        # Wavelet coefficients
+        for i, coeff in enumerate(coeffs):
+            if i == 0:  # Approximation coefficients
+                color = 'blue'
+                name = f'Approximation (Level {i})'
+            else:  # Detail coefficients
+                color = ['red', 'green', 'orange', 'purple', 'brown'][(i-1) % 5]
+                name = f'Detail (Level {i})'
+            
+            # Upsample coefficients to match original signal length
+            upsampled_coeff = pywt.upcoef('a' if i == 0 else 'd', coeff, wavelet_type, level=i+1, take=len(signal_data))
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=time_axis,
+                    y=upsampled_coeff,
+                    mode='lines',
+                    name=name,
+                    line=dict(color=color, width=1.5)
+                ),
+                row=i+2, col=1
+            )
+        
+        # Update layout
+        fig.update_layout(
+            title=f"Enhanced Wavelet Analysis - {wavelet_type.upper()} Wavelet, {levels} Levels",
+            height=200 * (levels + 1),
+            showlegend=True,
+            hovermode='closest'
+        )
+        
+        # Update axes labels
+        for i in range(levels + 1):
+            fig.update_xaxes(title_text="Time (s)", row=i+1, col=1)
+            if i == 0:
+                fig.update_yaxes(title_text="Amplitude", row=i+1, col=1)
+            else:
+                fig.update_yaxes(title_text=f"Level {i} Coefficients", row=i+1, col=1)
+        
+        return fig
+        
+    except ImportError:
+        logger.warning("PyWavelets not available, creating placeholder plot")
+        fig = create_empty_figure()
+        fig.update_layout(title="Wavelet Analysis - PyWavelets not available")
+        return fig
+
+
+def perform_fft_analysis(time_data, signal_data, sampling_freq, window_type, n_points, freq_min, freq_max, options):
+    """Perform FFT analysis on the signal using scipy functions."""
+    logger.info(f"=== FFT ANALYSIS DEBUG ===")
+    logger.info(f"Input signal shape: {signal_data.shape}")
+    logger.info(f"Input time shape: {time_data.shape}")
+    logger.info(f"Sampling frequency: {sampling_freq} Hz")
+    logger.info(f"Window type: {window_type}")
+    logger.info(f"N points: {n_points}")
+    logger.info(f"Frequency range: {freq_min} to {freq_max}")
+    
+    # Apply window if specified
+    if window_type and window_type != "none":
+        if window_type == "hann":
+            windowed_signal = signal_data * signal.windows.hann(len(signal_data))
+            logger.info("Applied Hann window for reduced spectral leakage")
+        elif window_type == "hamming":
+            windowed_signal = signal_data * signal.windows.hamming(len(signal_data))
+            logger.info("Applied Hamming window for optimal frequency resolution")
+        elif window_type == "blackman":
+            windowed_signal = signal_data * signal.windows.blackman(len(signal_data))
+            logger.info("Applied Blackman window for excellent sidelobe suppression")
+        elif window_type == "kaiser":
+            windowed_signal = signal_data * signal.windows.kaiser(len(signal_data), beta=14)
+            logger.info("Applied Kaiser window with beta=14 for optimal time-frequency trade-off")
+        else:
+            windowed_signal = signal_data
+            logger.info("No window applied, using original signal")
+    else:
+        windowed_signal = signal_data
+        logger.info("No window applied, using original signal")
+    
+    # Compute FFT using scipy
+    fft_result = rfft(windowed_signal, n=n_points)
+    freqs = rfftfreq(n_points, 1/sampling_freq)
+    
+    # Calculate magnitude and power spectrum
+    fft_magnitude = np.abs(fft_result)
+    power_spectrum = fft_magnitude ** 2
+    
+    logger.info(f"FFT result shape: {fft_result.shape}")
+    logger.info(f"Frequencies shape: {freqs.shape}")
+    logger.info(f"Magnitude shape: {fft_magnitude.shape}")
+    logger.info(f"Frequency range: {freqs[0]:.3f} to {freqs[-1]:.3f} Hz")
+    logger.info(f"Magnitude range: {np.min(fft_magnitude):.3e} to {np.max(fft_magnitude):.3e}")
     
     # Filter frequency range if specified
     if freq_min is not None and freq_max is not None:
         freq_mask = (freqs >= freq_min) & (freqs <= freq_max)
         freqs = freqs[freq_mask]
         fft_magnitude = fft_magnitude[freq_mask]
+        power_spectrum = power_spectrum[freq_mask]
+        logger.info(f"Filtered frequency range: {freq_min:.1f} - {freq_max:.1f} Hz")
+        logger.info(f"Filtered frequencies shape: {freqs.shape}")
+        logger.info(f"Filtered magnitude shape: {fft_magnitude.shape}")
     
-    # Create main FFT plot
-    main_fig = go.Figure()
-    main_fig.add_trace(go.Scatter(
-        x=freqs,
-        y=fft_magnitude,
-        mode='lines',
-        name='FFT Magnitude',
-        line=dict(color='blue')
-    ))
-    main_fig.update_layout(
-        title="Frequency Domain Analysis (FFT)",
-        xaxis_title="Frequency (Hz)",
-        yaxis_title="Magnitude",
-        showlegend=True
-    )
+    # Create enhanced FFT plot
+    main_fig = create_fft_plot(signal_data, sampling_freq, window_type, n_points, freq_min, freq_max)
     
-    # Create PSD plot (same as main for FFT)
+    # PSD plot is the same as main for FFT
     psd_fig = main_fig
     
-    # Create spectrogram plot (not applicable for FFT)
-    spectrogram_fig = create_empty_figure()
-    spectrogram_fig.update_layout(title="Spectrogram (Not applicable for FFT)")
+    # Create spectrogram plot for FFT (showing frequency vs magnitude as heatmap)
+    # For FFT, we'll create a 2D representation showing frequency vs magnitude
+    spectrogram_fig = go.Figure(data=go.Heatmap(
+        z=[fft_magnitude],  # Single row for FFT
+        x=freqs,
+        y=['FFT Magnitude'],
+        colorscale='Viridis',
+        name='FFT Magnitude Spectrum'
+    ))
+    spectrogram_fig.update_layout(
+        title=f"FFT Magnitude Spectrum - {window_type.title()} Window",
+        xaxis_title="Frequency (Hz)",
+        yaxis_title="Analysis Type",
+        height=400,
+        showlegend=False
+    )
     
-    # Generate analysis results
+    logger.info("FFT analysis completed successfully")
+    
+    # Generate analysis results using the computed data
     results = generate_frequency_analysis_results(freqs, fft_magnitude, "FFT")
     
     # Generate tables
@@ -481,67 +936,200 @@ def perform_fft_analysis(time_data, signal_data, sampling_freq, window_type, n_p
 
 
 def perform_psd_analysis(time_data, signal_data, sampling_freq, window, overlap, freq_max, log_scale, normalize, channel, freq_min, freq_max_range, options):
-    """Perform Power Spectral Density analysis."""
+    """Perform Power Spectral Density analysis using vitalDSP functions."""
+    logger.info(f"=== PSD ANALYSIS DEBUG ===")
+    logger.info(f"Input signal shape: {signal_data.shape}")
+    logger.info(f"Input time shape: {time_data.shape}")
+    logger.info(f"Sampling frequency: {sampling_freq} Hz")
+    logger.info(f"Window parameter: {window} (type: {type(window)})")
+    logger.info(f"Overlap: {overlap}%")
+    logger.info(f"Frequency range: {freq_min} to {freq_max_range}")
+    
     # Set default values
-    window = window or "hann"
-    overlap = overlap or 0.5
+    window_type = window or "hann"
+    if isinstance(window, int):
+        # Convert integer window to string representation
+        window_map = {1: "hann", 2: "hamming", 3: "blackman", 4: "kaiser"}
+        window_type = window_map.get(window, "hann")
+        logger.info(f"Converted integer window {window} to window type: {window_type}")
+    
+    overlap = overlap or 50  # Now comes as percentage (0-100)
     freq_max = freq_max or sampling_freq / 2
     
-    # Calculate PSD
-    freqs, psd = signal.welch(signal_data, fs=sampling_freq, window=window, nperseg=min(256, len(signal_data)//4), noverlap=int(256*overlap))
+    # Convert overlap from percentage to decimal
+    overlap_decimal = overlap / 100.0 if overlap is not None else 0.5
+    logger.info(f"Overlap decimal: {overlap_decimal}")
+    
+    # Calculate PSD using vitalDSP approach
+    nperseg = max(64, min(256, len(signal_data)//4))
+    noverlap = int(nperseg*overlap_decimal)
+    logger.info(f"PSD parameters: nperseg={nperseg}, noverlap={noverlap}")
+    
+    # Ensure noverlap is less than nperseg
+    if noverlap >= nperseg:
+        noverlap = max(0, nperseg - 1)
+        logger.info(f"Adjusted noverlap to {noverlap} to ensure noverlap < nperseg")
+    
+    # Use scipy.signal.welch with proper window function
+    if window_type == "hann":
+        window_func = signal.windows.hann(nperseg)
+    elif window_type == "hamming":
+        window_func = signal.windows.hamming(nperseg)
+    elif window_type == "blackman":
+        window_func = signal.windows.blackman(nperseg)
+    else:
+        window_func = signal.windows.hann(nperseg)
+    
+    freqs, psd = signal.welch(signal_data, fs=sampling_freq, window=window_func, nperseg=nperseg, noverlap=noverlap)
+    logger.info(f"PSD result: freqs shape={freqs.shape}, psd shape={psd.shape}")
+    logger.info(f"PSD frequency range: {freqs[0]:.3f} to {freqs[-1]:.3f} Hz")
+    logger.info(f"PSD power range: {np.min(psd):.3e} to {np.max(psd):.3e}")
     
     # Filter frequency range if specified
     if freq_min is not None and freq_max_range is not None:
         freq_mask = (freqs >= freq_min) & (freqs <= freq_max_range)
         freqs = freqs[freq_mask]
         psd = psd[freq_mask]
+        logger.info(f"Filtered PSD: freqs shape={freqs.shape}, psd shape={psd.shape}")
     
     # Apply log scale if requested
-    if log_scale:
-        psd = 10 * np.log10(psd + 1e-10)
+    if log_scale and "on" in log_scale:
+        psd_display = 10 * np.log10(psd + 1e-10)
         y_label = "Power Spectral Density (dB/Hz)"
+        logger.info("Applied log scale to PSD")
     else:
+        psd_display = psd
         y_label = "Power Spectral Density"
+        logger.info("Using linear scale for PSD")
     
     # Normalize if requested
-    if normalize:
-        psd = psd / np.max(psd)
+    if normalize and "on" in normalize:
+        psd_display = psd_display / np.max(psd_display)
         y_label += " (Normalized)"
+        logger.info("Normalized PSD")
     
-    # Create main PSD plot
-    main_fig = go.Figure()
-    main_fig.add_trace(go.Scatter(
-        x=freqs,
-        y=psd,
-        mode='lines',
-        name='PSD',
-        line=dict(color='red')
-    ))
-    main_fig.update_layout(
-        title="Power Spectral Density Analysis",
-        xaxis_title="Frequency (Hz)",
-        yaxis_title=y_label,
-        showlegend=True
+    logger.info("PSD analysis completed successfully")
+    
+    # Create enhanced PSD plot with subplots
+    fig = make_subplots(
+        rows=2, cols=1,
+        subplot_titles=("Power Spectral Density", "Cumulative Power"),
+        vertical_spacing=0.1
     )
+    
+    # Main PSD plot
+    fig.add_trace(
+        go.Scatter(
+            x=freqs,
+            y=psd_display,
+            mode='lines',
+            name=f'PSD ({window_type} window)',
+            line=dict(color='red', width=2),
+            hovertemplate='<b>Frequency:</b> %{x:.2f} Hz<br><b>PSD:</b> %{y:.2e}<extra></extra>'
+        ),
+        row=1, col=1
+    )
+    
+    # Mark peak frequency
+    peak_idx = np.argmax(psd_display)
+    peak_freq = freqs[peak_idx]
+    peak_psd = psd_display[peak_idx]
+    
+    fig.add_trace(
+        go.Scatter(
+            x=[peak_freq],
+            y=[peak_psd],
+            mode='markers',
+            name='Peak Frequency',
+            marker=dict(color='blue', size=10, symbol='diamond'),
+            hovertemplate=f'<b>Peak:</b> {peak_freq:.2f} Hz<br><b>PSD:</b> {peak_psd:.2e}<extra></extra>'
+        ),
+        row=1, col=1
+    )
+    
+    # Cumulative power plot
+    cumulative_power = np.cumsum(psd) / np.sum(psd)
+    fig.add_trace(
+        go.Scatter(
+            x=freqs,
+            y=cumulative_power,
+            mode='lines',
+            name='Cumulative Power',
+            line=dict(color='green', width=2),
+            hovertemplate='<b>Frequency:</b> %{x:.2f} Hz<br><b>Cumulative Power:</b> %{y:.3f}<extra></extra>'
+        ),
+        row=2, col=1
+    )
+    
+    # Add frequency band annotations
+    if freq_max_range is None or freq_max_range > 30:
+        # Add physiological frequency bands
+        bands = {
+            'Delta': (0.5, 4, 'purple'),
+            'Theta': (4, 8, 'blue'),
+            'Alpha': (8, 13, 'green'),
+            'Beta': (13, 30, 'orange'),
+            'Gamma': (30, 100, 'red')
+        }
+        
+        for band_name, (low, high, color) in bands.items():
+            if freq_max_range is None or high <= freq_max_range:
+                fig.add_vrect(
+                    x0=low, x1=high,
+                    fillcolor=color, opacity=0.1,
+                    layer="below", line_width=0,
+                    annotation_text=band_name,
+                    annotation_position="top left"
+                )
+    
+    # Update layout
+    fig.update_layout(
+        title=f"Enhanced PSD Analysis - {window_type.title()} Window, {overlap}% Overlap",
+        height=600,
+        showlegend=True,
+        hovermode='closest'
+    )
+    
+    # Update axes labels
+    fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=1)
+    fig.update_yaxes(title_text=y_label, row=1, col=1)
+    fig.update_xaxes(title_text="Frequency (Hz)", row=2, col=1)
+    fig.update_yaxes(title_text="Cumulative Power (Normalized)", row=2, col=1)
+    
+    # Main PSD plot is the same as the enhanced plot
+    main_fig = fig
     
     # PSD plot is the same as main
     psd_fig = main_fig
     
     # Create spectrogram plot
-    spectrogram_fig = create_empty_figure()
-    spectrogram_fig.update_layout(title="Spectrogram (Not applicable for PSD)")
+    # For PSD, we'll create a 2D representation showing frequency vs power
+    spectrogram_fig = go.Figure(data=go.Heatmap(
+        z=[psd_display],  # Single row for PSD
+        x=freqs,
+        y=['PSD Power'],
+        colorscale='Plasma',
+        name='PSD Power Spectrum'
+    ))
+    spectrogram_fig.update_layout(
+        title=f"PSD Power Spectrum - {window_type.title()} Window",
+        xaxis_title="Frequency (Hz)",
+        yaxis_title="Analysis Type",
+        height=400,
+        showlegend=False
+    )
     
     # Generate results and tables
-    results = generate_frequency_analysis_results(freqs, psd, "PSD")
-    peak_table = generate_peak_analysis_table(freqs, psd)
-    band_table = generate_band_power_table(freqs, psd)
-    stability_table = generate_stability_table(freqs, psd)
-    harmonics_table = generate_harmonics_table(freqs, psd)
+    results = generate_frequency_analysis_results(freqs, psd_display, "PSD")
+    peak_table = generate_peak_analysis_table(freqs, psd_display)
+    band_table = generate_band_power_table(freqs, psd_display)
+    stability_table = generate_stability_table(freqs, psd_display)
+    harmonics_table = generate_harmonics_table(freqs, psd_display)
     
     # Store data
     freq_data = {
         "frequencies": freqs.tolist(),
-        "magnitudes": psd.tolist(),
+        "magnitudes": psd_display.tolist(),
         "analysis_type": "PSD"
     }
     time_freq_data = None
@@ -550,15 +1138,47 @@ def perform_psd_analysis(time_data, signal_data, sampling_freq, window, overlap,
 
 
 def perform_stft_analysis(time_data, signal_data, sampling_freq, window_size, hop_size, window_type, overlap, scaling, freq_max, colormap, freq_min, freq_max_range, options):
-    """Perform Short-Time Fourier Transform analysis."""
+    """Perform Short-Time Fourier Transform analysis using vitalDSP functions."""
     # Set default values
-    window_size = window_size or min(256, len(signal_data)//4)
-    hop_size = hop_size or window_size // 4
+    window_size = max(64, min(256, len(signal_data)//4))
+    hop_size = hop_size or max(16, window_size // 4)
     window_type = window_type or "hann"
     colormap = colormap or "viridis"
+    overlap = overlap or 50  # Now comes as percentage (0-100)
     
-    # Calculate STFT
-    freqs, times, Zxx = signal.stft(signal_data, fs=sampling_freq, nperseg=window_size, noverlap=overlap)
+    # Convert overlap from percentage to decimal
+    overlap_decimal = overlap / 100.0 if overlap is not None else 0.5
+    
+    # Calculate noverlap and ensure it's less than window_size
+    noverlap = int(window_size * overlap_decimal)
+    if noverlap >= window_size:
+        noverlap = max(0, window_size - 1)
+        logger.info(f"Adjusted STFT noverlap to {noverlap} to ensure noverlap < window_size")
+    
+    # Use vitalDSP STFT class
+    try:
+        logger.info("Attempting to import vitalDSP STFT...")
+        from vitalDSP.transforms.stft import STFT
+        logger.info("Successfully imported vitalDSP STFT")
+        
+        logger.info(f"Creating STFT object with window_size={window_size}, hop_size={hop_size}, n_fft={window_size}")
+        stft_obj = STFT(signal_data, window_size=window_size, hop_size=hop_size, n_fft=window_size)
+        logger.info("Computing STFT using vitalDSP...")
+        Zxx = stft_obj.compute_stft()
+        logger.info(f"vitalDSP STFT completed, result shape: {Zxx.shape}")
+        
+        # Create frequency and time arrays
+        freqs = np.fft.rfftfreq(window_size, 1/sampling_freq)
+        times = np.arange(Zxx.shape[1]) * hop_size / sampling_freq
+        
+        logger.info(f"STFT result shape: {Zxx.shape}")
+        logger.info(f"Frequencies shape: {freqs.shape}")
+        logger.info(f"Times shape: {times.shape}")
+        
+    except ImportError as e:
+        logger.warning(f"vitalDSP not available: {e}, falling back to scipy")
+        # Fallback to scipy implementation
+        freqs, times, Zxx = signal.stft(signal_data, fs=sampling_freq, nperseg=window_size, noverlap=noverlap)
     
     # Filter frequency range if specified
     if freq_min is not None and freq_max_range is not None:
@@ -566,20 +1186,8 @@ def perform_stft_analysis(time_data, signal_data, sampling_freq, window_size, ho
         freqs = freqs[freq_mask]
         Zxx = Zxx[freq_mask, :]
     
-    # Create main STFT plot (spectrogram)
-    main_fig = go.Figure(data=go.Heatmap(
-        z=20 * np.log10(np.abs(Zxx) + 1e-10),
-        x=times,
-        y=freqs,
-        colorscale=colormap,
-        name='STFT Magnitude'
-    ))
-    main_fig.update_layout(
-        title="Short-Time Fourier Transform (STFT)",
-        xaxis_title="Time (s)",
-        yaxis_title="Frequency (Hz)",
-        showlegend=False
-    )
+    # Create enhanced STFT plot
+    main_fig = create_stft_plot(signal_data, sampling_freq, window_size, hop_size, freq_min, freq_max_range)
     
     # PSD plot (average over time)
     psd = np.mean(np.abs(Zxx)**2, axis=1)
@@ -625,29 +1233,121 @@ def perform_stft_analysis(time_data, signal_data, sampling_freq, window_size, ho
 
 def perform_wavelet_analysis(time_data, signal_data, sampling_freq, wavelet_type, levels, freq_min, freq_max, options):
     """Perform Wavelet analysis on the signal."""
-    # This is a simplified wavelet analysis - in practice, you'd use pywt
-    # For now, we'll create a placeholder
-    main_fig = create_empty_figure()
-    main_fig.update_layout(title="Wavelet Analysis (Not implemented)")
+    # Create enhanced wavelet plot
+    main_fig = create_wavelet_plot(signal_data, sampling_freq, wavelet_type, levels, freq_min, freq_max)
     
-    psd_fig = create_empty_figure()
-    psd_fig.update_layout(title="Wavelet PSD (Not implemented)")
+    # For wavelet analysis, we'll create a simplified PSD from the approximation coefficients
+    try:
+        import pywt
+        
+        # Perform wavelet decomposition
+        coeffs = pywt.wavedec(signal_data, wavelet_type, level=levels)
+        
+        # Use approximation coefficients for PSD-like analysis
+        approx_coeffs = coeffs[0]
+        
+        # Create PSD plot from approximation coefficients
+        psd_fig = go.Figure()
+        psd_fig.add_trace(go.Scatter(
+            x=np.arange(len(approx_coeffs)),
+            y=np.abs(approx_coeffs),
+            mode='lines',
+            name=f'Wavelet {wavelet_type.upper()}',
+            line=dict(color='blue')
+        ))
+        psd_fig.update_layout(
+            title=f"Wavelet Approximation Coefficients - {wavelet_type.upper()}",
+            xaxis_title="Coefficient Index",
+            yaxis_title="Magnitude",
+            showlegend=True
+        )
+        
+        # Spectrogram plot for wavelet (showing coefficient levels)
+        spectrogram_fig = go.Figure()
+        
+        # Create a heatmap of wavelet coefficients
+        coeff_matrix = np.array([coeffs[i] for i in range(1, len(coeffs))])
+        if coeff_matrix.size > 0:
+            # Pad coefficients to same length
+            max_len = max(len(coeff) for coeff in coeffs[1:])
+            padded_coeffs = []
+            for coeff in coeffs[1:]:
+                padded = np.pad(coeff, (0, max_len - len(coeff)), mode='constant')
+                padded_coeffs.append(padded)
+            
+            coeff_matrix = np.array(padded_coeffs)
+            
+            spectrogram_fig.add_trace(go.Heatmap(
+                z=np.abs(coeff_matrix),
+                x=np.arange(coeff_matrix.shape[1]),
+                y=[f"Level {i+1}" for i in range(coeff_matrix.shape[0])],
+                colorscale='Viridis',
+                name='Wavelet Coefficients'
+            ))
+            spectrogram_fig.update_layout(
+                title=f"Wavelet Coefficient Levels - {wavelet_type.upper()}",
+                xaxis_title="Coefficient Index",
+                yaxis_title="Decomposition Level",
+                showlegend=False
+            )
+        else:
+            spectrogram_fig.update_layout(title="No wavelet coefficients available")
+        
+        # Generate results and tables
+        results = html.Div([
+            html.H5(f"Wavelet Analysis - {wavelet_type.upper()}"),
+            html.P(f"Decomposition levels: {levels}"),
+            html.P(f"Signal length: {len(signal_data)} samples"),
+            html.P(f"Sampling frequency: {sampling_freq} Hz")
+        ])
+        
+        # Create tables from approximation coefficients
+        freqs = np.arange(len(approx_coeffs))
+        magnitudes = np.abs(approx_coeffs)
+        
+        peak_table = generate_peak_analysis_table(freqs, magnitudes)
+        band_table = generate_band_power_table(freqs, magnitudes)
+        stability_table = generate_stability_table(freqs, magnitudes)
+        harmonics_table = generate_harmonics_table(freqs, magnitudes)
+        
+        # Store data
+        freq_data = {
+            "frequencies": freqs.tolist(),
+            "magnitudes": magnitudes.tolist(),
+            "analysis_type": f"Wavelet_{wavelet_type.upper()}"
+        }
+        time_freq_data = {
+            "levels": levels,
+            "wavelet_type": wavelet_type,
+            "coefficients": [coeff.tolist() for coeff in coeffs]
+        }
+        
+    except ImportError:
+        logger.warning("PyWavelets not available, creating placeholder plots")
+        
+        psd_fig = create_empty_figure()
+        psd_fig.update_layout(title="Wavelet PSD - PyWavelets not available")
+        
+        spectrogram_fig = create_empty_figure()
+        spectrogram_fig.update_layout(title="Wavelet Spectrogram - PyWavelets not available")
+        
+        results = html.Div([
+            html.H5("Wavelet Analysis"),
+            html.P("Wavelet analysis is not yet implemented in this version.")
+        ])
+        
+        empty_table = create_empty_figure()
+        empty_table.update_layout(title="No Data")
+        
+        freq_data = {"analysis_type": "Wavelet"}
+        time_freq_data = None
+        
+        peak_table = empty_table
+        band_table = empty_table
+        stability_table = empty_table
+        harmonics_table = empty_table
     
-    spectrogram_fig = create_empty_figure()
-    spectrogram_fig.update_layout(title="Wavelet Spectrogram (Not implemented)")
-    
-    results = html.Div([
-        html.H5("Wavelet Analysis"),
-        html.P("Wavelet analysis is not yet implemented in this version.")
-    ])
-    
-    empty_table = create_empty_figure()
-    empty_table.update_layout(title="No Data")
-    
-    freq_data = {"analysis_type": "Wavelet"}
-    time_freq_data = None
-    
-    return main_fig, psd_fig, spectrogram_fig, results, empty_table, empty_table, empty_table, empty_table, freq_data, time_freq_data
+    return main_fig, psd_fig, spectrogram_fig, results, peak_table, band_table, stability_table, harmonics_table, freq_data, time_freq_data
 
 
 def generate_frequency_analysis_results(freqs, magnitudes, analysis_type):
@@ -696,7 +1396,7 @@ def generate_frequency_analysis_results(freqs, magnitudes, analysis_type):
 def generate_peak_analysis_table(freqs, magnitudes):
     """Generate peak analysis table."""
     if len(freqs) == 0 or len(magnitudes) == 0:
-        return create_empty_figure()
+        return html.Div("No data available for peak analysis")
     
     # Find peaks
     peaks, _ = signal.find_peaks(magnitudes, height=np.max(magnitudes)*0.1)
@@ -731,7 +1431,7 @@ def generate_peak_analysis_table(freqs, magnitudes):
 def generate_band_power_table(freqs, magnitudes):
     """Generate frequency band power table."""
     if len(freqs) == 0 or len(magnitudes) == 0:
-        return create_empty_figure()
+        return html.Div("No data available for band power analysis")
     
     # Define frequency bands
     bands = [
@@ -776,7 +1476,7 @@ def generate_band_power_table(freqs, magnitudes):
 def generate_stability_table(freqs, magnitudes):
     """Generate signal stability analysis table."""
     if len(freqs) == 0 or len(magnitudes) == 0:
-        return create_empty_figure()
+        return html.Div("No data available for stability analysis")
     
     # Calculate stability metrics
     mean_mag = np.mean(magnitudes)
@@ -807,7 +1507,7 @@ def generate_stability_table(freqs, magnitudes):
 def generate_harmonics_table(freqs, magnitudes):
     """Generate harmonics analysis table."""
     if len(freqs) == 0 or len(magnitudes) == 0:
-        return create_empty_figure()
+        return html.Div("No data available for harmonics analysis")
     
     # Find fundamental frequency (highest peak)
     max_peak_idx = np.argmax(magnitudes)

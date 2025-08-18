@@ -323,34 +323,50 @@ def frequency_layout():
             ], className="text-center text-muted mb-5")
         ], className="mb-4"),
         
-        # Main Analysis Section
+        # Action Button and Key Controls - Always at the top for easy access
         dbc.Row([
-            # Left Panel - Controls & Parameters
             dbc.Col([
                 dbc.Card([
-                    dbc.CardHeader([
-                        html.H4("🎛️ Analysis Controls", className="mb-0"),
-                        html.Small("Configure frequency analysis parameters", className="text-muted")
-                    ]),
                     dbc.CardBody([
-                        # Analysis Type Selection
-                        html.H6("Analysis Type", className="mb-3"),
-                        dcc.Dropdown(
-                            id="freq-analysis-type",
-                            options=[
-                                {"label": "Fast Fourier Transform (FFT)", "value": "FFT"},
-                                {"label": "Power Spectral Density (PSD)", "value": "PSD"},
-                                {"label": "Short-Time Fourier Transform (STFT)", "value": "STFT"},
-                                {"label": "Wavelet Analysis", "value": "Wavelet"}
-                            ],
-                            value="FFT",
-                            className="mb-3"
-                        ),
-                        
-                        # Time Window Controls
-                        html.H6("Time Window", className="mb-3"),
                         dbc.Row([
                             dbc.Col([
+                                dbc.Button(
+                                    "📊 Analyze Frequency Domain",
+                                    id="freq-btn-update-analysis",
+                                    color="primary",
+                                    size="lg",
+                                    className="w-100"
+                                )
+                            ], md=3),
+                            dbc.Col([
+                                # Data Selection
+                                html.Label("Data Source", className="form-label"),
+                                dbc.Select(
+                                    id="freq-data-source-select",
+                                    options=[
+                                        {"label": "Uploaded Data", "value": "uploaded"},
+                                        {"label": "Sample Data", "value": "sample"}
+                                    ],
+                                    value="uploaded",
+                                    className="mb-2"
+                                ),
+                                
+                                # Analysis Type Selection
+                                html.Label("Analysis Type", className="form-label"),
+                                dcc.Dropdown(
+                                    id="freq-analysis-type",
+                                    options=[
+                                        {"label": "FFT (Fast Fourier Transform)", "value": "fft"},
+                                        {"label": "Power Spectral Density (PSD)", "value": "psd"},
+                                        {"label": "Short-Time Fourier Transform (STFT)", "value": "stft"},
+                                        {"label": "Wavelet Analysis", "value": "wavelet"}
+                                    ],
+                                    value="fft",
+                                    className="mb-2"
+                                )
+                            ], md=3),
+                            dbc.Col([
+                                # Time Window Controls
                                 html.Label("Start Time (s)", className="form-label"),
                                 dbc.Input(
                                     id="freq-start-time",
@@ -358,10 +374,10 @@ def frequency_layout():
                                     value=0,
                                     min=0,
                                     step=0.1,
-                                    placeholder="0"
-                                )
-                            ], md=6),
-                            dbc.Col([
+                                    placeholder="0",
+                                    className="mb-2"
+                                ),
+                                
                                 html.Label("End Time (s)", className="form-label"),
                                 dbc.Input(
                                     id="freq-end-time",
@@ -369,293 +385,304 @@ def frequency_layout():
                                     value=10,
                                     min=0,
                                     step=0.1,
-                                    placeholder="10"
+                                    placeholder="10",
+                                    className="mb-2"
                                 )
-                            ], md=6)
-                        ], className="mb-3"),
-                        
-                        # Quick Window Navigation
-                        html.Div([
-                            dbc.Button("⏪ -10s", id="freq-btn-nudge-m10", color="secondary", size="sm", className="me-1"),
-                            dbc.Button("⏪ -1s", id="freq-btn-nudge-m1", color="secondary", size="sm", className="me-1"),
-                            dbc.Button("+1s ⏩", id="freq-btn-nudge-p1", color="secondary", size="sm", className="me-1"),
-                            dbc.Button("+10s ⏩", id="freq-btn-nudge-p10", color="secondary", size="sm")
-                        ], className="mb-3"),
-                        
-                        # Range Slider for Time Window
-                        html.Label("Time Range Slider", className="form-label"),
-                        dcc.RangeSlider(
-                            id="freq-time-range-slider",
-                            min=0,
-                            max=100,
-                            step=0.1,
-                            value=[0, 10],
-                            allowCross=False,
-                            pushable=1,
-                            updatemode="mouseup",
-                            className="mb-4"
-                        ),
-                        
+                            ], md=3),
+                            dbc.Col([
+                                # Quick Window Navigation
+                                html.Label("Quick Navigation", className="form-label"),
+                                html.Div([
+                                    dbc.Button("⏪ -10s", id="freq-btn-nudge-m10", color="secondary", size="sm", className="me-1 mb-1"),
+                                    dbc.Button("⏪ -1s", id="freq-btn-nudge-m1", color="secondary", size="sm", className="me-1 mb-1"),
+                                    dbc.Button("+1s ⏩", id="freq-btn-nudge-p1", color="secondary", size="sm", className="me-1 mb-1"),
+                                    dbc.Button("+10s ⏩", id="freq-btn-nudge-p10", color="secondary", size="sm", className="mb-1")
+                                ], className="mb-2 quick-nav-buttons"),
+                                
+                                # Range Slider for Time Window
+                                html.Label("Time Range Slider", className="form-label"),
+                                dcc.RangeSlider(
+                                    id="freq-time-range-slider",
+                                    min=0,
+                                    max=100,
+                                    step=0.1,
+                                    value=[0, 10],
+                                    allowCross=False,
+                                    pushable=1,
+                                    updatemode="mouseup",
+                                    className="mb-2"
+                                )
+                            ], md=3)
+                        ])
+                    ])
+                ], className="mb-4 freq-top-container")
+            ], md=12)
+        ]),
+        
+        # Main Analysis Section - Two Panel Layout
+        dbc.Row([
+            # Left Panel - Controls & Parameters (Compact)
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🎛️ Analysis Controls", className="mb-0"),
+                        html.Small("Configure frequency analysis parameters", className="text-muted")
+                    ]),
+                    dbc.CardBody([
                         # FFT Parameters
-                        html.H6("FFT Parameters", className="mb-3"),
-                        dbc.Row([
-                            dbc.Col([
-                                html.Label("Window Type", className="form-label"),
-                                dcc.Dropdown(
-                                    id="fft-window-type",
-                                    options=[
-                                        {"label": "Hann", "value": "hann"},
-                                        {"label": "Hamming", "value": "hamming"},
-                                        {"label": "Blackman", "value": "blackman"},
-                                        {"label": "None", "value": "none"}
-                                    ],
-                                    value="hann",
-                                    className="mb-3"
-                                )
-                            ], md=6),
-                            dbc.Col([
-                                html.Label("N Points", className="form-label"),
-                                dbc.Input(
-                                    id="fft-n-points",
-                                    type="number",
-                                    value=1024,
-                                    min=64,
-                                    step=64,
-                                    placeholder="1024"
-                                )
-                            ], md=6)
-                        ], className="mb-3"),
+                        html.Div(id="fft-params", children=[
+                            html.H6("FFT Parameters", className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Window Type", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="fft-window-type",
+                                        options=[
+                                            {"label": "Hann", "value": "hann"},
+                                            {"label": "Hamming", "value": "hamming"},
+                                            {"label": "Blackman", "value": "blackman"},
+                                            {"label": "None", "value": "none"}
+                                        ],
+                                        value="hann",
+                                        className="mb-3"
+                                    )
+                                ], md=6),
+                                dbc.Col([
+                                    html.Label("N Points", className="form-label"),
+                                    dbc.Input(
+                                        id="fft-n-points",
+                                        type="number",
+                                        value=1024,
+                                        min=64,
+                                        step=64,
+                                        placeholder="1024"
+                                    )
+                                ], md=6)
+                            ], className="mb-3")
+                        ]),
                         
                         # PSD Parameters
-                        html.H6("PSD Parameters", className="mb-3"),
-                        dbc.Row([
-                            dbc.Col([
-                                html.Label("Window", className="form-label"),
-                                dcc.Dropdown(
-                                    id="psd-window",
-                                    options=[
-                                        {"label": "Hann", "value": "hann"},
-                                        {"label": "Hamming", "value": "hamming"},
-                                        {"label": "Blackman", "value": "blackman"}
-                                    ],
-                                    value="hann",
-                                    className="mb-3"
-                                )
-                            ], md=6),
-                            dbc.Col([
-                                html.Label("Overlap", className="form-label"),
-                                dcc.Slider(
-                                    id="psd-overlap",
-                                    min=0,
-                                    max=0.9,
-                                    step=0.1,
-                                    value=0.5,
-                                    marks={0: "0", 0.5: "0.5", 0.9: "0.9"},
-                                    className="mb-3"
-                                )
-                            ], md=6)
-                        ], className="mb-3"),
-                        
-                        # PSD Frequency Range
-                        html.H6("PSD Frequency Range", className="mb-3"),
-                        dbc.Row([
-                            dbc.Col([
-                                html.Label("Min Freq (Hz)", className="form-label"),
-                                dbc.Input(
-                                    id="psd-freq-min",
-                                    type="number",
-                                    value=0,
-                                    min=0,
-                                    step=0.1,
-                                    placeholder="0"
-                                )
-                            ], md=6),
-                            dbc.Col([
-                                html.Label("Max Freq (Hz)", className="form-label"),
-                                dbc.Input(
-                                    id="psd-freq-max",
-                                    type="number",
-                                    value=25,
-                                    min=0.1,
-                                    step=1,
-                                    placeholder="25"
-                                )
-                            ], md=6)
-                        ], className="mb-3"),
-                        
-                        # PSD Options
-                        html.H6("PSD Options", className="mb-3"),
-                        dbc.Row([
-                            dbc.Col([
-                                html.Label("Log Scale", className="form-label"),
-                                dcc.Checklist(
-                                    id="psd-log-scale",
-                                    options=[{"label": "dB Scale", "value": "on"}],
-                                    value=["on"],
-                                    className="mb-3"
-                                )
-                            ], md=6),
-                            dbc.Col([
-                                html.Label("Normalize", className="form-label"),
-                                dcc.Checklist(
-                                    id="psd-normalize",
-                                    options=[{"label": "Normalize PSD", "value": "on"}],
-                                    value=[],
-                                    className="mb-3"
-                                )
-                            ], md=6)
-                        ], className="mb-3"),
-                        dbc.Row([
-                            dbc.Col([
-                                html.Label("Channel", className="form-label"),
-                                dcc.Dropdown(
-                                    id="psd-channel",
-                                    options=[
-                                        {"label": "Signal", "value": "signal"},
-                                        {"label": "RED", "value": "red"},
-                                        {"label": "IR", "value": "ir"},
-                                        {"label": "Waveform", "value": "waveform"}
-                                    ],
-                                    value="signal",
-                                    clearable=False,
-                                    className="mb-3"
-                                )
-                            ], md=6)
-                        ], className="mb-3"),
+                        html.Div(id="psd-params", children=[
+                            html.H6("PSD Parameters", className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Window (s)", className="form-label"),
+                                    dbc.Input(
+                                        id="psd-window",
+                                        type="number",
+                                        value=2.0,
+                                        min=0.5,
+                                        max=10.0,
+                                        step=0.5,
+                                        placeholder="2.0"
+                                    )
+                                ], md=6),
+                                dbc.Col([
+                                    html.Label("Overlap (%)", className="form-label"),
+                                    dbc.Input(
+                                        id="psd-overlap",
+                                        type="number",
+                                        value=50,
+                                        min=0,
+                                        max=95,
+                                        step=5,
+                                        placeholder="50"
+                                    )
+                                ], md=6)
+                            ], className="mb-3"),
+                            
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Max Freq (Hz)", className="form-label"),
+                                    dbc.Input(
+                                        id="psd-freq-max",
+                                        type="number",
+                                        value=25.0,
+                                        min=1.0,
+                                        max=100.0,
+                                        step=1.0,
+                                        placeholder="25.0"
+                                    )
+                                ], md=6),
+                                dbc.Col([
+                                    html.Label("Log Scale", className="form-label"),
+                                    dcc.Checklist(
+                                        id="psd-log-scale",
+                                        options=[{"label": "dB Scale", "value": "on"}],
+                                        value=["on"],
+                                        className="mb-3"
+                                    )
+                                ], md=6)
+                            ], className="mb-3"),
+                            
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Normalize", className="form-label"),
+                                    dcc.Checklist(
+                                        id="psd-normalize",
+                                        options=[{"label": "Normalize PSD", "value": "on"}],
+                                        value=[],
+                                        className="mb-3"
+                                    )
+                                ], md=6),
+                                dbc.Col([
+                                    html.Label("Channel", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="psd-channel",
+                                        options=[
+                                            {"label": "Signal", "value": "signal"},
+                                            {"label": "RED", "value": "red"},
+                                            {"label": "IR", "value": "ir"},
+                                            {"label": "Waveform", "value": "waveform"}
+                                        ],
+                                        value="signal",
+                                        clearable=False,
+                                        className="mb-3"
+                                    )
+                                ], md=6)
+                            ], className="mb-3")
+                        ]),
                         
                         # STFT Parameters
-                        html.H6("STFT Parameters", className="mb-3"),
-                        dbc.Row([
-                            dbc.Col([
-                                html.Label("Window Size", className="form-label"),
-                                dbc.Input(
-                                    id="stft-window-size",
-                                    type="number",
-                                    value=256,
-                                    min=64,
-                                    step=64,
-                                    placeholder="256"
-                                )
-                            ], md=6),
-                            dbc.Col([
-                                html.Label("Hop Size", className="form-label"),
-                                dbc.Input(
-                                    id="stft-hop-size",
-                                    type="number",
-                                    value=64,
-                                    min=16,
-                                    step=16,
-                                    placeholder="64"
-                                )
-                            ], md=6)
-                        ], className="mb-3"),
-                        dbc.Row([
-                            dbc.Col([
-                                html.Label("Window Type", className="form-label"),
-                                dcc.Dropdown(
-                                    id="stft-window-type",
-                                    options=[
-                                        {"label": "Hann", "value": "hann"},
-                                        {"label": "Hamming", "value": "hamming"},
-                                        {"label": "Blackman", "value": "blackman"},
-                                        {"label": "Kaiser", "value": "kaiser"},
-                                        {"label": "Gaussian", "value": "gaussian"},
-                                        {"label": "Rectangular", "value": "rectangular"}
-                                    ],
-                                    value="hann",
-                                    className="mb-3"
-                                )
-                            ], md=6),
-                            dbc.Col([
-                                html.Label("Overlap", className="form-label"),
-                                dcc.Slider(
-                                    id="stft-overlap",
-                                    min=0,
-                                    max=0.9,
-                                    step=0.1,
-                                    value=0.5,
-                                    marks={0: "0", 0.5: "0.5", 0.9: "0.9"},
-                                    className="mb-3"
-                                )
-                            ], md=6)
-                        ], className="mb-3"),
-                        dbc.Row([
-                            dbc.Col([
-                                html.Label("Scaling", className="form-label"),
-                                dcc.Dropdown(
-                                    id="stft-scaling",
-                                    options=[
-                                        {"label": "Density", "value": "density"},
-                                        {"label": "Spectrum", "value": "spectrum"}
-                                    ],
-                                    value="density",
-                                    className="mb-3"
-                                )
-                            ], md=6),
-                            dbc.Col([
-                                html.Label("Max Freq (Hz)", className="form-label"),
-                                dbc.Input(
-                                    id="stft-freq-max",
-                                    type="number",
-                                    value=50,
-                                    min=0.1,
-                                    step=1,
-                                    placeholder="50"
-                                )
-                            ], md=6)
-                        ], className="mb-3"),
-                        dbc.Row([
-                            dbc.Col([
-                                html.Label("Colormap", className="form-label"),
-                                dcc.Dropdown(
-                                    id="stft-colormap",
-                                    options=[
-                                        {"label": "Viridis", "value": "viridis"},
-                                        {"label": "Plasma", "value": "plasma"},
-                                        {"label": "Inferno", "value": "inferno"},
-                                        {"label": "Magma", "value": "magma"},
-                                        {"label": "Jet", "value": "jet"},
-                                        {"label": "Hot", "value": "hot"},
-                                        {"label": "Cool", "value": "cool"}
-                                    ],
-                                    value="viridis",
-                                    className="mb-3"
-                                )
-                            ], md=6)
-                        ], className="mb-3"),
+                        html.Div(id="stft-params", children=[
+                            html.H6("STFT Parameters", className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Window Size", className="form-label"),
+                                    dbc.Input(
+                                        id="stft-window-size",
+                                        type="number",
+                                        value=256,
+                                        min=64,
+                                        step=64,
+                                        placeholder="256"
+                                    )
+                                ], md=6),
+                                dbc.Col([
+                                    html.Label("Hop Size", className="form-label"),
+                                    dbc.Input(
+                                        id="stft-hop-size",
+                                        type="number",
+                                        value=128,
+                                        min=16,
+                                        step=16,
+                                        placeholder="128"
+                                    )
+                                ], md=6)
+                            ], className="mb-3"),
+                            
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Window Type", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="stft-window-type",
+                                        options=[
+                                            {"label": "Hann", "value": "hann"},
+                                            {"label": "Hamming", "value": "hamming"},
+                                            {"label": "Blackman", "value": "blackman"},
+                                            {"label": "Kaiser", "value": "kaiser"},
+                                            {"label": "Gaussian", "value": "gaussian"},
+                                            {"label": "Rectangular", "value": "rectangular"}
+                                        ],
+                                        value="hann",
+                                        className="mb-3"
+                                    )
+                                ], md=6),
+                                dbc.Col([
+                                    html.Label("Overlap (%)", className="form-label"),
+                                    dbc.Input(
+                                        id="stft-overlap",
+                                        type="number",
+                                        value=50,
+                                        min=0,
+                                        max=95,
+                                        step=5,
+                                        placeholder="50"
+                                    )
+                                ], md=6)
+                            ], className="mb-3"),
+                            
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Scaling", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="stft-scaling",
+                                        options=[
+                                            {"label": "Density", "value": "density"},
+                                            {"label": "Spectrum", "value": "spectrum"}
+                                        ],
+                                        value="density",
+                                        className="mb-3"
+                                    )
+                                ], md=6),
+                                dbc.Col([
+                                    html.Label("Max Freq (Hz)", className="form-label"),
+                                    dbc.Input(
+                                        id="stft-freq-max",
+                                        type="number",
+                                        value=50,
+                                        min=0.1,
+                                        step=1,
+                                        placeholder="50"
+                                    )
+                                ], md=6)
+                            ], className="mb-3"),
+                            
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Colormap", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="stft-colormap",
+                                        options=[
+                                            {"label": "Viridis", "value": "viridis"},
+                                            {"label": "Plasma", "value": "plasma"},
+                                            {"label": "Inferno", "value": "inferno"},
+                                            {"label": "Magma", "value": "magma"},
+                                            {"label": "Jet", "value": "jet"},
+                                            {"label": "Hot", "value": "hot"},
+                                            {"label": "Cool", "value": "cool"}
+                                        ],
+                                        value="viridis",
+                                        className="mb-3"
+                                    )
+                                ], md=12)
+                            ], className="mb-3")
+                        ]),
                         
                         # Wavelet Parameters
-                        html.H6("Wavelet Parameters", className="mb-3"),
-                        dbc.Row([
-                            dbc.Col([
-                                html.Label("Wavelet Type", className="form-label"),
-                                dcc.Dropdown(
-                                    id="wavelet-type",
-                                    options=[
-                                        {"label": "Daubechies (db4)", "value": "db4"},
-                                        {"label": "Symlets (sym4)", "value": "sym4"},
-                                        {"label": "Coiflets (coif4)", "value": "coif4"},
-                                        {"label": "Haar", "value": "haar"},
-                                        {"label": "Mexican Hat", "value": "mexh"},
-                                        {"label": "Morlet", "value": "morl"}
-                                    ],
-                                    value="db4",
-                                    className="mb-3"
-                                )
-                            ], md=6),
-                            dbc.Col([
-                                html.Label("Decomposition Levels", className="form-label"),
-                                dcc.Input(
-                                    id="wavelet-levels",
-                                    type="number",
-                                    value=4,
-                                    min=1,
-                                    max=10,
-                                    step=1,
-                                    placeholder="4"
-                                )
-                            ], md=6)
-                        ], className="mb-3"),
+                        html.Div(id="wavelet-params", children=[
+                            html.H6("Wavelet Parameters", className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Wavelet Type", className="form-label"),
+                                    dcc.Dropdown(
+                                        id="wavelet-type",
+                                        options=[
+                                            {"label": "Daubechies (db4)", "value": "db4"},
+                                            {"label": "Symlets (sym4)", "value": "sym4"},
+                                            {"label": "Coiflets (coif4)", "value": "coif4"},
+                                            {"label": "Haar", "value": "haar"},
+                                            {"label": "Mexican Hat", "value": "mexh"},
+                                            {"label": "Morlet", "value": "morl"}
+                                        ],
+                                        value="db4",
+                                        className="mb-3"
+                                    )
+                                ], md=6),
+                                dbc.Col([
+                                    html.Label("Decomposition Levels", className="form-label"),
+                                    dbc.Input(
+                                        id="wavelet-levels",
+                                        type="number",
+                                        value=4,
+                                        min=1,
+                                        max=10,
+                                        step=1,
+                                        placeholder="4"
+                                    )
+                                ], md=6)
+                            ], className="mb-3")
+                        ]),
                         
                         # Frequency Range
                         html.H6("Frequency Range", className="mb-3"),
@@ -696,21 +723,12 @@ def frequency_layout():
                             ],
                             value=["peak_detection", "harmonic_analysis"],
                             className="mb-4"
-                        ),
-                        
-                        # Main Analysis Button
-                        dbc.Button(
-                            "📊 Analyze Frequency Domain",
-                            id="freq-btn-update-analysis",
-                            color="primary",
-                            size="lg",
-                            className="w-100 mb-3"
                         )
                     ])
                 ], className="h-100")
-            ], md=4),
+            ], md=3),
             
-            # Right Panel - Results & Plots
+            # Right Panel - Results & Plots (Full width)
             dbc.Col([
                 # Main Frequency Plot
                 dbc.Card([
@@ -720,10 +738,10 @@ def frequency_layout():
                     dbc.CardBody([
                         dcc.Graph(
                             id="freq-main-plot",
-                            style={"height": "400px"},
+                            style={"height": "600px", "minHeight": "550px", "overflow": "visible"},
                             config={"displayModeBar": True, "displaylogo": False}
                         )
-                    ])
+                    ], style={"overflow": "visible"})
                 ], className="mb-4"),
                 
                 # PSD Plot
@@ -734,26 +752,26 @@ def frequency_layout():
                     dbc.CardBody([
                         dcc.Graph(
                             id="freq-psd-plot",
-                            style={"height": "300px"},
+                            style={"height": "400px", "minHeight": "350px", "overflow": "visible"},
                             config={"displayModeBar": True, "displaylogo": False}
                         )
-                    ])
+                    ], style={"overflow": "visible"})
                 ], className="mb-4"),
                 
                 # Spectrogram Plot
                 dbc.Card([
                     dbc.CardHeader([
-                        html.H5("🌊 Time-Frequency Analysis", className="mb-0")
+                        html.H5("🌊 Time-Frequency Analysis (Spectrogram)", className="mb-0")
                     ]),
                     dbc.CardBody([
                         dcc.Graph(
                             id="freq-spectrogram-plot",
-                            style={"height": "300px"},
+                            style={"height": "400px", "minHeight": "350px", "overflow": "visible"},
                             config={"displayModeBar": True, "displaylogo": False}
                         )
-                    ])
+                    ], style={"overflow": "visible"})
                 ], className="mb-4")
-            ], md=8)
+            ], md=9)
         ]),
         
         # Analysis Results Section
@@ -787,40 +805,44 @@ def frequency_layout():
             dbc.Col([
                 dbc.Card([
                     dbc.CardHeader([
-                        html.H5("📊 Frequency Band Power", className="mb-0")
+                        html.H5("📊 Band Power Analysis", className="mb-0")
                     ]),
                     dbc.CardBody([
                         html.Div(id="freq-band-power-table")
                     ])
                 ])
-            ], md=4),
+            ], md=6),
             
             dbc.Col([
                 dbc.Card([
                     dbc.CardHeader([
-                        html.H5("⚖️ Signal Stability", className="mb-0")
+                        html.H5("🔬 Frequency Stability", className="mb-0")
                     ]),
                     dbc.CardBody([
                         html.Div(id="freq-stability-table")
                     ])
                 ])
-            ], md=4),
-            
+            ], md=6)
+        ], className="mb-4"),
+        
+        # Harmonic Analysis Table
+        dbc.Row([
             dbc.Col([
                 dbc.Card([
                     dbc.CardHeader([
-                        html.H5("🎵 Harmonics Analysis", className="mb-0")
+                        html.H5("🎵 Harmonic Analysis", className="mb-0")
                     ]),
                     dbc.CardBody([
                         html.Div(id="freq-harmonics-table")
                     ])
                 ])
-            ], md=4)
+            ], md=12)
         ], className="mb-4"),
         
-        # Data Storage
+        # Stores for data management
         dcc.Store(id="store-frequency-data"),
-        dcc.Store(id="store-time-freq-data")
+        dcc.Store(id="store-time-freq-data"),
+        dcc.Store(id="store-freq-analysis-results")
     ])
 
 
@@ -2240,7 +2262,8 @@ def advanced_layout():
                         dcc.Graph(
                             id="advanced-visualizations",
                             style={"height": "500px"},
-                            config={"displayModeBar": True, "displaylogo": False}
+                            config={"displayModeBar": True,
+                                    "displaylogo": False}
                         )
                     ])
                 ])

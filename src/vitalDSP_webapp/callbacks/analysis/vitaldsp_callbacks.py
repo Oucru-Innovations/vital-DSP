@@ -22,14 +22,14 @@ def create_empty_figure():
     """Create an empty figure for error cases."""
     fig = go.Figure()
     fig.add_annotation(
-        text="No data available or error occurred",
+        text="No data available",
         xref="paper", yref="paper",
         x=0.5, y=0.5, showarrow=False,
         font=dict(size=16, color="gray")
     )
     fig.update_layout(
-        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
         plot_bgcolor="white"
     )
     return fig
@@ -2283,78 +2283,585 @@ def register_vitaldsp_callbacks(app):
 
 
 
+
+
+
+
+
+
     @app.callback(
-        [Output("frequency-plot", "figure"),
-         Output("frequency-stats", "children")],
-        [Input("btn-analyze-frequency", "n_clicks")],
-        [State("store-uploaded-data", "data"),
-         State("store-data-config", "data")]
+        [Output("fft-params", "style"),
+         Output("psd-params", "style"),
+         Output("stft-params", "style"),
+         Output("wavelet-params", "style")],
+        [Input("freq-analysis-type", "value")]
     )
-    def analyze_frequency_domain(n_clicks, data_store, config_store):
-        """Analyze frequency domain characteristics of the signal."""
-        if not n_clicks or not data_store or not config_store:
-            raise PreventUpdate
-            
-        try:
-            # Extract data
-            df = pd.DataFrame(data_store["data"])
-            sampling_freq = config_store["sampling_freq"]
-            
-            # Get signal data
-            signal_data = df.iloc[:, 1].values
-            
-            # Compute FFT
+    def toggle_frequency_params(analysis_type):
+        """Show/hide parameter sections based on selected analysis type."""
+        # Default style (hidden)
+        hidden_style = {"display": "none"}
+        visible_style = {"display": "block"}
+        
+        # Initialize all as hidden
+        fft_style = hidden_style
+        psd_style = hidden_style
+        stft_style = hidden_style
+        wavelet_style = hidden_style
+        
+        # Show relevant section based on analysis type
+        if analysis_type == "fft":
+            fft_style = visible_style
+        elif analysis_type == "psd":
+            psd_style = visible_style
+        elif analysis_type == "stft":
+            stft_style = visible_style
+        elif analysis_type == "wavelet":
+            wavelet_style = visible_style
+        
+        return fft_style, psd_style, stft_style, wavelet_style
+
+
+def create_fft_plot(signal_data, sampling_freq, window_type, n_points, freq_min, freq_max):
+    """Create FFT plot using vitalDSP FourierTransform."""
+    try:
+        from vitalDSP.transforms.fourier_transform import FourierTransform
+        
+        # Apply window if specified
+        if window_type and window_type != "none":
+            if window_type == "hann":
+                windowed_signal = signal_data * np.hanning(len(signal_data))
+            elif window_type == "hamming":
+                windowed_signal = signal_data * np.hamming(len(signal_data))
+            elif window_type == "blackman":
+                windowed_signal = signal_data * np.blackman(len(signal_data))
+            else:
+                windowed_signal = signal_data
+        else:
+            windowed_signal = signal_data
+        
+        # Use vitalDSP FourierTransform
+        ft = FourierTransform(windowed_signal)
+        fft_result = ft.compute_dft()
+        
+        # Compute frequency axis
+        fft_freq = np.fft.fftfreq(len(fft_result), 1/sampling_freq)
+        
+        # Get positive frequencies only
+        positive_freq_mask = fft_freq > 0
+        fft_freq = fft_freq[positive_freq_mask]
+        fft_magnitude = np.abs(fft_result[positive_freq_mask])
+        
+        # Apply frequency range filter if specified
+        if freq_min is not None and freq_max is not None:
+            freq_mask = (fft_freq >= freq_min) & (fft_freq <= freq_max)
+            fft_freq = fft_freq[freq_mask]
+            fft_magnitude = fft_magnitude[freq_mask]
+        
+        # Create plot
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=fft_freq,
+            y=fft_magnitude,
+            mode='lines',
+            name='FFT Magnitude',
+            line=dict(color='blue', width=2)
+        ))
+        
+        fig.update_layout(
+            title="Fast Fourier Transform (FFT)",
+            xaxis_title="Frequency (Hz)",
+            yaxis_title="Magnitude",
+            showlegend=True,
+            plot_bgcolor="white"
+        )
+        
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error creating FFT plot: {e}")
+        return create_empty_figure()
+
+
+def create_stft_plot(signal_data, sampling_freq, window_size, hop_size, freq_min, freq_max):
+    """Create STFT plot using vitalDSP STFT."""
+    try:
+        from vitalDSP.transforms.stft import STFT
+        
+        # Use vitalDSP STFT
+        stft_obj = STFT(signal_data, window_size=window_size, hop_size=hop_size)
+        stft_result = stft_obj.compute_stft()
+        
+        # Get time and frequency axes
+        time_axis = np.arange(stft_result.shape[1]) * hop_size / sampling_freq
+        freq_axis = np.fft.rfftfreq(window_size, 1/sampling_freq)
+        
+        # Apply frequency range filter if specified
+        if freq_min is not None and freq_max is not None:
+            freq_mask = (freq_axis >= freq_min) & (freq_axis <= freq_max)
+            freq_axis = freq_axis[freq_mask]
+            stft_result = stft_result[freq_mask, :]
+        
+        # Create plot
+        fig = go.Figure()
+        fig.add_trace(go.Heatmap(
+            z=np.abs(stft_result),
+            x=time_axis,
+            y=freq_axis,
+            colorscale='viridis',
+            name='STFT Magnitude'
+        ))
+        
+        fig.update_layout(
+            title="Short-Time Fourier Transform (STFT)",
+            xaxis_title="Time (s)",
+            yaxis_title="Frequency (Hz)",
+            showlegend=True,
+            plot_bgcolor="white"
+        )
+        
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error creating STFT plot: {e}")
+        return create_empty_figure()
+
+
+def create_wavelet_plot(signal_data, sampling_freq, wavelet_type, levels, freq_min, freq_max):
+    """Create wavelet plot using vitalDSP WaveletTransform."""
+    try:
+        from vitalDSP.transforms.wavelet_transform import WaveletTransform
+        
+        # Use vitalDSP WaveletTransform
+        wt = WaveletTransform(signal_data, wavelet_name=wavelet_type)
+        
+        # Perform wavelet decomposition
+        approximations = []
+        details = []
+        current_signal = signal_data.copy()
+        
+        for level in range(levels):
+            approx, detail = wt._wavelet_decompose(current_signal)
+            approximations.append(approx)
+            details.append(detail)
+            current_signal = approx
+        
+        # Create subplots for each level
+        fig = make_subplots(
+            rows=levels + 1, cols=1,
+            subplot_titles=[f"Level {i+1} Detail" for i in range(levels)] + ["Final Approximation"],
+            vertical_spacing=0.05
+        )
+        
+        # Add detail coefficients
+        for i, detail in enumerate(details):
+            time_axis = np.arange(len(detail)) / sampling_freq
+            fig.add_trace(
+                go.Scatter(
+                    x=time_axis,
+                    y=detail,
+                    mode='lines',
+                    name=f'Level {i+1} Detail',
+                    line=dict(width=1)
+                ),
+                row=i+1, col=1
+            )
+        
+        # Add final approximation
+        time_axis = np.arange(len(approximations[-1])) / sampling_freq
+        fig.add_trace(
+            go.Scatter(
+                x=time_axis,
+                y=approximations[-1],
+                mode='lines',
+                name='Final Approximation',
+                line=dict(color='red', width=2)
+            ),
+            row=levels+1, col=1
+        )
+        
+        fig.update_layout(
+            title=f"Wavelet Transform ({wavelet_type}) - {levels} Levels",
+            height=300 * (levels + 1),
+            showlegend=True,
+            plot_bgcolor="white"
+        )
+        
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error creating wavelet plot: {e}")
+        return create_empty_figure()
+
+
+def create_enhanced_psd_plot(signal_data, sampling_freq, window_sec, overlap, freq_max, log_scale, normalize, channel, column_mapping):
+    """Create enhanced PSD plot using vitalDSP FrequencyDomainFeatures."""
+    try:
+        from vitalDSP.physiological_features.frequency_domain import FrequencyDomainFeatures
+        
+        # Convert window from seconds to samples
+        window_samples = int(window_sec * sampling_freq)
+        
+        # Use scipy.signal.welch for PSD computation
+        from scipy.signal import welch
+        
+        # Apply window function
+        windowed_signal = signal_data * np.hanning(len(signal_data))
+        
+        # Compute PSD
+        freqs, psd = welch(
+            windowed_signal,
+            fs=sampling_freq,
+            nperseg=min(window_samples, len(signal_data)),
+            noverlap=int(min(window_samples, len(signal_data)) * overlap)
+        )
+        
+        # Apply frequency range filter
+        if freq_max:
+            freq_mask = freqs <= freq_max
+            freqs = freqs[freq_mask]
+            psd = psd[freq_mask]
+        
+        # Apply log scale if requested
+        if log_scale and "on" in log_scale:
+            psd = 10 * np.log10(psd + 1e-10)  # Add small value to avoid log(0)
+            y_label = "Power Spectral Density (dB/Hz)"
+        else:
+            y_label = "Power Spectral Density"
+        
+        # Normalize if requested
+        if normalize and "on" in normalize:
+            psd = psd / np.max(psd)
+            y_label += " (Normalized)"
+        
+        # Create plot
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=freqs,
+            y=psd,
+            mode='lines',
+            name='PSD',
+            line=dict(color='green', width=2)
+        ))
+        
+        fig.update_layout(
+            title="Power Spectral Density (PSD)",
+            xaxis_title="Frequency (Hz)",
+            yaxis_title=y_label,
+            showlegend=True,
+            plot_bgcolor="white"
+        )
+        
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error creating PSD plot: {e}")
+        return create_empty_figure()
+
+
+def create_enhanced_spectrogram_plot(signal_data, sampling_freq, window_size, overlap, freq_max, colormap, scaling, window_type):
+    """Create enhanced spectrogram plot."""
+    try:
+        from scipy.signal import spectrogram
+        
+        # Apply window function
+        if window_type == "hann":
+            window_func = np.hanning(window_size)
+        elif window_type == "hamming":
+            window_func = np.hamming(window_size)
+        elif window_type == "blackman":
+            window_func = np.blackman(window_size)
+        elif window_type == "kaiser":
+            window_func = np.kaiser(window_size, beta=14)
+        elif window_type == "gaussian":
+            window_func = np.exp(-0.5 * ((np.arange(window_size) - window_size/2) / (window_size/6))**2)
+        else:
+            window_func = np.ones(window_size)
+        
+        # Compute spectrogram
+        freqs, times, Sxx = spectrogram(
+            signal_data,
+            fs=sampling_freq,
+            window=window_func,
+            nperseg=window_size,
+            noverlap=int(window_size * overlap)
+        )
+        
+        # Apply frequency range filter
+        if freq_max:
+            freq_mask = freqs <= freq_max
+            freqs = freqs[freq_mask]
+            Sxx = Sxx[freq_mask, :]
+        
+        # Apply scaling
+        if scaling == "density":
+            Sxx = Sxx / sampling_freq
+            title_suffix = " (Density)"
+        else:
+            title_suffix = " (Spectrum)"
+        
+        # Create plot
+        fig = go.Figure()
+        fig.add_trace(go.Heatmap(
+            z=10 * np.log10(Sxx + 1e-10),  # Convert to dB
+            x=times,
+            y=freqs,
+            colorscale=colormap,
+            name='Spectrogram'
+        ))
+        
+        fig.update_layout(
+            title=f"Time-Frequency Spectrogram{title_suffix}",
+            xaxis_title="Time (s)",
+            yaxis_title="Frequency (Hz)",
+            showlegend=True,
+            plot_bgcolor="white"
+        )
+        
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error creating spectrogram plot: {e}")
+        return create_empty_figure()
+
+
+def generate_frequency_analysis_results(signal_data, sampling_freq, analysis_type, analysis_options):
+    """Generate frequency analysis results summary."""
+    try:
+        results = []
+        
+        # Basic signal information
+        results.append(html.H5("Signal Information"))
+        results.append(html.P(f"Signal Length: {len(signal_data)} samples"))
+        results.append(html.P(f"Duration: {len(signal_data) / sampling_freq:.2f} seconds"))
+        results.append(html.P(f"Sampling Frequency: {sampling_freq} Hz"))
+        results.append(html.P(f"Nyquist Frequency: {sampling_freq / 2:.2f} Hz"))
+        
+        # Analysis type specific results
+        results.append(html.H5(f"Analysis Type: {analysis_type.upper()}"))
+        
+        if analysis_type == "fft":
+            # FFT specific analysis
             fft_result = np.fft.fft(signal_data)
             fft_freq = np.fft.fftfreq(len(signal_data), 1/sampling_freq)
             
-            # Get positive frequencies only
-            positive_freq_mask = fft_freq > 0
-            fft_freq = fft_freq[positive_freq_mask]
-            fft_magnitude = np.abs(fft_result[positive_freq_mask])
-            
             # Find dominant frequency
-            dominant_freq_idx = np.argmax(fft_magnitude)
-            dominant_freq = fft_freq[dominant_freq_idx]
+            positive_freq_mask = fft_freq > 0
+            fft_freq_pos = fft_freq[positive_freq_mask]
+            fft_magnitude_pos = np.abs(fft_result[positive_freq_mask])
             
-            # Create plot
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=fft_freq,
-                y=fft_magnitude,
-                mode='lines',
-                name='FFT Magnitude',
-                line=dict(color='red')
-            ))
+            if len(fft_magnitude_pos) > 0:
+                dominant_freq_idx = np.argmax(fft_magnitude_pos)
+                dominant_freq = fft_freq_pos[dominant_freq_idx]
+                results.append(html.P(f"Dominant Frequency: {dominant_freq:.2f} Hz"))
+                results.append(html.P(f"Frequency Resolution: {fft_freq_pos[1] - fft_freq_pos[0]:.4f} Hz"))
+        
+        elif analysis_type == "psd":
+            # PSD specific analysis
+            from scipy.signal import welch
+            freqs, psd = welch(signal_data, fs=sampling_freq)
             
-            fig.update_layout(
-                title="Frequency Domain Analysis",
-                xaxis_title="Frequency (Hz)",
-                yaxis_title="Magnitude",
-                showlegend=True
-            )
+            # Find peak frequency
+            peak_freq_idx = np.argmax(psd)
+            peak_freq = freqs[peak_freq_idx]
+            results.append(html.P(f"Peak Frequency: {peak_freq:.2f} Hz"))
+            results.append(html.P(f"Total Power: {np.sum(psd):.2e}"))
+        
+        elif analysis_type == "stft":
+            # STFT specific analysis
+            results.append(html.P("STFT provides time-frequency representation"))
+            results.append(html.P("Check the spectrogram plot for detailed analysis"))
+        
+        elif analysis_type == "wavelet":
+            # Wavelet specific analysis
+            results.append(html.P("Wavelet transform provides multi-resolution analysis"))
+            results.append(html.P("Check the wavelet plot for decomposition levels"))
+        
+        return html.Div(results)
+        
+    except Exception as e:
+        logger.error(f"Error generating frequency analysis results: {e}")
+        return html.Div([html.H5("Error"), html.P(f"Failed to generate results: {str(e)}")])
+
+
+def create_frequency_peak_analysis_table(signal_data, sampling_freq, analysis_type, analysis_options):
+    """Create frequency peak analysis table."""
+    try:
+        if "peak_detection" not in analysis_options:
+            return html.Div([html.P("Peak detection not selected")])
+        
+        # Perform peak detection on frequency domain
+        if analysis_type == "fft":
+            fft_result = np.fft.fft(signal_data)
+            fft_freq = np.fft.fftfreq(len(signal_data), 1/sampling_freq)
             
-            # Create stats display
-            stats = html.Div([
-                html.H5("Frequency Domain Statistics"),
-                html.P(f"Dominant Frequency: {dominant_freq:.2f} Hz"),
-                html.P(f"Sampling Frequency: {sampling_freq} Hz"),
-                html.P(f"Nyquist Frequency: {sampling_freq/2:.2f} Hz"),
-                html.P(f"Frequency Resolution: {fft_freq[1] - fft_freq[0]:.4f} Hz")
-            ])
+            # Get positive frequencies
+            positive_freq_mask = fft_freq > 0
+            fft_freq_pos = fft_freq[positive_freq_mask]
+            fft_magnitude_pos = np.abs(fft_result[positive_freq_mask])
             
-            return fig, stats
+            # Find peaks
+            from scipy.signal import find_peaks
+            peaks, properties = find_peaks(fft_magnitude_pos, height=np.max(fft_magnitude_pos) * 0.1)
             
-        except Exception as e:
-            logger.error(f"Error in frequency domain analysis: {e}")
-            error_fig = go.Figure()
-            error_fig.add_annotation(
-                text=f"Error: {str(e)}",
-                xref="paper", yref="paper",
-                x=0.5, y=0.5, showarrow=False
-            )
-            error_stats = html.Div([
-                html.H5("Error"),
-                html.P(f"Analysis failed: {str(e)}")
-            ])
-            return error_fig, error_stats
+            if len(peaks) > 0:
+                # Create table
+                table_data = []
+                for i, peak_idx in enumerate(peaks[:10]):  # Limit to top 10 peaks
+                    freq = fft_freq_pos[peak_idx]
+                    magnitude = fft_magnitude_pos[peak_idx]
+                    table_data.append([f"Peak {i+1}", f"{freq:.2f} Hz", f"{magnitude:.2e}"])
+                
+                return dbc.Table.from_dataframe(
+                    pd.DataFrame(table_data, columns=["Peak", "Frequency (Hz)", "Magnitude"]),
+                    striped=True, bordered=True, hover=True
+                )
+            else:
+                return html.P("No significant peaks found")
+        
+        else:
+            return html.P(f"Peak detection for {analysis_type} not implemented yet")
+            
+    except Exception as e:
+        logger.error(f"Error creating peak analysis table: {e}")
+        return html.Div([html.H5("Error"), html.P(f"Failed to create peak table: {str(e)}")])
+
+
+def create_frequency_band_power_table(signal_data, sampling_freq, analysis_type, analysis_options):
+    """Create frequency band power analysis table."""
+    try:
+        if "band_power" not in analysis_options:
+            return html.Div([html.P("Band power analysis not selected")])
+        
+        # Define frequency bands
+        bands = {
+            "Delta (0.5-4 Hz)": (0.5, 4),
+            "Theta (4-8 Hz)": (4, 8),
+            "Alpha (8-13 Hz)": (8, 13),
+            "Beta (13-30 Hz)": (13, 30),
+            "Gamma (30-100 Hz)": (30, 100)
+        }
+        
+        # Compute PSD
+        from scipy.signal import welch
+        freqs, psd = welch(signal_data, fs=sampling_freq)
+        
+        # Calculate band powers
+        band_powers = {}
+        for band_name, (low_freq, high_freq) in bands.items():
+            freq_mask = (freqs >= low_freq) & (freqs <= high_freq)
+            if np.any(freq_mask):
+                power = np.trapz(psd[freq_mask], freqs[freq_mask])
+                band_powers[band_name] = power
+        
+        # Create table
+        table_data = []
+        for band_name, power in band_powers.items():
+            table_data.append([band_name, f"{power:.2e}"])
+        
+        return dbc.Table.from_dataframe(
+            pd.DataFrame(table_data, columns=["Frequency Band", "Power"]),
+            striped=True, bordered=True, hover=True
+        )
+        
+    except Exception as e:
+        logger.error(f"Error creating band power table: {e}")
+        return html.Div([html.H5("Error"), html.P(f"Failed to create band power table: {str(e)}")])
+
+
+def create_frequency_stability_table(signal_data, sampling_freq, analysis_type, analysis_options):
+    """Create frequency stability analysis table."""
+    try:
+        if "stability" not in analysis_options:
+            return html.Div([html.P("Stability analysis not selected")])
+        
+        # Basic stability metrics
+        mean_value = np.mean(signal_data)
+        std_value = np.std(signal_data)
+        cv = std_value / abs(mean_value) if mean_value != 0 else float('inf')
+        
+        # Frequency stability (using FFT)
+        fft_result = np.fft.fft(signal_data)
+        fft_freq = np.fft.fftfreq(len(signal_data), 1/sampling_freq)
+        
+        # Get positive frequencies
+        positive_freq_mask = fft_freq > 0
+        fft_freq_pos = fft_freq[positive_freq_mask]
+        fft_magnitude_pos = np.abs(fft_result[positive_freq_mask])
+        
+        # Find dominant frequency
+        if len(fft_magnitude_pos) > 0:
+            dominant_freq_idx = np.argmax(fft_magnitude_pos)
+            dominant_freq = fft_freq_pos[dominant_freq_idx]
+        else:
+            dominant_freq = 0
+        
+        # Create table
+        table_data = [
+            ["Mean Value", f"{mean_value:.4f}"],
+            ["Standard Deviation", f"{std_value:.4f}"],
+            ["Coefficient of Variation", f"{cv:.4f}"],
+            ["Dominant Frequency", f"{dominant_freq:.2f} Hz"],
+            ["Signal Length", f"{len(signal_data)} samples"]
+        ]
+        
+        return dbc.Table.from_dataframe(
+            pd.DataFrame(table_data, columns=["Metric", "Value"]),
+            striped=True, bordered=True, hover=True
+        )
+        
+    except Exception as e:
+        logger.error(f"Error creating stability table: {e}")
+        return html.Div([html.H5("Error"), html.P(f"Failed to create stability table: {str(e)}")])
+
+
+def create_frequency_harmonics_table(signal_data, sampling_freq, analysis_type, analysis_options):
+    """Create frequency harmonics analysis table."""
+    try:
+        if "harmonic_analysis" not in analysis_options:
+            return html.Div([html.P("Harmonic analysis not selected")])
+        
+        # Perform FFT for harmonic analysis
+        fft_result = np.fft.fft(signal_data)
+        fft_freq = np.fft.fftfreq(len(signal_data), 1/sampling_freq)
+        
+        # Get positive frequencies
+        positive_freq_mask = fft_freq > 0
+        fft_freq_pos = fft_freq[positive_freq_mask]
+        fft_magnitude_pos = np.abs(fft_result[positive_freq_mask])
+        
+        if len(fft_magnitude_pos) > 0:
+            # Find fundamental frequency (highest peak)
+            from scipy.signal import find_peaks
+            peaks, properties = find_peaks(fft_magnitude_pos, height=np.max(fft_magnitude_pos) * 0.1)
+            
+            if len(peaks) > 0:
+                fundamental_freq = fft_freq_pos[peaks[0]]
+                
+                # Find harmonics (multiples of fundamental)
+                harmonics = []
+                for i in range(1, 6):  # Look for up to 5th harmonic
+                    harmonic_freq = fundamental_freq * i
+                    
+                    # Find closest frequency in our data
+                    freq_idx = np.argmin(np.abs(fft_freq_pos - harmonic_freq))
+                    if freq_idx < len(fft_magnitude_pos):
+                        harmonic_magnitude = fft_magnitude_pos[freq_idx]
+                        harmonics.append([f"{i}st", f"{harmonic_freq:.2f} Hz", f"{harmonic_magnitude:.2e}"])
+                
+                # Create table
+                table_data = [["Fundamental", f"{fundamental_freq:.2f} Hz", f"{fft_magnitude_pos[peaks[0]]:.2e}"]]
+                table_data.extend(harmonics)
+                
+                return dbc.Table.from_dataframe(
+                    pd.DataFrame(table_data, columns=["Harmonic", "Frequency (Hz)", "Magnitude"]),
+                    striped=True, bordered=True, hover=True
+                )
+            else:
+                return html.P("No significant peaks found for harmonic analysis")
+        else:
+            return html.P("Insufficient data for harmonic analysis")
+            
+    except Exception as e:
+        logger.error(f"Error creating harmonics table: {e}")
+        return html.Div([html.H5("Error"), html.P(f"Failed to create harmonics table: {str(e)}")])
 
