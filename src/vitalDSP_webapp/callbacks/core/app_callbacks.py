@@ -27,14 +27,18 @@ def register_sidebar_callbacks(app):
         if n_clicks is None:
             n_clicks = 0
             
+        print(f"Sidebar toggle clicked {n_clicks} times")
+        
         if n_clicks % 2 == 0:
             # Expanded state
+            print("Setting sidebar to expanded state")
             return (
                 "sidebar sidebar-expanded",
                 "fas fa-bars"
             )
         else:
             # Collapsed state
+            print("Setting sidebar to collapsed state")
             return (
                 "sidebar sidebar-collapsed",
                 "fas fa-arrow-right"

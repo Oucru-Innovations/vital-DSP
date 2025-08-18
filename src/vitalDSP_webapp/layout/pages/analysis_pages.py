@@ -20,9 +20,40 @@ def time_domain_layout():
             ], className="text-center text-muted mb-5")
         ], className="mb-4"),
         
+        # Action Buttons - Moved to top for easy access
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Button(
+                                    "🔄 Update Analysis",
+                                    id="btn-update-analysis",
+                                    color="primary",
+                                    size="lg",
+                                    className="w-100"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                dbc.Button(
+                                    "📊 Export Results",
+                                    id="btn-export-results",
+                                    color="success",
+                                    outline=True,
+                                    size="lg",
+                                    className="w-100"
+                                )
+                            ], md=6)
+                        ])
+                    ])
+                ], className="mb-4")
+            ], md=12)
+        ]),
+        
         # Main Analysis Section
         dbc.Row([
-            # Left Panel - Controls & Parameters
+            # Left Panel - Controls & Parameters (Reduced width)
             dbc.Col([
                 dbc.Card([
                     dbc.CardHeader([
@@ -39,6 +70,18 @@ def time_domain_layout():
                                 {"label": "Sample Data", "value": "sample"}
                             ],
                             value="uploaded",
+                            className="mb-3"
+                        ),
+                        
+                        # Signal Type Selection for Critical Points Detection
+                        html.H6("Signal Type", className="mb-3"),
+                        dbc.Select(
+                            id="signal-type-select",
+                            options=[
+                                {"label": "PPG (Photoplethysmography)", "value": "PPG"},
+                                {"label": "ECG (Electrocardiography)", "value": "ECG"}
+                            ],
+                            value="PPG",
                             className="mb-3"
                         ),
                         
@@ -173,46 +216,26 @@ def time_domain_layout():
                             id="analysis-options",
                             options=[
                                 {"label": "Peak Detection", "value": "peaks"},
+                                {"label": "Critical Points Detection", "value": "critical_points"},
                                 {"label": "Heart Rate Calculation", "value": "hr"},
                                 {"label": "Signal Quality Assessment", "value": "quality"},
                                 {"label": "Artifact Detection", "value": "artifacts"},
                                 {"label": "Trend Analysis", "value": "trend"}
                             ],
-                            value=["peaks", "hr", "quality"],
+                            value=["peaks", "critical_points", "hr", "quality"],
                             className="mb-3"
-                        ),
-                        
-                        # Action Buttons
-                        dbc.Row([
-                            dbc.Col([
-                                dbc.Button(
-                                    "🔄 Update Analysis",
-                                    id="btn-update-analysis",
-                                    color="primary",
-                                    className="w-100"
-                                )
-                            ], md=6),
-                            dbc.Col([
-                                dbc.Button(
-                                    "📊 Export Results",
-                                    id="btn-export-results",
-                                    color="success",
-                                    outline=True,
-                                    className="w-100"
-                                )
-                            ], md=6)
-                        ])
+                        )
                     ])
                 ], className="h-100")
-            ], md=4),
+            ], md=3),  # Reduced from md=4 to md=3
             
-            # Right Panel - Plots & Results
+            # Right Panel - Plots & Results (Increased width)
             dbc.Col([
                 # Main Signal Plot
                 dbc.Card([
                     dbc.CardHeader([
-                        html.H4("📈 Raw Signal", className="mb-0"),
-                        html.Small("Time domain representation of your signal", className="text-muted")
+                        html.H4("📈 Raw Signal with Critical Points", className="mb-0"),
+                        html.Small("Time domain representation with detected morphological features", className="text-muted")
                     ]),
                     dbc.CardBody([
                         dcc.Loading(
@@ -233,8 +256,8 @@ def time_domain_layout():
                 # Filtered Signal Plot
                 dbc.Card([
                     dbc.CardHeader([
-                        html.H4("🔧 Filtered Signal", className="mb-0"),
-                        html.Small("Signal after applying selected filters", className="text-muted")
+                        html.H4("🔧 Raw vs Filtered Signal", className="mb-0"),
+                        html.Small("Comparison of original and filtered signals with critical points", className="text-muted")
                     ]),
                     dbc.CardBody([
                         dcc.Loading(
@@ -275,7 +298,7 @@ def time_domain_layout():
                         html.Div(id="additional-metrics-table", className="mb-4")
                     ])
                 ])
-            ], md=9)
+            ], md=9)  # Increased from md=8 to md=9
         ]),
         
         # Bottom Section - Additional Analysis

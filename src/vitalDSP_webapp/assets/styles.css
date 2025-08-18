@@ -90,17 +90,20 @@ body {
 
 .sidebar.sidebar-collapsed {
     width: var(--sidebar-collapsed-width);
+    overflow: hidden;
 }
 
 .sidebar.sidebar-collapsed .sidebar-content {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;
+    visibility: hidden;
 }
 
 .sidebar.sidebar-collapsed .sidebar-toggle {
     opacity: 1;
     pointer-events: auto;
+    visibility: visible;
 }
 
 .sidebar.sidebar-expanded .sidebar-content {
@@ -123,6 +126,48 @@ body {
     border-radius: 4px;
     transition: background-color 0.2s ease;
     z-index: 1000;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sidebar-toggle .fas {
+    font-size: 18px;
+}
+
+.sidebar.sidebar-collapsed .sidebar-toggle {
+    right: 15px;
+    top: 15px;
+    position: absolute;
+    z-index: 1001;
+}
+
+/* Ensure toggle button is always visible */
+.sidebar .sidebar-toggle {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+}
+
+/* Force hide sidebar content when collapsed */
+.sidebar.sidebar-collapsed .sidebar-content * {
+    display: none !important;
+}
+
+.sidebar.sidebar-collapsed .sidebar-content {
+    display: none !important;
+}
+
+/* Ensure proper sidebar behavior */
+.sidebar {
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    height: calc(100vh - var(--header-height));
+    background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    z-index: 900;
+    transition: width 0.3s ease;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar-toggle:hover {
@@ -138,12 +183,14 @@ body {
 .sidebar-content {
     padding: 20px;
     transition: opacity 0.3s ease;
+    overflow-y: auto;
+    height: 100%;
 }
 
 /* Sidebar Navigation Links */
 .sidebar .nav-link {
     display: block;
-    padding: 10px 15px;
+    padding: 8px 0;
     color: rgba(255, 255, 255, 0.8);
     text-decoration: none;
     border-radius: 6px;

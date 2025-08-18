@@ -129,269 +129,366 @@ def create_peak_analysis_plot(signal_data, time_axis, peaks, sampling_freq):
         return create_empty_figure()
 
 
-def create_main_signal_plot(data, time_axis, sampling_freq, analysis_options, column_mapping):
-    """Create the main signal plot with optional annotations."""
+def create_main_signal_plot(signal_data, time_axis, sampling_freq, analysis_options, column_mapping, signal_type="PPG"):
+    """Create the main time domain plot with critical points detection."""
     try:
-        logger.info("=== CREATE MAIN SIGNAL PLOT ===")
-        logger.info(f"Data shape: {data.shape}")
-        logger.info(f"Data columns: {list(data.columns)}")
-        logger.info(f"Column mapping: {column_mapping}")
-        logger.info(f"Time axis shape: {time_axis.shape if hasattr(time_axis, 'shape') else 'No shape'}")
-        logger.info(f"Time axis range: {time_axis[0] if len(time_axis) > 0 else 'Empty'} to {time_axis[-1] if len(time_axis) > 0 else 'Empty'}")
-        logger.info(f"Sampling frequency: {sampling_freq}")
-        logger.info(f"Analysis options: {analysis_options}")
-        
         fig = go.Figure()
         
         # Use column mapping to get the correct columns
         time_col = column_mapping.get('time')
         signal_col = column_mapping.get('signal')
         
-        logger.info(f"Initial time column from mapping: {time_col}")
-        logger.info(f"Initial signal column from mapping: {signal_col}")
-        
-        # Try to find alternative signal columns if the primary one is not available
-        if not signal_col:
-            # Look for common signal column names
-            potential_signal_cols = ['waveform', 'pleth', 'pl', 'signal', 'ppg', 'ecg', 'red', 'ir']
-            for col in potential_signal_cols:
-                if col in [c.lower() for c in data.columns]:
-                    signal_col = [c for c in data.columns if c.lower() == col][0]
-                    logger.info(f"Found alternative signal column: {signal_col}")
-                    break
-        
-        if not time_col:
-            # If no time column specified, use the first numeric column or index
-            numeric_cols = data.select_dtypes(include=[np.number]).columns
-            if len(numeric_cols) > 0:
-                time_col = numeric_cols[0]
-                logger.info(f"Using first numeric column as time: {time_col}")
-            else:
-                time_col = 'index'
-                logger.info("Using index as time column")
-        
-        logger.info(f"Final time column: {time_col}")
-        logger.info(f"Final signal column: {signal_col}")
-        
         if not time_col or not signal_col:
-            logger.error("Missing time or signal column in column mapping")
+            logger.warning("Missing time or signal column in column mapping")
             return create_empty_figure()
         
-        if time_col not in data.columns and time_col != 'index':
-            logger.error(f"Time column {time_col} not found in data columns: {list(data.columns)}")
-            return create_empty_figure()
-            
-        if signal_col not in data.columns:
-            logger.error(f"Signal column {signal_col} not found in data columns: {list(data.columns)}")
+        if time_col not in signal_data.columns or signal_col not in signal_data.columns:
+            logger.warning(f"Columns {time_col} or {signal_col} not found in data")
             return create_empty_figure()
         
         # Get signal data
-        signal_data = data[signal_col].values
-        logger.info(f"Signal data shape: {signal_data.shape}")
-        logger.info(f"Signal data type: {signal_data.dtype}")
-        logger.info(f"Signal data range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
-        logger.info(f"Signal data mean: {np.mean(signal_data):.3f}")
-        logger.info(f"Signal data std: {np.std(signal_data):.3f}")
-        logger.info(f"First 10 signal values: {signal_data[:10]}")
+        signal_values = signal_data[signal_col].values
+        time_values = signal_data[time_col].values if time_col != 'index' else time_axis
         
-        # Handle time data
-        if time_col == 'index':
-            time_data = time_axis
-            logger.info(f"Using provided time axis, shape: {time_data.shape}")
-        else:
-            time_data = data[time_col].values
-            logger.info(f"Using column time data, shape: {time_data.shape}")
-            logger.info(f"Time data range: {np.min(time_data):.3f} to {np.max(time_data):.3f}")
-        
-        # Ensure time_data and signal_data have the same length
-        if len(time_data) != len(signal_data):
-            logger.warning(f"Time data length ({len(time_data)}) != Signal data length ({len(signal_data)})")
-            # Use the shorter length
-            min_length = min(len(time_data), len(signal_data))
-            time_data = time_data[:min_length]
-            signal_data = signal_data[:min_length]
-            logger.info(f"Truncated both arrays to length: {min_length}")
-        
-        # Check for valid data
-        if len(signal_data) == 0:
-            logger.error("Signal data is empty")
-            return create_empty_figure()
-        
-        if np.all(signal_data == signal_data[0]):
-            logger.warning(f"All signal values are identical: {signal_data[0]}")
-        
-        # Create main signal trace
+        # Add main signal
         fig.add_trace(go.Scatter(
-            x=time_data,
-            y=signal_data,
+            x=time_values,
+            y=signal_values,
             mode='lines',
-            name=f'Raw Signal ({signal_col})',
-            line=dict(color='#1f77b4', width=2),
-            hovertemplate='<b>Time:</b> %{x:.3f}s<br><b>Amplitude:</b> %{y:.3f}<extra></extra>'
+            name='Original Signal',
+            line=dict(color='blue', width=1)
         ))
         
-        # Add peak annotations if requested
-        if analysis_options and "peaks" in analysis_options:
+        # Add critical points detection if enabled
+        if 'critical_points' in analysis_options:
             try:
-                # Use adaptive threshold for peak detection
-                mean_val = np.mean(signal_data)
-                std_val = np.std(signal_data)
-                threshold = mean_val + 2 * std_val
-                min_distance = int(sampling_freq * 0.1)  # Minimum 0.1 seconds between peaks
+                # Import vitalDSP waveform morphology
+                from vitalDSP.physiological_features.waveform import WaveformMorphology
                 
-                logger.info(f"Peak detection - threshold: {threshold:.3f}, min_distance: {min_distance}")
-                peaks, properties = signal.find_peaks(signal_data, height=threshold, distance=min_distance, prominence=0.1 * std_val)
-                logger.info(f"Detected {len(peaks)} peaks")
+                # Create waveform morphology object
+                wm = WaveformMorphology(
+                    waveform=signal_values,
+                    fs=sampling_freq,
+                    signal_type=signal_type,
+                    simple_mode=True
+                )
                 
+                # Detect critical points based on signal type
+                if signal_type == "PPG":
+                    # For PPG: systolic peaks, dicrotic notches, diastolic peaks
+                    if hasattr(wm, 'systolic_peaks') and wm.systolic_peaks is not None:
+                        # Plot systolic peaks
+                        fig.add_trace(go.Scatter(
+                            x=time_values[wm.systolic_peaks],
+                            y=signal_values[wm.systolic_peaks],
+                            mode='markers',
+                            name='Systolic Peaks',
+                            marker=dict(color='red', size=10, symbol='diamond'),
+                            hovertemplate='<b>Systolic Peak:</b> %{y}<extra></extra>'
+                        ))
+                    
+                    # Detect and plot dicrotic notches
+                    try:
+                        dicrotic_notches = wm.detect_dicrotic_notches()
+                        if dicrotic_notches is not None and len(dicrotic_notches) > 0:
+                            fig.add_trace(go.Scatter(
+                                x=time_values[dicrotic_notches],
+                                y=signal_values[dicrotic_notches],
+                                mode='markers',
+                                name='Dicrotic Notches',
+                                marker=dict(color='orange', size=8, symbol='circle'),
+                                hovertemplate='<b>Dicrotic Notch:</b> %{y}<extra></extra>'
+                            ))
+                    except Exception as e:
+                        logger.warning(f"Dicrotic notch detection failed: {e}")
+                    
+                    # Detect and plot diastolic peaks
+                    try:
+                        diastolic_peaks = wm.detect_diastolic_peak()
+                        if diastolic_peaks is not None and len(diastolic_peaks) > 0:
+                            fig.add_trace(go.Scatter(
+                                x=time_values[diastolic_peaks],
+                                y=signal_values[diastolic_peaks],
+                                mode='markers',
+                                name='Diastolic Peaks',
+                                marker=dict(color='green', size=8, symbol='square'),
+                                hovertemplate='<b>Diastolic Peak:</b> %{y}<extra></extra>'
+                            ))
+                    except Exception as e:
+                        logger.warning(f"Diastolic peak detection failed: {e}")
+                    
+                elif signal_type == "ECG":
+                    # For ECG: R peaks, P peaks, T peaks, Q valleys, S valleys
+                    if hasattr(wm, 'r_peaks') and wm.r_peaks is not None:
+                        # Plot R peaks
+                        fig.add_trace(go.Scatter(
+                            x=time_values[wm.r_peaks],
+                            y=signal_values[wm.r_peaks],
+                            mode='markers',
+                            name='R Peaks',
+                            marker=dict(color='red', size=10, symbol='diamond'),
+                            hovertemplate='<b>R Peak:</b> %{y}<extra></extra>'
+                        ))
+                    
+                    # Detect and plot P peaks
+                    try:
+                        p_peaks = wm.detect_p_peak()
+                        if p_peaks is not None and len(p_peaks) > 0:
+                            fig.add_trace(go.Scatter(
+                                x=time_values[p_peaks],
+                                y=signal_values[p_peaks],
+                                mode='markers',
+                                name='P Peaks',
+                                marker=dict(color='blue', size=8, symbol='circle'),
+                                hovertemplate='<b>P Peak:</b> %{y}<extra></extra>'
+                            ))
+                    except Exception as e:
+                        logger.warning(f"P peak detection failed: {e}")
+                    
+                    # Detect and plot T peaks
+                    try:
+                        t_peaks = wm.detect_t_peak()
+                        if t_peaks is not None and len(t_peaks) > 0:
+                            fig.add_trace(go.Scatter(
+                                x=time_values[t_peaks],
+                                y=signal_values[t_peaks],
+                                mode='markers',
+                                name='T Peaks',
+                                marker=dict(color='green', size=8, symbol='square'),
+                                hovertemplate='<b>T Peak:</b> %{y}<extra></extra>'
+                            ))
+                    except Exception as e:
+                        logger.warning(f"T peak detection failed: {e}")
+                    
+                    # Detect and plot Q valleys
+                    try:
+                        q_valleys = wm.detect_q_valley()
+                        if q_valleys is not None and len(q_valleys) > 0:
+                            fig.add_trace(go.Scatter(
+                                x=time_values[q_valleys],
+                                y=signal_values[q_valleys],
+                                mode='markers',
+                                name='Q Valleys',
+                                marker=dict(color='purple', size=8, symbol='triangle-down'),
+                                hovertemplate='<b>Q Valley:</b> %{y}<extra></extra>'
+                            ))
+                    except Exception as e:
+                        logger.warning(f"Q valley detection failed: {e}")
+                    
+                    # Detect and plot S valleys
+                    try:
+                        s_valleys = wm.detect_s_valley()
+                        if s_valleys is not None and len(s_valleys) > 0:
+                            fig.add_trace(go.Scatter(
+                                x=time_values[s_valleys],
+                                y=signal_values[s_valleys],
+                                mode='markers',
+                                name='S Valleys',
+                                marker=dict(color='orange', size=8, symbol='triangle-down'),
+                                hovertemplate='<b>S Valley:</b> %{y}<extra></extra>'
+                            ))
+                    except Exception as e:
+                        logger.warning(f"S valley detection failed: {e}")
+                
+            except Exception as e:
+                logger.error(f"Critical points detection failed: {e}")
+        
+        # Add basic peak detection if enabled (fallback)
+        elif 'peaks' in analysis_options:
+            try:
+                from scipy.signal import find_peaks
+                peaks, _ = find_peaks(signal_values, height=0.5*np.max(signal_values), distance=int(0.5*sampling_freq))
                 if len(peaks) > 0:
                     fig.add_trace(go.Scatter(
-                        x=time_data[peaks],
-                        y=signal_data[peaks],
+                        x=time_values[peaks],
+                        y=signal_values[peaks],
                         mode='markers',
                         name='Detected Peaks',
                         marker=dict(color='red', size=8, symbol='diamond'),
-                        hovertemplate='<b>Peak Time:</b> %{x:.3f}s<br><b>Amplitude:</b> %{y:.3f}<extra></extra>'
+                        hovertemplate='<b>Peak:</b> %{y}<extra></extra>'
                     ))
-                    logger.info(f"Added {len(peaks)} peak markers to plot")
             except Exception as e:
-                logger.error(f"Error in peak detection: {e}")
+                logger.error(f"Peak detection failed: {e}")
         
-        # Update layout
         fig.update_layout(
-            title=f"Raw Signal ({signal_col}) with Peak Detection",
+            title=f"Time Domain Signal Analysis - {signal_type}",
             xaxis_title="Time (seconds)",
-            yaxis_title=f"Amplitude ({signal_col})",
-            template="plotly_white",
-            height=400,
+            yaxis_title="Amplitude",
             showlegend=True,
-            hovermode='x unified'
+            height=400,
+            template="plotly_white",
+            margin=dict(l=40, r=40, t=60, b=40),
+            hovermode='closest'
         )
         
-        logger.info("Main signal plot created successfully")
         return fig
-        
     except Exception as e:
-        logger.error(f"Error creating main signal plot: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error creating time domain plot: {e}")
         return create_empty_figure()
 
 
-def create_filtered_signal_plot(filtered_data, time_axis, sampling_freq, column_mapping):
-    """Create the filtered signal plot."""
+def create_filtered_signal_plot(filtered_data, time_axis, sampling_freq, column_mapping, signal_type="PPG", analysis_options=None):
+    """Create the filtered signal plot showing both raw and filtered signals with critical points."""
     try:
-        logger.info("=== CREATE FILTERED SIGNAL PLOT ===")
-        logger.info(f"Filtered data shape: {filtered_data.shape}")
-        logger.info(f"Filtered data columns: {list(filtered_data.columns)}")
-        logger.info(f"Column mapping: {column_mapping}")
-        logger.info(f"Time axis shape: {time_axis.shape if hasattr(time_axis, 'shape') else 'No shape'}")
-        logger.info(f"Time axis range: {time_axis[0] if len(time_axis) > 0 else 'Empty'} to {time_axis[-1] if len(time_axis) > 0 else 'Empty'}")
-        logger.info(f"Sampling frequency: {sampling_freq}")
-        
         fig = go.Figure()
         
         # Use column mapping to get the correct columns
         time_col = column_mapping.get('time')
         signal_col = column_mapping.get('signal')
         
-        # Try to find alternative signal columns if the primary one is not available
-        if not signal_col:
-            # Look for common signal column names
-            potential_signal_cols = ['waveform', 'pleth', 'pl', 'signal', 'ppg', 'ecg', 'red', 'ir']
-            for col in potential_signal_cols:
-                if col in [c.lower() for c in filtered_data.columns]:
-                    signal_col = [c for c in filtered_data.columns if c.lower() == col][0]
-                    logger.info(f"Found alternative signal column: {signal_col}")
-                    break
-        
-        if not time_col:
-            # If no time column specified, use the first numeric column or index
-            numeric_cols = filtered_data.select_dtypes(include=[np.number]).columns
-            if len(numeric_cols) > 0:
-                time_col = numeric_cols[0]
-                logger.info(f"Using first numeric column as time: {time_col}")
-            else:
-                time_col = 'index'
-                logger.info("Using index as time column")
-        
-        logger.info(f"Final time column: {time_col}")
-        logger.info(f"Final signal column: {signal_col}")
-        
         if not time_col or not signal_col:
-            logger.error("Missing time or signal column in column mapping")
+            logger.warning("Missing time or signal column in column mapping")
             return create_empty_figure()
         
-        if time_col not in filtered_data.columns and time_col != 'index':
-            logger.error(f"Time column {time_col} not found in filtered data columns: {list(filtered_data.columns)}")
-            return create_empty_figure()
-            
-        if signal_col not in filtered_data.columns:
-            logger.error(f"Signal column {signal_col} not found in filtered data columns: {list(filtered_data.columns)}")
+        if time_col not in filtered_data.columns or signal_col not in filtered_data.columns:
+            logger.warning(f"Columns {time_col} or {signal_col} not found in filtered data")
             return create_empty_figure()
         
         # Get signal data
-        signal_data = filtered_data[signal_col].values
-        logger.info(f"Filtered signal data shape: {signal_data.shape}")
-        logger.info(f"Filtered signal data type: {signal_data.dtype}")
-        logger.info(f"Filtered signal data range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
-        logger.info(f"Filtered signal data mean: {np.mean(signal_data):.3f}")
-        logger.info(f"Filtered signal data std: {np.std(signal_data):.3f}")
-        logger.info(f"First 10 filtered signal values: {signal_data[:10]}")
+        signal_values = filtered_data[signal_col].values
+        time_values = filtered_data[time_col].values if time_col != 'index' else time_axis
         
-        # Handle time data
-        if time_col == 'index':
-            time_data = time_axis
-            logger.info(f"Using provided time axis, shape: {time_data.shape}")
-        else:
-            time_data = filtered_data[time_col].values
-            logger.info(f"Using column time data, shape: {time_data.shape}")
-            logger.info(f"Time data range: {np.min(time_data):.3f} to {np.max(time_data):.3f}")
-        
-        # Ensure time_data and signal_data have the same length
-        if len(time_data) != len(signal_data):
-            logger.warning(f"Time data length ({len(time_data)}) != Signal data length ({len(signal_data)})")
-            # Use the shorter length
-            min_length = min(len(time_data), len(signal_data))
-            time_data = time_data[:min_length]
-            signal_data = signal_data[:min_length]
-            logger.info(f"Truncated both arrays to length: {min_length}")
-        
-        # Check for valid data
-        if len(signal_data) == 0:
-            logger.error("Filtered signal data is empty")
-            return create_empty_figure()
-        
-        if np.all(signal_data == signal_data[0]):
-            logger.warning(f"All filtered signal values are identical: {signal_data[0]}")
-        
-        # Create filtered signal trace
+        # Plot raw signal
         fig.add_trace(go.Scatter(
-            x=time_data,
-            y=signal_data,
+            x=time_values,
+            y=signal_values,
             mode='lines',
-            name=f'Filtered Signal ({signal_col})',
-            line=dict(color='#2ca02c', width=2),
-            hovertemplate='<b>Time:</b> %{x:.3f}s<br><b>Amplitude:</b> %{y:.3f}<extra></extra>'
+            name='Raw Signal',
+            line=dict(color='#2E86AB', width=1.5),
+            opacity=0.7,
+            hovertemplate='<b>Time:</b> %{x}<br><b>Raw:</b> %{y}<extra></extra>'
         ))
         
-        # Update layout
+        # Plot filtered signal if available
+        filtered_col = f"{signal_col}_filtered"
+        if filtered_col in filtered_data.columns:
+            filtered_values = filtered_data[filtered_col].values
+            fig.add_trace(go.Scatter(
+                x=time_values,
+                y=filtered_values,
+                mode='lines',
+                name='Filtered Signal',
+                line=dict(color='#E63946', width=2),
+                hovertemplate='<b>Time:</b> %{x}<br><b>Filtered:</b> %{y}<extra></extra>'
+            ))
+            
+            # Add critical points detection on filtered signal if enabled
+            if analysis_options and 'critical_points' in analysis_options:
+                try:
+                    # Import vitalDSP waveform morphology
+                    from vitalDSP.physiological_features.waveform import WaveformMorphology
+                    
+                    # Create waveform morphology object for filtered signal
+                    wm = WaveformMorphology(
+                        waveform=filtered_values,
+                        fs=sampling_freq,
+                        signal_type=signal_type,
+                        simple_mode=True
+                    )
+                    
+                    # Detect critical points based on signal type
+                    if signal_type == "PPG":
+                        # For PPG: systolic peaks, dicrotic notches, diastolic peaks
+                        if hasattr(wm, 'systolic_peaks') and wm.systolic_peaks is not None:
+                            # Plot systolic peaks on filtered signal
+                            fig.add_trace(go.Scatter(
+                                x=time_values[wm.systolic_peaks],
+                                y=filtered_values[wm.systolic_peaks],
+                                mode='markers',
+                                name='Filtered Systolic Peaks',
+                                marker=dict(color='red', size=10, symbol='diamond'),
+                                hovertemplate='<b>Filtered Systolic Peak:</b> %{y}<extra></extra>'
+                            ))
+                        
+                        # Detect and plot dicrotic notches on filtered signal
+                        try:
+                            dicrotic_notches = wm.detect_dicrotic_notches()
+                            if dicrotic_notches is not None and len(dicrotic_notches) > 0:
+                                fig.add_trace(go.Scatter(
+                                    x=time_values[dicrotic_notches],
+                                    y=filtered_values[dicrotic_notches],
+                                    mode='markers',
+                                    name='Filtered Dicrotic Notches',
+                                    marker=dict(color='orange', size=8, symbol='circle'),
+                                    hovertemplate='<b>Filtered Dicrotic Notch:</b> %{y}<extra></extra>'
+                                ))
+                        except Exception as e:
+                            logger.warning(f"Filtered dicrotic notch detection failed: {e}")
+                        
+                        # Detect and plot diastolic peaks on filtered signal
+                        try:
+                            diastolic_peaks = wm.detect_diastolic_peak()
+                            if diastolic_peaks is not None and len(diastolic_peaks) > 0:
+                                fig.add_trace(go.Scatter(
+                                    x=time_values[diastolic_peaks],
+                                    y=filtered_values[diastolic_peaks],
+                                    mode='markers',
+                                    name='Filtered Diastolic Peaks',
+                                    marker=dict(color='green', size=8, symbol='square'),
+                                    hovertemplate='<b>Filtered Diastolic Peak:</b> %{y}<extra></extra>'
+                                ))
+                        except Exception as e:
+                            logger.warning(f"Filtered diastolic peak detection failed: {e}")
+                        
+                    elif signal_type == "ECG":
+                        # For ECG: R peaks, P peaks, T peaks, Q valleys, S valleys
+                        if hasattr(wm, 'r_peaks') and wm.r_peaks is not None:
+                            # Plot R peaks on filtered signal
+                            fig.add_trace(go.Scatter(
+                                x=time_values[wm.r_peaks],
+                                y=filtered_values[wm.r_peaks],
+                                mode='markers',
+                                name='Filtered R Peaks',
+                                marker=dict(color='red', size=10, symbol='diamond'),
+                                hovertemplate='<b>Filtered R Peak:</b> %{y}<extra></extra>'
+                            ))
+                        
+                        # Detect and plot other ECG features on filtered signal
+                        try:
+                            p_peaks = wm.detect_p_peak()
+                            if p_peaks is not None and len(p_peaks) > 0:
+                                fig.add_trace(go.Scatter(
+                                    x=time_values[p_peaks],
+                                    y=filtered_values[p_peaks],
+                                    mode='markers',
+                                    name='Filtered P Peaks',
+                                    marker=dict(color='blue', size=8, symbol='circle'),
+                                    hovertemplate='<b>Filtered P Peak:</b> %{y}<extra></extra>'
+                                ))
+                        except Exception as e:
+                            logger.warning(f"Filtered P peak detection failed: {e}")
+                        
+                        try:
+                            t_peaks = wm.detect_t_peak()
+                            if t_peaks is not None and len(t_peaks) > 0:
+                                fig.add_trace(go.Scatter(
+                                    x=time_values[t_peaks],
+                                    y=filtered_values[t_peaks],
+                                    mode='markers',
+                                    name='Filtered T Peaks',
+                                    marker=dict(color='green', size=8, symbol='square'),
+                                    hovertemplate='<b>Filtered T Peak:</b> %{y}<extra></extra>'
+                                ))
+                        except Exception as e:
+                            logger.warning(f"Filtered T peak detection failed: {e}")
+                        
+                except Exception as e:
+                    logger.error(f"Filtered signal critical points detection failed: {e}")
+        
         fig.update_layout(
-            title=f"Filtered Signal ({signal_col})",
+            title=f"Signal Comparison: Raw vs Filtered - {signal_type}",
             xaxis_title="Time (seconds)",
-            yaxis_title=f"Amplitude ({signal_col})",
+            yaxis_title="Amplitude",
             template="plotly_white",
             height=400,
+            margin=dict(l=40, r=40, t=60, b=40),
             showlegend=True,
-            hovermode='x unified'
+            hovermode='closest'
         )
         
-        logger.info("Filtered signal plot created successfully")
         return fig
-        
     except Exception as e:
         logger.error(f"Error creating filtered signal plot: {e}")
-        import traceback
-        traceback.print_exc()
         return create_empty_figure()
 
 
@@ -1835,11 +1932,12 @@ def register_vitaldsp_callbacks(app):
          State("filter-low-freq", "value"),
          State("filter-high-freq", "value"),
          State("filter-order", "value"),
-         State("analysis-options", "value")]
+         State("analysis-options", "value"),
+         State("signal-type-select", "value")]
     )
     def analyze_time_domain(n_clicks, slider_value, nudge_m10, nudge_m1, nudge_p1, nudge_p10,
                            pathname, start_time, end_time, filter_family, filter_response,
-                           filter_low_freq, filter_high_freq, filter_order, analysis_options):
+                           filter_low_freq, filter_high_freq, filter_order, analysis_options, signal_type):
         """Main time domain analysis callback."""
         logger.info("=== TIME DOMAIN ANALYSIS CALLBACK ===")
         
@@ -2008,6 +2106,13 @@ def register_vitaldsp_callbacks(app):
             else:
                 logger.info("No filter parameters provided, using raw signal")
             
+            # Create filtered DataFrame with both raw and filtered signals for comparison
+            if filtered_signal is not None:
+                filtered_df = windowed_data.copy()
+                filtered_df[f"{signal_column}_filtered"] = filtered_signal
+            else:
+                filtered_df = windowed_data.copy()
+            
             # Detect peaks if requested
             peaks = None
             if analysis_options and "peaks" in analysis_options:
@@ -2020,18 +2125,12 @@ def register_vitaldsp_callbacks(app):
             # Create main signal plot
             logger.info("Creating main signal plot...")
             logger.info(f"Calling create_main_signal_plot with column_mapping: {column_mapping}")
-            main_plot = create_main_signal_plot(windowed_data, time_axis, sampling_freq, analysis_options or ["peaks", "hr", "quality"], column_mapping)
+            main_plot = create_main_signal_plot(windowed_data, time_axis, sampling_freq, analysis_options or ["peaks", "hr", "quality"], column_mapping, signal_type or "PPG")
             logger.info("Main signal plot created successfully")
             
             # Create filtered signal plot
             logger.info("Creating filtered signal plot...")
-            if filtered_signal is not None:
-                # Create a DataFrame with filtered data for the plot
-                filtered_df = windowed_data.copy()
-                filtered_df[signal_column] = filtered_signal
-                filtered_plot = create_filtered_signal_plot(filtered_df, time_axis, sampling_freq, column_mapping)
-            else:
-                filtered_plot = create_filtered_signal_plot(windowed_data, time_axis, sampling_freq, column_mapping)
+            filtered_plot = create_filtered_signal_plot(filtered_df, time_axis, sampling_freq, column_mapping, signal_type or "PPG", analysis_options)
             logger.info("Filtered signal plot created successfully")
             
             # Store processed data
