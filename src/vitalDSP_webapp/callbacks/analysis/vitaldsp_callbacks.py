@@ -1920,14 +1920,14 @@ def register_vitaldsp_callbacks(app):
          Output("store-filtered-data", "data")],
         [Input("btn-update-analysis", "n_clicks"),
          Input("time-range-slider", "value"),
+         Input("start-time", "value"),
+         Input("end-time", "value"),
          Input("btn-nudge-m10", "n_clicks"),
          Input("btn-nudge-m1", "n_clicks"),
          Input("btn-nudge-p1", "n_clicks"),
          Input("btn-nudge-p10", "n_clicks"),
          Input("url", "pathname")],
-        [State("start-time", "value"),
-         State("end-time", "value"),
-         State("filter-family", "value"),
+        [State("filter-family", "value"),
          State("filter-response", "value"),
          State("filter-low-freq", "value"),
          State("filter-high-freq", "value"),
@@ -1935,11 +1935,12 @@ def register_vitaldsp_callbacks(app):
          State("analysis-options", "value"),
          State("signal-type-select", "value")]
     )
-    def analyze_time_domain(n_clicks, slider_value, nudge_m10, nudge_m1, nudge_p1, nudge_p10,
-                           pathname, start_time, end_time, filter_family, filter_response,
+    def analyze_time_domain(n_clicks, slider_value, start_time, end_time, nudge_m10, nudge_m1, nudge_p1, nudge_p10,
+                           pathname, filter_family, filter_response,
                            filter_low_freq, filter_high_freq, filter_order, analysis_options, signal_type):
         """Main time domain analysis callback."""
         logger.info("=== TIME DOMAIN ANALYSIS CALLBACK ===")
+        logger.info(f"Input values - start_time: {start_time}, end_time: {end_time}, slider_value: {slider_value}")
         
         # Get trigger information
         ctx = callback_context
@@ -2007,7 +2008,7 @@ def register_vitaldsp_callbacks(app):
             sampling_freq = latest_data.get('info', {}).get('sampling_freq', 1000)
             logger.info(f"Sampling frequency: {sampling_freq}")
             
-            # Handle time window adjustments for nudge buttons
+            # Handle time window adjustments for nudge buttons and slider
             if trigger_id in ["btn-nudge-m10", "btn-nudge-m1", "btn-nudge-p1", "btn-nudge-p10"]:
                 if not start_time or not end_time:
                     start_time, end_time = 0, 10
@@ -2027,33 +2028,64 @@ def register_vitaldsp_callbacks(app):
                 
                 logger.info(f"Time window adjusted: {start_time} to {end_time}")
             
+            # Handle time range slider changes
+            elif trigger_id == "time-range-slider" and slider_value:
+                start_time = slider_value[0]
+                end_time = slider_value[1]
+                logger.info(f"Time range slider changed: {start_time} to {end_time}")
+            
+            # Handle manual time input changes
+            elif trigger_id in ["start-time", "end-time"]:
+                logger.info(f"Manual time input changed - start_time: {start_time}, end_time: {end_time}")
+            
             # Set default time window if not specified
             if not start_time or not end_time:
                 start_time, end_time = 0, 10
                 logger.info(f"Using default time window: {start_time} to {end_time}")
             
+            # Ensure time values are numbers
+            try:
+                start_time = float(start_time) if start_time is not None else 0
+                end_time = float(end_time) if end_time is not None else 10
+                logger.info(f"Converted time values: start_time={start_time:.3f}, end_time={end_time:.3f}")
+            except (ValueError, TypeError):
+                start_time, end_time = 0, 10
+                logger.warning("Invalid time values, using defaults")
+            
             # Apply time window
             start_sample = int(start_time * sampling_freq)
             end_sample = int(end_time * sampling_freq)
             logger.info(f"Sample range: {start_sample} to {end_sample}")
+            logger.info(f"Data length: {len(df)}")
+            logger.info(f"Time window: {start_time:.3f}s to {end_time:.3f}s")
             
             # Ensure we don't exceed data bounds
             if start_sample >= len(df):
                 logger.warning(f"Start sample {start_sample} >= data length {len(df)}, adjusting to 0")
                 start_sample = 0
+                start_time = 0
             if end_sample > len(df):
                 logger.warning(f"End sample {end_sample} > data length {len(df)}, adjusting to {len(df)}")
                 end_sample = len(df)
+                end_time = len(df) / sampling_freq
             
             windowed_data = df.iloc[start_sample:end_sample].copy()
             logger.info(f"Windowed data shape: {windowed_data.shape}")
             logger.info(f"Windowed data columns: {list(windowed_data.columns)}")
             logger.info(f"Windowed data head: {windowed_data.head()}")
             
-            # Create time axis
-            time_axis = np.arange(len(windowed_data)) / sampling_freq
+            # Create time axis - use actual time values, not just windowed data length
+            time_axis = np.linspace(start_time, end_time, len(windowed_data))
             logger.info(f"Time axis shape: {time_axis.shape}")
             logger.info(f"Time axis range: {time_axis[0]:.3f} to {time_axis[-1]:.3f}")
+            logger.info(f"Requested time window: {start_time:.3f} to {end_time:.3f}")
+            logger.info(f"Actual time axis range: {time_axis[0]:.3f} to {time_axis[-1]:.3f}")
+            
+            # Verify that the time window is actually being applied
+            logger.info(f"Original data length: {len(df)} samples")
+            logger.info(f"Windowed data length: {len(windowed_data)} samples")
+            logger.info(f"Expected samples for {end_time - start_time:.3f}s window: {(end_time - start_time) * sampling_freq:.0f}")
+            logger.info(f"Actual samples in window: {len(windowed_data)}")
             
             # Get signal column
             signal_column = column_mapping.get('signal')
@@ -2187,16 +2219,7 @@ def register_vitaldsp_callbacks(app):
             error_msg = f"Error in analysis: {str(e)}"
             return create_empty_figure(), create_empty_figure(), error_msg, error_msg, error_msg, error_msg, error_msg, None, None
     
-    @app.callback(
-        [Output("start-time", "value"),
-         Output("end-time", "value")],
-        [Input("time-range-slider", "value")]
-    )
-    def update_time_inputs(slider_value):
-        """Update time input fields based on slider."""
-        if not slider_value:
-            return no_update, no_update
-        return slider_value[0], slider_value[1]
+
     
     @app.callback(
         [Output("time-range-slider", "min"),
@@ -2205,46 +2228,59 @@ def register_vitaldsp_callbacks(app):
         [Input("url", "pathname")]
     )
     def update_time_slider_range(pathname):
-        """Update time slider range based on data duration."""
-        logger.info("=== UPDATE TIME SLIDER RANGE ===")
-        logger.info(f"Pathname: {pathname}")
-        
-        # Only run this when we're on the time domain page
+        """Update time slider range based on available data."""
         if pathname != "/time-domain":
-            return 0, 100, [0, 10]
+            return no_update, no_update, no_update
         
         try:
-            # Get data from the data service
             from vitalDSP_webapp.services.data.data_service import get_data_service
             data_service = get_data_service()
+            all_data = data_service.get_all_data()
+            
+            if not all_data:
+                return 0, 100, [0, 10]
             
             # Get the most recent data
-            all_data = data_service.get_all_data()
-            if not all_data:
-                logger.warning("No data found in service")
-                return 0, 100, [0, 10]
-            
-            # Get the most recent data entry
             latest_data_id = list(all_data.keys())[-1]
             latest_data = all_data[latest_data_id]
-            
-            # Get the actual data
             df = data_service.get_data(latest_data_id)
+            
             if df is None or df.empty:
-                logger.warning("Data frame is empty")
                 return 0, 100, [0, 10]
             
-            # Get sampling frequency from the data info
+            # Calculate time range based on data length and sampling frequency
             sampling_freq = latest_data.get('info', {}).get('sampling_freq', 1000)
-            
             max_time = len(df) / sampling_freq
-            logger.info(f"Max time: {max_time}, Sampling freq: {sampling_freq}")
             
-            return 0, max_time, [0, min(10, max_time)]
+            # Set reasonable limits
+            min_time = 0
+            max_time = min(max_time, 300)  # Cap at 5 minutes
+            
+            # Set initial window to first 10 seconds or max available
+            initial_end = min(10, max_time)
+            
+            return min_time, max_time, [min_time, initial_end]
             
         except Exception as e:
             logger.error(f"Error updating time slider range: {e}")
             return 0, 100, [0, 10]
+    
+    @app.callback(
+        [Output("start-time", "value"),
+         Output("end-time", "value")],
+        [Input("time-range-slider", "value")],
+        prevent_initial_call=True,
+        prevent_update=True
+    )
+    def sync_time_inputs_with_slider(slider_value):
+        """Sync time input fields with slider values to prevent circular updates."""
+        if not slider_value or len(slider_value) != 2:
+            return no_update, no_update
+        
+        logger.info(f"Syncing time inputs with slider: {slider_value[0]} to {slider_value[1]}")
+        return slider_value[0], slider_value[1]
+    
+
 
 
     @app.callback(
