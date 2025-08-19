@@ -534,36 +534,304 @@ body {
     100% { transform: rotate(360deg); }
 }
 
-/* Status Messages */
+/* Enhanced Loading Indicators and Progress Bars */
+.upload-progress-section {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.upload-progress-section:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.processing-progress-section {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border: 1px solid #90caf9;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+    box-shadow: 0 4px 16px rgba(33, 150, 243, 0.3);
+    transition: all 0.3s ease;
+    animation: slideInDown 0.5s ease-out;
+    position: relative;
+    z-index: 1000;
+}
+
+.processing-progress-section:hover {
+    box-shadow: 0 4px 16px rgba(33, 150, 243, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Debug Progress Section - Make it impossible to miss! */
+.processing-progress-section .bg-warning {
+    position: relative;
+    z-index: 9999 !important;
+    box-shadow: 0 0 20px rgba(255, 193, 7, 0.8) !important;
+    border: 3px solid #dc3545 !important;
+    animation: pulse 2s infinite !important;
+}
+
+.processing-progress-section .bg-warning h3 {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    font-size: 1.5rem !important;
+}
+
+.processing-progress-section .bg-warning p {
+    font-size: 1.1rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+/* Make sure the debug section appears on top of everything */
+.processing-progress-section .bg-warning {
+    position: relative;
+    z-index: 9999 !important;
+}
+
+/* Progress Bar Enhancements */
+.progress {
+    height: 12px;
+    border-radius: 6px;
+    background-color: #e9ecef;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, var(--secondary-color) 0%, #2980b9 100%);
+    border-radius: 6px;
+    transition: width 0.6s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* Animated Progress Steps */
+.progress-step {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.progress-step:hover {
+    background-color: rgba(255, 255, 255, 0.5);
+    transform: translateX(5px);
+}
+
+.progress-step.completed {
+    color: var(--success-color);
+}
+
+.progress-step.active {
+    color: var(--primary-color);
+    background-color: rgba(52, 152, 219, 0.1);
+}
+
+.progress-step.pending {
+    color: var(--text-muted);
+}
+
+.progress-step.error {
+    color: var(--danger-color);
+}
+
+/* Loading Icons */
+.loading-icon {
+    font-size: 1.2rem;
+    margin-right: 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.loading-icon.fa-spin {
+    animation: spin 1s linear infinite;
+}
+
+.loading-icon.fa-check-circle {
+    color: var(--success-color);
+}
+
+.loading-icon.fa-spinner {
+    color: var(--primary-color);
+}
+
+.loading-icon.fa-clock {
+    color: var(--text-muted);
+}
+
+/* Upload Area Enhancements */
+.upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    text-align: center;
+    transition: var(--transition);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-area:hover {
+    border-color: var(--secondary-color);
+    background-color: rgba(52, 152, 219, 0.05);
+    transform: translateY(-2px);
+}
+
+.upload-area.dragover {
+    border-color: var(--success-color);
+    background-color: rgba(39, 174, 96, 0.1);
+    transform: scale(1.02);
+}
+
+.upload-area.uploading {
+    border-color: var(--primary-color);
+    background-color: rgba(44, 62, 80, 0.05);
+}
+
+.upload-area.uploading::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(52, 152, 219, 0.1), transparent);
+    animation: upload-shimmer 1.5s infinite;
+}
+
+@keyframes upload-shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+/* Status Message Enhancements */
 .status-message {
     padding: 1rem;
     border-radius: var(--border-radius);
     margin: 1rem 0;
     font-weight: 500;
+    border-left: 4px solid;
+    animation: slideInRight 0.5s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 .status-success {
     background-color: rgba(39, 174, 96, 0.1);
     color: var(--success-color);
-    border: 1px solid var(--success-color);
+    border-left-color: var(--success-color);
 }
 
 .status-error {
     background-color: rgba(231, 76, 60, 0.1);
     color: var(--accent-color);
-    border: 1px solid var(--accent-color);
+    border-left-color: var(--accent-color);
 }
 
 .status-warning {
     background-color: rgba(243, 156, 18, 0.1);
     color: var(--warning-color);
-    border: 1px solid var(--warning-color);
+    border-left-color: var(--warning-color);
 }
 
 .status-info {
     background-color: rgba(23, 162, 184, 0.1);
     color: var(--info-color);
-    border: 1px solid var(--info-color);
+    border-left-color: var(--info-color);
+}
+
+/* Button Loading States */
+.btn.loading {
+    position: relative;
+    color: transparent;
+    pointer-events: none;
+}
+
+.btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Fade In Animation for Progress Sections */
+.progress-section-enter {
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+.progress-section-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 300ms, transform 300ms;
+}
+
+.progress-section-exit {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.progress-section-exit-active {
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: opacity 300ms, transform 300ms;
+}
+
+/* Responsive Progress Indicators */
+@media (max-width: 768px) {
+    .upload-progress-section,
+    .processing-progress-section {
+        padding: 1rem;
+        margin: 0.5rem 0;
+    }
+    
+    .progress-step {
+        padding: 0.25rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .loading-icon {
+        font-size: 1rem;
+        margin-right: 0.5rem;
+    }
 }
 
 /* Control Sections */
@@ -1167,4 +1435,134 @@ body {
 .plotly .xtick,
 .plotly .ytick {
     margin: 5px 0;
+}
+
+/* Upload Progress Section Specific Styles */
+.upload-progress-section {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    animation: slideInDown 0.5s ease-out;
+    position: relative;
+    z-index: 1000;
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.upload-progress-section:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+/* File Path Loading Indicator */
+.file-path-loading {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border: 1px solid #90caf9;
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Enhanced Button States */
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.btn:disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Loading Button Animation */
+.btn.loading {
+    position: relative;
+    color: transparent;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Progress Step Enhancements */
+.progress-step {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    border-left: 3px solid transparent;
+}
+
+.progress-step:hover {
+    background-color: rgba(255, 255, 255, 0.7);
+    transform: translateX(8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.progress-step.completed {
+    color: var(--success-color);
+    border-left-color: var(--success-color);
+    background-color: rgba(39, 174, 96, 0.1);
+}
+
+.progress-step.active {
+    color: var(--primary-color);
+    background-color: rgba(52, 152, 219, 0.15);
+    border-left-color: var(--primary-color);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        background-color: rgba(52, 152, 219, 0.15);
+    }
+    50% {
+        background-color: rgba(52, 152, 219, 0.25);
+    }
+}
+
+.progress-step.pending {
+    color: var(--text-muted);
+    border-left-color: var(--text-muted);
+    background-color: rgba(127, 140, 141, 0.1);
 }

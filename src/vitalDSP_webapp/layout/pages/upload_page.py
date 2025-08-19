@@ -35,6 +35,9 @@ def upload_layout():
                                          className="fw-semibold text-muted"),
                                 html.Br(),
                                 html.Small("CSV, TXT, MAT files supported", 
+                                          className="text-muted"),
+                                html.Br(),
+                                html.Small("Maximum file size: 50MB", 
                                           className="text-muted")
                             ], className="text-center py-4"),
                             style={
@@ -45,11 +48,18 @@ def upload_layout():
                                 "borderRadius": "12px",
                                 "textAlign": "center",
                                 "cursor": "pointer",
-                                "transition": "all 0.3s ease"
+                                "transition": "all 0.3s ease",
+                                "backgroundColor": "#f8f9fa"
                             },
+                            className="upload-area",
                             multiple=False
                         ),
                         html.Hr(className="my-3"),
+                        
+                        # Upload Progress Section
+                        html.Div(id="upload-progress-section", className="mb-3", style={"display": "none"}),
+                        
+                        # Upload Status
                         html.Div(id="upload-status", className="py-2")
                     ])
                 ], className="h-100 shadow-sm border-0")
@@ -73,12 +83,16 @@ def upload_layout():
                                     className="border-0"
                                 ),
                                 dbc.Button(
-                                    "Load",
+                                    [
+                                        html.I(className="fas fa-folder-open me-2"),
+                                        "Load"
+                                    ],
                                     id="btn-load-path",
                                     color="primary",
                                     size="sm"
                                 )
-                            ])
+                            ]),
+                            html.Div(id="file-path-loading", className="mt-2", style={"display": "none"})
                         ], className="mb-3"),
                         
                         html.Hr(className="my-3"),
@@ -242,6 +256,9 @@ def upload_layout():
             ])
         ], className="mb-4 shadow-sm border-0"),
         
+        # Processing Progress Section
+        html.Div(id="processing-progress-section", className="mb-4", style={"display": "none"}),
+        
         # Data Preview Section - Full width
         dbc.Card([
             dbc.CardHeader([
@@ -249,7 +266,11 @@ def upload_layout():
                 html.Span("Data Preview", className="fw-bold")
             ], className="bg-light border-0"),
             dbc.CardBody([
-                html.Div(id="data-preview-section", className="min-vh-100")
+                dcc.Loading(
+                    id="data-preview-loading",
+                    type="default",
+                    children=html.Div(id="data-preview-section", className="min-vh-100")
+                )
             ])
         ], className="mb-4 shadow-sm border-0"),
         
@@ -257,5 +278,13 @@ def upload_layout():
         dcc.Store(id="store-uploaded-data"),
         dcc.Store(id="store-data-config"),
         dcc.Store(id="store-column-mapping"),
-        dcc.Store(id="store-preview-window", data={"start": 0, "end": 1000})
+        dcc.Store(id="store-preview-window", data={"start": 0, "end": 1000}),
+        
+        # Loading states store
+        dcc.Store(id="store-loading-states", data={
+            "uploading": False,
+            "processing": False,
+            "upload_progress": 0,
+            "processing_progress": 0
+        })
     ], className="container-fluid px-4 py-3")
