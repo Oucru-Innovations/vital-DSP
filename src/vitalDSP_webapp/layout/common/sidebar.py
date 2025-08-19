@@ -35,7 +35,10 @@ def Sidebar():
                     # Upload section
                     html.Div([
                         html.A(
-                            "📁 Upload Data",
+                            [
+                                html.I(className="fas fa-upload"),
+                                " Upload Data"
+                            ],
                             href="/upload",
                             className="nav-link text-white"
                         )
@@ -45,17 +48,26 @@ def Sidebar():
                     html.H6("Analysis", className="mt-4 mb-2 text-muted"),
                     html.Div([
                         html.A(
-                            "⏱️ Time Domain",
+                            [
+                                html.I(className="fas fa-chart-line"),
+                                " Time Domain"
+                            ],
                             href="/time-domain",
                             className="nav-link text-white"
                         ),
                         html.A(
-                            "📊 Frequency Domain",
+                            [
+                                html.I(className="fas fa-wave-square"),
+                                " Frequency Domain"
+                            ],
                             href="/frequency",
                             className="nav-link text-white"
                         ),
                         html.A(
-                            "🔧 Filtering",
+                            [
+                                html.I(className="fas fa-filter"),
+                                " Filtering"
+                            ],
                             href="/filtering",
                             className="nav-link text-white"
                         )
@@ -65,17 +77,26 @@ def Sidebar():
                     html.H6("Features", className="mt-4 mb-2 text-muted"),
                     html.Div([
                         html.A(
-                            "❤️ Physiological",
+                            [
+                                html.I(className="fas fa-heartbeat"),
+                                " Physiological"
+                            ],
                             href="/physiological",
                             className="nav-link text-white"
                         ),
                         html.A(
-                            "🫁 Respiratory",
+                            [
+                                html.I(className="fas fa-lungs"),
+                                " Respiratory"
+                            ],
                             href="/respiratory",
                             className="nav-link text-white"
                         ),
                         html.A(
-                            "⚡ Advanced Features",
+                            [
+                                html.I(className="fas fa-chart-bar"),
+                                " Advanced Features"
+                            ],
                             href="/features",
                             className="nav-link text-white"
                         )
@@ -85,12 +106,18 @@ def Sidebar():
                     html.H6("Other", className="mt-4 mb-2 text-muted"),
                     html.Div([
                         html.A(
-                            "👁️ Preview",
+                            [
+                                html.I(className="fas fa-eye"),
+                                " Preview"
+                            ],
                             href="/preview",
                             className="nav-link text-white"
                         ),
                         html.A(
-                            "⚙️ Settings",
+                            [
+                                html.I(className="fas fa-cog"),
+                                " Settings"
+                            ],
                             href="/settings",
                             className="nav-link text-white"
                         )
@@ -105,7 +132,7 @@ def Sidebar():
                     # Upload section
                     html.Div([
                         html.A(
-                            "📁",
+                            html.I(className="fas fa-upload"),
                             href="/upload",
                             className="nav-icon text-white",
                             title="Upload Data"
@@ -115,19 +142,19 @@ def Sidebar():
                     # Analysis section
                     html.Div([
                         html.A(
-                            "⏱️",
+                            html.I(className="fas fa-chart-line"),
                             href="/time-domain",
                             className="nav-icon text-white",
                             title="Time Domain"
                         ),
                         html.A(
-                            "📊",
+                            html.I(className="fas fa-wave-square"),
                             href="/frequency",
                             className="nav-icon text-white",
                             title="Frequency Domain"
                         ),
                         html.A(
-                            "🔧",
+                            html.I(className="fas fa-filter"),
                             href="/filtering",
                             className="nav-icon text-white",
                             title="Filtering"
@@ -137,19 +164,19 @@ def Sidebar():
                     # Features section
                     html.Div([
                         html.A(
-                            "❤️",
+                            html.I(className="fas fa-heartbeat"),
                             href="/physiological",
                             className="nav-icon text-white",
                             title="Physiological"
                         ),
                         html.A(
-                            "🫁",
+                            html.I(className="fas fa-lungs"),
                             href="/respiratory",
                             className="nav-icon text-white",
                             title="Respiratory"
                         ),
                         html.A(
-                            "⚡",
+                            html.I(className="fas fa-chart-bar"),
                             href="/features",
                             className="nav-icon text-white",
                             title="Advanced Features"
@@ -159,13 +186,13 @@ def Sidebar():
                     # Other sections
                     html.Div([
                         html.A(
-                            "👁️",
+                            html.I(className="fas fa-eye"),
                             href="/preview",
                             className="nav-icon text-white",
                             title="Preview"
                         ),
                         html.A(
-                            "⚙️",
+                            html.I(className="fas fa-cog"),
                             href="/settings",
                             className="nav-icon text-white",
                             title="Settings"

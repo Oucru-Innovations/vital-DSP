@@ -1,7 +1,5 @@
 """
 Upload page layout for vitalDSP webapp.
-
-This module provides the upload page layout with file upload and data configuration.
 """
 
 from dash import html, dcc
@@ -9,82 +7,121 @@ import dash_bootstrap_components as dbc
 
 
 def upload_layout():
-    """Create the upload page layout."""
+    """Create the modern, elegant upload page layout."""
     return html.Div([
+        # Header Section
         html.Div([
-            html.H2("Data Upload", className="mb-4"),
-            html.P("Upload your PPG/ECG data or load from file path. Supported formats: CSV, TXT, MAT"),
+            html.H2("📊 Data Upload", className="text-primary mb-2 fw-bold"),
+            html.P("Upload your PPG/ECG data or load from file path. Supported formats: CSV, TXT, MAT", 
+                   className="text-muted mb-0")
+        ], className="text-center mb-4"),
+        
+        # Main Content Container
+        dbc.Row([
+            # File Upload Section - Left Column
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.I(className="fas fa-cloud-upload-alt me-2 text-primary"),
+                        html.Span("File Upload", className="fw-bold")
+                    ], className="bg-light border-0"),
+                    dbc.CardBody([
+                        dcc.Upload(
+                            id="upload-data",
+                            children=html.Div([
+                                html.I(className="fas fa-cloud-upload-alt fa-3x text-primary mb-3"),
+                                html.Br(),
+                                html.Span("Drag and Drop or Click to Select Files", 
+                                         className="fw-semibold text-muted"),
+                                html.Br(),
+                                html.Small("CSV, TXT, MAT files supported", 
+                                          className="text-muted")
+                            ], className="text-center py-4"),
+                            style={
+                                "width": "100%",
+                                "height": "160px",
+                                "borderWidth": "2px",
+                                "borderStyle": "dashed",
+                                "borderRadius": "12px",
+                                "textAlign": "center",
+                                "cursor": "pointer",
+                                "transition": "all 0.3s ease"
+                            },
+                            multiple=False
+                        ),
+                        html.Hr(className="my-3"),
+                        html.Div(id="upload-status", className="py-2")
+                    ])
+                ], className="h-100 shadow-sm border-0")
+            ], md=6, className="mb-4"),
             
-            # File upload section
-            html.Div([
-                html.H4("File Upload", className="mb-3"),
-                dcc.Upload(
-                    id="upload-data",
-                    children=html.Div([
-                        html.I(className="fas fa-cloud-upload-alt fa-2x mb-2"),
-                        html.Br(),
-                        "Drag and Drop or Click to Select Files"
-                    ]),
-                    style={
-                        "width": "100%",
-                        "height": "120px",
-                        "lineHeight": "60px",
-                        "borderWidth": "2px",
-                        "borderStyle": "dashed",
-                        "borderRadius": "5px",
-                        "textAlign": "center",
-                        "margin": "10px"
-                    },
-                    multiple=False
-                )
-            ], className="mb-4"),
-            
-            # File path section
-            html.Div([
-                html.H4("Load from File Path", className="mb-3"),
-                html.Div([
-                    dbc.Input(
-                        id="file-path-input",
-                        placeholder="Enter file path...",
-                        type="text",
-                        className="me-2"
-                    ),
-                    dbc.Button(
-                        "Load File",
-                        id="btn-load-path",
-                        color="primary",
-                        className="me-2"
-                    )
-                ], className="d-flex")
-            ], className="mb-4"),
-            
-            # Sample data section
-            html.Div([
-                html.H4("Load Sample Data", className="mb-3"),
-                html.P("Generate sample PPG data for testing purposes"),
-                dbc.Button(
-                    "Load Sample Data",
-                    id="btn-load-sample",
-                    color="success"
-                )
-            ], className="mb-4"),
-            
-            # Data configuration
-            html.Div([
-                html.H4("Data Configuration", className="mb-3"),
-                html.Div([
-                    html.Div([
-                        html.Label("Sampling Frequency (Hz):", className="form-label"),
+            # Quick Actions Section - Right Column
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.I(className="fas fa-bolt me-2 text-success"),
+                        html.Span("Quick Actions", className="fw-bold")
+                    ], className="bg-light border-0"),
+                    dbc.CardBody([
+                        html.Div([
+                            html.Label("Load from File Path", className="form-label fw-semibold mb-2"),
+                            dbc.InputGroup([
+                                dbc.Input(
+                                    id="file-path-input",
+                                    placeholder="Enter file path...",
+                                    type="text",
+                                    className="border-0"
+                                ),
+                                dbc.Button(
+                                    "Load",
+                                    id="btn-load-path",
+                                    color="primary",
+                                    size="sm"
+                                )
+                            ])
+                        ], className="mb-3"),
+                        
+                        html.Hr(className="my-3"),
+                        
+                        html.Div([
+                            html.Label("Generate Sample Data", className="form-label fw-semibold mb-2"),
+                            html.P("Create synthetic PPG data for testing", className="text-muted small mb-2"),
+                            dbc.Button(
+                                [
+                                    html.I(className="fas fa-database me-2"),
+                                    "Load Sample Data"
+                                ],
+                                id="btn-load-sample",
+                                color="success",
+                                className="w-100"
+                            )
+                        ])
+                    ])
+                ], className="h-100 shadow-sm border-0")
+            ], md=6, className="mb-4")
+        ]),
+        
+        # Configuration Section
+        dbc.Card([
+            dbc.CardHeader([
+                html.I(className="fas fa-cog me-2 text-info"),
+                html.Span("Data Configuration", className="fw-bold")
+            ], className="bg-light border-0"),
+            dbc.CardBody([
+                dbc.Row([
+                    dbc.Col([
+                        html.Label("Sampling Frequency (Hz)", className="form-label fw-semibold"),
                         dbc.Input(
                             id="sampling-freq",
                             type="number",
                             placeholder="1000",
                             min=1,
-                            step=1
+                            step=1,
+                            className="border-0 bg-light"
                         )
-                    ], className="me-3"),
-                    html.Div([
-                        html.Label("Time Unit:", className="form-label"),
+                    ], md=4),
+                    dbc.Col([
+                        html.Label("Time Unit", className="form-label fw-semibold"),
                         dbc.Select(
                             id="time-unit",
                             options=[
@@ -92,109 +129,133 @@ def upload_layout():
                                 {"label": "Milliseconds", "value": "milliseconds"},
                                 {"label": "Minutes", "value": "minutes"}
                             ],
-                            value="seconds"
+                            value="seconds",
+                            className="border-0 bg-light"
                         )
-                    ], className="me-3")
-                ], className="d-flex")
-            ], className="mb-4"),
-            
-            # Column Mapping Section
-            html.Div([
-                html.H4("Column Mapping", className="mb-3"),
-                html.P("Configure which columns represent different data types", className="text-muted mb-3"),
-                
-                # Time and Signal columns
+                    ], md=4),
+                    dbc.Col([
+                        html.Label("Data Type", className="form-label fw-semibold"),
+                        dbc.Select(
+                            id="data-type",
+                            options=[
+                                {"label": "Auto-detect", "value": "auto"},
+                                {"label": "PPG", "value": "ppg"},
+                                {"label": "ECG", "value": "ecg"},
+                                {"label": "Other", "value": "other"}
+                            ],
+                            value="auto",
+                            className="border-0 bg-light"
+                        )
+                    ], md=4)
+                ], className="mb-3")
+            ])
+        ], className="mb-4 shadow-sm border-0"),
+        
+        # Column Mapping Section
+        dbc.Card([
+            dbc.CardHeader([
+                html.I(className="fas fa-columns me-2 text-warning"),
+                html.Span("Column Mapping", className="fw-bold"),
+                html.Small(" Configure which columns represent different data types", 
+                           className="text-muted ms-2 fw-normal")
+            ], className="bg-light border-0"),
+            dbc.CardBody([
                 dbc.Row([
                     dbc.Col([
-                        html.Label("Time Column", className="form-label"),
+                        html.Label("Time Column", className="form-label fw-semibold"),
                         dcc.Dropdown(
                             id="time-column",
                             placeholder="Select time column...",
-                            clearable=True
+                            clearable=True,
+                            className="border-0"
                         )
                     ], md=6),
                     dbc.Col([
-                        html.Label("Signal Column", className="form-label"),
+                        html.Label("Signal Column", className="form-label fw-semibold"),
                         dcc.Dropdown(
                             id="signal-column",
                             placeholder="Select signal column...",
-                            clearable=True
+                            clearable=True,
+                            className="border-0"
                         )
                     ], md=6)
                 ], className="mb-3"),
                 
-                # RED and IR channels
                 dbc.Row([
                     dbc.Col([
-                        html.Label("RED Channel (if applicable)", className="form-label"),
+                        html.Label("RED Channel (if applicable)", className="form-label fw-semibold"),
                         dcc.Dropdown(
                             id="red-column",
                             placeholder="Select RED column...",
-                            clearable=True
+                            clearable=True,
+                            className="border-0"
                         )
                     ], md=6),
                     dbc.Col([
-                        html.Label("IR Channel (if applicable)", className="form-label"),
+                        html.Label("IR Channel (if applicable)", className="form-label fw-semibold"),
                         dcc.Dropdown(
                             id="ir-column",
                             placeholder="Select IR column...",
-                            clearable=True
+                            clearable=True,
+                            className="border-0"
                         )
                     ], md=6)
                 ], className="mb-3"),
                 
-                # Waveform column
                 dbc.Row([
                     dbc.Col([
-                        html.Label("Waveform (PLETH)", className="form-label"),
+                        html.Label("Waveform (PLETH)", className="form-label fw-semibold"),
                         dcc.Dropdown(
                             id="waveform-column",
                             placeholder="Select PLETH column...",
-                            clearable=True
-                        )
-                    ], md=6)
-                ], className="mb-4"),
-                
-                # Action Buttons
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Button(
-                            "🔍 Auto-detect Columns",
-                            id="btn-auto-detect",
-                            color="info",
-                            outline=True,
-                            className="w-100"
+                            clearable=True,
+                            className="border-0"
                         )
                     ], md=6),
                     dbc.Col([
-                        dbc.Button(
-                            "✅ Process Data",
-                            id="btn-process-data",
-                            color="success",
-                            className="w-100",
-                            disabled=True
-                        )
+                        html.Label("", className="form-label"),
+                        html.Div([
+                            dbc.Button(
+                                [
+                                    html.I(className="fas fa-magic me-2"),
+                                    "Auto-detect"
+                                ],
+                                id="btn-auto-detect",
+                                color="info",
+                                outline=True,
+                                size="sm",
+                                className="me-2"
+                            ),
+                            dbc.Button(
+                                [
+                                    html.I(className="fas fa-check me-2"),
+                                    "Process Data"
+                                ],
+                                id="btn-process-data",
+                                color="success",
+                                size="sm",
+                                disabled=True
+                            )
+                        ])
                     ], md=6)
                 ])
-            ], className="mb-4"),
-            
-            # Status section
-            html.Div([
-                html.H4("Upload Status", className="mb-3"),
-                html.Div(id="upload-status", className="mb-3")
-            ], className="mb-4"),
-            
-            # Data preview section
-            html.Div([
-                html.H4("Data Preview", className="mb-3"),
-                html.Div(id="data-preview-section")
             ])
-            
-        ], className="container"),
+        ], className="mb-4 shadow-sm border-0"),
+        
+        # Data Preview Section - Full width
+        dbc.Card([
+            dbc.CardHeader([
+                html.I(className="fas fa-table me-2 text-success"),
+                html.Span("Data Preview", className="fw-bold")
+            ], className="bg-light border-0"),
+            dbc.CardBody([
+                html.Div(id="data-preview-section", className="min-vh-100")
+            ])
+        ], className="mb-4 shadow-sm border-0"),
         
         # Stores for data management
         dcc.Store(id="store-uploaded-data"),
         dcc.Store(id="store-data-config"),
         dcc.Store(id="store-column-mapping"),
         dcc.Store(id="store-preview-window", data={"start": 0, "end": 1000})
-    ])
+    ], className="container-fluid px-4 py-3")
