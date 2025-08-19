@@ -13,6 +13,7 @@ from .core.upload_callbacks import register_upload_callbacks
 # Analysis callbacks
 from .analysis.vitaldsp_callbacks import register_vitaldsp_callbacks
 from .analysis.frequency_filtering_callbacks import register_frequency_filtering_callbacks
+from .analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 from .analysis.respiratory_callbacks import register_respiratory_callbacks
 
 # Feature callbacks
@@ -29,6 +30,7 @@ __all__ = [
     # Analysis
     'register_vitaldsp_callbacks',
     'register_frequency_filtering_callbacks',
+    'register_signal_filtering_callbacks',
     'register_respiratory_callbacks',
     
     # Features

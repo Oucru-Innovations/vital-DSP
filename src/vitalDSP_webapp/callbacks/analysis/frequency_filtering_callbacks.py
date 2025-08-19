@@ -339,7 +339,8 @@ def register_frequency_filtering_callbacks(app):
                 y=signal_data,
                 mode='lines',
                 name='Original Signal',
-                line=dict(color='blue', opacity=0.7)
+                line=dict(color='blue'),
+                opacity=0.7
             ))
             signal_fig.add_trace(go.Scatter(
                 x=time_axis,

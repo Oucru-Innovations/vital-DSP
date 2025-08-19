@@ -847,74 +847,449 @@ def frequency_layout():
 
 
 def filtering_layout():
-    """Create the filtering analysis layout."""
+    """Create the comprehensive signal filtering page layout."""
     return html.Div([
+        # Page Header
         html.Div([
-            html.H2("Signal Filtering", className="mb-4"),
-            html.P("Apply various filters to the signal"),
-            
-            # Filter controls
-            html.Div([
-                html.H4("Filter Configuration", className="mb-3"),
-                html.Div([
-                    html.Div([
-                        html.Label("Filter Type:", className="form-label"),
+            html.H1("🔧 Advanced Signal Filtering", className="text-center mb-4"),
+            html.P([
+                "Apply advanced filtering techniques including traditional filters, Kalman filters, ",
+                "neural network filtering, and artifact removal for optimal signal quality."
+            ], className="text-center text-muted mb-5")
+        ], className="mb-4"),
+        
+        # Main Analysis Section
+        dbc.Row([
+            # Left Panel - Controls & Parameters
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🎛️ Filter Configuration", className="mb-0"),
+                        html.Small("Configure filtering parameters and methods", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        # Time Window Controls
+                        html.H6("Time Window", className="mb-3"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Start Time (s):", className="form-label"),
+                                dbc.Input(
+                                    id="filter-start-time",
+                                    type="number",
+                                    value=0,
+                                    min=0,
+                                    step=0.1,
+                                    className="form-control"
+                                )
+                            ], width=6),
+                            dbc.Col([
+                                html.Label("End Time (s):", className="form-label"),
+                                dbc.Input(
+                                    id="filter-end-time",
+                                    type="number",
+                                    value=10,
+                                    min=0,
+                                    step=0.1,
+                                    className="form-control"
+                                )
+                            ], width=6)
+                        ], className="mb-3"),
+                        
+                        # Time Range Slider
+                        html.Label("Time Range:", className="form-label"),
+                        dcc.RangeSlider(
+                            id="filter-time-range-slider",
+                            min=0,
+                            max=100,
+                            step=0.1,
+                            value=[0, 10],
+                            marks={},
+                            tooltip={"placement": "bottom", "always_visible": True}
+                        ),
+                        
+                        # Time Navigation Buttons
+                        dbc.Row([
+                            dbc.Col(dbc.Button("←10s", id="filter-btn-nudge-m10", color="secondary", size="sm"), width=3),
+                            dbc.Col(dbc.Button("←1s", id="filter-btn-nudge-m1", color="secondary", size="sm"), width=3),
+                            dbc.Col(dbc.Button("+1s", id="filter-btn-nudge-p1", color="secondary", size="sm"), width=3),
+                            dbc.Col(dbc.Button("+10s", id="filter-btn-nudge-p10", color="secondary", size="sm"), width=3)
+                        ], className="mb-4"),
+                        
+                        # Filter Type Selection
+                        html.H6("Filter Type", className="mb-3"),
                         dbc.Select(
-                            id="filter-type",
+                            id="filter-type-select",
                             options=[
-                                {"label": "Low Pass", "value": "lowpass"},
-                                {"label": "High Pass", "value": "highpass"},
-                                {"label": "Band Pass", "value": "bandpass"}
+                                {"label": "Traditional Filters", "value": "traditional"},
+                                {"label": "Advanced Filters", "value": "advanced"},
+                                {"label": "Artifact Removal", "value": "artifact"},
+                                {"label": "Neural Network", "value": "neural"},
+                                {"label": "Ensemble Methods", "value": "ensemble"}
                             ],
-                            value="lowpass"
+                            value="traditional",
+                            className="mb-3"
+                        ),
+                        
+                        # Traditional Filter Parameters
+                        html.Div([
+                            html.H6("Traditional Filter Parameters", className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Filter Family:", className="form-label"),
+                                    dbc.Select(
+                                        id="filter-family-advanced",
+                                        options=[
+                                            {"label": "Butterworth", "value": "butter"},
+                                            {"label": "Chebyshev I", "value": "cheby1"},
+                                            {"label": "Chebyshev II", "value": "cheby2"},
+                                            {"label": "Elliptic", "value": "ellip"},
+                                            {"label": "Bessel", "value": "bessel"}
+                                        ],
+                                        value="butter",
+                                        className="form-control"
+                                    )
+                                ], width=6),
+                                dbc.Col([
+                                    html.Label("Filter Response:", className="form-label"),
+                                    dbc.Select(
+                                        id="filter-response-advanced",
+                                        options=[
+                                            {"label": "Low Pass", "value": "low"},
+                                            {"label": "High Pass", "value": "high"},
+                                            {"label": "Band Pass", "value": "bandpass"}
+                                        ],
+                                        value="low",
+                                        className="form-control"
+                                    )
+                                ], width=6)
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Low Frequency (Hz):", className="form-label"),
+                                    dbc.Input(
+                                        id="filter-low-freq-advanced",
+                                        type="number",
+                                        value=10,
+                                        min=0,
+                                        step=1,
+                                        className="form-control"
+                                    )
+                                ], width=6),
+                                dbc.Col([
+                                    html.Label("High Frequency (Hz):", className="form-label"),
+                                    dbc.Input(
+                                        id="filter-high-freq-advanced",
+                                        type="number",
+                                        value=50,
+                                        min=0,
+                                        step=1,
+                                        className="form-control"
+                                    )
+                                ], width=6)
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Filter Order:", className="form-label"),
+                                    dbc.Input(
+                                        id="filter-order-advanced",
+                                        type="number",
+                                        value=4,
+                                        min=1,
+                                        max=10,
+                                        step=1,
+                                        className="form-control"
+                                    )
+                                ], width=6)
+                            ], className="mb-3")
+                        ], id="traditional-filter-params"),
+                        
+                        # Advanced Filter Parameters
+                        html.Div([
+                            html.H6("Advanced Filter Parameters", className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Method:", className="form-label"),
+                                    dbc.Select(
+                                        id="advanced-filter-method",
+                                        options=[
+                                            {"label": "Kalman Filter", "value": "kalman"},
+                                            {"label": "Optimization", "value": "optimization"},
+                                            {"label": "Gradient Descent", "value": "gradient_descent"},
+                                            {"label": "Convolution", "value": "convolution"},
+                                            {"label": "Attention", "value": "attention"}
+                                        ],
+                                        value="kalman",
+                                        className="form-control"
+                                    )
+                                ], width=6),
+                                dbc.Col([
+                                    html.Label("Noise Level:", className="form-label"),
+                                    dbc.Input(
+                                        id="advanced-noise-level",
+                                        type="number",
+                                        value=0.1,
+                                        min=0.01,
+                                        max=1.0,
+                                        step=0.01,
+                                        className="form-control"
+                                    )
+                                ], width=6)
+                            ], className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Iterations:", className="form-label"),
+                                    dbc.Input(
+                                        id="advanced-iterations",
+                                        type="number",
+                                        value=100,
+                                        min=10,
+                                        max=1000,
+                                        step=10,
+                                        className="form-control"
+                                    )
+                                ], width=6),
+                                dbc.Col([
+                                    html.Label("Learning Rate:", className="form-label"),
+                                    dbc.Input(
+                                        id="advanced-learning-rate",
+                                        type="number",
+                                        value=0.01,
+                                        min=0.001,
+                                        max=0.1,
+                                        step=0.001,
+                                        className="form-control"
+                                    )
+                                ], width=6)
+                            ], className="mb-3")
+                        ], id="advanced-filter-params", style={"display": "none"}),
+                        
+                        # Artifact Removal Parameters
+                        html.Div([
+                            html.H6("Artifact Removal Parameters", className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Artifact Type:", className="form-label"),
+                                    dbc.Select(
+                                        id="artifact-type",
+                                        options=[
+                                            {"label": "Baseline Drift", "value": "baseline"},
+                                            {"label": "Spike Artifacts", "value": "spike"},
+                                            {"label": "Noise", "value": "noise"},
+                                            {"label": "Powerline", "value": "powerline"},
+                                            {"label": "PCA Removal", "value": "pca"},
+                                            {"label": "ICA Removal", "value": "ica"}
+                                        ],
+                                        value="baseline",
+                                        className="form-control"
+                                    )
+                                ], width=6),
+                                dbc.Col([
+                                    html.Label("Strength:", className="form-label"),
+                                    dbc.Input(
+                                        id="artifact-removal-strength",
+                                        type="number",
+                                        value=0.5,
+                                        min=0.1,
+                                        max=1.0,
+                                        step=0.1,
+                                        className="form-control"
+                                    )
+                                ], width=6)
+                            ], className="mb-3")
+                        ], id="artifact-removal-params", style={"display": "none"}),
+                        
+                        # Neural Network Parameters
+                        html.Div([
+                            html.H6("Neural Network Parameters", className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Network Type:", className="form-label"),
+                                    dbc.Select(
+                                        id="neural-network-type",
+                                        options=[
+                                            {"label": "Autoencoder", "value": "autoencoder"},
+                                            {"label": "LSTM", "value": "lstm"},
+                                            {"label": "CNN", "value": "cnn"}
+                                        ],
+                                        value="autoencoder",
+                                        className="form-control"
+                                    )
+                                ], width=6),
+                                dbc.Col([
+                                    html.Label("Complexity:", className="form-label"),
+                                    dbc.Select(
+                                        id="neural-model-complexity",
+                                        options=[
+                                            {"label": "Low", "value": "low"},
+                                            {"label": "Medium", "value": "medium"},
+                                            {"label": "High", "value": "high"}
+                                        ],
+                                        value="medium",
+                                        className="form-control"
+                                    )
+                                ], width=6)
+                            ], className="mb-3")
+                        ], id="neural-network-params", style={"display": "none"}),
+                        
+                        # Ensemble Parameters
+                        html.Div([
+                            html.H6("Ensemble Parameters", className="mb-3"),
+                            dbc.Row([
+                                dbc.Col([
+                                    html.Label("Method:", className="form-label"),
+                                    dbc.Select(
+                                        id="ensemble-method",
+                                        options=[
+                                            {"label": "Mean", "value": "mean"},
+                                            {"label": "Median", "value": "median"},
+                                            {"label": "Weighted", "value": "weighted"}
+                                        ],
+                                        value="mean",
+                                        className="form-control"
+                                    )
+                                ], width=6),
+                                dbc.Col([
+                                    html.Label("Number of Filters:", className="form-label"),
+                                    dbc.Input(
+                                        id="ensemble-n-filters",
+                                        type="number",
+                                        value=3,
+                                        min=2,
+                                        max=10,
+                                        step=1,
+                                        className="form-control"
+                                    )
+                                ], width=6)
+                            ], className="mb-3")
+                        ], id="ensemble-params", style={"display": "none"}),
+                        
+                        # Quality Assessment Options
+                        html.H6("Quality Assessment", className="mb-3"),
+                        dbc.Checklist(
+                            id="filter-quality-options",
+                            options=[
+                                {"label": "SNR Analysis", "value": "snr"},
+                                {"label": "Frequency Analysis", "value": "frequency"},
+                                {"label": "Error Analysis", "value": "error"},
+                                {"label": "Time-varying Metrics", "value": "time_varying"}
+                            ],
+                            value=["snr", "frequency"],
+                            inline=True,
+                            className="mb-4"
+                        ),
+                        
+                        # Apply Filter Button
+                        dbc.Button(
+                            "Apply Filter",
+                            id="filter-btn-apply",
+                            color="primary",
+                            size="lg",
+                            className="w-100"
                         )
-                    ], className="me-3"),
-                    html.Div([
-                        html.Label("Cutoff Frequency (Hz):", className="form-label"),
-                        dbc.Input(
-                            id="cutoff-freq",
-                            type="number",
-                            placeholder="100",
-                            min=1,
-                            step=1
-                        )
-                    ], className="me-3"),
-                    html.Div([
-                        html.Label("Filter Order:", className="form-label"),
-                        dbc.Input(
-                            id="filter-order",
-                            type="number",
-                            placeholder="4",
-                            min=1,
-                            max=10,
-                            step=1
-                        )
-                    ], className="me-3")
-                ], className="d-flex mb-3"),
-                
-                dbc.Button(
-                    "Apply Filter",
-                    id="btn-apply-filter",
-                    color="primary"
-                )
-            ], className="mb-4"),
+                    ])
+                ], className="mb-4")
+            ], md=3),
             
-            # Results section
-            html.Div([
-                html.H4("Results", className="mb-3"),
-                html.Div([
-                    html.Div([
-                        dcc.Graph(id="frequency-filtered-signal-plot", style={"height": "400px"})
-                    ], className="col-md-6"),
-                    html.Div([
-                        dcc.Graph(id="filter-response-plot", style={"height": "400px"})
-                    ], className="col-md-6")
-                ], className="row mb-4"),
-                html.Div([
-                    html.Div(id="filter-stats")
-                ], className="col-12")
-            ])
-        ], className="container")
+            # Right Panel - Results & Plots
+            dbc.Col([
+                # Original Signal Plot
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("📈 Original Signal", className="mb-0"),
+                        html.Small("Input signal before filtering", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Loading(
+                            dcc.Graph(
+                                id="filter-original-plot",
+                                style={"height": "400px"},
+                                config={
+                                    "displayModeBar": True,
+                                    "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],
+                                    "displaylogo": False
+                                }
+                            ),
+                            type="default"
+                        )
+                    ])
+                ], className="mb-4"),
+                
+                # Filtered Signal Plot
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🔧 Filtered Signal", className="mb-0"),
+                        html.Small("Signal after applying selected filters", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Loading(
+                            dcc.Graph(
+                                id="filter-filtered-plot",
+                                style={"height": "400px"},
+                                config={
+                                    "displayModeBar": True,
+                                    "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],
+                                    "displaylogo": False
+                                }
+                            ),
+                            type="default"
+                        )
+                    ])
+                ], className="mb-4"),
+                
+                # Filter Comparison
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("⚖️ Filter Comparison", className="mb-0"),
+                        html.Small("Compare different filtering approaches", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Loading(
+                            dcc.Graph(
+                                id="filter-comparison-plot",
+                                style={"height": "400px"},
+                                config={
+                                    "displayModeBar": True,
+                                    "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],
+                                    "displaylogo": False
+                                }
+                            ),
+                            type="default"
+                        )
+                    ])
+                ], className="mb-4"),
+                
+                # Filter Quality Metrics
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("📊 Quality Metrics", className="mb-0"),
+                        html.Small("Quantitative assessment of filtering performance", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="filter-quality-metrics", className="mb-3"),
+                        dcc.Loading(
+                            dcc.Graph(
+                                id="filter-quality-plots",
+                                style={"height": "400px"},
+                                config={
+                                    "displayModeBar": True,
+                                    "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],
+                                    "displaylogo": False
+                                }
+                            ),
+                            type="default"
+                        )
+                    ])
+                ])
+            ], md=9)
+        ]),
+        
+        # Bottom Section - Additional Analysis
+        html.Div(id="filter-additional-analysis-section", className="mt-4"),
+        
+        # Stores for data management
+        dcc.Store(id="store-filtering-data"),
+        dcc.Store(id="store-filter-comparison"),
+        dcc.Store(id="store-filter-quality-metrics")
     ])
 
 
@@ -1647,7 +2022,8 @@ def transforms_layout():
                         dcc.Graph(
                             id="transforms-main-plot",
                             style={"height": "400px"},
-                            config={"displayModeBar": True, "displaylogo": False}
+                            config={"displayModeBar": True,
+                                    "displaylogo": False}
                         )
                     ])
                 ], className="mb-4"),
@@ -1884,7 +2260,8 @@ def quality_layout():
                         dcc.Graph(
                             id="quality-main-plot",
                             style={"height": "400px"},
-                            config={"displayModeBar": True, "displaylogo": False}
+                            config={"displayModeBar": True,
+                                    "displaylogo": False}
                         )
                     ])
                 ], className="mb-4"),
