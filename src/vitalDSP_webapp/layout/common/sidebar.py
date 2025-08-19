@@ -26,7 +26,7 @@ def Sidebar():
                 ]
             ),
             
-            # Navigation menu
+            # Navigation menu (expanded view)
             html.Div(
                 className="sidebar-content",
                 children=[
@@ -95,6 +95,82 @@ def Sidebar():
                             className="nav-link text-white"
                         )
                     ], className="mb-2")
+                ]
+            ),
+            
+            # Icon-only navigation menu (collapsed view)
+            html.Div(
+                className="sidebar-icons",
+                children=[
+                    # Upload section
+                    html.Div([
+                        html.A(
+                            "📁",
+                            href="/upload",
+                            className="nav-icon text-white",
+                            title="Upload Data"
+                        )
+                    ], className="mb-3"),
+                    
+                    # Analysis section
+                    html.Div([
+                        html.A(
+                            "⏱️",
+                            href="/time-domain",
+                            className="nav-icon text-white",
+                            title="Time Domain"
+                        ),
+                        html.A(
+                            "📊",
+                            href="/frequency",
+                            className="nav-icon text-white",
+                            title="Frequency Domain"
+                        ),
+                        html.A(
+                            "🔧",
+                            href="/filtering",
+                            className="nav-icon text-white",
+                            title="Filtering"
+                        )
+                    ], className="mb-3"),
+                    
+                    # Features section
+                    html.Div([
+                        html.A(
+                            "❤️",
+                            href="/physiological",
+                            className="nav-icon text-white",
+                            title="Physiological"
+                        ),
+                        html.A(
+                            "🫁",
+                            href="/respiratory",
+                            className="nav-icon text-white",
+                            title="Respiratory"
+                        ),
+                        html.A(
+                            "⚡",
+                            href="/features",
+                            className="nav-icon text-white",
+                            title="Advanced Features"
+                        )
+                    ], className="mb-3"),
+                    
+                    # Other sections
+                    html.Div([
+                        html.A(
+                            "👁️",
+                            href="/preview",
+                            className="nav-icon text-white",
+                            title="Preview"
+                        ),
+                        html.A(
+                            "⚙️",
+                            href="/settings",
+                            className="nav-icon text-white",
+                            title="Settings"
+                        )
+                    ], className="mb-3")
                 ]
             )
         ]

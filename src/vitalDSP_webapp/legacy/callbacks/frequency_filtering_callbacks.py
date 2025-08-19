@@ -1856,7 +1856,13 @@ def generate_frequency_analysis_results(signal_data, sampling_freq, analysis_typ
             mask = (freqs >= low) & (freqs <= high)
             if np.any(mask):
                 power = np.sum(power_spectrum[mask])
-                percentage = (power / total_power) * 100
+                
+                # Handle negative power values by using absolute values for percentage calculation
+                if total_power != 0:
+                    percentage = (np.abs(power) / np.abs(total_power)) * 100
+                else:
+                    percentage = 0
+                    
                 band_powers[band_name] = (power, percentage)
                 results.append(f"{band_name} Power ({low}-{high} Hz): {power:.2e} ({percentage:.1f}%)")
         
@@ -2776,7 +2782,13 @@ def create_frequency_band_power_table(signal_data, sampling_freq, analysis_type,
             band_mask = (freqs >= low_freq) & (freqs <= high_freq)
             if np.any(band_mask):
                 band_power = np.sum(fft_result[band_mask]**2)
-                band_percentage = (band_power / total_power) * 100
+                
+                # Handle negative power values by using absolute values for percentage calculation
+                if total_power != 0:
+                    band_percentage = (np.abs(band_power) / np.abs(total_power)) * 100
+                else:
+                    band_percentage = 0
+                    
                 band_powers[band_name] = (band_power, band_percentage)
             else:
                 band_powers[band_name] = (0, 0)

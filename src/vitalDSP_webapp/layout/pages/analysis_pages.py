@@ -415,7 +415,7 @@ def frequency_layout():
                             ], md=3)
                         ])
                     ])
-                ], className="mb-4 freq-top-container")
+                ], className="mb-4 freq-top-container analysis-controls")
             ], md=12)
         ]),
         

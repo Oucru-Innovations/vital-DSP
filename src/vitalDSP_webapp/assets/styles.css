@@ -926,3 +926,245 @@ body {
         font-size: 0.75rem;
     }
 }
+
+/* Sidebar Icons (collapsed view) */
+.sidebar-icons {
+    display: none;
+    padding: 20px 10px;
+    text-align: center;
+}
+
+.sidebar.sidebar-collapsed .sidebar-icons {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+}
+
+.sidebar.sidebar-expanded .sidebar-icons {
+    display: none;
+}
+
+.nav-icon {
+    display: block;
+    padding: 15px 10px;
+    font-size: 24px;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    margin-bottom: 10px;
+}
+
+.nav-icon:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white !important;
+    text-decoration: none;
+}
+
+.nav-icon:focus {
+    outline: none;
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white !important;
+}
+
+/* Form Controls Z-Index Fixes */
+.freq-top-container {
+    position: relative;
+    z-index: 10;
+}
+
+/* Analysis type dropdown specific styling - simplified */
+#freq-analysis-type {
+    position: relative;
+    z-index: 10;
+}
+
+/* Plot Container Spacing */
+.dcc-graph {
+    margin-bottom: 20px;
+}
+
+/* Frequency Analysis Page Specific Styles */
+.freq-main-plot,
+.freq-psd-plot,
+.freq-spectrogram-plot {
+    margin-bottom: 30px;
+}
+
+/* Ensure proper spacing between subplots */
+.js-plotly-plot .plotly .main-svg {
+    overflow: visible;
+}
+
+/* Fix for subplot title overlap */
+.js-plotly-plot .plotly .gtitle {
+    margin-bottom: 20px;
+}
+
+/* Ensure y-axis labels don't overlap */
+.js-plotly-plot .plotly .ytick {
+    margin-right: 10px;
+}
+
+/* Card spacing improvements */
+.card {
+    margin-bottom: 25px;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* Analysis controls positioning */
+.analysis-controls {
+    position: relative;
+    z-index: 10;
+}
+
+/* Collapsed Sidebar Improvements */
+.sidebar.sidebar-collapsed {
+    width: var(--sidebar-collapsed-width);
+    overflow: hidden;
+    text-align: center;
+}
+
+.sidebar.sidebar-collapsed .sidebar-toggle {
+    right: 15px;
+    top: 15px;
+    position: absolute;
+    z-index: 1001;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar.sidebar-collapsed .sidebar-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Icon positioning in collapsed sidebar */
+.sidebar.sidebar-collapsed .sidebar-icons {
+    padding-top: 80px; /* Space for toggle button */
+}
+
+.sidebar.sidebar-collapsed .nav-icon {
+    margin: 15px auto;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.sidebar.sidebar-collapsed .nav-icon:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+}
+
+/* Frequency Analysis Specific Improvements */
+.freq-top-container {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    margin-bottom: 25px;
+    position: relative;
+    z-index: 10;
+}
+
+/* Ensure the frequency analysis dropdown appears above plot containers */
+.freq-top-container .dcc-dropdown {
+    position: relative;
+    z-index: 15;
+}
+
+/* Ensure plot containers don't overlap the controls */
+.freq-main-plot,
+.freq-psd-plot,
+.freq-spectrogram-plot {
+    position: relative;
+    z-index: 5;
+}
+
+/* Plot container improvements */
+.plot-container {
+    margin-bottom: 30px;
+    position: relative;
+}
+
+/* Ensure subplot titles don't overlap */
+.subplot-title {
+    margin-bottom: 15px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+/* Y-axis label positioning */
+.y-axis-label {
+    margin-right: 15px;
+    font-weight: 500;
+}
+
+/* Plot margins and spacing */
+.plot-margins {
+    margin: 20px 0;
+}
+
+/* Analysis controls container */
+.analysis-controls-container {
+    position: sticky;
+    top: calc(var(--header-height) + 20px);
+    z-index: 10;
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+/* Dropdown Menu Z-Index Fixes - Removed aggressive overrides */
+/* The following rules were causing all dropdowns to break, so they're removed */
+
+/* Plot Container Overflow Handling */
+.plot-container {
+    overflow: visible !important;
+}
+
+.dcc-graph {
+    overflow: visible !important;
+}
+
+.js-plotly-plot {
+    overflow: visible !important;
+}
+
+.plotly .main-svg {
+    overflow: visible !important;
+}
+
+/* Ensure plotly plots don't get cut off */
+.plotly-graph-div {
+    overflow: visible !important;
+}
+
+/* Fix for subplot spacing */
+.plotly .subplot {
+    margin: 10px 0;
+}
+
+/* Ensure proper spacing between plot elements */
+.plotly .gtitle {
+    margin-bottom: 15px !important;
+}
+
+.plotly .xtick,
+.plotly .ytick {
+    margin: 5px 0;
+}

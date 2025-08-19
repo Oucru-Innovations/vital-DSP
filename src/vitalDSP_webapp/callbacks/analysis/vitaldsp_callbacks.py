@@ -989,10 +989,19 @@ def create_signal_quality_table(raw_data, filtered_data, time_axis, sampling_fre
         high_freq_power = np.sum(fft_vals[freqs > 40])  # >40 Hz
         
         total_power = np.sum(fft_vals)
-        dc_percentage = (dc_power / total_power) * 100 if total_power > 0 else 0
-        low_freq_percentage = (low_freq_power / total_power) * 100 if total_power > 0 else 0
-        mid_freq_percentage = (mid_freq_power / total_power) * 100 if total_power > 0 else 0
-        high_freq_percentage = (high_freq_power / total_power) * 100 if total_power > 0 else 0
+        
+        # Handle negative power values by using absolute values for percentage calculation
+        # This ensures percentage is always meaningful regardless of power sign
+        if total_power != 0:
+            dc_percentage = (np.abs(dc_power) / np.abs(total_power)) * 100
+            low_freq_percentage = (np.abs(low_freq_power) / np.abs(total_power)) * 100
+            mid_freq_percentage = (np.abs(mid_freq_power) / np.abs(total_power)) * 100
+            high_freq_percentage = (np.abs(high_freq_power) / np.abs(total_power)) * 100
+        else:
+            dc_percentage = 0
+            low_freq_percentage = 0
+            mid_freq_percentage = 0
+            high_freq_percentage = 0
         
         # Peak detection quality
         from scipy.signal import find_peaks

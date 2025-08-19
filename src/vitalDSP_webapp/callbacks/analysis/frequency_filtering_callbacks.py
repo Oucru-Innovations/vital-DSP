@@ -543,7 +543,7 @@ def create_fft_plot(signal_data, sampling_freq, window_type, n_points, freq_min,
     fig = make_subplots(
         rows=2, cols=1,
         subplot_titles=("Frequency Spectrum (Magnitude)", "Power Spectral Density"),
-        vertical_spacing=0.1
+        vertical_spacing=0.15  # Increased from 0.1 to prevent overlap
     )
     
     # Magnitude plot
@@ -609,16 +609,25 @@ def create_fft_plot(signal_data, sampling_freq, window_type, n_points, freq_min,
     # Update layout
     fig.update_layout(
         title=f"Enhanced FFT Analysis - {window_type.title()} Window",
-        height=600,
+        height=800,  # Increased height to provide more space for the subplots
         showlegend=True,
-        hovermode='closest'
+        hovermode='closest',
+        margin=dict(l=80, r=50, t=80, b=80)  # Add margins to prevent overlap
     )
     
-    # Update axes labels
+    # Update axes labels with better positioning
     fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=1)
-    fig.update_yaxes(title_text="Magnitude", row=1, col=1)
+    fig.update_yaxes(title_text="Magnitude", row=1, col=1, title_standoff=20)
     fig.update_xaxes(title_text="Frequency (Hz)", row=2, col=1)
-    fig.update_yaxes(title_text="Power", row=2, col=1)
+    fig.update_yaxes(title_text="Power", row=2, col=1, title_standoff=20)
+    
+    # Adjust subplot title positions to prevent overlap
+    fig.update_annotations(
+        dict(
+            font_size=14,
+            font_color="black"
+        )
+    )
     
     return fig
 
@@ -665,7 +674,7 @@ def create_stft_plot(signal_data, sampling_freq, window_size, hop_size, freq_min
         subplot_titles=("STFT Magnitude", "STFT Power", "Frequency Profile", "Time Profile"),
         specs=[[{"secondary_y": False}, {"secondary_y": False}],
                [{"secondary_y": False}, {"secondary_y": False}]],
-        vertical_spacing=0.1,
+        vertical_spacing=0.15,  # Increased from 0.1 to prevent overlap
         horizontal_spacing=0.1
     )
     
@@ -734,18 +743,27 @@ def create_stft_plot(signal_data, sampling_freq, window_size, hop_size, freq_min
         title=f"Enhanced STFT Analysis - Window: {window_size}, Hop: {hop_size}",
         height=700,
         showlegend=True,
-        hovermode='closest'
+        hovermode='closest',
+        margin=dict(l=80, r=50, t=80, b=80)  # Add margins to prevent overlap
     )
     
-    # Update axes labels
+    # Update axes labels with better positioning
     fig.update_xaxes(title_text="Time (s)", row=1, col=1)
-    fig.update_yaxes(title_text="Frequency (Hz)", row=1, col=1)
+    fig.update_yaxes(title_text="Frequency (Hz)", row=1, col=1, title_standoff=20)
     fig.update_xaxes(title_text="Time (s)", row=1, col=2)
-    fig.update_yaxes(title_text="Frequency (Hz)", row=1, col=2)
+    fig.update_yaxes(title_text="Frequency (Hz)", row=1, col=2, title_standoff=20)
     fig.update_xaxes(title_text="Frequency (Hz)", row=2, col=1)
-    fig.update_yaxes(title_text="Magnitude", row=2, col=1)
+    fig.update_yaxes(title_text="Magnitude", row=2, col=1, title_standoff=20)
     fig.update_xaxes(title_text="Time (s)", row=2, col=2)
-    fig.update_yaxes(title_text="Magnitude", row=2, col=2)
+    fig.update_yaxes(title_text="Magnitude", row=2, col=2, title_standoff=20)
+    
+    # Adjust subplot title positions to prevent overlap
+    fig.update_annotations(
+        dict(
+            font_size=14,
+            font_color="black"
+        )
+    )
     
     return fig
 
@@ -757,8 +775,131 @@ def create_wavelet_plot(signal_data, sampling_freq, wavelet_type, levels, freq_m
     try:
         import pywt
         
+        # Validate input parameters
+        if levels <= 0:
+            logger.warning(f"Invalid levels value: {levels}, using default 4")
+            levels = 4
+        
+        # Ensure levels is not too high to avoid subplot issues
+        max_reasonable_levels = min(10, int(np.log2(len(signal_data) / 10)))
+        if levels > max_reasonable_levels:
+            logger.warning(f"Levels value {levels} is too high for signal length {len(signal_data)}. Using {max_reasonable_levels}")
+            levels = max_reasonable_levels
+        
+        if len(signal_data) < 10:
+            logger.warning(f"Signal too short for wavelet analysis: {len(signal_data)} samples")
+            # Create a simple plot instead
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=np.arange(len(signal_data)) / sampling_freq,
+                y=signal_data,
+                mode='lines',
+                name='Original Signal',
+                line=dict(color='black', width=2)
+            ))
+            fig.update_layout(
+                title=f"Wavelet Analysis - Signal too short ({len(signal_data)} samples)",
+                xaxis_title="Time (s)",
+                yaxis_title="Amplitude"
+            )
+            return fig
+        
+        # Validate wavelet type
+        valid_wavelets = pywt.wavelist()
+        if wavelet_type not in valid_wavelets:
+            logger.warning(f"Invalid wavelet type: {wavelet_type}. Available: {valid_wavelets[:10]}...")
+            # Use a default wavelet
+            default_wavelet = 'db4' if 'db4' in valid_wavelets else 'haar'
+            logger.info(f"Using default wavelet: {default_wavelet}")
+            wavelet_type = default_wavelet
+        
+        # Validate signal data
+        if np.any(np.isnan(signal_data)) or np.any(np.isinf(signal_data)):
+            logger.warning("Signal contains NaN or Inf values, cleaning...")
+            signal_data = np.nan_to_num(signal_data, nan=0.0, posinf=0.0, neginf=0.0)
+        
+        # Ensure signal data is finite
+        if not np.all(np.isfinite(signal_data)):
+            logger.error("Signal data contains non-finite values after cleaning")
+            # Create a simple plot instead
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=np.arange(len(signal_data)) / sampling_freq,
+                y=signal_data,
+                mode='lines',
+                name='Original Signal',
+                line=dict(color='black', width=2)
+            ))
+            fig.update_layout(
+                title=f"Wavelet Analysis - Invalid signal data",
+                xaxis_title="Time (s)",
+                yaxis_title="Amplitude"
+            )
+            return fig
+        
+        # Validate sampling frequency
+        if sampling_freq <= 0:
+            logger.warning(f"Invalid sampling frequency: {sampling_freq}, using default 1000 Hz")
+            sampling_freq = 1000.0
+        
         # Perform wavelet decomposition
-        coeffs = pywt.wavedec(signal_data, wavelet_type, level=levels)
+        logger.info(f"Performing wavelet decomposition with {wavelet_type} wavelet, {levels} levels")
+        try:
+            coeffs = pywt.wavedec(signal_data, wavelet_type, level=levels)
+            logger.info(f"Wavelet decomposition completed. Number of coefficients: {len(coeffs)}")
+            
+            # Validate coefficients
+            if not coeffs or len(coeffs) == 0:
+                logger.warning("Wavelet decomposition produced empty coefficients")
+                # Create fallback plots
+                psd_fig = create_empty_figure()
+                psd_fig.update_layout(title="Wavelet PSD - No coefficients available")
+                
+                spectrogram_fig = create_empty_figure()
+                spectrogram_fig.update_layout(title="Wavelet Spectrogram - No coefficients available")
+                
+                results = html.Div([
+                    html.H5(f"Wavelet Analysis - {wavelet_type.upper()}"),
+                    html.P(f"Decomposition levels: {levels}"),
+                    html.P(f"Signal length: {len(signal_data)} samples"),
+                    html.P(f"Sampling frequency: {sampling_freq} Hz"),
+                    html.P("Warning: No wavelet coefficients were produced")
+                ])
+                
+                # Create empty tables
+                empty_table = create_empty_figure()
+                empty_table.update_layout(title="No Data Available")
+                
+                freq_data = {"analysis_type": f"Wavelet_{wavelet_type.upper()}"}
+                time_freq_data = {"levels": levels, "wavelet_type": wavelet_type, "coefficients": []}
+                
+                return main_fig, psd_fig, spectrogram_fig, results, empty_table, empty_table, empty_table, empty_table, freq_data, time_freq_data
+            
+            # Check if we have the expected number of coefficients
+            expected_coeffs = levels + 1
+            if len(coeffs) != expected_coeffs:
+                logger.warning(f"Expected {expected_coeffs} coefficients, got {len(coeffs)}. Adjusting levels.")
+                levels = len(coeffs) - 1
+                total_rows = levels + 1
+                logger.info(f"Adjusted levels to {levels}, total rows to {total_rows}")
+                
+        except Exception as e:
+            logger.error(f"Error in wavelet decomposition: {e}")
+            # Fallback to simple plot
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=np.arange(len(signal_data)) / sampling_freq,
+                y=signal_data,
+                mode='lines',
+                name='Original Signal',
+                line=dict(color='black', width=2)
+            ))
+            fig.update_layout(
+                title=f"Wavelet Analysis Error - Decomposition failed: {str(e)}",
+                xaxis_title="Time (s)",
+                yaxis_title="Amplitude"
+            )
+            return fig
         
         # Calculate frequency bands for each level
         freq_bands = []
@@ -768,11 +909,41 @@ def create_wavelet_plot(signal_data, sampling_freq, wavelet_type, levels, freq_m
             freq_bands.append(freq)
         
         # Create enhanced plot with subplots
-        fig = make_subplots(
-            rows=levels + 1, cols=1,
-            subplot_titles=[f"Original Signal"] + [f"Level {i+1} ({freq_bands[i]:.1f} Hz)" for i in range(levels)],
-            vertical_spacing=0.05
-        )
+        # We need levels + 1 rows: 1 for original signal + levels for wavelet coefficients
+        total_rows = levels + 1
+        logger.info(f"Creating subplot with {total_rows} rows")
+        
+        # Create subplot titles - handle the case where levels might have been adjusted
+        subplot_titles = [f"Original Signal"]
+        for i in range(levels):
+            if i < len(freq_bands):
+                subplot_titles.append(f"Level {i+1} ({freq_bands[i]:.1f} Hz)")
+            else:
+                subplot_titles.append(f"Level {i+1}")
+        
+        try:
+            fig = make_subplots(
+                rows=total_rows, cols=1,
+                subplot_titles=subplot_titles,
+                vertical_spacing=0.12  # Increased from 0.05 to prevent overlap
+            )
+        except Exception as e:
+            logger.error(f"Error creating subplots: {e}")
+            # Fallback to simple plot
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=np.arange(len(signal_data)) / sampling_freq,
+                y=signal_data,
+                mode='lines',
+                name='Original Signal',
+                line=dict(color='black', width=2)
+            ))
+            fig.update_layout(
+                title=f"Wavelet Analysis - Subplot creation failed: {str(e)}",
+                xaxis_title="Time (s)",
+                yaxis_title="Amplitude"
+            )
+            return fig
         
         # Original signal
         time_axis = np.arange(len(signal_data)) / sampling_freq
@@ -787,51 +958,135 @@ def create_wavelet_plot(signal_data, sampling_freq, wavelet_type, levels, freq_m
             row=1, col=1
         )
         
-        # Wavelet coefficients
-        for i, coeff in enumerate(coeffs):
-            if i == 0:  # Approximation coefficients
-                color = 'blue'
-                name = f'Approximation (Level {i})'
-            else:  # Detail coefficients
+        # Wavelet coefficients - start from index 1 to skip approximation coefficients
+        # since we already have the original signal plot
+        logger.info(f"Adding wavelet coefficient traces. Coefficients available: {len(coeffs)}")
+        traces_added = 0
+        
+        for i in range(1, len(coeffs)):
+            if i <= levels:  # Ensure we don't exceed the number of levels
                 color = ['red', 'green', 'orange', 'purple', 'brown'][(i-1) % 5]
-                name = f'Detail (Level {i})'
-            
-            # Upsample coefficients to match original signal length
-            upsampled_coeff = pywt.upcoef('a' if i == 0 else 'd', coeff, wavelet_type, level=i+1, take=len(signal_data))
-            
+                name = f'Detail Level {i}'
+                
+                # Final safety check for row index
+                row_idx = i + 1
+                if row_idx > total_rows:
+                    logger.warning(f"Row index {row_idx} exceeds total rows {total_rows} for level {i}, skipping")
+                    continue
+                
+                try:
+                    # Use a simpler approach - just use the coefficients directly
+                    # This avoids potential issues with pywt.upcoef
+                    logger.info(f"Processing coefficients for level {i}, length: {len(coeffs[i])}")
+                    
+                    # Pad or truncate coefficients to match signal length
+                    if len(coeffs[i]) < len(signal_data):
+                        # Pad with zeros
+                        padded_coeff = np.pad(coeffs[i], (0, len(signal_data) - len(coeffs[i])), mode='constant')
+                        logger.info(f"Padded coefficients from {len(coeffs[i])} to {len(padded_coeff)}")
+                    else:
+                        # Truncate
+                        padded_coeff = coeffs[i][:len(signal_data)]
+                        logger.info(f"Truncated coefficients from {len(coeffs[i])} to {len(padded_coeff)}")
+                    
+                    logger.info(f"Adding trace for level {i} at row {row_idx}")
+                    fig.add_trace(
+                        go.Scatter(
+                            x=time_axis,
+                            y=padded_coeff,
+                            mode='lines',
+                            name=name,
+                            line=dict(color=color, width=1.5)
+                        ),
+                        row=row_idx, col=1
+                    )
+                    traces_added += 1
+                except Exception as e:
+                    logger.error(f"Error processing wavelet coefficients for level {i}: {e}")
+                    # Continue with other levels instead of failing completely
+                    continue
+        
+        # Check if we successfully added any traces
+        if traces_added == 0:
+            logger.warning("No wavelet coefficient traces were added successfully")
+            # Adjust the subplot to only show the original signal
+            fig = make_subplots(
+                rows=1, cols=1,
+                subplot_titles=["Original Signal"],
+                vertical_spacing=0.12
+            )
             fig.add_trace(
                 go.Scatter(
                     x=time_axis,
-                    y=upsampled_coeff,
+                    y=signal_data,
                     mode='lines',
-                    name=name,
-                    line=dict(color=color, width=1.5)
+                    name='Original Signal',
+                    line=dict(color='black', width=2)
                 ),
-                row=i+2, col=1
+                row=1, col=1
             )
+            fig.update_layout(
+                title=f"Wavelet Analysis - {wavelet_type.upper()} Wavelet (Simplified)",
+                height=400,
+                showlegend=True,
+                hovermode='closest',
+                margin=dict(l=80, r=50, t=80, b=80)
+            )
+            fig.update_xaxes(title_text="Time (s)", row=1, col=1)
+            fig.update_yaxes(title_text="Amplitude", row=1, col=1, title_standoff=20)
+            return fig
         
         # Update layout
         fig.update_layout(
             title=f"Enhanced Wavelet Analysis - {wavelet_type.upper()} Wavelet, {levels} Levels",
-            height=200 * (levels + 1),
+            height=200 * total_rows,
             showlegend=True,
-            hovermode='closest'
+            hovermode='closest',
+            margin=dict(l=80, r=50, t=80, b=80)  # Add margins to prevent overlap
         )
         
-        # Update axes labels
-        for i in range(levels + 1):
+        # Update axes labels with better positioning
+        for i in range(total_rows):
             fig.update_xaxes(title_text="Time (s)", row=i+1, col=1)
             if i == 0:
-                fig.update_yaxes(title_text="Amplitude", row=i+1, col=1)
+                fig.update_yaxes(title_text="Amplitude", row=i+1, col=1, title_standoff=20)
             else:
-                fig.update_yaxes(title_text=f"Level {i} Coefficients", row=i+1, col=1)
+                fig.update_yaxes(title_text=f"Level {i} Coefficients", row=i+1, col=1, title_standoff=20)
         
+        # Adjust subplot title positions to prevent overlap
+        fig.update_annotations(
+            dict(
+                font_size=14,
+                font_color="black"
+            )
+        )
+        
+        logger.info("Wavelet plot created successfully")
         return fig
         
     except ImportError:
         logger.warning("PyWavelets not available, creating placeholder plot")
         fig = create_empty_figure()
         fig.update_layout(title="Wavelet Analysis - PyWavelets not available")
+        return fig
+    except Exception as e:
+        logger.error(f"Unexpected error in create_wavelet_plot: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        # Create a simple error plot instead of failing completely
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=np.arange(len(signal_data)) / sampling_freq if sampling_freq > 0 else np.arange(len(signal_data)),
+            y=signal_data,
+            mode='lines',
+            name='Original Signal',
+            line=dict(color='black', width=2)
+        ))
+        fig.update_layout(
+            title=f"Wavelet Analysis Error - {str(e)}",
+            xaxis_title="Time (s)",
+            yaxis_title="Amplitude"
+        )
         return fig
 
 
@@ -1014,7 +1269,7 @@ def perform_psd_analysis(time_data, signal_data, sampling_freq, window, overlap,
     fig = make_subplots(
         rows=2, cols=1,
         subplot_titles=("Power Spectral Density", "Cumulative Power"),
-        vertical_spacing=0.1
+        vertical_spacing=0.15  # Increased from 0.1 to prevent overlap
     )
     
     # Main PSD plot
@@ -1085,16 +1340,25 @@ def perform_psd_analysis(time_data, signal_data, sampling_freq, window, overlap,
     # Update layout
     fig.update_layout(
         title=f"Enhanced PSD Analysis - {window_type.title()} Window, {overlap}% Overlap",
-        height=600,
+        height=800,  # Increased height to provide more space for the second plot
         showlegend=True,
-        hovermode='closest'
+        hovermode='closest',
+        margin=dict(l=80, r=50, t=80, b=80)  # Add margins to prevent overlap
     )
     
-    # Update axes labels
+    # Update axes labels with better positioning
     fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=1)
-    fig.update_yaxes(title_text=y_label, row=1, col=1)
+    fig.update_yaxes(title_text=y_label, row=1, col=1, title_standoff=20)
     fig.update_xaxes(title_text="Frequency (Hz)", row=2, col=1)
-    fig.update_yaxes(title_text="Cumulative Power (Normalized)", row=2, col=1)
+    fig.update_yaxes(title_text="Cumulative Power (Normalized)", row=2, col=1, title_standoff=20)
+    
+    # Adjust subplot title positions to prevent overlap
+    fig.update_annotations(
+        dict(
+            font_size=14,
+            font_color="black"
+        )
+    )
     
     # Main PSD plot is the same as the enhanced plot
     main_fig = fig
@@ -1243,8 +1507,62 @@ def perform_wavelet_analysis(time_data, signal_data, sampling_freq, wavelet_type
         # Perform wavelet decomposition
         coeffs = pywt.wavedec(signal_data, wavelet_type, level=levels)
         
+        # Validate coefficients
+        if not coeffs or len(coeffs) == 0:
+            logger.warning("Wavelet decomposition produced empty coefficients")
+            # Create fallback plots
+            psd_fig = create_empty_figure()
+            psd_fig.update_layout(title="Wavelet PSD - No coefficients available")
+            
+            spectrogram_fig = create_empty_figure()
+            spectrogram_fig.update_layout(title="Wavelet Spectrogram - No coefficients available")
+            
+            results = html.Div([
+                html.H5(f"Wavelet Analysis - {wavelet_type.upper()}"),
+                html.P(f"Decomposition levels: {levels}"),
+                html.P(f"Signal length: {len(signal_data)} samples"),
+                html.P(f"Sampling frequency: {sampling_freq} Hz"),
+                html.P("Warning: No wavelet coefficients were produced")
+            ])
+            
+            # Create empty tables
+            empty_table = create_empty_figure()
+            empty_table.update_layout(title="No Data Available")
+            
+            freq_data = {"analysis_type": f"Wavelet_{wavelet_type.upper()}"}
+            time_freq_data = {"levels": levels, "wavelet_type": wavelet_type, "coefficients": []}
+            
+            return main_fig, psd_fig, spectrogram_fig, results, empty_table, empty_table, empty_table, empty_table, freq_data, time_freq_data
+        
         # Use approximation coefficients for PSD-like analysis
         approx_coeffs = coeffs[0]
+        
+        # Validate approximation coefficients
+        if approx_coeffs is None or len(approx_coeffs) == 0:
+            logger.warning("Approximation coefficients are empty or None")
+            # Create fallback plots
+            psd_fig = create_empty_figure()
+            psd_fig.update_layout(title="Wavelet PSD - No approximation coefficients")
+            
+            spectrogram_fig = create_empty_figure()
+            spectrogram_fig.update_layout(title="Wavelet Spectrogram - No coefficients")
+            
+            results = html.Div([
+                html.H5(f"Wavelet Analysis - {wavelet_type.upper()}"),
+                html.P(f"Decomposition levels: {levels}"),
+                html.P(f"Signal length: {len(signal_data)} samples"),
+                html.P(f"Sampling frequency: {sampling_freq} Hz"),
+                html.P("Warning: No approximation coefficients were produced")
+            ])
+            
+            # Create empty tables
+            empty_table = create_empty_figure()
+            empty_table.update_layout(title="No Data Available")
+            
+            freq_data = {"analysis_type": f"Wavelet_{wavelet_type.upper()}"}
+            time_freq_data = {"levels": levels, "wavelet_type": wavelet_type, "coefficients": []}
+            
+            return main_fig, psd_fig, spectrogram_fig, results, empty_table, empty_table, empty_table, empty_table, freq_data, time_freq_data
         
         # Create PSD plot from approximation coefficients
         psd_fig = go.Figure()
@@ -1266,32 +1584,35 @@ def perform_wavelet_analysis(time_data, signal_data, sampling_freq, wavelet_type
         spectrogram_fig = go.Figure()
         
         # Create a heatmap of wavelet coefficients
-        coeff_matrix = np.array([coeffs[i] for i in range(1, len(coeffs))])
-        if coeff_matrix.size > 0:
-            # Pad coefficients to same length
-            max_len = max(len(coeff) for coeff in coeffs[1:])
-            padded_coeffs = []
-            for coeff in coeffs[1:]:
-                padded = np.pad(coeff, (0, max_len - len(coeff)), mode='constant')
-                padded_coeffs.append(padded)
-            
-            coeff_matrix = np.array(padded_coeffs)
-            
-            spectrogram_fig.add_trace(go.Heatmap(
-                z=np.abs(coeff_matrix),
-                x=np.arange(coeff_matrix.shape[1]),
-                y=[f"Level {i+1}" for i in range(coeff_matrix.shape[0])],
-                colorscale='Viridis',
-                name='Wavelet Coefficients'
-            ))
-            spectrogram_fig.update_layout(
-                title=f"Wavelet Coefficient Levels - {wavelet_type.upper()}",
-                xaxis_title="Coefficient Index",
-                yaxis_title="Decomposition Level",
-                showlegend=False
-            )
-        else:
-            spectrogram_fig.update_layout(title="No wavelet coefficients available")
+        try:
+            # Pad coefficients to same length first, then create array
+            max_len = max(len(coeff) for coeff in coeffs[1:]) if len(coeffs) > 1 else 0
+            if max_len > 0:
+                padded_coeffs = []
+                for coeff in coeffs[1:]:
+                    padded = np.pad(coeff, (0, max_len - len(coeff)), mode='constant')
+                    padded_coeffs.append(padded)
+                
+                coeff_matrix = np.array(padded_coeffs)
+                
+                spectrogram_fig.add_trace(go.Heatmap(
+                    z=np.abs(coeff_matrix),
+                    x=np.arange(coeff_matrix.shape[1]),
+                    y=[f"Level {i+1}" for i in range(coeff_matrix.shape[0])],
+                    colorscale='Viridis',
+                    name='Wavelet Coefficients'
+                ))
+                spectrogram_fig.update_layout(
+                    title=f"Wavelet Coefficient Levels - {wavelet_type.upper()}",
+                    xaxis_title="Coefficient Index",
+                    yaxis_title="Decomposition Level",
+                    showlegend=False
+                )
+            else:
+                spectrogram_fig.update_layout(title="No wavelet coefficients available")
+        except Exception as e:
+            logger.warning(f"Error creating wavelet coefficient heatmap: {e}")
+            spectrogram_fig.update_layout(title=f"Wavelet Coefficients - Error: {str(e)}")
         
         # Generate results and tables
         results = html.Div([
@@ -1305,10 +1626,22 @@ def perform_wavelet_analysis(time_data, signal_data, sampling_freq, wavelet_type
         freqs = np.arange(len(approx_coeffs))
         magnitudes = np.abs(approx_coeffs)
         
-        peak_table = generate_peak_analysis_table(freqs, magnitudes)
-        band_table = generate_band_power_table(freqs, magnitudes)
-        stability_table = generate_stability_table(freqs, magnitudes)
-        harmonics_table = generate_harmonics_table(freqs, magnitudes)
+        # Validate frequency and magnitude arrays
+        if len(freqs) == 0 or len(magnitudes) == 0:
+            logger.warning("Frequency or magnitude arrays are empty")
+            # Create empty tables
+            empty_table = create_empty_figure()
+            empty_table.update_layout(title="No Data Available")
+            
+            peak_table = empty_table
+            band_table = empty_table
+            stability_table = empty_table
+            harmonics_table = empty_table
+        else:
+            peak_table = generate_peak_analysis_table(freqs, magnitudes)
+            band_table = generate_band_power_table(freqs, magnitudes)
+            stability_table = generate_stability_table(freqs, magnitudes)
+            harmonics_table = generate_harmonics_table(freqs, magnitudes)
         
         # Store data
         freq_data = {
@@ -1319,7 +1652,7 @@ def perform_wavelet_analysis(time_data, signal_data, sampling_freq, wavelet_type
         time_freq_data = {
             "levels": levels,
             "wavelet_type": wavelet_type,
-            "coefficients": [coeff.tolist() for coeff in coeffs]
+            "coefficients": [coeff.tolist() for coeff in coeffs if coeff is not None and len(coeff) > 0]
         }
         
     except ImportError:
@@ -1448,7 +1781,15 @@ def generate_band_power_table(freqs, magnitudes):
         if np.any(mask):
             band_power = np.sum(magnitudes[mask])
             total_power = np.sum(magnitudes)
-            percentage = (band_power / total_power) * 100 if total_power > 0 else 0
+            
+            # Handle negative power values by using absolute values for percentage calculation
+            # This ensures percentage is always meaningful regardless of power sign
+            if total_power != 0:
+                # Use absolute values for percentage calculation to handle negative powers
+                percentage = (np.abs(band_power) / np.abs(total_power)) * 100
+            else:
+                percentage = 0
+                
             table_data.append({
                 "Band": band_name,
                 "Range (Hz)": f"{low_freq:.1f} - {high_freq:.1f}",
