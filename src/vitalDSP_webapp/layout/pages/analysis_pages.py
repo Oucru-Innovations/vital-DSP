@@ -34,7 +34,7 @@ def time_domain_layout():
                                     size="lg",
                                     className="w-100"
                                 )
-                            ], md=6),
+                            ], md=4),
                             dbc.Col([
                                 dbc.Button(
                                     "📊 Export Results",
@@ -44,7 +44,17 @@ def time_domain_layout():
                                     size="lg",
                                     className="w-100"
                                 )
-                            ], md=6)
+                            ], md=4),
+                            dbc.Col([
+                                dbc.Button(
+                                    "🎯 Comprehensive Dashboard",
+                                    id="btn-comprehensive-dashboard",
+                                    color="info",
+                                    outline=True,
+                                    size="lg",
+                                    className="w-100"
+                                )
+                            ], md=4)
                         ])
                     ])
                 ], className="mb-4")
@@ -1484,16 +1494,47 @@ def filtering_layout():
 
 
 def physiological_layout():
-    """Create the physiological analysis layout."""
+    """Create the comprehensive physiological analysis layout."""
     return html.Div([
         # Page Header
         html.Div([
-            html.H1("💓 Physiological Features Analysis", className="text-center mb-4"),
+            html.H1("❤️ Physiological Features Analysis", className="text-center mb-4"),
             html.P([
-                "Extract comprehensive physiological features from your PPG/ECG signals including ",
-                "heart rate variability (HRV), morphology analysis, and advanced physiological metrics."
+                "Comprehensive physiological feature extraction and analysis for ECG, PPG, and other vital signs. ",
+                "Utilize advanced vitalDSP algorithms for heart rate variability, morphological analysis, and health insights."
             ], className="text-center text-muted mb-5")
         ], className="mb-4"),
+        
+        # Action Buttons - Top Level
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Button(
+                                    "🔄 Update Analysis",
+                                    id="physio-btn-update-analysis",
+                                    color="primary",
+                                    size="lg",
+                                    className="w-100"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                dbc.Button(
+                                    "📊 Export Results",
+                                    id="physio-btn-export-results",
+                                    color="success",
+                                    outline=True,
+                                    size="lg",
+                                    className="w-100"
+                                )
+                            ], md=6)
+                        ])
+                    ])
+                ], className="mb-4")
+            ], md=12)
+        ]),
         
         # Main Analysis Section
         dbc.Row([
@@ -1502,20 +1543,18 @@ def physiological_layout():
                 dbc.Card([
                     dbc.CardHeader([
                         html.H4("🎛️ Analysis Controls", className="mb-0"),
-                        html.Small("Configure physiological analysis parameters", className="text-muted")
+                        html.Small("Configure comprehensive physiological analysis parameters", className="text-muted")
                     ]),
                     dbc.CardBody([
-                        # Signal Type Selection
-                        html.H6("Signal Type", className="mb-3"),
-                        dcc.Dropdown(
-                            id="physio-signal-type",
+                        # Data Selection
+                        html.H6("Data Selection", className="mb-3"),
+                        dbc.Select(
+                            id="physio-data-source-select",
                             options=[
-                                {"label": "Auto-detect", "value": "auto"},
-                                {"label": "PPG (Photoplethysmography)", "value": "ppg"},
-                                {"label": "ECG (Electrocardiography)", "value": "ecg"},
-                                {"label": "Respiratory", "value": "respiratory"}
+                                {"label": "Uploaded Data", "value": "uploaded"},
+                                {"label": "Sample Data", "value": "sample"}
                             ],
-                            value="auto",
+                            value="uploaded",
                             className="mb-3"
                         ),
                         
@@ -1568,121 +1607,230 @@ def physiological_layout():
                             className="mb-4"
                         ),
                         
-                        # Analysis Categories
-                        html.H6("Analysis Categories", className="mb-3"),
+                        # Signal Type Selection
+                        html.H6("Signal Type", className="mb-3"),
+                        dbc.Select(
+                            id="physio-signal-type",
+                            options=[
+                                {"label": "PPG (Photoplethysmography)", "value": "ppg"},
+                                {"label": "ECG (Electrocardiogram)", "value": "ecg"},
+                                {"label": "EEG (Electroencephalogram)", "value": "eeg"},
+                                {"label": "Auto-detect", "value": "auto"}
+                            ],
+                            value="auto",
+                            className="mb-3"
+                        ),
+                        
+                        # Core Physiological Analysis Categories
+                        html.H6("Core Analysis Categories", className="mb-3"),
                         dcc.Checklist(
                             id="physio-analysis-categories",
                             options=[
-                                {"label": "Heart Rate Variability (HRV)", "value": "hrv"},
-                                {"label": "Morphology Analysis", "value": "morphology"},
-                                {"label": "Signal Quality", "value": "quality"},
-                                {"label": "Trend Analysis", "value": "trend"}
+                                {"label": "Heart Rate & Variability (HRV)", "value": "hrv"},
+                                {"label": "Morphological Features", "value": "morphology"},
+                                {"label": "Beat-to-Beat Analysis", "value": "beat2beat"},
+                                {"label": "Energy Analysis", "value": "energy"},
+                                {"label": "Envelope Detection", "value": "envelope"},
+                                {"label": "Signal Segmentation", "value": "segmentation"},
+                                {"label": "Trend Analysis", "value": "trend"},
+                                {"label": "Waveform Analysis", "value": "waveform"},
+                                {"label": "Statistical Analysis", "value": "statistical"},
+                                {"label": "Frequency Analysis", "value": "frequency"},
+                                {"label": "Signal Transforms", "value": "transforms"}
                             ],
-                            value=["hrv", "morphology"],
+                            value=["hrv", "morphology", "beat2beat", "energy", "envelope", "segmentation", "trend", "waveform", "statistical", "frequency"],
                             className="mb-3"
                         ),
                         
-                        # HRV Analysis Options
-                        html.H6("HRV Analysis Options", className="mb-3"),
-                        dcc.Checklist(
-                            id="physio-hrv-options",
-                            options=[
-                                {"label": "Time Domain Metrics", "value": "time_domain"},
-                                {"label": "Frequency Domain Metrics", "value": "frequency_domain"},
-                                {"label": "Non-linear Metrics", "value": "nonlinear"},
-                                {"label": "Poincaré Plot", "value": "poincare"}
-                            ],
-                            value=["time_domain", "frequency_domain"],
-                            className="mb-3"
-                        ),
+                        # HRV Specific Options
+                        html.Div([
+                            html.H6("HRV Analysis Options", className="mb-2"),
+                            dbc.Checklist(
+                                id="physio-hrv-options",
+                                options=[
+                                    {"label": "Time Domain Features", "value": "time_domain"},
+                                    {"label": "Frequency Domain Features", "value": "freq_domain"},
+                                    {"label": "Nonlinear Features", "value": "nonlinear"},
+                                    {"label": "Poincaré Plot", "value": "poincare"},
+                                    {"label": "Detrended Fluctuation", "value": "dfa"}
+                                ],
+                                value=["time_domain", "freq_domain", "nonlinear"],
+                                className="mb-2"
+                            )
+                        ], id="physio-hrv-options-container", className="mb-3"),
                         
                         # Morphology Options
-                        html.H6("Morphology Analysis", className="mb-3"),
-                        dcc.Checklist(
+                        html.Div([
+                            html.H6("Morphology Analysis Options", className="mb-2"),
+                            dbc.Checklist(
                             id="physio-morphology-options",
                             options=[
-                                {"label": "Peak Detection", "value": "peak_detection"},
-                                {"label": "Waveform Analysis", "value": "waveform"},
-                                {"label": "Amplitude Analysis", "value": "amplitude"},
-                                {"label": "Duration Analysis", "value": "duration"}
-                            ],
-                            value=["peak_detection", "amplitude"],
-                            className="mb-3"
-                        ),
+                                    {"label": "Peak Detection", "value": "peaks"},
+                                    {"label": "Duration Analysis", "value": "duration"},
+                                    {"label": "Area Calculations", "value": "area"},
+                                    {"label": "Amplitude Variability", "value": "amplitude"},
+                                    {"label": "Slope Analysis", "value": "slope"},
+                                    {"label": "Dicrotic Notch (PPG)", "value": "dicrotic"}
+                                ],
+                                value=["peaks", "duration", "area"],
+                                className="mb-2"
+                            )
+                        ], id="physio-morphology-options-container", className="mb-3"),
                         
-                        # Advanced Options
-                        html.H6("Advanced Options", className="mb-3"),
+                        # Advanced Physiological Features
+                        html.H6("Advanced Physiological Features", className="mb-3"),
                         dcc.Checklist(
-                            id="physio-advanced-options",
+                            id="physio-advanced-features",
                             options=[
-                                {"label": "Artifact Detection", "value": "artifact_detection"},
-                                {"label": "Signal Enhancement", "value": "signal_enhancement"},
-                                {"label": "Multi-lead Analysis", "value": "multilead"},
-                                {"label": "Cross-correlation", "value": "cross_correlation"}
+                                {"label": "Cross-Signal Analysis", "value": "cross_signal"},
+                                {"label": "Ensemble Methods", "value": "ensemble"},
+                                {"label": "Change Detection", "value": "change_detection"},
+                                {"label": "Power Analysis", "value": "power_analysis"},
+                                {"label": "Coherence Analysis", "value": "coherence"},
+                                {"label": "Cross-Correlation", "value": "cross_correlation"}
                             ],
-                            value=["artifact_detection"],
+                            value=["cross_signal", "ensemble", "change_detection", "power_analysis"],
                             className="mb-3"
                         ),
                         
-                        # Main Analysis Button
-                        dbc.Button(
-                            "💓 Analyze Physiological Features",
-                            id="physio-btn-update-analysis",
-                            color="primary",
-                            size="lg",
-                            className="w-100 mb-3"
+                        # Signal Quality & Artifact Detection
+                        html.H6("Signal Quality & Artifacts", className="mb-3"),
+                        dcc.Checklist(
+                            id="physio-quality-options",
+                            options=[
+                                {"label": "Signal Quality Index", "value": "quality_index"},
+                                {"label": "SNR Estimation", "value": "snr_estimation"},
+                                {"label": "Artifact Detection", "value": "artifact_detection"},
+                                {"label": "Blind Source Separation", "value": "blind_source"},
+                                {"label": "Multi-modal Artifact Detection", "value": "multimodal_artifacts"}
+                            ],
+                            value=["quality_index", "artifact_detection"],
+                            className="mb-3"
+                        ),
+                        
+                        # Signal Transforms & Processing
+                        html.H6("Signal Transforms & Processing", className="mb-3"),
+                        dcc.Checklist(
+                            id="physio-transform-options",
+                            options=[
+                                {"label": "Wavelet Transform", "value": "wavelet"},
+                                {"label": "Fourier Transform", "value": "fourier"},
+                                {"label": "Hilbert Transform", "value": "hilbert"},
+                                {"label": "STFT Analysis", "value": "stft"},
+                                {"label": "PCA/ICA Decomposition", "value": "pca_ica"},
+                                {"label": "MFCC Features", "value": "mfcc"},
+                                {"label": "Chroma Features", "value": "chroma"}
+                            ],
+                            value=["wavelet", "fourier", "hilbert"],
+                            className="mb-3"
+                        ),
+                        
+                        # Advanced Computation Features
+                        html.H6("Advanced Computation", className="mb-3"),
+                        dcc.Checklist(
+                            id="physio-advanced-computation",
+                            options=[
+                                {"label": "Anomaly Detection", "value": "anomaly_detection"},
+                                {"label": "Bayesian Analysis", "value": "bayesian"},
+                                {"label": "Neural Network Filtering", "value": "neural_network"},
+                                {"label": "Kalman Filtering", "value": "kalman"},
+                                {"label": "EMD Analysis", "value": "emd"},
+                                {"label": "Multimodal Fusion", "value": "multimodal_fusion"},
+                                {"label": "Real-time Processing", "value": "realtime"}
+                            ],
+                            value=["anomaly_detection", "bayesian", "kalman"],
+                            className="mb-3"
+                        ),
+                        
+                        # Feature Engineering Options
+                        html.H6("Feature Engineering", className="mb-3"),
+                        dcc.Checklist(
+                            id="physio-feature-engineering",
+                            options=[
+                                {"label": "PPG Light Features", "value": "ppg_light"},
+                                {"label": "PPG Autonomic Features", "value": "ppg_autonomic"},
+                                {"label": "ECG Autonomic Features", "value": "ecg_autonomic"},
+                                {"label": "Morphology Features", "value": "morphology_eng"},
+                                {"label": "ECG-PPG Synchronization", "value": "ecg_ppg_sync"}
+                            ],
+                            value=["ppg_light", "ppg_autonomic", "ecg_autonomic"],
+                            className="mb-3"
+                        ),
+                        
+                        # Preprocessing Options
+                        html.H6("Preprocessing", className="mb-3"),
+                        dcc.Checklist(
+                            id="physio-preprocessing",
+                            options=[
+                                {"label": "Noise Reduction", "value": "noise_reduction"},
+                                {"label": "Baseline Correction", "value": "baseline_correction"},
+                                {"label": "Filtering", "value": "filtering"},
+                                {"label": "Normalization", "value": "normalization"},
+                                {"label": "Interpolation", "value": "interpolation"}
+                            ],
+                            value=["noise_reduction", "baseline_correction", "filtering"],
+                            className="mb-3"
                         )
                     ])
                 ], className="h-100")
-            ], md=4),
+            ], md=3),
             
-            # Right Panel - Results & Plots
+            # Right Panel - Plots & Results
             dbc.Col([
-                # Main Signal Plot
+                # Main Signal Display
                 dbc.Card([
                     dbc.CardHeader([
-                        html.H5("📈 Main Signal Analysis", className="mb-0")
+                        html.H4("📈 Signal Overview", className="mb-0"),
+                        html.Small("Raw signal with annotations and detected features", className="text-muted")
                     ]),
                     dbc.CardBody([
+                        dcc.Loading(
                         dcc.Graph(
                             id="physio-main-signal-plot",
                             style={"height": "400px"},
-                            config={"displayModeBar": True,
-                                    "displaylogo": False}
+                                config={
+                                    "displayModeBar": True,
+                                    "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],
+                                    "displaylogo": False
+                                }
+                            ),
+                            type="default"
                         )
                     ])
                 ], className="mb-4"),
                 
-                # Analysis Results
+                # Feature Analysis Results
                 dbc.Card([
                     dbc.CardHeader([
-                        html.H5("📋 Analysis Results", className="mb-0")
+                        html.H4("🔍 Feature Analysis Results", className="mb-0"),
+                        html.Small("Comprehensive physiological feature extraction results", className="text-muted")
                     ]),
                     dbc.CardBody([
-                        html.Div(id="physio-analysis-results")
-                    ])
-                ], className="mb-4"),
-                
-                # Analysis Plots
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.H5("📊 Detailed Analysis Plots", className="mb-0")
-                    ]),
-                    dbc.CardBody([
+                        html.Div(id="physio-analysis-results", className="mb-3"),
+                        dcc.Loading(
                         dcc.Graph(
                             id="physio-analysis-plots",
-                            style={"height": "400px"},
-                            config={"displayModeBar": True,
-                                    "displaylogo": False}
+                                style={"height": "500px"},
+                                config={
+                                    "displayModeBar": True,
+                                    "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],
+                                    "displaylogo": False
+                                }
+                            ),
+                            type="default"
                         )
                     ])
-                ], className="mb-4")
-            ], md=8)
+                ])
+            ], md=9)
         ]),
         
-        # Data Storage
+        # Bottom Section - Additional Analysis
+        html.Div(id="physio-additional-analysis-section", className="mt-4"),
+        
+        # Stores for data management
         dcc.Store(id="store-physio-data"),
-        dcc.Store(id="store-physio-features")
+        dcc.Store(id="store-physio-features"),
+        dcc.Store(id="store-physio-analysis")
     ])
 
 
