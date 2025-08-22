@@ -17,6 +17,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def normalize_signal_type(signal_type):
+    """Normalize signal type to ensure compatibility with vitalDSP."""
+    if not signal_type:
+        return "PPG"
+    
+    # Convert to uppercase and validate
+    signal_type_upper = signal_type.upper()
+    valid_types = ["ECG", "PPG", "EEG"]
+    
+    if signal_type_upper in valid_types:
+        return signal_type_upper
+    else:
+        logger.warning(f"Invalid signal type '{signal_type}' detected. Defaulting to 'PPG'.")
+        return "PPG"
+
+
 def register_physiological_callbacks(app):
     """Register all physiological analysis callbacks."""
     logger.info("=== REGISTERING PHYSIOLOGICAL CALLBACKS ===")
@@ -482,7 +498,7 @@ def create_physiological_signal_plot(time_data, signal_data, signal_type, sampli
     ))
     
     # Enhanced peak detection with red arrows
-    if signal_type in ["ecg", "ppg"]:
+    if signal_type.lower() in ["ecg", "ppg"]:
         try:
             # Use more sophisticated peak detection
             height_threshold = np.mean(signal_data) + 1.5 * np.std(signal_data)
@@ -596,42 +612,42 @@ def create_physiological_signal_plot(time_data, signal_data, signal_type, sampli
     except Exception as e:
         logger.debug(f"Could not create envelope: {e}")
     
-    # Enhanced layout
+        # Enhanced layout
     fig.update_layout(
-        title=dict(
-            text=f"{signal_type.upper()} Signal Analysis with Peak Detection",
-            x=0.5,
-            font=dict(size=20, color='#2c3e50')
-        ),
-        xaxis=dict(
-            title="Time (seconds)",
-            titlefont=dict(size=14, color='#2c3e50'),
-            gridcolor='rgba(128, 128, 128, 0.2)',
-            zeroline=True,
-            zerolinecolor='rgba(128, 128, 128, 0.5)',
-            showgrid=True
-        ),
-        yaxis=dict(
-            title="Amplitude",
-            titlefont=dict(size=14, color='#2c3e50'),
-            gridcolor='rgba(128, 128, 128, 0.2)',
-            zeroline=True,
-            zerolinecolor='rgba(128, 128, 128, 0.5)',
-            showgrid=True
-        ),
-        showlegend=True,
-        legend=dict(
-            x=0.02,
-            y=0.98,
-            bgcolor='rgba(255, 255, 255, 0.8)',
-            bordercolor='rgba(0, 0, 0, 0.2)',
-            borderwidth=1
-        ),
-        hovermode='x unified',
-        plot_bgcolor='white',
-        paper_bgcolor='white',
-        margin=dict(l=60, r=60, t=80, b=60),
-        height=500
+            title=dict(
+                text=f"{signal_type.upper()} Signal Analysis with Peak Detection",
+                x=0.5,
+                font=dict(size=20, color='#2c3e50')
+            ),
+            xaxis=dict(
+                title="Time (seconds)",
+                titlefont=dict(size=14, color='#2c3e50'),
+                gridcolor='rgba(128, 128, 128, 0.2)',
+                zeroline=True,
+                zerolinecolor='rgba(128, 128, 128, 0.5)',
+                showgrid=True
+            ),
+            yaxis=dict(
+                title="Amplitude",
+                titlefont=dict(size=14, color='#2c3e50'),
+                gridcolor='rgba(128, 128, 128, 0.2)',
+                zeroline=True,
+                zerolinecolor='rgba(128, 128, 128, 0.5)',
+                showgrid=True
+            ),
+            showlegend=True,
+            legend=dict(
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='rgba(0, 0, 0, 0.2)',
+                borderwidth=1
+            ),
+            hovermode='x unified',
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            margin=dict(l=60, r=200, t=80, b=60),
+            height=500
     )
     
     # Add grid styling
@@ -726,35 +742,454 @@ def perform_physiological_analysis(time_data, signal_data, signal_type, sampling
 def create_physiological_analysis_plots(time_data, signal_data, signal_type, sampling_freq,
                                        analysis_categories, hrv_options, morphology_options, advanced_features,
                                        quality_options, transform_options, advanced_computation, feature_engineering, preprocessing):
-    """Create detailed analysis plots with enhanced visualization."""
+    """Create comprehensive 2x2 grid layout with multiple analysis plots for better visualization."""
     try:
-        # Create comprehensive analysis plots based on selected options
-        if "hrv" in analysis_categories and hrv_options:
-            return create_hrv_plots(time_data, signal_data, sampling_freq, hrv_options)
-        elif "morphology" in analysis_categories and morphology_options:
-            return create_morphology_plots(time_data, signal_data, sampling_freq, morphology_options)
-        elif advanced_features and len(advanced_features) > 0:
-            return create_advanced_features_plots(time_data, signal_data, sampling_freq, advanced_features)
-        elif quality_options and len(quality_options) > 0:
-            return create_signal_quality_plots(time_data, signal_data, sampling_freq, quality_options)
-        elif "beat2beat" in analysis_categories:
-            return create_beat_to_beat_plots(time_data, signal_data, sampling_freq)
-        elif "energy" in analysis_categories:
-            return create_energy_plots(time_data, signal_data, sampling_freq)
-        elif "envelope" in analysis_categories:
-            return create_envelope_plots(time_data, signal_data, sampling_freq)
-        elif "segmentation" in analysis_categories:
-            return create_segmentation_plots(time_data, signal_data, sampling_freq)
-        elif "waveform" in analysis_categories:
-            return create_waveform_plots(time_data, signal_data, sampling_freq)
-        elif "frequency" in analysis_categories:
-            return create_frequency_plots(time_data, signal_data, sampling_freq)
-        elif transform_options:
-            return create_transform_plots(time_data, signal_data, sampling_freq, transform_options)
+        # Find peaks for analysis - this is crucial for all plots
+        height_threshold = np.mean(signal_data) + 1.5 * np.std(signal_data)
+        distance_threshold = int(sampling_freq * 0.3)
+        
+        peaks, _ = signal.find_peaks(
+            signal_data, 
+            height=height_threshold,
+            distance=distance_threshold,
+            prominence=np.std(signal_data) * 0.5
+        )
+        
+        # Create a 2x2 subplot layout for comprehensive analysis view
+        fig = make_subplots(
+            rows=2, cols=2,
+            subplot_titles=("Signal Overview", "Beat-to-Beat Analysis", "Frequency Analysis", "Poincaré Plot"),
+            vertical_spacing=0.12,
+            horizontal_spacing=0.1,
+            specs=[[{"secondary_y": False}, {"secondary_y": False}],
+                   [{"secondary_y": False}, {"secondary_y": False}]]
+        )
+        
+        # 1. Signal Overview (top-left) - Enhanced main signal with peaks
+        fig.add_trace(
+            go.Scatter(
+                x=time_data,
+                y=signal_data,
+                mode='lines',
+                name='Signal',
+                line=dict(color='#1f77b4', width=2),
+                fill='tonexty',
+                fillcolor='rgba(31, 119, 180, 0.1)'
+            ),
+            row=1, col=1
+        )
+        
+        # Add peaks with red arrows for better visibility
+        if len(peaks) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=time_data[peaks],
+                    y=signal_data[peaks],
+                    mode='markers+text',
+                    name='Peaks',
+                    text=[f'P{i+1}' for i in range(min(len(peaks), 10))],  # Limit text to first 10 peaks
+                    textposition='top center',
+                    marker=dict(
+                        color='red',
+                        size=8,
+                        symbol='arrow-up',
+                        line=dict(color='darkred', width=2)
+                    ),
+                    textfont=dict(color='red', size=8, family='Arial Black')
+                ),
+                row=1, col=1
+            )
+            
+            # Add peak statistics
+            mean_interval = np.mean(np.diff(peaks) / sampling_freq) if len(peaks) > 1 else 0
+            heart_rate = 60 / mean_interval if mean_interval > 0 else 0
+            
+            fig.add_annotation(
+                x=0.98, y=0.98,
+                xref='x1', yref='y1',
+                text=f'Peaks: {len(peaks)}<br>HR: {heart_rate:.1f} BPM<br>Mean Interval: {mean_interval:.2f}s',
+                showarrow=False,
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='red',
+                borderwidth=2,
+                font=dict(size=10, color='black')
+            )
+        
+        # 2. Beat-to-Beat Analysis (top-right) - Beat intervals and variability
+        if len(peaks) > 1:
+            # Calculate beat intervals
+            beat_intervals = np.diff(peaks) / sampling_freq
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=np.arange(len(beat_intervals)),
+                    y=beat_intervals,
+                    mode='lines+markers',
+                    name='Beat Intervals',
+                    line=dict(color='#2ca02c', width=3),
+                    marker=dict(color='#2ca02c', size=6, symbol='diamond'),
+                    fill='tonexty',
+                    fillcolor='rgba(44, 160, 44, 0.1)'
+                ),
+                row=1, col=2
+            )
+            
+            # Add interval statistics
+            mean_interval = np.mean(beat_intervals)
+            std_interval = np.std(beat_intervals)
+            heart_rate = 60 / mean_interval if mean_interval > 0 else 0
+            
+            fig.add_hline(
+                y=mean_interval,
+                line_dash="dash",
+                line_color="red",
+                annotation_text=f"Mean: {mean_interval:.3f}s",
+                annotation_position="right",
+                row=1, col=2
+            )
+            
+            # Add beat-to-beat statistics
+            fig.add_annotation(
+                x=0.98, y=0.98,
+                xref='x2', yref='y2',
+                text=f'Heart Rate: {heart_rate:.1f} BPM<br>Mean Interval: {mean_interval:.3f}s<br>Variability: {std_interval:.3f}s',
+                showarrow=False,
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='green',
+                borderwidth=2,
+                font=dict(size=10, color='black')
+            )
         else:
-            return create_empty_figure()
+            # If no peaks, show signal energy analysis instead
+            try:
+                # Calculate signal energy over time
+                window_size = min(50, len(signal_data) // 10)
+                if window_size > 1:
+                    energy_values = []
+                    time_windows = []
+                    
+                    for i in range(0, len(signal_data) - window_size, window_size // 2):
+                        window_data = signal_data[i:i+window_size]
+                        energy = np.sum(window_data ** 2)
+                        energy_values.append(energy)
+                        time_windows.append(time_data[i + window_size // 2])
+                    
+                    if len(energy_values) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_windows,
+                                y=energy_values,
+                                mode='lines+markers',
+                                name='Signal Energy',
+                                line=dict(color='#ff7f0e', width=2),
+                                marker=dict(color='#ff7f0e', size=4, symbol='circle')
+                            ),
+                            row=1, col=2
+                        )
+                        
+                        # Add energy statistics
+                        mean_energy = np.mean(energy_values)
+                        total_energy = np.sum(signal_data ** 2)
+                        
+                        fig.add_annotation(
+                            x=0.98, y=0.98,
+                            xref='x2', yref='y2',
+                            text=f'Mean Energy: {mean_energy:.2e}<br>Total Energy: {total_energy:.2e}<br>Energy Variance: {np.var(energy_values):.2e}',
+                            showarrow=False,
+                            bgcolor='rgba(255, 255, 255, 0.9)',
+                            bordercolor='orange',
+                            borderwidth=2,
+                            font=dict(size=10, color='black')
+                        )
+            except Exception as e:
+                logger.debug(f"Could not create energy analysis: {e}")
+                # Final fallback: show signal amplitude distribution
+                hist, bin_edges = np.histogram(signal_data, bins=30, density=True)
+                bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+                
+                fig.add_trace(
+                    go.Bar(
+                        x=bin_centers,
+                        y=hist,
+                        name='Signal Distribution',
+                        marker_color='rgba(255, 165, 0, 0.7)',
+                        opacity=0.8
+                    ),
+                    row=1, col=2
+                )
+                
+                # Add signal statistics
+                fig.add_annotation(
+                    x=0.98, y=0.98,
+                    xref='x2', yref='y2',
+                    text=f'Mean: {np.mean(signal_data):.3f}<br>Std: {np.std(signal_data):.3f}<br>Range: {np.max(signal_data) - np.min(signal_data):.3f}',
+                    showarrow=False,
+                    bgcolor='rgba(255, 255, 255, 0.9)',
+                    bordercolor='orange',
+                    borderwidth=2,
+                    font=dict(size=10, color='black')
+                )
+        
+        # 3. Frequency Analysis (bottom-left) - Power spectral density
+        try:
+            freqs, psd = signal.welch(signal_data, fs=sampling_freq, nperseg=min(256, len(signal_data)//2))
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=freqs,
+                    y=psd,
+                    mode='lines',
+                    name='Power Spectrum',
+                    line=dict(color='#2ca02c', width=2),
+                    fill='tonexty',
+                    fillcolor='rgba(44, 160, 44, 0.1)'
+                ),
+                row=2, col=1
+            )
+            
+            # Add frequency band annotations
+            low_freq_mask = freqs < 1.0
+            mid_freq_mask = (freqs >= 1.0) & (freqs < 10.0)
+            high_freq_mask = freqs >= 10.0
+            
+            if np.any(low_freq_mask):
+                low_power = np.sum(psd[low_freq_mask])
+                fig.add_annotation(
+                    x=0.95, y=0.9,
+                    xref='x3', yref='y3',
+                    text=f'Low: {low_power:.2e}',
+                    showarrow=False,
+                    bgcolor='rgba(255, 255, 255, 0.8)',
+                    bordercolor='blue'
+                )
+            
+            if np.any(mid_freq_mask):
+                mid_power = np.sum(psd[mid_freq_mask])
+                fig.add_annotation(
+                    x=0.95, y=0.9,
+                    xref='x3', yref='y3',
+                    text=f'Mid: {mid_power:.2e}',
+                    showarrow=False,
+                    bgcolor='rgba(255, 255, 255, 0.8)',
+                    bordercolor='green'
+                )
+            
+            if np.any(high_freq_mask):
+                high_power = np.sum(psd[high_freq_mask])
+                fig.add_annotation(
+                    x=0.95, y=0.9,
+                    xref='x3', yref='y3',
+                    text=f'High: {high_power:.2e}',
+                    showarrow=False,
+                    bgcolor='rgba(255, 255, 255, 0.8)',
+                    bordercolor='red'
+                )
+        except Exception as e:
+            logger.debug(f"Could not create frequency analysis: {e}")
+        
+        # 4. Poincaré Plot (bottom-right) - RR intervals scatter plot
+        if len(peaks) > 1:
+            try:
+                # Calculate RR intervals
+                rr_intervals = np.diff(peaks) / sampling_freq * 1000  # Convert to milliseconds
+                
+                # Create Poincaré plot (RR_n vs RR_{n+1})
+                fig.add_trace(
+                    go.Scatter(
+                        x=rr_intervals[:-1],
+                        y=rr_intervals[1:],
+                        mode='markers',
+                        name='Poincaré Plot',
+                        marker=dict(
+                            color='rgba(156, 39, 176, 0.7)',
+                            size=8,
+                            symbol='circle',
+                            line=dict(color='rgba(156, 39, 176, 1)', width=1)
+                        )
+                    ),
+                    row=2, col=2
+                )
+                
+                # Calculate Poincaré plot statistics
+                diff_rr = np.diff(rr_intervals)
+                sd1 = np.std(diff_rr) / np.sqrt(2)
+                sd2 = np.std(rr_intervals) * np.sqrt(2)
+                
+                # Add SD1 and SD2 ellipses
+                center_x, center_y = np.mean(rr_intervals[:-1]), np.mean(rr_intervals[1:])
+                
+                # Create SD1 ellipse points
+                theta = np.linspace(0, 2*np.pi, 100)
+                x_ellipse = center_x + sd1 * np.cos(theta)
+                y_ellipse = center_y + sd1 * np.sin(theta)
+                
+                fig.add_trace(
+                    go.Scatter(
+                        x=x_ellipse,
+                        y=y_ellipse,
+                        mode='lines',
+                        name='SD1 Ellipse',
+                        line=dict(color='red', width=2, dash='dash'),
+                        showlegend=False
+                    ),
+                    row=2, col=2
+                )
+                
+                # Add Poincaré statistics annotation
+                fig.add_annotation(
+                    x=0.98, y=0.98,
+                    xref='x4', yref='y4',
+                    text=f'SD1: {sd1:.1f} ms<br>SD2: {sd2:.1f} ms<br>RR Count: {len(rr_intervals)}',
+                    showarrow=False,
+                    bgcolor='rgba(255, 255, 255, 0.9)',
+                    bordercolor='purple',
+                    borderwidth=2,
+                    font=dict(size=10, color='black')
+                )
+                
+            except Exception as e:
+                logger.debug(f"Could not create Poincaré plot: {e}")
+                # Fallback: show signal envelope instead
+                try:
+                    analytic_signal = signal.hilbert(signal_data)
+                    envelope = np.abs(analytic_signal)
+                    
+                    fig.add_trace(
+                        go.Scatter(
+                            x=time_data,
+                            y=envelope,
+                            mode='lines',
+                            name='Signal Envelope',
+                            line=dict(color='#d62728', width=2)
+                        ),
+                        row=2, col=2
+                    )
+                    
+                    fig.add_annotation(
+                        x=0.98, y=0.98,
+                        xref='x4', yref='y4',
+                        text=f'Envelope Mean: {np.mean(envelope):.3f}<br>Envelope Std: {np.std(envelope):.3f}',
+                        showarrow=False,
+                        bgcolor='rgba(255, 255, 255, 0.9)',
+                        bordercolor='red',
+                        borderwidth=2,
+                        font=dict(size=10, color='black')
+                    )
+                except:
+                    pass
+        else:
+            # If no peaks, show signal quality metrics instead
+            try:
+                # Calculate quality metrics
+                baseline = np.mean(signal_data)
+                noise_level = np.std(signal_data)
+                snr = 20 * np.log10(np.abs(baseline) / noise_level) if noise_level > 0 else 0
+                
+                # Create quality score over time
+                window_size = min(50, len(signal_data) // 10)
+                if window_size > 1:
+                    quality_scores = []
+                    time_windows = []
+                    
+                    for i in range(0, len(signal_data) - window_size, window_size // 2):
+                        window_data = signal_data[i:i+window_size]
+                        window_mean = np.mean(window_data)
+                        window_std = np.std(window_data)
+                        
+                        if window_std > 0:
+                            quality_score = np.abs(window_mean) / window_std
+                        else:
+                            quality_score = 0
+                        
+                        quality_scores.append(quality_score)
+                        time_windows.append(time_data[i + window_size // 2])
+                    
+                    if len(quality_scores) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_windows,
+                                y=quality_scores,
+                                mode='lines+markers',
+                                name='Quality Score',
+                                line=dict(color='#d62728', width=2),
+                                marker=dict(color='#d62728', size=4, symbol='circle')
+                            ),
+                            row=2, col=2
+                        )
+                        
+                        # Add quality statistics
+                        mean_quality = np.mean(quality_scores)
+                        fig.add_annotation(
+                            x=0.98, y=0.98,
+                            xref='x4', yref='y4',
+                            text=f'Mean Quality: {mean_quality:.2f}<br>SNR: {snr:.1f} dB<br>Noise Level: {noise_level:.3f}',
+                            showarrow=False,
+                            bgcolor='rgba(255, 255, 255, 0.9)',
+                            bordercolor='red',
+                            borderwidth=2,
+                            font=dict(size=10, color='black')
+                        )
+            except Exception as e:
+                logger.debug(f"Could not create quality metrics: {e}")
+        
+        # Enhanced layout with better spacing and sizing
+        fig.update_layout(
+            title=dict(
+                text=f"Comprehensive {signal_type.upper()} Analysis Dashboard",
+                x=0.5,
+                font=dict(size=18, color='#2c3e50')
+            ),
+            height=800,  # Increased height for better plot visibility
+            showlegend=True,
+            legend=dict(
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='rgba(0, 0, 0, 0.2)',
+                borderwidth=1
+            ),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            margin=dict(l=60, r=200, t=80, b=60)
+        )
+        
+        # Update all subplot axes with better grid and styling
+        for i in range(1, 3):
+            for j in range(1, 3):
+                fig.update_xaxes(
+                    showgrid=True, 
+                    gridwidth=1, 
+                    gridcolor='rgba(128, 128, 128, 0.2)',
+                    row=i, col=j,
+                    title_font=dict(size=12),
+                    tickfont=dict(size=10)
+                )
+                fig.update_yaxes(
+                    showgrid=True, 
+                    gridwidth=1, 
+                    gridcolor='rgba(128, 128, 128, 0.2)',
+                    row=i, col=j,
+                    title_font=dict(size=12),
+                    tickfont=dict(size=10)
+                )
+        
+        # Add specific axis titles for better clarity
+        fig.update_xaxes(title_text="Time (s)", row=1, col=1)
+        fig.update_yaxes(title_text="Amplitude", row=1, col=1)
+        
+        fig.update_xaxes(title_text="Value", row=1, col=2)
+        fig.update_yaxes(title_text="Density", row=1, col=2)
+        
+        fig.update_xaxes(title_text="Frequency (Hz)", row=2, col=1)
+        fig.update_yaxes(title_text="Power", row=2, col=1)
+        
+        fig.update_xaxes(title_text="RR_n (ms)", row=2, col=2)
+        fig.update_yaxes(title_text="RR_{n+1} (ms)", row=2, col=2)
+        
+        return fig
+        
     except Exception as e:
-        logger.error(f"Error creating analysis plots: {e}")
+        logger.error(f"Error creating comprehensive analysis plots: {e}")
         return create_empty_figure()
 
 
@@ -921,309 +1356,261 @@ def analyze_trends(signal_data, sampling_freq):
 
 
 def create_comprehensive_results_display(results, signal_type, sampling_freq):
-    """Create comprehensive results display for all analysis types."""
+    """Create modern, compact results display for all analysis types."""
     try:
         sections = []
         
+        # Create a modern metrics grid
+        def create_metric_card(title, icon, metrics_dict, color="primary"):
+            """Create a modern metric card with compact layout."""
+            metric_items = []
+            for key, value in metrics_dict.items():
+                if isinstance(value, (int, float)) and value != 0:
+                    # Format the value based on its type
+                    if key.endswith('_db'):
+                        formatted_value = f"{value:.1f} dB"
+                    elif key.endswith('_ratio') or key.endswith('_strength'):
+                        formatted_value = f"{value:.3f}"
+                    elif key.endswith('_freq') or key.endswith('_frequency'):
+                        formatted_value = f"{value:.3f} Hz"
+                    elif key.endswith('_ms'):
+                        formatted_value = f"{value:.1f} ms"
+                    elif isinstance(value, float) and abs(value) < 0.01:
+                        formatted_value = f"{value:.2e}"
+                    else:
+                        formatted_value = f"{value:.4f}"
+                    
+                    # Create a compact metric item
+                    metric_items.append(
+                        html.Div([
+                            html.Span(f"{key.replace('_', ' ').title()}: ", className="text-muted fw-bold"),
+                            html.Span(formatted_value, className="text-dark")
+                        ], className="d-flex justify-content-between align-items-center py-1 border-bottom border-light")
+                    )
+            
+            if not metric_items:
+                return None
+            
+            return dbc.Card([
+                dbc.CardHeader([
+                    html.Div([
+                        html.Span(icon, className="me-2 fs-4"),
+                        html.Span(title, className="fs-6 fw-bold text-dark")
+                    ], className="d-flex align-items-center")
+                ], className=f"bg-{color} bg-opacity-10 border-0 py-2"),
+                dbc.CardBody([
+                    html.Div(metric_items, className="small")
+                ], className="py-2 px-3")
+            ], className="h-100 border-0 shadow-sm")
+        
         # HRV Results
         if "hrv_metrics" in results and "error" not in results["hrv_metrics"]:
-            hrv_section = html.Div([
-                html.H5("💓 Heart Rate Variability (HRV) Analysis"),
-                html.Div([
-                    html.Div([
-                        html.H6("Time Domain Metrics"),
-                        html.P(f"Mean RR: {results['hrv_metrics'].get('mean_rr', 0):.1f} ms"),
-                        html.P(f"RMSSD: {results['hrv_metrics'].get('rmssd', 0):.1f} ms"),
-                        html.P(f"pNN50: {results['hrv_metrics'].get('pnn50', 0):.1f}%")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Frequency Domain Metrics"),
-                        html.P(f"LF Power: {results['hrv_metrics'].get('lf_power', 0):.2f}"),
-                        html.P(f"HF Power: {results['hrv_metrics'].get('hf_power', 0):.2f}"),
-                        html.P(f"LF/HF Ratio: {results['hrv_metrics'].get('lf_hf_ratio', 0):.2f}")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(hrv_section)
+            hrv_metrics = {
+                "mean_rr": results['hrv_metrics'].get('mean_rr', 0),
+                "rmssd": results['hrv_metrics'].get('rmssd', 0),
+                "pnn50": results['hrv_metrics'].get('pnn50', 0),
+                "lf_power": results['hrv_metrics'].get('lf_power', 0),
+                "hf_power": results['hrv_metrics'].get('hf_power', 0),
+                "lf_hf_ratio": results['hrv_metrics'].get('lf_hf_ratio', 0)
+            }
+            hrv_card = create_metric_card("Heart Rate Variability", "💓", hrv_metrics, "danger")
+            if hrv_card:
+                sections.append(html.Div(hrv_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Morphology Results
         if "morphology_metrics" in results and "error" not in results["morphology_metrics"]:
-            morph_section = html.Div([
-                html.H5("📊 Morphology Analysis"),
-                html.Div([
-                    html.Div([
-                        html.H6("Peak Analysis"),
-                        html.P(f"Number of Peaks: {results['morphology_metrics'].get('num_peaks', 0)}"),
-                        html.P(f"Mean Peak Height: {np.mean(results['morphology_metrics'].get('peak_heights', [0])):.2f}")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Amplitude Analysis"),
-                        html.P(f"Peak-to-Peak: {results['morphology_metrics'].get('peak_to_peak', 0):.4f}"),
-                        html.P(f"Standard Deviation: {results['morphology_metrics'].get('std_amplitude', 0):.4f}")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(morph_section)
+            morph_metrics = {
+                "num_peaks": results['morphology_metrics'].get('num_peaks', 0),
+                "mean_peak_height": np.mean(results['morphology_metrics'].get('peak_heights', [0])),
+                "peak_to_peak": results['morphology_metrics'].get('peak_to_peak', 0),
+                "std_amplitude": results['morphology_metrics'].get('std_amplitude', 0)
+            }
+            morph_card = create_metric_card("Morphology Analysis", "📊", morph_metrics, "info")
+            if morph_card:
+                sections.append(html.Div(morph_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Beat-to-Beat Results
         if "beat2beat_metrics" in results and "error" not in results["beat2beat_metrics"]:
-            b2b_section = html.Div([
-                html.H5("🫀 Beat-to-Beat Analysis"),
-                html.Div([
-                    html.Div([
-                        html.H6("Beat Characteristics"),
-                        html.P(f"Number of Beats: {results['beat2beat_metrics'].get('num_beats', 0)}"),
-                        html.P(f"Mean Beat Interval: {results['beat2beat_metrics'].get('mean_beat_interval', 0):.3f} s")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Variability"),
-                        html.P(f"Beat Variability: {results['beat2beat_metrics'].get('beat_variability', 0):.3f} s"),
-                        html.P(f"Beat Regularity: {results['beat2beat_metrics'].get('beat_regularity', 0):.3f}")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(b2b_section)
+            b2b_metrics = {
+                "num_beats": results['beat2beat_metrics'].get('num_beats', 0),
+                "mean_beat_interval": results['beat2beat_metrics'].get('mean_beat_interval', 0),
+                "beat_variability": results['beat2beat_metrics'].get('beat_variability', 0),
+                "beat_regularity": results['beat2beat_metrics'].get('beat_regularity', 0)
+            }
+            b2b_card = create_metric_card("Beat-to-Beat Analysis", "🫀", b2b_metrics, "success")
+            if b2b_card:
+                sections.append(html.Div(b2b_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Energy Results
         if "energy_metrics" in results and "error" not in results["energy_metrics"]:
-            energy_section = html.Div([
-                html.H5("⚡ Energy Analysis"),
-                html.Div([
-                    html.Div([
-                        html.H6("Energy Metrics"),
-                        html.P(f"Total Energy: {results['energy_metrics'].get('total_energy', 0):.2e}"),
-                        html.P(f"Mean Energy: {results['energy_metrics'].get('mean_energy', 0):.2e}")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Frequency Bands"),
-                        html.P(f"Low Freq Energy: {results['energy_metrics'].get('low_freq_energy', 0):.2e}"),
-                        html.P(f"High Freq Energy: {results['energy_metrics'].get('high_freq_energy', 0):.2e}")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(energy_section)
+            energy_metrics = {
+                "total_energy": results['energy_metrics'].get('total_energy', 0),
+                "mean_energy": results['energy_metrics'].get('mean_energy', 0),
+                "low_freq_energy": results['energy_metrics'].get('low_freq_energy', 0),
+                "high_freq_energy": results['energy_metrics'].get('high_freq_energy', 0)
+            }
+            energy_card = create_metric_card("Energy Analysis", "⚡", energy_metrics, "warning")
+            if energy_card:
+                sections.append(html.Div(energy_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Envelope Results
         if "envelope_metrics" in results and "error" not in results["envelope_metrics"]:
-            env_section = html.Div([
-                html.H5("📦 Envelope Analysis"),
-                html.Div([
-                    html.Div([
-                        html.H6("Envelope Metrics"),
-                        html.P(f"Envelope Mean: {results['envelope_metrics'].get('envelope_mean', 0):.4f}"),
-                        html.P(f"Envelope Range: {results['envelope_metrics'].get('envelope_range', 0):.4f}")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Peaks"),
-                        html.P(f"Envelope Peaks: {results['envelope_metrics'].get('envelope_peaks', 0)}")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(env_section)
+            env_metrics = {
+                "envelope_mean": results['envelope_metrics'].get('envelope_mean', 0),
+                "envelope_range": results['envelope_metrics'].get('envelope_range', 0),
+                "envelope_peaks": results['envelope_metrics'].get('envelope_peaks', 0)
+            }
+            env_card = create_metric_card("Envelope Analysis", "📦", env_metrics, "secondary")
+            if env_card:
+                sections.append(html.Div(env_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Segmentation Results
         if "segmentation_metrics" in results and "error" not in results["segmentation_metrics"]:
-            seg_section = html.Div([
-                html.H5("✂️ Signal Segmentation"),
-                html.Div([
-                    html.Div([
-                        html.H6("Segmentation"),
-                        html.P(f"Number of Segments: {results['segmentation_metrics'].get('num_segments', 0)}"),
-                        html.P(f"Zero Crossings: {results['segmentation_metrics'].get('zero_crossings', 0)}")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Segment Analysis"),
-                        html.P(f"Mean Segment Length: {results['segmentation_metrics'].get('mean_segment_length', 0):.1f} samples")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(seg_section)
+            seg_metrics = {
+                "num_segments": results['segmentation_metrics'].get('num_segments', 0),
+                "zero_crossings": results['segmentation_metrics'].get('zero_crossings', 0),
+                "mean_segment_length": results['segmentation_metrics'].get('mean_segment_length', 0)
+            }
+            seg_card = create_metric_card("Signal Segmentation", "✂️", seg_metrics, "dark")
+            if seg_card:
+                sections.append(html.Div(seg_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Waveform Results
         if "waveform_metrics" in results and "error" not in results["waveform_metrics"]:
-            wave_section = html.Div([
-                html.H5("🌊 Waveform Analysis"),
-                html.Div([
-                    html.Div([
-                        html.H6("Basic Metrics"),
-                        html.P(f"RMS: {results['waveform_metrics'].get('rms', 0):.4f}"),
-                        html.P(f"Skewness: {results['waveform_metrics'].get('skewness', 0):.3f}")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Distribution"),
-                        html.P(f"Kurtosis: {results['waveform_metrics'].get('kurtosis', 0):.3f}"),
-                        html.P(f"Peak-to-Peak: {results['waveform_metrics'].get('peak_to_peak', 0):.4f}")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(wave_section)
+            wave_metrics = {
+                "rms": results['waveform_metrics'].get('rms', 0),
+                "skewness": results['waveform_metrics'].get('skewness', 0),
+                "kurtosis": results['waveform_metrics'].get('kurtosis', 0),
+                "peak_to_peak": results['waveform_metrics'].get('peak_to_peak', 0)
+            }
+            wave_card = create_metric_card("Waveform Analysis", "🌊", wave_metrics, "primary")
+            if wave_card:
+                sections.append(html.Div(wave_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Statistical Results
         if "statistical_metrics" in results and "error" not in results["statistical_metrics"]:
-            stat_section = html.Div([
-                html.H5("📊 Statistical Analysis"),
-                html.Div([
-                    html.Div([
-                        html.H6("Central Tendency"),
-                        html.P(f"Mean: {results['statistical_metrics'].get('mean', 0):.4f}"),
-                        html.P(f"Median: {results['statistical_metrics'].get('median', 0):.4f}")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Variability"),
-                        html.P(f"Standard Deviation: {results['statistical_metrics'].get('std', 0):.4f}"),
-                        html.P(f"IQR: {results['statistical_metrics'].get('iqr', 0):.4f}")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(stat_section)
+            stat_metrics = {
+                "mean": results['statistical_metrics'].get('mean', 0),
+                "median": results['statistical_metrics'].get('median', 0),
+                "std": results['statistical_metrics'].get('std', 0),
+                "iqr": results['statistical_metrics'].get('iqr', 0)
+            }
+            stat_card = create_metric_card("Statistical Analysis", "📊", stat_metrics, "info")
+            if stat_card:
+                sections.append(html.Div(stat_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Frequency Results
         if "frequency_metrics" in results and "error" not in results["frequency_metrics"]:
-            freq_section = html.Div([
-                html.H5("🔊 Frequency Analysis"),
-                html.Div([
-                    html.Div([
-                        html.H6("Frequency Metrics"),
-                        html.P(f"Dominant Frequency: {results['frequency_metrics'].get('dominant_frequency', 0):.3f} Hz"),
-                        html.P(f"Spectral Centroid: {results['frequency_metrics'].get('spectral_centroid', 0):.3f} Hz")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Power Bands"),
-                        html.P(f"LF Power: {results['frequency_metrics'].get('power_bands', {}).get('low', 0):.2e}"),
-                        html.P(f"HF Power: {results['frequency_metrics'].get('power_bands', {}).get('high', 0):.2e}")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(freq_section)
+            freq_metrics = {
+                "dominant_frequency": results['frequency_metrics'].get('dominant_frequency', 0),
+                "spectral_centroid": results['frequency_metrics'].get('spectral_centroid', 0),
+                "lf_power": results['frequency_metrics'].get('power_bands', {}).get('low', 0),
+                "hf_power": results['frequency_metrics'].get('power_bands', {}).get('high', 0)
+            }
+            freq_card = create_metric_card("Frequency Analysis", "🔊", freq_metrics, "success")
+            if freq_card:
+                sections.append(html.Div(freq_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Advanced Features Results
         if "advanced_features_metrics" in results and "error" not in results["advanced_features_metrics"]:
-            adv_section = html.Div([
-                html.H5("🚀 Advanced Features"),
-                html.Div([
-                    html.Div([
-                        html.H6("Cross-Signal Analysis"),
-                        html.P(f"Cross-Signal Correlation: {results['advanced_features_metrics'].get('cross_signal_correlation', 0):.3f}")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Power Analysis"),
-                        html.P(f"Total Power: {results['advanced_features_metrics'].get('total_power', 0):.2e}")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(adv_section)
+            adv_metrics = {
+                "cross_signal_correlation": results['advanced_features_metrics'].get('cross_signal_correlation', 0),
+                "total_power": results['advanced_features_metrics'].get('total_power', 0)
+            }
+            adv_card = create_metric_card("Advanced Features", "🚀", adv_metrics, "warning")
+            if adv_card:
+                sections.append(html.Div(adv_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Quality Results
         if "quality_metrics" in results and "error" not in results["quality_metrics"]:
-            quality_section = html.Div([
-                html.H5("⚖️ Signal Quality & Artifacts"),
-                html.Div([
-                    html.Div([
-                        html.H6("Quality Metrics"),
-                        html.P(f"Signal Quality Index: {results['quality_metrics'].get('signal_quality_index', 0):.1f}"),
-                        html.P(f"SNR: {results['quality_metrics'].get('snr_db', 0):.1f} dB")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Artifact Detection"),
-                        html.P(f"Artifacts Detected: {results['quality_metrics'].get('artifacts_detected', 0)}"),
-                        html.P(f"Artifact Ratio: {results['quality_metrics'].get('artifact_ratio', 0):.3f}")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(quality_section)
+            quality_metrics = {
+                "signal_quality_index": results['quality_metrics'].get('signal_quality_index', 0),
+                "snr_db": results['quality_metrics'].get('snr_db', 0),
+                "artifacts_detected": results['quality_metrics'].get('artifacts_detected', 0),
+                "artifact_ratio": results['quality_metrics'].get('artifact_ratio', 0)
+            }
+            quality_card = create_metric_card("Signal Quality", "⚖️", quality_metrics, "danger")
+            if quality_card:
+                sections.append(html.Div(quality_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Transform Results
         if "transform_metrics" in results and "error" not in results["transform_metrics"]:
-            transform_section = html.Div([
-                html.H5("🔄 Signal Transforms"),
-                html.Div([
-                    html.Div([
-                        html.H6("Transform Analysis"),
-                        html.P(f"Wavelet Energy: {results['transform_metrics'].get('wavelet_energy', 0):.2e}"),
-                        html.P(f"Fourier Dominant: {results['transform_metrics'].get('fourier_dominant_freq', 0)}")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Hilbert Transform"),
-                        html.P(f"Hilbert Phase: {results['transform_metrics'].get('hilbert_phase', 0):.3f}")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(transform_section)
+            transform_metrics = {
+                "wavelet_energy": results['transform_metrics'].get('wavelet_energy', 0),
+                "fourier_dominant_freq": results['transform_metrics'].get('fourier_dominant_freq', 0),
+                "hilbert_phase": results['transform_metrics'].get('hilbert_phase', 0)
+            }
+            transform_card = create_metric_card("Signal Transforms", "🔄", transform_metrics, "primary")
+            if transform_card:
+                sections.append(html.Div(transform_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Advanced Computation Results
         if "advanced_computation_metrics" in results and "error" not in results["advanced_computation_metrics"]:
-            comp_section = html.Div([
-                html.H5("🧠 Advanced Computation"),
-                html.Div([
-                    html.Div([
-                        html.H6("Anomaly Detection"),
-                        html.P(f"Anomalies Detected: {results['advanced_computation_metrics'].get('anomalies_detected', 0)}")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Bayesian Analysis"),
-                        html.P(f"Prior Mean: {results['advanced_computation_metrics'].get('bayesian_prior_mean', 0):.4f}")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(comp_section)
+            comp_metrics = {
+                "anomalies_detected": results['advanced_computation_metrics'].get('anomalies_detected', 0),
+                "bayesian_prior_mean": results['advanced_computation_metrics'].get('bayesian_prior_mean', 0)
+            }
+            comp_card = create_metric_card("Advanced Computation", "🧠", comp_metrics, "dark")
+            if comp_card:
+                sections.append(html.Div(comp_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Feature Engineering Results
         if "feature_engineering_metrics" in results and "error" not in results["feature_engineering_metrics"]:
-            feat_section = html.Div([
-                html.H5("🔧 Feature Engineering"),
-                html.Div([
-                    html.Div([
-                        html.H6("PPG Features"),
-                        html.P(f"Light Intensity: {results['feature_engineering_metrics'].get('ppg_light_intensity', 0):.4f}"),
-                        html.P(f"Autonomic Response: {results['feature_engineering_metrics'].get('ppg_autonomic_response', 0):.4f}")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("ECG Features"),
-                        html.P(f"ECG Autonomic: {results['feature_engineering_metrics'].get('ecg_autonomic_response', 0):.4f}")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(feat_section)
+            feat_metrics = {
+                "ppg_light_intensity": results['feature_engineering_metrics'].get('ppg_light_intensity', 0),
+                "ppg_autonomic_response": results['feature_engineering_metrics'].get('ppg_autonomic_response', 0),
+                "ecg_autonomic_response": results['feature_engineering_metrics'].get('ecg_autonomic_response', 0)
+            }
+            feat_card = create_metric_card("Feature Engineering", "🔧", feat_metrics, "info")
+            if feat_card:
+                sections.append(html.Div(feat_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Preprocessing Results
         if "preprocessing_metrics" in results and "error" not in results["preprocessing_metrics"]:
-            prep_section = html.Div([
-                html.H5("🔧 Preprocessing Analysis"),
-                html.Div([
-                    html.Div([
-                        html.H6("Noise Analysis"),
-                        html.P(f"Noise Level: {results['preprocessing_metrics'].get('noise_level', 0):.4f}")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Signal Properties"),
-                        html.P(f"Signal Bandwidth: {results['preprocessing_metrics'].get('signal_bandwidth', 0):.1f} Hz")
-                    ], className="col-md-6")
-                ], className="row")
-            ])
-            sections.append(prep_section)
+            prep_metrics = {
+                "noise_level": results['preprocessing_metrics'].get('noise_level', 0),
+                "signal_bandwidth": results['preprocessing_metrics'].get('signal_bandwidth', 0)
+            }
+            prep_card = create_metric_card("Preprocessing Analysis", "🔧", prep_metrics, "secondary")
+            if prep_card:
+                sections.append(html.Div(prep_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         # Trend Results
         if "trend_metrics" in results and "error" not in results["trend_metrics"]:
-            trend_section = html.Div([
-                html.H5("📈 Trend Analysis"),
-                html.P(f"Trend Direction: {results['trend_metrics'].get('trend_direction', 'Unknown')}"),
-                html.P(f"Trend Strength: {results['trend_metrics'].get('trend_strength', 0):.3f}")
-            ])
-            sections.append(trend_section)
+            trend_metrics = {
+                "trend_direction": results['trend_metrics'].get('trend_direction', 'Unknown'),
+                "trend_strength": results['trend_metrics'].get('trend_strength', 0)
+            }
+            trend_card = create_metric_card("Trend Analysis", "📈", trend_metrics, "success")
+            if trend_card:
+                sections.append(html.Div(trend_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"))
         
         if not sections:
             return html.Div([
-                html.H5("No Analysis Results"),
-                html.P("Please select analysis categories and run the analysis.")
+                html.Div([
+                    html.I(className="fas fa-info-circle text-muted fs-1 d-block text-center mb-3"),
+                    html.H5("No Analysis Results", className="text-center text-muted"),
+                    html.P("Please select analysis categories and run the analysis.", className="text-center text-muted")
+                ], className="text-center py-5")
             ])
         
-        return html.Div(sections)
+        # Create a modern grid layout
+        return html.Div([
+            html.Div([
+                html.H4("📋 Analysis Results", className="text-center mb-4 text-dark"),
+                html.P(f"Comprehensive physiological analysis for {signal_type.upper()} signal", className="text-center text-muted mb-4")
+            ], className="mb-4"),
+            html.Div(sections, className="row g-3")
+        ])
         
     except Exception as e:
         logger.error(f"Error creating results display: {e}")
         return html.Div([
-            html.H5("Error"),
-            html.P(f"Failed to create results display: {str(e)}")
+            html.Div([
+                html.I(className="fas fa-exclamation-triangle text-danger fs-1 d-block text-center mb-3"),
+                html.H5("Error", className="text-center text-danger"),
+                html.P(f"Failed to create results display: {str(e)}", className="text-center text-muted")
+            ], className="text-center py-5")
         ])
 
 
@@ -1385,7 +1772,7 @@ def create_hrv_plots(time_data, signal_data, sampling_freq, hrv_options):
                     if np.any(vlf_mask):
                         vlf_power = np.trapz(psd_welch[vlf_mask], freqs_welch[vlf_mask])
                         fig.add_annotation(
-                            x=0.02, y=0.98,
+                            x=0.98, y=0.98,
                             xref=f'x{current_row}', yref=f'y{current_row}',
                             text=f'VLF: {vlf_power:.1f}',
                             showarrow=False,
@@ -1396,7 +1783,7 @@ def create_hrv_plots(time_data, signal_data, sampling_freq, hrv_options):
                     if np.any(lf_mask):
                         lf_power = np.trapz(psd_welch[lf_mask], freqs_welch[lf_mask])
                         fig.add_annotation(
-                            x=0.09, y=0.98,
+                            x=0.95, y=0.98,
                             xref=f'x{current_row}', yref=f'y{current_row}',
                             text=f'LF: {lf_power:.1f}',
                             showarrow=False,
@@ -1407,7 +1794,7 @@ def create_hrv_plots(time_data, signal_data, sampling_freq, hrv_options):
                     if np.any(hf_mask):
                         hf_power = np.trapz(psd_welch[hf_mask], freqs_welch[hf_mask])
                         fig.add_annotation(
-                            x=0.27, y=0.98,
+                            x=0.92, y=0.98,
                             xref=f'x{current_row}', yref=f'y{current_row}',
                             text=f'HF: {hf_power:.1f}',
                             showarrow=False,
@@ -1468,7 +1855,7 @@ def create_hrv_plots(time_data, signal_data, sampling_freq, hrv_options):
                 
                 # Add statistics annotation
                 fig.add_annotation(
-                    x=0.02, y=0.98,
+                    x=0.98, y=0.98,
                     xref=f'x{current_row}', yref=f'y{current_row}',
                     text=f'SD1: {sd1:.1f} ms<br>SD2: {sd2:.1f} ms',
                     showarrow=False,
@@ -1490,14 +1877,15 @@ def create_hrv_plots(time_data, signal_data, sampling_freq, hrv_options):
             height=250 * num_plots,
             showlegend=True,
             legend=dict(
-                x=0.02,
-                y=0.98,
-                bgcolor='rgba(255, 255, 255, 0.8)',
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
                 bordercolor='rgba(0, 0, 0, 0.2)',
                 borderwidth=1
             ),
             plot_bgcolor='white',
-            paper_bgcolor='white'
+            paper_bgcolor='white',
+            margin=dict(l=60, r=200, t=80, b=60)
         )
         
         # Update all subplot axes
@@ -1598,7 +1986,7 @@ def create_morphology_plots(time_data, signal_data, sampling_freq, morphology_op
             std_height = np.std(peak_heights)
             
             fig.add_annotation(
-                x=0.02, y=0.98,
+                x=0.98, y=0.98,
                 xref=f'x{current_row}', yref=f'y{current_row}',
                 text=f'Peaks: {len(peaks)}<br>Mean Height: {mean_height:.3f}<br>Height Std: {std_height:.3f}',
                 showarrow=False,
@@ -1647,7 +2035,7 @@ def create_morphology_plots(time_data, signal_data, sampling_freq, morphology_op
             
             # Add peak height statistics
             fig.add_annotation(
-                x=0.02, y=0.98,
+                x=0.98, y=0.98,
                 xref=f'x{current_row}', yref=f'y{current_row}',
                 text=f'Min: {np.min(peak_heights):.3f}<br>Max: {np.max(peak_heights):.3f}<br>Range: {np.max(peak_heights) - np.min(peak_heights):.3f}',
                 showarrow=False,
@@ -1692,7 +2080,7 @@ def create_morphology_plots(time_data, signal_data, sampling_freq, morphology_op
             )
             
             fig.add_annotation(
-                x=0.02, y=0.98,
+                x=0.98, y=0.98,
                 xref=f'x{current_row}', yref=f'y{current_row}',
                 text=f'Mean Interval: {mean_interval:.3f}s<br>Std: {std_interval:.3f}s<br>Heart Rate: {60/mean_interval:.1f} BPM',
                 showarrow=False,
@@ -1742,7 +2130,7 @@ def create_morphology_plots(time_data, signal_data, sampling_freq, morphology_op
             mean_area = np.mean(np.abs(signal_data))
             
             fig.add_annotation(
-                x=0.02, y=0.98,
+                x=0.98, y=0.98,
                 xref=f'x{current_row}', yref=f'y{current_row}',
                 text=f'Total Area: {total_area:.3f}<br>Mean Area: {mean_area:.3f}<br>Signal Length: {len(signal_data)} samples',
                 showarrow=False,
@@ -1762,14 +2150,15 @@ def create_morphology_plots(time_data, signal_data, sampling_freq, morphology_op
             height=250 * num_plots,
             showlegend=True,
             legend=dict(
-                x=0.02,
-                y=0.98,
-                bgcolor='rgba(255, 255, 255, 0.8)',
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
                 bordercolor='rgba(0, 0, 0, 0.2)',
                 borderwidth=1
             ),
             plot_bgcolor='white',
-            paper_bgcolor='white'
+            paper_bgcolor='white',
+            margin=dict(l=60, r=200, t=80, b=60)
         )
         
         # Update all subplot axes
@@ -2132,11 +2521,11 @@ def analyze_feature_engineering(signal_data, sampling_freq, feature_engineering,
             feature_metrics["ppg_light_intensity"] = np.mean(signal_data)
             feature_metrics["ppg_light_variability"] = np.std(signal_data)
         
-        if "ppg_autonomic" in feature_engineering and signal_type == "ppg":
+        if "ppg_autonomic" in feature_engineering and signal_type.lower() == "ppg":
             # PPG autonomic features
             feature_metrics["ppg_autonomic_response"] = np.std(signal_data)
         
-        if "ecg_autonomic" in feature_engineering and signal_type == "ecg":
+        if "ecg_autonomic" in feature_engineering and signal_type.lower() == "ecg":
             # ECG autonomic features
             feature_metrics["ecg_autonomic_response"] = np.std(signal_data)
         
@@ -2245,7 +2634,19 @@ def create_beat_to_beat_plots(time_data, signal_data, sampling_freq):
                 row=2, col=1
             )
         
-        fig.update_layout(title="Beat-to-Beat Analysis", height=600, showlegend=False)
+        fig.update_layout(
+            title="Beat-to-Beat Analysis", 
+            height=600, 
+            showlegend=True,
+            legend=dict(
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='rgba(0, 0, 0, 0.2)',
+                borderwidth=1
+            ),
+            margin=dict(l=60, r=200, t=80, b=60)
+        )
         return fig
         
     except Exception as e:
@@ -2276,7 +2677,19 @@ def create_energy_plots(time_data, signal_data, sampling_freq):
             row=2, col=1
         )
         
-        fig.update_layout(title="Energy Analysis", height=600, showlegend=False)
+        fig.update_layout(
+            title="Energy Analysis", 
+            height=600, 
+            showlegend=True,
+            legend=dict(
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='rgba(0, 0, 0, 0.2)',
+                borderwidth=1
+            ),
+            margin=dict(l=60, r=200, t=80, b=60)
+        )
         return fig
         
     except Exception as e:
@@ -2314,7 +2727,19 @@ def create_envelope_plots(time_data, signal_data, sampling_freq):
             row=2, col=1
         )
         
-        fig.update_layout(title="Envelope Analysis", height=600, showlegend=False)
+        fig.update_layout(
+            title="Envelope Analysis", 
+            height=600, 
+            showlegend=True,
+            legend=dict(
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='rgba(0, 0, 0, 0.2)',
+                borderwidth=1
+            ),
+            margin=dict(l=60, r=200, t=80, b=60)
+        )
         return fig
         
     except Exception as e:
@@ -2355,7 +2780,19 @@ def create_segmentation_plots(time_data, signal_data, sampling_freq):
                 row=2, col=1
             )
         
-        fig.update_layout(title="Segmentation Analysis", height=600, showlegend=False)
+        fig.update_layout(
+            title="Segmentation Analysis", 
+            height=600, 
+            showlegend=True,
+            legend=dict(
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='rgba(0, 0, 0, 0.2)',
+                borderwidth=1
+            ),
+            margin=dict(l=60, r=200, t=80, b=60)
+        )
         return fig
         
     except Exception as e:
@@ -2385,7 +2822,19 @@ def create_waveform_plots(time_data, signal_data, sampling_freq):
             row=2, col=1
         )
         
-        fig.update_layout(title="Waveform Analysis", height=600, showlegend=False)
+        fig.update_layout(
+            title="Waveform Analysis", 
+            height=600, 
+            showlegend=True,
+            legend=dict(
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='rgba(0, 0, 0, 0.2)',
+                borderwidth=1
+            ),
+            margin=dict(l=60, r=200, t=80, b=60)
+        )
         return fig
         
     except Exception as e:
@@ -2424,7 +2873,19 @@ def create_frequency_plots(time_data, signal_data, sampling_freq):
         fig.add_trace(go.Scatter(x=freqs[vhf_mask], y=psd[vhf_mask], mode='lines', 
                                 name='VHF', line=dict(color='purple')), row=2, col=1)
         
-        fig.update_layout(title="Frequency Analysis", height=600, showlegend=True)
+        fig.update_layout(
+            title="Frequency Analysis", 
+            height=600, 
+            showlegend=True,
+            legend=dict(
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='rgba(0, 0, 0, 0.2)',
+                borderwidth=1
+            ),
+            margin=dict(l=60, r=200, t=80, b=60)
+        )
         return fig
         
     except Exception as e:
@@ -2470,7 +2931,19 @@ def create_wavelet_plots(time_data, signal_data, sampling_freq):
             row=2, col=1
         )
         
-        fig.update_layout(title="Wavelet Analysis", height=600, showlegend=False)
+        fig.update_layout(
+            title="Wavelet Analysis", 
+            height=600, 
+            showlegend=True,
+            legend=dict(
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='rgba(0, 0, 0, 0.2)',
+                borderwidth=1
+            ),
+            margin=dict(l=60, r=200, t=80, b=60)
+        )
         return fig
         
     except Exception as e:
@@ -2506,7 +2979,19 @@ def create_fourier_plots(time_data, signal_data, sampling_freq):
             row=2, col=1
         )
         
-        fig.update_layout(title="Fourier Transform Analysis", height=600, showlegend=False)
+        fig.update_layout(
+            title="Fourier Transform Analysis", 
+            height=600, 
+            showlegend=True,
+            legend=dict(
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='rgba(0, 0, 0, 0.2)',
+                borderwidth=1
+            ),
+            margin=dict(l=60, r=200, t=80, b=60)
+        )
         return fig
         
     except Exception as e:
@@ -2538,7 +3023,19 @@ def create_hilbert_plots(time_data, signal_data, sampling_freq):
             row=2, col=1
         )
         
-        fig.update_layout(title="Hilbert Transform Analysis", height=600, showlegend=False)
+        fig.update_layout(
+            title="Hilbert Transform Analysis", 
+            height=600, 
+            showlegend=True,
+            legend=dict(
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
+                bordercolor='rgba(0, 0, 0, 0.2)',
+                borderwidth=1
+            ),
+            margin=dict(l=60, r=200, t=80, b=60)
+        )
         return fig
         
     except Exception as e:
@@ -2686,62 +3183,131 @@ def register_additional_physiological_callbacks(app):
         [Input("store-physio-features", "data")]
     )
     def update_additional_analysis_section(features_data):
-        """Update the additional analysis section with detailed feature information."""
+        """Update the additional analysis section with modern, compact feature information."""
         if not features_data:
             return html.Div([
-                html.H4("Additional Analysis"),
-                html.P("Run the main analysis to see additional detailed information here.")
+                html.Div([
+                    html.I(className="fas fa-chart-line text-muted fs-1 d-block text-center mb-2"),
+                    html.H5("Additional Analysis", className="text-center text-muted mb-2"),
+                    html.P("Run the main analysis to see additional detailed information here.", className="text-center text-muted small")
+                ], className="text-center py-4")
             ])
         
-        sections = []
+        # Create modern metric cards with compact layout
+        def create_compact_metric_card(title, icon, metrics_dict, color="primary"):
+            """Create a modern, compact metric card with minimal white space."""
+            metric_items = []
+            
+            for key, value in metrics_dict.items():
+                if isinstance(value, (int, float)) and value != 0:
+                    # Format the value based on its type
+                    if key.endswith('_db'):
+                        formatted_value = f"{value:.1f} dB"
+                    elif key.endswith('_ratio') or key.endswith('_strength'):
+                        formatted_value = f"{value:.3f}"
+                    elif key.endswith('_freq') or key.endswith('_frequency'):
+                        formatted_value = f"{value:.3f} Hz"
+                    elif key.endswith('_ms'):
+                        formatted_value = f"{value:.1f} ms"
+                    elif isinstance(value, float) and abs(value) < 0.01:
+                        formatted_value = f"{value:.2e}"
+                    else:
+                        formatted_value = f"{value:.4f}"
+                    
+                    # Create compact metric item with minimal spacing
+                    metric_items.append(
+                        html.Div([
+                            html.Span(f"{key.replace('_', ' ').title()}: ", className="text-muted fw-bold small"),
+                            html.Span(formatted_value, className="text-dark fw-semibold")
+                        ], className="d-flex justify-content-between align-items-center py-1 px-2 border-bottom border-light-subtle")
+                    )
+                elif isinstance(value, str) and value:
+                    metric_items.append(
+                        html.Div([
+                            html.Span(f"{key.replace('_', ' ').title()}: ", className="text-muted fw-bold small"),
+                            html.Span(value, className="text-dark fw-semibold")
+                        ], className="d-flex justify-content-between align-items-center py-1 px-2 border-bottom border-light-subtle")
+                    )
+                elif isinstance(value, list) and len(value) > 0:
+                    if isinstance(value[0], (int, float)):
+                        metric_items.append(
+                            html.Div([
+                                html.Span(f"{key.replace('_', ' ').title()}: ", className="text-muted fw-bold small"),
+                                html.Span(f"{len(value)} values", className="text-dark fw-semibold")
+                            ], className="d-flex justify-content-between align-items-center py-1 px-2 border-bottom border-light-subtle")
+                        )
+                    else:
+                        metric_items.append(
+                            html.Div([
+                                html.Span(f"{key.replace('_', ' ').title()}: ", className="text-muted fw-bold small"),
+                                html.Span(f"{len(value)} items", className="text-dark fw-semibold")
+                            ], className="d-flex justify-content-between align-items-center py-1 px-2 border-bottom border-light-subtle")
+                        )
+            
+            if not metric_items:
+                return None
+            
+            return dbc.Card([
+                dbc.CardHeader([
+                    html.Div([
+                        html.Span(icon, className="me-2 fs-5"),
+                        html.Span(title, className="fs-6 fw-bold text-dark")
+                    ], className="d-flex align-items-center")
+                ], className=f"bg-{color} bg-opacity-10 border-0 py-2 px-3"),
+                dbc.CardBody([
+                    html.Div(metric_items, className="small")
+                ], className="py-2 px-3")
+            ], className="h-100 border-0 shadow-sm")
         
-        # Create detailed feature cards
+        # Process features and create compact cards
+        feature_cards = []
+        
         for feature_type, metrics in features_data.items():
             if metrics and "error" not in metrics:
-                # Create a card for each feature type
-                card_content = []
+                # Map feature types to appropriate icons and colors
+                icon_map = {
+                    "hrv_metrics": ("💓", "danger"),
+                    "morphology_metrics": ("📊", "info"),
+                    "beat2beat_metrics": ("🫀", "success"),
+                    "energy_metrics": ("⚡", "warning"),
+                    "envelope_metrics": ("📦", "secondary"),
+                    "segmentation_metrics": ("✂️", "dark"),
+                    "waveform_metrics": ("🌊", "primary"),
+                    "statistical_metrics": ("📈", "info"),
+                    "frequency_metrics": ("🔊", "success"),
+                    "advanced_features_metrics": ("🚀", "warning"),
+                    "quality_metrics": ("⚖️", "danger"),
+                    "transform_metrics": ("🔄", "primary"),
+                    "advanced_computation_metrics": ("🧠", "dark"),
+                    "feature_engineering_metrics": ("🔧", "info"),
+                    "preprocessing_metrics": ("🔧", "secondary"),
+                    "trend_metrics": ("📈", "success")
+                }
                 
-                # Add metrics to the card
-                for metric_name, metric_value in metrics.items():
-                    if isinstance(metric_value, (int, float)):
-                        if metric_name.endswith('_db'):
-                            card_content.append(html.P(f"{metric_name.replace('_', ' ').title()}: {metric_value:.1f} dB"))
-                        elif metric_name.endswith('_ratio') or metric_name.endswith('_strength'):
-                            card_content.append(html.P(f"{metric_name.replace('_', ' ').title()}: {metric_value:.3f}"))
-                        elif metric_name.endswith('_freq') or metric_name.endswith('_frequency'):
-                            card_content.append(html.P(f"{metric_name.replace('_', ' ').title()}: {metric_value:.3f} Hz"))
-                        elif metric_name.endswith('_ms'):
-                            card_content.append(html.P(f"{metric_name.replace('_', ' ').title()}: {metric_value:.1f} ms"))
-                        elif isinstance(metric_value, float) and abs(metric_value) < 0.01:
-                            card_content.append(html.P(f"{metric_name.replace('_', ' ').title()}: {metric_value:.2e}"))
-                        else:
-                            card_content.append(html.P(f"{metric_name.replace('_', ' ').title()}: {metric_value:.4f}"))
-                    elif isinstance(metric_value, str):
-                        card_content.append(html.P(f"{metric_name.replace('_', ' ').title()}: {metric_value}"))
-                    elif isinstance(metric_value, list) and len(metric_value) > 0:
-                        if isinstance(metric_value[0], (int, float)):
-                            card_content.append(html.P(f"{metric_name.replace('_', ' ').title()}: {len(metric_value)} values"))
-                        else:
-                            card_content.append(html.P(f"{metric_name.replace('_', ' ').title()}: {len(metric_value)} items"))
+                icon, color = icon_map.get(feature_type, ("📊", "primary"))
+                title = feature_type.replace('_', ' ').title()
                 
-                if card_content:
-                    feature_card = dbc.Card([
-                        dbc.CardHeader([
-                            html.H5(f"📊 {feature_type.replace('_', ' ').title()}", className="mb-0")
-                        ]),
-                        dbc.CardBody(card_content)
-                    ], className="mb-3")
-                    sections.append(feature_card)
+                # Create compact metric card
+                compact_card = create_compact_metric_card(title, icon, metrics, color)
+                if compact_card:
+                    feature_cards.append(html.Div(compact_card, className="col-lg-4 col-md-6 col-sm-12 mb-2"))
         
-        if not sections:
+        if not feature_cards:
             return html.Div([
-                html.H4("Additional Analysis"),
-                html.P("No additional features to display.")
+                html.Div([
+                    html.I(className="fas fa-info-circle text-muted fs-1 d-block text-center mb-2"),
+                    html.H5("No Additional Features", className="text-center text-muted mb-2"),
+                    html.P("No additional features to display.", className="text-center text-muted small")
+                ], className="text-center py-4")
             ])
         
+        # Return modern, compact layout
         return html.Div([
-            html.H4("📋 Detailed Feature Analysis", className="mb-4"),
-            html.Div(sections, className="row")
+            html.Div([
+                html.H4("📋 Detailed Feature Analysis", className="text-center mb-3 text-dark"),
+                html.P("Comprehensive physiological feature extraction results", className="text-center text-muted mb-3 small")
+            ], className="mb-3"),
+            html.Div(feature_cards, className="row g-2")  # Reduced gap with g-2
         ])
     
     @app.callback(
@@ -2853,7 +3419,7 @@ def _import_vitaldsp_modules():
         logger.info("Continuing with scipy/numpy fallback implementations")
 
 
-def get_vitaldsp_hrv_analysis(signal_data, sampling_freq, hrv_options):
+def get_vitaldsp_hrv_analysis(signal_data, sampling_freq, hrv_options, signal_type="ppg"):
     """Get HRV analysis using vitalDSP modules if available."""
     try:
         # Check if signal is long enough for HRV analysis
@@ -2862,10 +3428,22 @@ def get_vitaldsp_hrv_analysis(signal_data, sampling_freq, hrv_options):
             logger.warning(f"Signal too short for HRV analysis ({len(signal_data)} samples, need at least {min_samples_for_hrv})")
             return {"error": f"Signal too short for HRV analysis. Need at least {min_samples_for_hrv} samples."}
         
-        from vitalDSP.physiological_features.hrv_analysis import HRVFeatures
+        # Normalize signal type for vitalDSP compatibility
+        signal_type_upper = normalize_signal_type(signal_type)
         
-        # Use vitalDSP HRV analysis with class-based approach
-        hrv_features = HRVFeatures(signals=signal_data, fs=sampling_freq)
+        try:
+            from vitalDSP.physiological_features.hrv_analysis import HRVFeatures
+            
+            # Use vitalDSP HRV analysis with class-based approach
+            # Note: vitalDSP HRVFeatures may not accept signal_type parameter
+            try:
+                hrv_features = HRVFeatures(signals=signal_data, fs=sampling_freq, signal_type=signal_type_upper)
+            except TypeError:
+                # Fallback if signal_type parameter is not supported
+                hrv_features = HRVFeatures(signals=signal_data, fs=sampling_freq)
+        except ImportError:
+            logger.info("vitalDSP HRV module not available, using fallback implementation")
+            return analyze_hrv(signal_data, sampling_freq, hrv_options)
         hrv_result = hrv_features.compute_all_features()
         
         # Map vitalDSP results to our format
@@ -2907,7 +3485,7 @@ def get_vitaldsp_hrv_analysis(signal_data, sampling_freq, hrv_options):
         return analyze_hrv(signal_data, sampling_freq, hrv_options)
 
 
-def get_vitaldsp_morphology_analysis(signal_data, sampling_freq, morphology_options):
+def get_vitaldsp_morphology_analysis(signal_data, sampling_freq, morphology_options, signal_type="ppg"):
     """Get morphology analysis using vitalDSP modules if available."""
     try:
         # Check if signal is long enough for morphology analysis
@@ -2915,6 +3493,9 @@ def get_vitaldsp_morphology_analysis(signal_data, sampling_freq, morphology_opti
         if len(signal_data) < min_samples_for_morphology:
             logger.warning(f"Signal too short for morphology analysis ({len(signal_data)} samples, need at least {min_samples_for_morphology})")
             return {"error": f"Signal too short for morphology analysis. Need at least {min_samples_for_morphology} samples."}
+        
+        # Normalize signal type for vitalDSP compatibility
+        signal_type_upper = normalize_signal_type(signal_type)
         
         from vitalDSP.feature_engineering.morphology_features import PhysiologicalFeatureExtractor
         
@@ -2924,8 +3505,8 @@ def get_vitaldsp_morphology_analysis(signal_data, sampling_freq, morphology_opti
         # Create a basic peak config
         peak_config = {"window_size": 5, "slope_unit": "radians"}
         
-        # Extract features (default to PPG for now)
-        morph_result = extractor.extract_features(signal_type="PPG", peak_config=peak_config)
+        # Extract features with proper signal type
+        morph_result = extractor.extract_features(signal_type=signal_type_upper, peak_config=peak_config)
         
         # Map vitalDSP results to our format
         mapped_results = {}
@@ -2968,7 +3549,7 @@ def get_vitaldsp_morphology_analysis(signal_data, sampling_freq, morphology_opti
         return analyze_morphology(signal_data, sampling_freq, morphology_options)
 
 
-def get_vitaldsp_signal_quality(signal_data, sampling_freq, quality_options):
+def get_vitaldsp_signal_quality(signal_data, sampling_freq, quality_options, signal_type="ppg"):
     """Get signal quality analysis using vitalDSP modules if available."""
     try:
         # Check if signal is long enough for quality analysis
@@ -2976,6 +3557,9 @@ def get_vitaldsp_signal_quality(signal_data, sampling_freq, quality_options):
         if len(signal_data) < min_samples_for_quality:
             logger.warning(f"Signal too short for quality analysis ({len(signal_data)} samples, need at least {min_samples_for_quality})")
             return {"error": f"Signal too short for quality analysis. Need at least {min_samples_for_quality} samples."}
+        
+        # Normalize signal type for vitalDSP compatibility
+        signal_type_upper = normalize_signal_type(signal_type)
         
         from vitalDSP.signal_quality_assessment.signal_quality_index import SignalQualityIndex
         
@@ -3058,9 +3642,11 @@ def get_vitaldsp_signal_quality(signal_data, sampling_freq, quality_options):
         return analyze_signal_quality_advanced(signal_data, sampling_freq, quality_options)
 
 
-def get_vitaldsp_transforms(signal_data, sampling_freq, transform_options):
+def get_vitaldsp_transforms(signal_data, sampling_freq, transform_options, signal_type="ppg"):
     """Get signal transforms using vitalDSP modules if available."""
     try:
+        # Normalize signal type for vitalDSP compatibility
+        signal_type_upper = normalize_signal_type(signal_type)
         mapped_results = {}
         
         if "wavelet" in transform_options:
@@ -3147,9 +3733,11 @@ def get_vitaldsp_transforms(signal_data, sampling_freq, transform_options):
         return analyze_transforms(signal_data, sampling_freq, transform_options)
 
 
-def get_vitaldsp_advanced_computation(signal_data, sampling_freq, advanced_computation):
+def get_vitaldsp_advanced_computation(signal_data, sampling_freq, advanced_computation, signal_type="ppg"):
     """Get advanced computation features using vitalDSP modules if available."""
     try:
+        # Normalize signal type for vitalDSP compatibility
+        signal_type_upper = normalize_signal_type(signal_type)
         mapped_results = {}
         
         if "anomaly_detection" in advanced_computation:
@@ -3236,9 +3824,11 @@ def get_vitaldsp_advanced_computation(signal_data, sampling_freq, advanced_compu
 def get_vitaldsp_feature_engineering(signal_data, sampling_freq, feature_engineering, signal_type):
     """Get feature engineering features using vitalDSP modules if available."""
     try:
+        # Ensure signal_type is properly capitalized for vitalDSP
+        signal_type_upper = signal_type.upper() if signal_type else "PPG"
         mapped_results = {}
         
-        if "ppg_light" in feature_engineering and signal_type == "ppg":
+        if "ppg_light" in feature_engineering and signal_type.lower() == "ppg":
             try:
                 from vitalDSP.feature_engineering.ppg_light_features import PPGLightFeatureExtractor
                 # Use vitalDSP PPG light features with class-based approach
@@ -3262,7 +3852,7 @@ def get_vitaldsp_feature_engineering(signal_data, sampling_freq, feature_enginee
                 mapped_results["ppg_light_intensity"] = np.mean(signal_data)
                 mapped_results["ppg_light_variability"] = np.std(signal_data)
         
-        if "ppg_autonomic" in feature_engineering and signal_type == "ppg":
+        if "ppg_autonomic" in feature_engineering and signal_type.lower() == "ppg":
             try:
                 from vitalDSP.feature_engineering.ppg_autonomic_features import PPGAutonomicFeatureExtractor
                 # Use vitalDSP PPG autonomic features with class-based approach
@@ -3285,7 +3875,7 @@ def get_vitaldsp_feature_engineering(signal_data, sampling_freq, feature_enginee
                 logger.warning(f"vitalDSP PPG autonomic features failed: {e}")
                 mapped_results["ppg_autonomic_response"] = np.std(signal_data)
         
-        if "ecg_autonomic" in feature_engineering and signal_type == "ecg":
+        if "ecg_autonomic" in feature_engineering and signal_type.lower() == "ecg":
             try:
                 from vitalDSP.feature_engineering.ecg_autonomic_features import ECGAutonomicFeatureExtractor
                 # Use vitalDSP ECG autonomic features with class-based approach
@@ -3325,11 +3915,11 @@ def perform_physiological_analysis_enhanced(time_data, signal_data, signal_type,
     try:
         # HRV Analysis with vitalDSP integration
         if "hrv" in analysis_categories:
-            results["hrv_metrics"] = get_vitaldsp_hrv_analysis(signal_data, sampling_freq, hrv_options)
+            results["hrv_metrics"] = get_vitaldsp_hrv_analysis(signal_data, sampling_freq, hrv_options, signal_type)
         
         # Morphology Analysis with vitalDSP integration
         if "morphology" in analysis_categories:
-            results["morphology_metrics"] = get_vitaldsp_morphology_analysis(signal_data, sampling_freq, morphology_options)
+            results["morphology_metrics"] = get_vitaldsp_morphology_analysis(signal_data, sampling_freq, morphology_options, signal_type)
         
         # Other analyses remain the same for now
         if "beat2beat" in analysis_categories:
@@ -3358,15 +3948,15 @@ def perform_physiological_analysis_enhanced(time_data, signal_data, signal_type,
         
         # Signal Quality with vitalDSP integration
         if quality_options:
-            results["quality_metrics"] = get_vitaldsp_signal_quality(signal_data, sampling_freq, quality_options)
+            results["quality_metrics"] = get_vitaldsp_signal_quality(signal_data, sampling_freq, quality_options, signal_type)
         
         # Signal Transforms with vitalDSP integration
         if transform_options:
-            results["transform_metrics"] = get_vitaldsp_transforms(signal_data, sampling_freq, transform_options)
+            results["transform_metrics"] = get_vitaldsp_transforms(signal_data, sampling_freq, transform_options, signal_type)
         
         # Advanced Computation with vitalDSP integration
         if advanced_computation:
-            results["advanced_computation_metrics"] = get_vitaldsp_advanced_computation(signal_data, sampling_freq, advanced_computation)
+            results["advanced_computation_metrics"] = get_vitaldsp_advanced_computation(signal_data, sampling_freq, advanced_computation, signal_type)
         
         # Advanced Features
         if advanced_features:
@@ -3587,7 +4177,7 @@ def create_signal_quality_plots(time_data, signal_data, sampling_freq, quality_o
         snr = 20 * np.log10(np.abs(baseline) / noise_level) if noise_level > 0 else 0
         
         fig.add_annotation(
-            x=0.02, y=0.98,
+            x=0.98, y=0.98,
             xref=f'x{current_row}', yref=f'y{current_row}',
             text=f'Baseline: {baseline:.3f}<br>Noise Level: {noise_level:.3f}<br>SNR: {snr:.1f} dB',
             showarrow=False,
@@ -3649,7 +4239,7 @@ def create_signal_quality_plots(time_data, signal_data, sampling_freq, quality_o
                     
                     # Add quality statistics
                     fig.add_annotation(
-                        x=0.02, y=0.98,
+                        x=0.98, y=0.98,
                         xref=f'x{current_row}', yref=f'y{current_row}',
                         text=f'Mean Quality: {mean_quality:.2f}<br>Min: {np.min(quality_scores):.2f}<br>Max: {np.max(quality_scores):.2f}',
                         showarrow=False,
@@ -3657,7 +4247,7 @@ def create_signal_quality_plots(time_data, signal_data, sampling_freq, quality_o
                         bordercolor='green',
                         borderwidth=2,
                         font=dict(size=11, color='black')
-                    )
+            )
             
             current_row += 1
         
@@ -3725,7 +4315,7 @@ def create_signal_quality_plots(time_data, signal_data, sampling_freq, quality_o
             artifact_ratio = total_artifacts / len(signal_data) if len(signal_data) > 0 else 0
             
             fig.add_annotation(
-                x=0.02, y=0.98,
+                x=0.98, y=0.98,
                 xref=f'x{current_row}', yref=f'y{current_row}',
                 text=f'Total Artifacts: {total_artifacts}<br>Artifact Ratio: {artifact_ratio:.3f}<br>Clean Signal: {100*(1-artifact_ratio):.1f}%',
                 showarrow=False,
@@ -3745,14 +4335,15 @@ def create_signal_quality_plots(time_data, signal_data, sampling_freq, quality_o
             height=250 * num_plots,
             showlegend=True,
             legend=dict(
-                x=0.02,
-                y=0.98,
-                bgcolor='rgba(255, 255, 255, 0.8)',
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
                 bordercolor='rgba(0, 0, 0, 0.2)',
                 borderwidth=1
             ),
             plot_bgcolor='white',
-            paper_bgcolor='white'
+            paper_bgcolor='white',
+            margin=dict(l=60, r=200, t=80, b=60)
         )
         
         # Update all subplot axes
@@ -3855,16 +4446,15 @@ def create_advanced_features_plots(time_data, signal_data, sampling_freq, advanc
             # Add correlation statistics
             max_corr = np.max(correlations)
             max_corr_lag = lags[np.argmax(correlations)] / sampling_freq
-            
             fig.add_annotation(
-                x=0.02, y=0.98,
-                xref=f'x{current_row}', yref=f'y{current_row}',
-                text=f'Max Correlation: {max_corr:.3f}<br>At Lag: {max_corr_lag:.3f}s<br>Periodicity: {abs(max_corr_lag):.3f}s',
-                showarrow=False,
-                bgcolor='rgba(255, 255, 255, 0.9)',
-                bordercolor='orange',
-                borderwidth=2,
-                font=dict(size=11, color='black')
+                        x=0.98, y=0.98,
+                        xref=f'x{current_row}', yref=f'y{current_row}',
+                        text=f'Max Correlation: {max_corr:.3f}<br>At Lag: {max_corr_lag:.3f}s<br>Periodicity: {abs(max_corr_lag):.3f}s',
+                        showarrow=False,
+                        bgcolor='rgba(255, 255, 255, 0.9)',
+                        bordercolor='orange',
+                        borderwidth=2,
+                        font=dict(size=11, color='black')
             )
             
             current_row += 1
@@ -3929,7 +4519,7 @@ def create_advanced_features_plots(time_data, signal_data, sampling_freq, advanc
                     std_ensemble = np.mean(ensemble_stds)
                     
                     fig.add_annotation(
-                        x=0.02, y=0.98,
+                        x=0.98, y=0.98,
                         xref=f'x{current_row}', yref=f'y{current_row}',
                         text=f'Mean Ensemble: {mean_ensemble:.3f}<br>Avg Std: {std_ensemble:.3f}<br>Stability: {1/std_ensemble:.1f}',
                         showarrow=False,
@@ -3998,7 +4588,7 @@ def create_advanced_features_plots(time_data, signal_data, sampling_freq, advanc
                     change_rate = total_changes / len(diff_signal) if len(diff_signal) > 0 else 0
                     
                     fig.add_annotation(
-                        x=0.02, y=0.98,
+                        x=0.98, y=0.98,
                         xref=f'x{current_row}', yref=f'y{current_row}',
                         text=f'Change Points: {total_changes}<br>Change Rate: {change_rate:.3f}<br>Stability: {1-change_rate:.3f}',
                         showarrow=False,
@@ -4043,7 +4633,7 @@ def create_advanced_features_plots(time_data, signal_data, sampling_freq, advanc
             high_power = np.sum(psd[high_freq_mask]) if np.any(high_freq_mask) else 0
             
             fig.add_annotation(
-                x=0.02, y=0.98,
+                x=0.98, y=0.98,
                 xref=f'x{current_row}', yref=f'y{current_row}',
                 text=f'Total Power: {total_power:.2e}<br>Peak Power: {peak_power:.2e}<br>Dominant Freq: {dominant_freq:.1f} Hz',
                 showarrow=False,
@@ -4056,7 +4646,7 @@ def create_advanced_features_plots(time_data, signal_data, sampling_freq, advanc
             # Add frequency band annotations
             if low_power > 0:
                 fig.add_annotation(
-                    x=0.5, y=0.9,
+                    x=0.95, y=0.9,
                     xref=f'x{current_row}', yref=f'y{current_row}',
                     text=f'Low: {low_power:.2e}',
                     showarrow=False,
@@ -4066,7 +4656,7 @@ def create_advanced_features_plots(time_data, signal_data, sampling_freq, advanc
             
             if mid_power > 0:
                 fig.add_annotation(
-                    x=5.5, y=0.9,
+                    x=0.95, y=0.9,
                     xref=f'x{current_row}', yref=f'y{current_row}',
                     text=f'Mid: {mid_power:.2e}',
                     showarrow=False,
@@ -4076,7 +4666,7 @@ def create_advanced_features_plots(time_data, signal_data, sampling_freq, advanc
             
             if high_power > 0:
                 fig.add_annotation(
-                    x=15.0, y=0.9,
+                    x=0.95, y=0.9,
                     xref=f'x{current_row}', yref=f'y{current_row}',
                     text=f'High: {high_power:.2e}',
                     showarrow=False,
@@ -4190,7 +4780,7 @@ def create_comprehensive_dashboard(time_data, signal_data, signal_type, sampling
                 heart_rate = 60 / mean_interval if mean_interval > 0 else 0
                 
                 fig.add_annotation(
-                    x=0.02, y=0.98,
+                    x=0.98, y=0.98,
                     xref='x1', yref='y1',
                     text=f'Peaks: {len(peaks)}<br>HR: {heart_rate:.1f} BPM<br>Mean Interval: {mean_interval:.2f}s',
                     showarrow=False,
@@ -4222,7 +4812,7 @@ def create_comprehensive_dashboard(time_data, signal_data, signal_type, sampling
             # Add peak statistics
             peak_heights = signal_data[peaks]
             fig.add_annotation(
-                x=0.02, y=0.98,
+                x=0.98, y=0.98,
                 xref='x2', yref='y2',
                 text=f'Mean Height: {np.mean(peak_heights):.3f}<br>Height Std: {np.std(peak_heights):.3f}<br>Range: {np.max(peak_heights) - np.min(peak_heights):.3f}',
                 showarrow=False,
@@ -4257,7 +4847,7 @@ def create_comprehensive_dashboard(time_data, signal_data, signal_type, sampling
             if np.any(low_freq_mask):
                 low_power = np.sum(psd[low_freq_mask])
                 fig.add_annotation(
-                    x=0.5, y=0.9,
+                    x=0.95, y=0.9,
                     xref='x3', yref='y3',
                     text=f'Low: {low_power:.2e}',
                     showarrow=False,
@@ -4268,7 +4858,7 @@ def create_comprehensive_dashboard(time_data, signal_data, signal_type, sampling
             if np.any(mid_freq_mask):
                 mid_power = np.sum(psd[mid_freq_mask])
                 fig.add_annotation(
-                    x=5.5, y=0.9,
+                    x=0.95, y=0.9,
                     xref='x3', yref='y3',
                     text=f'Mid: {mid_power:.2e}',
                     showarrow=False,
@@ -4279,7 +4869,7 @@ def create_comprehensive_dashboard(time_data, signal_data, signal_type, sampling
             if np.any(high_freq_mask):
                 high_power = np.sum(psd[high_freq_mask])
                 fig.add_annotation(
-                    x=15.0, y=0.9,
+                    x=0.95, y=0.9,
                     xref='x3', yref='y3',
                     text=f'High: {high_power:.2e}',
                     showarrow=False,
@@ -4331,7 +4921,7 @@ def create_comprehensive_dashboard(time_data, signal_data, signal_type, sampling
                     # Add quality statistics
                     mean_quality = np.mean(quality_scores)
                     fig.add_annotation(
-                        x=0.02, y=0.98,
+                        x=0.98, y=0.98,
                         xref='x4', yref='y4',
                         text=f'Mean Quality: {mean_quality:.2f}<br>SNR: {snr:.1f} dB<br>Noise Level: {noise_level:.3f}',
                         showarrow=False,
@@ -4353,14 +4943,15 @@ def create_comprehensive_dashboard(time_data, signal_data, signal_type, sampling
             height=800,
             showlegend=True,
             legend=dict(
-                x=0.02,
-                y=0.98,
-                bgcolor='rgba(255, 255, 255, 0.8)',
+                x=1.02,
+                y=1.0,
+                bgcolor='rgba(255, 255, 255, 0.9)',
                 bordercolor='rgba(0, 0, 0, 0.2)',
                 borderwidth=1
             ),
             plot_bgcolor='white',
-            paper_bgcolor='white'
+            paper_bgcolor='white',
+            margin=dict(l=60, r=200, t=80, b=60)
         )
         
         # Update all subplot axes
