@@ -1881,221 +1881,295 @@ def physiological_layout():
 
 
 def respiratory_layout():
-    """Create the respiratory analysis layout."""
+    """Create the comprehensive respiratory analysis page layout matching legacy design."""
     return html.Div([
+        # Page Header
         html.Div([
-            html.H2("🫁 Respiratory Analysis", className="mb-4"),
-            html.P("Analyze respiratory patterns and estimate respiratory rate using advanced vitalDSP algorithms"),
-            
-            # Analysis Controls
-            html.Div([
-                html.H4("Analysis Configuration", className="mb-3"),
-                
-                # Signal Type Selection
-                html.Div([
-                    html.Label("Signal Type:", className="form-label"),
-                    dcc.Dropdown(
-                        id="resp-signal-type",
-                        options=[
-                            {"label": "Auto-detect", "value": "auto"},
-                            {"label": "Respiratory", "value": "respiratory"},
-                            {"label": "Cardiac", "value": "cardiac"}
-                        ],
-                        value="auto",
-                        className="mb-3"
-                    )
-                ], className="mb-3"),
-                
-                # Estimation Methods
-                html.Div([
-                    html.Label("Estimation Methods:", className="form-label"),
-                    dcc.Checklist(
-                        id="resp-estimation-methods",
-                        options=[
-                            {"label": "Peak Detection", "value": "peak_detection"},
-                            {"label": "FFT Based", "value": "fft_based"},
-                            {"label": "Frequency Domain", "value": "frequency_domain"},
-                            {"label": "Time Domain", "value": "time_domain"}
-                        ],
-                        value=["peak_detection"],
-                        className="mb-3"
-                    )
-                ], className="mb-3"),
-                
-                # Advanced Options
-                html.Div([
-                    html.Label("Advanced Options:", className="form-label"),
-                    dcc.Checklist(
-                        id="resp-advanced-options",
-                        options=[
-                            {"label": "Sleep Apnea Detection", "value": "sleep_apnea"},
-                            {"label": "Multimodal Analysis", "value": "multimodal"},
-                            {"label": "PPG-ECG Fusion", "value": "ppg_ecg_fusion"},
-                            {"label": "Respiratory-Cardiac Fusion", "value": "resp_cardiac_fusion"}
-                        ],
-                        value=[],
-                        className="mb-3"
-                    )
-                ], className="mb-3"),
-                
-                # Preprocessing Options
-                html.Div([
-                    html.Label("Preprocessing:", className="form-label"),
-                    dcc.Checklist(
-                        id="resp-preprocessing-options",
-                        options=[
-                            {"label": "Detrend", "value": "detrend"},
-                            {"label": "Normalize", "value": "normalize"},
-                            {"label": "Filter", "value": "filter"},
-                            {"label": "Smooth", "value": "smooth"}
-                        ],
-                        value=[],
-                        className="mb-3"
-                    )
-                ], className="mb-3"),
-                
-                # Filter Parameters
-                html.Div([
-                    html.H6("Filter Parameters", className="mb-2"),
-                    html.Div([
+            html.H1("🫁 Respiratory Analysis", className="text-center mb-2"),
+            html.P([
+                "Comprehensive respiratory rate estimation and breathing pattern analysis using vitalDSP. ",
+                "Analyze respiratory signals with multiple estimation methods, sleep apnea detection, and multimodal fusion."
+            ], className="text-center text-muted mb-3")
+        ], className="mb-2"),
+        
+        # Main Analysis Section
+        dbc.Row([
+            # Left Panel - Controls & Parameters
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🎛️ Respiratory Analysis Controls", className="mb-0"),
+                        html.Small("Configure respiratory analysis parameters", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        # Data Selection
+                        html.H6("Data Selection", className="mb-2"),
+                        dbc.Select(
+                            id="resp-data-source-select",
+                            options=[
+                                {"label": "Uploaded Data", "value": "uploaded"},
+                                {"label": "Sample Data", "value": "sample"}
+                            ],
+                            value="uploaded",
+                            className="mb-2"
+                        ),
+                        
+                        # Time Window Controls
+                        html.H6("Time Window", className="mb-2"),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Label("Start Time (s)", size="sm"),
+                                dbc.Input(
+                                    id="resp-start-time",
+                                    type="number",
+                                    value=0,
+                                    min=0,
+                                    step=0.1,
+                                    className="mb-2"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                dbc.Label("End Time (s)", size="sm"),
+                                dbc.Input(
+                                    id="resp-end-time",
+                                    type="number",
+                                    value=10,
+                                    min=0,
+                                    step=0.1,
+                                    className="mb-2"
+                                )
+                            ], md=6)
+                        ]),
+                        
+                        # Time Range Slider
                         html.Div([
-                            html.Label("Low Cutoff (Hz):", className="form-label"),
+                            dbc.Label("Time Range Slider", size="sm"),
+                            dcc.RangeSlider(
+                                id="resp-time-range-slider",
+                                min=0,
+                                max=100,
+                                step=0.1,
+                                value=[0, 10],
+                                marks={},
+                                tooltip={"placement": "bottom", "always_visible": True}
+                            )
+                        ], className="mb-2"),
+                        
+                        # Nudge Buttons
+                        html.Div([
+                            dbc.Button("-10s", id="resp-btn-nudge-m10", size="sm", color="outline-secondary", className="me-1"),
+                            dbc.Button("-1s", id="resp-btn-nudge-m1", size="sm", color="outline-secondary", className="me-1"),
+                            dbc.Button("+1s", id="resp-btn-nudge-p1", size="sm", color="outline-secondary", className="me-1"),
+                            dbc.Button("+10s", id="resp-btn-nudge-p10", size="sm", color="outline-secondary")
+                        ], className="mb-2"),
+                        
+                        # Signal Type Selection
+                        html.H6("Signal Type", className="mb-2"),
+                        dbc.Select(
+                            id="resp-signal-type",
+                            options=[
+                                {"label": "Auto-detect", "value": "auto"},
+                                {"label": "PPG", "value": "ppg"},
+                                {"label": "ECG", "value": "ecg"},
+                                {"label": "Respiratory Belt", "value": "respiratory"},
+                                {"label": "Nasal Cannula", "value": "nasal"}
+                            ],
+                            value="auto",
+                            className="mb-2"
+                        ),
+                        
+                        # Respiratory Rate Estimation Methods
+                        html.H6("Estimation Methods", className="mb-2"),
+                        dbc.Checklist(
+                            id="resp-estimation-methods",
+                            options=[
+                                {"label": "Peak Detection", "value": "peak_detection"},
+                                {"label": "Zero Crossing", "value": "zero_crossing"},
+                                {"label": "Time Domain", "value": "time_domain"},
+                                {"label": "Frequency Domain", "value": "frequency_domain"},
+                                {"label": "FFT-based", "value": "fft_based"},
+                                {"label": "Counting", "value": "counting"},
+                                {"label": "Ensemble (All Methods)", "value": "ensemble"}
+                            ],
+                            value=["peak_detection", "fft_based"],
+                            className="mb-2"
+                        ),
+                        
+                        # Ensemble Output Options (shown when ensemble is selected)
+                        html.Div(id="resp-ensemble-options", style={"display": "none"}, children=[
+                            html.H6("Ensemble Output Method", className="mb-2"),
+                            dbc.Select(
+                                id="resp-ensemble-method",
+                                options=[
+                                    {"label": "Mean (Simple Average)", "value": "mean"},
+                                    {"label": "Weighted Mean", "value": "weighted_mean"},
+                                    {"label": "Bagging (Bootstrap Aggregation)", "value": "bagging"},
+                                    {"label": "Boosting (Sequential Learning)", "value": "boosting"}
+                                ],
+                                value="mean",
+                                className="mb-2"
+                            ),
+                            html.Small("Mean: Simple average of all methods. Weighted Mean: Weighted average based on method reliability. Bagging: Bootstrap aggregation for robust estimates. Boosting: Sequential learning to improve accuracy.", className="text-muted")
+                        ]),
+                        
+                        # Advanced Analysis Options
+                        html.H6("Advanced Analysis", className="mb-2"),
+                        dbc.Checklist(
+                            id="resp-advanced-options",
+                            options=[
+                                {"label": "Sleep Apnea Detection", "value": "sleep_apnea"},
+                                {"label": "Breathing Pattern Analysis", "value": "breathing_pattern"},
+                                {"label": "Respiratory Variability", "value": "respiratory_variability"},
+                                {"label": "Multimodal Fusion", "value": "multimodal"},
+                                {"label": "PPG-ECG Fusion", "value": "ppg_ecg_fusion"},
+                                {"label": "Respiratory-Cardiac Fusion", "value": "resp_cardiac_fusion"},
+                                {"label": "Quality Assessment", "value": "quality_assessment"}
+                            ],
+                            value=["sleep_apnea", "breathing_pattern"],
+                            className="mb-2"
+                        ),
+                
+                        # Preprocessing Options
+                        html.H6("Preprocessing", className="mb-2"),
+                        dbc.Checklist(
+                            id="resp-preprocessing-options",
+                            options=[
+                                {"label": "Bandpass Filter", "value": "filter"},
+                                {"label": "Wavelet Denoising", "value": "wavelet"},
+                                {"label": "Moving Average", "value": "smooth"},
+                                {"label": "Baseline Correction", "value": "detrend"},
+                                {"label": "Normalization", "value": "normalize"},
+                                {"label": "Artifact Removal", "value": "artifact_removal"}
+                            ],
+                            value=["filter", "detrend"],
+                            className="mb-2"
+                        ),
+                
+                        # Filter Parameters
+                        html.H6("Filter Parameters", className="mb-2"),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Label("Low Cut (Hz)", size="sm"),
                             dbc.Input(
                                 id="resp-low-cut",
                                 type="number",
-                                placeholder="0.1",
-                                min=0,
-                                step=0.1
-                            )
-                        ], className="me-2"),
-                        html.Div([
-                            html.Label("High Cutoff (Hz):", className="form-label"),
+                                    value=0.1,
+                                    min=0.01,
+                                    max=1.0,
+                                    step=0.01,
+                                    className="mb-2"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                dbc.Label("High Cut (Hz)", size="sm"),
                             dbc.Input(
                                 id="resp-high-cut",
                                 type="number",
-                                placeholder="0.5",
-                                min=0,
-                                step=0.1
-                            )
-                        ], className="me-2")
-                    ], className="d-flex mb-3")
-                ], className="mb-3"),
+                                    value=0.5,
+                                    min=0.1,
+                                    max=2.0,
+                                    step=0.01,
+                                    className="mb-2"
+                                )
+                            ], md=6)
+                        ]),
                 
-                # Breath Duration Constraints
-                html.Div([
-                    html.H6("Breath Duration Constraints", className="mb-2"),
-                    html.Div([
+                        # Breath Duration Constraints
+                        html.H6("Breath Duration Constraints", className="mb-2"),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Label("Min Duration (s)", size="sm"),
+                                dbc.Input(
+                                    id="resp-min-breath-duration",
+                                    type="number",
+                                    value=0.5,
+                                    min=0.1,
+                                    max=2.0,
+                                    step=0.1,
+                                    className="mb-1"
+                                )
+                            ], md=6),
+                            dbc.Col([
+                                dbc.Label("Max Duration (s)", size="sm"),
+                                dbc.Input(
+                                    id="resp-max-breath-duration",
+                                    type="number",
+                                    value=6.0,
+                                    min=2.0,
+                                    max=20.0,
+                                    step=0.5,
+                                    className="mb-1"
+                                )
+                            ], md=6)
+                        ], className="mb-2"),
+                        
+                        # Action Buttons
                         html.Div([
-                            html.Label("Min Duration (s):", className="form-label"),
-                            dbc.Input(
-                                id="resp-min-breath-duration",
-                                type="number",
-                                placeholder="1.0",
-                                min=0.1,
-                                step=0.1
-                            )
-                        ], className="me-2"),
-                        html.Div([
-                            html.Label("Max Duration (s):", className="form-label"),
-                            dbc.Input(
-                                id="resp-max-breath-duration",
-                                type="number",
-                                placeholder="10.0",
-                                min=0.1,
-                                step=0.1
-                            )
-                        ], className="me-2")
-                    ], className="d-flex mb-3")
-                ], className="mb-3"),
-                
-                # Time Window Controls
-                html.Div([
-                    html.H6("Time Window", className="mb-2"),
-                    html.Div([
-                        html.Div([
-                            html.Label("Start Time (s):", className="form-label"),
-                            dbc.Input(
-                                id="resp-start-time",
-                                type="number",
-                                value=0,
-                                min=0,
-                                step=0.1,
-                                placeholder="0"
-                            )
-                        ], className="me-2"),
-                        html.Div([
-                            html.Label("End Time (s):", className="form-label"),
-                            dbc.Input(
-                                id="resp-end-time",
-                                type="number",
-                                value=10,
-                                min=0,
-                                step=0.1,
-                                placeholder="10"
-                            )
-                        ], className="me-2")
-                    ], className="d-flex mb-3"),
-                    
-                    # Quick Window Navigation
-                    html.Div([
-                        dbc.Button("⏪ -10s", id="resp-btn-nudge-m10", color="secondary", size="sm", className="me-1"),
-                        dbc.Button("⏪ -1s", id="resp-btn-nudge-m1", color="secondary", size="sm", className="me-1"),
-                        dbc.Button("+1s ⏩", id="resp-btn-nudge-p1", color="secondary", size="sm", className="me-1"),
-                        dbc.Button("+10s ⏩", id="resp-btn-nudge-p10", color="secondary", size="sm")
-                    ], className="mb-3"),
-                    
-                    # Range Slider for Time Window
-                    html.Label("Time Range Slider", className="form-label"),
-                    dcc.RangeSlider(
-                        id="resp-time-range-slider",
-                        min=0,
-                        max=100,
-                        step=0.1,
-                        value=[0, 10],
-                        allowCross=False,
-                        pushable=1,
-                        updatemode="mouseup",
-                        className="mb-4"
-                    )
-                ], className="mb-4"),
-                
-                # Analysis Button
-                dbc.Button(
-                    "Analyze Respiratory Signal",
-                    id="resp-analyze-btn",
-                    color="primary",
-                    size="lg",
-                    className="w-100 mb-4"
-                )
-            ], className="mb-4"),
+                            dbc.Button("🔄 Update Analysis", id="resp-analyze-btn", 
+                                      color="primary", className="w-100 mb-1"),
+                            dbc.Button("📊 Export Results", id="resp-btn-export-results", 
+                                      color="success", className="w-100")
+                        ], className="mt-3")
+                    ])
+                ], className="h-100 shadow-sm")
+            ], md=3),
             
-            # Results Section
-            html.Div([
-                html.H4("Analysis Results", className="mb-3"),
+            # Right Panel - Plots & Results
+            dbc.Col([
+                # Main Respiratory Signal Display
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("📈 Respiratory Signal Analysis", className="mb-0"),
+                        html.Small("Raw signal with breathing pattern detection and annotations", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Loading(
+                            dcc.Graph(
+                                id="resp-main-plot",
+                                style={"height": "350px"},
+                                config={
+                                    "displayModeBar": True,
+                                    "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],
+                                    "displaylogo": False
+                                }
+                            ),
+                            type="default"
+                        )
+                    ])
+                ], className="mb-3 shadow-sm"),
                 
-                # Main Plot
-                html.Div([
-                    html.H6("Respiratory Signal", className="mb-2"),
-                    dcc.Graph(id="resp-main-plot", style={"height": "400px"})
-                ], className="mb-4"),
-                
-                # Analysis Results and Plots
-                html.Div([
-                    html.Div([
-                        html.H6("Analysis Summary", className="mb-2"),
-                        html.Div(id="resp-analysis-results")
-                    ], className="col-md-6"),
-                    html.Div([
-                        html.H6("Comprehensive Analysis", className="mb-2"),
-                        dcc.Graph(id="resp-analysis-plots", style={"height": "400px"})
-                    ], className="col-md-6")
-                ], className="row mb-4"),
-                
-                # Data Stores
+                # Respiratory Analysis Results
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("🔍 Respiratory Analysis Results", className="mb-0"),
+                        html.Small("Comprehensive respiratory rate estimation and pattern analysis", className="text-muted")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="resp-analysis-results", className="mb-2"),
+                        dcc.Loading(
+                            dcc.Graph(
+                                id="resp-analysis-plots",
+                                style={"height": "400px"},
+                                config={
+                                    "displayModeBar": True,
+                                    "modeBarButtonsToRemove": ["pan2d", "lasso2d", "select2d"],
+                                    "displaylogo": False
+                                }
+                            ),
+                            type="default"
+                        )
+                    ])
+                ], className="shadow-sm")
+            ], md=9)
+        ]),
+        
+        # Bottom Section - Additional Analysis
+        html.Div(id="resp-additional-analysis-section", className="mt-3"),
+        
+        # Stores for data management
                 dcc.Store(id="resp-data-store"),
-                dcc.Store(id="resp-features-store")
-            ])
-        ], className="container")
+        dcc.Store(id="resp-features-store"),
+        dcc.Store(id="store-resp-analysis")
     ])
 
 

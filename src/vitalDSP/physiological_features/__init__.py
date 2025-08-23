@@ -15,9 +15,13 @@ from .envelope_detection import EnvelopeDetection
 from .signal_segmentation import SignalSegmentation
 from .trend_analysis import TrendAnalysis
 from .waveform import WaveformMorphology
+from .nonlinear import NonlinearFeatures
+from .cross_correlation import CrossCorrelation
+from .signal_power_analysis import SignalPowerAnalysis
 
 __all__ = [
     'TimeDomainFeatures', 'FrequencyDomainFeatures', 'HRVFeatures',
     'BeatToBeatAnalysis', 'EnergyAnalysis', 'EnvelopeDetection',
-    'SignalSegmentation', 'TrendAnalysis', 'WaveformMorphology'
+    'SignalSegmentation', 'TrendAnalysis', 'WaveformMorphology',
+    'NonlinearFeatures', 'CrossCorrelation', 'SignalPowerAnalysis'
 ]
