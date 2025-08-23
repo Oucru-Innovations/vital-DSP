@@ -3397,19 +3397,7 @@ def settings_layout():
                                         value="light",
                                         className="mb-3"
                                     ),
-                                    html.Label("Language", className="form-label"),
-                                    dcc.Dropdown(
-                                        id="settings-language",
-                                        options=[
-                                            {"label": "English", "value": "en"},
-                                            {"label": "Spanish", "value": "es"},
-                                            {"label": "French", "value": "fr"},
-                                            {"label": "German", "value": "de"},
-                                            {"label": "Chinese", "value": "zh"}
-                                        ],
-                                        value="en",
-                                        className="mb-3"
-                                    ),
+
                                     html.Label("Time Zone", className="form-label"),
                                     dcc.Dropdown(
                                         id="settings-timezone",
@@ -3723,7 +3711,7 @@ def settings_layout():
             ], label="System", tab_id="system-settings")
         ], id="settings-tabs", className="mb-4"),
         
-        # Settings Actions
+        # Settings Actions and Status
         dbc.Row([
             dbc.Col([
                 dbc.Card([
@@ -3735,7 +3723,9 @@ def settings_layout():
                             dbc.Button("💾 Save Settings", id="settings-save-btn", color="success", className="me-2 mb-2"),
                             dbc.Button("🔄 Reset to Defaults", id="settings-reset-btn", color="warning", className="me-2 mb-2"),
                             dbc.Button("📤 Export Settings", id="settings-export-btn", color="info", className="me-2 mb-2"),
-                            dbc.Button("📥 Import Settings", id="settings-import-btn", color="secondary", className="me-2 mb-2")
+                            dbc.Button("📥 Import Settings", id="settings-import-btn", color="secondary", className="me-2 mb-2"),
+                            dbc.Button("✅ Validate Settings", id="settings-validate-btn", color="primary", className="me-2 mb-2"),
+                            dbc.Button("💡 Get Recommendations", id="settings-recommendations-btn", color="info", className="me-2 mb-2")
                         ], className="text-center")
                     ])
                 ])
@@ -3748,6 +3738,57 @@ def settings_layout():
                     ]),
                     dbc.CardBody([
                         html.Div(id="settings-status")
+                    ])
+                ])
+            ], md=6)
+        ], className="mb-4"),
+        
+        # Additional Settings Features
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("🎨 Theme Preview", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="theme-preview-display")
+                    ])
+                ])
+            ], md=6),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("✅ Settings Validation", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="settings-validation-display")
+                    ])
+                ])
+            ], md=6)
+        ], className="mb-4"),
+        
+        # System Monitoring and Recommendations
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("🖥️ System Monitoring", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        dcc.Interval(id="system-monitor-interval", interval=5000, n_intervals=0),
+                        html.Div(id="system-monitor-display")
+                    ])
+                ])
+            ], md=6),
+            
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H5("💡 Smart Recommendations", className="mb-0")
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id="settings-recommendations-display")
                     ])
                 ])
             ], md=6)
