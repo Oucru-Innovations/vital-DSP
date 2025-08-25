@@ -130,9 +130,9 @@ class DataService:
         """Get all stored data."""
         return self._data_store
     
-    def get_column_mapping(self, data_id: str) -> Optional[Dict[str, str]]:
+    def get_column_mapping(self, data_id: str) -> Dict[str, str]:
         """Get column mapping for a specific data ID."""
-        mapping = self._column_mappings.get(data_id)
+        mapping = self._column_mappings.get(data_id, {})
         logger.info(f"Getting column mapping for {data_id}: {mapping}")
         return mapping
     
@@ -150,8 +150,9 @@ class DataService:
             for col in df.columns:
                 col_lower = col.lower()
                 
-                # Time-related columns
-                if any(keyword in col_lower for keyword in ['time', 'timestamp', 't']):
+                # Time-related columns - only set if not already set
+                # Be more specific about time column detection to avoid false positives
+                if "time" not in mapping and (any(keyword in col_lower for keyword in ['time', 'timestamp']) or col_lower == 't'):
                     mapping["time"] = col
                 
                 # Signal columns - prioritize waveform/pleth columns
@@ -165,22 +166,30 @@ class DataService:
                         mapping["signal"] = col
                         logger.info(f"Found signal column: {col}")
                 
-                # RED channel (for pulse oximetry)
-                elif any(keyword in col_lower for keyword in ['red', 'r']):
+                # RED channel (for pulse oximetry) - only set if not already set
+                elif "red" not in mapping and any(keyword in col_lower for keyword in ['red']):
                     mapping["red"] = col
                 
-                # IR channel (for pulse oximetry)
-                elif any(keyword in col_lower for keyword in ['ir', 'infrared']):
+                # IR channel (for pulse oximetry) - only set if not already set  
+                elif "ir" not in mapping and any(keyword in col_lower for keyword in ['ir', 'infrared']):
                     mapping["ir"] = col
             
-            # If no specific columns found, use defaults
+            # If no specific columns found, use defaults based on position
+            # Priority: time = first column, signal = second column (if available)
+            # ALWAYS assign time to first column if not already detected
             if "time" not in mapping and len(df.columns) > 0:
                 mapping["time"] = df.columns[0]
                 logger.info(f"Using default time column: {df.columns[0]}")
                 
-            if "signal" not in mapping and len(df.columns) > 1:
-                mapping["signal"] = df.columns[1]
-                logger.info(f"Using default signal column: {df.columns[1]}")
+            # Only assign signal column if not already detected
+            if "signal" not in mapping:
+                if len(df.columns) > 1:
+                    mapping["signal"] = df.columns[1]
+                    logger.info(f"Using default signal column: {df.columns[1]}")
+                elif len(df.columns) == 1:
+                    # If only one column, use it for signal (time was already assigned)
+                    mapping["signal"] = df.columns[0]
+                    logger.info(f"Using single column for signal: {df.columns[0]}")
         
         logger.info(f"Auto-detected column mapping: {mapping}")
         return mapping
@@ -213,10 +222,32 @@ class DataService:
     
     def clear_all_data(self):
         """Clear all stored data."""
+        self.current_data = None
+        self.data_config.clear()
         self._data_store.clear()
         self._column_mappings.clear()
         self._next_id = 1
         logger.info("All data cleared")
+    
+    def get_current_config(self) -> Dict[str, Any]:
+        """Get current data configuration."""
+        return self.data_config.copy()  # Return a copy, not the original
+    
+    def set_column_mapping(self, data_id: str, mapping: Dict[str, str]):
+        """Set column mapping for a specific data ID."""
+        self._column_mappings[data_id] = mapping
+        logger.info(f"Column mapping set for {data_id}: {mapping}")
+    
+    def get_data_summary(self) -> Optional[Dict[str, Any]]:
+        """Get summary of current data."""
+        if self.current_data is None or self.current_data.empty:
+            return None
+        
+        return {
+            "shape": self.current_data.shape,
+            "columns": self.current_data.columns.tolist(),
+            "data_config": self.data_config
+        }
 
 
 # Global instance

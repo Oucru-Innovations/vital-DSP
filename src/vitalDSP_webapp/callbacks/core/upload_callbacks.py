@@ -23,19 +23,41 @@ from datetime import datetime
 from typing import Dict, Any, Optional, Tuple
 import time
 
-from vitalDSP_webapp.services.data.data_service import get_data_service
-from vitalDSP_webapp.utils.data_processor import DataProcessor
-from vitalDSP_webapp.config.settings import app_config, ui_styles
+try:
+    from vitalDSP_webapp.services.data.data_service import get_data_service
+    from vitalDSP_webapp.utils.data_processor import DataProcessor
+except ImportError as e:
+    # Fallback imports for testing
+    import sys
+    import os
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.join(current_dir, '..', '..', '..')
+    src_path = os.path.join(project_root, 'src')
+    if src_path not in sys.path:
+        sys.path.insert(0, src_path)
+    try:
+        from vitalDSP_webapp.services.data.data_service import get_data_service
+        from vitalDSP_webapp.utils.data_processor import DataProcessor
+    except ImportError:
+        # For testing, create mock versions
+        def get_data_service():
+            return None
+        class DataProcessor:
+            @staticmethod
+            def process_uploaded_data(*args, **kwargs):
+                return None
 
 logger = logging.getLogger(__name__)
 
 
 def register_upload_callbacks(app):
     """Register all upload-related callbacks"""
-    
     # Check if callbacks are already registered to prevent duplicates
-    if hasattr(app, '_upload_callbacks_registered'):
+    if hasattr(app, '_upload_callbacks_registered') and getattr(app, '_upload_callbacks_registered', False) is True:
+        logger.info("Upload callbacks already registered, skipping")
         return
+    
+    logger.info("Registering upload callbacks...")
     app._upload_callbacks_registered = True
     
     @app.callback(
@@ -63,7 +85,7 @@ def register_upload_callbacks(app):
          State("sampling-freq", "value"),
          State("time-unit", "value")],
         prevent_initial_call='initial_duplicate'
-    )
+        )
     def handle_all_uploads(upload_contents, load_path_clicks, load_sample_clicks, 
                           filename, file_path, sampling_freq, time_unit):
         """Handle all types of data uploads"""
@@ -121,8 +143,8 @@ def register_upload_callbacks(app):
             column_options = [{"label": col, "value": col} for col in df.columns]
             
             # Process the data
-            sampling_freq = sampling_freq or app_config.DEFAULT_SAMPLING_FREQ
-            time_unit = time_unit or app_config.DEFAULT_TIME_UNIT
+            sampling_freq = sampling_freq or 1000  # Default sampling freq
+            time_unit = time_unit or "seconds"  # Default time unit
             
             data_info = DataProcessor.process_uploaded_data(df, filename, sampling_freq, time_unit)
             

@@ -100,7 +100,8 @@ def handle_error(error: Exception, context: str = "Unknown") -> Dict[str, Any]:
 def create_error_alert(error: Union[Exception, str], 
                       title: str = "Error",
                       color: str = "danger",
-                      show_details: bool = False) -> dbc.Alert:
+                      show_details: bool = False,
+                      dismissible: bool = False) -> dbc.Alert:
     """
     Create a standardized error alert component.
     
@@ -148,7 +149,8 @@ def create_error_alert(error: Union[Exception, str],
     return dbc.Alert(
         alert_content,
         color=color,
-        className="mt-3"
+        className="mt-3",
+        dismissable=dismissible  # DBC uses 'dismissable' not 'dismissible'
     )
 
 

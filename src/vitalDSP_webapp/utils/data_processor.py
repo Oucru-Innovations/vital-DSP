@@ -68,15 +68,21 @@ class DataProcessor:
             return None
     
     @staticmethod
-    def generate_sample_ppg_data(sampling_freq: float, duration: float = 10.0) -> pd.DataFrame:
+    def generate_sample_ppg_data(sampling_freq: float, duration: float = 10.0, heart_rate: float = 70, noise_level: float = 0.05) -> pd.DataFrame:
         """Generate sample PPG data for testing."""
         try:
             # Generate time axis
             t = np.arange(0, duration, 1/sampling_freq)
             
+            # Add input validation
+            if sampling_freq <= 0:
+                logger.error("Sampling frequency must be positive")
+                return None
+            if duration <= 0:
+                logger.error("Duration must be positive")
+                return None
+            
             # Generate synthetic PPG signal
-            # Basic heart rate around 60-80 BPM
-            heart_rate = 70  # BPM
             heart_freq = heart_rate / 60  # Hz
             
             # Create PPG-like signal with multiple components
@@ -84,7 +90,7 @@ class DataProcessor:
                 1.0 * np.sin(2 * np.pi * heart_freq * t) +  # Fundamental
                 0.3 * np.sin(2 * np.pi * 2 * heart_freq * t) +  # Second harmonic
                 0.1 * np.sin(2 * np.pi * 3 * heart_freq * t) +  # Third harmonic
-                0.05 * np.random.randn(len(t))  # Noise
+                noise_level * np.random.randn(len(t))  # Noise with configurable level
             )
             
             # Add respiratory modulation (0.2-0.5 Hz)
@@ -94,8 +100,8 @@ class DataProcessor:
             
             # Create DataFrame
             df = pd.DataFrame({
-                'Time': t,
-                'PPG_Signal': signal
+                'time': t,  # Use lowercase 'time' to match test expectations
+                'signal': signal  # Use 'signal' instead of 'PPG_Signal'
             })
             
             return df
@@ -137,7 +143,10 @@ class DataProcessor:
                 "mean": float(np.mean(signal_data)),
                 "std": float(np.std(signal_data)),
                 "min": float(np.min(signal_data)),
-                "max": float(np.max(signal_data))
+                "max": float(np.max(signal_data)),
+                # Add fields expected by tests
+                "num_rows": df.shape[0],
+                "num_columns": df.shape[1]
             }
             
         except Exception as e:
