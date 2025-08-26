@@ -3854,9 +3854,9 @@ def get_vitaldsp_feature_engineering(signal_data, sampling_freq, feature_enginee
         
         if "ppg_autonomic" in feature_engineering and signal_type.lower() == "ppg":
             try:
-                from vitalDSP.feature_engineering.ppg_autonomic_features import PPGAutonomicFeatureExtractor
+                from vitalDSP.feature_engineering.ppg_autonomic_features import PPGAutonomicFeatures
                 # Use vitalDSP PPG autonomic features with class-based approach
-                autonomic_extractor = PPGAutonomicFeatureExtractor(signal_data, sampling_freq)
+                autonomic_extractor = PPGAutonomicFeatures(signal_data, sampling_freq)
                 
                 # Try to extract autonomic features
                 try:

@@ -33,10 +33,10 @@ SignalChangeDetection = None
 EnsembleFeatureExtractor = None
 PhysiologicalFeatureExtractor = None
 PPGAutonomicFeatures = None
-ECGAutonomicFeatures = None
-PPGLightFeatures = None
-ECGPPGSynchronizationFeatures = None
-WaveletTransform = None
+  ECGAutonomicFeatures = None
+  PPGLightFeatures = None
+  ECGPPGSynchronization = None
+  WaveletTransform = None
 FourierTransform = None
 HilbertTransform = None
 STFT = None
@@ -51,7 +51,7 @@ def _import_vitaldsp_modules():
     global SignalPowerAnalysis, SignalSegmentation, TrendAnalysis, EnvelopeDetection
     global EnergyAnalysis, SignalChangeDetection, EnsembleFeatureExtractor
     global PhysiologicalFeatureExtractor, PPGAutonomicFeatures, ECGAutonomicFeatures
-    global PPGLightFeatures, ECGPPGSynchronizationFeatures, WaveletTransform
+    global PPGLightFeatures, ECGPPGSynchronization, WaveletTransform
     global FourierTransform, HilbertTransform, STFT, MFCC, PCAICADecomposition, VitalTransformation
     
     logger.info("=== IMPORTING VITALDSP PHYSIOLOGICAL FEATURES MODULES ===")
@@ -190,11 +190,11 @@ def _import_vitaldsp_modules():
         PPGLightFeatures = None
 
     try:
-        from vitalDSP.feature_engineering.ecg_ppg_synchronyzation_features import ECGPPGSynchronizationFeatures
-        logger.info("✓ ECGPPGSynchronizationFeatures imported successfully")
+        from vitalDSP.feature_engineering.ecg_ppg_synchronyzation_features import ECGPPGSynchronization
+        logger.info("✓ ECGPPGSynchronization imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import ECGPPGSynchronizationFeatures: {e}")
-        ECGPPGSynchronizationFeatures = None
+        logger.error(f"✗ Failed to import ECGPPGSynchronization: {e}")
+        ECGPPGSynchronization = None
 
     try:
         from vitalDSP.transforms.wavelet_transform import WaveletTransform

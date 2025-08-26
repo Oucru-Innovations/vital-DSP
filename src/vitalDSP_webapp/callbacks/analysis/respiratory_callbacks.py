@@ -27,8 +27,8 @@ detect_apnea_pauses = None
 multimodal_analysis = None
 ppg_ecg_fusion = None
 respiratory_cardiac_fusion = None
-PPGRespiratoryAutonomicFeatures = None
-ECGPpgSynchronizationFeatures = None
+PPGAutonomicFeatures = None
+ECGPPGSynchronization = None
 PreprocessConfig = None
 preprocess_signal = None
 
@@ -39,8 +39,8 @@ def _import_vitaldsp_modules():
     """Import vitalDSP modules with error handling."""
     global RespiratoryAnalysis, peak_detection_rr, fft_based_rr, frequency_domain_rr
     global time_domain_rr, detect_apnea_amplitude, detect_apnea_pauses, multimodal_analysis
-    global ppg_ecg_fusion, respiratory_cardiac_fusion, PPGRespiratoryAutonomicFeatures
-    global ECGPpgSynchronizationFeatures, PreprocessConfig, preprocess_signal
+    global ppg_ecg_fusion, respiratory_cardiac_fusion, PPGAutonomicFeatures
+    global ECGPPGSynchronization, PreprocessConfig, preprocess_signal
     
     logger.info("=== IMPORTING VITALDSP MODULES ===")
     
@@ -115,18 +115,18 @@ def _import_vitaldsp_modules():
         respiratory_cardiac_fusion = None
 
     try:
-        from vitalDSP.feature_engineering.ppg_autonomic_features import PPGRespiratoryAutonomicFeatures
-        logger.info("✓ PPGRespiratoryAutonomicFeatures imported successfully")
+        from vitalDSP.feature_engineering.ppg_autonomic_features import PPGAutonomicFeatures
+        logger.info("✓ PPGAutonomicFeatures imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import PPGRespiratoryAutonomicFeatures: {e}")
-        PPGRespiratoryAutonomicFeatures = None
+        logger.error(f"✗ Failed to import PPGAutonomicFeatures: {e}")
+        PPGAutonomicFeatures = None
 
     try:
-        from vitalDSP.respiratory_analysis.ecg_ppg_synchronyzation_features import ECGPpgSynchronizationFeatures
-        logger.info("✓ ECGPpgSynchronizationFeatures imported successfully")
+        from vitalDSP.feature_engineering.ecg_ppg_synchronyzation_features import ECGPPGSynchronization
+        logger.info("✓ ECGPPGSynchronization imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import ECGPpgSynchronizationFeatures: {e}")
-        ECGPpgSynchronizationFeatures = None
+        logger.error(f"✗ Failed to import ECGPPGSynchronization: {e}")
+        ECGPPGSynchronization = None
 
     try:
         from vitalDSP.preprocess.preprocess_operations import PreprocessConfig, preprocess_signal
@@ -1454,8 +1454,8 @@ def generate_comprehensive_respiratory_analysis(signal_data, time_axis, sampling
                 try:
                     # Enhanced respiratory variability analysis
                     if signal_type == "ppg":
-                        if PPGRespiratoryAutonomicFeatures is None:
-                            logger.warning("PPGRespiratoryAutonomicFeatures not available")
+                        if PPGAutonomicFeatures is None:
+                            logger.warning("PPGAutonomicFeatures not available")
                             # Fallback to basic RRV calculation
                             try:
                                 # Calculate basic RRV from breathing intervals
@@ -1500,7 +1500,7 @@ def generate_comprehensive_respiratory_analysis(signal_data, time_axis, sampling
                         else:
                             # Use PPG respiratory autonomic features
                             try:
-                                ppg_features = PPGRespiratoryAutonomicFeatures(signal_data, sampling_freq)
+                                ppg_features = PPGAutonomicFeatures(signal_data, sampling_freq)
                                 rrv = ppg_features.compute_rrv()
                                 rsa = ppg_features.compute_rsa()
                                 
