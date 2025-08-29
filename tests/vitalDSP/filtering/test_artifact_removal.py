@@ -1,7 +1,11 @@
 import numpy as np
 import pytest
+import warnings
 from scipy.signal import medfilt
 from vitalDSP.filtering.artifact_removal import ArtifactRemoval
+
+# Filter out expected complex warnings from wavelet operations
+warnings.filterwarnings("ignore", category=np.ComplexWarning, message="Casting complex values to real discards the imaginary part")
 
 
 @pytest.fixture

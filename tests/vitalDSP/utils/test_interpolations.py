@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import warnings
 from vitalDSP.utils.interpolations import (
     linear_interpolation,
     spline_interpolation,
@@ -9,6 +10,10 @@ from vitalDSP.utils.interpolations import (
     backward_fill,
     rolling_mean_imputation,
 )
+
+# Filter out expected warnings about empty slices and NaN operations
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="Mean of empty slice")
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="All-NaN slice encountered")
 
 
 @pytest.fixture

@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import warnings
 from vitalDSP.transforms.chroma_stft import ChromaSTFT
 from vitalDSP.transforms.dct_wavelet_fusion import DCTWaveletFusion
 from vitalDSP.transforms.discrete_cosine_transform import DiscreteCosineTransform
@@ -19,6 +20,9 @@ from vitalDSP.transforms.vital_transformation import (
     VitalTransformation,
 )  # Assuming VitalTransformation is in vitalDSP.transformation
 from vitalDSP.filtering.advanced_signal_filtering import AdvancedSignalFiltering
+
+# Filter out expected complex warnings from wavelet operations
+warnings.filterwarnings("ignore", category=np.ComplexWarning, message="Casting complex values to real discards the imaginary part")
 
 
 # @pytest.fixture

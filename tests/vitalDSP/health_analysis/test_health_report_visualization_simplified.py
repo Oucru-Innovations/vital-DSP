@@ -7,9 +7,16 @@ This module tests actual methods that exist in the HealthReportVisualizer class.
 import pytest
 import numpy as np
 import pandas as pd
+import warnings
 from unittest.mock import Mock, patch, MagicMock
 import os
 import tempfile
+
+# Filter out expected warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="divide by zero encountered.*")
+warnings.filterwarnings("ignore", category=UserWarning, message="Data has no positive values.*")
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="More than 20 figures have been opened.*")
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="invalid value encountered in.*")
 
 # Test data setup
 SAMPLE_HEALTH_DATA = {

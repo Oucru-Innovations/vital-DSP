@@ -1,6 +1,11 @@
 import pytest
 import numpy as np
+import warnings
 from vitalDSP.physiological_features.nonlinear import NonlinearFeatures
+
+# Filter out expected runtime warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="invalid value encountered in.*")
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="divide by zero encountered.*")
 
 
 @pytest.fixture

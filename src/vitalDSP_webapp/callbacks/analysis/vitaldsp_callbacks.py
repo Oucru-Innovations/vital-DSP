@@ -35,6 +35,35 @@ def create_empty_figure():
     return fig
 
 
+def higuchi_fractal_dimension(signal, k_max=8):
+    """Calculate Higuchi fractal dimension."""
+    try:
+        N = len(signal)
+        L = []
+        x = []
+        
+        for k in range(1, k_max + 1):
+            Lk = 0
+            for m in range(k):
+                Lmk = 0
+                for i in range(1, int((N - m) / k)):
+                    Lmk += abs(signal[m + i * k] - signal[m + (i - 1) * k])
+                Lmk = Lmk * (N - 1) / (k ** 2 * int((N - m) / k))
+                Lk += Lmk
+            Lk /= k
+            L.append(Lk)
+            x.append([np.log(1.0 / k), 1])
+        
+        # Linear fit to get slope
+        x = np.array(x)
+        L = np.log(L)
+        slope = np.polyfit(x[:, 0], L, 1)[0]
+        return slope
+    except Exception as e:
+        logger.error(f"Error calculating Higuchi fractal dimension: {e}")
+        return 0
+
+
 def create_time_domain_plot(signal_data, time_axis, sampling_freq, peaks=None, filtered_signal=None):
     """Create the main time domain plot."""
     try:
@@ -1483,36 +1512,9 @@ def create_additional_metrics_table(raw_data, filtered_data, time_axis, sampling
         
         # Fractal dimension (simplified Higuchi method)
         try:
-            def higuchi_fractal_dimension(signal, k_max=8):
-                """Calculate Higuchi fractal dimension."""
-                N = len(signal)
-                L = []
-                x = []
-                
-                for k in range(1, k_max + 1):
-                    Lk = 0
-                    for m in range(k):
-                        Lmk = 0
-                        for i in range(1, int((N - m) / k)):
-                            Lmk += abs(signal[m + i * k] - signal[m + (i - 1) * k])
-                        Lmk = Lmk * (N - 1) / (k ** 2 * int((N - m) / k))
-                        Lk += Lmk
-                    Lk /= k
-                    L.append(Lk)
-                    x.append([np.log(1.0 / k), 1])
-                
-                # Linear fit to get slope
-                x = np.array(x)
-                L = np.log(L)
-                slope = np.polyfit(x[:, 0], L, 1)[0]
-                return slope
+            higuchi_fd = higuchi_fractal_dimension(raw_signal)
         except:
             higuchi_fd = 0
-        else:
-            try:
-                higuchi_fd = higuchi_fractal_dimension(raw_signal)
-            except:
-                higuchi_fd = 0
         
         # Trend analysis
         x_trend = np.arange(len(raw_signal))
