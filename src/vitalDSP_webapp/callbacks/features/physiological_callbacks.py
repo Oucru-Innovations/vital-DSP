@@ -24,13 +24,130 @@ def normalize_signal_type(signal_type):
     
     # Convert to uppercase and validate
     signal_type_upper = signal_type.upper()
-    valid_types = ["ECG", "PPG", "EEG"]
+    valid_types = ["ECG", "PPG", "EEG", "RESP"]
     
     if signal_type_upper in valid_types:
         return signal_type_upper
     else:
         logger.warning(f"Invalid signal type '{signal_type}' detected. Defaulting to 'PPG'.")
         return "PPG"
+
+
+def detect_respiratory_signal_type(signal_data, sampling_freq):
+    """Auto-detect if signal is respiratory or cardiac based on frequency content."""
+    try:
+        # Compute FFT
+        fft_result = np.fft.fft(signal_data)
+        fft_freq = np.fft.fftfreq(len(signal_data), 1/sampling_freq)
+        
+        # Focus on positive frequencies
+        positive_mask = fft_freq > 0
+        fft_freq = fft_freq[positive_mask]
+        fft_magnitude = np.abs(fft_result[positive_mask])
+        
+        # Find dominant frequency
+        dominant_idx = np.argmax(fft_magnitude)
+        dominant_freq = fft_freq[dominant_idx]
+        
+        # Respiratory signals typically have lower frequencies (0.1-0.5 Hz)
+        # Cardiac signals typically have higher frequencies (0.8-2.0 Hz)
+        if dominant_freq < 0.5:
+            return "respiratory"
+        else:
+            return "cardiac"
+    except:
+        return "unknown"
+
+
+def create_respiratory_signal_plot(signal_data, time_axis, sampling_freq, signal_type="respiratory", 
+                                  estimation_methods=None, preprocessing_options=None, low_cut=None, high_cut=None):
+    """Create the main respiratory signal plot with annotations."""
+    try:
+        fig = go.Figure()
+        
+        # Add main signal
+        fig.add_trace(go.Scatter(
+            x=time_axis,
+            y=signal_data,
+            mode='lines',
+            name=f'{signal_type.title()} Signal',
+            line=dict(color='blue', width=1)
+        ))
+        
+        # Add preprocessing info if applied
+        if preprocessing_options and any(preprocessing_options):
+            fig.add_trace(go.Scatter(
+                x=time_axis,
+                y=signal_data,  # This would be the preprocessed signal in real implementation
+                mode='lines',
+                name='Preprocessed Signal',
+                line=dict(color='red', width=1, dash='dash')
+            ))
+        
+        # Add filter frequency lines if specified
+        if low_cut:
+            fig.add_hline(y=np.min(signal_data), line_dash="dot", line_color="green",
+                         annotation_text=f"Low Cut: {low_cut} Hz")
+        if high_cut:
+            fig.add_hline(y=np.max(signal_data), line_dash="dot", line_color="orange",
+                         annotation_text=f"High Cut: {high_cut} Hz")
+        
+        fig.update_layout(
+            title=f"Respiratory Signal Analysis - {signal_type.title()}",
+            xaxis_title="Time (seconds)",
+            yaxis_title="Amplitude",
+            showlegend=True,
+            height=400,
+            plot_bgcolor='white',
+            margin=dict(l=60, r=60, t=80, b=60)
+        )
+        
+        return fig
+    except Exception as e:
+        logger.error(f"Error creating respiratory signal plot: {e}")
+        return create_empty_figure()
+
+
+def update_time_slider_marks(data_store):
+    """Update time slider marks based on available data."""
+    if not data_store or "time_data" not in data_store:
+        return {}
+    
+    try:
+        time_data = data_store["time_data"]
+        if not time_data:
+            return {}
+        
+        # Create marks at regular intervals
+        max_time = max(time_data)
+        step = max_time / 10
+        marks = {}
+        
+        for i in range(0, 11):
+            time_val = i * step
+            marks[time_val] = f"{time_val:.1f}s"
+        
+        return marks
+    except Exception as e:
+        logger.error(f"Error updating time slider marks: {e}")
+        return {}
+
+
+def update_time_input_max_values(data_store):
+    """Update max values for time inputs based on available data."""
+    if not data_store or "time_data" not in data_store:
+        return 100, 100
+    
+    try:
+        time_data = data_store["time_data"]
+        if not time_data:
+            return 100, 100
+        
+        max_time = max(time_data)
+        return max_time, max_time
+    except Exception as e:
+        logger.error(f"Error updating time input max values: {e}")
+        return 100, 100
 
 
 def register_physiological_callbacks(app):
@@ -1288,6 +1405,31 @@ def analyze_hrv(signal_data, sampling_freq, hrv_options):
                 "lf_hf_ratio": np.sum(psd[(freqs >= 0.04) & (freqs < 0.15)]) / np.sum(psd[(freqs >= 0.15) & (freqs < 0.4)])
             })
         
+        if "nonlinear" in hrv_options:
+            # Nonlinear HRV analysis
+            try:
+                # Poincaré plot analysis
+                if len(rr_intervals) > 1:
+                    rr_diff = np.diff(rr_intervals)
+                    sd1 = np.std(rr_diff) / np.sqrt(2)
+                    sd2 = np.sqrt(2 * np.var(rr_intervals) - np.var(rr_diff) / 2)
+                    
+                    hrv_metrics.update({
+                        "poincare_sd1": float(sd1),
+                        "poincare_sd2": float(sd2)
+                    })
+                else:
+                    hrv_metrics.update({
+                        "poincare_sd1": 0.0,
+                        "poincare_sd2": 0.0
+                    })
+            except Exception as e:
+                logger.warning(f"Nonlinear HRV analysis failed: {e}")
+                hrv_metrics.update({
+                    "poincare_sd1": 0.0,
+                    "poincare_sd2": 0.0
+            })
+        
         return hrv_metrics
         
     except Exception as e:
@@ -1403,7 +1545,7 @@ def analyze_trends(signal_data, sampling_freq):
         trend_metrics = {
             "trend_slope": float(trend_slope),
             "trend_strength": float(trend_strength),
-            "trend_direction": "increasing" if trend_slope > 0 else "decreasing" if trend_slope < 0 else "stable"
+            "trend_direction": "increasing" if trend_slope > 0.15 else "decreasing" if trend_slope < -0.15 else "stable"
         }
         
         return trend_metrics
@@ -1595,7 +1737,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
         if "transform_metrics" in results and "error" not in results["transform_metrics"]:
             transform_metrics = {
                 "wavelet_energy": results['transform_metrics'].get('wavelet_energy', 0),
-                "fourier_dominant_freq": results['transform_metrics'].get('fourier_dominant_freq', 0),
+                "fourier_peak": results['transform_metrics'].get('fourier_peak', 0),
                 "hilbert_phase": results['transform_metrics'].get('hilbert_phase', 0)
             }
             transform_card = create_metric_card("Signal Transforms", "🔄", transform_metrics, "primary")
@@ -2316,6 +2458,8 @@ def analyze_envelope(signal_data, sampling_freq):
         env_peaks, _ = signal.find_peaks(envelope, height=np.mean(envelope) + np.std(envelope))
         
         return {
+            "upper_envelope": envelope.tolist(),
+            "lower_envelope": (-envelope).tolist(),
             "envelope_mean": envelope_mean,
             "envelope_std": envelope_std,
             "envelope_range": envelope_range,
@@ -2343,6 +2487,7 @@ def analyze_segmentation(signal_data, sampling_freq):
             segment_variability = 0
         
         return {
+            "segments": segment_lengths.tolist(),
             "num_segments": len(segment_lengths),
             "mean_segment_length": mean_segment_length,
             "segment_variability": segment_variability,
@@ -2433,14 +2578,14 @@ def analyze_frequency(signal_data, sampling_freq):
         return {"error": f"Frequency analysis failed: {str(e)}"}
 
 
-def analyze_signal_quality_advanced(signal_data, sampling_freq, quality_options):
+def analyze_signal_quality_advanced(signal_data, sampling_freq, quality_options=None):
     """Advanced signal quality analysis."""
     try:
         quality_metrics = {}
         
         # Handle case where quality_options might be None or empty
         if not quality_options:
-            quality_options = ["quality_index", "artifact_detection"]
+            quality_options = ["quality_index", "artifact_detection", "entropy", "complexity"]
         
         if "quality_index" in quality_options:
             # Calculate signal quality index
@@ -2475,6 +2620,31 @@ def analyze_signal_quality_advanced(signal_data, sampling_freq, quality_options)
                 "adaptive_snr": snr
             })
         
+        if "entropy" in quality_options:
+            # Calculate signal entropy
+            try:
+                # Discretize signal for entropy calculation
+                hist, _ = np.histogram(signal_data, bins=min(50, len(signal_data)//10))
+                hist = hist[hist > 0]  # Remove zero bins
+                if len(hist) > 0:
+                    prob = hist / np.sum(hist)
+                    entropy = -np.sum(prob * np.log2(prob + 1e-10))
+                    quality_metrics["entropy"] = float(entropy)
+                else:
+                    quality_metrics["entropy"] = 0.0
+            except:
+                quality_metrics["entropy"] = 0.0
+        
+        if "complexity" in quality_options:
+            # Calculate signal complexity (approximate)
+            try:
+                # Use zero crossings as a simple complexity measure
+                zero_crossings = np.sum(np.diff(np.sign(signal_data)) != 0)
+                complexity = zero_crossings / len(signal_data)
+                quality_metrics["complexity"] = float(complexity)
+            except:
+                quality_metrics["complexity"] = 0.0
+        
         return quality_metrics
     except Exception as e:
         logger.error(f"Error in advanced quality analysis: {e}")
@@ -2507,12 +2677,12 @@ def analyze_transforms(signal_data, sampling_freq, transform_options):
                 # Find dominant frequency (avoid DC component)
                 if len(fft_magnitude) > 1:
                     dominant_freq_idx = np.argmax(fft_magnitude[1:len(fft_magnitude)//2]) + 1
-                    transform_metrics["fourier_dominant_freq"] = float(dominant_freq_idx * sampling_freq / len(signal_data))
+                    transform_metrics["fourier_peak"] = float(dominant_freq_idx * sampling_freq / len(signal_data))
                 else:
-                    transform_metrics["fourier_dominant_freq"] = 0.0
+                    transform_metrics["fourier_peak"] = 0.0
             except Exception as e:
                 logger.warning(f"Fourier transform failed: {e}")
-                transform_metrics["fourier_dominant_freq"] = 0.0
+                transform_metrics["fourier_peak"] = 0.0
         
         if "hilbert" in transform_options:
             # Hilbert transform analysis
@@ -3395,54 +3565,7 @@ def register_additional_physiological_callbacks(app):
         """Enable/disable export button based on available data."""
         return not bool(features_data)
     
-    @app.callback(
-        Output("physio-time-range-slider", "marks"),
-        [Input("store-physio-data", "data")]
-    )
-    def update_time_slider_marks(data_store):
-        """Update time slider marks based on available data."""
-        if not data_store or "time_data" not in data_store:
-            return {}
-        
-        try:
-            time_data = data_store["time_data"]
-            if not time_data:
-                return {}
-            
-            # Create marks at regular intervals
-            max_time = max(time_data)
-            step = max_time / 10
-            marks = {}
-            
-            for i in range(0, 11):
-                time_val = i * step
-                marks[time_val] = f"{time_val:.1f}s"
-            
-            return marks
-        except Exception as e:
-            logger.error(f"Error updating time slider marks: {e}")
-            return {}
-    
-    @app.callback(
-        [Output("physio-start-time", "max"),
-         Output("physio-end-time", "max")],
-        [Input("store-physio-data", "data")]
-    )
-    def update_time_input_max_values(data_store):
-        """Update max values for time inputs based on available data."""
-        if not data_store or "time_data" not in data_store:
-            return 100, 100
-        
-        try:
-            time_data = data_store["time_data"]
-            if not time_data:
-                return 100, 100
-            
-            max_time = max(time_data)
-            return max_time, max_time
-        except Exception as e:
-            logger.error(f"Error updating time input max values: {e}")
-            return 100, 100
+
 
 
 # Enhanced vitalDSP Integration Functions
@@ -3767,25 +3890,25 @@ def get_vitaldsp_transforms(signal_data, sampling_freq, transform_options, signa
                 else:
                     dominant_freq = 0
                 
-                mapped_results["fourier_dominant_freq"] = float(dominant_freq)
+                mapped_results["fourier_peak"] = float(dominant_freq)
                 
             except ImportError:
                 fft_result = np.fft.fft(signal_data)
                 fft_magnitude = np.abs(fft_result)
                 if len(fft_magnitude) > 1:
                     dominant_freq_idx = np.argmax(fft_magnitude[1:len(fft_magnitude)//2]) + 1
-                    mapped_results["fourier_dominant_freq"] = dominant_freq_idx * sampling_freq / len(signal_data)
+                    mapped_results["fourier_peak"] = dominant_freq_idx * sampling_freq / len(signal_data)
                 else:
-                    mapped_results["fourier_dominant_freq"] = 0
+                    mapped_results["fourier_peak"] = 0
             except Exception as e:
                 logger.warning(f"vitalDSP fourier transform failed: {e}")
                 fft_result = np.fft.fft(signal_data)
                 fft_magnitude = np.abs(fft_result)
                 if len(fft_magnitude) > 1:
                     dominant_freq_idx = np.argmax(fft_magnitude[1:len(fft_magnitude)//2]) + 1
-                    mapped_results["fourier_dominant_freq"] = dominant_freq_idx * sampling_freq / len(signal_data)
+                    mapped_results["fourier_peak"] = dominant_freq_idx * sampling_freq / len(signal_data)
                 else:
-                    mapped_results["fourier_dominant_freq"] = 0
+                    mapped_results["fourier_peak"] = 0
         
         if "hilbert" in transform_options:
             try:
@@ -5398,82 +5521,7 @@ def create_comprehensive_dashboard(time_data, signal_data, signal_type, sampling
             logger.error(f"Error updating respiratory time slider range: {e}")
             return 0, 100, [0, 10]
 
-    # ============================================================================
-    # RESPIRATORY ANALYSIS HELPER FUNCTIONS
-    # ============================================================================
-    
-    def detect_respiratory_signal_type(signal_data, sampling_freq):
-        """Auto-detect if signal is respiratory or cardiac based on frequency content."""
-        try:
-            # Compute FFT
-            fft_result = np.fft.fft(signal_data)
-            fft_freq = np.fft.fftfreq(len(signal_data), 1/sampling_freq)
-            
-            # Focus on positive frequencies
-            positive_mask = fft_freq > 0
-            fft_freq = fft_freq[positive_mask]
-            fft_magnitude = np.abs(fft_result[positive_mask])
-            
-            # Find dominant frequency
-            dominant_idx = np.argmax(fft_magnitude)
-            dominant_freq = fft_freq[dominant_idx]
-            
-            # Respiratory signals typically have lower frequencies (0.1-0.5 Hz)
-            # Cardiac signals typically have higher frequencies (0.8-2.0 Hz)
-            if dominant_freq < 0.5:
-                return "respiratory"
-            else:
-                return "cardiac"
-        except:
-            return "unknown"
 
-    def create_respiratory_signal_plot(signal_data, time_axis, sampling_freq, signal_type, 
-                                      estimation_methods, preprocessing_options, low_cut, high_cut):
-        """Create the main respiratory signal plot with annotations."""
-        try:
-            fig = go.Figure()
-            
-            # Add main signal
-            fig.add_trace(go.Scatter(
-                x=time_axis,
-                y=signal_data,
-                mode='lines',
-                name=f'{signal_type.title()} Signal',
-                line=dict(color='blue', width=1)
-            ))
-            
-            # Add preprocessing info if applied
-            if preprocessing_options and any(preprocessing_options):
-                fig.add_trace(go.Scatter(
-                    x=time_axis,
-                    y=signal_data,  # This would be the preprocessed signal in real implementation
-                    mode='lines',
-                    name='Preprocessed Signal',
-                    line=dict(color='red', width=1, dash='dash')
-                ))
-            
-            # Add filter frequency lines if specified
-            if low_cut:
-                fig.add_hline(y=np.min(signal_data), line_dash="dot", line_color="green",
-                             annotation_text=f"Low Cut: {low_cut} Hz")
-            if high_cut:
-                fig.add_hline(y=np.max(signal_data), line_dash="dot", line_color="orange",
-                             annotation_text=f"High Cut: {high_cut} Hz")
-            
-            fig.update_layout(
-                title=f"Respiratory Signal Analysis - {signal_type.title()}",
-                xaxis_title="Time (seconds)",
-                yaxis_title="Amplitude",
-                showlegend=True,
-                height=400,
-                plot_bgcolor='white',
-                margin=dict(l=60, r=60, t=80, b=60)
-            )
-            
-            return fig
-        except Exception as e:
-            logger.error(f"Error creating respiratory signal plot: {e}")
-            return create_empty_figure()
 
 def generate_comprehensive_respiratory_analysis(signal_data, time_axis, sampling_freq, 
                                               signal_type, estimation_methods, advanced_options,
@@ -5621,14 +5669,14 @@ def generate_comprehensive_respiratory_analysis(signal_data, time_axis, sampling
             results.append(html.H6("Analysis Status"))
             results.append(html.P("vitalDSP respiratory modules not available for detailed analysis"))
         
-        return html.Div(results)
+        return results
     except Exception as e:
         logger.error(f"Error generating respiratory analysis results: {e}")
         return html.Div([html.H5("Error"), html.P(f"Failed to generate results: {str(e)}")])
 
 def create_comprehensive_respiratory_plots(signal_data, time_axis, sampling_freq, 
-                                         signal_type, estimation_methods, advanced_options,
-                                         preprocessing_options, low_cut, high_cut):
+                                         signal_type="respiratory", estimation_methods=None, advanced_options=None,
+                                         preprocessing_options=None, low_cut=None, high_cut=None):
         """Create comprehensive respiratory analysis plots."""
         try:
             # Create subplots
