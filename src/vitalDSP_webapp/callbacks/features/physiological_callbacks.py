@@ -160,6 +160,265 @@ def register_physiological_callbacks(app):
     # Register additional callbacks for enhanced features
     register_additional_physiological_callbacks(app)
     
+    # Register respiratory analysis callbacks
+    @app.callback(
+        [Output("resp-main-plot", "figure"),
+         Output("resp-analysis-results", "children"),
+         Output("resp-analysis-plots", "figure"),
+         Output("resp-data-store", "data"),
+         Output("resp-features-store", "data")],
+        [Input("url", "pathname"),
+         Input("resp-analyze-btn", "n_clicks"),
+         Input("resp-time-range-slider", "value"),
+         Input("resp-btn-nudge-m10", "n_clicks"),
+         Input("resp-btn-nudge-m1", "n_clicks"),
+         Input("resp-btn-nudge-p1", "n_clicks"),
+         Input("resp-btn-nudge-p10", "n_clicks")],
+        [State("resp-start-time", "value"),
+         State("resp-end-time", "value"),
+         State("resp-signal-type", "value"),
+         State("resp-estimation-methods", "value"),
+         State("resp-advanced-options", "value"),
+         State("resp-preprocessing-options", "value"),
+         State("resp-low-cut", "value"),
+         State("resp-high-cut", "value"),
+         State("resp-min-breath-duration", "value"),
+         State("resp-max-breath-duration", "value")]
+    )
+    def respiratory_analysis_callback(pathname, n_clicks, slider_value, nudge_m10, nudge_m1, nudge_p1, nudge_p10,
+                                   start_time, end_time, signal_type, estimation_methods, advanced_options,
+                                   preprocessing_options, low_cut, high_cut, min_breath_duration, max_breath_duration):
+        """Comprehensive respiratory rate analysis using all vitalDSP respiratory features."""
+        ctx = callback_context
+        
+        # Determine what triggered this callback
+        if not ctx.triggered:
+            logger.warning("No context triggered - raising PreventUpdate")
+            raise PreventUpdate
+        
+        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        logger.info(f"=== RESPIRATORY ANALYSIS CALLBACK TRIGGERED ===")
+        logger.info(f"Trigger ID: {trigger_id}")
+        logger.info(f"Pathname: {pathname}")
+        logger.info(f"Signal type: {signal_type}")
+        logger.info(f"Estimation methods: {estimation_methods}")
+        logger.info(f"Advanced options: {advanced_options}")
+        logger.info(f"Preprocessing options: {preprocessing_options}")
+        
+        # Only run this when we're on the respiratory page
+        if pathname != "/respiratory":
+            logger.info("Not on respiratory page, returning empty figures")
+            return create_empty_figure(), "Navigate to respiratory page to analyze respiratory signals.", create_empty_figure(), None, None
+        
+        # Handle first-time loading
+        if not ctx.triggered or ctx.triggered[0]["prop_id"].split(".")[0] == "url":
+            logger.info("First time loading respiratory page, attempting to load data")
+        
+        try:
+            # Get data from the data service
+            logger.info("Attempting to get data service...")
+            from vitalDSP_webapp.services.data.data_service import get_data_service
+            data_service = get_data_service()
+            logger.info("Data service retrieved successfully")
+            
+            # Get the most recent data
+            logger.info("Retrieving all data from service...")
+            all_data = data_service.get_all_data()
+            logger.info(f"All data keys: {list(all_data.keys()) if all_data else 'None'}")
+            
+            if not all_data:
+                logger.warning("No data found in service")
+                return create_empty_figure(), "No data available. Please upload and process data first.", create_empty_figure(), None, None
+            
+            # Get the most recent data entry
+            latest_data_id = list(all_data.keys())[-1]
+            latest_data = all_data[latest_data_id]
+            logger.info(f"Latest data ID: {latest_data_id}")
+            logger.info(f"Latest data info: {latest_data.get('info', 'No info')}")
+            
+            # Get column mapping
+            logger.info("Retrieving column mapping...")
+            column_mapping = data_service.get_column_mapping(latest_data_id)
+            logger.info(f"Column mapping: {column_mapping}")
+            
+            if not column_mapping:
+                logger.warning("Data has not been processed yet - no column mapping found")
+                return create_empty_figure(), "Please process your data on the Upload page first (configure column mapping)", create_empty_figure(), None, None
+                
+            # Get the actual data
+            logger.info("Retrieving data frame...")
+            df = data_service.get_data(latest_data_id)
+            logger.info(f"Data frame shape: {df.shape if df is not None else 'None'}")
+            logger.info(f"Data frame columns: {list(df.columns) if df is not None else 'None'}")
+            
+            if df is None or df.empty:
+                logger.warning("Data frame is empty")
+                return create_empty_figure(), "Data is empty or corrupted.", create_empty_figure(), None, None
+            
+            # Get sampling frequency from the data info
+            sampling_freq = latest_data.get('info', {}).get('sampling_freq', 1000)
+            logger.info(f"Sampling frequency: {sampling_freq}")
+            
+            # Handle time window adjustments for nudge buttons
+            if trigger_id in ["resp-btn-nudge-m10", "resp-btn-nudge-m1", "resp-btn-nudge-p1", "resp-btn-nudge-p10"]:
+                if not start_time or not end_time:
+                    start_time, end_time = 0, 10
+                    
+                if trigger_id == "resp-btn-nudge-m10":
+                    start_time = max(0, start_time - 10)
+                    end_time = max(10, end_time - 10)
+                elif trigger_id == "resp-btn-nudge-m1":
+                    start_time = max(0, start_time - 1)
+                    end_time = max(1, end_time - 1)
+                elif trigger_id == "resp-btn-nudge-p1":
+                    start_time = start_time + 1
+                    end_time = end_time + 1
+                elif trigger_id == "resp-btn-nudge-p10":
+                    start_time = start_time + 10
+                    end_time = end_time + 10
+                
+                logger.info(f"Time window adjusted: {start_time} to {end_time}")
+            
+            # Set default time window if not specified
+            if not start_time or not end_time:
+                start_time, end_time = 0, 10
+                logger.info(f"Using default time window: {start_time} to {end_time}")
+            
+            # Apply time window
+            start_sample = int(start_time * sampling_freq)
+            end_sample = int(end_time * sampling_freq)
+            windowed_data = df.iloc[start_sample:end_sample].copy()
+            
+            # Create time axis
+            time_axis = np.arange(len(windowed_data)) / sampling_freq
+            
+            # Get signal column
+            signal_column = column_mapping.get('signal')
+            logger.info(f"Signal column from mapping: {signal_column}")
+            logger.info(f"Available columns in windowed data: {list(windowed_data.columns)}")
+            
+            if not signal_column or signal_column not in windowed_data.columns:
+                logger.warning(f"Signal column {signal_column} not found in data")
+                return create_empty_figure(), "Signal column not found in data.", create_empty_figure(), None, None
+            
+            signal_data = windowed_data[signal_column].values
+            logger.info(f"Signal data shape: {signal_data.shape}")
+            logger.info(f"Signal data range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
+            logger.info(f"Signal data mean: {np.mean(signal_data):.3f}")
+            
+            # Auto-detect signal type if needed
+            if signal_type == "auto":
+                logger.info("Auto-detecting signal type...")
+                signal_type = detect_respiratory_signal_type(signal_data, sampling_freq)
+                logger.info(f"Auto-detected signal type: {signal_type}")
+            
+            logger.info(f"Final signal type: {signal_type}")
+            logger.info(f"Estimation methods: {estimation_methods}")
+            logger.info(f"Advanced options: {advanced_options}")
+            logger.info(f"Preprocessing options: {preprocessing_options}")
+            
+            # Create main respiratory signal plot with annotations
+            logger.info("Creating main respiratory signal plot with annotations...")
+            main_plot = create_respiratory_signal_plot(signal_data, time_axis, sampling_freq, signal_type, 
+                                                     estimation_methods, preprocessing_options, low_cut, high_cut)
+            logger.info("Main respiratory signal plot created successfully")
+            
+            # Generate comprehensive respiratory analysis results
+            logger.info("Generating comprehensive respiratory analysis results...")
+            analysis_results = generate_comprehensive_respiratory_analysis(signal_data, time_axis, sampling_freq, 
+                                                                        signal_type, estimation_methods, advanced_options,
+                                                                        preprocessing_options, low_cut, high_cut,
+                                                                        min_breath_duration, max_breath_duration)
+            logger.info("Respiratory analysis results generated successfully")
+            
+            # Create respiratory analysis plots
+            logger.info("Creating respiratory analysis plots...")
+            analysis_plots = create_comprehensive_respiratory_plots(signal_data, time_axis, sampling_freq, 
+                                                                  signal_type, estimation_methods, advanced_options,
+                                                                  preprocessing_options, low_cut, high_cut)
+            logger.info("Respiratory analysis plots created successfully")
+            
+            # Store processed data
+            resp_data = {
+                "signal_data": signal_data.tolist(),
+                "time_axis": time_axis.tolist(),
+                "sampling_freq": sampling_freq,
+                "window": [start_time, end_time],
+                "signal_type": signal_type,
+                "estimation_methods": estimation_methods
+            }
+            
+            resp_features = {
+                "advanced_options": advanced_options,
+                "preprocessing_options": preprocessing_options,
+                "filter_params": {"low_cut": low_cut, "high_cut": high_cut},
+                "breath_constraints": {"min_duration": min_breath_duration, "max_duration": max_breath_duration}
+            }
+            
+            logger.info("Respiratory analysis completed successfully")
+            return main_plot, analysis_results, analysis_plots, resp_data, resp_features
+            
+        except Exception as e:
+            logger.error(f"Error in respiratory analysis callback: {e}")
+            import traceback
+            traceback.print_exc()
+            return create_empty_figure(), f"Error in analysis: {str(e)}", create_empty_figure(), None, None
+    
+    @app.callback(
+        [Output("resp-start-time", "value"),
+         Output("resp-end-time", "value")],
+        [Input("resp-time-range-slider", "value")]
+    )
+    def update_resp_time_inputs(slider_value):
+        """Update time input fields based on slider."""
+        if not slider_value:
+            return no_update, no_update
+        return slider_value[0], slider_value[1]
+    
+    @app.callback(
+        [Output("resp-time-range-slider", "min"),
+         Output("resp-time-range-slider", "max"),
+         Output("resp-time-range-slider", "value")],
+        [Input("url", "pathname")]
+    )
+    def update_resp_time_slider_range(pathname):
+        """Update time slider range based on data duration."""
+        logger.info("=== UPDATE RESP TIME SLIDER RANGE ===")
+        logger.info(f"Pathname: {pathname}")
+        
+        # Only run this when we're on the respiratory page
+        if pathname != "/respiratory":
+            return 0, 100, [0, 10]
+        
+        try:
+            # Get data from the data service
+            from vitalDSP_webapp.services.data.data_service import get_data_service
+            data_service = get_data_service()
+            
+            # Get the most recent data
+            all_data = data_service.get_all_data()
+            if not all_data:
+                return 0, 100, [0, 10]
+            
+            latest_data_id = list(all_data.keys())[-1]
+            latest_data = all_data[latest_data_id]
+            
+            # Get sampling frequency and calculate duration
+            sampling_freq = latest_data.get('info', {}).get('sampling_freq', 1000)
+            df = data_service.get_data(latest_data_id)
+            
+            if df is None or df.empty:
+                return 0, 100, [0, 10]
+            
+            duration = len(df) / sampling_freq
+            max_time = int(duration)
+            
+            return 0, max_time, [0, min(10, max_time)]
+            
+        except Exception as e:
+            logger.error(f"Error updating respiratory time slider range: {e}")
+            return 0, 100, [0, 10]
+    
     @app.callback(
         [Output("physio-main-signal-plot", "figure"),
          Output("physio-analysis-results", "children"),
@@ -5258,268 +5517,6 @@ def create_comprehensive_dashboard(time_data, signal_data, signal_type, sampling
         except Exception as e:
             logger.error(f"Error creating comprehensive dashboard: {e}")
             return no_update
-
-    # ============================================================================
-    # RESPIRATORY RATE ANALYSIS CALLBACKS
-    # ============================================================================
-    
-    @app.callback(
-        [Output("resp-main-plot", "figure"),
-         Output("resp-analysis-results", "children"),
-         Output("resp-analysis-plots", "figure"),
-         Output("resp-data-store", "data"),
-         Output("resp-features-store", "data")],
-        [Input("url", "pathname"),
-         Input("resp-analyze-btn", "n_clicks"),
-         Input("resp-time-range-slider", "value"),
-         Input("resp-btn-nudge-m10", "n_clicks"),
-         Input("resp-btn-nudge-m1", "n_clicks"),
-         Input("resp-btn-nudge-p1", "n_clicks"),
-         Input("resp-btn-nudge-p10", "n_clicks")],
-        [State("resp-start-time", "value"),
-         State("resp-end-time", "value"),
-         State("resp-signal-type", "value"),
-         State("resp-estimation-methods", "value"),
-         State("resp-advanced-options", "value"),
-         State("resp-preprocessing-options", "value"),
-         State("resp-low-cut", "value"),
-         State("resp-high-cut", "value"),
-         State("resp-min-breath-duration", "value"),
-         State("resp-max-breath-duration", "value")]
-    )
-    def respiratory_analysis_callback(pathname, n_clicks, slider_value, nudge_m10, nudge_m1, nudge_p1, nudge_p10,
-                                   start_time, end_time, signal_type, estimation_methods, advanced_options,
-                                   preprocessing_options, low_cut, high_cut, min_breath_duration, max_breath_duration):
-        """Comprehensive respiratory rate analysis using all vitalDSP respiratory features."""
-        ctx = callback_context
-        
-        # Determine what triggered this callback
-        if not ctx.triggered:
-            logger.warning("No context triggered - raising PreventUpdate")
-            raise PreventUpdate
-        
-        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-        logger.info(f"=== RESPIRATORY ANALYSIS CALLBACK TRIGGERED ===")
-        logger.info(f"Trigger ID: {trigger_id}")
-        logger.info(f"Pathname: {pathname}")
-        logger.info(f"Signal type: {signal_type}")
-        logger.info(f"Estimation methods: {estimation_methods}")
-        logger.info(f"Advanced options: {advanced_options}")
-        logger.info(f"Preprocessing options: {preprocessing_options}")
-        
-        # Only run this when we're on the respiratory page
-        if pathname != "/respiratory":
-            logger.info("Not on respiratory page, returning empty figures")
-            return create_empty_figure(), "Navigate to respiratory page to analyze respiratory signals.", create_empty_figure(), None, None
-        
-        # Handle first-time loading
-        if not ctx.triggered or ctx.triggered[0]["prop_id"].split(".")[0] == "url":
-            logger.info("First time loading respiratory page, attempting to load data")
-        
-        try:
-            # Get data from the data service
-            logger.info("Attempting to get data service...")
-            from vitalDSP_webapp.services.data.data_service import get_data_service
-            data_service = get_data_service()
-            logger.info("Data service retrieved successfully")
-            
-            # Get the most recent data
-            logger.info("Retrieving all data from service...")
-            all_data = data_service.get_all_data()
-            logger.info(f"All data keys: {list(all_data.keys()) if all_data else 'None'}")
-            
-            if not all_data:
-                logger.warning("No data found in service")
-                return create_empty_figure(), "No data available. Please upload and process data first.", create_empty_figure(), None, None
-            
-            # Get the most recent data entry
-            latest_data_id = list(all_data.keys())[-1]
-            latest_data = all_data[latest_data_id]
-            logger.info(f"Latest data ID: {latest_data_id}")
-            logger.info(f"Latest data info: {latest_data.get('info', 'No info')}")
-            
-            # Get column mapping
-            logger.info("Retrieving column mapping...")
-            column_mapping = data_service.get_column_mapping(latest_data_id)
-            logger.info(f"Column mapping: {column_mapping}")
-            
-            if not column_mapping:
-                logger.warning("Data has not been processed yet - no column mapping found")
-                return create_empty_figure(), "Please process your data on the Upload page first (configure column mapping)", create_empty_figure(), None, None
-                
-            # Get the actual data
-            logger.info("Retrieving data frame...")
-            df = data_service.get_data(latest_data_id)
-            logger.info(f"Data frame shape: {df.shape if df is not None else 'None'}")
-            logger.info(f"Data frame columns: {list(df.columns) if df is not None else 'None'}")
-            
-            if df is None or df.empty:
-                logger.warning("Data frame is empty")
-                return create_empty_figure(), "Data is empty or corrupted.", create_empty_figure(), None, None
-            
-            # Get sampling frequency from the data info
-            sampling_freq = latest_data.get('info', {}).get('sampling_freq', 1000)
-            logger.info(f"Sampling frequency: {sampling_freq}")
-            
-            # Handle time window adjustments for nudge buttons
-            if trigger_id in ["resp-btn-nudge-m10", "resp-btn-nudge-m1", "resp-btn-nudge-p1", "resp-btn-nudge-p10"]:
-                if not start_time or not end_time:
-                    start_time, end_time = 0, 10
-                    
-                if trigger_id == "resp-btn-nudge-m10":
-                    start_time = max(0, start_time - 10)
-                    end_time = max(10, end_time - 10)
-                elif trigger_id == "resp-btn-nudge-m1":
-                    start_time = max(0, start_time - 1)
-                    end_time = max(1, end_time - 1)
-                elif trigger_id == "resp-btn-nudge-p1":
-                    start_time = start_time + 1
-                    end_time = end_time + 1
-                elif trigger_id == "resp-btn-nudge-p10":
-                    start_time = start_time + 10
-                    end_time = end_time + 10
-                
-                logger.info(f"Time window adjusted: {start_time} to {end_time}")
-            
-            # Set default time window if not specified
-            if not start_time or not end_time:
-                start_time, end_time = 0, 10
-                logger.info(f"Using default time window: {start_time} to {end_time}")
-            
-            # Apply time window
-            start_sample = int(start_time * sampling_freq)
-            end_sample = int(end_time * sampling_freq)
-            windowed_data = df.iloc[start_sample:end_sample].copy()
-            
-            # Create time axis
-            time_axis = np.arange(len(windowed_data)) / sampling_freq
-            
-            # Get signal column
-            signal_column = column_mapping.get('signal')
-            logger.info(f"Signal column from mapping: {signal_column}")
-            logger.info(f"Available columns in windowed data: {list(windowed_data.columns)}")
-            
-            if not signal_column or signal_column not in windowed_data.columns:
-                logger.warning(f"Signal column {signal_column} not found in data")
-                return create_empty_figure(), "Signal column not found in data.", create_empty_figure(), None, None
-            
-            signal_data = windowed_data[signal_column].values
-            logger.info(f"Signal data shape: {signal_data.shape}")
-            logger.info(f"Signal data range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
-            logger.info(f"Signal data mean: {np.mean(signal_data):.3f}")
-            
-            # Auto-detect signal type if needed
-            if signal_type == "auto":
-                logger.info("Auto-detecting signal type...")
-                signal_type = detect_respiratory_signal_type(signal_data, sampling_freq)
-                logger.info(f"Auto-detected signal type: {signal_type}")
-            
-            logger.info(f"Final signal type: {signal_type}")
-            logger.info(f"Estimation methods: {estimation_methods}")
-            logger.info(f"Advanced options: {advanced_options}")
-            logger.info(f"Preprocessing options: {preprocessing_options}")
-            
-            # Create main respiratory signal plot with annotations
-            logger.info("Creating main respiratory signal plot with annotations...")
-            main_plot = create_respiratory_signal_plot(signal_data, time_axis, sampling_freq, signal_type, 
-                                                     estimation_methods, preprocessing_options, low_cut, high_cut)
-            logger.info("Main respiratory signal plot created successfully")
-            
-            # Generate comprehensive respiratory analysis results
-            logger.info("Generating comprehensive respiratory analysis results...")
-            analysis_results = generate_comprehensive_respiratory_analysis(signal_data, time_axis, sampling_freq, 
-                                                                        signal_type, estimation_methods, advanced_options,
-                                                                        preprocessing_options, low_cut, high_cut,
-                                                                        min_breath_duration, max_breath_duration)
-            logger.info("Respiratory analysis results generated successfully")
-            
-            # Create respiratory analysis plots
-            logger.info("Creating respiratory analysis plots...")
-            analysis_plots = create_comprehensive_respiratory_plots(signal_data, time_axis, sampling_freq, 
-                                                                  signal_type, estimation_methods, advanced_options,
-                                                                  preprocessing_options, low_cut, high_cut)
-            logger.info("Respiratory analysis plots created successfully")
-            
-            # Store processed data
-            resp_data = {
-                "signal_data": signal_data.tolist(),
-                "time_axis": time_axis.tolist(),
-                "sampling_freq": sampling_freq,
-                "window": [start_time, end_time],
-                "signal_type": signal_type,
-                "estimation_methods": estimation_methods
-            }
-            
-            resp_features = {
-                "advanced_options": advanced_options,
-                "preprocessing_options": preprocessing_options,
-                "filter_params": {"low_cut": low_cut, "high_cut": high_cut},
-                "breath_constraints": {"min_duration": min_breath_duration, "max_duration": max_breath_duration}
-            }
-            
-            logger.info("Respiratory analysis completed successfully")
-            return main_plot, analysis_results, analysis_plots, resp_data, resp_features
-            
-        except Exception as e:
-            logger.error(f"Error in respiratory analysis callback: {e}")
-            import traceback
-            traceback.print_exc()
-            return create_empty_figure(), f"Error in analysis: {str(e)}", create_empty_figure(), None, None
-    
-    @app.callback(
-        [Output("resp-start-time", "value"),
-         Output("resp-end-time", "value")],
-        [Input("resp-time-range-slider", "value")]
-    )
-    def update_resp_time_inputs(slider_value):
-        """Update time input fields based on slider."""
-        if not slider_value:
-            return no_update, no_update
-        return slider_value[0], slider_value[1]
-    
-    @app.callback(
-        [Output("resp-time-range-slider", "min"),
-         Output("resp-time-range-slider", "max"),
-         Output("resp-time-range-slider", "value")],
-        [Input("url", "pathname")]
-    )
-    def update_resp_time_slider_range(pathname):
-        """Update time slider range based on data duration."""
-        logger.info("=== UPDATE RESP TIME SLIDER RANGE ===")
-        logger.info(f"Pathname: {pathname}")
-        
-        # Only run this when we're on the respiratory page
-        if pathname != "/respiratory":
-            return 0, 100, [0, 10]
-        
-        try:
-            # Get data from the data service
-            from vitalDSP_webapp.services.data.data_service import get_data_service
-            data_service = get_data_service()
-            
-            # Get the most recent data
-            all_data = data_service.get_all_data()
-            if not all_data:
-                return 0, 100, [0, 10]
-            
-            latest_data_id = list(all_data.keys())[-1]
-            latest_data = all_data[latest_data_id]
-            
-            # Get sampling frequency and calculate duration
-            sampling_freq = latest_data.get('info', {}).get('sampling_freq', 1000)
-            df = data_service.get_data(latest_data_id)
-            
-            if df is None or df.empty:
-                return 0, 100, [0, 10]
-            
-            duration = len(df) / sampling_freq
-            max_time = int(duration)
-            
-            return 0, max_time, [0, min(10, max_time)]
-            
-        except Exception as e:
-            logger.error(f"Error updating respiratory time slider range: {e}")
-            return 0, 100, [0, 10]
 
 
 

@@ -11,6 +11,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 import importlib.util
+from dash.exceptions import PreventUpdate
 
 
 # --- Load the module even if package imports aren't available ---
@@ -350,7 +351,8 @@ def test_respiratory_analysis_callback_happy_path(registered_callbacks):
         signal_type="auto",
         estimation_methods=["peak","fft","autocorr"],
         advanced_options=["variability","power_bands"],
-        preprocessing_options=["detrend","smooth"]
+        preprocessing_options=["detrend","smooth"],
+        low_cut=None, high_cut=None, min_breath_duration=None, max_breath_duration=None
     )
     assert isinstance(out[0], go.Figure) and isinstance(out[2], go.Figure)
 
