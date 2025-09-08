@@ -309,52 +309,8 @@ def test_update_additional_analysis_section_empty_and_filled(registered_callback
 
 # -------- Respiratory page callbacks --------
 
-def test_resp_time_inputs_and_range(registered_callbacks):
-    # time inputs mirror slider
-    upd_inputs = registered_callbacks["update_resp_time_inputs"][0]
-    assert upd_inputs([2, 12]) == (2, 12)
-    assert upd_inputs(None) == (physio.no_update, physio.no_update)
-
-    # time range pulls from service -> returns (min,max,[range])
-    fs = 50
-    t, s = sine(fs=fs, sec=20, f=0.3)
-    df = pd.DataFrame({"t": t, "resp": s})
-    all_data = {"R1": {"info": {"sampling_freq": fs}}}
-
-    install_fake_data_service(FakeService(all_data=all_data, df=df, mapping={"time": "t", "signal": "resp"}))
-    upd_range = registered_callbacks["update_resp_time_slider_range"][0]
-    # not on /respiratory -> default (0,100,[0,10])
-    assert upd_range("/") == (0, 100, [0, 10])
-    # respiratory route -> compute duration
-    minv, maxv, rng = upd_range("/respiratory")
-    assert minv == 0 and maxv > 0 and isinstance(rng, list)
-
-
-def test_respiratory_analysis_callback_happy_path(registered_callbacks):
-    fs = 50
-    t, s = sine(fs=fs, sec=30, f=0.33, noise=0.02)
-    df = pd.DataFrame({"t": t, "resp": s})
-    all_data = {"R1": {"info": {"sampling_freq": fs}}}
-    install_fake_data_service(FakeService(all_data=all_data, df=df, mapping={"time": "t", "signal": "resp"}))
-
-    # Simulate click
-    class Ctx: triggered = [{"prop_id": "resp-analyze-btn.n_clicks"}]
-    physio.callback_context = Ctx()
-
-    fn = registered_callbacks["respiratory_analysis_callback"][0]
-    out = fn(
-        pathname="/respiratory",
-        n_clicks=1,
-        slider_value=[0, 10],
-        nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
-        start_time=0, end_time=10,
-        signal_type="auto",
-        estimation_methods=["peak","fft","autocorr"],
-        advanced_options=["variability","power_bands"],
-        preprocessing_options=["detrend","smooth"],
-        low_cut=None, high_cut=None, min_breath_duration=None, max_breath_duration=None
-    )
-    assert isinstance(out[0], go.Figure) and isinstance(out[2], go.Figure)
+# Note: Respiratory callbacks have been moved to analysis.respiratory_callbacks
+# These tests are no longer applicable to the physiological callbacks module
 
 
 # -------- Peak-annotation branch in main signal plot (height/interval arrows + HR text) --------

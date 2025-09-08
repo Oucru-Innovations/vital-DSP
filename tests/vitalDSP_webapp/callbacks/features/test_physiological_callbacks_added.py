@@ -17,6 +17,12 @@ if SRC_DIR not in sys.path:
 
 # Try package path first; fall back to the uploaded single-file module
 from vitalDSP_webapp.callbacks.features import physiological_callbacks as physio
+from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import (
+    detect_respiratory_signal_type,
+    create_respiratory_signal_plot,
+    generate_comprehensive_respiratory_analysis,
+    create_comprehensive_respiratory_plots,
+)
 from vitalDSP_webapp.callbacks.features.physiological_callbacks import (
     # high-level
     perform_physiological_analysis,
@@ -54,11 +60,7 @@ from vitalDSP_webapp.callbacks.features.physiological_callbacks import (
     create_hilbert_plots,
     create_comprehensive_dashboard,
 
-    # comprehensive dashboards (respiratory suite)
-    detect_respiratory_signal_type,
-    create_respiratory_signal_plot,
-    generate_comprehensive_respiratory_analysis,
-    create_comprehensive_respiratory_plots,
+    # comprehensive dashboards (respiratory suite) - moved to analysis.respiratory_callbacks
 
     # time slider helpers
     update_time_slider_marks,
@@ -875,7 +877,7 @@ def test_detect_respiratory_signal_type_and_plot():
     t, s = mk_sine(fs, 20, 0.25, noise=0.01)
     guess = detect_respiratory_signal_type(s, fs)
     assert guess in ("respiratory","ppg","ecg")
-    fig = create_respiratory_signal_plot(t, s, fs)
+    fig = create_respiratory_signal_plot(s, t, fs, "respiratory", [], [], 0.1, 0.8)
     assert isinstance(fig, go.Figure)
 
 def test_generate_comprehensive_respiratory_analysis_and_plots():
@@ -891,13 +893,16 @@ def test_generate_comprehensive_respiratory_analysis_and_plots():
         low_cut=0.1, high_cut=0.8,
         min_breath_duration=1.0, max_breath_duration=10.0
     )
-    assert isinstance(result_children, list) and len(result_children) > 0
+    # The function returns a Div object, not a list
+    assert hasattr(result_children, 'children') and len(result_children.children) > 0
 
     # comprehensive respiratory figure
     fig = create_comprehensive_respiratory_plots(
-        s, t, fs,
-        estimation_methods=["peak","fft","autocorr"],
-        advanced_options=["variability","power_bands"]
+        s, t, fs, "respiratory",
+        ["peak","fft","autocorr"],
+        ["variability","power_bands"],
+        ["detrend","smooth"],
+        0.1, 0.8
     )
     assert isinstance(fig, go.Figure)
 

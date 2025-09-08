@@ -877,7 +877,7 @@ class TestPhysiologicalErrorHandling:
 class TestRespiratorySignalPlot:
     def test_respiratory_plot_preprocessing_filter(self):
         """Test preprocessing with filter (lines 589-616)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import create_respiratory_signal_plot
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import create_respiratory_signal_plot
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data) + 0.5 * np.random.randn(1000)
         sampling_freq = 100
@@ -890,7 +890,7 @@ class TestRespiratorySignalPlot:
 
     def test_respiratory_plot_method_peak_detection(self):
         """Test peak detection method (lines 612-613)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import create_respiratory_signal_plot
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import create_respiratory_signal_plot
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
@@ -903,7 +903,7 @@ class TestRespiratorySignalPlot:
 
     def test_respiratory_plot_estimation_methods(self):
         """Test adding estimation methods to plot (lines 589-616)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import create_respiratory_signal_plot
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import create_respiratory_signal_plot
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
@@ -917,7 +917,7 @@ class TestRespiratorySignalPlot:
 
     def test_respiratory_plot_with_preprocessing(self):
         """Test respiratory signal plot with preprocessing (lines 572-573, 589-616)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import create_respiratory_signal_plot
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import create_respiratory_signal_plot
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
@@ -932,7 +932,7 @@ class TestRespiratorySignalPlot:
 
     def test_respiratory_plot_with_filters(self):
         """Test respiratory signal plot with filter annotations (lines 589-616)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import create_respiratory_signal_plot
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import create_respiratory_signal_plot
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
@@ -947,7 +947,7 @@ class TestRespiratorySignalPlot:
 
     def test_respiratory_plot_no_preprocessing(self):
         """Test respiratory plot without preprocessing (lines 572-573, 589-616)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import create_respiratory_signal_plot
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import create_respiratory_signal_plot
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
@@ -961,7 +961,7 @@ class TestRespiratorySignalPlot:
 
     def test_respiratory_plot_invalid_methods(self):
         """Test respiratory plot with invalid estimation methods (lines 612-613)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import create_respiratory_signal_plot
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import create_respiratory_signal_plot
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
@@ -975,7 +975,7 @@ class TestRespiratorySignalPlot:
 class TestComprehensiveRespiratoryAnalysis:
     def test_respiratory_analysis_no_options(self):
         """Test analysis with no options (lines 664-736)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import generate_comprehensive_respiratory_analysis
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import generate_comprehensive_respiratory_analysis
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
@@ -992,7 +992,7 @@ class TestComprehensiveRespiratoryAnalysis:
         
     def test_respiratory_analysis_multimodal(self):
         """Test multimodal option (lines 664-736)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import generate_comprehensive_respiratory_analysis
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import generate_comprehensive_respiratory_analysis
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
@@ -1009,7 +1009,7 @@ class TestComprehensiveRespiratoryAnalysis:
 
     def test_respiratory_analysis_failure(self):
         """Test failure in advanced option (lines 664-736)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import generate_comprehensive_respiratory_analysis
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import generate_comprehensive_respiratory_analysis
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
@@ -1027,7 +1027,7 @@ class TestComprehensiveRespiratoryAnalysis:
 
     def test_respiratory_advanced_options(self):
         """Test advanced options in respiratory analysis (lines 664-736)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import generate_comprehensive_respiratory_analysis
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import generate_comprehensive_respiratory_analysis
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
@@ -1044,7 +1044,7 @@ class TestComprehensiveRespiratoryAnalysis:
 
     def test_respiratory_analysis_with_all_methods(self):
         """Test comprehensive respiratory analysis with all estimation methods (lines 664-736)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import generate_comprehensive_respiratory_analysis
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import generate_comprehensive_respiratory_analysis
         time_data = np.linspace(0, 60, 6000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
@@ -1066,7 +1066,7 @@ class TestComprehensiveRespiratoryAnalysis:
 
     def test_respiratory_analysis_import_error(self):
         """Test respiratory analysis with ImportError (lines 664-736)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import generate_comprehensive_respiratory_analysis
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import generate_comprehensive_respiratory_analysis
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
@@ -1084,7 +1084,7 @@ class TestComprehensiveRespiratoryAnalysis:
 
     def test_respiratory_analysis_exception_in_method(self):
         """Test respiratory analysis with exception in method (lines 664-736)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import generate_comprehensive_respiratory_analysis
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import generate_comprehensive_respiratory_analysis
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
@@ -1146,7 +1146,7 @@ class TestAdvancedFeatureExtraction:
 class TestRespiratorySignalPlot:
     def test_respiratory_plot_no_methods(self):
         """Test plot with no estimation methods (lines 589-616)."""
-        from vitalDSP_webapp.callbacks.features.respiratory_callbacks import create_respiratory_signal_plot
+        from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import create_respiratory_signal_plot
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100

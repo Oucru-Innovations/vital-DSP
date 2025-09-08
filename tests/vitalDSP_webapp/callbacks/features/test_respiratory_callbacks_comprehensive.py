@@ -15,7 +15,7 @@ import dash_bootstrap_components as dbc
 
 # Try to import the module under test
 try:
-    from vitalDSP_webapp.callbacks.features.respiratory_callbacks import (
+    from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import (
         create_empty_figure,
         detect_respiratory_signal_type,
         create_respiratory_signal_plot,
