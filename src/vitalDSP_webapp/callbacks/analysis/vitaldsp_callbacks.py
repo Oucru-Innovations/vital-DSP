@@ -479,7 +479,7 @@ def create_filtered_signal_plot(
                     hovertemplate="<b>Time:</b> %{x}<br><b>Filtered:</b> %{y}<extra></extra>",
                 )
             )
-            
+
             # Use the filtered signal for critical points detection
             signal_for_analysis = filtered_values
         else:

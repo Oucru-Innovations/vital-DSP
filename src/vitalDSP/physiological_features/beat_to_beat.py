@@ -101,17 +101,17 @@ class BeatToBeatAnalysis:
             np.array: The corrected R-R or P-P intervals after resampling.
         """
         num_points = len(rr_intervals)
-        
+
         # Avoid division by zero and ensure we have a valid target length
         if self.fs <= 0:
             # If fs is invalid, return original intervals
             return rr_intervals
-            
+
         target_length = num_points * new_rate // self.fs
         if target_length <= 0:
             # If target length is invalid, return original intervals
             return rr_intervals
-            
+
         try:
             resampled_intervals = resample(rr_intervals, target_length)
             return resampled_intervals
