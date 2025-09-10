@@ -1,8 +1,11 @@
 import numpy as np
+import pandas as pd
+import os
 
 # from scipy.spatial.distance import cdist
 from scipy.spatial import KDTree
 from scipy.spatial import distance as sp_distance
+
 
 class NonlinearFeatures:
     """
@@ -85,7 +88,9 @@ class NonlinearFeatures:
                 return 0.0
             tree = KDTree(embedded)
             # Use <= tol; adjust tol slightly if strict < is needed, but for practicality, use <=
-            counts = tree.query_ball_point(embedded, r=tol, p=np.inf, return_length=True)
+            counts = tree.query_ball_point(
+                embedded, r=tol, p=np.inf, return_length=True
+            )
             total_double = np.sum(counts) - n  # Subtract self-matches
             num_pairs = n * (n - 1) / 2.0
             return total_double / (2.0 * num_pairs) if num_pairs > 0 else 0.0
@@ -480,14 +485,13 @@ class NonlinearFeatures:
             "laminarity": laminarity,
         }
 
-import pandas as pd
-import os
+
 if __name__ == "__main__":
     ppg_signal = np.random.rand(1000)
-    fname = '20190109T151032.026+0700_1050000_1080000.csv'
-    PATH = 'D:\Workspace\Data\\24EIa\output\sample'
-    
-    ppg_signal = pd.read_csv(os.path.join(PATH, fname))['PLETH'].values
+    fname = "20190109T151032.026+0700_1050000_1080000.csv"
+    PATH = r"D:\Workspace\Data\24EIa\output\sample"
+
+    ppg_signal = pd.read_csv(os.path.join(PATH, fname))["PLETH"].values
     fs = 100
     features = NonlinearFeatures(ppg_signal, fs)
     sample_entropy = features.compute_sample_entropy()
@@ -497,4 +501,6 @@ if __name__ == "__main__":
     dfa = features.compute_dfa()
     poincare_features = features.compute_poincare_features()
     recurrence_features = features.compute_recurrence_features()
-    print(f"Sample Entropy: {sample_entropy}, Approximate Entropy: {approximate_entropy}, Fractal Dimension: {fractal_dimension}, Lyapunov Exponent: {lyapunov_exponent}, DFA: {dfa}, Poincaré Features: {poincare_features}, Recurrence Features: {recurrence_features}")
+    print(
+        f"Sample Entropy: {sample_entropy}, Approximate Entropy: {approximate_entropy}, Fractal Dimension: {fractal_dimension}, Lyapunov Exponent: {lyapunov_exponent}, DFA: {dfa}, Poincaré Features: {poincare_features}, Recurrence Features: {recurrence_features}"
+    )

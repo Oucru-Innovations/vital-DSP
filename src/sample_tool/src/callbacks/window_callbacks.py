@@ -25,7 +25,9 @@ def register_window_callbacks(app):
         State("store_total_rows", "data"),
         prevent_initial_call=True,
     )
-    def window_controls(n_apply, nm10, nm1, np1, np10, window, start_in, end_in, total_rows):
+    def window_controls(
+        n_apply, nm10, nm1, np1, np10, window, start_in, end_in, total_rows
+    ):
         """Handle window controls and update slider accordingly."""
         ctx = callback_context
         trig = ctx.triggered[0]["prop_id"] if ctx.triggered else ""

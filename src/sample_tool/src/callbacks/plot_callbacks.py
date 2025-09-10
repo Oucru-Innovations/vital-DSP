@@ -14,9 +14,7 @@ maintainable separation of concerns.
 
 from pathlib import Path
 
-import dash
 import numpy as np
-import pandas as pd
 import plotly.graph_objects as go
 from dash import Input, Output, State, callback_context, dcc, html, no_update
 from plotly.subplots import make_subplots
@@ -146,7 +144,11 @@ class PlotManager:
         # Apply automatic decimation for display performance
         decim_eff = auto_decimation(n, 1, traces=12, cap=MAX_DISPLAY_POINTS)
         td = t[::decim_eff]
-        red_d, ir_d, waveform_d = red[::decim_eff], ir[::decim_eff], waveform[::decim_eff]
+        red_d, ir_d, waveform_d = (
+            red[::decim_eff],
+            ir[::decim_eff],
+            waveform[::decim_eff],
+        )
         red_ad, ir_ad, waveform_ad = (
             red_ac[::decim_eff],
             ir_ac[::decim_eff],
@@ -173,7 +175,9 @@ class PlotManager:
 
         return fig_raw, fig_ac
 
-    def _create_raw_plot(self, t, red, ir, waveform, red_col, ir_col, waveform_col, n, decim_eff):
+    def _create_raw_plot(
+        self, t, red, ir, waveform, red_col, ir_col, waveform_col, n, decim_eff
+    ):
         """
         Create raw signal plot with three subplots.
 
@@ -203,10 +207,14 @@ class PlotManager:
         # Add traces for all three channels
         fig.add_trace(go.Scatter(x=t, y=red, name=f"Raw {red_col}", mode="lines"), 1, 1)
         fig.add_trace(go.Scatter(x=t, y=ir, name=f"Raw {ir_col}", mode="lines"), 2, 1)
-        fig.add_trace(go.Scatter(x=t, y=waveform, name=f"Raw {waveform_col}", mode="lines"), 3, 1)
+        fig.add_trace(
+            go.Scatter(x=t, y=waveform, name=f"Raw {waveform_col}", mode="lines"), 3, 1
+        )
 
         # Configure axes labels and rangeslider
-        fig.update_xaxes(title_text="Time (s)", row=3, col=1, rangeslider={"visible": True})
+        fig.update_xaxes(
+            title_text="Time (s)", row=3, col=1, rangeslider={"visible": True}
+        )
         fig.update_yaxes(title_text="ADC", row=1, col=1)
         fig.update_yaxes(title_text="ADC", row=2, col=1)
         fig.update_yaxes(title_text="ADC", row=3, col=1)
@@ -269,9 +277,15 @@ class PlotManager:
         )
 
         # Add traces for filtered AC components
-        fig.add_trace(go.Scatter(x=t, y=red_ac, name=f"AC {red_col}", mode="lines"), 1, 1)
+        fig.add_trace(
+            go.Scatter(x=t, y=red_ac, name=f"AC {red_col}", mode="lines"), 1, 1
+        )
         fig.add_trace(go.Scatter(x=t, y=ir_ac, name=f"AC {ir_col}", mode="lines"), 2, 1)
-        fig.add_trace(go.Scatter(x=t, y=waveform_ac, name=f"AC {waveform_col}", mode="lines"), 3, 1)
+        fig.add_trace(
+            go.Scatter(x=t, y=waveform_ac, name=f"AC {waveform_col}", mode="lines"),
+            3,
+            1,
+        )
 
         # Configure axes labels
         fig.update_xaxes(title_text="Time (s)", row=3, col=1)
@@ -290,7 +304,9 @@ class PlotManager:
 
         return fig
 
-    def create_frequency_plots(self, red_ac, ir_ac, fs, spec_win_sec, spec_overlap, show_spec):
+    def create_frequency_plots(
+        self, red_ac, ir_ac, fs, spec_win_sec, spec_overlap, show_spec
+    ):
         """
         Generate frequency-domain plots including PSD and spectrogram.
 
@@ -337,8 +353,14 @@ class PlotManager:
         """
         fig = go.Figure()
         # Add traces for both channels with logarithmic scaling
-        fig.add_trace(go.Scatter(x=f_r, y=10 * np.log10(P_r + 1e-20), mode="lines", name="PSD RED"))
-        fig.add_trace(go.Scatter(x=f_i, y=10 * np.log10(P_i + 1e-20), mode="lines", name="PSD IR"))
+        fig.add_trace(
+            go.Scatter(
+                x=f_r, y=10 * np.log10(P_r + 1e-20), mode="lines", name="PSD RED"
+            )
+        )
+        fig.add_trace(
+            go.Scatter(x=f_i, y=10 * np.log10(P_i + 1e-20), mode="lines", name="PSD IR")
+        )
 
         # Configure axes labels
         fig.update_xaxes(title_text="Frequency (Hz)")
@@ -349,7 +371,9 @@ class PlotManager:
 
         return fig
 
-    def _create_spectrogram(self, red_ac, ir_ac, fs, spec_win_sec, spec_overlap, show_spec):
+    def _create_spectrogram(
+        self, red_ac, ir_ac, fs, spec_win_sec, spec_overlap, show_spec
+    ):
         """
         Create spectrogram plot for time-frequency analysis.
 
@@ -379,12 +403,17 @@ class PlotManager:
         overlap = int(safe_float(spec_overlap, DEFAULT_SPEC_OVERLAP) * window_size)
 
         # Generate spectrogram data
-        f_spec, t_spec, Sxx = spectrogram(ir_ac, fs=fs, nperseg=window_size, noverlap=overlap)
+        f_spec, t_spec, Sxx = spectrogram(
+            ir_ac, fs=fs, nperseg=window_size, noverlap=overlap
+        )
 
         # Create heatmap visualization
         fig = go.Figure(
             data=go.Heatmap(
-                x=t_spec, y=f_spec, z=10 * np.log10(Sxx + 1e-18), colorbar=dict(title="dB")
+                x=t_spec,
+                y=f_spec,
+                z=10 * np.log10(Sxx + 1e-18),
+                colorbar=dict(title="dB"),
             )
         )
 
@@ -429,7 +458,9 @@ class PlotManager:
         peak_prom = safe_float(peak_prom, 0.5)
 
         # Calculate HR trend and inter-beat intervals
-        t_peaks, ibis, (hr_t, hr_bpm) = compute_hr_trend(src_ac, fs, hr_min, hr_max, peak_prom)
+        t_peaks, ibis, (hr_t, hr_bpm) = compute_hr_trend(
+            src_ac, fs, hr_min, hr_max, peak_prom
+        )
 
         # Create individual dynamics plots
         fig_hr = self._create_hr_plot(hr_t, hr_bpm, show_adv)
@@ -517,7 +548,12 @@ class PlotManager:
         # Create Poincaré plot (IBI_n vs IBI_{n+1})
         fig = go.Figure()
         fig.add_trace(
-            go.Scatter(x=1000.0 * ibis[:-1], y=1000.0 * ibis[1:], mode="markers", name="IBI pairs")
+            go.Scatter(
+                x=1000.0 * ibis[:-1],
+                y=1000.0 * ibis[1:],
+                mode="markers",
+                name="IBI pairs",
+            )
         )
 
         # Configure axes labels
@@ -550,7 +586,9 @@ class PlotManager:
             return self.create_blank_figure(280)
 
         # Calculate cross-correlation
-        lags, correlation, max_corr_lag = cross_correlation_lag(red_ac, ir_ac, max_lag=1.0)
+        lags, correlation, max_corr_lag = cross_correlation_lag(
+            red_ac, ir_ac, max_lag=1.0
+        )
         if lags is None:
             return self.create_blank_figure(280)
 
@@ -636,7 +674,9 @@ class PlotManager:
                 )
             # Add R-ratio trace on secondary y-axis
             fig.add_trace(
-                go.Scatter(x=tB[: len(Rbeats)], y=Rbeats, yaxis="y2", mode="lines", name="R")
+                go.Scatter(
+                    x=tB[: len(Rbeats)], y=Rbeats, yaxis="y2", mode="lines", name="R"
+                )
             )
 
         # Configure dual y-axes and layout
@@ -707,7 +747,9 @@ class PlotManager:
 
         # Create Lissajous visualization
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=zr_d, y=zi_d, mode="markers", name="AC points", opacity=0.4))
+        fig.add_trace(
+            go.Scatter(x=zr_d, y=zi_d, mode="markers", name="AC points", opacity=0.4)
+        )
 
         # Configure axes labels
         fig.update_xaxes(title_text="RED AC (z-score)")
@@ -715,7 +757,10 @@ class PlotManager:
 
         # Apply layout styling
         fig.update_layout(
-            template=self.template, height=300, **self.colors, title="Lissajous: RED vs IR (AC)"
+            template=self.template,
+            height=300,
+            **self.colors,
+            title="Lissajous: RED vs IR (AC)",
         )
 
         return fig
@@ -737,7 +782,9 @@ class PlotManager:
             plotly.graph_objects.Figure: Average beat plot
         """
         # Calculate ensemble-averaged beats for both channels
-        t_rel, mean_red, std_red = avg_beat(red_ac, t_peaks, fs, width_s=1.2, out_len=200)
+        t_rel, mean_red, std_red = avg_beat(
+            red_ac, t_peaks, fs, width_s=1.2, out_len=200
+        )
         _, mean_ir, std_ir = avg_beat(ir_ac, t_peaks, fs, width_s=1.2, out_len=200)
 
         fig = go.Figure()
@@ -754,7 +801,10 @@ class PlotManager:
 
         # Apply layout styling
         fig.update_layout(
-            template=self.template, height=300, **self.colors, title="Ensemble-averaged beat shape"
+            template=self.template,
+            height=300,
+            **self.colors,
+            title="Ensemble-averaged beat shape",
         )
 
         return fig
@@ -792,8 +842,14 @@ class PlotManager:
         )
 
         # Add traces for both channels
-        fig.add_trace(go.Scatter(x=td, y=sd_red[::decim_eff], mode="lines", name="SDPPG RED"), 1, 1)
-        fig.add_trace(go.Scatter(x=td, y=sd_ir[::decim_eff], mode="lines", name="SDPPG IR"), 2, 1)
+        fig.add_trace(
+            go.Scatter(x=td, y=sd_red[::decim_eff], mode="lines", name="SDPPG RED"),
+            1,
+            1,
+        )
+        fig.add_trace(
+            go.Scatter(x=td, y=sd_ir[::decim_eff], mode="lines", name="SDPPG IR"), 2, 1
+        )
 
         # Configure axes labels
         fig.update_xaxes(title_text="Time (s)", row=2, col=1)
@@ -806,7 +862,14 @@ class PlotManager:
         return fig
 
     def create_waveform_plot(
-        self, t, signal, signal_type, annotations, peaks=None, valleys=None, zero_crossings=None
+        self,
+        t,
+        signal,
+        signal_type,
+        annotations,
+        peaks=None,
+        valleys=None,
+        zero_crossings=None,
     ):
         """
         Create waveform analysis plot with annotations.
@@ -939,7 +1002,9 @@ class PlotManager:
             # Add timing features if available
             if "timing" in features:
                 timing_metrics = ["num_peaks", "estimated_hr"]
-                timing_values = [features["timing"].get(metric, 0) for metric in timing_metrics]
+                timing_values = [
+                    features["timing"].get(metric, 0) for metric in timing_metrics
+                ]
                 timing_labels = ["Number of Peaks", "Estimated HR (BPM)"]
 
                 # Add timing metrics to the plot
@@ -959,7 +1024,8 @@ class PlotManager:
             if "signal_quality" in features:
                 quality_metrics = ["snr_estimate", "dynamic_range"]
                 quality_values = [
-                    features["signal_quality"].get(metric, 0) for metric in quality_metrics
+                    features["signal_quality"].get(metric, 0)
+                    for metric in quality_metrics
                 ]
                 quality_labels = ["SNR Estimate (dB)", "Dynamic Range (dB)"]
 
@@ -1085,7 +1151,13 @@ class DataProcessor:
             tuple: (t, red, ir, waveform, red_ac, ir_ac, waveform_ac, filt_err) - Time array, raw signals,
                    filtered signals, and error message
         """
-        if not path or not window or red_col is None or ir_col is None or waveform_col is None:
+        if (
+            not path
+            or not window
+            or red_col is None
+            or ir_col is None
+            or waveform_col is None
+        ):
             return None, None, None, None, None, None, None, None
 
         try:
@@ -1114,11 +1186,15 @@ class DataProcessor:
             notch_q = safe_float(notch_q, 30.0)
 
             try:
-                base_sos = design_base_filter(fs, family, resp, low_hz, high_hz, order, rp, rs)
+                base_sos = design_base_filter(
+                    fs, family, resp, low_hz, high_hz, order, rp, rs
+                )
                 red_ac = apply_chain(
                     red, fs, base_sos, notch_on, notch_hz, notch_q, detrend, invert
                 )
-                ir_ac = apply_chain(ir, fs, base_sos, notch_on, notch_hz, notch_q, detrend, invert)
+                ir_ac = apply_chain(
+                    ir, fs, base_sos, notch_on, notch_hz, notch_q, detrend, invert
+                )
                 # Waveform is not inverted (as per user request)
                 waveform_ac = apply_chain(
                     waveform, fs, base_sos, notch_on, notch_hz, notch_q, detrend, False
@@ -1179,16 +1255,32 @@ class InsightGenerator:
         chips.extend(
             [
                 html.Span(
-                    f"SpO₂={f'{spo2:.2f}%' if spo2 is not None else 'n/a'}", className="pill"
+                    f"SpO₂={f'{spo2:.2f}%' if spo2 is not None else 'n/a'}",
+                    className="pill",
                 ),
-                html.Span(f"R={f'{R:.4f}' if R is not None else 'n/a'}", className="pill"),
-                html.Span(f"PI={f'{PI:.2f}%' if PI is not None else 'n/a'}", className="pill"),
-                html.Span(f"HR_psd={f'{hr_psd:.1f} bpm' if hr_psd else 'n/a'}", className="pill"),
-                html.Span(f"RR_psd={f'{rr_psd:.1f} rpm' if rr_psd else 'n/a'}", className="pill"),
+                html.Span(
+                    f"R={f'{R:.4f}' if R is not None else 'n/a'}", className="pill"
+                ),
+                html.Span(
+                    f"PI={f'{PI:.2f}%' if PI is not None else 'n/a'}", className="pill"
+                ),
+                html.Span(
+                    f"HR_psd={f'{hr_psd:.1f} bpm' if hr_psd else 'n/a'}",
+                    className="pill",
+                ),
+                html.Span(
+                    f"RR_psd={f'{rr_psd:.1f} rpm' if rr_psd else 'n/a'}",
+                    className="pill",
+                ),
                 html.Span(f"DC_red={dc_red:.1f}", className="pill"),
                 html.Span(f"DC_ir={dc_ir:.1f}", className="pill"),
-                html.Span(f"SNR~ red={f'{snr_red:.2f}' if snr_red else 'n/a'}", className="pill"),
-                html.Span(f"SNR~ ir={f'{snr_ir:.2f}' if snr_ir else 'n/a'}", className="pill"),
+                html.Span(
+                    f"SNR~ red={f'{snr_red:.2f}' if snr_red else 'n/a'}",
+                    className="pill",
+                ),
+                html.Span(
+                    f"SNR~ ir={f'{snr_ir:.2f}' if snr_ir else 'n/a'}", className="pill"
+                ),
             ]
         )
 
@@ -1252,7 +1344,9 @@ class InsightGenerator:
             html.Span(f"Total rows ≈ {total:,}", className="pill"),
             html.Span(f"Window {start:,}–{end:,} (n={n:,})", className="pill"),
             html.Span(f"Duration ≈ {duration:.2f}s @ fs={fs:g} Hz", className="pill"),
-            html.Span(f"Family={family} • Resp={resp} • Order={order}", className="pill"),
+            html.Span(
+                f"Family={family} • Resp={resp} • Order={order}", className="pill"
+            ),
             html.Span(
                 f"Cutoffs {low_hz:g}–{high_hz:g} Hz • Notch={'on' if notch_on else 'off'}",
                 className="pill",
@@ -1444,23 +1538,25 @@ def register_plot_callbacks(app):
         total = int(total_rows or 0)
 
         # Get processed data
-        t, red, ir, waveform, red_ac, ir_ac, waveform_ac, filt_err = data_proc.process_data(
-            path,
-            window,
-            red_col,
-            ir_col,
-            waveform_col,
-            fs,
-            decim_user,
-            family,
-            resp,
-            order,
-            rp,
-            rs,
-            notch_enable,
-            notch_hz,
-            notch_q,
-            flags,
+        t, red, ir, waveform, red_ac, ir_ac, waveform_ac, filt_err = (
+            data_proc.process_data(
+                path,
+                window,
+                red_col,
+                ir_col,
+                waveform_col,
+                fs,
+                decim_user,
+                family,
+                resp,
+                order,
+                rp,
+                rs,
+                notch_enable,
+                notch_hz,
+                notch_q,
+                flags,
+            )
         )
 
         # Check if we have valid data
@@ -1549,7 +1645,9 @@ def register_plot_callbacks(app):
             # Get waveform analysis parameters from callback context
             waveform_type = waveform_type or "raw"  # Default to raw signal
             waveform_window = waveform_window or 5.0  # Default 5 second window
-            show_annotations = show_waveform_annotations or ["peaks"]  # Default to showing peaks
+            show_annotations = show_waveform_annotations or [
+                "peaks"
+            ]  # Default to showing peaks
 
             # Analyze the selected signal type
             if waveform_type == "raw":
@@ -1557,22 +1655,23 @@ def register_plot_callbacks(app):
                 signal_name = waveform_col
             elif waveform_type == "filtered":
                 signal = waveform_ac
-                signal_name = f"{waveform_col} (Filtered)"
             elif waveform_type == "normalized":
                 signal = (waveform - np.mean(waveform)) / (np.std(waveform) + 1e-12)
-                signal_name = f"{waveform_col} (Normalized)"
             elif waveform_type == "derivative":
                 signal = np.gradient(waveform)
-                signal_name = f"{waveform_col} (Derivative)"
             else:
                 signal = waveform
-                signal_name = waveform_col
 
             # Perform waveform analysis
-            from ..utils.signal_processing import analyze_waveform, compute_waveform_features
+            from ..utils.signal_processing import (
+                analyze_waveform,
+                compute_waveform_features,
+            )
 
             # Analyze waveform with annotations
-            waveform_analysis = analyze_waveform(signal, fs, waveform_window, show_annotations)
+            waveform_analysis = analyze_waveform(
+                signal, fs, waveform_window, show_annotations
+            )
 
             # Compute comprehensive features
             waveform_features = compute_waveform_features(signal, fs)
@@ -1594,7 +1693,9 @@ def register_plot_callbacks(app):
             fig_waveform_stats = plot_mgr.create_blank_figure(300)
 
         # Generate insights and info
-        chips = insight_gen.generate_insights(red, ir, red_ac, ir_ac, filt_err, template)
+        chips = insight_gen.generate_insights(
+            red, ir, red_ac, ir_ac, filt_err, template
+        )
         start, end = int(window["start"]), int(window["end"])
         info = insight_gen.generate_file_info(
             path,
@@ -1619,11 +1720,17 @@ def register_plot_callbacks(app):
         )
 
         # CSV download
-        trigger = callback_context.triggered[0]["prop_id"] if callback_context.triggered else ""
+        trigger = (
+            callback_context.triggered[0]["prop_id"]
+            if callback_context.triggered
+            else ""
+        )
         dl = None
         if trigger == "btn_dl_csv.n_clicks":
             df = read_window(path, [red_col, ir_col], start, end)
-            dl = dcc.send_data_frame(df.to_csv, f"ppg_window_{start}_{end}.csv", index=False)
+            dl = dcc.send_data_frame(
+                df.to_csv, f"ppg_window_{start}_{end}.csv", index=False
+            )
 
         return (
             fig_raw,

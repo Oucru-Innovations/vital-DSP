@@ -39,28 +39,48 @@ if PYDANTIC_V2:
         debug: bool = Field(default=False, description="Debug mode")
 
         # File handling
-        default_file_on_disk: str = Field(default="PPG.csv", description="Default file to look for")
-        max_file_size_mb: int = Field(default=100, description="Maximum file size in MB")
-        temp_file_prefix: str = Field(default="ppg_", description="Prefix for temporary files")
+        default_file_on_disk: str = Field(
+            default="PPG.csv", description="Default file to look for"
+        )
+        max_file_size_mb: int = Field(
+            default=100, description="Maximum file size in MB"
+        )
+        temp_file_prefix: str = Field(
+            default="ppg_", description="Prefix for temporary files"
+        )
 
         # Signal processing defaults
-        default_fs: float = Field(default=100.0, description="Default sampling frequency")
+        default_fs: float = Field(
+            default=100.0, description="Default sampling frequency"
+        )
         default_window_start: int = Field(default=0, description="Default window start")
         default_window_end: int = Field(default=9_999, description="Default window end")
-        max_display_points: int = Field(default=300_000, description="Maximum display points")
-        default_decim_user: int = Field(default=1, description="Default decimation factor")
+        max_display_points: int = Field(
+            default=300_000, description="Maximum display points"
+        )
+        default_decim_user: int = Field(
+            default=1, description="Default decimation factor"
+        )
 
         # Heart rate and peak detection
         default_hr_min: int = Field(default=40, description="Minimum heart rate")
         default_hr_max: int = Field(default=180, description="Maximum heart rate")
-        default_peak_prom_factor: float = Field(default=0.5, description="Peak prominence factor")
+        default_peak_prom_factor: float = Field(
+            default=0.5, description="Peak prominence factor"
+        )
 
         # Spectrogram settings
-        default_spec_win_sec: float = Field(default=2.0, description="Spectrogram window size")
-        default_spec_overlap: float = Field(default=0.5, description="Spectrogram overlap")
+        default_spec_win_sec: float = Field(
+            default=2.0, description="Spectrogram window size"
+        )
+        default_spec_overlap: float = Field(
+            default=0.5, description="Spectrogram overlap"
+        )
 
         # UI settings
-        grid_columns: str = Field(default="340px 2.1fr 0.9fr", description="Grid column layout")
+        grid_columns: str = Field(
+            default="340px 2.1fr 0.9fr", description="Grid column layout"
+        )
         grid_gap: str = Field(default="18px", description="Grid gap")
         max_width: str = Field(default="1760px", description="Maximum width")
 
@@ -122,7 +142,9 @@ elif not PYDANTIC_V2 and "PYDANTIC_AVAILABLE" not in locals():
         # Heart rate and peak detection
         default_hr_min: int = Field(default=40, env="DEFAULT_HR_MIN")
         default_hr_max: int = Field(default=180, env="DEFAULT_HR_MAX")
-        default_peak_prom_factor: float = Field(default=0.5, env="DEFAULT_PEAK_PROM_FACTOR")
+        default_peak_prom_factor: float = Field(
+            default=0.5, env="DEFAULT_PEAK_PROM_FACTOR"
+        )
 
         # Spectrogram settings
         default_spec_win_sec: float = Field(default=2.0, env="DEFAULT_SPEC_WIN_SEC")

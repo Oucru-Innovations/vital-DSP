@@ -25,6 +25,7 @@ exclude =
 # E302: Ignore the expected 2 blank lines error
 # E731: Do not assign a lambda expression, use a def
 # W503: Line break before binary operator
+# F401: Imported but unused
 # F403: Import * used
 # F405: Name may be undefined or defined from import * used
 ignore =
@@ -35,6 +36,8 @@ ignore =
     E501,
     E731,
     W503,
+    F401,
+    F841,
     F403,
     F405
 

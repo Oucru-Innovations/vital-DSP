@@ -549,14 +549,20 @@ class SynthesizeData:
     """
 
     @staticmethod
-    def generate_sinusoidal(frequency, sampling_rate, duration, amplitude=1.0, phase=0.0):
+    def generate_sinusoidal(
+        frequency, sampling_rate, duration, amplitude=1.0, phase=0.0
+    ):
         """Generate a sinusoidal wave."""
         return generate_sinusoidal(frequency, sampling_rate, duration, amplitude, phase)
 
     @staticmethod
-    def generate_square_wave(frequency, sampling_rate, duration, amplitude=1.0, duty_cycle=0.5):
+    def generate_square_wave(
+        frequency, sampling_rate, duration, amplitude=1.0, duty_cycle=0.5
+    ):
         """Generate a square wave."""
-        return generate_square_wave(frequency, sampling_rate, duration, amplitude, duty_cycle)
+        return generate_square_wave(
+            frequency, sampling_rate, duration, amplitude, duty_cycle
+        )
 
     @staticmethod
     def generate_noisy_signal(base_signal, noise_level=0.1):
@@ -577,9 +583,15 @@ class SynthesizeData:
     ):
         """Generate a synthetic ECG signal."""
         return generate_ecg_signal(
-            duration, sampling_rate, heart_rate, noise_level,
-            qrs_width, t_wave_amplitude, p_wave_amplitude,
-            randomize, display
+            duration,
+            sampling_rate,
+            heart_rate,
+            noise_level,
+            qrs_width,
+            t_wave_amplitude,
+            p_wave_amplitude,
+            randomize,
+            display,
         )
 
     @staticmethod
@@ -602,9 +614,16 @@ class SynthesizeData:
     ):
         """Generate a synthetic PPG signal with reversed parameters."""
         return generate_synthetic_ppg_reversed(
-            duration, sampling_rate, heart_rate, noise_level,
-            diastolic_amplitude, diastolic_width, dicrotic_notch_depth,
-            dicrotic_notch_delay, randomize, display
+            duration,
+            sampling_rate,
+            heart_rate,
+            noise_level,
+            diastolic_amplitude,
+            diastolic_width,
+            dicrotic_notch_depth,
+            dicrotic_notch_delay,
+            randomize,
+            display,
         )
 
     @staticmethod
@@ -622,9 +641,16 @@ class SynthesizeData:
     ):
         """Generate a synthetic PPG signal."""
         return generate_synthetic_ppg(
-            duration, sampling_rate, heart_rate, noise_level,
-            diastolic_amplitude, diastolic_width, dicrotic_notch_depth,
-            dicrotic_notch_delay, randomize, display
+            duration,
+            sampling_rate,
+            heart_rate,
+            noise_level,
+            diastolic_amplitude,
+            diastolic_width,
+            dicrotic_notch_depth,
+            dicrotic_notch_delay,
+            randomize,
+            display,
         )
 
     @staticmethod
@@ -632,6 +658,8 @@ class SynthesizeData:
         """Generate synthetic PPG data for testing."""
         t = np.linspace(0, duration, int(duration * fs))
         # Simple PPG-like signal
-        signal = np.sin(2 * np.pi * 1.2 * t) * np.exp(-0.1 * t) + 0.5 * np.sin(2 * np.pi * 0.8 * t)
+        signal = np.sin(2 * np.pi * 1.2 * t) * np.exp(-0.1 * t) + 0.5 * np.sin(
+            2 * np.pi * 0.8 * t
+        )
         signal += 0.1 * np.random.randn(len(signal))
         return t, signal

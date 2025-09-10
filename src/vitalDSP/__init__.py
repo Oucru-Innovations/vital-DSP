@@ -28,17 +28,33 @@ try:
     from .advanced_computation.bayesian_analysis import BayesianOptimization
     from .advanced_computation.emd import EMD
     from .advanced_computation.neural_network_filtering import NeuralNetworkFiltering
-    from .advanced_computation.reinforcement_learning_filter import ReinforcementLearningFilter
+    from .advanced_computation.reinforcement_learning_filter import (
+        ReinforcementLearningFilter,
+    )
     from .advanced_computation.sparse_signal_processing import SparseSignalProcessing
-    
+
     __all__ = [
-        'SignalFiltering', 'BandpassFilter', 'TimeDomainFeatures', 'FrequencyDomainFeatures',
-        'HRVFeatures', 'RespiratoryAnalysis', 'FourierTransform', 'WaveletTransform',
-        'SignalQuality', 'HealthReportGenerator', 'PeakDetection', 'StandardScaler',
-        'SynthesizeData', 'AnomalyDetection', 'BayesianOptimization', 'EMD',
-        'NeuralNetworkFiltering', 'ReinforcementLearningFilter', 'SparseSignalProcessing'
+        "SignalFiltering",
+        "BandpassFilter",
+        "TimeDomainFeatures",
+        "FrequencyDomainFeatures",
+        "HRVFeatures",
+        "RespiratoryAnalysis",
+        "FourierTransform",
+        "WaveletTransform",
+        "SignalQuality",
+        "HealthReportGenerator",
+        "PeakDetection",
+        "StandardScaler",
+        "SynthesizeData",
+        "AnomalyDetection",
+        "BayesianOptimization",
+        "EMD",
+        "NeuralNetworkFiltering",
+        "ReinforcementLearningFilter",
+        "SparseSignalProcessing",
     ]
-    
+
 except ImportError as e:
     print(f"Warning: Some vitalDSP modules could not be imported: {e}")
     __all__ = []

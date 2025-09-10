@@ -332,7 +332,9 @@ def analyze_waveform(signal, fs, window_s=5.0, annotations=None):
 
     # Peak detection
     if "peaks" in annotations:
-        peaks, properties = find_peaks(signal_window, prominence=0.1 * np.std(signal_window))
+        peaks, properties = find_peaks(
+            signal_window, prominence=0.1 * np.std(signal_window)
+        )
         results["peaks"] = {
             "indices": peaks,
             "times": peaks / fs,
@@ -342,7 +344,9 @@ def analyze_waveform(signal, fs, window_s=5.0, annotations=None):
 
     # Valley detection (negative peaks)
     if "valleys" in annotations:
-        valleys, properties = find_peaks(-signal_window, prominence=0.1 * np.std(signal_window))
+        valleys, properties = find_peaks(
+            -signal_window, prominence=0.1 * np.std(signal_window)
+        )
         results["valleys"] = {
             "indices": valleys,
             "times": valleys / fs,
@@ -353,7 +357,10 @@ def analyze_waveform(signal, fs, window_s=5.0, annotations=None):
     # Zero crossings
     if "zero_crossings" in annotations:
         zero_crossings = np.where(np.diff(np.signbit(signal_window)))[0]
-        results["zero_crossings"] = {"indices": zero_crossings, "times": zero_crossings / fs}
+        results["zero_crossings"] = {
+            "indices": zero_crossings,
+            "times": zero_crossings / fs,
+        }
 
     # Basic statistics
     results["statistics"] = {
@@ -409,11 +416,15 @@ def compute_waveform_features(signal, fs):
         crest_factor = np.max(np.abs(signal)) / rms_val if rms_val > 0 else 0
 
         # Shape factor (RMS / mean absolute value)
-        shape_factor = rms_val / np.mean(np.abs(signal)) if np.mean(np.abs(signal)) > 0 else 0
+        shape_factor = (
+            rms_val / np.mean(np.abs(signal)) if np.mean(np.abs(signal)) > 0 else 0
+        )
 
         # Impulse factor (peak amplitude / mean absolute value)
         impulse_factor = (
-            np.max(np.abs(signal)) / np.mean(np.abs(signal)) if np.mean(np.abs(signal)) > 0 else 0
+            np.max(np.abs(signal)) / np.mean(np.abs(signal))
+            if np.mean(np.abs(signal)) > 0
+            else 0
         )
 
         # Margin factor (peak amplitude / mean absolute value of signal above mean)
@@ -456,7 +467,9 @@ def compute_waveform_features(signal, fs):
                 "estimated_hr": hrv,
             },
             "signal_quality": {
-                "snr_estimate": 20 * np.log10(np.max(signal) / std_val) if std_val > 0 else 0,
+                "snr_estimate": (
+                    20 * np.log10(np.max(signal) / std_val) if std_val > 0 else 0
+                ),
                 "dynamic_range": np.log10(peak_to_peak / std_val) if std_val > 0 else 0,
             },
         }

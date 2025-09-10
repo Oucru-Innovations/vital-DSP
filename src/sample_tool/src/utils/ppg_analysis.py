@@ -53,10 +53,14 @@ def robust_absorbance(x: np.ndarray) -> np.ndarray:
     Raises:
         ValidationError: If input array is invalid
     """
-    log_computation_start("robust absorbance calculation", input_shape=x.shape, input_dtype=x.dtype)
+    log_computation_start(
+        "robust absorbance calculation", input_shape=x.shape, input_dtype=x.dtype
+    )
 
     try:
-        log_data_validation("input array", x.shape, min_length=1, allow_nan=False, allow_inf=False)
+        log_data_validation(
+            "input array", x.shape, min_length=1, allow_nan=False, allow_inf=False
+        )
         validate_numeric_array(x, min_length=1, allow_nan=False, allow_inf=False)
 
         x = np.asarray(x, dtype=float)
@@ -150,7 +154,9 @@ def beats_from_peaks(
         starts = np.r_[max(0, p[0] - int(guard * ibis[0])), mids]
         ends = np.r_[mids, p[-1] + int(guard * ibis[-1])]
 
-        log_computation_progress("beat segmentation", "calculated beat boundaries with guard time")
+        log_computation_progress(
+            "beat segmentation", "calculated beat boundaries with guard time"
+        )
 
         # Create beat segments
         beats = []
@@ -204,7 +210,9 @@ def beat_ac_dc(
         ValidationError: If input parameters are invalid
         PPGError: For other processing errors
     """
-    log_computation_start("beat AC/DC calculation", num_beats=len(beats), fs=fs, dc_window=dc_win_s)
+    log_computation_start(
+        "beat AC/DC calculation", num_beats=len(beats), fs=fs, dc_window=dc_win_s
+    )
 
     try:
         log_data_validation("raw signal", signal_raw.shape, min_length=1)
@@ -229,7 +237,9 @@ def beat_ac_dc(
         n = len(signal_raw)
         half = int(dc_win_s * fs / 2)
 
-        log_computation_progress("beat AC/DC calculation", f"processing {len(beats)} beats")
+        log_computation_progress(
+            "beat AC/DC calculation", f"processing {len(beats)} beats"
+        )
 
         for i, (s, pk, e) in enumerate(beats):
             # Validate beat indices
@@ -246,7 +256,11 @@ def beat_ac_dc(
             # Calculate DC as median around peak
             lo = max(0, pk - half)
             hi = min(n, pk + half)
-            d = float(np.median(signal_raw[lo:hi])) if hi > lo else float(np.median(signal_raw))
+            d = (
+                float(np.median(signal_raw[lo:hi]))
+                if hi > lo
+                else float(np.median(signal_raw))
+            )
 
             ac.append(a)
             dc.append(d)
@@ -306,7 +320,10 @@ def r_series_spo2(
         PPGError: For other processing errors
     """
     log_computation_start(
-        "R-series and SpO2 calculation", num_peaks=len(t_peaks), fs=fs, signal_length=len(red_raw)
+        "R-series and SpO2 calculation",
+        num_peaks=len(t_peaks),
+        fs=fs,
+        signal_length=len(red_raw),
     )
 
     try:
@@ -334,24 +351,33 @@ def r_series_spo2(
         if len(set(len(s) for s in signals)) != 1:
             raise ValidationError("All signals must have the same length")
 
-        log_computation_progress("R-series and SpO2 calculation", "validated input parameters")
+        log_computation_progress(
+            "R-series and SpO2 calculation", "validated input parameters"
+        )
 
         # Get beat segments using IR peaks
         log_analysis_step("beat segmentation", "using IR peaks for beat detection")
         beats = beats_from_peaks(ir_ac, fs, t_peaks)
         if not beats:
-            log_computation_complete("R-series and SpO2 calculation", "no valid beats found")
+            log_computation_complete(
+                "R-series and SpO2 calculation", "no valid beats found"
+            )
             return np.array([]), np.array([]), np.array([])
 
-        log_computation_progress("R-series and SpO2 calculation", f"segmented {len(beats)} beats")
+        log_computation_progress(
+            "R-series and SpO2 calculation", f"segmented {len(beats)} beats"
+        )
 
         # Calculate AC/DC for both channels
-        log_analysis_step("AC/DC calculation", "calculating per-beat AC and DC components")
+        log_analysis_step(
+            "AC/DC calculation", "calculating per-beat AC and DC components"
+        )
         t_mid, ac_r, dc_r = beat_ac_dc(red_raw, red_ac, beats, fs)
         _, ac_i, dc_i = beat_ac_dc(ir_raw, ir_ac, beats, fs)
 
         log_computation_progress(
-            "R-series and SpO2 calculation", "calculated AC/DC components for both channels"
+            "R-series and SpO2 calculation",
+            "calculated AC/DC components for both channels",
         )
 
         # Filter valid beats (positive AC and DC values)
@@ -395,7 +421,11 @@ def r_series_spo2(
 
 
 def avg_beat(
-    signal: np.ndarray, t_peaks: np.ndarray, fs: float, width_s: float = 1.2, out_len: int = 200
+    signal: np.ndarray,
+    t_peaks: np.ndarray,
+    fs: float,
+    width_s: float = 1.2,
+    out_len: int = 200,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculate ensemble average of beats around peaks.
@@ -444,7 +474,9 @@ def avg_beat(
         if len(t_peaks) < 2:
             raise InsufficientDataError("Need at least 2 peaks for ensemble average")
 
-        log_computation_progress("ensemble average beat calculation", "validated input parameters")
+        log_computation_progress(
+            "ensemble average beat calculation", "validated input parameters"
+        )
 
         half = int(width_s * fs / 2)
         p = (t_peaks * fs).astype(int)
@@ -467,11 +499,14 @@ def avg_beat(
 
             if i % 10 == 0:  # Log progress every 10 segments
                 log_computation_progress(
-                    "ensemble average beat calculation", f"extracted {i+1}/{len(p)} segments"
+                    "ensemble average beat calculation",
+                    f"extracted {i+1}/{len(p)} segments",
                 )
 
         if not segs:
-            log_computation_complete("ensemble average beat calculation", "no valid segments found")
+            log_computation_complete(
+                "ensemble average beat calculation", "no valid segments found"
+            )
             return np.array([]), np.array([]), np.array([])
 
         log_computation_progress(
@@ -479,7 +514,9 @@ def avg_beat(
         )
 
         # Resample segments to common length
-        log_analysis_step("segment resampling", "interpolating segments to common length")
+        log_analysis_step(
+            "segment resampling", "interpolating segments to common length"
+        )
 
         resampled = []
         for i, seg in enumerate(segs):
@@ -492,7 +529,11 @@ def avg_beat(
 
             try:
                 f = interp1d(
-                    x_old, seg, kind="linear", bounds_error=False, fill_value="extrapolate"
+                    x_old,
+                    seg,
+                    kind="linear",
+                    bounds_error=False,
+                    fill_value="extrapolate",
                 )
                 resampled.append(f(x_new))
             except Exception:
@@ -500,7 +541,8 @@ def avg_beat(
 
             if i % 10 == 0:  # Log progress every 10 segments
                 log_computation_progress(
-                    "ensemble average beat calculation", f"resampled {i+1}/{len(segs)} segments"
+                    "ensemble average beat calculation",
+                    f"resampled {i+1}/{len(segs)} segments",
                 )
 
         if not resampled:
@@ -515,7 +557,9 @@ def avg_beat(
         )
 
         # Calculate ensemble statistics
-        log_analysis_step("ensemble statistics", "calculating mean and standard deviation")
+        log_analysis_step(
+            "ensemble statistics", "calculating mean and standard deviation"
+        )
         resampled = np.array(resampled)
         mean_sig = np.mean(resampled, axis=0)
         std_sig = np.std(resampled, axis=0)
@@ -607,19 +651,28 @@ def find_ppg_peaks(
         )
 
         # Find peaks
-        log_analysis_step("peak detection", "applying scipy.find_peaks with constraints")
+        log_analysis_step(
+            "peak detection", "applying scipy.find_peaks with constraints"
+        )
         peaks, properties = find_peaks(
-            signal, distance=min_distance, prominence=prominence_threshold, height=np.mean(signal)
+            signal,
+            distance=min_distance,
+            prominence=prominence_threshold,
+            height=np.mean(signal),
         )
 
         if len(peaks) == 0:
             raise PeakDetectionError("No peaks found with current parameters")
 
-        log_computation_progress("PPG peak detection", f"found {len(peaks)} initial peaks")
+        log_computation_progress(
+            "PPG peak detection", f"found {len(peaks)} initial peaks"
+        )
 
         # Filter peaks by maximum heart rate constraint
         if len(peaks) > 1:
-            log_analysis_step("peak filtering", "filtering peaks by heart rate constraints")
+            log_analysis_step(
+                "peak filtering", "filtering peaks by heart rate constraints"
+            )
             peak_times = peaks / fs
             ibis = np.diff(peak_times)
             max_ibi = 60 / hr_min  # Minimum heart rate = maximum IBI
@@ -636,7 +689,9 @@ def find_ppg_peaks(
             # Update properties for valid peaks
             properties = {k: v[: len(peaks)] for k, v in properties.items()}
 
-            log_computation_progress("PPG peak detection", f"filtered to {len(peaks)} valid peaks")
+            log_computation_progress(
+                "PPG peak detection", f"filtered to {len(peaks)} valid peaks"
+            )
 
         result = (peaks, properties)
 
@@ -672,7 +727,9 @@ def calculate_heart_rate(peaks: np.ndarray, fs: float, method: str = "mean") -> 
         ValidationError: If input parameters are invalid
         HeartRateCalculationError: If heart rate calculation fails
     """
-    log_computation_start("heart rate calculation", num_peaks=len(peaks), fs=fs, method=method)
+    log_computation_start(
+        "heart rate calculation", num_peaks=len(peaks), fs=fs, method=method
+    )
 
     try:
         log_data_validation("peak indices", peaks.shape, min_length=2)
@@ -685,13 +742,17 @@ def calculate_heart_rate(peaks: np.ndarray, fs: float, method: str = "mean") -> 
 
         if method not in ["mean", "median", "mode"]:
             raise InvalidParameterError(
-                "Method must be 'mean', 'median', or 'mode'", field="method", value=method
+                "Method must be 'mean', 'median', or 'mode'",
+                field="method",
+                value=method,
             )
 
         log_computation_progress("heart rate calculation", "validated input parameters")
 
         # Calculate inter-beat intervals
-        log_analysis_step("IBI calculation", "computing inter-beat intervals from peaks")
+        log_analysis_step(
+            "IBI calculation", "computing inter-beat intervals from peaks"
+        )
         peak_times = peaks / fs
         ibis = np.diff(peak_times)
 
@@ -738,7 +799,9 @@ def calculate_heart_rate(peaks: np.ndarray, fs: float, method: str = "mean") -> 
         raise PPGError(f"Failed to calculate heart rate: {e}") from e
 
 
-def ms_coherence(red_ac: np.ndarray, ir_ac: np.ndarray, fs: float) -> Tuple[np.ndarray, np.ndarray]:
+def ms_coherence(
+    red_ac: np.ndarray, ir_ac: np.ndarray, fs: float
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Calculate magnitude-squared coherence between red and IR AC signals.
 
@@ -784,7 +847,10 @@ def ms_coherence(red_ac: np.ndarray, ir_ac: np.ndarray, fs: float) -> Tuple[np.n
         # Calculate coherence
         log_analysis_step("coherence calculation", "applying scipy.signal.coherence")
         f, C = coherence(
-            red_ac[:min_length], ir_ac[:min_length], fs=fs, nperseg=min(min_length, 2048)
+            red_ac[:min_length],
+            ir_ac[:min_length],
+            fs=fs,
+            nperseg=min(min_length, 2048),
         )
 
         log_computation_complete(
@@ -823,7 +889,9 @@ def estimate_spo2(
         ValidationError: If input parameters are invalid
         PPGError: If SpO2 estimation fails
     """
-    log_computation_start("SpO2 estimation", red_length=len(red_raw), ir_length=len(ir_raw))
+    log_computation_start(
+        "SpO2 estimation", red_length=len(red_raw), ir_length=len(ir_raw)
+    )
 
     try:
         log_data_validation("red raw signal", red_raw.shape, min_length=1)
@@ -840,7 +908,9 @@ def estimate_spo2(
         log_computation_progress("SpO2 estimation", "validated input parameters")
 
         # Calculate DC components (mean values)
-        log_analysis_step("DC component calculation", "calculating mean values for DC components")
+        log_analysis_step(
+            "DC component calculation", "calculating mean values for DC components"
+        )
         dc_red = float(np.mean(red_raw))
         dc_ir = float(np.mean(ir_raw))
 
@@ -849,7 +919,9 @@ def estimate_spo2(
         )
 
         # Calculate AC amplitudes (peak-to-peak / 2)
-        log_analysis_step("AC amplitude calculation", "calculating peak-to-peak amplitudes")
+        log_analysis_step(
+            "AC amplitude calculation", "calculating peak-to-peak amplitudes"
+        )
         ac_red_amp = float(np.ptp(red_ac) / 2.0)
         ac_ir_amp = float(np.ptp(ir_ac) / 2.0)
 
@@ -880,7 +952,9 @@ def estimate_spo2(
         spo2 = -45.06 * R**2 + 30.354 * R + 94.845
 
         # Calculate perfusion index (PI) via IR channel
-        log_analysis_step("perfusion index calculation", "calculating PI from IR channel")
+        log_analysis_step(
+            "perfusion index calculation", "calculating PI from IR channel"
+        )
         PI = 100.0 * (ac_ir_amp / dc_ir)
 
         result = (spo2, R, PI)
@@ -916,15 +990,21 @@ def sdppg(x: np.ndarray) -> np.ndarray:
         ValidationError: If input array is invalid
         PPGError: If second derivative calculation fails
     """
-    log_computation_start("second derivative calculation", input_shape=x.shape, input_dtype=x.dtype)
+    log_computation_start(
+        "second derivative calculation", input_shape=x.shape, input_dtype=x.dtype
+    )
 
     try:
         log_data_validation("input signal", x.shape, min_length=3)
 
         # Validate input
-        validate_numeric_array(x, min_length=3)  # Need at least 3 points for second derivative
+        validate_numeric_array(
+            x, min_length=3
+        )  # Need at least 3 points for second derivative
 
-        log_computation_progress("second derivative calculation", "validated input parameters")
+        log_computation_progress(
+            "second derivative calculation", "validated input parameters"
+        )
 
         # Calculate second derivative using gradient
         log_analysis_step("derivative calculation", "applying numpy.gradient twice")
@@ -947,7 +1027,11 @@ def sdppg(x: np.ndarray) -> np.ndarray:
 
 
 def compute_hr_trend(
-    ac_signal: np.ndarray, fs: float, hr_min: int = 40, hr_max: int = 180, prom_factor: float = 0.5
+    ac_signal: np.ndarray,
+    fs: float,
+    hr_min: int = 40,
+    hr_max: int = 180,
+    prom_factor: float = 0.5,
 ) -> Tuple[np.ndarray, np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     """
     Beat detection on AC signal; returns peak times (s), ibi array (s), HR rolling over windows (s, bpm).
@@ -993,7 +1077,9 @@ def compute_hr_trend(
             )
             return np.array([]), np.array([]), (np.array([]), np.array([]))
 
-        log_computation_progress("heart rate trend calculation", "validated input parameters")
+        log_computation_progress(
+            "heart rate trend calculation", "validated input parameters"
+        )
 
         # Calculate detection parameters
         min_dist = int(max(1, fs * 60.0 / hr_max))
@@ -1007,14 +1093,20 @@ def compute_hr_trend(
         )
 
         # Find peaks
-        log_analysis_step("peak detection", "applying scipy.find_peaks with heart rate constraints")
+        log_analysis_step(
+            "peak detection", "applying scipy.find_peaks with heart rate constraints"
+        )
         peaks, _ = find_peaks(ac_signal, distance=min_dist, prominence=max(1e-12, prom))
 
         if len(peaks) < 2:
-            log_computation_complete("heart rate trend calculation", "insufficient peaks found")
+            log_computation_complete(
+                "heart rate trend calculation", "insufficient peaks found"
+            )
             return np.array([]), np.array([]), (np.array([]), np.array([]))
 
-        log_computation_progress("heart rate trend calculation", f"found {len(peaks)} peaks")
+        log_computation_progress(
+            "heart rate trend calculation", f"found {len(peaks)} peaks"
+        )
 
         # Calculate time-based metrics
         log_analysis_step(
@@ -1031,7 +1123,8 @@ def compute_hr_trend(
 
         # HR over time: midpoint between consecutive peaks
         log_analysis_step(
-            "heart rate calculation", "calculating heart rate at midpoints between peaks"
+            "heart rate calculation",
+            "calculating heart rate at midpoints between peaks",
         )
         hr_t = (t_peaks[:-1] + t_peaks[1:]) / 2.0
         hr_bpm = 60.0 / np.clip(ibis, 1e-6, None)
@@ -1043,13 +1136,16 @@ def compute_hr_trend(
         )
 
         # mask outside HR band
-        log_analysis_step("heart rate filtering", "filtering heart rates within specified range")
+        log_analysis_step(
+            "heart rate filtering", "filtering heart rates within specified range"
+        )
         hr_mask = (hr_bpm >= hr_min) & (hr_bpm <= hr_max)
         filtered_hr_t = hr_t[hr_mask]
         filtered_hr_bpm = hr_bpm[hr_mask]
 
         log_computation_progress(
-            "heart rate trend calculation", f"filtered to {np.sum(hr_mask)} valid heart rate values"
+            "heart rate trend calculation",
+            f"filtered to {np.sum(hr_mask)} valid heart rate values",
         )
 
         result = (t_peaks, ibis, (filtered_hr_t, filtered_hr_bpm))

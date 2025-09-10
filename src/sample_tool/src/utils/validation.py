@@ -44,7 +44,9 @@ def validate_file_path(file_path: str) -> Path:
             raise FileNotFoundError(f"File not found: {file_path}", file_path=file_path)
         return path
     except Exception as e:
-        raise InvalidParameterError(f"Invalid file path: {file_path}", value=file_path) from e
+        raise InvalidParameterError(
+            f"Invalid file path: {file_path}", value=file_path
+        ) from e
 
 
 def validate_file_size(file_path: Union[str, Path], max_size_mb: int) -> None:
@@ -63,7 +65,8 @@ def validate_file_size(file_path: Union[str, Path], max_size_mb: int) -> None:
 
     if file_size_mb > max_size_mb:
         raise FileTooLargeError(
-            f"File size ({file_size_mb:.1f}MB) exceeds limit ({max_size_mb}MB)", file_path=str(path)
+            f"File size ({file_size_mb:.1f}MB) exceeds limit ({max_size_mb}MB)",
+            file_path=str(path),
         )
 
 
@@ -89,7 +92,9 @@ def validate_csv_file(file_path: Union[str, Path]) -> None:
     try:
         pd.read_csv(path, nrows=1)
     except Exception as e:
-        raise InvalidFileFormatError(f"File is not a valid CSV: {e}", file_path=str(path))
+        raise InvalidFileFormatError(
+            f"File is not a valid CSV: {e}", file_path=str(path)
+        )
 
 
 def validate_dataframe(
@@ -110,16 +115,23 @@ def validate_dataframe(
         raise PPGValidationError("Input must be a pandas DataFrame")
 
     if len(df) < min_rows:
-        raise PPGValidationError(f"DataFrame must have at least {min_rows} rows, got {len(df)}")
+        raise PPGValidationError(
+            f"DataFrame must have at least {min_rows} rows, got {len(df)}"
+        )
 
     if required_columns:
         missing_cols = set(required_columns) - set(df.columns)
         if missing_cols:
-            raise PPGValidationError(f"Missing required columns: {missing_cols}", field="columns")
+            raise PPGValidationError(
+                f"Missing required columns: {missing_cols}", field="columns"
+            )
 
 
 def validate_numeric_array(
-    arr: np.ndarray, min_length: int = 1, allow_nan: bool = False, allow_inf: bool = False
+    arr: np.ndarray,
+    min_length: int = 1,
+    allow_nan: bool = False,
+    allow_inf: bool = False,
 ) -> None:
     """
     Validate a numeric numpy array.
@@ -137,7 +149,9 @@ def validate_numeric_array(
         raise PPGValidationError("Input must be a numpy array")
 
     if arr.size < min_length:
-        raise PPGValidationError(f"Array must have at least {min_length} elements, got {arr.size}")
+        raise PPGValidationError(
+            f"Array must have at least {min_length} elements, got {arr.size}"
+        )
 
     if not np.issubdtype(arr.dtype, np.number):
         raise PPGValidationError("Array must contain numeric values")
@@ -166,7 +180,9 @@ def validate_sampling_frequency(fs: float) -> None:
 
     if fs > 10000:  # Reasonable upper limit for PPG
         raise InvalidParameterError(
-            "Sampling frequency seems unreasonably high for PPG data", field="fs", value=fs
+            "Sampling frequency seems unreasonably high for PPG data",
+            field="fs",
+            value=fs,
         )
 
 
@@ -226,7 +242,9 @@ def validate_window_parameters(
 
     if end > total_rows:
         raise InvalidParameterError(
-            f"End index ({end}) exceeds total rows ({total_rows})", field="end", value=end
+            f"End index ({end}) exceeds total rows ({total_rows})",
+            field="end",
+            value=end,
         )
 
     window_size = end - start
@@ -257,15 +275,21 @@ def validate_column_mapping(
 
     if red_col and red_col not in columns:
         raise PPGValidationError(
-            f"RED column '{red_col}' not found in available columns", field="red_col", value=red_col
+            f"RED column '{red_col}' not found in available columns",
+            field="red_col",
+            value=red_col,
         )
 
     if ir_col and ir_col not in columns:
         raise PPGValidationError(
-            f"IR column '{ir_col}' not found in available columns", field="ir_col", value=ir_col
+            f"IR column '{ir_col}' not found in available columns",
+            field="ir_col",
+            value=ir_col,
         )
 
     if red_col and ir_col and red_col == ir_col:
         raise PPGValidationError(
-            "RED and IR columns must be different", field="column_mapping", value=(red_col, ir_col)
+            "RED and IR columns must be different",
+            field="column_mapping",
+            value=(red_col, ir_col),
         )

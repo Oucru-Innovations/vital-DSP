@@ -999,7 +999,6 @@ def generate_comprehensive_respiratory_analysis(signal_data, time_axis, sampling
                         ], className="mb-2"))
                     else:
                         # For demonstration, use the same signal as both respiratory and cardiac
-                        # In real applications, you would have separate signals
                         fusion_rr = respiratory_cardiac_fusion(
                             signal_data, signal_data, sampling_freq,
                             preprocess='bandpass',
@@ -1025,7 +1024,6 @@ def generate_comprehensive_respiratory_analysis(signal_data, time_axis, sampling
                         ], className="mb-2"))
                     else:
                         # For demonstration, use the same signal as multiple modalities
-                        # In real applications, you would have different signal types
                         multimodal_rr = multimodal_analysis(
                             [signal_data, signal_data],  # Using same signal for demo
                             sampling_freq,

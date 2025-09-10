@@ -17,7 +17,18 @@ from .convolutional_kernels import ConvolutionKernels
 from .attention_weights import AttentionWeights
 
 __all__ = [
-    'PeakDetection', 'SynthesizeData', 'StandardScaler', 'z_score_normalization', 'min_max_normalization',
-    'find_peaks', 'argrelextrema', 'linear_interpolation', 'spline_interpolation', 'mean_imputation', 
-    'Wavelet', 'LossFunctions', 'ConvolutionKernels', 'AttentionWeights'
+    "PeakDetection",
+    "SynthesizeData",
+    "StandardScaler",
+    "z_score_normalization",
+    "min_max_normalization",
+    "find_peaks",
+    "argrelextrema",
+    "linear_interpolation",
+    "spline_interpolation",
+    "mean_imputation",
+    "Wavelet",
+    "LossFunctions",
+    "ConvolutionKernels",
+    "AttentionWeights",
 ]

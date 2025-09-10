@@ -33,7 +33,9 @@ class FileError(PPGError):
 class DataError(PPGError):
     """Exception raised for data processing errors."""
 
-    def __init__(self, message: str, data_info: Optional[Dict[str, Any]] = None, **kwargs):
+    def __init__(
+        self, message: str, data_info: Optional[Dict[str, Any]] = None, **kwargs
+    ):
         super().__init__(message, kwargs)
         self.data_info = data_info or {}
 
@@ -41,7 +43,9 @@ class DataError(PPGError):
 class ValidationError(PPGError):
     """Exception raised for data validation errors."""
 
-    def __init__(self, message: str, field: Optional[str] = None, value: Any = None, **kwargs):
+    def __init__(
+        self, message: str, field: Optional[str] = None, value: Any = None, **kwargs
+    ):
         super().__init__(message, kwargs)
         self.field = field
         self.value = value

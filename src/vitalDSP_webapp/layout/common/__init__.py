@@ -9,7 +9,7 @@ from .sidebar import Sidebar
 from .footer import Footer
 
 __all__ = [
-    'Header',
-    'Sidebar',
-    'Footer',
+    "Header",
+    "Sidebar",
+    "Footer",
 ]

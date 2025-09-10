@@ -61,7 +61,9 @@ def count_rows_quick(path: str) -> int:
     except (FileNotFoundError, InvalidFileFormatError):
         raise
     except Exception as e:
-        raise PPGError(f"Failed to count rows in file: {e}", details={"path": path}) from e
+        raise PPGError(
+            f"Failed to count rows in file: {e}", details={"path": path}
+        ) from e
 
 
 def get_columns_only(path: str) -> List[str]:
@@ -94,7 +96,9 @@ def get_columns_only(path: str) -> List[str]:
     except (FileNotFoundError, InvalidFileFormatError):
         raise
     except Exception as e:
-        raise PPGError(f"Failed to read columns from file: {e}", details={"path": path}) from e
+        raise PPGError(
+            f"Failed to read columns from file: {e}", details={"path": path}
+        ) from e
 
 
 def parse_uploaded_csv_to_temp(contents: str, filename: str) -> str:
@@ -144,7 +148,9 @@ def parse_uploaded_csv_to_temp(contents: str, filename: str) -> str:
         raise PPGError(f"Failed to parse uploaded CSV: {e}") from e
 
 
-def read_window(path: str, cols: List[str], start_row: int, end_row: int) -> pd.DataFrame:
+def read_window(
+    path: str, cols: List[str], start_row: int, end_row: int
+) -> pd.DataFrame:
     """
     Read a specific window of rows from a CSV file.
 
@@ -172,7 +178,9 @@ def read_window(path: str, cols: List[str], start_row: int, end_row: int) -> pd.
 
         # Validate window parameters
         if start_row < 0 or end_row <= start_row:
-            raise ValueError("Invalid window parameters: start_row < 0 or end_row <= start_row")
+            raise ValueError(
+                "Invalid window parameters: start_row < 0 or end_row <= start_row"
+            )
 
         # Read the specified window
         df = pd.read_csv(

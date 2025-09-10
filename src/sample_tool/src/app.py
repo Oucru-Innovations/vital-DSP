@@ -8,14 +8,17 @@ logging, and configuration management.
 import logging
 
 # Configure logging
-import os
 import sys
 from pathlib import Path
 from typing import Optional
 
 from dash import Dash, html
 
-from .callbacks import register_data_callbacks, register_plot_callbacks, register_window_callbacks
+from .callbacks import (
+    register_data_callbacks,
+    register_plot_callbacks,
+    register_window_callbacks,
+)
 from .components import APP_INDEX_STRING, create_layout
 from .config.settings import settings
 from .utils.exceptions import ConfigurationError, PPGError
@@ -29,7 +32,10 @@ try:
     logging.basicConfig(
         level=logging.INFO if not settings.debug else logging.DEBUG,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.StreamHandler(sys.stdout), logging.FileHandler("logs/app.log", mode="a")],
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler("logs/app.log", mode="a"),
+        ],
     )
 except Exception as e:
     # Fallback to console-only logging if file logging fails
@@ -77,7 +83,9 @@ def create_app(config: Optional[dict] = None) -> Dash:
         app.index_string = APP_INDEX_STRING
 
         # Configure app server
-        app.server.config["MAX_CONTENT_LENGTH"] = settings.max_file_size_mb * 1024 * 1024
+        app.server.config["MAX_CONTENT_LENGTH"] = (
+            settings.max_file_size_mb * 1024 * 1024
+        )
 
         # Set up the layout
         app.layout = create_layout()
@@ -166,7 +174,10 @@ if __name__ == "__main__":
     try:
         logger.info("Starting PPG analysis tool...")
         app.run_server(
-            debug=settings.debug, host="0.0.0.0", port=8050, dev_tools_hot_reload=settings.debug
+            debug=settings.debug,
+            host="0.0.0.0",
+            port=8050,
+            dev_tools_hot_reload=settings.debug,
         )
     except Exception as e:
         logger.error(f"Failed to start application: {e}")

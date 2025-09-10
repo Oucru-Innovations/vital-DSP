@@ -21,7 +21,7 @@ from vitalDSP_webapp.layout.pages.analysis_pages import (
     quality_layout,
     advanced_layout,
     health_report_layout,
-    settings_layout
+    settings_layout,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ def display_page(pathname: str) -> html.Div:
     """
     logger.info("=== PAGE ROUTING CALLBACK TRIGGERED ===")
     logger.info(f"Page routing callback triggered with pathname: {pathname}")
-    
+
     try:
         if pathname == "/" or pathname is None:
             # Default welcome page
@@ -91,55 +91,85 @@ def display_page(pathname: str) -> html.Div:
     except Exception as e:
         logger.error(f"Error in page routing callback: {e}")
         import traceback
+
         traceback.print_exc()
         return _get_error_layout(str(e))
 
 
 def _get_welcome_layout():
     """Returns the welcome page layout."""
-    return html.Div([
-        html.H1("Welcome to vitalDSP Comprehensive Dashboard", className="text-center mb-4"),
-        html.Div([
-            html.H3("Digital Signal Processing for Vital Signs", className="text-center mb-4"),
-            html.P([
-                "This dashboard provides comprehensive access to all vitalDSP features including:",
-                html.Br(),
-                "• Time and frequency domain analysis",
-                html.Br(),
-                "• Advanced signal filtering and processing",
-                html.Br(),
-                "• Physiological feature extraction",
-                html.Br(),
-                "• Respiratory analysis",
-                html.Br(),
-                "• Signal quality assessment",
-                html.Br(),
-                "• Advanced computational methods",
-                html.Br(),
-                "• Health report generation"
-            ], className="text-center"),
-            html.Hr(),
-            html.Div([
-                html.H4("Getting Started:"),
-                html.Ol([
-                    html.Li("Upload your PPG/ECG data using the Upload page"),
-                    html.Li("Configure your data parameters (sampling frequency, etc.)"),
-                    html.Li("Navigate to the analysis page of your choice"),
-                    html.Li("Adjust parameters and view results in real-time"),
-                    html.Li("Export your analysis results and reports")
-                ])
-            ], className="text-left")
-        ], className="container")
-    ])
+    return html.Div(
+        [
+            html.H1(
+                "Welcome to vitalDSP Comprehensive Dashboard",
+                className="text-center mb-4",
+            ),
+            html.Div(
+                [
+                    html.H3(
+                        "Digital Signal Processing for Vital Signs",
+                        className="text-center mb-4",
+                    ),
+                    html.P(
+                        [
+                            "This dashboard provides comprehensive access to all vitalDSP features including:",
+                            html.Br(),
+                            "• Time and frequency domain analysis",
+                            html.Br(),
+                            "• Advanced signal filtering and processing",
+                            html.Br(),
+                            "• Physiological feature extraction",
+                            html.Br(),
+                            "• Respiratory analysis",
+                            html.Br(),
+                            "• Signal quality assessment",
+                            html.Br(),
+                            "• Advanced computational methods",
+                            html.Br(),
+                            "• Health report generation",
+                        ],
+                        className="text-center",
+                    ),
+                    html.Hr(),
+                    html.Div(
+                        [
+                            html.H4("Getting Started:"),
+                            html.Ol(
+                                [
+                                    html.Li(
+                                        "Upload your PPG/ECG data using the Upload page"
+                                    ),
+                                    html.Li(
+                                        "Configure your data parameters (sampling frequency, etc.)"
+                                    ),
+                                    html.Li(
+                                        "Navigate to the analysis page of your choice"
+                                    ),
+                                    html.Li(
+                                        "Adjust parameters and view results in real-time"
+                                    ),
+                                    html.Li("Export your analysis results and reports"),
+                                ]
+                            ),
+                        ],
+                        className="text-left",
+                    ),
+                ],
+                className="container",
+            ),
+        ]
+    )
 
 
 def _get_error_layout(error_msg: str):
     """Returns the error page layout."""
-    return html.Div([
-        html.H1("Error Loading Page", className="text-center text-danger"),
-        html.P(f"An error occurred while loading the page: {error_msg}"),
-        html.P("Please check the console for more details.")
-    ])
+    return html.Div(
+        [
+            html.H1("Error Loading Page", className="text-center text-danger"),
+            html.P(f"An error occurred while loading the page: {error_msg}"),
+            html.P("Please check the console for more details."),
+        ]
+    )
 
 
 def register_page_routing_callbacks(app):
@@ -151,6 +181,7 @@ def register_page_routing_callbacks(app):
     app : Dash
         The Dash app object where the callback is being registered.
     """
+
     @app.callback(Output("page-content", "children"), [Input("url", "pathname")])
     def display_page_callback(pathname: str) -> html.Div:
         """Callback wrapper for display_page function."""

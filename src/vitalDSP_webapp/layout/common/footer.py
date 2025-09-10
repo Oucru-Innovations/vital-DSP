@@ -24,9 +24,9 @@ def Footer():
             "alignItems": "center",
             "justifyContent": "center",
             "fontSize": "12px",
-            "opacity": "0.8"
+            "opacity": "0.8",
         },
         children=[
             html.Span("© 2024 vitalDSP - Digital Signal Processing for Vital Signs")
-        ]
+        ],
     )

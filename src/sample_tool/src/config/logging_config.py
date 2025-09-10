@@ -61,7 +61,9 @@ def setup_logging(
     detailed_formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s"
     )
-    simple_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    simple_formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
 
     # Console handler with colorlog (if available)
     if enable_colors and COLORLOG_AVAILABLE:
@@ -143,7 +145,9 @@ def log_function_call(func_name: str, args: tuple = None, kwargs: dict = None) -
         logger.debug(f"Calling {func_name}({params})")
 
 
-def log_function_result(func_name: str, result: any = None, error: Exception = None) -> None:
+def log_function_result(
+    func_name: str, result: any = None, error: Exception = None
+) -> None:
     """
     Log function results or errors for debugging purposes.
 
@@ -187,7 +191,9 @@ def log_computation_progress(operation: str, progress: str, **kwargs) -> None:
     logger.debug(f"⏳ {operation}: {progress} - {context}")
 
 
-def log_computation_complete(operation: str, result_summary: str = None, **kwargs) -> None:
+def log_computation_complete(
+    operation: str, result_summary: str = None, **kwargs
+) -> None:
     """
     Log the completion of a computation operation.
 

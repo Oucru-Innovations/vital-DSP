@@ -6,11 +6,11 @@ from .settings import app_config, column_mapping, ui_styles, get_config, update_
 from .logging_config import setup_logging, get_logger
 
 __all__ = [
-    'app_config',
-    'column_mapping', 
-    'ui_styles',
-    'get_config',
-    'update_config',
-    'setup_logging',
-    'get_logger'
+    "app_config",
+    "column_mapping",
+    "ui_styles",
+    "get_config",
+    "update_config",
+    "setup_logging",
+    "get_logger",
 ]

@@ -9,7 +9,7 @@ from .page_routing_callbacks import register_page_routing_callbacks
 from .upload_callbacks import register_upload_callbacks
 
 __all__ = [
-    'register_sidebar_callbacks',
-    'register_page_routing_callbacks',
-    'register_upload_callbacks',
+    "register_sidebar_callbacks",
+    "register_page_routing_callbacks",
+    "register_upload_callbacks",
 ]

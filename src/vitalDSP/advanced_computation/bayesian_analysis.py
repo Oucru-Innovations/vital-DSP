@@ -182,11 +182,11 @@ class BayesianOptimization:
         mu, sigma = self.gp.predict(X)
         mu_sample = np.max(self.Y_samples)
         imp = mu - mu_sample - xi
-        
+
         # Avoid divide by zero
         sigma_safe = np.where(sigma == 0.0, 1e-10, sigma)
         Z = imp / sigma_safe
-        
+
         ei = imp * self._cdf(Z) + sigma * self._pdf(Z)
         ei[sigma == 0.0] = 0.0
 

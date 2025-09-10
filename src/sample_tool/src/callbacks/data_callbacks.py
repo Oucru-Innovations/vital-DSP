@@ -44,13 +44,17 @@ def load_data(n_clicks_path, upload_contents, upload_filename, file_path):
                red_value, ir_value, window) - Data loading results
     """
     # Determine which trigger activated the callback
-    trig = callback_context.triggered[0]["prop_id"] if callback_context.triggered else ""
+    trig = (
+        callback_context.triggered[0]["prop_id"] if callback_context.triggered else ""
+    )
     path = None
     status = "No data loaded."
 
     # Handle CSV file upload
     if "upload_csv.contents" in trig and upload_contents:
-        path = parse_uploaded_csv_to_temp(upload_contents, upload_filename or "uploaded.csv")
+        path = parse_uploaded_csv_to_temp(
+            upload_contents, upload_filename or "uploaded.csv"
+        )
         status = f"Uploaded: {Path(path).name} → temp"
 
     # Handle file path loading
@@ -99,7 +103,8 @@ def load_data(n_clicks_path, upload_contents, upload_filename, file_path):
     for col in cols:
         col_lower = col.lower()
         if not red_guess and any(
-            pattern in col_lower for pattern in ["red", "r_", "r-", "r ", "red_adc", "red_signal"]
+            pattern in col_lower
+            for pattern in ["red", "r_", "r-", "r ", "red_adc", "red_signal"]
         ):
             red_guess = col
         elif not ir_guess and any(
@@ -109,7 +114,15 @@ def load_data(n_clicks_path, upload_contents, upload_filename, file_path):
             ir_guess = col
         elif not waveform_guess and any(
             pattern in col_lower
-            for pattern in ["pleth", "waveform", "ppg", "signal", "ecg", "heart", "pulse"]
+            for pattern in [
+                "pleth",
+                "waveform",
+                "ppg",
+                "signal",
+                "ecg",
+                "heart",
+                "pulse",
+            ]
         ):
             waveform_guess = col
 
@@ -120,7 +133,9 @@ def load_data(n_clicks_path, upload_contents, upload_filename, file_path):
             if not red_guess:
                 red_guess = numeric_cols[0]
             if not ir_guess:
-                ir_guess = numeric_cols[1] if numeric_cols[1] != red_guess else numeric_cols[0]
+                ir_guess = (
+                    numeric_cols[1] if numeric_cols[1] != red_guess else numeric_cols[0]
+                )
             if not waveform_guess:
                 waveform_guess = (
                     numeric_cols[2]
@@ -140,7 +155,18 @@ def load_data(n_clicks_path, upload_contents, upload_filename, file_path):
     total = count_rows_quick(path)
     window = [DEFAULT_WINDOW_START, min(DEFAULT_WINDOW_END, total)]
 
-    return path, total, status, opts, opts, opts, red_guess, ir_guess, waveform_guess, window
+    return (
+        path,
+        total,
+        status,
+        opts,
+        opts,
+        opts,
+        red_guess,
+        ir_guess,
+        waveform_guess,
+        window,
+    )
 
 
 def register_data_callbacks(app):
@@ -203,7 +229,11 @@ def register_data_callbacks(app):
                    red_value, ir_value, window) - Data loading results
         """
         # Determine which trigger activated the callback
-        trig = callback_context.triggered[0]["prop_id"] if callback_context.triggered else ""
+        trig = (
+            callback_context.triggered[0]["prop_id"]
+            if callback_context.triggered
+            else ""
+        )
         path = None
         status = "No data loaded."
 
@@ -219,7 +249,9 @@ def register_data_callbacks(app):
 
         # Handle CSV file upload
         elif "upload_csv.contents" in trig and upload_contents:
-            path = parse_uploaded_csv_to_temp(upload_contents, upload_filename or "uploaded.csv")
+            path = parse_uploaded_csv_to_temp(
+                upload_contents, upload_filename or "uploaded.csv"
+            )
             status = f"Uploaded: {Path(path).name} → temp"
 
         # Handle file path loading
@@ -276,12 +308,28 @@ def register_data_callbacks(app):
                 red_guess = col
             elif not ir_guess and any(
                 pattern in col_lower
-                for pattern in ["ir", "infrared", "i_", "i-", "i ", "ir_adc", "ir_signal"]
+                for pattern in [
+                    "ir",
+                    "infrared",
+                    "i_",
+                    "i-",
+                    "i ",
+                    "ir_adc",
+                    "ir_signal",
+                ]
             ):
                 ir_guess = col
             elif not waveform_guess and any(
                 pattern in col_lower
-                for pattern in ["pleth", "waveform", "ppg", "signal", "ecg", "heart", "pulse"]
+                for pattern in [
+                    "pleth",
+                    "waveform",
+                    "ppg",
+                    "signal",
+                    "ecg",
+                    "heart",
+                    "pulse",
+                ]
             ):
                 waveform_guess = col
 
@@ -292,7 +340,11 @@ def register_data_callbacks(app):
                 if not red_guess:
                     red_guess = numeric_cols[0]
                 if not ir_guess:
-                    ir_guess = numeric_cols[1] if numeric_cols[1] != red_guess else numeric_cols[0]
+                    ir_guess = (
+                        numeric_cols[1]
+                        if numeric_cols[1] != red_guess
+                        else numeric_cols[0]
+                    )
                 if not waveform_guess:
                     waveform_guess = (
                         numeric_cols[2]
@@ -306,7 +358,9 @@ def register_data_callbacks(app):
         if not ir_guess and len(cols) > 1:
             ir_guess = cols[1] if cols[1] != red_guess else cols[0]
         if not waveform_guess and len(cols) > 2:
-            waveform_guess = cols[2] if cols[2] not in [red_guess, ir_guess] else cols[0]
+            waveform_guess = (
+                cols[2] if cols[2] not in [red_guess, ir_guess] else cols[0]
+            )
 
         # Set up default data window
         total = count_rows_quick(path)
@@ -314,8 +368,17 @@ def register_data_callbacks(app):
         window = {"start": DEFAULT_WINDOW_START, "end": end_default}
 
         # Update status with file information
-        status += (
-            f" • total rows ≈ {total:,} • default window {window['start']:,}–{window['end']:,}"
-        )
+        status += f" • total rows ≈ {total:,} • default window {window['start']:,}–{window['end']:,}"
 
-        return path, total, status, opts, opts, opts, red_guess, ir_guess, waveform_guess, window
+        return (
+            path,
+            total,
+            status,
+            opts,
+            opts,
+            opts,
+            red_guess,
+            ir_guess,
+            waveform_guess,
+            window,
+        )

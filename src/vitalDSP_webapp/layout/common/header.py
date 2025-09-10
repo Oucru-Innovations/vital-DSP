@@ -24,25 +24,18 @@ def Header():
             "display": "flex",
             "alignItems": "center",
             "padding": "0 20px",
-            "boxShadow": "0 2px 4px rgba(0,0,0,0.1)"
+            "boxShadow": "0 2px 4px rgba(0,0,0,0.1)",
         },
         children=[
             html.H1(
                 "vitalDSP",
                 className="mb-0",
-                style={
-                    "fontSize": "24px",
-                    "fontWeight": "bold",
-                    "color": "white"
-                }
+                style={"fontSize": "24px", "fontWeight": "bold", "color": "white"},
             ),
             html.Span(
                 "Digital Signal Processing for Vital Signs",
                 className="ms-3",
-                style={
-                    "fontSize": "14px",
-                    "opacity": "0.8"
-                }
-            )
-        ]
+                style={"fontSize": "14px", "opacity": "0.8"},
+            ),
+        ],
     )

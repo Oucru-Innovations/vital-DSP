@@ -55,6 +55,7 @@ jobs:
 
 
       - name: Run Linting
+        # Note: F401 (unused imports) is ignored in .flake8 config
         run: make lint
 
       - name: Generate Documentation

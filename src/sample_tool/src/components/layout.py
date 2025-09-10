@@ -30,7 +30,9 @@ def create_layout():
             dcc.Store(id="store_window"),  # {"start": int, "end": int}
             dcc.Store(id="store_theme", data="dark"),
             dcc.Store(id="store_prev_total_rows"),
-            dcc.Store(id="store_initial_load", data=True),  # Triggers initial data loading
+            dcc.Store(
+                id="store_initial_load", data=True
+            ),  # Triggers initial data loading
             html.Div(
                 className="header",
                 children=[
@@ -74,13 +76,17 @@ def _create_left_panel():
                             ),
                         ]
                     ),
-                    html.Button("Load", id="btn_load_path", className="btn", n_clicks=0),
+                    html.Button(
+                        "Load", id="btn_load_path", className="btn", n_clicks=0
+                    ),
                 ],
             ),
             html.Div(style={"height": "8px"}),
             dcc.Upload(
                 id="upload_csv",
-                children=html.Div(["⬆️ ", html.Span("Drag & drop or click to upload CSV")]),
+                children=html.Div(
+                    ["⬆️ ", html.Span("Drag & drop or click to upload CSV")]
+                ),
                 multiple=False,
                 className="upload",
             ),
@@ -94,7 +100,10 @@ def _create_left_panel():
                         children=[
                             "RED",
                             dcc.Dropdown(
-                                id="red_col", options=[], value=None, style={"width": "280px"}
+                                id="red_col",
+                                options=[],
+                                value=None,
+                                style={"width": "280px"},
                             ),
                         ]
                     ),
@@ -108,7 +117,10 @@ def _create_left_panel():
                         children=[
                             "IR",
                             dcc.Dropdown(
-                                id="ir_col", options=[], value=None, style={"width": "280px"}
+                                id="ir_col",
+                                options=[],
+                                value=None,
+                                style={"width": "280px"},
                             ),
                         ]
                     ),
@@ -135,13 +147,21 @@ def _create_left_panel():
             html.Div(style={"height": "10px"}),
             html.Label("Sampling frequency (Hz)"),
             dcc.Input(
-                id="fs", type="number", value=DEFAULT_FS, step=0.5, min=1, style={"width": "120px"}
+                id="fs",
+                type="number",
+                value=DEFAULT_FS,
+                step=0.5,
+                min=1,
+                style={"width": "120px"},
             ),
             html.Div(style={"height": "10px"}),
             html.Label("Theme"),
             dcc.Dropdown(
                 id="theme",
-                options=[{"label": "Dark", "value": "dark"}, {"label": "Light", "value": "light"}],
+                options=[
+                    {"label": "Dark", "value": "dark"},
+                    {"label": "Light", "value": "light"},
+                ],
                 value="dark",
                 clearable=False,
                 style={"width": "160px"},
@@ -175,17 +195,27 @@ def _create_left_panel():
                             ),
                         ]
                     ),
-                    html.Button("Apply", id="btn_apply_window", className="btn", n_clicks=0),
+                    html.Button(
+                        "Apply", id="btn_apply_window", className="btn", n_clicks=0
+                    ),
                 ],
             ),
             html.Div(
                 className="row",
                 style={"marginTop": "6px"},
                 children=[
-                    html.Button("−10k", id="nudge_m10k", className="btn secondary", n_clicks=0),
-                    html.Button("−1k", id="nudge_m1k", className="btn secondary", n_clicks=0),
-                    html.Button("+1k", id="nudge_p1k", className="btn secondary", n_clicks=0),
-                    html.Button("+10k", id="nudge_p10k", className="btn secondary", n_clicks=0),
+                    html.Button(
+                        "−10k", id="nudge_m10k", className="btn secondary", n_clicks=0
+                    ),
+                    html.Button(
+                        "−1k", id="nudge_m1k", className="btn secondary", n_clicks=0
+                    ),
+                    html.Button(
+                        "+1k", id="nudge_p1k", className="btn secondary", n_clicks=0
+                    ),
+                    html.Button(
+                        "+10k", id="nudge_p10k", className="btn secondary", n_clicks=0
+                    ),
                     html.Div(id="window_badge", className="pill", children="Rows: 0–0"),
                 ],
             ),
@@ -253,14 +283,19 @@ def _create_middle_panel():
                                 className="card",
                                 children=[
                                     html.Div(
-                                        className="section-title", children="Time-domain (bigger)"
+                                        className="section-title",
+                                        children="Time-domain (bigger)",
                                     ),
                                     dcc.Loading(
-                                        dcc.Graph(id="fig_raw", style={"height": "600px"}),
+                                        dcc.Graph(
+                                            id="fig_raw", style={"height": "600px"}
+                                        ),
                                         type="default",
                                     ),
                                     dcc.Loading(
-                                        dcc.Graph(id="fig_ac", style={"height": "600px"}),
+                                        dcc.Graph(
+                                            id="fig_ac", style={"height": "600px"}
+                                        ),
                                         type="default",
                                     ),
                                 ],
@@ -274,9 +309,13 @@ def _create_middle_panel():
                             html.Div(
                                 className="card",
                                 children=[
-                                    html.Div(className="section-title", children="Frequency"),
+                                    html.Div(
+                                        className="section-title", children="Frequency"
+                                    ),
                                     dcc.Loading(
-                                        dcc.Graph(id="fig_psd", style={"height": "360px"}),
+                                        dcc.Graph(
+                                            id="fig_psd", style={"height": "360px"}
+                                        ),
                                         type="default",
                                     ),
                                     html.Div(
@@ -315,7 +354,10 @@ def _create_middle_panel():
                                                     dcc.Checklist(
                                                         id="show_spec",
                                                         options=[
-                                                            {"label": "Enable", "value": "on"}
+                                                            {
+                                                                "label": "Enable",
+                                                                "value": "on",
+                                                            }
                                                         ],
                                                         value=["on"],
                                                     ),
@@ -325,7 +367,9 @@ def _create_middle_panel():
                                         style={"margin": "6px 0"},
                                     ),
                                     dcc.Loading(
-                                        dcc.Graph(id="fig_spec", style={"height": "380px"}),
+                                        dcc.Graph(
+                                            id="fig_spec", style={"height": "380px"}
+                                        ),
                                         type="default",
                                     ),
                                 ],
@@ -340,7 +384,8 @@ def _create_middle_panel():
                                 className="card",
                                 children=[
                                     html.Div(
-                                        className="section-title", children="Dual-source analytics"
+                                        className="section-title",
+                                        children="Dual-source analytics",
                                     ),
                                     dcc.Tabs(
                                         id="dual_source_tabs",
@@ -365,7 +410,8 @@ def _create_middle_panel():
                                                 children=[
                                                     dcc.Loading(
                                                         dcc.Graph(
-                                                            id="fig_coh", style={"height": "300px"}
+                                                            id="fig_coh",
+                                                            style={"height": "300px"},
                                                         ),
                                                         type="default",
                                                     )
@@ -377,7 +423,8 @@ def _create_middle_panel():
                                                 children=[
                                                     dcc.Loading(
                                                         dcc.Graph(
-                                                            id="fig_liss", style={"height": "300px"}
+                                                            id="fig_liss",
+                                                            style={"height": "300px"},
                                                         ),
                                                         type="default",
                                                     )
@@ -423,7 +470,8 @@ def _create_middle_panel():
                                 className="card",
                                 children=[
                                     html.Div(
-                                        className="section-title", children="Waveform Analysis"
+                                        className="section-title",
+                                        children="Waveform Analysis",
                                     ),
                                     html.Div(
                                         className="row",
@@ -434,7 +482,10 @@ def _create_middle_panel():
                                                     dcc.Dropdown(
                                                         id="waveform_type",
                                                         options=[
-                                                            {"label": "Raw Signal", "value": "raw"},
+                                                            {
+                                                                "label": "Raw Signal",
+                                                                "value": "raw",
+                                                            },
                                                             {
                                                                 "label": "Filtered Signal",
                                                                 "value": "filtered",
@@ -474,7 +525,10 @@ def _create_middle_panel():
                                                     dcc.Checklist(
                                                         id="show_waveform_annotations",
                                                         options=[
-                                                            {"label": "Peaks", "value": "peaks"},
+                                                            {
+                                                                "label": "Peaks",
+                                                                "value": "peaks",
+                                                            },
                                                             {
                                                                 "label": "Valleys",
                                                                 "value": "valleys",
@@ -493,12 +547,15 @@ def _create_middle_panel():
                                         style={"margin": "6px 0"},
                                     ),
                                     dcc.Loading(
-                                        dcc.Graph(id="fig_waveform", style={"height": "400px"}),
+                                        dcc.Graph(
+                                            id="fig_waveform", style={"height": "400px"}
+                                        ),
                                         type="default",
                                     ),
                                     dcc.Loading(
                                         dcc.Graph(
-                                            id="fig_waveform_stats", style={"height": "300px"}
+                                            id="fig_waveform_stats",
+                                            style={"height": "300px"},
                                         ),
                                         type="default",
                                     ),
@@ -514,7 +571,8 @@ def _create_middle_panel():
                                 className="card",
                                 children=[
                                     html.Div(
-                                        className="section-title", children="Dynamics (HR/IBI)"
+                                        className="section-title",
+                                        children="Dynamics (HR/IBI)",
                                     ),
                                     html.Div(
                                         className="row",
@@ -529,7 +587,10 @@ def _create_middle_panel():
                                                                 "label": "IR (default)",
                                                                 "value": "ir",
                                                             },
-                                                            {"label": "RED", "value": "red"},
+                                                            {
+                                                                "label": "RED",
+                                                                "value": "red",
+                                                            },
                                                         ],
                                                         value="ir",
                                                         clearable=False,
@@ -577,15 +638,29 @@ def _create_middle_panel():
                                                     dcc.Checklist(
                                                         id="show_adv",
                                                         options=[
-                                                            {"label": "HR trend", "value": "hr"},
-                                                            {"label": "IBI hist", "value": "hist"},
-                                                            {"label": "Poincaré", "value": "poi"},
+                                                            {
+                                                                "label": "HR trend",
+                                                                "value": "hr",
+                                                            },
+                                                            {
+                                                                "label": "IBI hist",
+                                                                "value": "hist",
+                                                            },
+                                                            {
+                                                                "label": "Poincaré",
+                                                                "value": "poi",
+                                                            },
                                                             {
                                                                 "label": "Cross-corr",
                                                                 "value": "xcorr",
                                                             },
                                                         ],
-                                                        value=["hr", "hist", "poi", "xcorr"],
+                                                        value=[
+                                                            "hr",
+                                                            "hist",
+                                                            "poi",
+                                                            "xcorr",
+                                                        ],
                                                     ),
                                                 ]
                                             ),
@@ -666,7 +741,9 @@ def _create_right_panel():
             html.Div(
                 className="card",
                 children=[
-                    html.Div(className="section-title", children="Filter Controls (cont'd)"),
+                    html.Div(
+                        className="section-title", children="Filter Controls (cont'd)"
+                    ),
                     html.Div(
                         className="row",
                         children=[
@@ -674,7 +751,11 @@ def _create_right_panel():
                                 children=[
                                     html.Div("Low (Hz)"),
                                     dcc.Input(
-                                        id="low_hz", type="number", value=0.5, step=0.1, min=0
+                                        id="low_hz",
+                                        type="number",
+                                        value=0.5,
+                                        step=0.1,
+                                        min=0,
                                     ),
                                 ]
                             ),
@@ -682,7 +763,11 @@ def _create_right_panel():
                                 children=[
                                     html.Div("High (Hz)"),
                                     dcc.Input(
-                                        id="high_hz", type="number", value=5.0, step=0.1, min=0.1
+                                        id="high_hz",
+                                        type="number",
+                                        value=5.0,
+                                        step=0.1,
+                                        min=0.1,
                                     ),
                                 ]
                             ),
@@ -785,7 +870,10 @@ def _create_right_panel():
                         id="flags",
                         options=[
                             {"label": "Detrend (remove mean)", "value": "detrend"},
-                            {"label": "Invert filtered AC (pulse up)", "value": "invert"},
+                            {
+                                "label": "Invert filtered AC (pulse up)",
+                                "value": "invert",
+                            },
                         ],
                         value=["invert"],
                     ),
@@ -797,7 +885,9 @@ def _create_right_panel():
                 children=[
                     html.Div(className="section-title", children="Insights"),
                     html.Div(
-                        id="insights", className="row", style={"flexWrap": "wrap", "gap": "10px"}
+                        id="insights",
+                        className="row",
+                        style={"flexWrap": "wrap", "gap": "10px"},
                     ),
                     html.Div(id="notes", className="hint", style={"marginTop": "10px"}),
                 ],
@@ -806,9 +896,13 @@ def _create_right_panel():
             html.Div(
                 className="card",
                 children=[
-                    html.Div(className="section-title", children="File / Window / Export"),
                     html.Div(
-                        id="file_info", className="row", style={"flexWrap": "wrap", "gap": "10px"}
+                        className="section-title", children="File / Window / Export"
+                    ),
+                    html.Div(
+                        id="file_info",
+                        className="row",
+                        style={"flexWrap": "wrap", "gap": "10px"},
                     ),
                     html.Div(style={"height": "8px"}),
                     html.Button(

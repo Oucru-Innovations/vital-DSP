@@ -9,5 +9,5 @@ used in the application.
 from .data.data_service import get_data_service
 
 __all__ = [
-    'get_data_service',
+    "get_data_service",
 ]

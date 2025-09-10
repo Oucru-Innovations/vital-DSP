@@ -9,7 +9,7 @@ from .features_callbacks import register_features_callbacks
 from .preview_callbacks import register_preview_callbacks
 
 __all__ = [
-    'register_physiological_callbacks',
-    'register_features_callbacks',
-    'register_preview_callbacks',
+    "register_physiological_callbacks",
+    "register_features_callbacks",
+    "register_preview_callbacks",
 ]
