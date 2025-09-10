@@ -10,7 +10,7 @@
 ### 2. **Environment Variables**
 Add these in Render dashboard:
 ```
-PYTHONPATH=/app/src
+PYTHONPATH=/app
 PORT=8000
 PYTHONUNBUFFERED=1
 PYTHONDONTWRITEBYTECODE=1
