@@ -1,5 +1,5 @@
-# Combined requirements for Render deployment
-# This includes both root and webapp dependencies
+# Production requirements for Render deployment
+# Optimized for Python 3.10 and minimal dependencies
 
 # Core web framework
 dash>=2.14.0
@@ -29,18 +29,5 @@ python-multipart>=0.0.6
 aiofiles>=23.2.0
 jinja2
 
-# Development and testing (minimal for production)
-pytest>=7.4.0
-pytest-dash>=2.3.0
-
 # Development tools (minimal for production)
 ipython>=8.0.0
-
-# Code quality (minimal for production)
-mypy>=1.0.0
-isort>=5.0.0
-
-# Optional: For advanced features (commented out for production)
-# torch>=2.0.0  # For neural network filtering
-# tensorflow>=2.13.0  # Alternative ML framework
-# librosa>=0.10.0  # For audio/signal processing
