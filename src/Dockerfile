@@ -4,7 +4,7 @@ FROM python:3.10-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app:/app/vitalDSP
 ENV PORT=8000
 
 # Set the working directory in the container
@@ -26,9 +26,6 @@ RUN pip install -r /app/requirements.txt
 
 # Copy the source code
 COPY . /app
-
-# Install the package in development mode
-RUN pip install -e .
 
 # Create uploads directory
 RUN mkdir -p /app/uploads

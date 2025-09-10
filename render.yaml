@@ -8,7 +8,7 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: PYTHONPATH
-        value: /app
+        value: /app:/app/vitalDSP
       - key: PORT
         value: 8000
       - key: PYTHONUNBUFFERED

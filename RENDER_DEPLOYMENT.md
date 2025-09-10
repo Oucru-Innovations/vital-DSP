@@ -10,7 +10,7 @@
 ### 2. **Environment Variables**
 Add these in Render dashboard:
 ```
-PYTHONPATH=/app
+PYTHONPATH=/app:/app/vitalDSP
 PORT=8000
 PYTHONUNBUFFERED=1
 PYTHONDONTWRITEBYTECODE=1
