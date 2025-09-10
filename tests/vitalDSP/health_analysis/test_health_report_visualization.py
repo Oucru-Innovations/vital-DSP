@@ -1,12 +1,19 @@
 import pytest
 import os
 import numpy as np
+import pandas as pd
+import warnings
 from unittest.mock import patch, MagicMock
 import matplotlib
 from vitalDSP.health_analysis.health_report_visualization import HealthReportVisualizer
 
 # Force matplotlib to use the 'Agg' backend for tests
 matplotlib.use("Agg")
+
+# Filter out expected warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="divide by zero encountered.*")
+warnings.filterwarnings("ignore", category=UserWarning, message="Data has no positive values.*")
+warnings.filterwarnings("ignore", category=RuntimeWarning, message="More than 20 figures have been opened.*")
 
 
 @pytest.fixture

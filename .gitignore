@@ -16,6 +16,9 @@ visualizations/
 health_analysis_report.html
 report.html
 
+# src/sample_tool
+# src/sample_tool/* 
+
 # Distribution / packaging
 .Python
 build/

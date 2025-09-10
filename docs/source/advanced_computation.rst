@@ -1,10 +1,53 @@
 Advanced Computation
 ====================
 
-This section covers the advanced computational techniques provided by the VitalDSP library. These methods are designed to handle complex signal processing tasks, including anomaly detection, Bayesian analysis, and signal synthesis.
+This section covers the advanced computational techniques provided by the VitalDSP library. These methods are designed to handle complex signal processing tasks, including machine learning, anomaly detection, Bayesian analysis, and advanced signal processing algorithms.
+
+Overview
+========
+
+The advanced computation module provides cutting-edge algorithms for:
+
+* **Machine Learning**: Neural networks, reinforcement learning, and adaptive filtering
+* **Anomaly Detection**: Real-time and batch anomaly detection algorithms
+* **Bayesian Analysis**: Probabilistic modeling and optimization
+* **Signal Decomposition**: EMD, harmonic separation, and sparse processing
+* **Nonlinear Analysis**: Complex system analysis and chaos theory
+* **Multimodal Fusion**: Multi-signal integration and analysis
+
+Machine Learning and AI
+========================
+
+Neural Network Filtering
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Advanced filtering techniques leveraging neural networks to process and enhance biomedical signals.
+
+.. automodule:: vitalDSP.advanced_computation.neural_network_filtering
+    :members:
+    :undoc-members:
+    :private-members:
+    :exclude-members: __dict__, __weakref__, __module__, __annotations__
+    :noindex:
+
+Reinforcement Learning Filter
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Filtering methods that use reinforcement learning to adaptively improve signal quality based on feedback loops.
+
+.. automodule:: vitalDSP.advanced_computation.reinforcement_learning_filter
+    :members:
+    :undoc-members:
+    :private-members:
+    :exclude-members: __dict__, __weakref__, __module__, __annotations__
+    :noindex:
 
 Anomaly Detection
------------------
+=================
+
+Anomaly Detection
+~~~~~~~~~~~~~~~~~
+
 Techniques for identifying anomalies in biomedical signals, crucial for detecting irregularities and potential issues in real-time signal monitoring.
 
 .. automodule:: vitalDSP.advanced_computation.anomaly_detection
@@ -14,8 +57,24 @@ Techniques for identifying anomalies in biomedical signals, crucial for detectin
     :exclude-members: __dict__, __weakref__, __module__, __annotations__
     :noindex:
 
+Real-Time Anomaly Detection
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Real-time methods for detecting anomalies in streaming biomedical signals, crucial for monitoring and alert systems.
+
+.. automodule:: vitalDSP.advanced_computation.real_time_anomaly_detection
+    :members:
+    :undoc-members:
+    :private-members:
+    :exclude-members: __dict__, __weakref__, __module__, __annotations__
+    :noindex:
+
 Bayesian Analysis
------------------
+=================
+
+Bayesian Analysis
+~~~~~~~~~~~~~~~~~
+
 Bayesian methods applied to signal processing, offering a probabilistic approach to model and interpret signal data.
 
 .. automodule:: vitalDSP.advanced_computation.bayesian_analysis

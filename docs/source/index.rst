@@ -4,11 +4,23 @@
 Welcome to VitalDSP's Documentation!
 ====================================
 
-Welcome to the official documentation for the VitalDSP library! This library offers comprehensive tools for digital signal processing (DSP), with a particular focus on filtering and transformations tailored for healthcare and biomedical applications.
+Welcome to the official documentation for the VitalDSP library! This comprehensive library offers advanced tools for digital signal processing (DSP) with a specialized focus on healthcare and biomedical applications, including ECG, PPG, and other vital signs analysis.
 
 .. image:: _static/logo.png
    :alt: VitalDSP Logo
    :align: center
+
+VitalDSP provides both a powerful Python library and an intuitive web application for signal processing, making it accessible to researchers, clinicians, and developers working with physiological data.
+
+Key Features
+============
+
+* **Comprehensive Signal Processing**: Advanced filtering, artifact removal, and signal enhancement
+* **Physiological Feature Extraction**: Time-domain, frequency-domain, and HRV analysis
+* **Respiratory Analysis**: Multi-modal respiratory rate estimation and sleep apnea detection
+* **Machine Learning Integration**: Neural networks, Bayesian optimization, and anomaly detection
+* **Interactive Web Application**: User-friendly interface for real-time signal analysis
+* **Health Report Generation**: Automated analysis and visualization of vital signs
 
 Getting Started
 ===============
@@ -24,14 +36,14 @@ Whether you're a beginner or an experienced user, this documentation will guide 
 
    getting_started
 
-Core Modules
-============
+Core Library Modules
+====================
 
-Explore the core modules of the VitalDSP library below:
+Explore the core modules of the VitalDSP library:
 
 .. toctree::
    :maxdepth: 2
-   :caption: Core Modules:
+   :caption: Core Library Modules:
 
    preprocess
    filtering
@@ -43,7 +55,18 @@ Explore the core modules of the VitalDSP library below:
    feature_engineering
    utils
 
-Notebooks
+Web Application
+===============
+
+The VitalDSP web application provides an intuitive interface for signal processing and analysis:
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Web Application:
+
+   webapp
+
+Jupyter Notebooks
 =================
 
 Explore detailed examples and tutorials provided in the Jupyter Notebooks:
@@ -53,6 +76,17 @@ Explore detailed examples and tutorials provided in the Jupyter Notebooks:
    :caption: Jupyter Notebooks:
 
    sample_notebooks
+
+API Reference
+=============
+
+Complete API reference for all modules and functions:
+
+.. toctree::
+   :maxdepth: 2
+   :caption: API Reference:
+
+   api_reference
 
 Additional Resources
 ====================

@@ -23,7 +23,7 @@ setup(
     long_description=open('README.md').read(),  # Use the README file as the long description
     long_description_content_type='text/markdown',  # The format of the long description (markdown in this case)
     url='https://github.com/Oucru-Innovations/vital-DSP',  
-    packages=find_packages(where='src',include=['vitalDSP', 'vitalDSP.*', 'webapp', 'webapp.*']),  # Find all packages in the 'src' directory
+    packages=find_packages(where='src',include=['vitalDSP', 'vitalDSP.*', 'vitalDSP_webapp', 'vitalDSP_webapp.*']),  # Find all packages in the 'src' directory
     package_dir={'': 'src'},  # Tell setuptools that all packages are under 'src'
     classifiers=[
         'Programming Language :: Python :: 3',

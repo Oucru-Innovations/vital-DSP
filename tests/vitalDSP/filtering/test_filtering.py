@@ -1,7 +1,11 @@
 import numpy as np
 import pytest
+import warnings
 from vitalDSP.filtering.signal_filtering import SignalFiltering, BandpassFilter
 from vitalDSP.filtering.advanced_signal_filtering import AdvancedSignalFiltering
+
+# Filter out matrix deprecation warnings
+warnings.filterwarnings("ignore", category=PendingDeprecationWarning, message="the matrix subclass is not the recommended way.*")
 
 
 @pytest.fixture

@@ -165,3 +165,20 @@ class PPGAutonomicFeatures:
 
         dfa_value = np.polyfit(np.log(np.arange(1, len(F_n) + 1)), np.log(F_n), 1)[0]
         return float(dfa_value) if dfa_value > 0 else 0.001  # Ensure valid float value
+
+
+# import pandas as pd
+# import os
+# if __name__ == "__main__":
+#     ppg_signal = np.random.rand(1000)
+#     fname = '20190109T151032.026+0700_1050000_1080000.csv'
+#     PATH = 'D:\Workspace\Data\\24EIa\output\sample'
+
+#     ppg_signal = pd.read_csv(os.path.join(PATH, fname))['PLETH'].values
+#     fs = 100
+#     features = PPGAutonomicFeatures(ppg_signal, fs)
+#     rrv = features.compute_rrv()
+#     rsa = features.compute_rsa()
+#     fractal = features.compute_fractal_dimension()
+#     dfa_value = features.compute_dfa()
+#     print(f"RRV: {rrv}, RSA: {rsa}, Fractal Dimension: {fractal}, DFA: {dfa_value}")

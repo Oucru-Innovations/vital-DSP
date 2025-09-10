@@ -372,6 +372,9 @@ class SimpleSVM:
 
     def _train(self, data):
         # Placeholder SVM training logic
+        # Ensure data is 1D for np.random.choice
+        if data.ndim > 1:
+            data = data.flatten()
         return np.random.choice(data, size=int(len(data) * 0.1), replace=False)
 
     def predict(self, data_point):
