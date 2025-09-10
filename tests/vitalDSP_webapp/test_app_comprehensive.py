@@ -111,7 +111,8 @@ class TestAppConfiguration:
         app = create_dash_app()
         
         # Should be able to configure host and port
-        assert hasattr(app, 'run_server')
+        # Check for both old and new Dash API
+        assert hasattr(app, 'run') or hasattr(app, 'run_server')
         
     def test_app_meta_tags(self):
         """Test that meta tags are configured for responsive design"""
