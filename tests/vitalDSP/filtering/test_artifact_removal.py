@@ -4,6 +4,9 @@ import warnings
 from scipy.signal import medfilt
 from vitalDSP.filtering.artifact_removal import ArtifactRemoval
 
+# Mark all tests in this module as unit tests
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
+
 # Filter out expected complex warnings from wavelet operations
 # Note: np.ComplexWarning was deprecated and removed in newer NumPy versions
 try:

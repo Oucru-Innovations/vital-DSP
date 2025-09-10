@@ -2,6 +2,9 @@ import numpy as np
 import pytest
 import warnings
 from vitalDSP.transforms.chroma_stft import ChromaSTFT
+
+# Mark all tests in this module as unit tests
+pytestmark = [pytest.mark.unit, pytest.mark.fast]
 from vitalDSP.transforms.dct_wavelet_fusion import DCTWaveletFusion
 from vitalDSP.transforms.discrete_cosine_transform import DiscreteCosineTransform
 from vitalDSP.transforms.fourier_transform import FourierTransform
