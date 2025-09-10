@@ -1,41 +1,32 @@
-# Use an official Python runtime as a parent image
+# Dockerfile
 FROM python:3.10-slim
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONPATH=/app:/app/vitalDSP
-ENV PORT=8000
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app:/app/vitalDSP
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc g++ curl && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
 COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -U pip \
+ && pip install --no-cache-dir -r /app/requirements.txt \
+ && pip install --no-cache-dir gunicorn uvicorn
 
-# Install Python dependencies
-RUN pip install --upgrade pip
-RUN pip install -r /app/requirements.txt
-
-# Copy the source code
 COPY . /app
-
-# Create uploads directory
 RUN mkdir -p /app/uploads
 
-# Expose the port used by the application
-EXPOSE $PORT
+# Don't hardcode ENV PORT; Render injects it. EXPOSE is optional, harmless:
+EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:$PORT/api/health || exit 1
+# Healthcheck hits our /api/health
+HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=5 \
+  CMD curl -fsS "http://localhost:${PORT:-8000}/api/health" || exit 1
 
-# Start the application
-CMD ["python", "src/vitalDSP_webapp/run_webapp.py"]
+# Use Gunicorn with Uvicorn worker
+CMD exec gunicorn "vitalDSP_webapp.run_webapp:app" \
+  -k uvicorn.workers.UvicornWorker \
+  --bind 0.0.0.0:${PORT:-8000} \
+  --workers 2 --timeout 120
