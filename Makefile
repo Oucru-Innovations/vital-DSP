@@ -17,6 +17,31 @@ PANDOC_OUTPUT=$(DOCS_DIR)/Documentation.pdf
 # Default target: Run all tests
 all: test build coverage lint html upload webapp
 
+# Fast test targets for CI/CD
+test-fast:
+	python run_tests.py fast
+
+test-ci:
+	python run_tests.py ci
+
+test-unit:
+	python run_tests.py unit
+
+test-core:
+	python run_tests.py core
+
+test-webapp:
+	python run_tests.py webapp
+
+test-coverage:
+	python run_tests.py coverage
+
+test-full:
+	python run_tests.py full
+
+test-parallel:
+	python run_tests.py parallel
+
 # Use conditional syntax to handle different OS
 ifeq ($(OS),Windows_NT)
     # PYTHONPATH_SET = set PYTHONPATH=$(SRC_DIR) &&

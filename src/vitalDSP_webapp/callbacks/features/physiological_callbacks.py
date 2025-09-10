@@ -934,16 +934,14 @@ def create_physiological_signal_plot(
             font=dict(size=20, color="#2c3e50"),
         ),
         xaxis=dict(
-            title="Time (seconds)",
-            titlefont=dict(size=14, color="#2c3e50"),
+            title=dict(text="Time (seconds)", font=dict(size=14, color="#2c3e50")),
             gridcolor="rgba(128, 128, 128, 0.2)",
             zeroline=True,
             zerolinecolor="rgba(128, 128, 128, 0.5)",
             showgrid=True,
         ),
         yaxis=dict(
-            title="Amplitude",
-            titlefont=dict(size=14, color="#2c3e50"),
+            title=dict(text="Amplitude", font=dict(size=14, color="#2c3e50")),
             gridcolor="rgba(128, 128, 128, 0.2)",
             zeroline=True,
             zerolinecolor="rgba(128, 128, 128, 0.5)",
