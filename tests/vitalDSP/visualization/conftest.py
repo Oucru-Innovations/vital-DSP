@@ -26,6 +26,10 @@ def mock_matplotlib_show():
 @pytest.fixture(autouse=True)
 def mock_display():
     """Mock IPython display functions to prevent display issues in headless CI environment."""
-    with patch('IPython.display.display') as mock_display:
-        mock_display.return_value = None
-        yield mock_display
+    try:
+        with patch('IPython.display.display') as mock_display:
+            mock_display.return_value = None
+            yield mock_display
+    except ImportError:
+        # IPython not available, skip mocking
+        yield None
