@@ -1,24 +1,17 @@
 services:
   - type: web
-    name: vitaldsp-webapp
-    env: python
-    plan: starter
-    buildCommand: |
-      pip install --upgrade pip
-      pip install -r src/vitalDSP_webapp/requirements-prod.txt
-      pip install -e .
-    startCommand: python src/vitalDSP_webapp/run_webapp.py
+    name: vital-DSP
+    env: docker
+    dockerfilePath: ./src/Dockerfile
+    dockerContext: ./src
+    dockerCommand: python vitalDSP_webapp/run_webapp.py
+    healthCheckPath: /api/health
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.9.18
+      - key: PYTHONPATH
+        value: /app/src
       - key: PORT
         value: 8000
-      - key: HOST
-        value: 0.0.0.0
-      - key: DEBUG
-        value: false
-      - key: PYTHONPATH
-        value: /opt/render/project/src
-    healthCheckPath: /api/health
-    autoDeploy: true
-    branch: main
+      - key: PYTHONUNBUFFERED
+        value: 1
+      - key: PYTHONDONTWRITEBYTECODE
+        value: 1

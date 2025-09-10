@@ -1,114 +1,154 @@
-# Render.com Deployment Guide for vitalDSP Webapp
+# 🚀 Render Deployment Guide for vital-DSP
 
-This guide explains how to deploy the vitalDSP webapp to Render.com.
+## Quick Setup
 
-## Prerequisites
+### 1. **Repository Configuration**
+- **Root Directory**: `src`
+- **Dockerfile Path**: `src/Dockerfile`
+- **Docker Command**: `python vitalDSP_webapp/run_webapp.py`
 
-1. A Render.com account
-2. vitalDSP repository connected to Render.com
-3. Python 3.9+ support
+### 2. **Environment Variables**
+Add these in Render dashboard:
+```
+PYTHONPATH=/app/src
+PORT=8000
+PYTHONUNBUFFERED=1
+PYTHONDONTWRITEBYTECODE=1
+```
 
-## Configuration Files
+### 3. **Health Check**
+- **Health Check Path**: `/api/health`
+- This endpoint returns `{"status": "healthy"}` for monitoring
 
-The following configuration files have been created/updated for Render.com deployment:
+### 4. **Instance Type**
+- **Free Tier**: 512 MB RAM, 0.1 CPU (good for testing)
+- **Starter**: $7/month, 512 MB RAM, 0.5 CPU (recommended for production)
 
-### 1. `render.yaml`
-- Main Render.com configuration file
-- Defines the web service with build and start commands
-- Sets environment variables for production
-- Configures health check endpoint
+## 🔧 Configuration Details
 
-### 2. `Dockerfile`
-- Updated for proper containerization
-- Sets correct Python path and working directory
-- Includes health check configuration
-- Optimized for production deployment
+### Dockerfile Features
+- ✅ Python 3.9 slim base image
+- ✅ System dependencies (gcc, g++, curl)
+- ✅ Optimized layer caching
+- ✅ Health check endpoint
+- ✅ Proper port exposure
+- ✅ Uploads directory creation
 
-### 3. `src/vitalDSP_webapp/requirements-prod.txt`
-- Production dependencies with pinned versions
-- Includes all necessary packages for the webapp
-- Optimized for stability in production
+### Application Structure
+```
+src/
+├── vitalDSP_webapp/
+│   ├── run_webapp.py          # Main entry point
+│   ├── app.py                 # FastAPI + Dash app
+│   ├── requirements.txt       # Webapp dependencies
+│   └── api/endpoints.py       # Health check endpoint
+├── vitalDSP/                  # Core library
+└── Dockerfile                 # Render-optimized Dockerfile
+```
 
-### 4. `start.sh`
-- Startup script for Render.com
-- Handles environment setup
-- Creates necessary directories
+### Health Check Endpoint
+- **URL**: `https://your-app.onrender.com/api/health`
+- **Response**: `{"status": "healthy", "timestamp": "..."}`
+- **Purpose**: Render monitors this for service health
 
-## Environment Variables
+## 🚀 Deployment Steps
 
-The following environment variables are configured:
+1. **Connect Repository**
+   - Connect your GitHub repo to Render
+   - Select `vital-DSP` repository
 
-- `PYTHON_VERSION`: 3.9.18
-- `PORT`: 8000 (automatically set by Render.com)
-- `HOST`: 0.0.0.0
-- `DEBUG`: false
-- `PYTHONPATH`: /opt/render/project/src
+2. **Configure Service**
+   - **Name**: `vital-DSP`
+   - **Root Directory**: `src`
+   - **Dockerfile Path**: `src/Dockerfile`
+   - **Docker Command**: `python vitalDSP_webapp/run_webapp.py`
 
-## Health Check
+3. **Set Environment Variables**
+   - Add the environment variables listed above
 
-A health check endpoint is available at `/api/health` that returns:
-- Service status
-- Timestamp
-- Memory and disk usage
-- Service version
+4. **Configure Health Check**
+   - **Health Check Path**: `/api/health`
 
-## Deployment Steps
+5. **Deploy**
+   - Click "Deploy web service"
+   - Wait for build to complete (~5-10 minutes)
 
-1. **Connect Repository**: Link vitalDSP GitHub repository to Render.com
-2. **Select Service Type**: Choose "Web Service"
-3. **Configuration**: Render.com will automatically detect the `render.yaml` file
-4. **Deploy**: Click "Deploy" to start the deployment process
-
-## Manual Configuration (if needed)
-
-If manual configuration:
-
-1. **Build Command**:
-   ```bash
-   pip install --upgrade pip
-   pip install -r src/vitalDSP_webapp/requirements-prod.txt
-   pip install -e .
-   ```
-
-2. **Start Command**:
-   ```bash
-   python src/vitalDSP_webapp/run_webapp.py
-   ```
-
-3. **Environment Variables**:
-   - `PYTHON_VERSION`: 3.9.18
-   - `PORT`: 8000
-   - `HOST`: 0.0.0.0
-   - `DEBUG`: false
-
-## Monitoring
-
-- Health checks are performed at `/api/health`
-- Render.com will automatically restart the service if health checks fail
-- Logs are available in the Render.com dashboard
-
-## Troubleshooting
+## 🔍 Troubleshooting
 
 ### Common Issues
 
-1. **Import Errors**: Ensure `PYTHONPATH` is set correctly
-2. **Port Issues**: Make sure the app binds to `0.0.0.0` and uses the `PORT` environment variable
-3. **Dependencies**: Check that all dependencies are in `requirements-prod.txt`
+1. **Build Fails**
+   - Check Dockerfile path is `src/Dockerfile`
+   - Verify all dependencies are in requirements.txt
+
+2. **App Won't Start**
+   - Check Docker command is correct
+   - Verify PORT environment variable
+
+3. **Health Check Fails**
+   - Ensure `/api/health` endpoint is accessible
+   - Check logs for startup errors
 
 ### Logs
+- View logs in Render dashboard
+- Check both build logs and runtime logs
+- Look for Python import errors or port binding issues
 
-Check the Render.com service logs for detailed error information.
+## 📊 Monitoring
 
-## Production Considerations
+### Health Check
+- Render pings `/api/health` every 30 seconds
+- Service restarts if health check fails
+- Monitor in Render dashboard
 
-1. **File Uploads**: The uploads directory is created automatically
-2. **Memory Usage**: Monitor memory usage through the health check endpoint
-3. **Scaling**: Consider upgrading to a higher plan for production workloads
-4. **Security**: Ensure proper security headers and HTTPS are configured
+### Performance
+- Free tier: Spins down after 15 minutes of inactivity
+- Paid tiers: Always running
+- Monitor CPU and memory usage
 
-## Support
+## 🔄 Updates
 
-For issues specific to Render.com deployment, check:
-- Render.com documentation
-- Service logs in the Render.com dashboard
-- Health check endpoint response
+### Auto-Deploy
+- Enabled by default
+- Deploys on every push to main branch
+- Can be disabled for manual deployments
+
+### Manual Deploy
+- Go to Render dashboard
+- Click "Manual Deploy"
+- Select branch to deploy
+
+## 💡 Tips
+
+1. **Use Free Tier for Testing**
+   - Perfect for development and testing
+   - No cost, but spins down when idle
+
+2. **Upgrade for Production**
+   - Starter tier ($7/month) for production use
+   - Better performance and reliability
+
+3. **Monitor Resource Usage**
+   - Check logs for memory/CPU issues
+   - Upgrade if needed
+
+4. **Environment Variables**
+   - Store secrets in Render environment variables
+   - Don't commit sensitive data to repo
+
+## 🎯 Expected Result
+
+After successful deployment:
+- ✅ App accessible at `https://your-app.onrender.com`
+- ✅ Health check working at `/api/health`
+- ✅ All features functional
+- ✅ File uploads working
+- ✅ Real-time processing available
+
+## 📞 Support
+
+If you encounter issues:
+1. Check Render logs
+2. Verify configuration settings
+3. Test locally first
+4. Check this guide for common solutions
