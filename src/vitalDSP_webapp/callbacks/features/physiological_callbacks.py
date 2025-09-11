@@ -3932,7 +3932,7 @@ def create_hilbert_plots(time_data, signal_data, sampling_freq):
 # New Analysis Functions for Comprehensive Physiological Features
 def create_frequency_plots(time_data, signal_data, sampling_freq):
     """Create a 2-panel frequency analysis figure:
-       (1) FFT magnitude spectrum, (2) Welch PSD with HRV bands.
+    (1) FFT magnitude spectrum, (2) Welch PSD with HRV bands.
     """
     try:
         # --- FFT (new plot) ---
@@ -3960,7 +3960,10 @@ def create_frequency_plots(time_data, signal_data, sampling_freq):
             cols=1,
             shared_x=False,
             vertical_spacing=0.12,
-            subplot_titles=("Frequency Spectrum (FFT Magnitude)", "Welch PSD with HRV Bands")
+            subplot_titles=(
+                "Frequency Spectrum (FFT Magnitude)",
+                "Welch PSD with HRV Bands",
+            ),
         )
 
         # Row 1: FFT magnitude spectrum (new)
@@ -3972,35 +3975,67 @@ def create_frequency_plots(time_data, signal_data, sampling_freq):
                 name="FFT Magnitude",
                 line=dict(color="blue"),
             ),
-            row=1, col=1
+            row=1,
+            col=1,
         )
 
         # Row 2: PSD baseline + band segments (old content)
         # baseline PSD for context
         fig.add_trace(
             go.Scatter(
-                x=freqs_psd, y=psd, mode="lines",
+                x=freqs_psd,
+                y=psd,
+                mode="lines",
                 name="PSD (Welch)",
                 line=dict(color="rgba(100,100,100,0.6)"),
             ),
-            row=2, col=1
+            row=2,
+            col=1,
         )
         # colored band segments
         fig.add_trace(
-            go.Scatter(x=freqs_psd[vlf_mask], y=psd[vlf_mask], mode="lines", name="VLF (<0.04 Hz)", line=dict(color="red")),
-            row=2, col=1
+            go.Scatter(
+                x=freqs_psd[vlf_mask],
+                y=psd[vlf_mask],
+                mode="lines",
+                name="VLF (<0.04 Hz)",
+                line=dict(color="red"),
+            ),
+            row=2,
+            col=1,
         )
         fig.add_trace(
-            go.Scatter(x=freqs_psd[lf_mask], y=psd[lf_mask], mode="lines", name="LF (0.04–0.15 Hz)", line=dict(color="green")),
-            row=2, col=1
+            go.Scatter(
+                x=freqs_psd[lf_mask],
+                y=psd[lf_mask],
+                mode="lines",
+                name="LF (0.04–0.15 Hz)",
+                line=dict(color="green"),
+            ),
+            row=2,
+            col=1,
         )
         fig.add_trace(
-            go.Scatter(x=freqs_psd[hf_mask], y=psd[hf_mask], mode="lines", name="HF (0.15–0.40 Hz)", line=dict(color="blue")),
-            row=2, col=1
+            go.Scatter(
+                x=freqs_psd[hf_mask],
+                y=psd[hf_mask],
+                mode="lines",
+                name="HF (0.15–0.40 Hz)",
+                line=dict(color="blue"),
+            ),
+            row=2,
+            col=1,
         )
         fig.add_trace(
-            go.Scatter(x=freqs_psd[vhf_mask], y=psd[vhf_mask], mode="lines", name="VHF (≥0.40 Hz)", line=dict(color="purple")),
-            row=2, col=1
+            go.Scatter(
+                x=freqs_psd[vhf_mask],
+                y=psd[vhf_mask],
+                mode="lines",
+                name="VHF (≥0.40 Hz)",
+                line=dict(color="purple"),
+            ),
+            row=2,
+            col=1,
         )
 
         # Axes & layout
@@ -4008,14 +4043,17 @@ def create_frequency_plots(time_data, signal_data, sampling_freq):
         fig.update_yaxes(title_text="Magnitude", row=1, col=1)
 
         fig.update_xaxes(title_text="Frequency (Hz)", row=2, col=1)
-        fig.update_yaxes(title_text="Power / Frequency", row=2, col=1)  # keep linear to match your old plot
+        fig.update_yaxes(
+            title_text="Power / Frequency", row=2, col=1
+        )  # keep linear to match your old plot
 
         fig.update_layout(
             title="Frequency Analysis",
             height=700,
             showlegend=True,
             legend=dict(
-                x=1.02, y=1.0,
+                x=1.02,
+                y=1.0,
                 bgcolor="rgba(255,255,255,0.9)",
                 bordercolor="rgba(0,0,0,0.2)",
                 borderwidth=1,
@@ -5922,6 +5960,7 @@ def create_advanced_features_plots(
         logger.error(f"Error creating advanced features plots: {e}")
         return create_empty_figure()
 
+
 def create_comprehensive_dashboard(
     time_data, signal_data, signal_type, sampling_freq, analysis_categories
 ):
@@ -6315,6 +6354,7 @@ def create_comprehensive_dashboard(
     #     except Exception as e:
     #         logger.error(f"Error creating comprehensive dashboard: {e}")
     #         return no_update
+
 
 # Standalone version for testing
 def physiological_analysis_callback(

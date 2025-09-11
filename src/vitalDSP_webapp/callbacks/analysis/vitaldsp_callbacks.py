@@ -505,10 +505,7 @@ def create_filtered_signal_plot(
                 # Detect critical points based on signal type
                 if signal_type == "PPG":
                     # For PPG: systolic peaks, dicrotic notches, diastolic peaks
-                    if (
-                        hasattr(wm, "systolic_peaks")
-                        and wm.systolic_peaks is not None
-                    ):
+                    if hasattr(wm, "systolic_peaks") and wm.systolic_peaks is not None:
                         # Plot systolic peaks on the analyzed signal
                         fig.add_trace(
                             go.Scatter(
@@ -524,10 +521,7 @@ def create_filtered_signal_plot(
                     # Detect and plot dicrotic notches
                     try:
                         dicrotic_notches = wm.detect_dicrotic_notches()
-                        if (
-                            dicrotic_notches is not None
-                            and len(dicrotic_notches) > 0
-                        ):
+                        if dicrotic_notches is not None and len(dicrotic_notches) > 0:
                             fig.add_trace(
                                 go.Scatter(
                                     x=time_values[dicrotic_notches],
@@ -541,9 +535,7 @@ def create_filtered_signal_plot(
                                 )
                             )
                     except Exception as e:
-                        logger.warning(
-                            f"Dicrotic notch detection failed: {e}"
-                        )
+                        logger.warning(f"Dicrotic notch detection failed: {e}")
 
                     # Detect and plot diastolic peaks
                     try:
@@ -555,16 +547,12 @@ def create_filtered_signal_plot(
                                     y=signal_for_analysis[diastolic_peaks],
                                     mode="markers",
                                     name="Diastolic Peaks",
-                                    marker=dict(
-                                        color="green", size=8, symbol="square"
-                                    ),
+                                    marker=dict(color="green", size=8, symbol="square"),
                                     hovertemplate="<b>Diastolic Peak:</b> %{y}<extra></extra>",
                                 )
                             )
                     except Exception as e:
-                        logger.warning(
-                            f"Diastolic peak detection failed: {e}"
-                        )
+                        logger.warning(f"Diastolic peak detection failed: {e}")
 
                 elif signal_type == "ECG":
                     # For ECG: R peaks, P peaks, T peaks, Q valleys, S valleys
@@ -591,9 +579,7 @@ def create_filtered_signal_plot(
                                     y=signal_for_analysis[p_peaks],
                                     mode="markers",
                                     name="P Peaks",
-                                    marker=dict(
-                                        color="blue", size=8, symbol="circle"
-                                    ),
+                                    marker=dict(color="blue", size=8, symbol="circle"),
                                     hovertemplate="<b>P Peak:</b> %{y}<extra></extra>",
                                 )
                             )
@@ -609,9 +595,7 @@ def create_filtered_signal_plot(
                                     y=signal_for_analysis[t_peaks],
                                     mode="markers",
                                     name="T Peaks",
-                                    marker=dict(
-                                        color="green", size=8, symbol="square"
-                                    ),
+                                    marker=dict(color="green", size=8, symbol="square"),
                                     hovertemplate="<b>T Peak:</b> %{y}<extra></extra>",
                                 )
                             )
@@ -619,9 +603,7 @@ def create_filtered_signal_plot(
                         logger.warning(f"T peak detection failed: {e}")
 
             except Exception as e:
-                logger.error(
-                    f"Critical points detection failed: {e}"
-                )
+                logger.error(f"Critical points detection failed: {e}")
 
         fig.update_layout(
             title=f"Signal Comparison: Raw vs Filtered - {signal_type}",

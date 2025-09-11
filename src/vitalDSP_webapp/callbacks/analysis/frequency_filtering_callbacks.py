@@ -1125,7 +1125,9 @@ def create_wavelet_plot(
                 logger.warning("Wavelet decomposition produced empty coefficients")
                 # Create fallback plots
                 main_fig = create_empty_figure()
-                main_fig.update_layout(title="Wavelet Analysis - No coefficients available")
+                main_fig.update_layout(
+                    title="Wavelet Analysis - No coefficients available"
+                )
 
                 psd_fig = create_empty_figure()
                 psd_fig.update_layout(title="Wavelet PSD - No coefficients available")

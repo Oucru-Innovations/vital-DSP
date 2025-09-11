@@ -1956,7 +1956,11 @@ def generate_comprehensive_respiratory_analysis(
                                     className="mb-1 small",
                                 ),
                                 html.P(
-                                    f"First: {all_events[0][0]:.1f}s" if all_events else "No events",
+                                    (
+                                        f"First: {all_events[0][0]:.1f}s"
+                                        if all_events
+                                        else "No events"
+                                    ),
                                     className="mb-0 small text-muted",
                                 ),
                             ],

@@ -7,9 +7,11 @@ fastapi_app = create_fastapi_app()
 # Bind app for testing
 app = fastapi_app
 
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
 
 if __name__ == "__main__":
     """
@@ -23,7 +25,7 @@ if __name__ == "__main__":
 
     # Get port from environment variable (Render sets this)
     port = int(os.environ.get("PORT", 8000))
-    
+
     # Run the FastAPI app (which also serves the Dash app) using Uvicorn
     uvicorn.run(fastapi_app, host="0.0.0.0", port=port)
 
