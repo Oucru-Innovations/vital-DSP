@@ -7,11 +7,13 @@ fastapi_app = create_fastapi_app()
 # Bind app for testing
 app = fastapi_app
 
-
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
 
+@app.get("/healthz")  # <- match your Render setting
+def healthz():
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     """
