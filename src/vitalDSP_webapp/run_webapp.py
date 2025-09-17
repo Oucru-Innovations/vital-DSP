@@ -15,7 +15,10 @@ def health():
 def healthz():
     return {"status": "ok"}
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> eccdf5be7a36e20173cd38c06df45f532d4e73b2
 if __name__ == "__main__":
     """
     Main execution point to run both FastAPI and Dash apps. This script uses Uvicorn to serve the FastAPI app,

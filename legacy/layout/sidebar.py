@@ -60,6 +60,7 @@ def Sidebar():
                         active="exact",
                         className="sidebar-nav-item",
                     ),
+<<<<<<< HEAD
                     # Filtering
                     dbc.NavLink(
                         [
@@ -70,6 +71,8 @@ def Sidebar():
                         active="exact",
                         className="sidebar-nav-item",
                     ),
+=======
+>>>>>>> eccdf5be7a36e20173cd38c06df45f532d4e73b2
                     # Time Domain
                     dbc.NavLink(
                         [
@@ -90,7 +93,20 @@ def Sidebar():
                         active="exact",
                         className="sidebar-nav-item",
                     ),
+<<<<<<< HEAD
                     
+=======
+                    # Filtering
+                    dbc.NavLink(
+                        [
+                            html.I(className="fas fa-filter sidebar-icon"),
+                            html.Span("Filtering", className="sidebar-text")
+                        ],
+                        href="/filtering",
+                        active="exact",
+                        className="sidebar-nav-item",
+                    ),
+>>>>>>> eccdf5be7a36e20173cd38c06df45f532d4e73b2
                     # Physiological
                     dbc.NavLink(
                         [
