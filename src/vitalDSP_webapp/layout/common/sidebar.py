@@ -41,6 +41,11 @@ def Sidebar():
                     html.Div(
                         [
                             html.A(
+                                [html.I(className="fas fa-filter"), " Filtering"],
+                                href="/filtering",
+                                className="nav-link text-white",
+                            ),
+                            html.A(
                                 [html.I(className="fas fa-chart-line"), " Time Domain"],
                                 href="/time-domain",
                                 className="nav-link text-white",
@@ -51,11 +56,6 @@ def Sidebar():
                                     " Frequency Domain",
                                 ],
                                 href="/frequency",
-                                className="nav-link text-white",
-                            ),
-                            html.A(
-                                [html.I(className="fas fa-filter"), " Filtering"],
-                                href="/filtering",
                                 className="nav-link text-white",
                             ),
                         ],
@@ -128,6 +128,12 @@ def Sidebar():
                     html.Div(
                         [
                             html.A(
+                                html.I(className="fas fa-filter"),
+                                href="/filtering",
+                                className="nav-icon text-white",
+                                title="Filtering",
+                            ),
+                            html.A(
                                 html.I(className="fas fa-chart-line"),
                                 href="/time-domain",
                                 className="nav-icon text-white",
@@ -138,12 +144,6 @@ def Sidebar():
                                 href="/frequency",
                                 className="nav-icon text-white",
                                 title="Frequency Domain",
-                            ),
-                            html.A(
-                                html.I(className="fas fa-filter"),
-                                href="/filtering",
-                                className="nav-icon text-white",
-                                title="Filtering",
                             ),
                         ],
                         className="mb-3",
