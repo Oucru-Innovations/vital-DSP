@@ -2,7 +2,7 @@ services:
   - type: web
     name: vital-DSP
     env: docker
-    dockerfilePath: ./Dockerfile.simple
+    dockerfilePath: ./Dockerfile.gunicorn
     dockerContext: .
     healthCheckPath: /api/health
     envVars:
