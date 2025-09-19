@@ -4,7 +4,6 @@ services:
     env: docker
     dockerfilePath: ./src/Dockerfile
     dockerContext: ./src
-    dockerCommand: python vitalDSP_webapp/run_webapp.py
     healthCheckPath: /api/health
     envVars:
       - key: PYTHONPATH
