@@ -30,5 +30,8 @@ aiofiles>=23.2.0
 jinja2
 psutil>=5.9.0
 
+# Web server
+gunicorn>=21.2.0
+
 # Development tools (minimal for production)
 ipython>=8.0.0

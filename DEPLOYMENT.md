@@ -15,7 +15,7 @@ This guide provides comprehensive instructions for deploying the vitalDSP webapp
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/Oucru-Innovations/vital-DSP
 cd vital-DSP
 
 # Make deployment script executable
@@ -25,7 +25,7 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
-The application will be available at `http://your-server-ip:8000`
+The application will be available at `http://vital-xxx.oucru.org:8000`
 
 ## 📋 Detailed Deployment Steps
 
@@ -52,7 +52,7 @@ newgrp docker
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/Oucru-Innovations/vital-DSP
 cd vital-DSP
 
 # Deploy using the script
