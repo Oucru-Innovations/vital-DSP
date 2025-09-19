@@ -250,7 +250,13 @@ def register_frequency_filtering_callbacks(app):
             signal_data = df[signal_col].values
 
             # Convert time data to seconds if it's in milliseconds
-            if np.max(time_data) > 1000:  # Likely milliseconds
+            # First check if time_data is datetime and convert to numeric
+            if pd.api.types.is_datetime64_any_dtype(df[time_col]):
+                logger.info("Converting datetime time data to numeric seconds")
+                first_timestamp = df[time_col].iloc[0]
+                time_data = (df[time_col] - first_timestamp).dt.total_seconds().values
+                logger.info("Time data converted to seconds from first timestamp")
+            elif np.max(time_data) > 1000:  # Likely milliseconds
                 time_data = time_data / 1000.0
                 logger.info("Converted time data from milliseconds to seconds")
 

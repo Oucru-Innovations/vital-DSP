@@ -3,7 +3,7 @@ FROM python:3.10-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH=/app:/app/vitalDSP
+    PYTHONPATH=/app:/app/src:/app/src/vitalDSP_webapp
 
 WORKDIR /app
 
@@ -11,21 +11,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc g++ curl && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/requirements.txt
+COPY src/vitalDSP_webapp/requirements.txt /app/webapp_requirements.txt
 RUN pip install --no-cache-dir -U pip \
- && pip install --no-cache-dir -r /app/requirements.txt
+ && pip install --no-cache-dir -r /app/requirements.txt \
+ && pip install --no-cache-dir -r /app/webapp_requirements.txt
 
 COPY . /app
 RUN mkdir -p /app/uploads
 
-# Make startup script executable
-RUN chmod +x /app/start.sh
-
-# Don't hardcode ENV PORT; Render injects it. EXPOSE is optional, harmless:
+# Expose port
 EXPOSE 8000
 
-# Healthcheck hits our /api/health
-HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=5 \
-  CMD curl -fsS "http://localhost:${PORT:-8000}/api/health" || exit 1
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
 
-# Run the application directly with Python
-CMD ["python", "vitalDSP_webapp/run_webapp.py"]
+# Run the application with gunicorn
+CMD exec gunicorn -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} -w 1 --timeout 120 --access-logfile - --error-logfile - --log-level debug vitalDSP_webapp.run_webapp:app
