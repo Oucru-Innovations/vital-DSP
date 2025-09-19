@@ -17,6 +17,9 @@ RUN pip install --no-cache-dir -U pip \
 COPY . /app
 RUN mkdir -p /app/uploads
 
+# Make startup script executable
+RUN chmod +x /app/start.sh
+
 # Don't hardcode ENV PORT; Render injects it. EXPOSE is optional, harmless:
 EXPOSE 8000
 
@@ -24,5 +27,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=5 \
   CMD curl -fsS "http://localhost:${PORT:-8000}/api/health" || exit 1
 
-# Run the application directly with Python
-CMD ["python", "vitalDSP_webapp/run_webapp.py"]
+# Use startup script
+CMD ["/app/start.sh"]
