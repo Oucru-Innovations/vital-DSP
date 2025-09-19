@@ -15,6 +15,39 @@ import dash_bootstrap_components as dbc
 from scipy import signal
 import logging
 
+# Import filtering functions from signal filtering callbacks
+from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+    apply_traditional_filter,
+)
+
+
+# Helper function for formatting large numbers
+def format_large_number(value, precision=3, use_scientific=False):
+    """Format large numbers with appropriate scaling and units."""
+    if value == 0:
+        return "0"
+
+    abs_value = abs(value)
+
+    if use_scientific or abs_value >= 1e6:
+        # Use scientific notation for very large numbers
+        return f"{value:.{precision}e}"
+    elif abs_value >= 1e3:
+        # Use thousands (k) notation
+        scaled_value = value / 1e3
+        return f"{scaled_value:.{precision}f}k"
+    elif abs_value >= 1:
+        # Regular decimal notation
+        return f"{value:.{precision}f}"
+    elif abs_value >= 1e-3:
+        # Use millis (m) notation
+        scaled_value = value * 1e3
+        return f"{scaled_value:.{precision}f}m"
+    else:
+        # Use scientific notation for very small numbers
+        return f"{value:.{precision}e}"
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -34,6 +67,231 @@ def create_empty_figure():
         xaxis=dict(visible=False), yaxis=dict(visible=False), plot_bgcolor="white"
     )
     return fig
+
+
+def create_signal_source_table(
+    signal_source_info, filter_info, sampling_freq, signal_length
+):
+    """Create signal source information table."""
+    try:
+        # Create table rows
+        rows = [
+            html.Tr(
+                [
+                    html.Td("Signal Source", className="fw-bold"),
+                    html.Td(signal_source_info),
+                ]
+            ),
+            html.Tr(
+                [
+                    html.Td("Sampling Frequency", className="fw-bold"),
+                    html.Td(f"{sampling_freq:.1f} Hz"),
+                ]
+            ),
+            html.Tr(
+                [
+                    html.Td("Signal Length", className="fw-bold"),
+                    html.Td(f"{signal_length:,} samples"),
+                ]
+            ),
+            html.Tr(
+                [
+                    html.Td("Duration", className="fw-bold"),
+                    html.Td(f"{signal_length / sampling_freq:.2f} seconds"),
+                ]
+            ),
+        ]
+
+        # Add filter information if available
+        if filter_info:
+            rows.extend(
+                [
+                    html.Tr(
+                        [html.Td("Filter Applied", className="fw-bold"), html.Td("Yes")]
+                    ),
+                    html.Tr(
+                        [
+                            html.Td("Filter Type", className="fw-bold"),
+                            html.Td(filter_info.get("filter_type", "Unknown")),
+                        ]
+                    ),
+                ]
+            )
+
+            # Display filter parameters in a readable format
+            parameters = filter_info.get("parameters", {})
+            if parameters:
+                # Format specific parameters based on filter type
+                filter_type = filter_info.get("filter_type", "").lower()
+
+                if filter_type == "traditional":
+                    # Traditional filter parameters
+                    if (
+                        "filter_family" in parameters
+                        and "filter_response" in parameters
+                    ):
+                        rows.append(
+                            html.Tr(
+                                [
+                                    html.Td("Filter Family", className="fw-bold"),
+                                    html.Td(
+                                        parameters.get(
+                                            "filter_family", "Unknown"
+                                        ).title()
+                                    ),
+                                ]
+                            )
+                        )
+                        rows.append(
+                            html.Tr(
+                                [
+                                    html.Td("Filter Response", className="fw-bold"),
+                                    html.Td(
+                                        parameters.get(
+                                            "filter_response", "Unknown"
+                                        ).title()
+                                    ),
+                                ]
+                            )
+                        )
+
+                    if "low_freq" in parameters and "high_freq" in parameters:
+                        low_freq = parameters.get("low_freq", 0)
+                        high_freq = parameters.get("high_freq", 0)
+                        # Validate frequency range
+                        if low_freq > high_freq:
+                            # Swap if they're in wrong order
+                            low_freq, high_freq = high_freq, low_freq
+                        rows.append(
+                            html.Tr(
+                                [
+                                    html.Td("Frequency Range", className="fw-bold"),
+                                    html.Td(f"{low_freq} - {high_freq} Hz"),
+                                ]
+                            )
+                        )
+
+                    if "filter_order" in parameters:
+                        rows.append(
+                            html.Tr(
+                                [
+                                    html.Td("Filter Order", className="fw-bold"),
+                                    html.Td(
+                                        str(parameters.get("filter_order", "Unknown"))
+                                    ),
+                                ]
+                            )
+                        )
+
+                elif filter_type == "advanced":
+                    # Advanced filter parameters
+                    if "advanced_method" in parameters:
+                        rows.append(
+                            html.Tr(
+                                [
+                                    html.Td("Advanced Method", className="fw-bold"),
+                                    html.Td(
+                                        parameters.get(
+                                            "advanced_method", "Unknown"
+                                        ).title()
+                                    ),
+                                ]
+                            )
+                        )
+
+                    if "artifact_type" in parameters:
+                        rows.append(
+                            html.Tr(
+                                [
+                                    html.Td("Artifact Type", className="fw-bold"),
+                                    html.Td(
+                                        parameters.get(
+                                            "artifact_type", "Unknown"
+                                        ).title()
+                                    ),
+                                ]
+                            )
+                        )
+
+                elif filter_type == "ensemble":
+                    # Ensemble filter parameters
+                    if "ensemble_method" in parameters:
+                        rows.append(
+                            html.Tr(
+                                [
+                                    html.Td("Ensemble Method", className="fw-bold"),
+                                    html.Td(
+                                        parameters.get(
+                                            "ensemble_method", "Unknown"
+                                        ).title()
+                                    ),
+                                ]
+                            )
+                        )
+
+                # Add any other parameters not covered above
+                for key, value in parameters.items():
+                    if key not in [
+                        "filter_family",
+                        "filter_response",
+                        "low_freq",
+                        "high_freq",
+                        "filter_order",
+                        "advanced_method",
+                        "artifact_type",
+                        "ensemble_method",
+                    ]:
+                        rows.append(
+                            html.Tr(
+                                [
+                                    html.Td(
+                                        key.replace("_", " ").title(),
+                                        className="fw-bold",
+                                    ),
+                                    html.Td(str(value)),
+                                ]
+                            )
+                        )
+            else:
+                rows.append(
+                    html.Tr(
+                        [
+                            html.Td("Filter Parameters", className="fw-bold"),
+                            html.Td("No parameters available"),
+                        ]
+                    )
+                )
+        else:
+            rows.append(
+                html.Tr([html.Td("Filter Applied", className="fw-bold"), html.Td("No")])
+            )
+
+        return dbc.Table(
+            [
+                html.Thead(
+                    [
+                        html.Tr(
+                            [
+                                html.Th("Property", style={"width": "40%"}),
+                                html.Th("Value", style={"width": "60%"}),
+                            ]
+                        )
+                    ]
+                ),
+                html.Tbody(rows),
+            ],
+            striped=True,
+            bordered=True,
+            hover=True,
+            responsive=True,
+            className="mb-0",
+        )
+
+    except Exception as e:
+        logger.error(f"Error creating signal source table: {e}")
+        return html.Div(
+            f"Error creating signal source table: {str(e)}", className="text-danger"
+        )
 
 
 def higuchi_fractal_dimension(signal, k_max=8):
@@ -65,50 +323,571 @@ def higuchi_fractal_dimension(signal, k_max=8):
         return 0
 
 
-def create_time_domain_plot(
-    signal_data, time_axis, sampling_freq, peaks=None, filtered_signal=None
+def create_signal_comparison_plot(
+    original_signal, filtered_signal, time_axis, sampling_freq, signal_type="PPG"
 ):
-    """Create the main time domain plot."""
+    """Create side-by-side comparison of raw vs filtered signals with critical points."""
+    try:
+        if filtered_signal is not None:
+            # Ensure both signals have the same length for comparison
+            min_length = min(len(original_signal), len(filtered_signal), len(time_axis))
+            original_signal_trimmed = original_signal[:min_length]
+            filtered_signal_trimmed = filtered_signal[:min_length]
+            time_axis_trimmed = time_axis[:min_length]
+
+            # Detect critical points for both signals using vitalDSP waveform module (same as filtering screen)
+            try:
+                from vitalDSP.physiological_features.waveform import WaveformMorphology
+
+                # Detect critical points in original signal
+                original_wm = WaveformMorphology(
+                    waveform=original_signal_trimmed,
+                    fs=sampling_freq,
+                    signal_type=signal_type,
+                    simple_mode=True,
+                )
+
+                # Detect critical points in filtered signal
+                filtered_wm = WaveformMorphology(
+                    waveform=filtered_signal_trimmed,
+                    fs=sampling_freq,
+                    signal_type=signal_type,
+                    simple_mode=True,
+                )
+
+            except Exception as e:
+                logger.warning(f"Critical points detection failed: {e}")
+                original_wm = None
+                filtered_wm = None
+
+            # Create subplot with 2 rows
+            fig = make_subplots(
+                rows=2,
+                cols=1,
+                subplot_titles=[
+                    "Raw Signal with Critical Points",
+                    "Filtered Signal with Critical Points",
+                ],
+                vertical_spacing=0.1,
+            )
+
+            # Add original signal
+            fig.add_trace(
+                go.Scatter(
+                    x=time_axis_trimmed,
+                    y=original_signal_trimmed,
+                    mode="lines",
+                    name="Raw Signal",
+                    line=dict(color="blue", width=1),
+                ),
+                row=1,
+                col=1,
+            )
+
+            # Add original signal critical points (same as filtering screen)
+            if original_wm is not None:
+                if signal_type == "PPG":
+                    # For PPG: systolic peaks, dicrotic notches, diastolic peaks
+                    if (
+                        hasattr(original_wm, "systolic_peaks")
+                        and original_wm.systolic_peaks is not None
+                    ):
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis_trimmed[original_wm.systolic_peaks],
+                                y=original_signal_trimmed[original_wm.systolic_peaks],
+                                mode="markers",
+                                name="Raw Systolic Peaks",
+                                marker=dict(color="red", size=10, symbol="diamond"),
+                                hovertemplate="<b>Raw Systolic Peak:</b> %{y}<extra></extra>",
+                            ),
+                            row=1,
+                            col=1,
+                        )
+
+                    # Dicrotic notches
+                    try:
+                        dicrotic_notches = original_wm.detect_dicrotic_notches()
+                        if dicrotic_notches is not None and len(dicrotic_notches) > 0:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time_axis_trimmed[dicrotic_notches],
+                                    y=original_signal_trimmed[dicrotic_notches],
+                                    mode="markers",
+                                    name="Raw Dicrotic Notches",
+                                    marker=dict(
+                                        color="orange", size=8, symbol="circle"
+                                    ),
+                                    hovertemplate="<b>Raw Dicrotic Notch:</b> %{y}<extra></extra>",
+                                ),
+                                row=1,
+                                col=1,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Raw dicrotic notch detection failed: {e}")
+
+                    # Diastolic peaks
+                    try:
+                        diastolic_peaks = original_wm.detect_diastolic_peak()
+                        if diastolic_peaks is not None and len(diastolic_peaks) > 0:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time_axis_trimmed[diastolic_peaks],
+                                    y=original_signal_trimmed[diastolic_peaks],
+                                    mode="markers",
+                                    name="Raw Diastolic Peaks",
+                                    marker=dict(color="green", size=8, symbol="square"),
+                                    hovertemplate="<b>Raw Diastolic Peak:</b> %{y}<extra></extra>",
+                                ),
+                                row=1,
+                                col=1,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Raw diastolic peak detection failed: {e}")
+
+                elif signal_type == "ECG":
+                    # For ECG: R peaks, P peaks, T peaks
+                    if (
+                        hasattr(original_wm, "r_peaks")
+                        and original_wm.r_peaks is not None
+                    ):
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis_trimmed[original_wm.r_peaks],
+                                y=original_signal_trimmed[original_wm.r_peaks],
+                                mode="markers",
+                                name="Raw R Peaks",
+                                marker=dict(color="red", size=10, symbol="diamond"),
+                                hovertemplate="<b>Raw R Peak:</b> %{y}<extra></extra>",
+                            ),
+                            row=1,
+                            col=1,
+                        )
+
+                    # P peaks
+                    try:
+                        p_peaks = original_wm.detect_p_peak()
+                        if p_peaks is not None and len(p_peaks) > 0:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time_axis_trimmed[p_peaks],
+                                    y=original_signal_trimmed[p_peaks],
+                                    mode="markers",
+                                    name="Raw P Peaks",
+                                    marker=dict(color="blue", size=8, symbol="circle"),
+                                    hovertemplate="<b>Raw P Peak:</b> %{y}<extra></extra>",
+                                ),
+                                row=1,
+                                col=1,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Raw P peak detection failed: {e}")
+
+                    # T peaks
+                    try:
+                        t_peaks = original_wm.detect_t_peak()
+                        if t_peaks is not None and len(t_peaks) > 0:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time_axis_trimmed[t_peaks],
+                                    y=original_signal_trimmed[t_peaks],
+                                    mode="markers",
+                                    name="Raw T Peaks",
+                                    marker=dict(color="green", size=8, symbol="square"),
+                                    hovertemplate="<b>Raw T Peak:</b> %{y}<extra></extra>",
+                                ),
+                                row=1,
+                                col=1,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Raw T peak detection failed: {e}")
+
+                else:
+                    # For other signal types, use basic peak detection
+                    try:
+                        from vitalDSP.physiological_features.peak_detection import (
+                            detect_peaks,
+                        )
+
+                        peaks = detect_peaks(original_signal_trimmed, sampling_freq)
+                        if len(peaks) > 0:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time_axis_trimmed[peaks],
+                                    y=original_signal_trimmed[peaks],
+                                    mode="markers",
+                                    name="Raw Detected Peaks",
+                                    marker=dict(color="red", size=8, symbol="diamond"),
+                                    hovertemplate="<b>Raw Peak:</b> %{y}<extra></extra>",
+                                ),
+                                row=1,
+                                col=1,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Raw basic peak detection failed: {e}")
+
+            # Add filtered signal
+            fig.add_trace(
+                go.Scatter(
+                    x=time_axis_trimmed,
+                    y=filtered_signal_trimmed,
+                    mode="lines",
+                    name="Filtered Signal",
+                    line=dict(color="purple", width=1),
+                ),
+                row=2,
+                col=1,
+            )
+
+            # Add filtered signal critical points (same as filtering screen)
+            if filtered_wm is not None:
+                if signal_type == "PPG":
+                    # For PPG: systolic peaks, dicrotic notches, diastolic peaks
+                    if (
+                        hasattr(filtered_wm, "systolic_peaks")
+                        and filtered_wm.systolic_peaks is not None
+                    ):
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis_trimmed[filtered_wm.systolic_peaks],
+                                y=filtered_signal_trimmed[filtered_wm.systolic_peaks],
+                                mode="markers",
+                                name="Filtered Systolic Peaks",
+                                marker=dict(color="red", size=10, symbol="diamond"),
+                                hovertemplate="<b>Filtered Systolic Peak:</b> %{y}<extra></extra>",
+                            ),
+                            row=2,
+                            col=1,
+                        )
+
+                    # Dicrotic notches
+                    try:
+                        dicrotic_notches = filtered_wm.detect_dicrotic_notches()
+                        if dicrotic_notches is not None and len(dicrotic_notches) > 0:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time_axis_trimmed[dicrotic_notches],
+                                    y=filtered_signal_trimmed[dicrotic_notches],
+                                    mode="markers",
+                                    name="Filtered Dicrotic Notches",
+                                    marker=dict(
+                                        color="orange", size=8, symbol="circle"
+                                    ),
+                                    hovertemplate="<b>Filtered Dicrotic Notch:</b> %{y}<extra></extra>",
+                                ),
+                                row=2,
+                                col=1,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Filtered dicrotic notch detection failed: {e}")
+
+                    # Diastolic peaks
+                    try:
+                        diastolic_peaks = filtered_wm.detect_diastolic_peak()
+                        if diastolic_peaks is not None and len(diastolic_peaks) > 0:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time_axis_trimmed[diastolic_peaks],
+                                    y=filtered_signal_trimmed[diastolic_peaks],
+                                    mode="markers",
+                                    name="Filtered Diastolic Peaks",
+                                    marker=dict(color="green", size=8, symbol="square"),
+                                    hovertemplate="<b>Filtered Diastolic Peak:</b> %{y}<extra></extra>",
+                                ),
+                                row=2,
+                                col=1,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Filtered diastolic peak detection failed: {e}")
+
+                elif signal_type == "ECG":
+                    # For ECG: R peaks, P peaks, T peaks
+                    if (
+                        hasattr(filtered_wm, "r_peaks")
+                        and filtered_wm.r_peaks is not None
+                    ):
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis_trimmed[filtered_wm.r_peaks],
+                                y=filtered_signal_trimmed[filtered_wm.r_peaks],
+                                mode="markers",
+                                name="Filtered R Peaks",
+                                marker=dict(color="red", size=10, symbol="diamond"),
+                                hovertemplate="<b>Filtered R Peak:</b> %{y}<extra></extra>",
+                            ),
+                            row=2,
+                            col=1,
+                        )
+
+                    # P peaks
+                    try:
+                        p_peaks = filtered_wm.detect_p_peak()
+                        if p_peaks is not None and len(p_peaks) > 0:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time_axis_trimmed[p_peaks],
+                                    y=filtered_signal_trimmed[p_peaks],
+                                    mode="markers",
+                                    name="Filtered P Peaks",
+                                    marker=dict(color="blue", size=8, symbol="circle"),
+                                    hovertemplate="<b>Filtered P Peak:</b> %{y}<extra></extra>",
+                                ),
+                                row=2,
+                                col=1,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Filtered P peak detection failed: {e}")
+
+                    # T peaks
+                    try:
+                        t_peaks = filtered_wm.detect_t_peak()
+                        if t_peaks is not None and len(t_peaks) > 0:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time_axis_trimmed[t_peaks],
+                                    y=filtered_signal_trimmed[t_peaks],
+                                    mode="markers",
+                                    name="Filtered T Peaks",
+                                    marker=dict(color="green", size=8, symbol="square"),
+                                    hovertemplate="<b>Filtered T Peak:</b> %{y}<extra></extra>",
+                                ),
+                                row=2,
+                                col=1,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Filtered T peak detection failed: {e}")
+
+                else:
+                    # For other signal types, use basic peak detection
+                    try:
+                        from vitalDSP.physiological_features.peak_detection import (
+                            detect_peaks,
+                        )
+
+                        peaks = detect_peaks(filtered_signal_trimmed, sampling_freq)
+                        if len(peaks) > 0:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time_axis_trimmed[peaks],
+                                    y=filtered_signal_trimmed[peaks],
+                                    mode="markers",
+                                    name="Filtered Detected Peaks",
+                                    marker=dict(color="red", size=8, symbol="diamond"),
+                                    hovertemplate="<b>Filtered Peak:</b> %{y}<extra></extra>",
+                                ),
+                                row=2,
+                                col=1,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Filtered basic peak detection failed: {e}")
+
+            # Update layout
+            fig.update_layout(
+                height=600,
+                showlegend=True,
+                title="Signal Comparison: Raw vs Filtered with Critical Points",
+                title_x=0.5,
+            )
+
+            # Update axes
+            fig.update_xaxes(title_text="Time (s)", row=1, col=1)
+            fig.update_xaxes(title_text="Time (s)", row=2, col=1)
+            fig.update_yaxes(title_text="Amplitude", row=1, col=1)
+            fig.update_yaxes(title_text="Amplitude", row=2, col=1)
+
+        else:
+            # No filtered data available
+            fig = go.Figure()
+            fig.add_annotation(
+                text="No filtered data available. Please perform filtering first.",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+                font=dict(size=16, color="gray"),
+            )
+            fig.update_layout(
+                xaxis=dict(visible=False),
+                yaxis=dict(visible=False),
+                plot_bgcolor="white",
+                title="Signal Comparison: No Filtered Data Available",
+                title_x=0.5,
+            )
+
+        return fig
+
+    except Exception as e:
+        logger.error(f"Error creating signal comparison plot: {e}")
+        return create_empty_figure()
+
+
+def create_time_domain_plot(
+    signal_data,
+    time_axis,
+    sampling_freq,
+    peaks=None,
+    filtered_signal=None,
+    signal_type="PPG",
+):
+    # Note: peaks parameter is kept for backward compatibility but not used
+    # Critical points are now detected using vitalDSP waveform analysis
+    """Create the main time domain plot showing raw signal with critical points."""
     try:
         fig = go.Figure()
 
-        # Add main signal
+        # Add main signal (always show raw signal)
         fig.add_trace(
             go.Scatter(
                 x=time_axis,
                 y=signal_data,
                 mode="lines",
-                name="Original Signal",
+                name="Raw Signal",
                 line=dict(color="blue", width=1),
             )
         )
 
-        # Add filtered signal if available
-        if filtered_signal is not None:
-            fig.add_trace(
-                go.Scatter(
-                    x=time_axis,
-                    y=filtered_signal,
-                    mode="lines",
-                    name="Filtered Signal",
-                    line=dict(color="red", width=1, dash="dash"),
-                )
+        # Add critical points detection using vitalDSP waveform module (same as filtering screen)
+        try:
+            from vitalDSP.physiological_features.waveform import WaveformMorphology
+
+            # Create waveform morphology object
+            wm = WaveformMorphology(
+                waveform=signal_data,
+                fs=sampling_freq,
+                signal_type=signal_type,
+                simple_mode=True,
             )
 
-        # Add peaks if available
-        if peaks is not None and len(peaks) > 0:
-            fig.add_trace(
-                go.Scatter(
-                    x=time_axis[peaks],
-                    y=signal_data[peaks],
-                    mode="markers",
-                    name="Detected Peaks",
-                    marker=dict(color="red", size=8, symbol="diamond"),
+            # Detect critical points based on signal type
+            if signal_type == "PPG":
+                # For PPG: systolic peaks, dicrotic notches, diastolic peaks
+                if hasattr(wm, "systolic_peaks") and wm.systolic_peaks is not None:
+                    # Plot systolic peaks
+                    fig.add_trace(
+                        go.Scatter(
+                            x=time_axis[wm.systolic_peaks],
+                            y=signal_data[wm.systolic_peaks],
+                            mode="markers",
+                            name="Systolic Peaks",
+                            marker=dict(color="red", size=10, symbol="diamond"),
+                            hovertemplate="<b>Systolic Peak:</b> %{y}<extra></extra>",
+                        )
+                    )
+
+                # Detect and plot dicrotic notches
+                try:
+                    dicrotic_notches = wm.detect_dicrotic_notches()
+                    if dicrotic_notches is not None and len(dicrotic_notches) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[dicrotic_notches],
+                                y=signal_data[dicrotic_notches],
+                                mode="markers",
+                                name="Dicrotic Notches",
+                                marker=dict(color="orange", size=8, symbol="circle"),
+                                hovertemplate="<b>Dicrotic Notch:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Dicrotic notch detection failed: {e}")
+
+                # Detect and plot diastolic peaks
+                try:
+                    diastolic_peaks = wm.detect_diastolic_peak()
+                    if diastolic_peaks is not None and len(diastolic_peaks) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[diastolic_peaks],
+                                y=signal_data[diastolic_peaks],
+                                mode="markers",
+                                name="Diastolic Peaks",
+                                marker=dict(color="green", size=8, symbol="square"),
+                                hovertemplate="<b>Diastolic Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Diastolic peak detection failed: {e}")
+
+            elif signal_type == "ECG":
+                # For ECG: R peaks, P peaks, T peaks, Q valleys, S valleys
+                if hasattr(wm, "r_peaks") and wm.r_peaks is not None:
+                    # Plot R peaks
+                    fig.add_trace(
+                        go.Scatter(
+                            x=time_axis[wm.r_peaks],
+                            y=signal_data[wm.r_peaks],
+                            mode="markers",
+                            name="R Peaks",
+                            marker=dict(color="red", size=10, symbol="diamond"),
+                            hovertemplate="<b>R Peak:</b> %{y}<extra></extra>",
+                        )
+                    )
+
+                # Detect and plot P peaks
+                try:
+                    p_peaks = wm.detect_p_peak()
+                    if p_peaks is not None and len(p_peaks) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[p_peaks],
+                                y=signal_data[p_peaks],
+                                mode="markers",
+                                name="P Peaks",
+                                marker=dict(color="blue", size=8, symbol="circle"),
+                                hovertemplate="<b>P Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"P peak detection failed: {e}")
+
+                # Detect and plot T peaks
+                try:
+                    t_peaks = wm.detect_t_peak()
+                    if t_peaks is not None and len(t_peaks) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[t_peaks],
+                                y=signal_data[t_peaks],
+                                mode="markers",
+                                name="T Peaks",
+                                marker=dict(color="green", size=8, symbol="square"),
+                                hovertemplate="<b>T Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"T peak detection failed: {e}")
+
+            else:
+                # For other signal types, use basic peak detection
+                logger.info(
+                    f"Using basic peak detection for signal type: {signal_type}"
                 )
-            )
+                try:
+                    from vitalDSP.physiological_features.peak_detection import (
+                        detect_peaks,
+                    )
+
+                    peaks = detect_peaks(signal_data, sampling_freq)
+                    if len(peaks) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[peaks],
+                                y=signal_data[peaks],
+                                mode="markers",
+                                name="Detected Peaks",
+                                marker=dict(color="red", size=8, symbol="diamond"),
+                                hovertemplate="<b>Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Basic peak detection failed: {e}")
+
+        except Exception as e:
+            logger.warning(f"Critical points detection failed: {e}")
 
         fig.update_layout(
-            title="Time Domain Signal Analysis",
+            title="Raw Signal with Critical Points",
             xaxis_title="Time (seconds)",
             yaxis_title="Amplitude",
             showlegend=True,
@@ -623,22 +1402,311 @@ def create_filtered_signal_plot(
 
 
 def generate_analysis_results(
-    raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping
+    selected_signal,
+    time_axis,
+    sampling_freq,
+    analysis_options,
+    signal_source_info,
+    filter_info=None,
 ):
-    """Generate analysis results and insights."""
+    """Generate analysis results and insights for the selected signal."""
     if not analysis_options:
         return "No analysis options selected"
 
     results = []
 
     try:
-        # Find signal column
-        signal_col = column_mapping.get("signal")
-        if not signal_col or signal_col not in raw_data.columns:
-            return "Signal column not found in data"
+        # Use the selected signal directly (could be original or filtered)
+        signal_data = selected_signal
 
-        raw_signal = raw_data[signal_col].values
-        filtered_signal = filtered_data if filtered_data is not None else raw_signal
+        # Signal source information
+        results.append(html.H6("📋 Signal Source Information", className="mb-2"))
+        results.append(
+            dbc.Table(
+                [
+                    html.Thead(
+                        [
+                            html.Tr(
+                                [
+                                    html.Th("Property", className="text-center"),
+                                    html.Th("Value", className="text-center"),
+                                ]
+                            )
+                        ]
+                    ),
+                    html.Tbody(
+                        [
+                            html.Tr(
+                                [
+                                    html.Td("Signal Source", className="fw-bold"),
+                                    html.Td(signal_source_info, className="text-end"),
+                                ]
+                            ),
+                            html.Tr(
+                                [
+                                    html.Td("Sampling Frequency", className="fw-bold"),
+                                    html.Td(
+                                        f"{sampling_freq:.1f} Hz", className="text-end"
+                                    ),
+                                ]
+                            ),
+                            html.Tr(
+                                [
+                                    html.Td("Signal Length", className="fw-bold"),
+                                    html.Td(
+                                        f"{len(signal_data):,} samples",
+                                        className="text-end",
+                                    ),
+                                ]
+                            ),
+                            html.Tr(
+                                [
+                                    html.Td("Duration", className="fw-bold"),
+                                    html.Td(
+                                        f"{len(signal_data) / sampling_freq:.2f} seconds",
+                                        className="text-end",
+                                    ),
+                                ]
+                            ),
+                        ]
+                    ),
+                ],
+                bordered=True,
+                hover=True,
+                responsive=True,
+                className="mb-3",
+            )
+        )
+
+        # Filter information (if applicable)
+        if filter_info:
+            results.append(html.H6("🔧 Filter Information", className="mb-2"))
+
+            # Create filter information rows
+            filter_rows = [
+                html.Tr(
+                    [
+                        html.Td("Filter Applied", className="fw-bold"),
+                        html.Td("Yes", className="text-end"),
+                    ]
+                ),
+                html.Tr(
+                    [
+                        html.Td("Filter Type", className="fw-bold"),
+                        html.Td(
+                            filter_info.get("filter_type", "Unknown"),
+                            className="text-end",
+                        ),
+                    ]
+                ),
+            ]
+
+            # Display filter parameters in a readable format
+            parameters = filter_info.get("parameters", {})
+            if parameters:
+                # Format specific parameters based on filter type
+                filter_type = filter_info.get("filter_type", "").lower()
+
+                if filter_type == "traditional":
+                    # Traditional filter parameters
+                    if (
+                        "filter_family" in parameters
+                        and "filter_response" in parameters
+                    ):
+                        filter_rows.append(
+                            html.Tr(
+                                [
+                                    html.Td("Filter Family", className="fw-bold"),
+                                    html.Td(
+                                        parameters.get(
+                                            "filter_family", "Unknown"
+                                        ).title(),
+                                        className="text-end",
+                                    ),
+                                ]
+                            )
+                        )
+                        filter_rows.append(
+                            html.Tr(
+                                [
+                                    html.Td("Filter Response", className="fw-bold"),
+                                    html.Td(
+                                        parameters.get(
+                                            "filter_response", "Unknown"
+                                        ).title(),
+                                        className="text-end",
+                                    ),
+                                ]
+                            )
+                        )
+
+                    if "low_freq" in parameters and "high_freq" in parameters:
+                        low_freq = parameters.get("low_freq", 0)
+                        high_freq = parameters.get("high_freq", 0)
+                        # Validate frequency range
+                        if low_freq > high_freq:
+                            # Swap if they're in wrong order
+                            low_freq, high_freq = high_freq, low_freq
+                        filter_rows.append(
+                            html.Tr(
+                                [
+                                    html.Td("Frequency Range", className="fw-bold"),
+                                    html.Td(
+                                        f"{low_freq} - {high_freq} Hz",
+                                        className="text-end",
+                                    ),
+                                ]
+                            )
+                        )
+
+                    if "filter_order" in parameters:
+                        filter_rows.append(
+                            html.Tr(
+                                [
+                                    html.Td("Filter Order", className="fw-bold"),
+                                    html.Td(
+                                        str(parameters.get("filter_order", "Unknown")),
+                                        className="text-end",
+                                    ),
+                                ]
+                            )
+                        )
+
+                elif filter_type == "advanced":
+                    # Advanced filter parameters
+                    if "advanced_method" in parameters:
+                        filter_rows.append(
+                            html.Tr(
+                                [
+                                    html.Td("Advanced Method", className="fw-bold"),
+                                    html.Td(
+                                        parameters.get(
+                                            "advanced_method", "Unknown"
+                                        ).title(),
+                                        className="text-end",
+                                    ),
+                                ]
+                            )
+                        )
+
+                    if "artifact_type" in parameters:
+                        filter_rows.append(
+                            html.Tr(
+                                [
+                                    html.Td("Artifact Type", className="fw-bold"),
+                                    html.Td(
+                                        parameters.get(
+                                            "artifact_type", "Unknown"
+                                        ).title(),
+                                        className="text-end",
+                                    ),
+                                ]
+                            )
+                        )
+
+                elif filter_type == "ensemble":
+                    # Ensemble filter parameters
+                    if "ensemble_method" in parameters:
+                        filter_rows.append(
+                            html.Tr(
+                                [
+                                    html.Td("Ensemble Method", className="fw-bold"),
+                                    html.Td(
+                                        parameters.get(
+                                            "ensemble_method", "Unknown"
+                                        ).title(),
+                                        className="text-end",
+                                    ),
+                                ]
+                            )
+                        )
+
+                # Add any other parameters not covered above
+                for key, value in parameters.items():
+                    if key not in [
+                        "filter_family",
+                        "filter_response",
+                        "low_freq",
+                        "high_freq",
+                        "filter_order",
+                        "advanced_method",
+                        "artifact_type",
+                        "ensemble_method",
+                    ]:
+                        filter_rows.append(
+                            html.Tr(
+                                [
+                                    html.Td(
+                                        key.replace("_", " ").title(),
+                                        className="fw-bold",
+                                    ),
+                                    html.Td(str(value), className="text-end"),
+                                ]
+                            )
+                        )
+            else:
+                filter_rows.append(
+                    html.Tr(
+                        [
+                            html.Td("Filter Parameters", className="fw-bold"),
+                            html.Td("No parameters available", className="text-end"),
+                        ]
+                    )
+                )
+
+            results.append(
+                dbc.Table(
+                    [
+                        html.Thead(
+                            [
+                                html.Tr(
+                                    [
+                                        html.Th("Property", className="text-center"),
+                                        html.Th("Value", className="text-center"),
+                                    ]
+                                )
+                            ]
+                        ),
+                        html.Tbody(filter_rows),
+                    ],
+                    bordered=True,
+                    hover=True,
+                    responsive=True,
+                    className="mb-3",
+                )
+            )
+        else:
+            results.append(html.H6("🔧 Filter Information", className="mb-2"))
+            results.append(
+                dbc.Table(
+                    [
+                        html.Thead(
+                            [
+                                html.Tr(
+                                    [
+                                        html.Th("Property", className="text-center"),
+                                        html.Th("Value", className="text-center"),
+                                    ]
+                                )
+                            ]
+                        ),
+                        html.Tbody(
+                            [
+                                html.Tr(
+                                    [
+                                        html.Td("Filter Applied", className="fw-bold"),
+                                        html.Td("No", className="text-end"),
+                                    ]
+                                ),
+                            ]
+                        ),
+                    ],
+                    bordered=True,
+                    hover=True,
+                    responsive=True,
+                    className="mb-3",
+                )
+            )
 
         # Basic statistics
         results.append(html.H6("📊 Signal Statistics", className="mb-2"))
@@ -662,7 +1730,7 @@ def generate_analysis_results(
                                 [
                                     html.Td("Mean", className="fw-bold"),
                                     html.Td(
-                                        f"{np.mean(raw_signal):.2f}",
+                                        format_large_number(np.mean(signal_data)),
                                         className="text-end",
                                     ),
                                     html.Td("Signal Units", className="text-muted"),
@@ -672,7 +1740,7 @@ def generate_analysis_results(
                                 [
                                     html.Td("Standard Deviation", className="fw-bold"),
                                     html.Td(
-                                        f"{np.std(raw_signal):.2f}",
+                                        format_large_number(np.std(signal_data)),
                                         className="text-end",
                                     ),
                                     html.Td("Signal Units", className="text-muted"),
@@ -682,7 +1750,7 @@ def generate_analysis_results(
                                 [
                                     html.Td("Minimum", className="fw-bold"),
                                     html.Td(
-                                        f"{np.min(raw_signal):.2f}",
+                                        format_large_number(np.min(signal_data)),
                                         className="text-end",
                                     ),
                                     html.Td("Signal Units", className="text-muted"),
@@ -692,7 +1760,7 @@ def generate_analysis_results(
                                 [
                                     html.Td("Maximum", className="fw-bold"),
                                     html.Td(
-                                        f"{np.max(raw_signal):.2f}",
+                                        format_large_number(np.max(signal_data)),
                                         className="text-end",
                                     ),
                                     html.Td("Signal Units", className="text-muted"),
@@ -702,7 +1770,9 @@ def generate_analysis_results(
                                 [
                                     html.Td("RMS", className="fw-bold"),
                                     html.Td(
-                                        f"{np.sqrt(np.mean(raw_signal**2)):.2f}",
+                                        format_large_number(
+                                            np.sqrt(np.mean(signal_data**2))
+                                        ),
                                         className="text-end",
                                     ),
                                     html.Td("Signal Units", className="text-muted"),
@@ -724,8 +1794,8 @@ def generate_analysis_results(
                 from scipy.signal import find_peaks
 
                 # Use adaptive threshold for peak detection
-                mean_val = np.mean(raw_signal)
-                std_val = np.std(raw_signal)
+                mean_val = np.mean(signal_data)
+                std_val = np.std(signal_data)
                 threshold = mean_val + 2 * std_val
 
                 # Find peaks with minimum distance constraint
@@ -733,7 +1803,7 @@ def generate_analysis_results(
                     sampling_freq * 0.1
                 )  # Minimum 0.1 seconds between peaks
                 peaks, properties = find_peaks(
-                    raw_signal,
+                    signal_data,
                     height=threshold,
                     distance=min_distance,
                     prominence=0.1 * std_val,
@@ -867,29 +1937,61 @@ def generate_analysis_results(
         # Signal quality assessment
         if "quality" in analysis_options:
             try:
-                # Calculate SNR
-                signal_power = np.mean(raw_signal**2)
-                noise_power = np.var(raw_signal)
-                snr_db = (
-                    10 * np.log10(signal_power / noise_power) if noise_power > 0 else 0
+                # Calculate SNR (more accurate method)
+                signal_mean = np.mean(signal_data)
+                signal_var = np.var(signal_data)
+
+                # Log signal statistics for debugging
+                logger.info(
+                    f"Signal quality calculation - Mean: {signal_mean:.6f}, Std: {np.sqrt(signal_var):.6f}, Range: {np.min(signal_data):.6f} to {np.max(signal_data):.6f}"
                 )
 
+                # Estimate signal power as mean squared
+                signal_power = signal_mean**2
+                # Estimate noise power as variance
+                noise_power = signal_var
+
+                # Calculate SNR in dB
+                if noise_power > 1e-10:  # Avoid log of very small numbers
+                    snr_linear = signal_power / noise_power
+                    snr_db = 10 * np.log10(snr_linear)
+                    # Cap SNR to reasonable range (-20 to 100 dB)
+                    snr_db = max(-20.0, min(snr_db, 100.0))
+                    logger.info(
+                        f"SNR calculation - Signal power: {signal_power:.6f}, Noise power: {noise_power:.6f}, SNR: {snr_db:.1f} dB"
+                    )
+                else:
+                    snr_db = 100.0  # Very high SNR if noise is negligible
+                    logger.info(
+                        "SNR calculation - Very low noise, setting SNR to 100 dB"
+                    )
+
                 # Artifact detection using IQR method
-                q75, q25 = np.percentile(raw_signal, [75, 25])
+                q75, q25 = np.percentile(signal_data, [75, 25])
                 iqr = q75 - q25
                 lower_bound = q25 - 1.5 * iqr
                 upper_bound = q75 + 1.5 * iqr
                 artifact_count = np.sum(
-                    (raw_signal < lower_bound) | (raw_signal > upper_bound)
+                    (signal_data < lower_bound) | (signal_data > upper_bound)
                 )
-                artifact_percentage = (artifact_count / len(raw_signal)) * 100
+                artifact_percentage = (artifact_count / len(signal_data)) * 100
 
                 # Signal stability (coefficient of variation)
-                stability_score = (
-                    (np.std(raw_signal) / np.mean(raw_signal)) * 100
-                    if np.mean(raw_signal) != 0
-                    else 0
-                )
+                signal_mean = np.mean(signal_data)
+                signal_std = np.std(signal_data)
+
+                # More robust stability calculation
+                if abs(signal_mean) > 1e-6:  # Avoid division by very small numbers
+                    stability_score = (signal_std / abs(signal_mean)) * 100
+                    # Cap the stability score to reasonable range (0-1000%)
+                    stability_score = min(stability_score, 1000.0)
+                else:
+                    # If mean is too small, use alternative stability measure
+                    signal_range = np.max(signal_data) - np.min(signal_data)
+                    if signal_range > 1e-6:
+                        stability_score = (signal_std / signal_range) * 100
+                    else:
+                        stability_score = 0.0
 
                 results.append(html.Hr())
                 results.append(
@@ -1004,7 +2106,10 @@ def generate_analysis_results(
                                                 "Signal Range", className="fw-bold"
                                             ),
                                             html.Td(
-                                                f"{np.max(raw_signal) - np.min(raw_signal):.2f}",
+                                                format_large_number(
+                                                    np.max(signal_data)
+                                                    - np.min(signal_data)
+                                                ),
                                                 className="text-end",
                                             ),
                                             html.Td(
@@ -1035,125 +2140,8 @@ def generate_analysis_results(
                     )
                 )
 
-        # Filtering results comparison
-        if filtered_data is not None and not np.array_equal(
-            raw_signal, filtered_signal
-        ):
-            try:
-                results.append(html.Hr())
-                results.append(html.H6("🔧 Filtering Results", className="mb-2"))
-
-                # Calculate power reduction
-                raw_power = np.mean(raw_signal**2)
-                filtered_power = np.mean(filtered_signal**2)
-                power_reduction = (
-                    (raw_power - filtered_power) / raw_power * 100
-                    if raw_power > 0
-                    else 0
-                )
-
-                # Calculate frequency-specific improvements
-                raw_fft = np.abs(np.fft.rfft(raw_signal))
-                filtered_fft = np.abs(np.fft.rfft(filtered_signal))
-                freqs = np.fft.rfftfreq(len(raw_signal), 1 / sampling_freq)
-
-                # Low frequency improvement (0-5 Hz)
-                low_freq_mask = freqs <= 5
-                low_freq_improvement = np.mean(raw_fft[low_freq_mask]) - np.mean(
-                    filtered_fft[low_freq_mask]
-                )
-
-                # High frequency improvement (40+ Hz)
-                high_freq_mask = freqs >= 40
-                high_freq_improvement = np.mean(raw_fft[high_freq_mask]) - np.mean(
-                    filtered_fft[high_freq_mask]
-                )
-
-                results.append(
-                    dbc.Table(
-                        [
-                            html.Thead(
-                                [
-                                    html.Tr(
-                                        [
-                                            html.Th("Metric", className="text-center"),
-                                            html.Th("Value", className="text-center"),
-                                            html.Th(
-                                                "Description", className="text-center"
-                                            ),
-                                        ]
-                                    )
-                                ]
-                            ),
-                            html.Tbody(
-                                [
-                                    html.Tr(
-                                        [
-                                            html.Td(
-                                                "Power Reduction", className="fw-bold"
-                                            ),
-                                            html.Td(
-                                                f"{power_reduction:.1f}%",
-                                                className="text-end",
-                                            ),
-                                            html.Td(
-                                                "Overall signal power change",
-                                                className="text-muted",
-                                            ),
-                                        ]
-                                    ),
-                                    html.Tr(
-                                        [
-                                            html.Td(
-                                                "Low Freq Improvement",
-                                                className="fw-bold",
-                                            ),
-                                            html.Td(
-                                                f"{low_freq_improvement:.3f}",
-                                                className="text-end",
-                                            ),
-                                            html.Td(
-                                                "Low frequency noise reduction",
-                                                className="text-muted",
-                                            ),
-                                        ]
-                                    ),
-                                    html.Tr(
-                                        [
-                                            html.Td(
-                                                "High Freq Improvement",
-                                                className="fw-bold",
-                                            ),
-                                            html.Td(
-                                                f"{high_freq_improvement:.3f}",
-                                                className="text-end",
-                                            ),
-                                            html.Td(
-                                                "High frequency noise reduction",
-                                                className="text-muted",
-                                            ),
-                                        ]
-                                    ),
-                                ]
-                            ),
-                        ],
-                        bordered=True,
-                        hover=True,
-                        responsive=True,
-                        className="mb-3",
-                    )
-                )
-
-            except Exception as e:
-                logger.error(f"Filtering results analysis failed: {e}")
-                results.append(html.Hr())
-                results.append(html.H6("🔧 Filtering Results", className="mb-2"))
-                results.append(
-                    html.P(
-                        f"Error in filtering analysis: {str(e)}",
-                        className="text-danger",
-                    )
-                )
+        # Note: Filtering results comparison removed as we now use the new workflow
+        # where we analyze the selected signal (original or filtered) directly
 
         return html.Div(results)
 
@@ -1163,15 +2151,11 @@ def generate_analysis_results(
 
 
 def create_peak_analysis_table(
-    raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping
+    selected_signal, time_axis, sampling_freq, analysis_options, signal_source_info
 ):
-    """Create comprehensive peak analysis table."""
+    """Create comprehensive peak analysis table for the selected signal."""
     try:
-        signal_col = column_mapping.get("signal")
-        if not signal_col or signal_col not in raw_data.columns:
-            return "Signal column not found in data"
-
-        raw_signal = raw_data[signal_col].values
+        signal_data = selected_signal
 
         if "peaks" not in analysis_options:
             return html.Div(
@@ -1187,13 +2171,13 @@ def create_peak_analysis_table(
         # Detect peaks with advanced parameters
         from scipy.signal import find_peaks
 
-        mean_val = np.mean(raw_signal)
-        std_val = np.std(raw_signal)
+        mean_val = np.mean(signal_data)
+        std_val = np.std(signal_data)
         threshold = mean_val + 2 * std_val
         min_distance = int(sampling_freq * 0.1)  # Minimum 0.1 seconds between peaks
 
         peaks, properties = find_peaks(
-            raw_signal,
+            signal_data,
             height=threshold,
             distance=min_distance,
             prominence=0.1 * std_val,
@@ -1226,7 +2210,7 @@ def create_peak_analysis_table(
         pnn50 = np.sum(nn_diff > 0.05) / len(nn_diff) * 100
 
         # Peak properties
-        peak_amplitudes = raw_signal[peaks]
+        peak_amplitudes = signal_data[peaks]
         peak_prominences = properties.get("prominences", np.zeros_like(peaks))
         peak_widths = properties.get("widths", np.zeros_like(peaks)) / sampling_freq
 
@@ -1513,15 +2497,11 @@ def create_peak_analysis_table(
 
 
 def create_signal_quality_table(
-    raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping
+    selected_signal, time_axis, sampling_freq, analysis_options, signal_source_info
 ):
-    """Create comprehensive signal quality assessment table."""
+    """Create comprehensive signal quality assessment table for the selected signal."""
     try:
-        signal_col = column_mapping.get("signal")
-        if not signal_col or signal_col not in raw_data.columns:
-            return "Signal column not found in data"
-
-        raw_signal = raw_data[signal_col].values
+        signal_data = selected_signal
 
         if "quality" not in analysis_options:
             return html.Div(
@@ -1535,30 +2515,45 @@ def create_signal_quality_table(
             )
 
         # Calculate comprehensive quality metrics
-        # SNR calculation
-        signal_power = np.mean(raw_signal**2)
-        noise_power = np.var(raw_signal)
-        snr_db = 10 * np.log10(signal_power / noise_power) if noise_power > 0 else 0
+        # SNR calculation (more accurate method)
+        signal_mean = np.mean(signal_data)
+        signal_var = np.var(signal_data)
+
+        # Estimate signal power as mean squared
+        signal_power = signal_mean**2
+        # Estimate noise power as variance
+        noise_power = signal_var
+
+        # Calculate SNR in dB
+        if noise_power > 1e-10:  # Avoid log of very small numbers
+            snr_linear = signal_power / noise_power
+            snr_db = 10 * np.log10(snr_linear)
+            # Cap SNR to reasonable range (-20 to 100 dB)
+            snr_db = max(-20.0, min(snr_db, 100.0))
+        else:
+            snr_db = 100.0  # Very high SNR if noise is negligible
 
         # Artifact detection using IQR method
-        q75, q25 = np.percentile(raw_signal, [75, 25])
+        q75, q25 = np.percentile(signal_data, [75, 25])
         iqr = q75 - q25
         lower_bound = q25 - 1.5 * iqr
         upper_bound = q75 + 1.5 * iqr
-        artifact_count = np.sum((raw_signal < lower_bound) | (raw_signal > upper_bound))
-        artifact_percentage = (artifact_count / len(raw_signal)) * 100
+        artifact_count = np.sum(
+            (signal_data < lower_bound) | (signal_data > upper_bound)
+        )
+        artifact_percentage = (artifact_count / len(signal_data)) * 100
 
         # Baseline wander detection (low frequency drift)
         from scipy.signal import savgol_filter
 
         try:
             # Use Savitzky-Golay filter to estimate baseline
-            window_length = min(51, len(raw_signal) // 10 * 2 + 1)  # Ensure odd number
+            window_length = min(51, len(signal_data) // 10 * 2 + 1)  # Ensure odd number
             if window_length >= 3:
-                baseline = savgol_filter(raw_signal, window_length, 1)
-                baseline_wander = np.std(raw_signal - baseline)
+                baseline = savgol_filter(signal_data, window_length, 1)
+                baseline_wander = np.std(signal_data - baseline)
                 baseline_wander_percentage = (
-                    baseline_wander / np.std(raw_signal)
+                    baseline_wander / np.std(signal_data)
                 ) * 100
             else:
                 baseline_wander = 0
@@ -1568,21 +2563,31 @@ def create_signal_quality_table(
             baseline_wander_percentage = 0
 
         # Motion artifact detection (sudden amplitude changes)
-        signal_diff = np.abs(np.diff(raw_signal))
+        signal_diff = np.abs(np.diff(signal_data))
         motion_threshold = np.mean(signal_diff) + 2 * np.std(signal_diff)
         motion_artifacts = np.sum(signal_diff > motion_threshold)
         motion_artifact_percentage = (motion_artifacts / len(signal_diff)) * 100
 
         # Signal stability (coefficient of variation)
-        stability_score = (
-            (np.std(raw_signal) / np.mean(raw_signal)) * 100
-            if np.mean(raw_signal) != 0
-            else 0
-        )
+        signal_mean = np.mean(signal_data)
+        signal_std = np.std(signal_data)
+
+        # More robust stability calculation
+        if abs(signal_mean) > 1e-6:  # Avoid division by very small numbers
+            stability_score = (signal_std / abs(signal_mean)) * 100
+            # Cap the stability score to reasonable range (0-1000%)
+            stability_score = min(stability_score, 1000.0)
+        else:
+            # If mean is too small, use alternative stability measure
+            signal_range = np.max(signal_data) - np.min(signal_data)
+            if signal_range > 1e-6:
+                stability_score = (signal_std / signal_range) * 100
+            else:
+                stability_score = 0.0
 
         # Frequency content analysis
-        fft_vals = np.abs(np.fft.rfft(raw_signal))
-        freqs = np.fft.rfftfreq(len(raw_signal), 1 / sampling_freq)
+        fft_vals = np.abs(np.fft.rfft(signal_data))
+        freqs = np.fft.rfftfreq(len(signal_data), 1 / sampling_freq)
 
         # Power in different frequency bands
         dc_power = np.sum(fft_vals[freqs <= 0.5])  # DC to 0.5 Hz
@@ -1610,24 +2615,24 @@ def create_signal_quality_table(
 
         try:
             peaks, properties = find_peaks(
-                raw_signal, prominence=0.1 * np.std(raw_signal)
+                signal_data, prominence=0.1 * np.std(signal_data)
             )
             # peak_quality = len(peaks) / (
-            #     len(raw_signal) / sampling_freq
+            #     len(signal_data) / sampling_freq
             # )  # peaks per second
         except Exception:
             pass
 
         # Signal continuity (gaps detection)
-        signal_diff_norm = np.abs(np.diff(raw_signal)) / (
-            np.max(raw_signal) - np.min(raw_signal)
+        signal_diff_norm = np.abs(np.diff(signal_data)) / (
+            np.max(signal_data) - np.min(signal_data)
         )
         continuity_score = np.sum(signal_diff_norm < 0.1) / len(signal_diff_norm) * 100
 
         # Outlier detection
-        z_scores = np.abs((raw_signal - np.mean(raw_signal)) / np.std(raw_signal))
+        z_scores = np.abs((signal_data - np.mean(signal_data)) / np.std(signal_data))
         outliers = np.sum(z_scores > 3)
-        outlier_percentage = (outliers / len(raw_signal)) * 100
+        outlier_percentage = (outliers / len(signal_data)) * 100
 
         return html.Div(
             [
@@ -1997,7 +3002,10 @@ def create_signal_quality_table(
                                     [
                                         html.Td("DC (0-0.5 Hz)", className="fw-bold"),
                                         html.Td(
-                                            f"{dc_power:.2e}", className="text-end"
+                                            format_large_number(
+                                                dc_power, use_scientific=True
+                                            ),
+                                            className="text-end",
                                         ),
                                         html.Td(
                                             f"{dc_percentage:.1f}%",
@@ -2012,7 +3020,9 @@ def create_signal_quality_table(
                                     [
                                         html.Td("Low (0.5-5 Hz)", className="fw-bold"),
                                         html.Td(
-                                            f"{low_freq_power:.2e}",
+                                            format_large_number(
+                                                low_freq_power, use_scientific=True
+                                            ),
                                             className="text-end",
                                         ),
                                         html.Td(
@@ -2029,7 +3039,9 @@ def create_signal_quality_table(
                                     [
                                         html.Td("Mid (5-40 Hz)", className="fw-bold"),
                                         html.Td(
-                                            f"{mid_freq_power:.2e}",
+                                            format_large_number(
+                                                mid_freq_power, use_scientific=True
+                                            ),
                                             className="text-end",
                                         ),
                                         html.Td(
@@ -2046,7 +3058,9 @@ def create_signal_quality_table(
                                     [
                                         html.Td("High (>40 Hz)", className="fw-bold"),
                                         html.Td(
-                                            f"{high_freq_power:.2e}",
+                                            format_large_number(
+                                                high_freq_power, use_scientific=True
+                                            ),
                                             className="text-end",
                                         ),
                                         html.Td(
@@ -2099,65 +3113,92 @@ def create_filtering_results_table(
             )
 
         # Calculate comprehensive filtering metrics
+        # Ensure both signals have the same length for comparison
+        min_length = min(len(raw_signal), len(filtered_data))
+        raw_signal_trimmed = raw_signal[:min_length]
+        filtered_data_trimmed = filtered_data[:min_length]
+
         # Power analysis
-        raw_power = np.mean(raw_signal**2)
-        filtered_power = np.mean(filtered_data**2)
+        raw_power = np.mean(raw_signal_trimmed**2)
+        filtered_power = np.mean(filtered_data_trimmed**2)
         power_reduction = (
             (raw_power - filtered_power) / raw_power * 100 if raw_power > 0 else 0
         )
 
         # RMS analysis
-        raw_rms = np.sqrt(np.mean(raw_signal**2))
-        filtered_rms = np.sqrt(np.mean(filtered_data**2))
+        raw_rms = np.sqrt(np.mean(raw_signal_trimmed**2))
+        filtered_rms = np.sqrt(np.mean(filtered_data_trimmed**2))
         rms_reduction = (raw_rms - filtered_rms) / raw_rms * 100 if raw_rms > 0 else 0
 
         # Frequency domain analysis
-        raw_fft = np.abs(np.fft.rfft(raw_signal))
-        filtered_fft = np.abs(np.fft.rfft(filtered_data))
-        freqs = np.fft.rfftfreq(len(raw_signal), 1 / sampling_freq)
+        raw_fft = np.abs(np.fft.rfft(raw_signal_trimmed))
+        filtered_fft = np.abs(np.fft.rfft(filtered_data_trimmed))
+        freqs = np.fft.rfftfreq(min_length, 1 / sampling_freq)
+
+        # Ensure all arrays have the same length
+        min_fft_length = min(len(raw_fft), len(filtered_fft), len(freqs))
+        raw_fft = raw_fft[:min_fft_length]
+        filtered_fft = filtered_fft[:min_fft_length]
+        freqs = freqs[:min_fft_length]
 
         # Power in different frequency bands
         # DC and very low frequency (0-0.5 Hz)
         dc_mask = freqs <= 0.5
-        dc_reduction = np.mean(raw_fft[dc_mask]) - np.mean(filtered_fft[dc_mask])
-        dc_reduction_percent = (
-            (dc_reduction / np.mean(raw_fft[dc_mask])) * 100
-            if np.mean(raw_fft[dc_mask]) > 0
-            else 0
-        )
+        if np.any(dc_mask):
+            dc_reduction = np.mean(raw_fft[dc_mask]) - np.mean(filtered_fft[dc_mask])
+            dc_reduction_percent = (
+                (dc_reduction / np.mean(raw_fft[dc_mask])) * 100
+                if np.mean(raw_fft[dc_mask]) > 0
+                else 0
+            )
+        else:
+            dc_reduction = 0
+            dc_reduction_percent = 0
 
         # Low frequency (0.5-5 Hz) - respiratory and slow variations
         low_freq_mask = (freqs > 0.5) & (freqs <= 5)
-        low_freq_reduction = np.mean(raw_fft[low_freq_mask]) - np.mean(
-            filtered_fft[low_freq_mask]
-        )
-        low_freq_reduction_percent = (
-            (low_freq_reduction / np.mean(raw_fft[low_freq_mask])) * 100
-            if np.mean(raw_fft[low_freq_mask]) > 0
-            else 0
-        )
+        if np.any(low_freq_mask):
+            low_freq_reduction = np.mean(raw_fft[low_freq_mask]) - np.mean(
+                filtered_fft[low_freq_mask]
+            )
+            low_freq_reduction_percent = (
+                (low_freq_reduction / np.mean(raw_fft[low_freq_mask])) * 100
+                if np.mean(raw_fft[low_freq_mask]) > 0
+                else 0
+            )
+        else:
+            low_freq_reduction = 0
+            low_freq_reduction_percent = 0
 
         # Mid frequency (5-40 Hz) - cardiac and physiological
         mid_freq_mask = (freqs > 5) & (freqs <= 40)
-        mid_freq_reduction = np.mean(raw_fft[mid_freq_mask]) - np.mean(
-            filtered_fft[mid_freq_mask]
-        )
-        mid_freq_reduction_percent = (
-            (mid_freq_reduction / np.mean(raw_fft[mid_freq_mask])) * 100
-            if np.mean(raw_fft[mid_freq_mask]) > 0
-            else 0
-        )
+        if np.any(mid_freq_mask):
+            mid_freq_reduction = np.mean(raw_fft[mid_freq_mask]) - np.mean(
+                filtered_fft[mid_freq_mask]
+            )
+            mid_freq_reduction_percent = (
+                (mid_freq_reduction / np.mean(raw_fft[mid_freq_mask])) * 100
+                if np.mean(raw_fft[mid_freq_mask]) > 0
+                else 0
+            )
+        else:
+            mid_freq_reduction = 0
+            mid_freq_reduction_percent = 0
 
         # High frequency (>40 Hz) - noise and artifacts
         high_freq_mask = freqs > 40
-        high_freq_reduction = np.mean(raw_fft[high_freq_mask]) - np.mean(
-            filtered_fft[high_freq_mask]
-        )
-        high_freq_reduction_percent = (
-            (high_freq_reduction / np.mean(raw_fft[high_freq_mask])) * 100
-            if np.mean(raw_fft[high_freq_mask]) > 0
-            else 0
-        )
+        if np.any(high_freq_mask):
+            high_freq_reduction = np.mean(raw_fft[high_freq_mask]) - np.mean(
+                filtered_fft[high_freq_mask]
+            )
+            high_freq_reduction_percent = (
+                (high_freq_reduction / np.mean(raw_fft[high_freq_mask])) * 100
+                if np.mean(raw_fft[high_freq_mask]) > 0
+                else 0
+            )
+        else:
+            high_freq_reduction = 0
+            high_freq_reduction_percent = 0
 
         # Signal-to-noise ratio improvement
         raw_snr = (
@@ -2674,29 +3715,25 @@ def create_filtering_results_table(
 
 
 def create_additional_metrics_table(
-    raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping
+    selected_signal, time_axis, sampling_freq, analysis_options, signal_source_info
 ):
-    """Create comprehensive additional metrics table."""
+    """Create comprehensive additional metrics table for the selected signal."""
     try:
-        signal_col = column_mapping.get("signal")
-        if not signal_col or signal_col not in raw_data.columns:
-            return "Signal column not found in data"
-
-        raw_signal = raw_data[signal_col].values
+        signal_data = selected_signal
 
         # Statistical measures
-        signal_mean = np.mean(raw_signal)
-        signal_std = np.std(raw_signal)
-        signal_min = np.min(raw_signal)
-        signal_max = np.max(raw_signal)
+        signal_mean = np.mean(signal_data)
+        signal_std = np.std(signal_data)
+        signal_min = np.min(signal_data)
+        signal_max = np.max(signal_data)
         signal_range = signal_max - signal_min
-        signal_median = np.median(raw_signal)
-        signal_skewness = float(pd.Series(raw_signal).skew())
-        signal_kurtosis = float(pd.Series(raw_signal).kurtosis())
+        signal_median = np.median(signal_data)
+        signal_skewness = float(pd.Series(signal_data).skew())
+        signal_kurtosis = float(pd.Series(signal_data).kurtosis())
 
         # Entropy measures
         # Shannon entropy
-        hist, bins = np.histogram(raw_signal, bins=50, density=True)
+        hist, bins = np.histogram(signal_data, bins=50, density=True)
         hist = hist[hist > 0]  # Remove zero bins
         shannon_entropy = -np.sum(hist * np.log2(hist))
 
@@ -2710,24 +3747,24 @@ def create_additional_metrics_table(
 
         # Fractal dimension (simplified Higuchi method)
         try:
-            higuchi_fd = higuchi_fractal_dimension(raw_signal)
+            higuchi_fd = higuchi_fractal_dimension(signal_data)
         except Exception:
             higuchi_fd = 0
 
         # Trend analysis
-        x_trend = np.arange(len(raw_signal))
-        trend_coeffs = np.polyfit(x_trend, raw_signal, 1)
+        x_trend = np.arange(len(signal_data))
+        trend_coeffs = np.polyfit(x_trend, signal_data, 1)
         trend_slope = trend_coeffs[0]
 
         # Calculate R-squared for trend
         trend_line = np.polyval(trend_coeffs, x_trend)
-        ss_res = np.sum((raw_signal - trend_line) ** 2)
-        ss_tot = np.sum((raw_signal - np.mean(raw_signal)) ** 2)
+        ss_res = np.sum((signal_data - trend_line) ** 2)
+        ss_tot = np.sum((signal_data - np.mean(signal_data)) ** 2)
         trend_r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
 
         # Spectral features
-        fft_vals = np.abs(np.fft.rfft(raw_signal))
-        freqs = np.fft.rfftfreq(len(raw_signal), 1 / sampling_freq)
+        fft_vals = np.abs(np.fft.rfft(signal_data))
+        freqs = np.fft.rfftfreq(len(signal_data), 1 / sampling_freq)
 
         # Dominant frequency
         dominant_freq_idx = np.argmax(fft_vals)
@@ -2757,23 +3794,23 @@ def create_additional_metrics_table(
 
         # Temporal features
         # Zero crossing rate
-        zero_crossings = np.sum(np.diff(np.signbit(raw_signal - signal_mean)))
-        zero_crossing_rate = zero_crossings / len(raw_signal)
+        zero_crossings = np.sum(np.diff(np.signbit(signal_data - signal_mean)))
+        zero_crossing_rate = zero_crossings / len(signal_data)
 
         # Peak-to-peak amplitude
         peak_to_peak = signal_max - signal_min
 
         # Crest factor
         crest_factor = (
-            signal_max / np.sqrt(np.mean(raw_signal**2))
-            if np.mean(raw_signal**2) > 0
+            signal_max / np.sqrt(np.mean(signal_data**2))
+            if np.mean(signal_data**2) > 0
             else 0
         )
 
         # Form factor
         form_factor = (
-            np.sqrt(np.mean(raw_signal**2)) / np.mean(np.abs(raw_signal))
-            if np.mean(np.abs(raw_signal)) > 0
+            np.sqrt(np.mean(signal_data**2)) / np.mean(np.abs(signal_data))
+            if np.mean(np.abs(signal_data)) > 0
             else 0
         )
 
@@ -2782,29 +3819,20 @@ def create_additional_metrics_table(
         from scipy.signal import argrelextrema
 
         try:
-            local_maxima = argrelextrema(raw_signal, np.greater, order=3)[0]
-            local_minima = argrelextrema(raw_signal, np.less, order=3)[0]
-            complexity_score = (len(local_maxima) + len(local_minima)) / len(raw_signal)
+            local_maxima = argrelextrema(signal_data, np.greater, order=3)[0]
+            local_minima = argrelextrema(signal_data, np.less, order=3)[0]
+            complexity_score = (len(local_maxima) + len(local_minima)) / len(
+                signal_data
+            )
         except Exception:
             complexity_score = 0
 
         # Signal regularity (inverse of complexity)
         regularity_score = 1 - complexity_score if complexity_score <= 1 else 0
 
-        # Cross-correlation with filtered signal (if available)
-        if filtered_data is not None and not np.array_equal(raw_signal, filtered_data):
-            try:
-                from scipy.signal import correlate
-
-                correlation = correlate(raw_signal, filtered_data, mode="full")
-                max_correlation = np.max(correlation)
-                correlation_coefficient = max_correlation / (
-                    np.std(raw_signal) * np.std(filtered_data) * len(raw_signal)
-                )
-            except Exception:
-                correlation_coefficient = 0
-        else:
-            correlation_coefficient = 1.0  # Perfect correlation if no filtering
+        # Note: Cross-correlation with filtered signal removed as we now use the new workflow
+        # where we analyze the selected signal (original or filtered) directly
+        correlation_coefficient = 1.0  # Set to 1.0 for consistency
 
         return html.Div(
             [
@@ -2927,7 +3955,8 @@ def create_additional_metrics_table(
                                     [
                                         html.Td("Mean", className="fw-bold"),
                                         html.Td(
-                                            f"{signal_mean:.3f}", className="text-end"
+                                            format_large_number(signal_mean),
+                                            className="text-end",
                                         ),
                                         html.Td(
                                             "Central tendency", className="text-muted"
@@ -2938,7 +3967,8 @@ def create_additional_metrics_table(
                                     [
                                         html.Td("Median", className="fw-bold"),
                                         html.Td(
-                                            f"{signal_median:.3f}", className="text-end"
+                                            format_large_number(signal_median),
+                                            className="text-end",
                                         ),
                                         html.Td("Middle value", className="text-muted"),
                                     ]
@@ -2949,7 +3979,8 @@ def create_additional_metrics_table(
                                             "Standard Deviation", className="fw-bold"
                                         ),
                                         html.Td(
-                                            f"{signal_std:.3f}", className="text-end"
+                                            format_large_number(signal_std),
+                                            className="text-end",
                                         ),
                                         html.Td(
                                             "Variability measure",
@@ -2961,7 +3992,8 @@ def create_additional_metrics_table(
                                     [
                                         html.Td("Range", className="fw-bold"),
                                         html.Td(
-                                            f"{signal_range:.3f}", className="text-end"
+                                            format_large_number(signal_range),
+                                            className="text-end",
                                         ),
                                         html.Td(
                                             "Min to max spread", className="text-muted"
@@ -3135,7 +4167,8 @@ def create_additional_metrics_table(
                                     [
                                         html.Td("Peak-to-Peak", className="fw-bold"),
                                         html.Td(
-                                            f"{peak_to_peak:.3f}", className="text-end"
+                                            format_large_number(peak_to_peak),
+                                            className="text-end",
                                         ),
                                         html.Td(
                                             "Amplitude range", className="text-muted"
@@ -3454,14 +4487,14 @@ def register_vitaldsp_callbacks(app):
     @app.callback(
         [
             Output("main-signal-plot", "figure"),
-            Output("filtered-signal-plot", "figure"),
+            Output("signal-comparison-plot", "figure"),
             Output("analysis-results", "children"),
             Output("peak-analysis-table", "children"),
             Output("signal-quality-table", "children"),
-            Output("filtering-results-table", "children"),
+            Output("signal-source-table", "children"),
             Output("additional-metrics-table", "children"),
             Output("store-time-domain-data", "data"),
-            Output("store-filtered-data", "data"),
+            Output("store-analysis-results", "data"),
         ],
         [
             Input("btn-update-analysis", "n_clicks"),
@@ -3475,11 +4508,7 @@ def register_vitaldsp_callbacks(app):
             Input("url", "pathname"),
         ],
         [
-            State("filter-family", "value"),
-            State("filter-response", "value"),
-            State("filter-low-freq", "value"),
-            State("filter-high-freq", "value"),
-            State("filter-order", "value"),
+            State("signal-source-select", "value"),
             State("analysis-options", "value"),
             State("signal-type-select", "value"),
         ],
@@ -3494,11 +4523,7 @@ def register_vitaldsp_callbacks(app):
         nudge_p1,
         nudge_p10,
         pathname,
-        filter_family,
-        filter_response,
-        filter_low_freq,
-        filter_high_freq,
-        filter_order,
+        signal_source,
         analysis_options,
         signal_type,
     ):
@@ -3789,81 +4814,278 @@ def register_vitaldsp_callbacks(app):
             if np.all(signal_data == signal_data[0]):
                 logger.warning(f"All signal values are identical: {signal_data[0]}")
 
-            # Apply filtering if requested
+            # Load signal source (original or filtered) based on user selection
+            selected_signal = signal_data
+            signal_source_info = "Original Signal"
             filtered_signal = None
-            if (
-                filter_family
-                and filter_response
-                and filter_low_freq
-                and filter_high_freq
-                and filter_order
-            ):
-                logger.info("Applying filter to signal...")
-                logger.info(
-                    f"Filter params: {filter_family}, {filter_response}, {filter_low_freq}-{filter_high_freq} Hz, order {filter_order}"
-                )
-                filtered_signal = apply_filter(
-                    signal_data,
-                    sampling_freq,
-                    filter_family,
-                    filter_response,
-                    filter_low_freq,
-                    filter_high_freq,
-                    filter_order,
-                )
-                logger.info("Filter applied successfully")
-                logger.info(
-                    f"Filtered signal shape: {filtered_signal.shape if filtered_signal is not None else 'None'}"
-                )
-                if filtered_signal is not None:
+
+            if signal_source == "filtered":
+                logger.info("Attempting to load filtered signal...")
+                filtered_signal = data_service.get_filtered_data(latest_data_id)
+                filter_info = data_service.get_filter_info(latest_data_id)
+
+                if filtered_signal is not None and filter_info is not None:
+                    # Check if filtered signal length matches the current time window
+                    expected_length = end_sample - start_sample
+                    if len(filtered_signal) == expected_length:
+                        # Filtered signal already matches the time window
+                        selected_signal = filtered_signal
+                        signal_source_info = "Filtered Signal"
+                        logger.info(
+                            "Using stored filtered signal for analysis (already windowed)"
+                        )
+                        logger.info(f"Filtered signal shape: {filtered_signal.shape}")
+                        logger.info(
+                            f"Filtered signal range: {np.min(filtered_signal):.3f} to {np.max(filtered_signal):.3f}"
+                        )
+                    else:
+                        # Apply same filter parameters to current time window
+                        logger.info(
+                            f"Filtered signal length ({len(filtered_signal)}) doesn't match time window ({expected_length})"
+                        )
+                        logger.info(
+                            "Applying same filter parameters to current time window..."
+                        )
+
+                        try:
+                            # Apply the same filter to the current time window using the same method as filtering screen
+                            filter_type = filter_info.get("filter_type", "traditional")
+                            parameters = filter_info.get("parameters", {})
+                            detrending_applied = filter_info.get(
+                                "detrending_applied", False
+                            )
+
+                            logger.info(
+                                f"Applying {filter_type} filter with parameters: {parameters}"
+                            )
+
+                            # Apply filter using the same method as filtering screen
+                            # Apply detrending if it was applied in the filtering screen
+                            if detrending_applied:
+                                from scipy import signal as scipy_signal
+
+                                signal_data_detrended = scipy_signal.detrend(
+                                    signal_data
+                                )
+                                logger.info("Applied detrending to signal")
+                            else:
+                                signal_data_detrended = signal_data
+
+                            if filter_type == "traditional":
+                                # Extract traditional filter parameters
+                                filter_family = parameters.get(
+                                    "filter_family", "butter"
+                                )
+                                filter_response = parameters.get(
+                                    "filter_response", "bandpass"
+                                )
+                                low_freq = parameters.get("low_freq", 0.5)
+                                high_freq = parameters.get("high_freq", 5)
+                                filter_order = parameters.get("filter_order", 4)
+
+                                # Apply traditional filter using the same function as filtering screen
+                                filtered_signal_windowed = apply_traditional_filter(
+                                    signal_data_detrended,
+                                    sampling_freq,
+                                    filter_family,
+                                    filter_response,
+                                    low_freq,
+                                    high_freq,
+                                    filter_order,
+                                )
+
+                            elif filter_type == "advanced":
+                                # Extract advanced filter parameters
+                                advanced_method = parameters.get(
+                                    "advanced_method", "kalman"
+                                )
+                                noise_level = parameters.get("noise_level", 0.1)
+                                iterations = parameters.get("iterations", 100)
+                                learning_rate = parameters.get("learning_rate", 0.01)
+
+                                # Import and apply advanced filter
+                                from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                                    apply_advanced_filter,
+                                )
+
+                                filtered_signal_windowed = apply_advanced_filter(
+                                    signal_data_detrended,
+                                    advanced_method,
+                                    noise_level,
+                                    iterations,
+                                    learning_rate,
+                                )
+
+                            elif filter_type == "artifact":
+                                # Extract artifact removal parameters
+                                artifact_type = parameters.get(
+                                    "artifact_type", "baseline"
+                                )
+                                artifact_strength = parameters.get(
+                                    "artifact_strength", 0.5
+                                )
+
+                                # Import and apply artifact removal
+                                from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                                    apply_enhanced_artifact_removal,
+                                )
+
+                                filtered_signal_windowed = (
+                                    apply_enhanced_artifact_removal(
+                                        signal_data_detrended,
+                                        sampling_freq,
+                                        artifact_type,
+                                        artifact_strength,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                    )
+                                )
+
+                            elif filter_type == "neural":
+                                # Extract neural filter parameters
+                                neural_type = parameters.get("neural_type", "lstm")
+                                neural_complexity = parameters.get(
+                                    "neural_complexity", "medium"
+                                )
+
+                                # Import and apply neural filter
+                                from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                                    apply_neural_filter,
+                                )
+
+                                filtered_signal_windowed = apply_neural_filter(
+                                    signal_data_detrended,
+                                    neural_type,
+                                    neural_complexity,
+                                )
+
+                            elif filter_type == "ensemble":
+                                # Extract ensemble filter parameters
+                                ensemble_method = parameters.get(
+                                    "ensemble_method", "mean"
+                                )
+                                ensemble_n_filters = parameters.get(
+                                    "ensemble_n_filters", 3
+                                )
+
+                                # Import and apply ensemble filter
+                                from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                                    apply_enhanced_ensemble_filter,
+                                )
+
+                                filtered_signal_windowed = (
+                                    apply_enhanced_ensemble_filter(
+                                        signal_data_detrended,
+                                        ensemble_method,
+                                        ensemble_n_filters,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                    )
+                                )
+
+                            else:
+                                # For unknown filter types, fall back to original signal
+                                logger.warning(
+                                    f"Unknown filter type {filter_type}, using original signal"
+                                )
+                                filtered_signal_windowed = signal_data_detrended
+
+                            selected_signal = filtered_signal_windowed
+                            signal_source_info = "Filtered Signal (Dynamic)"
+                            logger.info(
+                                "Using dynamically filtered signal for analysis"
+                            )
+                            logger.info(
+                                f"Filtered signal shape: {filtered_signal_windowed.shape}"
+                            )
+                            logger.info(
+                                f"Filtered signal range: {np.min(filtered_signal_windowed):.3f} to {np.max(filtered_signal_windowed):.3f}"
+                            )
+
+                        except Exception as e:
+                            logger.error(
+                                f"Error applying filter to current time window: {e}"
+                            )
+                            logger.info("Falling back to original signal")
+                            selected_signal = signal_data
+                            signal_source_info = (
+                                "Original Signal (Filter application failed)"
+                            )
+                else:
                     logger.info(
-                        f"Filtered signal range: {np.min(filtered_signal):.3f} to {np.max(filtered_signal):.3f}"
+                        "No filtered data or filter info available, falling back to original signal"
                     )
+                    signal_source_info = "Original Signal (No filtered data available)"
             else:
-                logger.info("No filter parameters provided, using raw signal")
+                logger.info("Using original signal for analysis")
 
-            # Create filtered DataFrame with both raw and filtered signals for comparison
+                # Create filtered DataFrame with both raw and filtered signals for comparison
+                filtered_df = windowed_data.copy()
             if filtered_signal is not None:
-                filtered_df = windowed_data.copy()
-                filtered_df[f"{signal_column}_filtered"] = filtered_signal
-            else:
-                filtered_df = windowed_data.copy()
+                # Only add filtered signal if it matches the windowed data length
+                if len(filtered_signal) == len(windowed_data):
+                    filtered_df[f"{signal_column}_filtered"] = filtered_signal
+                    logger.info("Added filtered signal to comparison DataFrame")
+                else:
+                    logger.warning(
+                        f"Cannot add filtered signal to DataFrame - length mismatch: {len(filtered_signal)} vs {len(windowed_data)}"
+                    )
 
-            # Detect peaks if requested
-            peaks = None
-            if analysis_options and "peaks" in analysis_options:
-                logger.info("Detecting peaks in signal...")
-                peaks = detect_peaks(signal_data, sampling_freq)
-                logger.info(f"Detected {len(peaks)} peaks")
-            else:
-                logger.info("Peak detection not requested")
-
-            # Create main signal plot
-            logger.info("Creating main signal plot...")
+            # Note: Critical points detection is now handled in the plot functions using vitalDSP
             logger.info(
-                f"Calling create_main_signal_plot with column_mapping: {column_mapping}"
+                "Critical points will be detected using vitalDSP waveform analysis in plot functions"
             )
-            main_plot = create_main_signal_plot(
-                windowed_data,
+
+            # Create main signal plot (always show raw signal with critical points)
+            logger.info("Creating main signal plot...")
+            logger.info("Calling create_time_domain_plot with raw signal")
+            main_plot = create_time_domain_plot(
+                signal_data,  # Always use raw signal for main plot
                 time_axis,
                 sampling_freq,
-                analysis_options or ["peaks", "hr", "quality"],
-                column_mapping,
-                signal_type or "PPG",
+                None,  # Peaks are now detected in the plot function using vitalDSP
+                None,  # No additional filtered signal overlay
+                signal_type,  # Pass the signal type from user selection
             )
             logger.info("Main signal plot created successfully")
 
-            # Create filtered signal plot
-            logger.info("Creating filtered signal plot...")
-            filtered_plot = create_filtered_signal_plot(
-                filtered_df,
-                time_axis,
-                sampling_freq,
-                column_mapping,
-                signal_type or "PPG",
-                analysis_options,
+            # Create signal comparison plot
+            logger.info("Creating signal comparison plot...")
+            # Use the original signal data for comparison
+            original_signal_for_comparison = (
+                df[signal_column].iloc[start_sample:end_sample].values
             )
-            logger.info("Filtered signal plot created successfully")
+
+            # For comparison plot, show raw vs filtered
+            if signal_source == "filtered" and selected_signal is not None:
+                # Show raw vs filtered with critical points
+                comparison_plot = create_signal_comparison_plot(
+                    original_signal_for_comparison,  # Raw signal
+                    selected_signal,  # Filtered signal (either stored or dynamically generated)
+                    time_axis,
+                    sampling_freq,
+                    signal_type,  # Pass the signal type from user selection
+                )
+            else:
+                # If using original signal, show raw signal only
+                comparison_plot = create_signal_comparison_plot(
+                    original_signal_for_comparison,  # Raw signal
+                    None,  # No filtered signal
+                    time_axis,
+                    sampling_freq,
+                    signal_type,  # Pass the signal type from user selection
+                )
+            logger.info("Signal comparison plot created successfully")
 
             # Store processed data
             time_domain_data = {
@@ -3873,87 +5095,101 @@ def register_vitaldsp_callbacks(app):
                 "window": [start_time, end_time],
             }
 
+            # Get filter info for display (use the filter_info already retrieved earlier)
+            if signal_source == "filtered" and selected_signal is not None:
+                if filter_info:
+                    logger.info(f"Using stored filter info: {filter_info}")
+                    logger.info(
+                        f"Filter type: {filter_info.get('filter_type', 'Unknown')}"
+                    )
+                    logger.info(
+                        f"Filter parameters: {filter_info.get('parameters', {})}"
+                    )
+                else:
+                    logger.warning("No filter info available for filtered signal")
+                    filter_info = None
+            else:
+                filter_info = None
+
             filtered_data_store = {
                 "filtered_data": (
                     windowed_data.to_dict("records")
-                    if filtered_signal is not None
+                    if selected_signal is not None and signal_source == "filtered"
                     else None
                 ),
-                "filter_params": {
-                    "family": filter_family,
-                    "response": filter_response,
-                    "low_freq": filter_low_freq,
-                    "high_freq": filter_high_freq,
-                    "order": filter_order,
-                },
+                "filter_params": (
+                    filter_info.get("parameters", {}) if filter_info else {}
+                ),
             }
 
-            # Generate analysis results
+            # Generate analysis results (using selected signal)
             analysis_results = generate_analysis_results(
-                windowed_data,
-                filtered_signal,
+                selected_signal,
                 time_axis,
                 sampling_freq,
                 analysis_options or ["peaks", "hr", "quality"],
-                column_mapping,
+                signal_source_info,
+                filter_info,
             )
 
             # Generate detailed table components
             peak_table = create_peak_analysis_table(
-                windowed_data,
-                filtered_signal,
+                selected_signal,
                 time_axis,
                 sampling_freq,
                 analysis_options or ["peaks", "hr", "quality"],
-                column_mapping,
+                signal_source_info,
             )
             quality_table = create_signal_quality_table(
-                windowed_data,
-                filtered_signal,
+                selected_signal,
                 time_axis,
                 sampling_freq,
                 analysis_options or ["peaks", "hr", "quality"],
-                column_mapping,
+                signal_source_info,
             )
-            filtering_table = create_filtering_results_table(
-                windowed_data,
-                filtered_signal,
-                time_axis,
+
+            # Create signal source information table
+            signal_source_table = create_signal_source_table(
+                signal_source_info,
+                (
+                    data_service.get_filter_info(latest_data_id)
+                    if signal_source == "filtered"
+                    else None
+                ),
                 sampling_freq,
-                analysis_options or ["peaks", "hr", "quality"],
-                column_mapping,
+                len(selected_signal),
             )
+
             additional_table = create_additional_metrics_table(
-                windowed_data,
-                filtered_signal,
+                selected_signal,
                 time_axis,
                 sampling_freq,
                 analysis_options or ["peaks", "hr", "quality"],
-                column_mapping,
+                signal_source_info,
             )
 
             logger.info("Time domain analysis completed successfully")
             logger.info("Returning results:")
             logger.info(f"  - Main plot: {type(main_plot)}")
-            logger.info(f"  - Filtered plot: {type(filtered_plot)}")
+            logger.info(f"  - Comparison plot: {type(comparison_plot)}")
             logger.info(f"  - Analysis results: {type(analysis_results)}")
             logger.info(f"  - Peak table: {type(peak_table)}")
             logger.info(f"  - Quality table: {type(quality_table)}")
-            logger.info(f"  - Filtering table: {type(filtering_table)}")
+            logger.info(f"  - Signal source table: {type(signal_source_table)}")
             logger.info(f"  - Additional table: {type(additional_table)}")
             logger.info(f"  - Data: {type(time_domain_data)}")
-            logger.info(f"  - Filtered data: {type(filtered_data_store)}")
+            logger.info(f"  - Analysis results data: {type(time_domain_data)}")
 
             return (
                 main_plot,
-                filtered_plot,
+                comparison_plot,
                 analysis_results,
                 peak_table,
                 quality_table,
-                filtering_table,
+                signal_source_table,
                 additional_table,
                 time_domain_data,
-                filtered_data_store,
+                time_domain_data,  # Store analysis results instead of filtered data
             )
 
         except Exception as e:

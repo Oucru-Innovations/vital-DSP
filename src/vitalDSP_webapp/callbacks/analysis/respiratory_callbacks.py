@@ -2002,10 +2002,38 @@ def generate_comprehensive_respiratory_analysis(
                 logger.info("Processing breathing pattern analysis...")
                 try:
                     # Enhanced breathing pattern analysis with comprehensive insights
+                    # Use user-specified parameters for consistency with respiratory rate estimation
                     prominence = 0.3 * np.std(signal_data)
-                    distance = int(0.5 * sampling_freq)
+
+                    # Use min_breath_duration for distance calculation (convert to samples)
+                    min_distance_samples = int(
+                        (min_breath_duration or 0.1) * sampling_freq
+                    )
+                    max_distance_samples = int(
+                        (max_breath_duration or 6.0) * sampling_freq
+                    )
+
+                    # Apply filtering if preprocessing options include filtering
+                    processed_signal = signal_data.copy()
+                    if preprocessing_options and "filter" in preprocessing_options:
+                        from scipy import signal as scipy_signal
+
+                        # Apply bandpass filter using user-specified cutoffs
+                        low_cutoff = low_cut or 0.1
+                        high_cutoff = high_cut or 0.8
+                        nyquist = sampling_freq / 2
+                        low = low_cutoff / nyquist
+                        high = high_cutoff / nyquist
+                        b, a = scipy_signal.butter(4, [low, high], btype="band")
+                        processed_signal = scipy_signal.filtfilt(b, a, signal_data)
+                        logger.info(
+                            f"Applied bandpass filter: {low_cutoff}-{high_cutoff} Hz"
+                        )
+
                     peaks, properties = signal.find_peaks(
-                        signal_data, prominence=prominence, distance=distance
+                        processed_signal,
+                        prominence=prominence,
+                        distance=min_distance_samples,
                     )
 
                     if len(peaks) > 1:
@@ -2015,6 +2043,22 @@ def generate_comprehensive_respiratory_analysis(
 
                         # Calculate respiratory rate metrics
                         rr_bpm = 60.0 / mean_interval
+
+                        # Log the parameters used for debugging
+                        logger.info("Breathing pattern analysis parameters:")
+                        logger.info(
+                            f"  - Min breath duration: {min_breath_duration or 0.1}s"
+                        )
+                        logger.info(
+                            f"  - Max breath duration: {max_breath_duration or 6.0}s"
+                        )
+                        logger.info(f"  - Low cut: {low_cut or 0.1} Hz")
+                        logger.info(f"  - High cut: {high_cut or 0.8} Hz")
+                        logger.info(
+                            f"  - Filtering applied: {'Yes' if preprocessing_options and 'filter' in preprocessing_options else 'No'}"
+                        )
+                        logger.info(f"  - Detected peaks: {len(peaks)}")
+                        logger.info(f"  - Calculated RR: {rr_bpm:.2f} BPM")
                         rr_std = 60.0 * variability / (mean_interval**2)
                         rr_cv = variability / mean_interval  # Coefficient of variation
 

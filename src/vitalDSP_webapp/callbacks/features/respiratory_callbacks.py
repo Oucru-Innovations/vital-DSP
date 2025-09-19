@@ -204,7 +204,7 @@ def generate_comprehensive_respiratory_analysis(
             if preprocessing_options and "filter" in preprocessing_options:
                 preprocess_config.filter_type = "bandpass"
                 preprocess_config.lowcut = low_cut or 0.1
-                preprocess_config.highcut = high_cut or 0.5
+                preprocess_config.highcut = high_cut or 0.8
 
             # Initialize respiratory analysis
             ra = RespiratoryAnalysis(signal_data, sampling_freq)
@@ -219,7 +219,7 @@ def generate_comprehensive_respiratory_analysis(
                         if method == "peak_detection":
                             rr = ra.compute_respiratory_rate(
                                 method="peaks",
-                                min_breath_duration=min_breath_duration or 0.5,
+                                min_breath_duration=min_breath_duration or 0.1,
                                 max_breath_duration=max_breath_duration or 6,
                                 preprocess_config=preprocess_config,
                             )
@@ -464,6 +464,7 @@ def register_respiratory_callbacks(app):
             State("resp-start-time", "value"),
             State("resp-end-time", "value"),
             State("resp-signal-type", "value"),
+            State("resp-signal-source-select", "value"),
             State("resp-estimation-methods", "value"),
             State("resp-advanced-options", "value"),
             State("resp-preprocessing-options", "value"),
@@ -484,6 +485,7 @@ def register_respiratory_callbacks(app):
         start_time,
         end_time,
         signal_type,
+        signal_source,
         estimation_methods,
         advanced_options,
         preprocessing_options,
@@ -650,11 +652,149 @@ def register_respiratory_callbacks(app):
                 )
 
             signal_data = windowed_data[signal_column].values
+
+            # Initialize filter_info for signal source loading
+            filter_info = None
+
+            # Check if we need to apply dynamic filtering for filtered signal
+            if signal_source == "filtered" and filter_info is not None:
+                # Check if the time range is within the original signal range
+                original_signal_length = len(df[signal_column].values)
+                expected_length = end_sample - start_sample
+
+                # If time range is outside original signal or we need dynamic filtering
+                if (
+                    start_sample >= original_signal_length
+                    or end_sample > original_signal_length
+                    or expected_length != len(signal_data)
+                ):
+                    logger.info("=== DYNAMIC FILTERING ===")
+                    logger.info(f"Original signal length: {original_signal_length}")
+                    logger.info(f"Time range: {start_sample} to {end_sample}")
+                    logger.info(f"Expected window length: {expected_length}")
+                    logger.info("Applying dynamic filtering to current window...")
+
+                    # If time range is completely outside original signal, return error
+                    if (
+                        start_sample >= original_signal_length
+                        or end_sample > original_signal_length
+                    ):
+                        logger.warning(
+                            f"Time range {start_sample}-{end_sample} is outside original signal range (0-{original_signal_length})"
+                        )
+                        return (
+                            create_empty_figure(),
+                            f"Time range is outside the available signal data. Please select a time range within 0 to {original_signal_length/sampling_freq:.1f} seconds.",
+                            create_empty_figure(),
+                            None,
+                            None,
+                        )
+
+                    try:
+                        # Import the same filtering function used in time domain
+                        from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                            apply_traditional_filter,
+                        )
+
+                        # Get the full original signal for the current time window
+                        full_original_signal = df[signal_column].values
+                        windowed_original_signal = full_original_signal[
+                            start_sample:end_sample
+                        ]
+
+                        # Get filter parameters
+                        parameters = filter_info.get("parameters", {})
+                        detrending_applied = filter_info.get(
+                            "detrending_applied", False
+                        )
+
+                        # Apply detrending if it was applied in the original filtering
+                        if detrending_applied:
+                            from scipy import signal as scipy_signal
+
+                            signal_data_detrended = scipy_signal.detrend(
+                                windowed_original_signal
+                            )
+                            logger.info("Applied detrending to signal")
+                        else:
+                            signal_data_detrended = windowed_original_signal
+
+                        # Apply the same filter type as used in filtering screen
+                        filter_type = filter_info.get("filter_type", "traditional")
+
+                        if filter_type == "traditional":
+                            # Extract traditional filter parameters
+                            filter_family = parameters.get("filter_family", "butter")
+                            filter_response = parameters.get(
+                                "filter_response", "bandpass"
+                            )
+                            low_freq = parameters.get("low_freq", 0.5)
+                            high_freq = parameters.get("high_freq", 5)
+                            filter_order = parameters.get("filter_order", 4)
+
+                            # Apply traditional filter
+                            signal_data = apply_traditional_filter(
+                                signal_data_detrended,
+                                sampling_freq,
+                                filter_family,
+                                filter_response,
+                                low_freq,
+                                high_freq,
+                                filter_order,
+                            )
+                            logger.info("Applied dynamic traditional filter")
+                        else:
+                            # For other filter types, use the original signal
+                            signal_data = signal_data_detrended
+                            logger.info(
+                                f"Using original signal for filter type: {filter_type}"
+                            )
+
+                        signal_source_info = "Filtered Signal (Dynamic)"
+                        logger.info("Dynamic filtering completed successfully")
+
+                    except Exception as e:
+                        logger.error(f"Error in dynamic filtering: {e}")
+                        logger.info("Falling back to original signal")
+                        signal_data = windowed_original_signal
+                        signal_source_info = "Original Signal (Fallback)"
             logger.info(f"Signal data shape: {signal_data.shape}")
             logger.info(
                 f"Signal data range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}"
             )
             logger.info(f"Signal data mean: {np.mean(signal_data):.3f}")
+
+            # Signal source loading logic
+            logger.info("=== SIGNAL SOURCE LOADING ===")
+            logger.info(f"Signal source selection: {signal_source}")
+
+            if signal_source == "filtered":
+                # Try to load filtered data from filtering screen
+                filtered_data = data_service.get_filtered_data(latest_data_id)
+                filter_info = data_service.get_filter_info(latest_data_id)
+
+                if filtered_data is not None:
+                    logger.info(
+                        f"Found filtered data with shape: {filtered_data.shape}"
+                    )
+                    # Apply time window to filtered data
+                    filtered_windowed = filtered_data[start_sample:end_sample]
+                    signal_data = filtered_windowed
+                    signal_source_info = "Filtered Signal"
+                else:
+                    logger.info("No filtered data available, using original signal")
+                    signal_source_info = "Original Signal"
+            else:
+                logger.info("Using original signal as requested")
+                signal_source_info = "Original Signal"
+
+            # Log selected signal characteristics
+            logger.info(f"Signal data shape: {signal_data.shape}")
+            logger.info(
+                f"Signal data range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}"
+            )
+            logger.info(f"Signal data mean: {np.mean(signal_data):.3f}")
+            logger.info(f"Signal source: {signal_source_info}")
 
             # Auto-detect signal type if needed
             if signal_type == "auto":

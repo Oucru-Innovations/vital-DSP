@@ -105,6 +105,7 @@ def register_signal_filtering_callbacks(app):
             State("ensemble-n-filters", "value"),
             State("filter-quality-options", "value"),
             State("detrend-option", "value"),
+            State("filter-signal-type-select", "value"),
         ],
     )
     def advanced_filtering_callback(
@@ -135,6 +136,7 @@ def register_signal_filtering_callbacks(app):
         ensemble_n_filters,
         quality_options,
         detrend_option,
+        signal_type,
     ):
 
         ctx = callback_context
@@ -750,11 +752,17 @@ def register_signal_filtering_callbacks(app):
             )
 
             original_plot = create_original_signal_plot(
-                time_axis, raw_signal_for_plotting
+                time_axis, raw_signal_for_plotting, sampling_freq, signal_type
             )
-            filtered_plot = create_filtered_signal_plot(time_axis, filtered_data)
+            filtered_plot = create_filtered_signal_plot(
+                time_axis, filtered_data, sampling_freq, signal_type
+            )
             comparison_plot = create_filter_comparison_plot(
-                time_axis, raw_signal_for_plotting, filtered_data
+                time_axis,
+                raw_signal_for_plotting,
+                filtered_data,
+                sampling_freq,
+                signal_type,
             )
 
             # Generate quality metrics using RAW signal (not detrended) for accurate assessment
@@ -784,6 +792,37 @@ def register_signal_filtering_callbacks(app):
                     "ensemble_method": ensemble_method,
                 },
             }
+
+            # Store filtered data in data service for use in other screens
+            try:
+                from vitalDSP_webapp.services.data.data_service import get_data_service
+
+                data_service = get_data_service()
+
+                # Create filter info for storage
+                filter_info = {
+                    "filter_type": filter_type,
+                    "parameters": stored_data["parameters"],
+                    "detrending_applied": stored_data["detrending_applied"],
+                    "timestamp": pd.Timestamp.now().isoformat(),
+                }
+
+                # Store the filtered signal data
+                success = data_service.store_filtered_data(
+                    latest_data_id, filtered_data, filter_info
+                )
+
+                if success:
+                    logger.info(
+                        f"Filtered data stored successfully for data ID: {latest_data_id}"
+                    )
+                else:
+                    logger.warning(
+                        f"Failed to store filtered data for data ID: {latest_data_id}"
+                    )
+
+            except Exception as e:
+                logger.error(f"Error storing filtered data: {e}")
 
             logger.info("Advanced filtering completed successfully")
             return (
@@ -879,7 +918,7 @@ def register_signal_filtering_callbacks(app):
 
 
 # Helper functions for signal filtering
-def create_original_signal_plot(time_axis, signal_data):
+def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_type):
     """Create plot for original signal with critical points detection."""
     try:
         logger.info("Creating original signal plot:")
@@ -918,58 +957,134 @@ def create_original_signal_plot(time_axis, signal_data):
             # Create waveform morphology object
             wm = WaveformMorphology(
                 waveform=signal_data,
-                fs=100,  # Default sampling frequency
-                signal_type="PPG",  # Assume PPG for now
+                fs=sampling_freq,  # Use actual sampling frequency
+                signal_type=signal_type,  # Use signal type from UI
                 simple_mode=True,
             )
 
             # Detect critical points based on signal type
-            if hasattr(wm, "systolic_peaks") and wm.systolic_peaks is not None:
-                # Plot systolic peaks
-                fig.add_trace(
-                    go.Scatter(
-                        x=time_axis[wm.systolic_peaks],
-                        y=signal_data[wm.systolic_peaks],
-                        mode="markers",
-                        name="Systolic Peaks",
-                        marker=dict(color="red", size=10, symbol="diamond"),
-                        hovertemplate="<b>Systolic Peak:</b> %{y}<extra></extra>",
+            if signal_type == "PPG":
+                # For PPG: systolic peaks, dicrotic notches, diastolic peaks
+                if hasattr(wm, "systolic_peaks") and wm.systolic_peaks is not None:
+                    # Plot systolic peaks
+                    fig.add_trace(
+                        go.Scatter(
+                            x=time_axis[wm.systolic_peaks],
+                            y=signal_data[wm.systolic_peaks],
+                            mode="markers",
+                            name="Systolic Peaks",
+                            marker=dict(color="red", size=10, symbol="diamond"),
+                            hovertemplate="<b>Systolic Peak:</b> %{y}<extra></extra>",
+                        )
                     )
+
+                # Detect and plot dicrotic notches
+                try:
+                    dicrotic_notches = wm.detect_dicrotic_notches()
+                    if dicrotic_notches is not None and len(dicrotic_notches) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[dicrotic_notches],
+                                y=signal_data[dicrotic_notches],
+                                mode="markers",
+                                name="Dicrotic Notches",
+                                marker=dict(color="orange", size=8, symbol="circle"),
+                                hovertemplate="<b>Dicrotic Notch:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Dicrotic notch detection failed: {e}")
+
+                # Detect and plot diastolic peaks
+                try:
+                    diastolic_peaks = wm.detect_diastolic_peak()
+                    if diastolic_peaks is not None and len(diastolic_peaks) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[diastolic_peaks],
+                                y=signal_data[diastolic_peaks],
+                                mode="markers",
+                                name="Diastolic Peaks",
+                                marker=dict(color="green", size=8, symbol="square"),
+                                hovertemplate="<b>Diastolic Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Diastolic peak detection failed: {e}")
+
+            elif signal_type == "ECG":
+                # For ECG: R peaks, P peaks, T peaks
+                if hasattr(wm, "r_peaks") and wm.r_peaks is not None:
+                    # Plot R peaks
+                    fig.add_trace(
+                        go.Scatter(
+                            x=time_axis[wm.r_peaks],
+                            y=signal_data[wm.r_peaks],
+                            mode="markers",
+                            name="R Peaks",
+                            marker=dict(color="red", size=10, symbol="diamond"),
+                            hovertemplate="<b>R Peak:</b> %{y}<extra></extra>",
+                        )
+                    )
+
+                # Detect and plot P peaks
+                try:
+                    p_peaks = wm.detect_p_peak()
+                    if p_peaks is not None and len(p_peaks) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[p_peaks],
+                                y=signal_data[p_peaks],
+                                mode="markers",
+                                name="P Peaks",
+                                marker=dict(color="blue", size=8, symbol="circle"),
+                                hovertemplate="<b>P Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"P peak detection failed: {e}")
+
+                # Detect and plot T peaks
+                try:
+                    t_peaks = wm.detect_t_peak()
+                    if t_peaks is not None and len(t_peaks) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[t_peaks],
+                                y=signal_data[t_peaks],
+                                mode="markers",
+                                name="T Peaks",
+                                marker=dict(color="green", size=8, symbol="square"),
+                                hovertemplate="<b>T Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"T peak detection failed: {e}")
+
+            else:
+                # For other signal types, use basic peak detection
+                logger.info(
+                    f"Using basic peak detection for signal type: {signal_type}"
                 )
-
-            # Detect and plot dicrotic notches
-            try:
-                dicrotic_notches = wm.detect_dicrotic_notches()
-                if dicrotic_notches is not None and len(dicrotic_notches) > 0:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time_axis[dicrotic_notches],
-                            y=signal_data[dicrotic_notches],
-                            mode="markers",
-                            name="Dicrotic Notches",
-                            marker=dict(color="orange", size=8, symbol="circle"),
-                            hovertemplate="<b>Dicrotic Notch:</b> %{y}<extra></extra>",
-                        )
+                try:
+                    from vitalDSP.physiological_features.peak_detection import (
+                        detect_peaks,
                     )
-            except Exception as e:
-                logger.warning(f"Dicrotic notch detection failed: {e}")
 
-            # Detect and plot diastolic peaks
-            try:
-                diastolic_peaks = wm.detect_diastolic_peak()
-                if diastolic_peaks is not None and len(diastolic_peaks) > 0:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time_axis[diastolic_peaks],
-                            y=signal_data[diastolic_peaks],
-                            mode="markers",
-                            name="Diastolic Peaks",
-                            marker=dict(color="green", size=8, symbol="square"),
-                            hovertemplate="<b>Diastolic Peak:</b> %{y}<extra></extra>",
+                    peaks = detect_peaks(signal_data, sampling_freq)
+                    if len(peaks) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[peaks],
+                                y=signal_data[peaks],
+                                mode="markers",
+                                name="Detected Peaks",
+                                marker=dict(color="red", size=8, symbol="diamond"),
+                                hovertemplate="<b>Peak:</b> %{y}<extra></extra>",
+                            )
                         )
-                    )
-            except Exception as e:
-                logger.warning(f"Diastolic peak detection failed: {e}")
+                except Exception as e:
+                    logger.warning(f"Basic peak detection failed: {e}")
 
         except Exception as e:
             logger.warning(f"Critical points detection failed: {e}")
@@ -989,7 +1104,7 @@ def create_original_signal_plot(time_axis, signal_data):
         return create_empty_figure()
 
 
-def create_filtered_signal_plot(time_axis, filtered_data):
+def create_filtered_signal_plot(time_axis, filtered_data, sampling_freq, signal_type):
     """Create plot for filtered signal with critical points detection."""
     try:
         logger.info("Creating filtered signal plot:")
@@ -1028,58 +1143,136 @@ def create_filtered_signal_plot(time_axis, filtered_data):
             # Create waveform morphology object for filtered signal
             wm = WaveformMorphology(
                 waveform=filtered_data,
-                fs=100,  # Default sampling frequency
-                signal_type="PPG",  # Assume PPG for now
+                fs=sampling_freq,  # Use actual sampling frequency
+                signal_type=signal_type,  # Use signal type from UI
                 simple_mode=True,
             )
 
             # Detect critical points based on signal type
-            if hasattr(wm, "systolic_peaks") and wm.systolic_peaks is not None:
-                # Plot systolic peaks
-                fig.add_trace(
-                    go.Scatter(
-                        x=time_axis[wm.systolic_peaks],
-                        y=filtered_data[wm.systolic_peaks],
-                        mode="markers",
-                        name="Systolic Peaks (Filtered)",
-                        marker=dict(color="darkred", size=10, symbol="diamond"),
-                        hovertemplate="<b>Systolic Peak (Filtered):</b> %{y}<extra></extra>",
+            if signal_type == "PPG":
+                # For PPG: systolic peaks, dicrotic notches, diastolic peaks
+                if hasattr(wm, "systolic_peaks") and wm.systolic_peaks is not None:
+                    # Plot systolic peaks
+                    fig.add_trace(
+                        go.Scatter(
+                            x=time_axis[wm.systolic_peaks],
+                            y=filtered_data[wm.systolic_peaks],
+                            mode="markers",
+                            name="Systolic Peaks (Filtered)",
+                            marker=dict(color="darkred", size=10, symbol="diamond"),
+                            hovertemplate="<b>Systolic Peak (Filtered):</b> %{y}<extra></extra>",
+                        )
                     )
+
+                # Detect and plot dicrotic notches
+                try:
+                    dicrotic_notches = wm.detect_dicrotic_notches()
+                    if dicrotic_notches is not None and len(dicrotic_notches) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[dicrotic_notches],
+                                y=filtered_data[dicrotic_notches],
+                                mode="markers",
+                                name="Dicrotic Notches (Filtered)",
+                                marker=dict(
+                                    color="darkorange", size=8, symbol="circle"
+                                ),
+                                hovertemplate="<b>Dicrotic Notch (Filtered):</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Dicrotic notch detection failed: {e}")
+
+                # Detect and plot diastolic peaks
+                try:
+                    diastolic_peaks = wm.detect_diastolic_peak()
+                    if diastolic_peaks is not None and len(diastolic_peaks) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[diastolic_peaks],
+                                y=filtered_data[diastolic_peaks],
+                                mode="markers",
+                                name="Diastolic Peaks (Filtered)",
+                                marker=dict(color="darkgreen", size=8, symbol="square"),
+                                hovertemplate="<b>Diastolic Peak (Filtered):</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Diastolic peak detection failed: {e}")
+
+            elif signal_type == "ECG":
+                # For ECG: R peaks, P peaks, T peaks
+                if hasattr(wm, "r_peaks") and wm.r_peaks is not None:
+                    # Plot R peaks
+                    fig.add_trace(
+                        go.Scatter(
+                            x=time_axis[wm.r_peaks],
+                            y=filtered_data[wm.r_peaks],
+                            mode="markers",
+                            name="R Peaks (Filtered)",
+                            marker=dict(color="darkred", size=10, symbol="diamond"),
+                            hovertemplate="<b>R Peak (Filtered):</b> %{y}<extra></extra>",
+                        )
+                    )
+
+                # Detect and plot P peaks
+                try:
+                    p_peaks = wm.detect_p_peak()
+                    if p_peaks is not None and len(p_peaks) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[p_peaks],
+                                y=filtered_data[p_peaks],
+                                mode="markers",
+                                name="P Peaks (Filtered)",
+                                marker=dict(color="darkblue", size=8, symbol="circle"),
+                                hovertemplate="<b>P Peak (Filtered):</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"P peak detection failed: {e}")
+
+                # Detect and plot T peaks
+                try:
+                    t_peaks = wm.detect_t_peak()
+                    if t_peaks is not None and len(t_peaks) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[t_peaks],
+                                y=filtered_data[t_peaks],
+                                mode="markers",
+                                name="T Peaks (Filtered)",
+                                marker=dict(color="darkgreen", size=8, symbol="square"),
+                                hovertemplate="<b>T Peak (Filtered):</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"T peak detection failed: {e}")
+
+            else:
+                # For other signal types, use basic peak detection
+                logger.info(
+                    f"Using basic peak detection for signal type: {signal_type}"
                 )
-
-            # Detect and plot dicrotic notches
-            try:
-                dicrotic_notches = wm.detect_dicrotic_notches()
-                if dicrotic_notches is not None and len(dicrotic_notches) > 0:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time_axis[dicrotic_notches],
-                            y=filtered_data[dicrotic_notches],
-                            mode="markers",
-                            name="Dicrotic Notches (Filtered)",
-                            marker=dict(color="darkorange", size=8, symbol="circle"),
-                            hovertemplate="<b>Dicrotic Notch (Filtered):</b> %{y}<extra></extra>",
-                        )
+                try:
+                    from vitalDSP.physiological_features.peak_detection import (
+                        detect_peaks,
                     )
-            except Exception as e:
-                logger.warning(f"Dicrotic notch detection failed: {e}")
 
-            # Detect and plot diastolic peaks
-            try:
-                diastolic_peaks = wm.detect_diastolic_peak()
-                if diastolic_peaks is not None and len(diastolic_peaks) > 0:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time_axis[diastolic_peaks],
-                            y=filtered_data[diastolic_peaks],
-                            mode="markers",
-                            name="Diastolic Peaks (Filtered)",
-                            marker=dict(color="darkgreen", size=8, symbol="square"),
-                            hovertemplate="<b>Diastolic Peak (Filtered):</b> %{y}<extra></extra>",
+                    peaks = detect_peaks(filtered_data, sampling_freq)
+                    if len(peaks) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[peaks],
+                                y=filtered_data[peaks],
+                                mode="markers",
+                                name="Detected Peaks (Filtered)",
+                                marker=dict(color="darkred", size=8, symbol="diamond"),
+                                hovertemplate="<b>Peak (Filtered):</b> %{y}<extra></extra>",
+                            )
                         )
-                    )
-            except Exception as e:
-                logger.warning(f"Diastolic peak detection failed: {e}")
+                except Exception as e:
+                    logger.warning(f"Basic peak detection failed: {e}")
 
         except Exception as e:
             logger.warning(f"Critical points detection failed: {e}")
@@ -1099,7 +1292,9 @@ def create_filtered_signal_plot(time_axis, filtered_data):
         return create_empty_figure()
 
 
-def create_filter_comparison_plot(time_axis, original_signal, filtered_signal):
+def create_filter_comparison_plot(
+    time_axis, original_signal, filtered_signal, sampling_freq, signal_type
+):
     """Create comparison plot between original and filtered signals with critical points detection."""
     try:
         logger.info("Creating comparison plot:")
@@ -1149,34 +1344,78 @@ def create_filter_comparison_plot(time_axis, original_signal, filtered_signal):
             # Create waveform morphology object for original signal
             wm_orig = WaveformMorphology(
                 waveform=original_signal,
-                fs=100,  # Default sampling frequency
-                signal_type="PPG",  # Assume PPG for now
+                fs=sampling_freq,  # Use actual sampling frequency
+                signal_type=signal_type,  # Use signal type from UI
                 simple_mode=True,
             )
 
             # Create waveform morphology object for filtered signal
             wm_filt = WaveformMorphology(
                 waveform=filtered_signal,
-                fs=100,  # Default sampling frequency
-                signal_type="PPG",  # Assume PPG for now
+                fs=sampling_freq,  # Use actual sampling frequency
+                signal_type=signal_type,  # Use signal type from UI
                 simple_mode=True,
             )
 
             # Detect and plot critical points for original signal
-            if (
-                hasattr(wm_orig, "systolic_peaks")
-                and wm_orig.systolic_peaks is not None
-            ):
-                fig.add_trace(
-                    go.Scatter(
-                        x=time_axis[wm_orig.systolic_peaks],
-                        y=original_signal[wm_orig.systolic_peaks],
-                        mode="markers",
-                        name="Systolic Peaks (Original)",
-                        marker=dict(color="darkblue", size=8, symbol="diamond"),
-                        hovertemplate="<b>Original Systolic Peak:</b> %{y}<extra></extra>",
+            if signal_type == "PPG":
+                # For PPG: systolic peaks, dicrotic notches, diastolic peaks
+                if (
+                    hasattr(wm_orig, "systolic_peaks")
+                    and wm_orig.systolic_peaks is not None
+                ):
+                    fig.add_trace(
+                        go.Scatter(
+                            x=time_axis[wm_orig.systolic_peaks],
+                            y=original_signal[wm_orig.systolic_peaks],
+                            mode="markers",
+                            name="Systolic Peaks (Original)",
+                            marker=dict(color="darkblue", size=8, symbol="diamond"),
+                            hovertemplate="<b>Original Systolic Peak:</b> %{y}<extra></extra>",
+                        )
                     )
-                )
+
+                # Detect and plot dicrotic notches for original signal
+                try:
+                    dicrotic_notches_orig = wm_orig.detect_dicrotic_notches()
+                    if (
+                        dicrotic_notches_orig is not None
+                        and len(dicrotic_notches_orig) > 0
+                    ):
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[dicrotic_notches_orig],
+                                y=original_signal[dicrotic_notches_orig],
+                                mode="markers",
+                                name="Dicrotic Notches (Original)",
+                                marker=dict(
+                                    color="darkorange", size=6, symbol="circle"
+                                ),
+                                hovertemplate="<b>Original Dicrotic Notch:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Original dicrotic notch detection failed: {e}")
+
+                # Detect and plot diastolic peaks for original signal
+                try:
+                    diastolic_peaks_orig = wm_orig.detect_diastolic_peak()
+                    if (
+                        diastolic_peaks_orig is not None
+                        and len(diastolic_peaks_orig) > 0
+                    ):
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[diastolic_peaks_orig],
+                                y=original_signal[diastolic_peaks_orig],
+                                mode="markers",
+                                name="Diastolic Peaks (Original)",
+                                marker=dict(color="darkgreen", size=6, symbol="square"),
+                                hovertemplate="<b>Original Diastolic Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Original diastolic peak detection failed: {e}")
 
             # Detect and plot critical points for filtered signal
             if (
@@ -1193,6 +1432,180 @@ def create_filter_comparison_plot(time_axis, original_signal, filtered_signal):
                         hovertemplate="<b>Filtered Systolic Peak:</b> %{y}<extra></extra>",
                     )
                 )
+
+                # Detect and plot dicrotic notches for filtered signal
+                try:
+                    dicrotic_notches_filt = wm_filt.detect_dicrotic_notches()
+                    if (
+                        dicrotic_notches_filt is not None
+                        and len(dicrotic_notches_filt) > 0
+                    ):
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[dicrotic_notches_filt],
+                                y=filtered_signal[dicrotic_notches_filt],
+                                mode="markers",
+                                name="Dicrotic Notches (Filtered)",
+                                marker=dict(color="red", size=6, symbol="circle"),
+                                hovertemplate="<b>Filtered Dicrotic Notch:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Filtered dicrotic notch detection failed: {e}")
+
+                # Detect and plot diastolic peaks for filtered signal
+                try:
+                    diastolic_peaks_filt = wm_filt.detect_diastolic_peak()
+                    if (
+                        diastolic_peaks_filt is not None
+                        and len(diastolic_peaks_filt) > 0
+                    ):
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[diastolic_peaks_filt],
+                                y=filtered_signal[diastolic_peaks_filt],
+                                mode="markers",
+                                name="Diastolic Peaks (Filtered)",
+                                marker=dict(color="green", size=6, symbol="square"),
+                                hovertemplate="<b>Filtered Diastolic Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Filtered diastolic peak detection failed: {e}")
+
+            elif signal_type == "ECG":
+                # For ECG: R peaks, P peaks, T peaks
+                if hasattr(wm_orig, "r_peaks") and wm_orig.r_peaks is not None:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=time_axis[wm_orig.r_peaks],
+                            y=original_signal[wm_orig.r_peaks],
+                            mode="markers",
+                            name="R Peaks (Original)",
+                            marker=dict(color="darkblue", size=8, symbol="diamond"),
+                            hovertemplate="<b>Original R Peak:</b> %{y}<extra></extra>",
+                        )
+                    )
+
+                # Detect and plot P peaks for original signal
+                try:
+                    p_peaks_orig = wm_orig.detect_p_peak()
+                    if p_peaks_orig is not None and len(p_peaks_orig) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[p_peaks_orig],
+                                y=original_signal[p_peaks_orig],
+                                mode="markers",
+                                name="P Peaks (Original)",
+                                marker=dict(color="darkblue", size=6, symbol="circle"),
+                                hovertemplate="<b>Original P Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Original P peak detection failed: {e}")
+
+                # Detect and plot T peaks for original signal
+                try:
+                    t_peaks_orig = wm_orig.detect_t_peak()
+                    if t_peaks_orig is not None and len(t_peaks_orig) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[t_peaks_orig],
+                                y=original_signal[t_peaks_orig],
+                                mode="markers",
+                                name="T Peaks (Original)",
+                                marker=dict(color="darkgreen", size=6, symbol="square"),
+                                hovertemplate="<b>Original T Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Original T peak detection failed: {e}")
+
+                # Detect and plot critical points for filtered signal
+                if hasattr(wm_filt, "r_peaks") and wm_filt.r_peaks is not None:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=time_axis[wm_filt.r_peaks],
+                            y=filtered_signal[wm_filt.r_peaks],
+                            mode="markers",
+                            name="R Peaks (Filtered)",
+                            marker=dict(color="darkred", size=8, symbol="diamond"),
+                            hovertemplate="<b>Filtered R Peak:</b> %{y}<extra></extra>",
+                        )
+                    )
+
+                # Detect and plot P peaks for filtered signal
+                try:
+                    p_peaks_filt = wm_filt.detect_p_peak()
+                    if p_peaks_filt is not None and len(p_peaks_filt) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[p_peaks_filt],
+                                y=filtered_signal[p_peaks_filt],
+                                mode="markers",
+                                name="P Peaks (Filtered)",
+                                marker=dict(color="red", size=6, symbol="circle"),
+                                hovertemplate="<b>Filtered P Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Filtered P peak detection failed: {e}")
+
+                # Detect and plot T peaks for filtered signal
+                try:
+                    t_peaks_filt = wm_filt.detect_t_peak()
+                    if t_peaks_filt is not None and len(t_peaks_filt) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[t_peaks_filt],
+                                y=filtered_signal[t_peaks_filt],
+                                mode="markers",
+                                name="T Peaks (Filtered)",
+                                marker=dict(color="green", size=6, symbol="square"),
+                                hovertemplate="<b>Filtered T Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Filtered T peak detection failed: {e}")
+
+            else:
+                # For other signal types, use basic peak detection
+                logger.info(
+                    f"Using basic peak detection for signal type: {signal_type}"
+                )
+                try:
+                    from vitalDSP.physiological_features.peak_detection import (
+                        detect_peaks,
+                    )
+
+                    orig_peaks = detect_peaks(original_signal, sampling_freq)
+                    filt_peaks = detect_peaks(filtered_signal, sampling_freq)
+
+                    if len(orig_peaks) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[orig_peaks],
+                                y=original_signal[orig_peaks],
+                                mode="markers",
+                                name="Original Detected Peaks",
+                                marker=dict(color="darkblue", size=8, symbol="diamond"),
+                                hovertemplate="<b>Original Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+
+                    if len(filt_peaks) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[filt_peaks],
+                                y=filtered_signal[filt_peaks],
+                                mode="markers",
+                                name="Filtered Detected Peaks",
+                                marker=dict(color="darkred", size=8, symbol="diamond"),
+                                hovertemplate="<b>Filtered Peak:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Basic peak detection failed: {e}")
 
         except Exception as e:
             logger.warning(f"Critical points detection failed: {e}")

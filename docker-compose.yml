@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  vitaldsp-webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    container_name: vitaldsp-webapp
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - PYTHONPATH=/app:/app/src
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - vitaldsp-network
+
+  # Optional: Add a reverse proxy (nginx) for production
+  nginx:
+    image: nginx:alpine
+    container_name: vitaldsp-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - vitaldsp-webapp
+    restart: unless-stopped
+    networks:
+      - vitaldsp-network
+
+networks:
+  vitaldsp-network:
+    driver: bridge
+
+volumes:
+  uploads:
+  logs:

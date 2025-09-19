@@ -262,6 +262,105 @@ class DataService:
             "data_config": self.data_config,
         }
 
+    def store_filtered_data(
+        self, data_id: str, filtered_signal: np.ndarray, filter_info: Dict[str, Any]
+    ) -> bool:
+        """Store filtered signal data from filtering screen."""
+        try:
+            if data_id not in self._data_store:
+                logger.error(f"Data ID {data_id} not found")
+                return False
+
+            logger.info(f"Storing filtered data for ID: {data_id}")
+            logger.info(f"Filtered signal shape: {filtered_signal.shape}")
+            logger.info(f"Filter info: {filter_info}")
+
+            self._data_store[data_id]["filtered_signal"] = filtered_signal
+            self._data_store[data_id]["filter_info"] = filter_info
+            self._data_store[data_id]["has_filtered_data"] = True
+            self._data_store[data_id][
+                "filtered_timestamp"
+            ] = pd.Timestamp.now().isoformat()
+
+            logger.info(f"Filtered data stored successfully for ID: {data_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error storing filtered data: {e}")
+            return False
+
+    def get_filtered_data(self, data_id: str) -> Optional[np.ndarray]:
+        """Retrieve filtered signal data."""
+        try:
+            if data_id not in self._data_store:
+                logger.warning(f"Data ID {data_id} not found")
+                return None
+
+            data = self._data_store[data_id]
+            if data.get("has_filtered_data", False):
+                logger.info(f"Retrieved filtered data for ID: {data_id}")
+                return data.get("filtered_signal")
+            else:
+                logger.info(f"No filtered data available for ID: {data_id}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Error retrieving filtered data: {e}")
+            return None
+
+    def has_filtered_data(self, data_id: str) -> bool:
+        """Check if filtered data is available."""
+        try:
+            if data_id not in self._data_store:
+                return False
+
+            has_filtered = self._data_store[data_id].get("has_filtered_data", False)
+            logger.info(f"Filtered data available for ID {data_id}: {has_filtered}")
+            return has_filtered
+
+        except Exception as e:
+            logger.error(f"Error checking filtered data availability: {e}")
+            return False
+
+    def get_filter_info(self, data_id: str) -> Optional[Dict[str, Any]]:
+        """Get filter information for a specific data ID."""
+        try:
+            if data_id not in self._data_store:
+                return None
+
+            data = self._data_store[data_id]
+            if data.get("has_filtered_data", False):
+                return data.get("filter_info")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error retrieving filter info: {e}")
+            return None
+
+    def clear_filtered_data(self, data_id: str) -> bool:
+        """Clear filtered data for a specific data ID."""
+        try:
+            if data_id not in self._data_store:
+                logger.warning(f"Data ID {data_id} not found")
+                return False
+
+            # Remove filtered data fields
+            if "filtered_signal" in self._data_store[data_id]:
+                del self._data_store[data_id]["filtered_signal"]
+            if "filter_info" in self._data_store[data_id]:
+                del self._data_store[data_id]["filter_info"]
+            if "has_filtered_data" in self._data_store[data_id]:
+                del self._data_store[data_id]["has_filtered_data"]
+            if "filtered_timestamp" in self._data_store[data_id]:
+                del self._data_store[data_id]["filtered_timestamp"]
+
+            logger.info(f"Filtered data cleared for ID: {data_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error clearing filtered data: {e}")
+            return False
+
 
 # Global instance
 _data_service = DataService()

@@ -212,7 +212,7 @@ def upload_layout():
                                             dbc.Input(
                                                 id="sampling-freq",
                                                 type="number",
-                                                placeholder="1000",
+                                                value=100,
                                                 min=1,
                                                 step=1,
                                                 className="border-0 bg-light",
@@ -268,7 +268,7 @@ def upload_layout():
                                                         "value": "other",
                                                     },
                                                 ],
-                                                value="auto",
+                                                value="ppg",
                                                 className="border-0 bg-light",
                                             ),
                                         ],

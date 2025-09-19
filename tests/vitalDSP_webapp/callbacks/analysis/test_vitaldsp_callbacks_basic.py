@@ -102,16 +102,16 @@ class TestBasicFunctions:
 class TestTableCreation:
     def test_create_peak_analysis_table(self):
         analysis_options = ["peak_detection"]
-        column_mapping = {"signal": "signal"}
-        table = create_peak_analysis_table(SAMPLE_DATA, SAMPLE_DATA, SAMPLE_TIME, 
-                                         SAMPLE_FREQ, analysis_options, column_mapping)
+        signal_source_info = "Test Signal"
+        table = create_peak_analysis_table(SAMPLE_DATA, SAMPLE_TIME, 
+                                         SAMPLE_FREQ, analysis_options, signal_source_info)
         assert table is not None
     
     def test_create_signal_quality_table(self):
         analysis_options = ["quality_assessment"]
-        column_mapping = {"signal": "signal"}
-        table = create_signal_quality_table(SAMPLE_DATA, SAMPLE_DATA, SAMPLE_TIME, 
-                                           SAMPLE_FREQ, analysis_options, column_mapping)
+        signal_source_info = "Test Signal"
+        table = create_signal_quality_table(SAMPLE_DATA, SAMPLE_TIME,
+                                         SAMPLE_FREQ, analysis_options, signal_source_info)
         assert table is not None
     
     def test_create_filtering_results_table(self):
@@ -123,9 +123,9 @@ class TestTableCreation:
     
     def test_create_additional_metrics_table(self):
         analysis_options = ["additional_metrics"]
-        column_mapping = {"signal": "signal"}
-        table = create_additional_metrics_table(SAMPLE_DATA, SAMPLE_DATA, SAMPLE_TIME, 
-                                               SAMPLE_FREQ, analysis_options, column_mapping)
+        signal_source_info = "Test Signal"
+        table = create_additional_metrics_table(SAMPLE_DATA, SAMPLE_TIME, 
+                                               SAMPLE_FREQ, analysis_options, signal_source_info)
         assert table is not None
 
 @pytest.mark.skipif(not AVAILABLE, reason="Module not available")

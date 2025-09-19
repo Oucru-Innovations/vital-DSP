@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  vitaldsp-webapp-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vitaldsp-webapp-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - PYTHONPATH=/app:/app/src
+      - PYTHONUNBUFFERED=1
+      - FLASK_ENV=development
+    volumes:
+      - .:/app
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - vitaldsp-dev-network
+
+networks:
+  vitaldsp-dev-network:
+    driver: bridge

@@ -27,12 +27,12 @@ class TestBasicFunctions:
         assert isinstance(fig, go.Figure)
     
     def test_create_original_signal_plot(self):
-        fig = create_original_signal_plot(SAMPLE_TIME, SAMPLE_DATA)
+        fig = create_original_signal_plot(SAMPLE_TIME, SAMPLE_DATA, SAMPLE_FREQ, "PPG")
         assert isinstance(fig, go.Figure)
         assert len(fig.data) > 0
     
     def test_create_filtered_signal_plot(self):
-        fig = create_filtered_signal_plot(SAMPLE_TIME, SAMPLE_DATA)
+        fig = create_filtered_signal_plot(SAMPLE_TIME, SAMPLE_DATA, SAMPLE_FREQ, "PPG")
         assert isinstance(fig, go.Figure)
         assert len(fig.data) > 0
     

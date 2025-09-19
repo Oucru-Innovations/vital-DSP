@@ -35,13 +35,20 @@ def register_features_callbacks(app):
         [Input("features-analyze-btn", "n_clicks"), Input("url", "pathname")],
         [
             State("features-signal-type", "value"),
+            State("features-signal-source-select", "value"),
             State("features-preprocessing", "value"),
             State("features-categories", "value"),
             State("features-advanced-options", "value"),
         ],
     )
     def features_analysis_callback(
-        n_clicks, pathname, signal_type, preprocessing, categories, advanced_options
+        n_clicks,
+        pathname,
+        signal_type,
+        signal_source,
+        preprocessing,
+        categories,
+        advanced_options,
     ):
         """Main callback for feature engineering analysis."""
         logger.info("=== FEATURES ANALYSIS CALLBACK TRIGGERED ===")
@@ -134,6 +141,43 @@ def register_features_callbacks(app):
             # Extract signal data
             signal_data = np.array(df[signal_column])
 
+            # Always keep the original signal_data for dynamic filtering
+            original_signal_data = signal_data.copy()
+            selected_signal = signal_data
+            signal_source_info = "Original Signal"
+            filter_info = None
+
+            # Signal source loading logic
+            logger.info("=== SIGNAL SOURCE LOADING ===")
+            logger.info(f"Signal source selection: {signal_source}")
+
+            if signal_source == "filtered":
+                # Try to load filtered data from filtering screen
+                filtered_data = data_service.get_filtered_data(latest_data_id)
+                filter_info = data_service.get_filter_info(latest_data_id)
+
+                if filtered_data is not None:
+                    logger.info(
+                        f"Found filtered data with shape: {filtered_data.shape}"
+                    )
+                    selected_signal = filtered_data
+                    signal_source_info = "Filtered Signal"
+                else:
+                    logger.info("No filtered data available, using original signal")
+            else:
+                logger.info("Using original signal as requested")
+
+            # Log selected signal characteristics
+            logger.info(f"Selected signal shape: {selected_signal.shape}")
+            logger.info(
+                f"Selected signal range: {np.min(selected_signal):.3f} to {np.max(selected_signal):.3f}"
+            )
+            logger.info(f"Selected signal mean: {np.mean(selected_signal):.3f}")
+            logger.info(f"Signal source: {signal_source_info}")
+
+            # Use selected_signal for analysis
+            signal_data = selected_signal
+
             # Set default values
             signal_type = signal_type or "auto"
             preprocessing = preprocessing or ["detrend", "normalize"]
@@ -147,7 +191,7 @@ def register_features_callbacks(app):
 
             # Apply preprocessing
             processed_signal = apply_preprocessing(
-                signal_data, preprocessing, sampling_freq
+                signal_data, preprocessing, sampling_freq, filter_info
             )
 
             # Extract features based on selected categories
@@ -339,46 +383,269 @@ def detect_signal_type(signal_data, sampling_freq):
         return "general"  # Default fallback
 
 
-def apply_preprocessing(signal_data, preprocessing_options, sampling_freq):
+def apply_preprocessing(
+    signal_data, preprocessing_options, sampling_freq, filter_info=None
+):
     """Apply preprocessing to the signal."""
     processed_signal = signal_data.copy()
 
     try:
         for option in preprocessing_options:
             if option == "detrend":
-                processed_signal = signal.detrend(processed_signal)
+                # Use vitalDSP detrending when available
+                try:
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        PreprocessConfig,
+                    )
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        PreprocessOperations,
+                    )
+
+                    preprocess_config = PreprocessConfig()
+                    preprocess_config.detrend_type = "linear"
+
+                    preprocess_ops = PreprocessOperations(
+                        processed_signal, preprocess_config
+                    )
+                    processed_signal = preprocess_ops.apply_detrending()
+                    logger.info("Applied vitalDSP detrending")
+
+                except Exception as e:
+                    logger.warning(f"vitalDSP detrending failed, using scipy: {e}")
+                    # Fallback to scipy detrending
+                    processed_signal = signal.detrend(processed_signal)
             elif option == "normalize":
-                processed_signal = (
-                    processed_signal - np.mean(processed_signal)
-                ) / np.std(processed_signal)
+                # Use vitalDSP normalization when available
+                try:
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        PreprocessConfig,
+                    )
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        PreprocessOperations,
+                    )
+
+                    preprocess_config = PreprocessConfig()
+                    preprocess_config.normalization_type = "z_score"
+
+                    preprocess_ops = PreprocessOperations(
+                        processed_signal, preprocess_config
+                    )
+                    processed_signal = preprocess_ops.apply_normalization()
+                    logger.info("Applied vitalDSP normalization")
+
+                except Exception as e:
+                    logger.warning(f"vitalDSP normalization failed, using basic: {e}")
+                    # Fallback to basic normalization
+                    processed_signal = (
+                        processed_signal - np.mean(processed_signal)
+                    ) / np.std(processed_signal)
             elif option == "filter":
-                # Apply low-pass filter
-                nyquist = sampling_freq / 2
-                cutoff = min(nyquist * 0.8, 50)  # 80% of Nyquist or 50 Hz
-                b, a = signal.butter(4, cutoff / nyquist, btype="low")
-                processed_signal = signal.filtfilt(b, a, processed_signal)
+                # Use filter parameters from filtering screen if available
+                if filter_info is not None:
+                    logger.info("Using filter parameters from filtering screen")
+                    parameters = filter_info.get("parameters", {})
+                    filter_type = filter_info.get("filter_type", "traditional")
+
+                    if filter_type == "traditional":
+                        # Extract traditional filter parameters
+                        filter_family = parameters.get("filter_family", "butter")
+                        filter_response = parameters.get("filter_response", "bandpass")
+                        low_freq = parameters.get("low_freq", 0.1)
+                        high_freq = parameters.get("high_freq", 0.8)
+                        filter_order = parameters.get("filter_order", 4)
+
+                        # Apply the same filter as used in filtering screen
+                        from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                            apply_traditional_filter,
+                        )
+
+                        processed_signal = apply_traditional_filter(
+                            processed_signal,
+                            sampling_freq,
+                            filter_family,
+                            filter_response,
+                            low_freq,
+                            high_freq,
+                            filter_order,
+                        )
+                        logger.info(
+                            f"Applied traditional filter: {filter_family} {filter_response} {low_freq}-{high_freq} Hz"
+                        )
+                    else:
+                        # For other filter types, use original signal
+                        logger.info(
+                            f"Using original signal for filter type: {filter_type}"
+                        )
+                else:
+                    # Fallback to default low-pass filter
+                    logger.info(
+                        "No filter info available, using default low-pass filter"
+                    )
+                    nyquist = sampling_freq / 2
+                    cutoff = min(nyquist * 0.8, 50)  # 80% of Nyquist or 50 Hz
+                    b, a = signal.butter(4, cutoff / nyquist, btype="low")
+                    processed_signal = signal.filtfilt(b, a, processed_signal)
             elif option == "outlier_removal":
-                # Remove outliers using IQR method
-                q1 = np.percentile(processed_signal, 25)
-                q3 = np.percentile(processed_signal, 75)
-                iqr = q3 - q1
-                lower_bound = q1 - 1.5 * iqr
-                upper_bound = q3 + 1.5 * iqr
-                outlier_mask = (processed_signal >= lower_bound) & (
-                    processed_signal <= upper_bound
-                )
-                if (
-                    np.sum(outlier_mask) > len(processed_signal) * 0.5
-                ):  # Only if we don't lose too much data
-                    processed_signal = processed_signal[outlier_mask]
+                # Use vitalDSP outlier removal when available
+                try:
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        PreprocessConfig,
+                    )
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        PreprocessOperations,
+                    )
+
+                    preprocess_config = PreprocessConfig()
+                    preprocess_config.outlier_method = "iqr"
+                    preprocess_config.outlier_threshold = 1.5
+
+                    preprocess_ops = PreprocessOperations(
+                        processed_signal, preprocess_config
+                    )
+                    processed_signal = preprocess_ops.apply_outlier_removal()
+                    logger.info("Applied vitalDSP outlier removal")
+
+                except Exception as e:
+                    logger.warning(
+                        f"vitalDSP outlier removal failed, using basic IQR: {e}"
+                    )
+                    # Fallback to basic IQR method
+                    q1 = np.percentile(processed_signal, 25)
+                    q3 = np.percentile(processed_signal, 75)
+                    iqr = q3 - q1
+                    lower_bound = q1 - 1.5 * iqr
+                    upper_bound = q3 + 1.5 * iqr
+                    outlier_mask = (processed_signal >= lower_bound) & (
+                        processed_signal <= upper_bound
+                    )
+                    if (
+                        np.sum(outlier_mask) > len(processed_signal) * 0.5
+                    ):  # Only if we don't lose too much data
+                        processed_signal = processed_signal[outlier_mask]
             elif option == "smoothing":
-                # Apply moving average smoothing
-                window_size = min(21, len(processed_signal) // 10)
-                if window_size % 2 == 0:
-                    window_size += 1
-                processed_signal = signal.savgol_filter(
-                    processed_signal, window_size, 3
-                )
+                # Apply moving average smoothing using vitalDSP when available
+                try:
+                    # Try to use vitalDSP smoothing if available
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        PreprocessConfig,
+                    )
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        PreprocessOperations,
+                    )
+
+                    preprocess_config = PreprocessConfig()
+                    preprocess_config.smoothing_type = "savgol"
+                    preprocess_config.smoothing_window = min(
+                        21, len(processed_signal) // 10
+                    )
+                    if preprocess_config.smoothing_window % 2 == 0:
+                        preprocess_config.smoothing_window += 1
+
+                    preprocess_ops = PreprocessOperations(
+                        processed_signal, preprocess_config
+                    )
+                    processed_signal = preprocess_ops.apply_smoothing()
+                    logger.info("Applied vitalDSP smoothing")
+
+                except Exception as e:
+                    logger.warning(f"vitalDSP smoothing failed, using scipy: {e}")
+                    # Fallback to scipy smoothing
+                    window_size = min(21, len(processed_signal) // 10)
+                    if window_size % 2 == 0:
+                        window_size += 1
+                    processed_signal = signal.savgol_filter(
+                        processed_signal, window_size, 3
+                    )
+            elif option == "baseline_correction":
+                # Apply baseline correction using vitalDSP when available
+                try:
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        PreprocessConfig,
+                    )
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        PreprocessOperations,
+                    )
+
+                    preprocess_config = PreprocessConfig()
+                    preprocess_config.baseline_method = "polynomial"
+                    preprocess_config.baseline_order = 3
+
+                    preprocess_ops = PreprocessOperations(
+                        processed_signal, preprocess_config
+                    )
+                    processed_signal = preprocess_ops.apply_baseline_correction()
+                    logger.info("Applied vitalDSP baseline correction")
+
+                except Exception as e:
+                    logger.warning(
+                        f"vitalDSP baseline correction failed, using scipy: {e}"
+                    )
+                    # Fallback to scipy detrending
+                    processed_signal = signal.detrend(processed_signal)
+            elif option == "noise_reduction":
+                # Apply noise reduction using vitalDSP when available
+                try:
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        PreprocessConfig,
+                    )
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        PreprocessOperations,
+                    )
+
+                    preprocess_config = PreprocessConfig()
+                    preprocess_config.noise_reduction_method = "wavelet"
+                    preprocess_config.noise_threshold = 0.1
+
+                    preprocess_ops = PreprocessOperations(
+                        processed_signal, preprocess_config
+                    )
+                    processed_signal = preprocess_ops.apply_noise_reduction()
+                    logger.info("Applied vitalDSP noise reduction")
+
+                except Exception as e:
+                    logger.warning(
+                        f"vitalDSP noise reduction failed, using basic filtering: {e}"
+                    )
+                    # Fallback to basic low-pass filtering
+                    nyquist = sampling_freq / 2
+                    cutoff = min(nyquist * 0.8, 50)
+                    b, a = signal.butter(4, cutoff / nyquist, btype="low")
+                    processed_signal = signal.filtfilt(b, a, processed_signal)
+            elif option == "artifact_removal":
+                # Apply artifact removal using vitalDSP when available
+                try:
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        PreprocessConfig,
+                    )
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        PreprocessOperations,
+                    )
+
+                    preprocess_config = PreprocessConfig()
+                    preprocess_config.artifact_method = "statistical"
+                    preprocess_config.artifact_threshold = 3.0  # 3 standard deviations
+
+                    preprocess_ops = PreprocessOperations(
+                        processed_signal, preprocess_config
+                    )
+                    processed_signal = preprocess_ops.apply_artifact_removal()
+                    logger.info("Applied vitalDSP artifact removal")
+
+                except Exception as e:
+                    logger.warning(
+                        f"vitalDSP artifact removal failed, using basic outlier removal: {e}"
+                    )
+                    # Fallback to basic outlier removal
+                    q1 = np.percentile(processed_signal, 25)
+                    q3 = np.percentile(processed_signal, 75)
+                    iqr = q3 - q1
+                    lower_bound = q1 - 1.5 * iqr
+                    upper_bound = q3 + 1.5 * iqr
+                    outlier_mask = (processed_signal >= lower_bound) & (
+                        processed_signal <= upper_bound
+                    )
+                    if np.sum(outlier_mask) > len(processed_signal) * 0.5:
+                        processed_signal = processed_signal[outlier_mask]
 
         return processed_signal
 
@@ -404,7 +671,9 @@ def extract_comprehensive_features(
 
         # Statistical Features
         if "statistical" in categories:
-            features["statistical"] = extract_statistical_features(signal_data)
+            features["statistical"] = extract_statistical_features(
+                signal_data, vitaldsp_available
+            )
 
         # Spectral Features
         if "spectral" in categories:
@@ -454,9 +723,77 @@ def extract_comprehensive_features(
         return {"error": f"Feature extraction failed: {str(e)}"}
 
 
-def extract_statistical_features(signal_data):
-    """Extract statistical features."""
+def extract_statistical_features(signal_data, vitaldsp_available=False):
+    """Extract statistical features using vitalDSP when available."""
     try:
+        if vitaldsp_available:
+            try:
+                # Use vitalDSP TimeDomainFeatures for enhanced statistical analysis
+                from vitalDSP.physiological_features.time_domain import (
+                    TimeDomainFeatures,
+                )
+
+                # Create TimeDomainFeatures object
+                td_features = TimeDomainFeatures(signal_data)
+
+                # Extract comprehensive statistical features
+                basic_stats = {
+                    "mean": np.mean(signal_data),
+                    "std": np.std(signal_data),
+                    "variance": np.var(signal_data),
+                    "rms": np.sqrt(np.mean(signal_data**2)),
+                    "peak_to_peak": np.max(signal_data) - np.min(signal_data),
+                }
+
+                # Add vitalDSP enhanced features
+                enhanced_stats = {
+                    "skewness": _calculate_skewness(signal_data),
+                    "kurtosis": _calculate_kurtosis(signal_data),
+                    "crest_factor": (
+                        np.max(np.abs(signal_data)) / np.sqrt(np.mean(signal_data**2))
+                        if np.mean(signal_data**2) > 0
+                        else 0
+                    ),
+                    "shape_factor": (
+                        np.sqrt(np.mean(signal_data**2)) / np.mean(np.abs(signal_data))
+                        if np.mean(np.abs(signal_data)) > 0
+                        else 0
+                    ),
+                    "impulse_factor": (
+                        np.max(np.abs(signal_data)) / np.mean(np.abs(signal_data))
+                        if np.mean(np.abs(signal_data)) > 0
+                        else 0
+                    ),
+                }
+
+                # Try to get additional vitalDSP statistical features
+                try:
+                    # Get signal quality metrics
+                    if hasattr(td_features, "get_signal_quality"):
+                        quality_metrics = td_features.get_signal_quality()
+                        enhanced_stats.update(quality_metrics)
+
+                    # Get additional statistical measures
+                    if hasattr(td_features, "get_statistical_measures"):
+                        vitaldsp_stats = td_features.get_statistical_measures()
+                        enhanced_stats.update(vitaldsp_stats)
+
+                except Exception as e:
+                    logger.warning(
+                        f"Could not get additional vitalDSP statistical features: {e}"
+                    )
+
+                # Combine basic and enhanced features
+                return {**basic_stats, **enhanced_stats}
+
+            except Exception as e:
+                logger.warning(
+                    f"vitalDSP statistical features failed, using basic: {e}"
+                )
+                # Fall back to basic implementation
+                pass
+
+        # Basic statistical features (fallback)
         return {
             "mean": np.mean(signal_data),
             "std": np.std(signal_data),

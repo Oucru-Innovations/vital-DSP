@@ -13,6 +13,34 @@ from scipy import signal
 from scipy.fft import rfft, rfftfreq
 import logging
 
+
+# Helper function for formatting large numbers
+def format_large_number(value, precision=3, use_scientific=False):
+    """Format large numbers with appropriate scaling and units."""
+    if value == 0:
+        return "0"
+
+    abs_value = abs(value)
+
+    if use_scientific or abs_value >= 1e6:
+        # Use scientific notation for very large numbers
+        return f"{value:.{precision}e}"
+    elif abs_value >= 1e3:
+        # Use thousands (k) notation
+        scaled_value = value / 1e3
+        return f"{scaled_value:.{precision}f}k"
+    elif abs_value >= 1:
+        # Regular decimal notation
+        return f"{value:.{precision}f}"
+    elif abs_value >= 1e-3:
+        # Use millis (m) notation
+        scaled_value = value * 1e3
+        return f"{scaled_value:.{precision}f}m"
+    else:
+        # Use scientific notation for very small numbers
+        return f"{value:.{precision}e}"
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,6 +73,9 @@ def register_frequency_filtering_callbacks(app):
         [
             State("freq-start-time", "value"),
             State("freq-end-time", "value"),
+            State(
+                "freq-signal-source-select", "value"
+            ),  # Added signal source selection
             State("freq-analysis-type", "value"),
             State("fft-window-type", "value"),
             State("fft-n-points", "value"),
@@ -80,6 +111,7 @@ def register_frequency_filtering_callbacks(app):
         nudge_p10,
         start_time,
         end_time,
+        signal_source,  # Added signal source parameter
         analysis_type,
         fft_window,
         fft_n_points,
@@ -222,6 +254,35 @@ def register_frequency_filtering_callbacks(app):
                 time_data = time_data / 1000.0
                 logger.info("Converted time data from milliseconds to seconds")
 
+            # Load signal source (original or filtered) based on selection
+            logger.info("=== SIGNAL SOURCE LOADING ===")
+            logger.info(f"Signal source selection: {signal_source}")
+
+            # Always keep the original signal_data for dynamic filtering
+            original_signal_data = signal_data.copy()
+            selected_signal = signal_data
+            signal_source_info = "Original Signal"
+            filter_info = None
+
+            if signal_source == "filtered":
+                # Try to load filtered data from filtering screen
+                filtered_data = data_service.get_filtered_data(data_id)
+                filter_info = data_service.get_filter_info(data_id)
+
+                if filtered_data is not None:
+                    logger.info(
+                        f"Found filtered data with shape: {filtered_data.shape}"
+                    )
+                    selected_signal = filtered_data
+                    signal_source_info = "Filtered Signal"
+                else:
+                    logger.info("No filtered data available, using original signal")
+            else:
+                logger.info("Using original signal as requested")
+
+            logger.info(f"Selected signal shape: {selected_signal.shape}")
+            logger.info(f"Signal source info: {signal_source_info}")
+
             logger.info(
                 f"Time data after conversion: {time_data[:5]} (range: {time_data[0]:.3f}s to {time_data[-1]:.3f}s)"
             )
@@ -229,19 +290,19 @@ def register_frequency_filtering_callbacks(app):
             logger.info("=== DATA EXTRACTION DEBUG ===")
             logger.info(f"Time data shape: {time_data.shape}")
             logger.info(f"Time data range: {time_data[0]:.3f}s to {time_data[-1]:.3f}s")
-            logger.info(f"Signal data shape: {signal_data.shape}")
+            logger.info(f"Signal data shape: {selected_signal.shape}")
             logger.info(
-                f"Signal data range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}"
+                f"Signal data range: {np.min(selected_signal):.3f} to {np.max(selected_signal):.3f}"
             )
-            logger.info(f"Signal data sample values: {signal_data[:5]}")
+            logger.info(f"Signal data sample values: {selected_signal[:5]}")
             logger.info(f"Time data sample values: {time_data[:5]}")
             logger.info(
-                f"Signal data statistics - Mean: {np.mean(signal_data):.3f}, Std: {np.std(signal_data):.3f}"
+                f"Signal data statistics - Mean: {np.mean(selected_signal):.3f}, Std: {np.std(selected_signal):.3f}"
             )
-            logger.info(f"Signal data has NaN: {np.any(np.isnan(signal_data))}")
-            logger.info(f"Signal data has Inf: {np.any(np.isinf(signal_data))}")
+            logger.info(f"Signal data has NaN: {np.any(np.isnan(selected_signal))}")
+            logger.info(f"Signal data has Inf: {np.any(np.isinf(selected_signal))}")
             logger.info(
-                f"Signal data is constant: {np.all(signal_data == signal_data[0])}"
+                f"Signal data is constant: {np.all(selected_signal == selected_signal[0])}"
             )
 
             # Handle time window - use integer indexing like legacy code
@@ -249,24 +310,273 @@ def register_frequency_filtering_callbacks(app):
                 start_sample = int(start_time * sampling_freq)
                 end_sample = int(end_time * sampling_freq)
 
-                # Ensure we have valid indices
-                start_sample = max(0, min(start_sample, len(signal_data) - 1))
-                end_sample = max(start_sample + 1, min(end_sample, len(signal_data)))
+                # Ensure we have valid indices - use original signal length for bounds checking
+                original_signal_length = len(original_signal_data)
+                start_sample = max(0, min(start_sample, original_signal_length - 1))
+                end_sample = max(
+                    start_sample + 1, min(end_sample, original_signal_length)
+                )
 
                 if end_sample > start_sample:
-                    signal_data = signal_data[start_sample:end_sample]
+                    # Apply time window to both original and selected signals
+                    original_signal_data = original_signal_data[start_sample:end_sample]
+                    selected_signal = selected_signal[start_sample:end_sample]
                     time_data = time_data[start_sample:end_sample]
+
+                    # Check if we need to apply dynamic filtering for filtered signal
+                    if signal_source == "filtered" and filter_info is not None:
+                        # Check if the time range is within the original signal range
+                        logger.info(
+                            f"Getting original signal data for data_id: {data_id}"
+                        )
+                        logger.info(f"Data service type: {type(data_service)}")
+                        logger.info(
+                            f"Data service methods: {[method for method in dir(data_service) if not method.startswith('_')]}"
+                        )
+                        df = data_service.get_data(data_id)
+                        logger.info(f"DataFrame type: {type(df)}")
+                        logger.info(
+                            f"DataFrame shape: {df.shape if df is not None else 'None'}"
+                        )
+                        # Use the already calculated original_signal_length from above
+                        logger.info(
+                            f"Using original signal length: {original_signal_length}"
+                        )
+                        expected_length = end_sample - start_sample
+
+                        # If time range is outside original signal or we need dynamic filtering
+                        if (
+                            start_sample >= original_signal_length
+                            or end_sample > original_signal_length
+                            or expected_length != len(selected_signal)
+                        ):
+                            logger.info("=== DYNAMIC FILTERING ===")
+                            logger.info(
+                                f"Original signal length: {original_signal_length}"
+                            )
+                            logger.info(f"Time range: {start_sample} to {end_sample}")
+                            logger.info(f"Expected window length: {expected_length}")
+                            logger.info(
+                                "Applying dynamic filtering to current window..."
+                            )
+
+                            # If time range is completely outside original signal, return error
+                            if (
+                                start_sample >= original_signal_length
+                                or end_sample > original_signal_length
+                            ):
+                                logger.warning(
+                                    f"Time range {start_sample}-{end_sample} is outside original signal range (0-{original_signal_length})"
+                                )
+                                empty_figs = [create_empty_figure() for _ in range(3)]
+                                error_message = f"Time range is outside the available signal data. Please select a time range within 0 to {original_signal_length/sampling_freq:.1f} seconds."
+                                return empty_figs + [
+                                    error_message,
+                                    create_empty_figure(),
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                ]
+
+                            try:
+                                # Import the same filtering function used in time domain
+                                from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                                    apply_traditional_filter,
+                                )
+
+                                # Get the full original signal for the current time window
+                                logger.info(
+                                    "Getting full original signal for dynamic filtering"
+                                )
+                                df_full = data_service.get_data(data_id)
+                                logger.info(f"Full DataFrame type: {type(df_full)}")
+                                logger.info(
+                                    f"Full DataFrame shape: {df_full.shape if df_full is not None else 'None'}"
+                                )
+                                full_original_signal = (
+                                    df_full[signal_col].values
+                                    if df_full is not None
+                                    else np.array([])
+                                )
+                                windowed_original_signal = full_original_signal[
+                                    start_sample:end_sample
+                                ]
+
+                                # Get filter parameters
+                                parameters = filter_info.get("parameters", {})
+                                detrending_applied = filter_info.get(
+                                    "detrending_applied", False
+                                )
+
+                                # Apply detrending if it was applied in the original filtering
+                                if detrending_applied:
+                                    from scipy import signal as scipy_signal
+
+                                    signal_data_detrended = scipy_signal.detrend(
+                                        windowed_original_signal
+                                    )
+                                    logger.info("Applied detrending to signal")
+                                else:
+                                    signal_data_detrended = windowed_original_signal
+
+                                # Apply the same filter type as used in filtering screen
+                                filter_type = filter_info.get(
+                                    "filter_type", "traditional"
+                                )
+
+                                if filter_type == "traditional":
+                                    # Extract traditional filter parameters
+                                    filter_family = parameters.get(
+                                        "filter_family", "butter"
+                                    )
+                                    filter_response = parameters.get(
+                                        "filter_response", "bandpass"
+                                    )
+                                    low_freq = parameters.get("low_freq", 0.5)
+                                    high_freq = parameters.get("high_freq", 5)
+                                    filter_order = parameters.get("filter_order", 4)
+
+                                    # Apply traditional filter
+                                    selected_signal = apply_traditional_filter(
+                                        signal_data_detrended,
+                                        sampling_freq,
+                                        filter_family,
+                                        filter_response,
+                                        low_freq,
+                                        high_freq,
+                                        filter_order,
+                                    )
+                                    logger.info("Applied dynamic traditional filter")
+
+                                elif filter_type == "advanced":
+                                    # Extract advanced filter parameters
+                                    advanced_method = parameters.get(
+                                        "advanced_method", "kalman"
+                                    )
+                                    noise_level = parameters.get("noise_level", 0.1)
+                                    iterations = parameters.get("iterations", 100)
+                                    learning_rate = parameters.get(
+                                        "learning_rate", 0.01
+                                    )
+
+                                    # Import and apply advanced filter
+                                    from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                                        apply_advanced_filter,
+                                    )
+
+                                    selected_signal = apply_advanced_filter(
+                                        signal_data_detrended,
+                                        advanced_method,
+                                        noise_level,
+                                        iterations,
+                                        learning_rate,
+                                    )
+                                    logger.info("Applied dynamic advanced filter")
+
+                                elif filter_type == "artifact":
+                                    # Extract artifact removal parameters
+                                    artifact_type = parameters.get(
+                                        "artifact_type", "baseline"
+                                    )
+                                    artifact_strength = parameters.get(
+                                        "artifact_strength", 0.5
+                                    )
+
+                                    # Import and apply artifact removal
+                                    from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                                        apply_enhanced_artifact_removal,
+                                    )
+
+                                    selected_signal = apply_enhanced_artifact_removal(
+                                        signal_data_detrended,
+                                        sampling_freq,
+                                        artifact_type,
+                                        artifact_strength,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                    )
+                                    logger.info("Applied dynamic artifact removal")
+
+                                elif filter_type == "neural":
+                                    # Extract neural filter parameters
+                                    neural_type = parameters.get("neural_type", "lstm")
+                                    neural_complexity = parameters.get(
+                                        "neural_complexity", "medium"
+                                    )
+
+                                    # Import and apply neural filter
+                                    from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                                        apply_neural_filter,
+                                    )
+
+                                    selected_signal = apply_neural_filter(
+                                        signal_data_detrended,
+                                        neural_type,
+                                        neural_complexity,
+                                    )
+                                    logger.info("Applied dynamic neural filter")
+
+                                elif filter_type == "ensemble":
+                                    # Extract ensemble filter parameters
+                                    ensemble_method = parameters.get(
+                                        "ensemble_method", "mean"
+                                    )
+                                    ensemble_n_filters = parameters.get(
+                                        "ensemble_n_filters", 3
+                                    )
+
+                                    # Import and apply ensemble filter
+                                    from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                                        apply_enhanced_ensemble_filter,
+                                    )
+
+                                    selected_signal = apply_enhanced_ensemble_filter(
+                                        signal_data_detrended,
+                                        ensemble_method,
+                                        ensemble_n_filters,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                    )
+                                    logger.info("Applied dynamic ensemble filter")
+
+                                else:
+                                    logger.warning(
+                                        f"Unknown filter type {filter_type}, using original signal"
+                                    )
+                                    selected_signal = signal_data_detrended
+
+                                signal_source_info = "Filtered Signal (Dynamic)"
+                                logger.info("Dynamic filtering completed successfully")
+
+                            except Exception as e:
+                                logger.error(f"Error in dynamic filtering: {e}")
+                                logger.info("Falling back to original signal")
+                                selected_signal = windowed_original_signal
+                                signal_source_info = "Original Signal (Fallback)"
+
                     logger.info("=== TIME WINDOW DEBUG ===")
                     logger.info(f"Applied time window: {start_time}s to {end_time}s")
                     logger.info(
                         f"Start sample: {start_sample}, End sample: {end_sample}"
                     )
-                    logger.info(f"Windowed data shape: {signal_data.shape}")
+                    logger.info(f"Windowed data shape: {selected_signal.shape}")
                     logger.info(
                         f"Windowed time range: {time_data[0]:.3f}s to {time_data[-1]:.3f}s"
                     )
                     logger.info(
-                        f"Windowed signal range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}"
+                        f"Windowed signal range: {np.min(selected_signal):.3f} to {np.max(selected_signal):.3f}"
                     )
                 else:
                     logger.warning(
@@ -277,31 +587,51 @@ def register_frequency_filtering_callbacks(app):
 
             # Log final data state before analysis
             logger.info("=== FINAL DATA STATE FOR ANALYSIS ===")
-            logger.info(f"Final signal data shape: {signal_data.shape}")
+            logger.info(f"Final signal data shape: {selected_signal.shape}")
             logger.info(f"Final time data shape: {time_data.shape}")
             logger.info(
-                f"Final signal range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}"
+                f"Final signal range: {np.min(selected_signal):.3f} to {np.max(selected_signal):.3f}"
             )
             logger.info(
                 f"Final time range: {time_data[0]:.3f}s to {time_data[-1]:.3f}s"
             )
-            logger.info(f"Signal data sample values: {signal_data[:10]}")
+            logger.info(f"Signal data sample values: {selected_signal[:10]}")
             logger.info(f"Time data sample values: {time_data[:10]}")
 
-            # Normalize signal data for better analysis
-            if np.std(signal_data) > 0:
-                signal_data = (signal_data - np.mean(signal_data)) / np.std(signal_data)
-                logger.info("Normalized signal data to zero mean and unit variance")
+            # Normalize selected signal for better analysis
+            if np.std(selected_signal) > 0:
+                selected_signal = (selected_signal - np.mean(selected_signal)) / np.std(
+                    selected_signal
+                )
+                logger.info("Normalized selected signal to zero mean and unit variance")
                 logger.info(
-                    f"Normalized signal range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}"
+                    f"Normalized signal range: {np.min(selected_signal):.3f} to {np.max(selected_signal):.3f}"
                 )
             else:
-                logger.warning("Signal data has zero variance, cannot normalize")
+                logger.warning("Selected signal has zero variance, cannot normalize")
+
+            # Check if signal is too short for analysis
+            min_samples_required = 64  # Minimum samples needed for PSD analysis
+            if len(selected_signal) < min_samples_required:
+                logger.warning(
+                    f"Signal too short for analysis: {len(selected_signal)} samples (minimum: {min_samples_required})"
+                )
+                empty_figs = [create_empty_figure() for _ in range(3)]
+                error_message = f"Signal too short for frequency analysis. Current: {len(selected_signal)} samples, Minimum required: {min_samples_required} samples. Please select a larger time range."
+                return empty_figs + [
+                    error_message,
+                    create_empty_figure(),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                ]
 
             # Set default values
             analysis_type = analysis_type or "fft"
             fft_window = fft_window or "hann"
-            fft_n_points = fft_n_points or len(signal_data)
+            fft_n_points = fft_n_points or len(selected_signal)
 
             logger.info("=== ANALYSIS PARAMETERS DEBUG ===")
             logger.info(f"Analysis type: {analysis_type}")
@@ -325,7 +655,7 @@ def register_frequency_filtering_callbacks(app):
                     time_freq_data,
                 ) = perform_fft_analysis(
                     time_data,
-                    signal_data,
+                    selected_signal,
                     sampling_freq,
                     fft_window,
                     fft_n_points,
@@ -347,7 +677,7 @@ def register_frequency_filtering_callbacks(app):
                     time_freq_data,
                 ) = perform_psd_analysis(
                     time_data,
-                    signal_data,
+                    selected_signal,
                     sampling_freq,
                     psd_window,
                     psd_overlap,
@@ -373,7 +703,7 @@ def register_frequency_filtering_callbacks(app):
                     time_freq_data,
                 ) = perform_stft_analysis(
                     time_data,
-                    signal_data,
+                    selected_signal,
                     sampling_freq,
                     stft_window_size,
                     stft_hop_size,
@@ -400,7 +730,7 @@ def register_frequency_filtering_callbacks(app):
                     time_freq_data,
                 ) = perform_wavelet_analysis(
                     time_data,
-                    signal_data,
+                    selected_signal,
                     sampling_freq,
                     wavelet_type,
                     wavelet_levels,
@@ -426,7 +756,7 @@ def register_frequency_filtering_callbacks(app):
                     time_freq_data,
                 ) = perform_fft_analysis(
                     time_data,
-                    signal_data,
+                    selected_signal,
                     sampling_freq,
                     fft_window,
                     fft_n_points,
@@ -507,7 +837,7 @@ def register_frequency_filtering_callbacks(app):
             # Extract data
             df = pd.DataFrame(data_store["data"])
             sampling_freq = config_store["sampling_freq"]
-            signal_data = df.iloc[:, 1].values
+            selected_signal = df.iloc[:, 1].values
 
             # Set default values
             filter_type = filter_type or "lowpass"
@@ -541,17 +871,17 @@ def register_frequency_filtering_callbacks(app):
                 raise ValueError(f"Unsupported filter type: {filter_type}")
 
             # Apply filter
-            filtered_signal = signal.filtfilt(b, a, signal_data)
+            filtered_signal = signal.filtfilt(b, a, selected_signal)
 
             # Create time axis
-            time_axis = np.arange(len(signal_data)) / sampling_freq
+            time_axis = np.arange(len(selected_signal)) / sampling_freq
 
             # Create filtered signal plot
             signal_fig = go.Figure()
             signal_fig.add_trace(
                 go.Scatter(
                     x=time_axis,
-                    y=signal_data,
+                    y=selected_signal,
                     mode="lines",
                     name="Original Signal",
                     line=dict(color="blue"),
@@ -605,8 +935,10 @@ def register_frequency_filtering_callbacks(app):
                     html.P(f"Cutoff Frequency: {cutoff_freq:.2f} Hz"),
                     html.P(f"Filter Order: {filter_order}"),
                     html.P(f"Sampling Frequency: {sampling_freq} Hz"),
-                    html.P(f"Signal Length: {len(signal_data)} samples"),
-                    html.P(f"Duration: {len(signal_data)/sampling_freq:.2f} seconds"),
+                    html.P(f"Signal Length: {len(selected_signal)} samples"),
+                    html.P(
+                        f"Duration: {len(selected_signal)/sampling_freq:.2f} seconds"
+                    ),
                 ]
             )
 
@@ -721,28 +1053,28 @@ def create_empty_figure():
 
 
 def create_fft_plot(
-    signal_data, sampling_freq, window_type, n_points, freq_min, freq_max
+    selected_signal, sampling_freq, window_type, n_points, freq_min, freq_max
 ):
     """Create enhanced FFT plot with vitalDSP insights."""
     logger.info(f"Creating FFT plot with window: {window_type}, n_points: {n_points}")
 
     # Apply window function
     if window_type == "hamming":
-        windowed_signal = signal_data * np.hamming(len(signal_data))
+        windowed_signal = selected_signal * np.hamming(len(selected_signal))
         logger.info("Applied Hamming window for optimal frequency resolution")
     elif window_type == "hanning":
-        windowed_signal = signal_data * np.hanning(len(signal_data))
+        windowed_signal = selected_signal * np.hanning(len(selected_signal))
         logger.info("Applied Hanning window for reduced spectral leakage")
     elif window_type == "blackman":
-        windowed_signal = signal_data * np.blackman(len(signal_data))
+        windowed_signal = selected_signal * np.blackman(len(selected_signal))
         logger.info("Applied Blackman window for excellent sidelobe suppression")
     elif window_type == "kaiser":
-        windowed_signal = signal_data * np.kaiser(len(signal_data), beta=14)
+        windowed_signal = selected_signal * np.kaiser(len(selected_signal), beta=14)
         logger.info(
             "Applied Kaiser window with beta=14 for optimal time-frequency trade-off"
         )
     else:
-        windowed_signal = signal_data
+        windowed_signal = selected_signal
         logger.info("No window applied (rectangular window)")
 
     # Compute FFT
@@ -870,7 +1202,7 @@ def create_fft_plot(
 
 
 def create_stft_plot(
-    signal_data, sampling_freq, window_size, hop_size, freq_min, freq_max
+    selected_signal, sampling_freq, window_size, hop_size, freq_min, freq_max
 ):
     """Create enhanced STFT plot with vitalDSP insights."""
     logger.info(
@@ -889,7 +1221,7 @@ def create_stft_plot(
 
     # Compute STFT
     freqs, times, Zxx = signal.stft(
-        signal_data, sampling_freq, nperseg=window_size, noverlap=overlap
+        selected_signal, sampling_freq, nperseg=window_size, noverlap=overlap
     )
 
     # Calculate magnitude and power
@@ -1023,7 +1355,7 @@ def create_stft_plot(
 
 
 def create_wavelet_plot(
-    signal_data, sampling_freq, wavelet_type, levels, freq_min, freq_max
+    selected_signal, sampling_freq, wavelet_type, levels, freq_min, freq_max
 ):
     """Create enhanced wavelet plot with vitalDSP insights."""
     logger.info(f"Creating wavelet plot with type: {wavelet_type}, levels: {levels}")
@@ -1037,30 +1369,30 @@ def create_wavelet_plot(
             levels = 4
 
         # Ensure levels is not too high to avoid subplot issues
-        max_reasonable_levels = min(10, int(np.log2(len(signal_data) / 10)))
+        max_reasonable_levels = min(10, int(np.log2(len(selected_signal) / 10)))
         if levels > max_reasonable_levels:
             logger.warning(
-                f"Levels value {levels} is too high for signal length {len(signal_data)}. Using {max_reasonable_levels}"
+                f"Levels value {levels} is too high for signal length {len(selected_signal)}. Using {max_reasonable_levels}"
             )
             levels = max_reasonable_levels
 
-        if len(signal_data) < 10:
+        if len(selected_signal) < 10:
             logger.warning(
-                f"Signal too short for wavelet analysis: {len(signal_data)} samples"
+                f"Signal too short for wavelet analysis: {len(selected_signal)} samples"
             )
             # Create a simple plot instead
             fig = go.Figure()
             fig.add_trace(
                 go.Scatter(
-                    x=np.arange(len(signal_data)) / sampling_freq,
-                    y=signal_data,
+                    x=np.arange(len(selected_signal)) / sampling_freq,
+                    y=selected_signal,
                     mode="lines",
                     name="Original Signal",
                     line=dict(color="black", width=2),
                 )
             )
             fig.update_layout(
-                title=f"Wavelet Analysis - Signal too short ({len(signal_data)} samples)",
+                title=f"Wavelet Analysis - Signal too short ({len(selected_signal)} samples)",
                 xaxis_title="Time (s)",
                 yaxis_title="Amplitude",
             )
@@ -1078,19 +1410,21 @@ def create_wavelet_plot(
             wavelet_type = default_wavelet
 
         # Validate signal data
-        if np.any(np.isnan(signal_data)) or np.any(np.isinf(signal_data)):
+        if np.any(np.isnan(selected_signal)) or np.any(np.isinf(selected_signal)):
             logger.warning("Signal contains NaN or Inf values, cleaning...")
-            signal_data = np.nan_to_num(signal_data, nan=0.0, posinf=0.0, neginf=0.0)
+            selected_signal = np.nan_to_num(
+                selected_signal, nan=0.0, posinf=0.0, neginf=0.0
+            )
 
         # Ensure signal data is finite
-        if not np.all(np.isfinite(signal_data)):
+        if not np.all(np.isfinite(selected_signal)):
             logger.error("Signal data contains non-finite values after cleaning")
             # Create a simple plot instead
             fig = go.Figure()
             fig.add_trace(
                 go.Scatter(
-                    x=np.arange(len(signal_data)) / sampling_freq,
-                    y=signal_data,
+                    x=np.arange(len(selected_signal)) / sampling_freq,
+                    y=selected_signal,
                     mode="lines",
                     name="Original Signal",
                     line=dict(color="black", width=2),
@@ -1115,7 +1449,7 @@ def create_wavelet_plot(
             f"Performing wavelet decomposition with {wavelet_type} wavelet, {levels} levels"
         )
         try:
-            coeffs = pywt.wavedec(signal_data, wavelet_type, level=levels)
+            coeffs = pywt.wavedec(selected_signal, wavelet_type, level=levels)
             logger.info(
                 f"Wavelet decomposition completed. Number of coefficients: {len(coeffs)}"
             )
@@ -1141,7 +1475,7 @@ def create_wavelet_plot(
                     [
                         html.H5(f"Wavelet Analysis - {wavelet_type.upper()}"),
                         html.P(f"Decomposition levels: {levels}"),
-                        html.P(f"Signal length: {len(signal_data)} samples"),
+                        html.P(f"Signal length: {len(selected_signal)} samples"),
                         html.P(f"Sampling frequency: {sampling_freq} Hz"),
                         html.P("Warning: No wavelet coefficients were produced"),
                     ]
@@ -1187,8 +1521,8 @@ def create_wavelet_plot(
             fig = go.Figure()
             fig.add_trace(
                 go.Scatter(
-                    x=np.arange(len(signal_data)) / sampling_freq,
-                    y=signal_data,
+                    x=np.arange(len(selected_signal)) / sampling_freq,
+                    y=selected_signal,
                     mode="lines",
                     name="Original Signal",
                     line=dict(color="black", width=2),
@@ -1234,8 +1568,8 @@ def create_wavelet_plot(
             fig = go.Figure()
             fig.add_trace(
                 go.Scatter(
-                    x=np.arange(len(signal_data)) / sampling_freq,
-                    y=signal_data,
+                    x=np.arange(len(selected_signal)) / sampling_freq,
+                    y=selected_signal,
                     mode="lines",
                     name="Original Signal",
                     line=dict(color="black", width=2),
@@ -1249,11 +1583,11 @@ def create_wavelet_plot(
             return fig
 
         # Original signal
-        time_axis = np.arange(len(signal_data)) / sampling_freq
+        time_axis = np.arange(len(selected_signal)) / sampling_freq
         fig.add_trace(
             go.Scatter(
                 x=time_axis,
-                y=signal_data,
+                y=selected_signal,
                 mode="lines",
                 name="Original Signal",
                 line=dict(color="black", width=2),
@@ -1290,11 +1624,11 @@ def create_wavelet_plot(
                     )
 
                     # Pad or truncate coefficients to match signal length
-                    if len(coeffs[i]) < len(signal_data):
+                    if len(coeffs[i]) < len(selected_signal):
                         # Pad with zeros
                         padded_coeff = np.pad(
                             coeffs[i],
-                            (0, len(signal_data) - len(coeffs[i])),
+                            (0, len(selected_signal) - len(coeffs[i])),
                             mode="constant",
                         )
                         logger.info(
@@ -1302,7 +1636,7 @@ def create_wavelet_plot(
                         )
                     else:
                         # Truncate
-                        padded_coeff = coeffs[i][: len(signal_data)]
+                        padded_coeff = coeffs[i][: len(selected_signal)]
                         logger.info(
                             f"Truncated coefficients from {len(coeffs[i])} to {len(padded_coeff)}"
                         )
@@ -1340,7 +1674,7 @@ def create_wavelet_plot(
             fig.add_trace(
                 go.Scatter(
                     x=time_axis,
-                    y=signal_data,
+                    y=selected_signal,
                     mode="lines",
                     name="Original Signal",
                     line=dict(color="black", width=2),
@@ -1404,11 +1738,11 @@ def create_wavelet_plot(
         fig.add_trace(
             go.Scatter(
                 x=(
-                    np.arange(len(signal_data)) / sampling_freq
+                    np.arange(len(selected_signal)) / sampling_freq
                     if sampling_freq > 0
-                    else np.arange(len(signal_data))
+                    else np.arange(len(selected_signal))
                 ),
-                y=signal_data,
+                y=selected_signal,
                 mode="lines",
                 name="Original Signal",
                 line=dict(color="black", width=2),
@@ -1424,7 +1758,7 @@ def create_wavelet_plot(
 
 def perform_fft_analysis(
     time_data,
-    signal_data,
+    selected_signal,
     sampling_freq,
     window_type,
     n_points,
@@ -1434,7 +1768,7 @@ def perform_fft_analysis(
 ):
     """Perform FFT analysis on the signal using scipy functions."""
     logger.info("=== FFT ANALYSIS DEBUG ===")
-    logger.info(f"Input signal shape: {signal_data.shape}")
+    logger.info(f"Input signal shape: {selected_signal.shape}")
     logger.info(f"Input time shape: {time_data.shape}")
     logger.info(f"Sampling frequency: {sampling_freq} Hz")
     logger.info(f"Window type: {window_type}")
@@ -1444,26 +1778,32 @@ def perform_fft_analysis(
     # Apply window if specified
     if window_type and window_type != "none":
         if window_type == "hann":
-            windowed_signal = signal_data * signal.windows.hann(len(signal_data))
+            windowed_signal = selected_signal * signal.windows.hann(
+                len(selected_signal)
+            )
             logger.info("Applied Hann window for reduced spectral leakage")
         elif window_type == "hamming":
-            windowed_signal = signal_data * signal.windows.hamming(len(signal_data))
+            windowed_signal = selected_signal * signal.windows.hamming(
+                len(selected_signal)
+            )
             logger.info("Applied Hamming window for optimal frequency resolution")
         elif window_type == "blackman":
-            windowed_signal = signal_data * signal.windows.blackman(len(signal_data))
+            windowed_signal = selected_signal * signal.windows.blackman(
+                len(selected_signal)
+            )
             logger.info("Applied Blackman window for excellent sidelobe suppression")
         elif window_type == "kaiser":
-            windowed_signal = signal_data * signal.windows.kaiser(
-                len(signal_data), beta=14
+            windowed_signal = selected_signal * signal.windows.kaiser(
+                len(selected_signal), beta=14
             )
             logger.info(
                 "Applied Kaiser window with beta=14 for optimal time-frequency trade-off"
             )
         else:
-            windowed_signal = signal_data
+            windowed_signal = selected_signal
             logger.info("No window applied, using original signal")
     else:
-        windowed_signal = signal_data
+        windowed_signal = selected_signal
         logger.info("No window applied, using original signal")
 
     # Compute FFT using scipy
@@ -1494,7 +1834,7 @@ def perform_fft_analysis(
 
     # Create enhanced FFT plot
     main_fig = create_fft_plot(
-        signal_data, sampling_freq, window_type, n_points, freq_min, freq_max
+        selected_signal, sampling_freq, window_type, n_points, freq_min, freq_max
     )
 
     # PSD plot is the same as main for FFT
@@ -1554,7 +1894,7 @@ def perform_fft_analysis(
 
 def perform_psd_analysis(
     time_data,
-    signal_data,
+    selected_signal,
     sampling_freq,
     window,
     overlap,
@@ -1568,9 +1908,42 @@ def perform_psd_analysis(
 ):
     """Perform Power Spectral Density analysis using vitalDSP functions."""
     logger.info("=== PSD ANALYSIS DEBUG ===")
-    logger.info(f"Input signal shape: {signal_data.shape}")
+    logger.info(f"Input signal shape: {selected_signal.shape}")
     logger.info(f"Input time shape: {time_data.shape}")
     logger.info(f"Sampling frequency: {sampling_freq} Hz")
+
+    # Check if signal is too short for PSD analysis
+    min_samples_required = 64  # Minimum samples needed for PSD analysis
+    if len(selected_signal) < min_samples_required:
+        logger.warning(
+            f"Signal too short for PSD analysis: {len(selected_signal)} samples (minimum: {min_samples_required})"
+        )
+        # Return empty figures with error message
+        empty_fig = create_empty_figure()
+        empty_fig.add_annotation(
+            text=f"Signal too short for PSD analysis<br>Current: {len(selected_signal)} samples<br>Minimum required: {min_samples_required} samples",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+            font=dict(size=16, color="red"),
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="red",
+            borderwidth=2,
+        )
+        return (
+            empty_fig,
+            empty_fig,
+            empty_fig,
+            "Signal too short for PSD analysis",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
     logger.info(f"Window parameter: {window} (type: {type(window)})")
     logger.info(f"Overlap: {overlap}%")
     logger.info(f"Frequency range: {freq_min} to {freq_max_range}")
@@ -1591,7 +1964,7 @@ def perform_psd_analysis(
     logger.info(f"Overlap decimal: {overlap_decimal}")
 
     # Calculate PSD using vitalDSP approach
-    nperseg = max(64, min(256, len(signal_data) // 4))
+    nperseg = max(64, min(256, len(selected_signal) // 4))
     noverlap = int(nperseg * overlap_decimal)
     logger.info(f"PSD parameters: nperseg={nperseg}, noverlap={noverlap}")
 
@@ -1611,7 +1984,7 @@ def perform_psd_analysis(
         window_func = signal.windows.hann(nperseg)
 
     freqs, psd = signal.welch(
-        signal_data,
+        selected_signal,
         fs=sampling_freq,
         window=window_func,
         nperseg=nperseg,
@@ -1801,7 +2174,7 @@ def perform_psd_analysis(
 
 def perform_stft_analysis(
     time_data,
-    signal_data,
+    selected_signal,
     sampling_freq,
     window_size,
     hop_size,
@@ -1815,8 +2188,41 @@ def perform_stft_analysis(
     options,
 ):
     """Perform Short-Time Fourier Transform analysis using vitalDSP functions."""
+    # Check if signal is too short for STFT analysis
+    min_samples_required = 64  # Minimum samples needed for STFT analysis
+    if len(selected_signal) < min_samples_required:
+        logger.warning(
+            f"Signal too short for STFT analysis: {len(selected_signal)} samples (minimum: {min_samples_required})"
+        )
+        # Return empty figures with error message
+        empty_fig = create_empty_figure()
+        empty_fig.add_annotation(
+            text=f"Signal too short for STFT analysis<br>Current: {len(selected_signal)} samples<br>Minimum required: {min_samples_required} samples",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+            font=dict(size=16, color="red"),
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="red",
+            borderwidth=2,
+        )
+        return (
+            empty_fig,
+            empty_fig,
+            empty_fig,
+            "Signal too short for STFT analysis",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+
     # Set default values
-    window_size = max(64, min(256, len(signal_data) // 4))
+    window_size = max(64, min(256, len(selected_signal) // 4))
     hop_size = hop_size or max(16, window_size // 4)
     window_type = window_type or "hann"
     colormap = colormap or "viridis"
@@ -1844,7 +2250,10 @@ def perform_stft_analysis(
             f"Creating STFT object with window_size={window_size}, hop_size={hop_size}, n_fft={window_size}"
         )
         stft_obj = STFT(
-            signal_data, window_size=window_size, hop_size=hop_size, n_fft=window_size
+            selected_signal,
+            window_size=window_size,
+            hop_size=hop_size,
+            n_fft=window_size,
         )
         logger.info("Computing STFT using vitalDSP...")
         Zxx = stft_obj.compute_stft()
@@ -1862,7 +2271,7 @@ def perform_stft_analysis(
         logger.warning(f"vitalDSP not available: {e}, falling back to scipy")
         # Fallback to scipy implementation
         freqs, times, Zxx = signal.stft(
-            signal_data, fs=sampling_freq, nperseg=window_size, noverlap=noverlap
+            selected_signal, fs=sampling_freq, nperseg=window_size, noverlap=noverlap
         )
 
     # Filter frequency range if specified
@@ -1873,7 +2282,7 @@ def perform_stft_analysis(
 
     # Create enhanced STFT plot
     main_fig = create_stft_plot(
-        signal_data, sampling_freq, window_size, hop_size, freq_min, freq_max_range
+        selected_signal, sampling_freq, window_size, hop_size, freq_min, freq_max_range
     )
 
     # PSD plot (average over time)
@@ -1929,7 +2338,7 @@ def perform_stft_analysis(
 
 def perform_wavelet_analysis(
     time_data,
-    signal_data,
+    selected_signal,
     sampling_freq,
     wavelet_type,
     levels,
@@ -1938,9 +2347,42 @@ def perform_wavelet_analysis(
     options,
 ):
     """Perform Wavelet analysis on the signal."""
+    # Check if signal is too short for Wavelet analysis
+    min_samples_required = 32  # Minimum samples needed for Wavelet analysis
+    if len(selected_signal) < min_samples_required:
+        logger.warning(
+            f"Signal too short for Wavelet analysis: {len(selected_signal)} samples (minimum: {min_samples_required})"
+        )
+        # Return empty figures with error message
+        empty_fig = create_empty_figure()
+        empty_fig.add_annotation(
+            text=f"Signal too short for Wavelet analysis<br>Current: {len(selected_signal)} samples<br>Minimum required: {min_samples_required} samples",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+            font=dict(size=16, color="red"),
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="red",
+            borderwidth=2,
+        )
+        return (
+            empty_fig,
+            empty_fig,
+            empty_fig,
+            "Signal too short for Wavelet analysis",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+
     # Create enhanced wavelet plot
     main_fig = create_wavelet_plot(
-        signal_data, sampling_freq, wavelet_type, levels, freq_min, freq_max
+        selected_signal, sampling_freq, wavelet_type, levels, freq_min, freq_max
     )
 
     # For wavelet analysis, we'll create a simplified PSD from the approximation coefficients
@@ -1948,7 +2390,7 @@ def perform_wavelet_analysis(
         import pywt
 
         # Perform wavelet decomposition
-        coeffs = pywt.wavedec(signal_data, wavelet_type, level=levels)
+        coeffs = pywt.wavedec(selected_signal, wavelet_type, level=levels)
 
         # Validate coefficients
         if not coeffs or len(coeffs) == 0:
@@ -1966,7 +2408,7 @@ def perform_wavelet_analysis(
                 [
                     html.H5(f"Wavelet Analysis - {wavelet_type.upper()}"),
                     html.P(f"Decomposition levels: {levels}"),
-                    html.P(f"Signal length: {len(signal_data)} samples"),
+                    html.P(f"Signal length: {len(selected_signal)} samples"),
                     html.P(f"Sampling frequency: {sampling_freq} Hz"),
                     html.P("Warning: No wavelet coefficients were produced"),
                 ]
@@ -2013,7 +2455,7 @@ def perform_wavelet_analysis(
                 [
                     html.H5(f"Wavelet Analysis - {wavelet_type.upper()}"),
                     html.P(f"Decomposition levels: {levels}"),
-                    html.P(f"Signal length: {len(signal_data)} samples"),
+                    html.P(f"Signal length: {len(selected_signal)} samples"),
                     html.P(f"Sampling frequency: {sampling_freq} Hz"),
                     html.P("Warning: No approximation coefficients were produced"),
                 ]
@@ -2104,7 +2546,7 @@ def perform_wavelet_analysis(
             [
                 html.H5(f"Wavelet Analysis - {wavelet_type.upper()}"),
                 html.P(f"Decomposition levels: {levels}"),
-                html.P(f"Signal length: {len(signal_data)} samples"),
+                html.P(f"Signal length: {len(selected_signal)} samples"),
                 html.P(f"Sampling frequency: {sampling_freq} Hz"),
             ]
         )
@@ -2220,17 +2662,21 @@ def generate_frequency_analysis_results(freqs, magnitudes, analysis_type):
                         [
                             html.H6("Peak Analysis"),
                             html.P(f"Peak Frequency: {max_freq:.2f} Hz"),
-                            html.P(f"Peak Magnitude: {max_mag:.4f}"),
-                            html.P(f"Mean Magnitude: {mean_mag:.4f}"),
-                            html.P(f"Standard Deviation: {std_mag:.4f}"),
+                            html.P(f"Peak Magnitude: {format_large_number(max_mag)}"),
+                            html.P(f"Mean Magnitude: {format_large_number(mean_mag)}"),
+                            html.P(
+                                f"Standard Deviation: {format_large_number(std_mag)}"
+                            ),
                         ],
                         className="col-md-6",
                     ),
                     html.Div(
                         [
                             html.H6("Power Analysis"),
-                            html.P(f"Total Power: {total_power:.4f}"),
-                            html.P(f"Power Density: {total_power_density:.4f}"),
+                            html.P(f"Total Power: {format_large_number(total_power)}"),
+                            html.P(
+                                f"Power Density: {format_large_number(total_power_density)}"
+                            ),
                             html.P(
                                 f"Frequency Range: {freqs[0]:.2f} - {freqs[-1]:.2f} Hz"
                             ),

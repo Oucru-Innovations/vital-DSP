@@ -99,7 +99,7 @@ class TestVitalDSPCallbacks:
         # Check that it has traces
         assert len(fig.data) > 0
         # Check that the first trace has the expected name
-        assert fig.data[0].name == 'Original Signal'
+        assert fig.data[0].name == 'Raw Signal'
 
     def test_create_time_domain_plot_with_peaks(self):
         """Test create_time_domain_plot function with peaks"""
