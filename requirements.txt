@@ -5,8 +5,8 @@ scikit-learn>=0.23.2
 matplotlib
 dash>=2.0.0
 fastapi>=0.68.0
-uvicorn[standard]>=0.24.0
-gunicorn>=21.2.0
+uvicorn[standard]>=0.30.0
+gunicorn>=22.0.0
 dash-bootstrap-components
 jinja2
 seaborn
