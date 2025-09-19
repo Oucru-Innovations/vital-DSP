@@ -36,7 +36,7 @@ EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
 
-# Start with Python directly (simple and reliable)
-CMD ["python", "src/vitalDSP_webapp/run_webapp.py"]
+# Start with gunicorn (since Render expects it)
+CMD exec gunicorn -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} -w 1 --timeout 120 --access-logfile - --error-logfile - src.vitalDSP_webapp.run_webapp:app
