@@ -27,5 +27,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=5 \
   CMD curl -fsS "http://localhost:${PORT:-8000}/api/health" || exit 1
 
-# Use startup script
-CMD ["/app/start.sh"]
+# Run the application directly with Python
+CMD ["python", "vitalDSP_webapp/run_webapp.py"]
