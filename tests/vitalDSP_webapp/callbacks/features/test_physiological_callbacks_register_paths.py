@@ -105,6 +105,14 @@ class FakeService:
 
     def get_data(self, _id):
         return self._df
+    
+    def get_filtered_data(self, _id):
+        # Return None to simulate no filtered data available
+        return None
+    
+    def get_filter_info(self, _id):
+        # Return None to simulate no filter info available
+        return None
 
 
 def _set_trigger(button_id):
@@ -124,7 +132,7 @@ def test_unified_callback_not_on_page(registered_callbacks):
         pathname="/", n_clicks=1, slider_value=[0, 10],
         nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
         start_time=None, end_time=None,
-        signal_type=None,
+        signal_type=None, signal_source="filtered",
         analysis_categories=None, hrv_options=None, morphology_options=None,
         advanced_features=None, quality_options=None, transform_options=None,
         advanced_computation=None, feature_engineering=None, preprocessing=None
@@ -142,7 +150,7 @@ def test_unified_callback_no_data(registered_callbacks):
     out = fn(
         pathname="/physiological", n_clicks=1, slider_value=[0, 10],
         nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
-        start_time=None, end_time=None, signal_type=None,
+        start_time=None, end_time=None, signal_type=None, signal_source="filtered",
         analysis_categories=None, hrv_options=None, morphology_options=None,
         advanced_features=None, quality_options=None, transform_options=None,
         advanced_computation=None, feature_engineering=None, preprocessing=None
@@ -162,7 +170,7 @@ def test_unified_callback_no_column_mapping(registered_callbacks):
     out = fn(
         pathname="/physiological", n_clicks=1, slider_value=[0, 2],
         nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
-        start_time=None, end_time=None, signal_type=None,
+        start_time=None, end_time=None, signal_type=None, signal_source="filtered",
         analysis_categories=None, hrv_options=None, morphology_options=None,
         advanced_features=None, quality_options=None, transform_options=None,
         advanced_computation=None, feature_engineering=None, preprocessing=None
@@ -180,7 +188,7 @@ def test_unified_callback_empty_dataframe(registered_callbacks):
     out = fn(
         pathname="/physiological", n_clicks=1, slider_value=[0, 1],
         nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
-        start_time=None, end_time=None, signal_type=None,
+        start_time=None, end_time=None, signal_type=None, signal_source="filtered",
         analysis_categories=None, hrv_options=None, morphology_options=None,
         advanced_features=None, quality_options=None, transform_options=None,
         advanced_computation=None, feature_engineering=None, preprocessing=None
@@ -208,7 +216,7 @@ def test_unified_callback_success_ms_to_sec_and_auto_switch_column(registered_ca
     out = fn(
         pathname="/physiological", n_clicks=1, slider_value=[0, 10],
         nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
-        start_time=0, end_time=10, signal_type="auto",
+        start_time=0, end_time=10, signal_type="auto", signal_source="filtered",
         analysis_categories=["morphology", "frequency", "statistical"],
         hrv_options=[], morphology_options=["peaks", "duration"],
         advanced_features=[], quality_options=[], transform_options=[],
@@ -235,7 +243,7 @@ def test_unified_callback_error_route(registered_callbacks, monkeypatch):
     out = fn(
         pathname="/physiological", n_clicks=1, slider_value=[0, 5],
         nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
-        start_time=0, end_time=5, signal_type="ppg",
+        start_time=0, end_time=5, signal_type="ppg", signal_source="filtered",
         analysis_categories=["morphology"], hrv_options=[], morphology_options=["peaks"],
         advanced_features=[], quality_options=[], transform_options=[],
         advanced_computation=[], feature_engineering=[], preprocessing=[]

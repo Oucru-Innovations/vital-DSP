@@ -108,6 +108,7 @@ def register_physiological_callbacks(app):
             State("physio-start-time", "value"),
             State("physio-end-time", "value"),
             State("physio-signal-type", "value"),
+            State("physio-signal-source-select", "value"),
             State("physio-analysis-categories", "value"),
             State("physio-hrv-options", "value"),
             State("physio-morphology-options", "value"),
@@ -130,6 +131,7 @@ def register_physiological_callbacks(app):
         start_time,
         end_time,
         signal_type,
+        signal_source,
         analysis_categories,
         hrv_options,
         morphology_options,
@@ -323,15 +325,42 @@ def register_physiological_callbacks(app):
             time_data = df[time_col].values
             signal_data = df[signal_col].values
 
+            # Always keep the original signal_data for dynamic filtering
+            original_signal_data = signal_data.copy()
+            selected_signal = signal_data
+            signal_source_info = "Original Signal"
+            filter_info = None
+
+            # Signal source loading logic
+            logger.info("=== SIGNAL SOURCE LOADING ===")
+            logger.info(f"Signal source selection: {signal_source}")
+
+            if signal_source == "filtered":
+                # Try to load filtered data from filtering screen
+                filtered_data = data_service.get_filtered_data(latest_data_id)
+                filter_info = data_service.get_filter_info(latest_data_id)
+
+                if filtered_data is not None:
+                    logger.info(
+                        f"Found filtered data with shape: {filtered_data.shape}"
+                    )
+                    selected_signal = filtered_data
+                    signal_source_info = "Filtered Signal"
+                else:
+                    logger.info("No filtered data available, using original signal")
+            else:
+                logger.info("Using original signal as requested")
+
             # Log data characteristics
             logger.info(f"Time data range: {time_data[0]} to {time_data[-1]}")
             logger.info(
-                f"Signal data range: {np.min(signal_data):.4f} to {np.max(signal_data):.4f}"
+                f"Selected signal range: {np.min(selected_signal):.4f} to {np.max(selected_signal):.4f}"
             )
             logger.info(
-                f"Signal data mean: {np.mean(signal_data):.4f}, std: {np.std(signal_data):.4f}"
+                f"Selected signal mean: {np.mean(selected_signal):.4f}, std: {np.std(selected_signal):.4f}"
             )
-            logger.info(f"Total samples: {len(signal_data)}")
+            logger.info(f"Total samples: {len(selected_signal)}")
+            logger.info(f"Signal source: {signal_source_info}")
 
             # Suggest better column mappings if current ones seem wrong
             if signal_col == "PLETH" and np.std(signal_data) < 0.01:
@@ -453,6 +482,122 @@ def register_physiological_callbacks(app):
             if end_idx > start_idx:
                 time_data = time_data_seconds[start_idx:end_idx]
                 signal_data = signal_data[start_idx:end_idx]
+
+                # Apply time window to both original and selected signals
+                original_signal_data = original_signal_data[start_idx:end_idx]
+                selected_signal = selected_signal[start_idx:end_idx]
+
+                # Check if we need to apply dynamic filtering for filtered signal
+                if signal_source == "filtered" and filter_info is not None:
+                    # Check if the time range is within the original signal range
+                    original_signal_length = len(
+                        data_service.get_data(latest_data_id)[signal_col].values
+                    )
+                    expected_length = end_idx - start_idx
+
+                    # If time range is outside original signal or we need dynamic filtering
+                    if (
+                        start_idx >= original_signal_length
+                        or end_idx > original_signal_length
+                        or expected_length != len(selected_signal)
+                    ):
+                        logger.info("=== DYNAMIC FILTERING ===")
+                        logger.info(f"Original signal length: {original_signal_length}")
+                        logger.info(f"Time range: {start_idx} to {end_idx}")
+                        logger.info(f"Expected window length: {expected_length}")
+                        logger.info("Applying dynamic filtering to current window...")
+
+                        # If time range is completely outside original signal, return error
+                        if (
+                            start_idx >= original_signal_length
+                            or end_idx > original_signal_length
+                        ):
+                            logger.warning(
+                                f"Time range {start_idx}-{end_idx} is outside original signal range (0-{original_signal_length})"
+                            )
+                            return (
+                                create_empty_figure(),
+                                f"Time range is outside the available signal data. Please select a time range within 0 to {original_signal_length/sampling_freq:.1f} seconds.",
+                                create_empty_figure(),
+                                None,
+                                None,
+                            )
+
+                        try:
+                            # Import the same filtering function used in time domain
+                            from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                                apply_traditional_filter,
+                            )
+
+                            # Get the full original signal for the current time window
+                            full_original_signal = data_service.get_data(
+                                latest_data_id
+                            )[signal_col].values
+                            windowed_original_signal = full_original_signal[
+                                start_idx:end_idx
+                            ]
+
+                            # Get filter parameters
+                            parameters = filter_info.get("parameters", {})
+                            detrending_applied = filter_info.get(
+                                "detrending_applied", False
+                            )
+
+                            # Apply detrending if it was applied in the original filtering
+                            if detrending_applied:
+                                from scipy import signal as scipy_signal
+
+                                signal_data_detrended = scipy_signal.detrend(
+                                    windowed_original_signal
+                                )
+                                logger.info("Applied detrending to signal")
+                            else:
+                                signal_data_detrended = windowed_original_signal
+
+                            # Apply the same filter type as used in filtering screen
+                            filter_type = filter_info.get("filter_type", "traditional")
+
+                            if filter_type == "traditional":
+                                # Extract traditional filter parameters
+                                filter_family = parameters.get(
+                                    "filter_family", "butter"
+                                )
+                                filter_response = parameters.get(
+                                    "filter_response", "bandpass"
+                                )
+                                low_freq = parameters.get("low_freq", 0.5)
+                                high_freq = parameters.get("high_freq", 5)
+                                filter_order = parameters.get("filter_order", 4)
+
+                                # Apply traditional filter
+                                selected_signal = apply_traditional_filter(
+                                    signal_data_detrended,
+                                    sampling_freq,
+                                    filter_family,
+                                    filter_response,
+                                    low_freq,
+                                    high_freq,
+                                    filter_order,
+                                )
+                                logger.info("Applied dynamic traditional filter")
+                            else:
+                                # For other filter types, use the original signal
+                                selected_signal = signal_data_detrended
+                                logger.info(
+                                    f"Using original signal for filter type: {filter_type}"
+                                )
+
+                            signal_source_info = "Filtered Signal (Dynamic)"
+                            logger.info("Dynamic filtering completed successfully")
+
+                        except Exception as e:
+                            logger.error(f"Error in dynamic filtering: {e}")
+                            logger.info("Falling back to original signal")
+                            selected_signal = windowed_original_signal
+                            signal_source_info = "Original Signal (Fallback)"
+
+                # Use selected_signal for analysis
+                signal_data = selected_signal
 
             # Validate signal length for analysis
             if len(signal_data) < min_samples:

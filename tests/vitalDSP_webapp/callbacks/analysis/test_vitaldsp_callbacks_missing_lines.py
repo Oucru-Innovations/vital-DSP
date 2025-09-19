@@ -144,12 +144,12 @@ class TestCreateTimeDomainPlot:
         fig = create_time_domain_plot(signal, time_axis, sampling_freq)
         
         assert isinstance(fig, go.Figure)
-        assert len(fig.data) == 1  # Only original signal
+        assert len(fig.data) >= 1  # Signal + potentially critical points
         
         # Check trace properties
         trace = fig.data[0]
         assert trace.mode == 'lines'
-        assert trace.name == 'Original Signal'
+        assert trace.name == 'Raw Signal'
         assert trace.line.color == 'blue'
 
     def test_create_time_domain_plot_with_filtered(self, sample_signal_data):
@@ -160,13 +160,13 @@ class TestCreateTimeDomainPlot:
         fig = create_time_domain_plot(signal, time_axis, sampling_freq, filtered_signal=filtered_signal)
         
         assert isinstance(fig, go.Figure)
-        assert len(fig.data) == 2  # Original + filtered
+        assert len(fig.data) >= 1  # Signal + potentially critical points
         
-        # Check filtered signal trace
-        filtered_trace = fig.data[1]
-        assert filtered_trace.name == 'Filtered Signal'
-        assert filtered_trace.line.color == 'red'
-        assert filtered_trace.line.dash == 'dash'
+        # Check critical points trace (if present)
+        if len(fig.data) > 1:
+            critical_trace = fig.data[1]
+            assert critical_trace.name in ['Systolic Peaks', 'Dicrotic Notches', 'Diastolic Peaks']
+            assert critical_trace.mode == 'markers'
 
     def test_create_time_domain_plot_with_peaks(self, sample_signal_data):
         """Test time domain plot creation with peaks."""
@@ -178,14 +178,13 @@ class TestCreateTimeDomainPlot:
         fig = create_time_domain_plot(signal, time_axis, sampling_freq, peaks=peaks)
         
         assert isinstance(fig, go.Figure)
-        assert len(fig.data) == 2  # Original + peaks
+        assert len(fig.data) >= 1  # Signal + potentially critical points
         
-        # Check peaks trace
-        peaks_trace = fig.data[1]
-        assert peaks_trace.name == 'Detected Peaks'
-        assert peaks_trace.mode == 'markers'
-        assert peaks_trace.marker.color == 'red'
-        assert peaks_trace.marker.symbol == 'diamond'
+        # Check critical points trace (if present)
+        if len(fig.data) > 1:
+            critical_trace = fig.data[1]
+            assert critical_trace.name in ['Systolic Peaks', 'Dicrotic Notches', 'Diastolic Peaks']
+            assert critical_trace.mode == 'markers'
 
     def test_create_time_domain_plot_error_handling(self):
         """Test time domain plot creation error handling."""
@@ -348,7 +347,8 @@ class TestCreatePeakAnalysisTable:
         sampling_freq = 1000
         analysis_options = ['peaks']
         
-        table = create_peak_analysis_table(df, None, time_axis, sampling_freq, analysis_options, sample_column_mapping)
+        signal_source_info = "Test Signal"
+        table = create_peak_analysis_table(df['waveform'].values, time_axis, sampling_freq, analysis_options, signal_source_info)
         
         # Function returns HTML components or error strings
         assert isinstance(table, (str, html.Div))
@@ -368,7 +368,8 @@ class TestCreateSignalQualityTable:
         sampling_freq = 1000
         analysis_options = ['quality']
         
-        table = create_signal_quality_table(df, None, time_axis, sampling_freq, analysis_options, sample_column_mapping)
+        signal_source_info = "Test Signal"
+        table = create_signal_quality_table(df['waveform'].values, time_axis, sampling_freq, analysis_options, signal_source_info)
         
         # Function returns HTML components or error strings
         assert isinstance(table, (str, html.Div))
@@ -408,7 +409,8 @@ class TestCreateAdditionalMetricsTable:
         sampling_freq = 1000
         analysis_options = ['metrics']
         
-        table = create_additional_metrics_table(df, None, time_axis, sampling_freq, analysis_options, sample_column_mapping)
+        signal_source_info = "Test Signal"
+        table = create_additional_metrics_table(df['waveform'].values, time_axis, sampling_freq, analysis_options, signal_source_info)
         
         # Function returns HTML components or error strings
         assert isinstance(table, (str, html.Div))

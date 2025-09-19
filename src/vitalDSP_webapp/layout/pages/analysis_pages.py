@@ -233,9 +233,7 @@ def time_domain_layout():
                                                 className="mb-4",
                                             ),
                                             # Signal Source Selection
-                                            html.H6(
-                                                "Signal Source", className="mb-3"
-                                            ),
+                                            html.H6("Signal Source", className="mb-3"),
                                             dbc.Row(
                                                 [
                                                     dbc.Col(
@@ -257,8 +255,8 @@ def time_domain_layout():
                                                                     },
                                                                 ],
                                                                 value="filtered",  # Default to filtered
-                                                className="mb-3",
-                                            ),
+                                                                className="mb-3",
+                                                            ),
                                                             html.Small(
                                                                 "Filtered signal will be used if available from the filtering screen. Falls back to original signal if no filtering has been performed.",
                                                                 className="text-muted",
@@ -500,25 +498,29 @@ def frequency_layout():
                                                     ),
                                                     dbc.Col(
                                                         [
-                                                            # Data Selection
+                                                            # Signal Source Selection
                                                             html.Label(
-                                                                "Data Source",
+                                                                "Signal Source",
                                                                 className="form-label",
                                                             ),
                                                             dbc.Select(
-                                                                id="freq-data-source-select",
+                                                                id="freq-signal-source-select",
                                                                 options=[
                                                                     {
-                                                                        "label": "Uploaded Data",
-                                                                        "value": "uploaded",
+                                                                        "label": "Original Signal",
+                                                                        "value": "original",
                                                                     },
                                                                     {
-                                                                        "label": "Sample Data",
-                                                                        "value": "sample",
+                                                                        "label": "Filtered Signal",
+                                                                        "value": "filtered",
                                                                     },
                                                                 ],
-                                                                value="uploaded",
+                                                                value="filtered",  # Default to filtered
                                                                 className="mb-2",
+                                                            ),
+                                                            html.Small(
+                                                                "Filtered signal will be used if available from the filtering screen. Falls back to original signal if no filtering has been performed.",
+                                                                className="text-muted",
                                                             ),
                                                             # Analysis Type Selection
                                                             html.Label(
@@ -1652,7 +1654,8 @@ def filtering_layout():
                                     dbc.Col(
                                         [
                                             html.Label(
-                                                "Signal Type:", className="form-label mb-1"
+                                                "Signal Type:",
+                                                className="form-label mb-1",
                                             ),
                                             dbc.Select(
                                                 id="filter-signal-type-select",
@@ -2843,6 +2846,30 @@ def physiological_layout():
                                                 value="auto",
                                                 className="mb-3",
                                             ),
+                                            # Signal Source Selection
+                                            html.Label(
+                                                "Signal Source",
+                                                className="form-label fw-bold small",
+                                            ),
+                                            dbc.Select(
+                                                id="physio-signal-source-select",
+                                                options=[
+                                                    {
+                                                        "label": "Original Signal",
+                                                        "value": "original",
+                                                    },
+                                                    {
+                                                        "label": "Filtered Signal",
+                                                        "value": "filtered",
+                                                    },
+                                                ],
+                                                value="filtered",  # Default to filtered
+                                                className="mb-3",
+                                            ),
+                                            html.Small(
+                                                "Filtered signal will be used if available from the filtering screen. Falls back to original signal if no filtering has been performed.",
+                                                className="text-muted",
+                                            ),
                                         ]
                                     ),
                                 ],
@@ -3701,6 +3728,27 @@ def respiratory_layout():
                                                 value="auto",
                                                 className="mb-2",
                                             ),
+                                            # Signal Source Selection
+                                            html.H6("Signal Source", className="mb-2"),
+                                            dbc.Select(
+                                                id="resp-signal-source-select",
+                                                options=[
+                                                    {
+                                                        "label": "Original Signal",
+                                                        "value": "original",
+                                                    },
+                                                    {
+                                                        "label": "Filtered Signal",
+                                                        "value": "filtered",
+                                                    },
+                                                ],
+                                                value="filtered",  # Default to filtered
+                                                className="mb-2",
+                                            ),
+                                            html.Small(
+                                                "Filtered signal will be used if available from the filtering screen. Falls back to original signal if no filtering has been performed.",
+                                                className="text-muted",
+                                            ),
                                             # Respiratory Rate Estimation Methods
                                             html.H6(
                                                 "Estimation Methods", className="mb-2"
@@ -3886,7 +3934,7 @@ def respiratory_layout():
                                                             dbc.Input(
                                                                 id="resp-high-cut",
                                                                 type="number",
-                                                                value=0.5,
+                                                                value=0.8,
                                                                 min=0.1,
                                                                 max=2.0,
                                                                 step=0.01,
@@ -3913,7 +3961,7 @@ def respiratory_layout():
                                                             dbc.Input(
                                                                 id="resp-min-breath-duration",
                                                                 type="number",
-                                                                value=0.5,
+                                                                value=0.1,
                                                                 min=0.1,
                                                                 max=2.0,
                                                                 step=0.1,
@@ -4138,6 +4186,27 @@ def features_layout():
                                                 value="auto",
                                                 className="mb-3",
                                             ),
+                                            # Signal Source Selection
+                                            html.H6("Signal Source", className="mb-3"),
+                                            dcc.Dropdown(
+                                                id="features-signal-source-select",
+                                                options=[
+                                                    {
+                                                        "label": "Original Signal",
+                                                        "value": "original",
+                                                    },
+                                                    {
+                                                        "label": "Filtered Signal",
+                                                        "value": "filtered",
+                                                    },
+                                                ],
+                                                value="filtered",  # Default to filtered
+                                                className="mb-3",
+                                            ),
+                                            html.Small(
+                                                "Filtered signal will be used if available from the filtering screen. Falls back to original signal if no filtering has been performed.",
+                                                className="text-muted",
+                                            ),
                                             # Preprocessing Options
                                             html.H6(
                                                 "Preprocessing Options",
@@ -4165,6 +4234,18 @@ def features_layout():
                                                     {
                                                         "label": "Smoothing",
                                                         "value": "smoothing",
+                                                    },
+                                                    {
+                                                        "label": "Baseline Correction",
+                                                        "value": "baseline_correction",
+                                                    },
+                                                    {
+                                                        "label": "Noise Reduction",
+                                                        "value": "noise_reduction",
+                                                    },
+                                                    {
+                                                        "label": "Artifact Removal",
+                                                        "value": "artifact_removal",
                                                     },
                                                 ],
                                                 value=["detrend", "normalize"],

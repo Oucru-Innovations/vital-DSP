@@ -752,11 +752,15 @@ def register_signal_filtering_callbacks(app):
             )
 
             original_plot = create_original_signal_plot(
-                time_axis, raw_signal_for_plotting
+                time_axis, raw_signal_for_plotting, sampling_freq, signal_type
             )
-            filtered_plot = create_filtered_signal_plot(time_axis, filtered_data)
+            filtered_plot = create_filtered_signal_plot(time_axis, filtered_data, sampling_freq, signal_type)
             comparison_plot = create_filter_comparison_plot(
-                time_axis, raw_signal_for_plotting, filtered_data, sampling_freq, signal_type
+                time_axis,
+                raw_signal_for_plotting,
+                filtered_data,
+                sampling_freq,
+                signal_type,
             )
 
             # Generate quality metrics using RAW signal (not detrended) for accurate assessment
@@ -790,28 +794,31 @@ def register_signal_filtering_callbacks(app):
             # Store filtered data in data service for use in other screens
             try:
                 from vitalDSP_webapp.services.data.data_service import get_data_service
+
                 data_service = get_data_service()
-                
+
                 # Create filter info for storage
                 filter_info = {
                     "filter_type": filter_type,
                     "parameters": stored_data["parameters"],
                     "detrending_applied": stored_data["detrending_applied"],
-                    "timestamp": pd.Timestamp.now().isoformat()
+                    "timestamp": pd.Timestamp.now().isoformat(),
                 }
-                
+
                 # Store the filtered signal data
                 success = data_service.store_filtered_data(
-                    latest_data_id, 
-                    filtered_data, 
-                    filter_info
+                    latest_data_id, filtered_data, filter_info
                 )
-                
+
                 if success:
-                    logger.info(f"Filtered data stored successfully for data ID: {latest_data_id}")
+                    logger.info(
+                        f"Filtered data stored successfully for data ID: {latest_data_id}"
+                    )
                 else:
-                    logger.warning(f"Failed to store filtered data for data ID: {latest_data_id}")
-                    
+                    logger.warning(
+                        f"Failed to store filtered data for data ID: {latest_data_id}"
+                    )
+
             except Exception as e:
                 logger.error(f"Error storing filtered data: {e}")
 
@@ -909,7 +916,7 @@ def register_signal_filtering_callbacks(app):
 
 
 # Helper functions for signal filtering
-def create_original_signal_plot(time_axis, signal_data):
+def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_type):
     """Create plot for original signal with critical points detection."""
     try:
         logger.info("Creating original signal plot:")
@@ -1054,9 +1061,14 @@ def create_original_signal_plot(time_axis, signal_data):
 
             else:
                 # For other signal types, use basic peak detection
-                logger.info(f"Using basic peak detection for signal type: {signal_type}")
+                logger.info(
+                    f"Using basic peak detection for signal type: {signal_type}"
+                )
                 try:
-                    from vitalDSP.physiological_features.peak_detection import detect_peaks
+                    from vitalDSP.physiological_features.peak_detection import (
+                        detect_peaks,
+                    )
+
                     peaks = detect_peaks(signal_data, sampling_freq)
                     if len(peaks) > 0:
                         fig.add_trace(
@@ -1090,7 +1102,7 @@ def create_original_signal_plot(time_axis, signal_data):
         return create_empty_figure()
 
 
-def create_filtered_signal_plot(time_axis, filtered_data):
+def create_filtered_signal_plot(time_axis, filtered_data, sampling_freq, signal_type):
     """Create plot for filtered signal with critical points detection."""
     try:
         logger.info("Creating filtered signal plot:")
@@ -1160,7 +1172,9 @@ def create_filtered_signal_plot(time_axis, filtered_data):
                                 y=filtered_data[dicrotic_notches],
                                 mode="markers",
                                 name="Dicrotic Notches (Filtered)",
-                                marker=dict(color="darkorange", size=8, symbol="circle"),
+                                marker=dict(
+                                    color="darkorange", size=8, symbol="circle"
+                                ),
                                 hovertemplate="<b>Dicrotic Notch (Filtered):</b> %{y}<extra></extra>",
                             )
                         )
@@ -1235,9 +1249,14 @@ def create_filtered_signal_plot(time_axis, filtered_data):
 
             else:
                 # For other signal types, use basic peak detection
-                logger.info(f"Using basic peak detection for signal type: {signal_type}")
+                logger.info(
+                    f"Using basic peak detection for signal type: {signal_type}"
+                )
                 try:
-                    from vitalDSP.physiological_features.peak_detection import detect_peaks
+                    from vitalDSP.physiological_features.peak_detection import (
+                        detect_peaks,
+                    )
+
                     peaks = detect_peaks(filtered_data, sampling_freq)
                     if len(peaks) > 0:
                         fig.add_trace(
@@ -1271,7 +1290,9 @@ def create_filtered_signal_plot(time_axis, filtered_data):
         return create_empty_figure()
 
 
-def create_filter_comparison_plot(time_axis, original_signal, filtered_signal, sampling_freq, signal_type):
+def create_filter_comparison_plot(
+    time_axis, original_signal, filtered_signal, sampling_freq, signal_type
+):
     """Create comparison plot between original and filtered signals with critical points detection."""
     try:
         logger.info("Creating comparison plot:")
@@ -1355,14 +1376,19 @@ def create_filter_comparison_plot(time_axis, original_signal, filtered_signal, s
                 # Detect and plot dicrotic notches for original signal
                 try:
                     dicrotic_notches_orig = wm_orig.detect_dicrotic_notches()
-                    if dicrotic_notches_orig is not None and len(dicrotic_notches_orig) > 0:
+                    if (
+                        dicrotic_notches_orig is not None
+                        and len(dicrotic_notches_orig) > 0
+                    ):
                         fig.add_trace(
                             go.Scatter(
                                 x=time_axis[dicrotic_notches_orig],
                                 y=original_signal[dicrotic_notches_orig],
                                 mode="markers",
                                 name="Dicrotic Notches (Original)",
-                                marker=dict(color="darkorange", size=6, symbol="circle"),
+                                marker=dict(
+                                    color="darkorange", size=6, symbol="circle"
+                                ),
                                 hovertemplate="<b>Original Dicrotic Notch:</b> %{y}<extra></extra>",
                             )
                         )
@@ -1372,7 +1398,10 @@ def create_filter_comparison_plot(time_axis, original_signal, filtered_signal, s
                 # Detect and plot diastolic peaks for original signal
                 try:
                     diastolic_peaks_orig = wm_orig.detect_diastolic_peak()
-                    if diastolic_peaks_orig is not None and len(diastolic_peaks_orig) > 0:
+                    if (
+                        diastolic_peaks_orig is not None
+                        and len(diastolic_peaks_orig) > 0
+                    ):
                         fig.add_trace(
                             go.Scatter(
                                 x=time_axis[diastolic_peaks_orig],
@@ -1386,26 +1415,29 @@ def create_filter_comparison_plot(time_axis, original_signal, filtered_signal, s
                 except Exception as e:
                     logger.warning(f"Original diastolic peak detection failed: {e}")
 
-                # Detect and plot critical points for filtered signal
-                if (
-                    hasattr(wm_filt, "systolic_peaks")
-                    and wm_filt.systolic_peaks is not None
-                ):
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time_axis[wm_filt.systolic_peaks],
-                            y=filtered_signal[wm_filt.systolic_peaks],
-                            mode="markers",
-                            name="Systolic Peaks (Filtered)",
-                            marker=dict(color="darkred", size=8, symbol="diamond"),
-                            hovertemplate="<b>Filtered Systolic Peak:</b> %{y}<extra></extra>",
-                        )
+            # Detect and plot critical points for filtered signal
+            if (
+                hasattr(wm_filt, "systolic_peaks")
+                and wm_filt.systolic_peaks is not None
+            ):
+                fig.add_trace(
+                    go.Scatter(
+                        x=time_axis[wm_filt.systolic_peaks],
+                        y=filtered_signal[wm_filt.systolic_peaks],
+                        mode="markers",
+                        name="Systolic Peaks (Filtered)",
+                        marker=dict(color="darkred", size=8, symbol="diamond"),
+                        hovertemplate="<b>Filtered Systolic Peak:</b> %{y}<extra></extra>",
                     )
+                )
 
                 # Detect and plot dicrotic notches for filtered signal
                 try:
                     dicrotic_notches_filt = wm_filt.detect_dicrotic_notches()
-                    if dicrotic_notches_filt is not None and len(dicrotic_notches_filt) > 0:
+                    if (
+                        dicrotic_notches_filt is not None
+                        and len(dicrotic_notches_filt) > 0
+                    ):
                         fig.add_trace(
                             go.Scatter(
                                 x=time_axis[dicrotic_notches_filt],
@@ -1422,7 +1454,10 @@ def create_filter_comparison_plot(time_axis, original_signal, filtered_signal, s
                 # Detect and plot diastolic peaks for filtered signal
                 try:
                     diastolic_peaks_filt = wm_filt.detect_diastolic_peak()
-                    if diastolic_peaks_filt is not None and len(diastolic_peaks_filt) > 0:
+                    if (
+                        diastolic_peaks_filt is not None
+                        and len(diastolic_peaks_filt) > 0
+                    ):
                         fig.add_trace(
                             go.Scatter(
                                 x=time_axis[diastolic_peaks_filt],
@@ -1438,10 +1473,7 @@ def create_filter_comparison_plot(time_axis, original_signal, filtered_signal, s
 
             elif signal_type == "ECG":
                 # For ECG: R peaks, P peaks, T peaks
-                if (
-                    hasattr(wm_orig, "r_peaks")
-                    and wm_orig.r_peaks is not None
-                ):
+                if hasattr(wm_orig, "r_peaks") and wm_orig.r_peaks is not None:
                     fig.add_trace(
                         go.Scatter(
                             x=time_axis[wm_orig.r_peaks],
@@ -1488,10 +1520,7 @@ def create_filter_comparison_plot(time_axis, original_signal, filtered_signal, s
                     logger.warning(f"Original T peak detection failed: {e}")
 
                 # Detect and plot critical points for filtered signal
-                if (
-                    hasattr(wm_filt, "r_peaks")
-                    and wm_filt.r_peaks is not None
-                ):
+                if hasattr(wm_filt, "r_peaks") and wm_filt.r_peaks is not None:
                     fig.add_trace(
                         go.Scatter(
                             x=time_axis[wm_filt.r_peaks],
@@ -1539,12 +1568,17 @@ def create_filter_comparison_plot(time_axis, original_signal, filtered_signal, s
 
             else:
                 # For other signal types, use basic peak detection
-                logger.info(f"Using basic peak detection for signal type: {signal_type}")
+                logger.info(
+                    f"Using basic peak detection for signal type: {signal_type}"
+                )
                 try:
-                    from vitalDSP.physiological_features.peak_detection import detect_peaks
+                    from vitalDSP.physiological_features.peak_detection import (
+                        detect_peaks,
+                    )
+
                     orig_peaks = detect_peaks(original_signal, sampling_freq)
                     filt_peaks = detect_peaks(filtered_signal, sampling_freq)
-                    
+
                     if len(orig_peaks) > 0:
                         fig.add_trace(
                             go.Scatter(
@@ -1556,7 +1590,7 @@ def create_filter_comparison_plot(time_axis, original_signal, filtered_signal, s
                                 hovertemplate="<b>Original Peak:</b> %{y}<extra></extra>",
                             )
                         )
-                    
+
                     if len(filt_peaks) > 0:
                         fig.add_trace(
                             go.Scatter(

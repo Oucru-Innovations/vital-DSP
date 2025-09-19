@@ -277,25 +277,26 @@ class TestSidebar:
             if (hasattr(child, 'children') and 
                 len(child.children) >= 3 and
                 hasattr(child.children[0], 'href') and
-                child.children[0].href == "/time-domain"):
+                child.children[0].href == "/filtering"):
                 analysis_links = child
                 break
                 
         assert analysis_links is not None
         
-        # Test time domain link
-        time_link = analysis_links.children[0]
+        # Test filtering link (now first)
+        filtering_link = analysis_links.children[0]
+        assert filtering_link.href == "/filtering"
+        assert "nav-link" in filtering_link.className
+        
+        # Test time domain link (now second)
+        time_link = analysis_links.children[1]
         assert time_link.href == "/time-domain"
         assert "nav-link" in time_link.className
         assert "text-white" in time_link.className
         
-        # Test frequency link
-        freq_link = analysis_links.children[1]
+        # Test frequency link (now at index 2)
+        freq_link = analysis_links.children[2]
         assert freq_link.href == "/frequency"
-        
-        # Test filtering link
-        filter_link = analysis_links.children[2]
-        assert filter_link.href == "/filtering"
         
     def test_sidebar_features_section(self):
         """Test Sidebar features section"""
