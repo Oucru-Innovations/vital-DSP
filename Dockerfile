@@ -1,44 +1,42 @@
-# Use an official Python runtime as a parent image
-FROM python:3.9-slim
+# Clean Dockerfile for Render deployment
+FROM python:3.10-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONPATH=/app/src
+ENV PYTHONPATH=/app:/app/src
 
-# Set the working directory in the container
+# Set working directory
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc g++ curl && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY src/vitalDSP_webapp/requirements.txt /app/requirements.txt
-COPY requirements.txt /app/root_requirements.txt
+# Copy requirements and install
+COPY requirements.txt /app/requirements.txt
+COPY src/vitalDSP_webapp/requirements.txt /app/webapp_requirements.txt
 
 # Install Python dependencies
-RUN pip install --upgrade pip
-RUN pip install -r /app/root_requirements.txt
-RUN pip install -r /app/requirements.txt
+RUN pip install --no-cache-dir -U pip && \
+    pip install --no-cache-dir -r /app/requirements.txt && \
+    pip install --no-cache-dir -r /app/webapp_requirements.txt
 
-# Copy the source code
+# Copy application code
 COPY . /app
 
-# Install the package in development mode
+# Install the package
 RUN pip install -e .
 
 # Create uploads directory
 RUN mkdir -p /app/uploads
 
-# Expose the port used by the application
+# Expose port
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/api/health || exit 1
 
-# Start the application
+# Start with Python directly (simple and reliable)
 CMD ["python", "src/vitalDSP_webapp/run_webapp.py"]

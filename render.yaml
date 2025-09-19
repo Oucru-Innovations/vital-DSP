@@ -2,7 +2,7 @@ services:
   - type: web
     name: vital-DSP
     env: docker
-    dockerfilePath: ./Dockerfile.test
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
     envVars:
