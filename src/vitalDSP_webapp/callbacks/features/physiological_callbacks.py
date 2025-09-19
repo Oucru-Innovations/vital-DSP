@@ -14,7 +14,621 @@ import dash_bootstrap_components as dbc
 from scipy import signal
 import logging
 
+
+# Helper function for formatting large numbers
+def format_large_number(value, precision=3, use_scientific=False, as_integer=False):
+    """Format large numbers with appropriate scaling and units."""
+    if value == 0:
+        return "0"
+
+    # Handle integer formatting for counts
+    if as_integer:
+        return f"{int(round(value))}"
+
+    abs_value = abs(value)
+
+    if use_scientific or abs_value >= 1e6:
+        # Use scientific notation for very large numbers
+        return f"{value:.{precision}e}"
+    elif abs_value >= 1e3:
+        # Use thousands (k) notation
+        scaled_value = value / 1e3
+        return f"{scaled_value:.{precision}f}k"
+    elif abs_value >= 1:
+        # Regular decimal notation
+        return f"{value:.{precision}f}"
+    elif abs_value >= 1e-3:
+        # Use millis (m) notation
+        scaled_value = value * 1e3
+        return f"{scaled_value:.{precision}f}m"
+    else:
+        # Use scientific notation for very small numbers
+        return f"{value:.{precision}e}"
+
+
 logger = logging.getLogger(__name__)
+
+
+def create_hrv_poincare_plot(rr_intervals, hrv_metrics):
+    """Create Poincaré plot for HRV analysis."""
+    logger.info(f"Creating HRV Poincaré plot with {len(rr_intervals)} RR intervals")
+    if len(rr_intervals) < 2:
+        logger.warning("Not enough RR intervals for Poincaré plot")
+        return go.Figure()
+
+    # Prepare data for Poincaré plot (RR_n vs RR_n+1)
+    rr_n = rr_intervals[:-1]
+    rr_n1 = rr_intervals[1:]
+
+    fig = go.Figure()
+
+    # Add scatter plot
+    fig.add_trace(
+        go.Scatter(
+            x=rr_n,
+            y=rr_n1,
+            mode="markers",
+            marker=dict(
+                size=6,
+                color="rgba(0, 123, 255, 0.6)",
+                line=dict(width=1, color="rgba(0, 123, 255, 0.8)"),
+            ),
+            name="RR Intervals",
+            hovertemplate="<b>RR<sub>n</sub>:</b> %{x:.1f} ms<br><b>RR<sub>n+1</sub>:</b> %{y:.1f} ms<extra></extra>",
+        )
+    )
+
+    # Add diagonal line (identity line)
+    min_rr = min(min(rr_n), min(rr_n1))
+    max_rr = max(max(rr_n), max(rr_n1))
+    fig.add_trace(
+        go.Scatter(
+            x=[min_rr, max_rr],
+            y=[min_rr, max_rr],
+            mode="lines",
+            line=dict(color="red", dash="dash", width=2),
+            name="Identity Line",
+            showlegend=True,
+        )
+    )
+
+    # Add SD1 and SD2 ellipses if available
+    if "poincare_sd1" in hrv_metrics and "poincare_sd2" in hrv_metrics:
+        sd1 = hrv_metrics["poincare_sd1"]
+        sd2 = hrv_metrics["poincare_sd2"]
+        mean_rr = np.mean(rr_intervals)
+
+        # Create ellipse for SD1 and SD2
+        theta = np.linspace(0, 2 * np.pi, 100)
+        x_ellipse = mean_rr + sd2 * np.cos(theta)
+        y_ellipse = mean_rr + sd1 * np.sin(theta)
+
+        fig.add_trace(
+            go.Scatter(
+                x=x_ellipse,
+                y=y_ellipse,
+                mode="lines",
+                line=dict(color="green", width=2),
+                name=f"SD1={sd1:.2f}, SD2={sd2:.2f}",
+                showlegend=True,
+            )
+        )
+
+    fig.update_layout(
+        title="HRV Poincaré Plot",
+        xaxis_title="RR<sub>n</sub> (ms)",
+        yaxis_title="RR<sub>n+1</sub> (ms)",
+        width=500,
+        height=400,
+        showlegend=True,
+    )
+
+    return fig
+
+
+def create_hrv_time_series_plot(time_axis, rr_intervals, hrv_metrics):
+    """Create time series plot for HRV analysis."""
+    if len(rr_intervals) == 0:
+        return go.Figure()
+
+    fig = go.Figure()
+
+    # Plot RR intervals over time
+    fig.add_trace(
+        go.Scatter(
+            x=time_axis[: len(rr_intervals)],
+            y=rr_intervals,
+            mode="lines+markers",
+            name="RR Intervals",
+            line=dict(color="blue", width=2),
+            marker=dict(size=4, color="blue"),
+            hovertemplate="<b>Time:</b> %{x:.2f}s<br><b>RR Interval:</b> %{y:.1f} ms<extra></extra>",
+        )
+    )
+
+    # Add mean RR line
+    if "mean_rr" in hrv_metrics:
+        mean_rr = hrv_metrics["mean_rr"]
+        fig.add_hline(
+            y=mean_rr,
+            line_dash="dash",
+            line_color="red",
+            annotation_text=f"Mean RR: {mean_rr:.1f} ms",
+        )
+
+    fig.update_layout(
+        title="HRV Time Series",
+        xaxis_title="Time (s)",
+        yaxis_title="RR Interval (ms)",
+        width=600,
+        height=300,
+        showlegend=True,
+    )
+
+    return fig
+
+
+def create_morphology_analysis_plot(
+    time_axis, signal_data, peaks, peak_heights, sampling_freq
+):
+    """Create morphology analysis plot showing peaks and amplitude distribution."""
+    fig = make_subplots(
+        rows=2,
+        cols=2,
+        subplot_titles=(
+            "Signal with Detected Peaks",
+            "Peak Height Distribution",
+            "Peak Interval Distribution",
+            "Amplitude Histogram",
+        ),
+        specs=[
+            [{"secondary_y": False}, {"secondary_y": False}],
+            [{"secondary_y": False}, {"secondary_y": False}],
+        ],
+    )
+
+    # Plot 1: Signal with peaks
+    fig.add_trace(
+        go.Scatter(
+            x=time_axis,
+            y=signal_data,
+            mode="lines",
+            name="Signal",
+            line=dict(color="blue", width=1),
+        ),
+        row=1,
+        col=1,
+    )
+
+    if len(peaks) > 0:
+        fig.add_trace(
+            go.Scatter(
+                x=time_axis[peaks],
+                y=signal_data[peaks],
+                mode="markers",
+                name="Peaks",
+                marker=dict(color="red", size=8, symbol="diamond"),
+                hovertemplate="<b>Peak:</b> %{y:.1f}<br><b>Time:</b> %{x:.2f}s<extra></extra>",
+            ),
+            row=1,
+            col=1,
+        )
+
+    # Plot 2: Peak height distribution
+    if len(peak_heights) > 0:
+        fig.add_trace(
+            go.Histogram(
+                x=peak_heights,
+                nbinsx=20,
+                name="Peak Heights",
+                marker_color="lightblue",
+                opacity=0.7,
+            ),
+            row=1,
+            col=2,
+        )
+
+    # Plot 3: Peak interval distribution
+    if len(peaks) > 1:
+        peak_intervals = np.diff(peaks) / sampling_freq * 1000  # Convert to ms
+        fig.add_trace(
+            go.Histogram(
+                x=peak_intervals,
+                nbinsx=20,
+                name="Peak Intervals",
+                marker_color="lightgreen",
+                opacity=0.7,
+            ),
+            row=2,
+            col=1,
+        )
+
+    # Plot 4: Amplitude histogram
+    fig.add_trace(
+        go.Histogram(
+            x=signal_data,
+            nbinsx=50,
+            name="Amplitude Distribution",
+            marker_color="lightcoral",
+            opacity=0.7,
+        ),
+        row=2,
+        col=2,
+    )
+
+    fig.update_layout(title="Morphology Analysis", height=600, showlegend=False)
+
+    fig.update_xaxes(title_text="Time (s)", row=1, col=1)
+    fig.update_yaxes(title_text="Amplitude", row=1, col=1)
+    fig.update_xaxes(title_text="Peak Height", row=1, col=2)
+    fig.update_yaxes(title_text="Count", row=1, col=2)
+    fig.update_xaxes(title_text="Peak Interval (ms)", row=2, col=1)
+    fig.update_yaxes(title_text="Count", row=2, col=1)
+    fig.update_xaxes(title_text="Amplitude", row=2, col=2)
+    fig.update_yaxes(title_text="Count", row=2, col=2)
+
+    return fig
+
+
+def create_energy_analysis_plot(frequencies, psd, energy_metrics):
+    """Create energy analysis plot showing frequency bands and power distribution."""
+    fig = make_subplots(
+        rows=2,
+        cols=2,
+        subplot_titles=(
+            "Power Spectral Density",
+            "Frequency Band Energy Distribution",
+            "Energy Time Evolution",
+            "Energy Statistics",
+        ),
+        specs=[
+            [{"secondary_y": False}, {"secondary_y": False}],
+            [{"secondary_y": False}, {"secondary_y": False}],
+        ],
+    )
+
+    # Plot 1: PSD
+    fig.add_trace(
+        go.Scatter(
+            x=frequencies,
+            y=psd,
+            mode="lines",
+            name="PSD",
+            line=dict(color="blue", width=2),
+        ),
+        row=1,
+        col=1,
+    )
+
+    # Plot 2: Frequency band energy distribution
+    if all(
+        key in energy_metrics
+        for key in ["low_freq_energy", "mid_freq_energy", "high_freq_energy"]
+    ):
+        bands = ["Low Freq", "Mid Freq", "High Freq"]
+        energies = [
+            energy_metrics["low_freq_energy"],
+            energy_metrics["mid_freq_energy"],
+            energy_metrics["high_freq_energy"],
+        ]
+
+        fig.add_trace(
+            go.Bar(
+                x=bands,
+                y=energies,
+                name="Energy by Band",
+                marker_color=["lightblue", "lightgreen", "lightcoral"],
+            ),
+            row=1,
+            col=2,
+        )
+
+    # Plot 3: Energy time evolution (simplified)
+    if "total_energy" in energy_metrics:
+        time_points = np.linspace(0, 1, 50)
+        energy_evolution = np.full_like(time_points, energy_metrics["total_energy"])
+
+        fig.add_trace(
+            go.Scatter(
+                x=time_points,
+                y=energy_evolution,
+                mode="lines",
+                name="Total Energy",
+                line=dict(color="red", width=2),
+            ),
+            row=2,
+            col=1,
+        )
+
+    # Plot 4: Energy statistics
+    if "total_energy" in energy_metrics and "mean_energy" in energy_metrics:
+        stats = ["Total", "Mean", "Variance"]
+        values = [
+            energy_metrics["total_energy"],
+            energy_metrics["mean_energy"],
+            energy_metrics.get("energy_variance", 0),
+        ]
+
+        fig.add_trace(
+            go.Bar(
+                x=stats, y=values, name="Energy Stats", marker_color="lightsteelblue"
+            ),
+            row=2,
+            col=2,
+        )
+
+    fig.update_layout(title="Energy Analysis", height=600, showlegend=False)
+
+    fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=1)
+    fig.update_yaxes(title_text="Power", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency Band", row=1, col=2)
+    fig.update_yaxes(title_text="Energy", row=1, col=2)
+    fig.update_xaxes(title_text="Time", row=2, col=1)
+    fig.update_yaxes(title_text="Energy", row=2, col=1)
+    fig.update_xaxes(title_text="Statistic", row=2, col=2)
+    fig.update_yaxes(title_text="Value", row=2, col=2)
+
+    return fig
+
+
+def create_quality_assessment_plot(signal_data, quality_metrics, time_axis):
+    """Create signal quality assessment plots."""
+    fig = make_subplots(
+        rows=2,
+        cols=2,
+        subplot_titles=(
+            "Signal Quality Over Time",
+            "SNR Analysis",
+            "Artifact Detection",
+            "Quality Metrics Summary",
+        ),
+        specs=[
+            [{"secondary_y": False}, {"secondary_y": False}],
+            [{"secondary_y": False}, {"secondary_y": False}],
+        ],
+    )
+
+    # Plot 1: Signal with quality indicators
+    fig.add_trace(
+        go.Scatter(
+            x=time_axis,
+            y=signal_data,
+            mode="lines",
+            name="Signal",
+            line=dict(color="blue", width=1),
+        ),
+        row=1,
+        col=1,
+    )
+
+    # Add quality zones if available
+    if "signal_quality_index" in quality_metrics:
+        quality_index = quality_metrics["signal_quality_index"]
+        if quality_index > 0.8:
+            quality_color = "green"
+            quality_text = "Excellent"
+        elif quality_index > 0.6:
+            quality_color = "orange"
+            quality_text = "Good"
+        else:
+            quality_color = "red"
+            quality_text = "Poor"
+
+        fig.add_annotation(
+            x=0.5,
+            y=0.9,
+            xref="paper",
+            yref="paper",
+            text=f"Quality: {quality_text} ({quality_index:.2f})",
+            showarrow=False,
+            font=dict(color=quality_color, size=14),
+        )
+
+    # Plot 2: SNR analysis
+    if "snr_db" in quality_metrics:
+        snr_value = quality_metrics["snr_db"]
+        fig.add_trace(
+            go.Bar(
+                x=["SNR"],
+                y=[snr_value],
+                name="SNR",
+                marker_color="lightblue",
+                text=[f"{snr_value:.1f} dB"],
+                textposition="auto",
+            ),
+            row=1,
+            col=2,
+        )
+
+    # Plot 3: Artifact detection
+    if "detected_artifacts" in quality_metrics:
+        artifacts = quality_metrics["detected_artifacts"]
+        fig.add_trace(
+            go.Bar(
+                x=["Artifacts"],
+                y=[artifacts],
+                name="Artifacts",
+                marker_color="red",
+                text=[f"{artifacts}"],
+                textposition="auto",
+            ),
+            row=2,
+            col=1,
+        )
+
+    # Plot 4: Quality metrics summary
+    quality_indicators = []
+    quality_values = []
+
+    if "signal_quality_index" in quality_metrics:
+        quality_indicators.append("Quality Index")
+        quality_values.append(quality_metrics["signal_quality_index"])
+
+    if "snr_db" in quality_metrics:
+        quality_indicators.append("SNR (dB)")
+        quality_values.append(quality_metrics["snr_db"])
+
+    if "detected_artifacts" in quality_metrics:
+        quality_indicators.append("Artifacts")
+        quality_values.append(quality_metrics["detected_artifacts"])
+
+    if quality_indicators:
+        fig.add_trace(
+            go.Bar(
+                x=quality_indicators,
+                y=quality_values,
+                name="Quality Metrics",
+                marker_color="lightsteelblue",
+            ),
+            row=2,
+            col=2,
+        )
+
+    fig.update_layout(title="Signal Quality Assessment", height=600, showlegend=False)
+
+    fig.update_xaxes(title_text="Time (s)", row=1, col=1)
+    fig.update_yaxes(title_text="Amplitude", row=1, col=1)
+    fig.update_xaxes(title_text="Metric", row=1, col=2)
+    fig.update_yaxes(title_text="Value", row=1, col=2)
+    fig.update_xaxes(title_text="Metric", row=2, col=1)
+    fig.update_yaxes(title_text="Count", row=2, col=1)
+    fig.update_xaxes(title_text="Quality Metric", row=2, col=2)
+    fig.update_yaxes(title_text="Value", row=2, col=2)
+
+    return fig
+
+
+def create_comprehensive_analysis_plot(time_axis, signal_data, analysis_results):
+    """Create a comprehensive analysis plot showing multiple aspects of the signal."""
+    logger.info(
+        f"Creating comprehensive analysis plot with signal length: {len(signal_data)}"
+    )
+    logger.info(f"Analysis results available: {analysis_results is not None}")
+
+    fig = make_subplots(
+        rows=3,
+        cols=2,
+        subplot_titles=(
+            "Signal Overview",
+            "Peak Detection",
+            "Frequency Analysis",
+            "Statistical Distribution",
+            "Quality Assessment",
+            "Feature Summary",
+        ),
+        specs=[
+            [{"secondary_y": False}, {"secondary_y": False}],
+            [{"secondary_y": False}, {"secondary_y": False}],
+            [{"secondary_y": False}, {"secondary_y": False}],
+        ],
+    )
+
+    # Plot 1: Signal overview
+    fig.add_trace(
+        go.Scatter(
+            x=time_axis,
+            y=signal_data,
+            mode="lines",
+            name="Signal",
+            line=dict(color="blue", width=1),
+        ),
+        row=1,
+        col=1,
+    )
+
+    # Plot 2: Peak detection
+    if (
+        "morphology_metrics" in analysis_results
+        and "peaks" in analysis_results["morphology_metrics"]
+    ):
+        peaks = analysis_results["morphology_metrics"]["peaks"]
+        if len(peaks) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=time_axis[peaks],
+                    y=signal_data[peaks],
+                    mode="markers",
+                    name="Peaks",
+                    marker=dict(color="red", size=6, symbol="diamond"),
+                ),
+                row=1,
+                col=2,
+            )
+
+    # Plot 3: Frequency analysis
+    if (
+        "frequency_metrics" in analysis_results
+        and "frequencies" in analysis_results["frequency_metrics"]
+    ):
+        frequencies = analysis_results["frequency_metrics"]["frequencies"]
+        psd = analysis_results["frequency_metrics"]["psd"]
+        fig.add_trace(
+            go.Scatter(
+                x=frequencies,
+                y=psd,
+                mode="lines",
+                name="PSD",
+                line=dict(color="green", width=2),
+            ),
+            row=2,
+            col=1,
+        )
+
+    # Plot 4: Statistical distribution
+    fig.add_trace(
+        go.Histogram(
+            x=signal_data,
+            nbinsx=50,
+            name="Distribution",
+            marker_color="lightblue",
+            opacity=0.7,
+        ),
+        row=2,
+        col=2,
+    )
+
+    # Plot 5: Quality assessment
+    if "quality_metrics" in analysis_results:
+        quality_metrics = analysis_results["quality_metrics"]
+        quality_names = list(quality_metrics.keys())[:5]  # Top 5 metrics
+        quality_values = [quality_metrics[name] for name in quality_names]
+
+        fig.add_trace(
+            go.Bar(
+                x=quality_names,
+                y=quality_values,
+                name="Quality",
+                marker_color="lightcoral",
+            ),
+            row=3,
+            col=1,
+        )
+
+    # Plot 6: Feature summary
+    feature_categories = ["HRV", "Morphology", "Energy", "Quality"]
+    feature_counts = [
+        len(analysis_results.get("hrv_metrics", {})),
+        len(analysis_results.get("morphology_metrics", {})),
+        len(analysis_results.get("energy_metrics", {})),
+        len(analysis_results.get("quality_metrics", {})),
+    ]
+
+    fig.add_trace(
+        go.Bar(
+            x=feature_categories,
+            y=feature_counts,
+            name="Features",
+            marker_color="lightsteelblue",
+        ),
+        row=3,
+        col=2,
+    )
+
+    fig.update_layout(
+        title="Comprehensive Physiological Analysis", height=900, showlegend=False
+    )
+
+    return fig
 
 
 def normalize_signal_type(signal_type):
@@ -1751,54 +2365,96 @@ def create_physiological_analysis_plots(
 
 
 def analyze_hrv(signal_data, sampling_freq, hrv_options):
-    """Analyze Heart Rate Variability."""
+    """Analyze Heart Rate Variability using vitalDSP."""
     try:
         # Handle case where hrv_options might be None or empty
         if not hrv_options:
             hrv_options = ["time_domain", "freq_domain"]
 
-        # Find peaks
-        peaks, _ = signal.find_peaks(
-            signal_data,
-            height=np.mean(signal_data) + np.std(signal_data),
-            distance=int(sampling_freq * 0.3),
-        )
+        # Use vitalDSP for HRV analysis
+        try:
+            from vitalDSP.physiological_features.hrv import HRVFeatures
 
-        if len(peaks) < 2:
-            return {"error": "Insufficient peaks for HRV analysis"}
+            # Create HRV features object
+            hrv_features = HRVFeatures(signal_data, sampling_freq)
 
-        # Calculate RR intervals
-        rr_intervals = np.diff(peaks) / sampling_freq * 1000  # Convert to milliseconds
+            hrv_metrics = {}
 
-        hrv_metrics = {}
+            if "time_domain" in hrv_options:
+                # Get time domain features
+                time_domain_features = hrv_features.get_time_domain_features()
+                hrv_metrics.update(
+                    {
+                        "mean_rr": time_domain_features.get("mean_rr", 0),
+                        "std_rr": time_domain_features.get("std_rr", 0),
+                        "rmssd": time_domain_features.get("rmssd", 0),
+                        "nn50": time_domain_features.get("nn50", 0),
+                        "pnn50": time_domain_features.get("pnn50", 0),
+                    }
+                )
 
-        if "time_domain" in hrv_options:
-            hrv_metrics.update(
-                {
-                    "mean_rr": np.mean(rr_intervals),
-                    "std_rr": np.std(rr_intervals),
-                    "rmssd": np.sqrt(np.mean(np.diff(rr_intervals) ** 2)),
-                    "nn50": np.sum(np.abs(np.diff(rr_intervals)) > 50),
-                    "pnn50": (
-                        np.sum(np.abs(np.diff(rr_intervals)) > 50) / len(rr_intervals)
-                    )
-                    * 100,
-                }
+            if "frequency_domain" in hrv_options or "freq_domain" in hrv_options:
+                # Get frequency domain features
+                freq_domain_features = hrv_features.get_frequency_domain_features()
+                hrv_metrics.update(
+                    {
+                        "total_power": freq_domain_features.get("total_power", 0),
+                        "vlf_power": freq_domain_features.get("vlf_power", 0),
+                        "lf_power": freq_domain_features.get("lf_power", 0),
+                        "hf_power": freq_domain_features.get("hf_power", 0),
+                        "lf_hf_ratio": freq_domain_features.get("lf_hf_ratio", 0),
+                    }
+                )
+
+        except ImportError:
+            # Fallback to basic analysis if vitalDSP not available
+            logger.warning("vitalDSP HRV features not available, using basic analysis")
+
+            # Find peaks
+            peaks, _ = signal.find_peaks(
+                signal_data,
+                height=np.mean(signal_data) + np.std(signal_data),
+                distance=int(sampling_freq * 0.3),
             )
 
-        if "frequency_domain" in hrv_options or "freq_domain" in hrv_options:
-            # Simple frequency domain analysis
-            freqs, psd = signal.welch(rr_intervals, fs=1000 / np.mean(rr_intervals))
-            hrv_metrics.update(
-                {
-                    "total_power": np.sum(psd),
-                    "vlf_power": np.sum(psd[freqs < 0.04]),
-                    "lf_power": np.sum(psd[(freqs >= 0.04) & (freqs < 0.15)]),
-                    "hf_power": np.sum(psd[(freqs >= 0.15) & (freqs < 0.4)]),
-                    "lf_hf_ratio": np.sum(psd[(freqs >= 0.04) & (freqs < 0.15)])
-                    / np.sum(psd[(freqs >= 0.15) & (freqs < 0.4)]),
-                }
-            )
+            if len(peaks) < 2:
+                return {"error": "Insufficient peaks for HRV analysis"}
+
+            # Calculate RR intervals
+            rr_intervals = (
+                np.diff(peaks) / sampling_freq * 1000
+            )  # Convert to milliseconds
+
+            hrv_metrics = {}
+
+            if "time_domain" in hrv_options:
+                hrv_metrics.update(
+                    {
+                        "mean_rr": np.mean(rr_intervals),
+                        "std_rr": np.std(rr_intervals),
+                        "rmssd": np.sqrt(np.mean(np.diff(rr_intervals) ** 2)),
+                        "nn50": np.sum(np.abs(np.diff(rr_intervals)) > 50),
+                        "pnn50": (
+                            np.sum(np.abs(np.diff(rr_intervals)) > 50)
+                            / len(rr_intervals)
+                        )
+                        * 100,
+                    }
+                )
+
+            if "frequency_domain" in hrv_options or "freq_domain" in hrv_options:
+                # Simple frequency domain analysis
+                freqs, psd = signal.welch(rr_intervals, fs=1000 / np.mean(rr_intervals))
+                hrv_metrics.update(
+                    {
+                        "total_power": np.sum(psd),
+                        "vlf_power": np.sum(psd[freqs < 0.04]),
+                        "lf_power": np.sum(psd[(freqs >= 0.04) & (freqs < 0.15)]),
+                        "hf_power": np.sum(psd[(freqs >= 0.15) & (freqs < 0.4)]),
+                        "lf_hf_ratio": np.sum(psd[(freqs >= 0.04) & (freqs < 0.15)])
+                        / np.sum(psd[(freqs >= 0.15) & (freqs < 0.4)]),
+                    }
+                )
 
         if "nonlinear" in hrv_options:
             # Nonlinear HRV analysis
@@ -1826,7 +2482,7 @@ def analyze_hrv(signal_data, sampling_freq, hrv_options):
 
 
 def analyze_morphology(signal_data, sampling_freq, morphology_options):
-    """Analyze signal morphology."""
+    """Analyze signal morphology using vitalDSP."""
     try:
         morphology_metrics = {}
 
@@ -1834,41 +2490,83 @@ def analyze_morphology(signal_data, sampling_freq, morphology_options):
         if not morphology_options:
             morphology_options = ["peaks", "amplitude", "duration"]
 
-        if "peak_detection" in morphology_options or "peaks" in morphology_options:
-            peaks, properties = signal.find_peaks(
-                signal_data,
-                height=np.mean(signal_data) + np.std(signal_data),
-                distance=int(sampling_freq * 0.3),
-            )
-            morphology_metrics.update(
-                {
-                    "num_peaks": len(peaks),
-                    "peak_heights": (
-                        signal_data[peaks].tolist() if len(peaks) > 0 else []
-                    ),
-                    "peak_positions": peaks.tolist() if len(peaks) > 0 else [],
-                }
+        # Use vitalDSP for morphology analysis
+        try:
+            from vitalDSP.physiological_features.morphology import MorphologyFeatures
+
+            # Create morphology features object
+            morph_features = MorphologyFeatures(signal_data, sampling_freq)
+
+            if "peak_detection" in morphology_options or "peaks" in morphology_options:
+                # Get peak detection features
+                peak_features = morph_features.get_peak_features()
+                morphology_metrics.update(
+                    {
+                        "num_peaks": peak_features.get("num_peaks", 0),
+                        "peak_heights": peak_features.get("peak_heights", []),
+                        "peak_positions": peak_features.get("peak_positions", []),
+                    }
+                )
+
+            if "amplitude" in morphology_options:
+                # Get amplitude features
+                amplitude_features = morph_features.get_amplitude_features()
+                morphology_metrics.update(
+                    {
+                        "mean_amplitude": amplitude_features.get("mean_amplitude", 0),
+                        "std_amplitude": amplitude_features.get("std_amplitude", 0),
+                        "min_amplitude": amplitude_features.get("min_amplitude", 0),
+                        "max_amplitude": amplitude_features.get("max_amplitude", 0),
+                        "peak_to_peak": amplitude_features.get("peak_to_peak", 0),
+                    }
+                )
+
+            if "duration" in morphology_options:
+                # Get duration features
+                duration_features = morph_features.get_duration_features()
+                morphology_metrics.update(duration_features)
+
+        except ImportError:
+            # Fallback to basic analysis if vitalDSP not available
+            logger.warning(
+                "vitalDSP morphology features not available, using basic analysis"
             )
 
-        if "amplitude" in morphology_options:
-            morphology_metrics.update(
-                {
-                    "mean_amplitude": np.mean(signal_data),
-                    "std_amplitude": np.std(signal_data),
-                    "min_amplitude": np.min(signal_data),
-                    "max_amplitude": np.max(signal_data),
-                    "peak_to_peak": np.max(signal_data) - np.min(signal_data),
-                }
-            )
+            if "peak_detection" in morphology_options or "peaks" in morphology_options:
+                peaks, properties = signal.find_peaks(
+                    signal_data,
+                    height=np.mean(signal_data) + np.std(signal_data),
+                    distance=int(sampling_freq * 0.3),
+                )
+                morphology_metrics.update(
+                    {
+                        "num_peaks": len(peaks),
+                        "peak_heights": (
+                            signal_data[peaks].tolist() if len(peaks) > 0 else []
+                        ),
+                        "peak_positions": peaks.tolist() if len(peaks) > 0 else [],
+                    }
+                )
 
-        if "duration" in morphology_options:
-            duration_stats = {
-                "signal_duration": len(signal_data) / sampling_freq,
-                "sampling_freq": sampling_freq,
-                "num_samples": len(signal_data),
-            }
-            morphology_metrics.update(duration_stats)
-            morphology_metrics["duration_stats"] = duration_stats
+            if "amplitude" in morphology_options:
+                morphology_metrics.update(
+                    {
+                        "mean_amplitude": np.mean(signal_data),
+                        "std_amplitude": np.std(signal_data),
+                        "min_amplitude": np.min(signal_data),
+                        "max_amplitude": np.max(signal_data),
+                        "peak_to_peak": np.max(signal_data) - np.min(signal_data),
+                    }
+                )
+
+            if "duration" in morphology_options:
+                duration_stats = {
+                    "signal_duration": len(signal_data) / sampling_freq,
+                    "sampling_freq": sampling_freq,
+                    "num_samples": len(signal_data),
+                }
+                morphology_metrics.update(duration_stats)
+                morphology_metrics["duration_stats"] = duration_stats
 
         return morphology_metrics
 
@@ -1980,12 +2678,76 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                         formatted_value = f"{value:.3f}"
                     elif key.endswith("_freq") or key.endswith("_frequency"):
                         formatted_value = f"{value:.3f} Hz"
-                    elif key.endswith("_ms"):
-                        formatted_value = f"{value:.1f} ms"
+                    elif (
+                        key.endswith("_ms")
+                        or key == "mean_rr"
+                        or key == "rmssd"
+                        or key == "mean_beat_interval"
+                        or key == "beat_variability"
+                        or key == "beat_regularity"
+                    ):
+                        formatted_value = f"{format_large_number(value)} ms"
+                    elif (
+                        key.endswith("_peaks")
+                        or key.endswith("_beats")
+                        or key.endswith("_segments")
+                        or key.endswith("_crossings")
+                        or key.endswith("_anomalies")
+                        or key == "zero_crossings"
+                        or key == "envelope_peaks"
+                        or key == "anomalies_detected"
+                    ):
+                        # Integer formatting for counts
+                        formatted_value = format_large_number(value, as_integer=True)
+                    elif (
+                        key.endswith("_power")
+                        or key.endswith("_energy")
+                        or key == "total_energy"
+                        or key == "mean_energy"
+                        or key == "low_freq_energy"
+                        or key == "high_freq_energy"
+                        or key == "wavelet_energy"
+                        or key == "total_power"
+                    ):
+                        # Large number formatting for power/energy values
+                        formatted_value = (
+                            f"{format_large_number(value, use_scientific=True)} units²"
+                        )
+                    elif (
+                        key.endswith("_height")
+                        or key.endswith("_amplitude")
+                        or key == "mean_peak_height"
+                        or key == "peak_to_peak"
+                        or key == "std_amplitude"
+                        or key == "envelope_mean"
+                        or key == "envelope_range"
+                        or key == "rms"
+                        or key == "mean"
+                        or key == "median"
+                        or key == "std"
+                        or key == "iqr"
+                        or key == "bayesian_prior_mean"
+                        or key == "ecg_autonomic_response"
+                        or key == "noise_level"
+                    ):
+                        # Signal amplitude values
+                        formatted_value = f"{format_large_number(value)} units"
+                    elif (
+                        key == "spectral_centroid"
+                        or key == "fourier_peak"
+                        or key == "hilbert_phase"
+                        or key == "cross_signal_correlation"
+                        or key == "signal_quality_index"
+                    ):
+                        # Dimensionless values
+                        formatted_value = format_large_number(value)
+                    elif key == "mean_segment_length" or key == "signal_bandwidth":
+                        # Length/bandwidth values
+                        formatted_value = f"{format_large_number(value)} samples"
                     elif isinstance(value, float) and abs(value) < 0.01:
                         formatted_value = f"{value:.2e}"
                     else:
-                        formatted_value = f"{value:.4f}"
+                        formatted_value = format_large_number(value)
 
                     # Create a compact metric item
                     metric_items.append(
@@ -4280,12 +5042,76 @@ def register_additional_physiological_callbacks(app):
                         formatted_value = f"{value:.3f}"
                     elif key.endswith("_freq") or key.endswith("_frequency"):
                         formatted_value = f"{value:.3f} Hz"
-                    elif key.endswith("_ms"):
-                        formatted_value = f"{value:.1f} ms"
+                    elif (
+                        key.endswith("_ms")
+                        or key == "mean_rr"
+                        or key == "rmssd"
+                        or key == "mean_beat_interval"
+                        or key == "beat_variability"
+                        or key == "beat_regularity"
+                    ):
+                        formatted_value = f"{format_large_number(value)} ms"
+                    elif (
+                        key.endswith("_peaks")
+                        or key.endswith("_beats")
+                        or key.endswith("_segments")
+                        or key.endswith("_crossings")
+                        or key.endswith("_anomalies")
+                        or key == "zero_crossings"
+                        or key == "envelope_peaks"
+                        or key == "anomalies_detected"
+                    ):
+                        # Integer formatting for counts
+                        formatted_value = format_large_number(value, as_integer=True)
+                    elif (
+                        key.endswith("_power")
+                        or key.endswith("_energy")
+                        or key == "total_energy"
+                        or key == "mean_energy"
+                        or key == "low_freq_energy"
+                        or key == "high_freq_energy"
+                        or key == "wavelet_energy"
+                        or key == "total_power"
+                    ):
+                        # Large number formatting for power/energy values
+                        formatted_value = (
+                            f"{format_large_number(value, use_scientific=True)} units²"
+                        )
+                    elif (
+                        key.endswith("_height")
+                        or key.endswith("_amplitude")
+                        or key == "mean_peak_height"
+                        or key == "peak_to_peak"
+                        or key == "std_amplitude"
+                        or key == "envelope_mean"
+                        or key == "envelope_range"
+                        or key == "rms"
+                        or key == "mean"
+                        or key == "median"
+                        or key == "std"
+                        or key == "iqr"
+                        or key == "bayesian_prior_mean"
+                        or key == "ecg_autonomic_response"
+                        or key == "noise_level"
+                    ):
+                        # Signal amplitude values
+                        formatted_value = f"{format_large_number(value)} units"
+                    elif (
+                        key == "spectral_centroid"
+                        or key == "fourier_peak"
+                        or key == "hilbert_phase"
+                        or key == "cross_signal_correlation"
+                        or key == "signal_quality_index"
+                    ):
+                        # Dimensionless values
+                        formatted_value = format_large_number(value)
+                    elif key == "mean_segment_length" or key == "signal_bandwidth":
+                        # Length/bandwidth values
+                        formatted_value = f"{format_large_number(value)} samples"
                     elif isinstance(value, float) and abs(value) < 0.01:
                         formatted_value = f"{value:.2e}"
                     else:
-                        formatted_value = f"{value:.4f}"
+                        formatted_value = format_large_number(value)
 
                     # Create compact metric item with minimal spacing
                     metric_items.append(
@@ -6628,12 +7454,187 @@ def physiological_analysis_callback(
         feature_engineering = feature_engineering or []
         preprocessing = preprocessing or []
 
-        # Create basic plots for testing
-        main_plot = create_empty_figure()
-        results_text = f"Analysis completed for {signal_type} signal from {start_time}s to {end_time}s"
-        analysis_plots = create_empty_figure()
+        # Extract signal data for analysis
+        signal_column = column_mapping.get("signal", "waveform")
+        if signal_column not in df.columns:
+            return (
+                create_empty_figure(),
+                f"Signal column '{signal_column}' not found in data",
+                create_empty_figure(),
+                None,
+                None,
+            )
 
-        return main_plot, results_text, analysis_plots, None, None
+        # Apply time windowing
+        start_sample = int(start_time * sampling_freq)
+        end_sample = int(end_time * sampling_freq)
+        start_sample = max(0, start_sample)
+        end_sample = min(len(df), end_sample)
+
+        windowed_df = df.iloc[start_sample:end_sample]
+        signal_data = windowed_df[signal_column].values
+        time_axis = np.arange(len(signal_data)) / sampling_freq
+
+        # Perform comprehensive physiological analysis
+        analysis_results = perform_physiological_analysis_enhanced(
+            time_axis,
+            signal_data,
+            signal_type,
+            sampling_freq,
+            analysis_categories,
+            hrv_options,
+            morphology_options,
+            advanced_features,
+            quality_options,
+            transform_options,
+            advanced_computation,
+            feature_engineering,
+            preprocessing,
+        )
+
+        # Debug: Log analysis results structure
+        logger.info(
+            f"Analysis results keys: {list(analysis_results.keys()) if analysis_results else 'None'}"
+        )
+        if analysis_results:
+            for key, value in analysis_results.items():
+                if isinstance(value, dict):
+                    logger.info(f"  {key}: {list(value.keys())}")
+                else:
+                    logger.info(f"  {key}: {type(value)}")
+
+        # Create comprehensive visualization plots
+        logger.info("Creating main plot...")
+
+        # Create a simple test plot first to ensure plots are working
+        main_plot = go.Figure()
+        main_plot.add_trace(
+            go.Scatter(
+                x=time_axis,
+                y=signal_data,
+                mode="lines",
+                name="Signal",
+                line=dict(color="blue", width=1),
+            )
+        )
+        main_plot.update_layout(
+            title="Physiological Signal Analysis",
+            xaxis_title="Time (s)",
+            yaxis_title="Amplitude",
+            height=400,
+        )
+        logger.info(f"Main plot created with {len(main_plot.data)} traces")
+
+        # Also create the comprehensive plot
+        comprehensive_plot = create_comprehensive_analysis_plot(
+            time_axis, signal_data, analysis_results
+        )
+        logger.info(
+            f"Comprehensive plot created with {len(comprehensive_plot.data)} traces"
+        )
+
+        # Create specialized plots based on analysis categories
+        analysis_plots = []
+        logger.info(f"Creating analysis plots for categories: {analysis_categories}")
+        if "hrv" in analysis_categories and "hrv_metrics" in analysis_results:
+            hrv_metrics = analysis_results["hrv_metrics"]
+            if "rr_intervals" in hrv_metrics:
+                # Create HRV Poincaré plot
+                poincare_plot = create_hrv_poincare_plot(
+                    hrv_metrics["rr_intervals"], hrv_metrics
+                )
+                analysis_plots.append(poincare_plot)
+
+                # Create HRV time series plot
+                hrv_ts_plot = create_hrv_time_series_plot(
+                    time_axis, hrv_metrics["rr_intervals"], hrv_metrics
+                )
+                analysis_plots.append(hrv_ts_plot)
+
+        if (
+            "morphology" in analysis_categories
+            and "morphology_metrics" in analysis_results
+        ):
+            morph_metrics = analysis_results["morphology_metrics"]
+            if "peaks" in morph_metrics and "peak_heights" in morph_metrics:
+                # Create morphology analysis plot
+                morph_plot = create_morphology_analysis_plot(
+                    time_axis,
+                    signal_data,
+                    morph_metrics["peaks"],
+                    morph_metrics["peak_heights"],
+                    sampling_freq,
+                )
+                analysis_plots.append(morph_plot)
+
+        if "energy" in analysis_categories and "energy_metrics" in analysis_results:
+            energy_metrics = analysis_results["energy_metrics"]
+            if "frequencies" in energy_metrics and "psd" in energy_metrics:
+                # Create energy analysis plot
+                energy_plot = create_energy_analysis_plot(
+                    energy_metrics["frequencies"], energy_metrics["psd"], energy_metrics
+                )
+                analysis_plots.append(energy_plot)
+
+        if "quality" in analysis_categories and "quality_metrics" in analysis_results:
+            # Create quality assessment plot
+            quality_plot = create_quality_assessment_plot(
+                signal_data, analysis_results["quality_metrics"], time_axis
+            )
+            analysis_plots.append(quality_plot)
+
+        # Create a simple test plot for analysis plots if none were created
+        if len(analysis_plots) == 0:
+            logger.info("No analysis plots created, creating test plot")
+            analysis_plots_fig = go.Figure()
+            analysis_plots_fig.add_trace(
+                go.Scatter(
+                    x=time_axis,
+                    y=signal_data,
+                    mode="lines",
+                    name="Test Signal",
+                    line=dict(color="green", width=2),
+                )
+            )
+            analysis_plots_fig.update_layout(
+                title="Analysis Plots - Test",
+                xaxis_title="Time (s)",
+                yaxis_title="Amplitude",
+                height=400,
+            )
+        # Combine all analysis plots into a single figure if multiple plots exist
+        elif len(analysis_plots) > 1:
+            from plotly.subplots import make_subplots
+
+            combined_fig = make_subplots(
+                rows=len(analysis_plots),
+                cols=1,
+                subplot_titles=[
+                    f"Analysis Plot {i+1}" for i in range(len(analysis_plots))
+                ],
+                vertical_spacing=0.1,
+            )
+
+            for i, plot in enumerate(analysis_plots):
+                for trace in plot.data:
+                    combined_fig.add_trace(trace, row=i + 1, col=1)
+
+            combined_fig.update_layout(height=300 * len(analysis_plots))
+            analysis_plots_fig = combined_fig
+        else:
+            analysis_plots_fig = analysis_plots[0]
+
+        # Generate results text
+        results_text = f"Comprehensive analysis completed for {signal_type} signal from {start_time}s to {end_time}s"
+        if analysis_results:
+            feature_count = sum(
+                len(metrics)
+                for metrics in analysis_results.values()
+                if isinstance(metrics, dict)
+            )
+            results_text += f" - Extracted {feature_count} physiological features across {len(analysis_categories)} categories"
+
+        return main_plot, results_text, analysis_plots_fig, analysis_results, None
 
     except Exception as e:
         logger.error(f"Error in physiological analysis callback: {e}")

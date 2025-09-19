@@ -754,7 +754,9 @@ def register_signal_filtering_callbacks(app):
             original_plot = create_original_signal_plot(
                 time_axis, raw_signal_for_plotting, sampling_freq, signal_type
             )
-            filtered_plot = create_filtered_signal_plot(time_axis, filtered_data, sampling_freq, signal_type)
+            filtered_plot = create_filtered_signal_plot(
+                time_axis, filtered_data, sampling_freq, signal_type
+            )
             comparison_plot = create_filter_comparison_plot(
                 time_axis,
                 raw_signal_for_plotting,

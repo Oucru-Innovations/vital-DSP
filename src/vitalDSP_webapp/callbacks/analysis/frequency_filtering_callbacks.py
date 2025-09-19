@@ -13,6 +13,34 @@ from scipy import signal
 from scipy.fft import rfft, rfftfreq
 import logging
 
+
+# Helper function for formatting large numbers
+def format_large_number(value, precision=3, use_scientific=False):
+    """Format large numbers with appropriate scaling and units."""
+    if value == 0:
+        return "0"
+
+    abs_value = abs(value)
+
+    if use_scientific or abs_value >= 1e6:
+        # Use scientific notation for very large numbers
+        return f"{value:.{precision}e}"
+    elif abs_value >= 1e3:
+        # Use thousands (k) notation
+        scaled_value = value / 1e3
+        return f"{scaled_value:.{precision}f}k"
+    elif abs_value >= 1:
+        # Regular decimal notation
+        return f"{value:.{precision}f}"
+    elif abs_value >= 1e-3:
+        # Use millis (m) notation
+        scaled_value = value * 1e3
+        return f"{scaled_value:.{precision}f}m"
+    else:
+        # Use scientific notation for very small numbers
+        return f"{value:.{precision}e}"
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -2634,17 +2662,21 @@ def generate_frequency_analysis_results(freqs, magnitudes, analysis_type):
                         [
                             html.H6("Peak Analysis"),
                             html.P(f"Peak Frequency: {max_freq:.2f} Hz"),
-                            html.P(f"Peak Magnitude: {max_mag:.4f}"),
-                            html.P(f"Mean Magnitude: {mean_mag:.4f}"),
-                            html.P(f"Standard Deviation: {std_mag:.4f}"),
+                            html.P(f"Peak Magnitude: {format_large_number(max_mag)}"),
+                            html.P(f"Mean Magnitude: {format_large_number(mean_mag)}"),
+                            html.P(
+                                f"Standard Deviation: {format_large_number(std_mag)}"
+                            ),
                         ],
                         className="col-md-6",
                     ),
                     html.Div(
                         [
                             html.H6("Power Analysis"),
-                            html.P(f"Total Power: {total_power:.4f}"),
-                            html.P(f"Power Density: {total_power_density:.4f}"),
+                            html.P(f"Total Power: {format_large_number(total_power)}"),
+                            html.P(
+                                f"Power Density: {format_large_number(total_power_density)}"
+                            ),
                             html.P(
                                 f"Frequency Range: {freqs[0]:.2f} - {freqs[-1]:.2f} Hz"
                             ),

@@ -20,6 +20,34 @@ from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
     apply_traditional_filter,
 )
 
+
+# Helper function for formatting large numbers
+def format_large_number(value, precision=3, use_scientific=False):
+    """Format large numbers with appropriate scaling and units."""
+    if value == 0:
+        return "0"
+
+    abs_value = abs(value)
+
+    if use_scientific or abs_value >= 1e6:
+        # Use scientific notation for very large numbers
+        return f"{value:.{precision}e}"
+    elif abs_value >= 1e3:
+        # Use thousands (k) notation
+        scaled_value = value / 1e3
+        return f"{scaled_value:.{precision}f}k"
+    elif abs_value >= 1:
+        # Regular decimal notation
+        return f"{value:.{precision}f}"
+    elif abs_value >= 1e-3:
+        # Use millis (m) notation
+        scaled_value = value * 1e3
+        return f"{scaled_value:.{precision}f}m"
+    else:
+        # Use scientific notation for very small numbers
+        return f"{value:.{precision}e}"
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -1702,7 +1730,7 @@ def generate_analysis_results(
                                 [
                                     html.Td("Mean", className="fw-bold"),
                                     html.Td(
-                                        f"{np.mean(signal_data):.2f}",
+                                        format_large_number(np.mean(signal_data)),
                                         className="text-end",
                                     ),
                                     html.Td("Signal Units", className="text-muted"),
@@ -1712,7 +1740,7 @@ def generate_analysis_results(
                                 [
                                     html.Td("Standard Deviation", className="fw-bold"),
                                     html.Td(
-                                        f"{np.std(signal_data):.2f}",
+                                        format_large_number(np.std(signal_data)),
                                         className="text-end",
                                     ),
                                     html.Td("Signal Units", className="text-muted"),
@@ -1722,7 +1750,7 @@ def generate_analysis_results(
                                 [
                                     html.Td("Minimum", className="fw-bold"),
                                     html.Td(
-                                        f"{np.min(signal_data):.2f}",
+                                        format_large_number(np.min(signal_data)),
                                         className="text-end",
                                     ),
                                     html.Td("Signal Units", className="text-muted"),
@@ -1732,7 +1760,7 @@ def generate_analysis_results(
                                 [
                                     html.Td("Maximum", className="fw-bold"),
                                     html.Td(
-                                        f"{np.max(signal_data):.2f}",
+                                        format_large_number(np.max(signal_data)),
                                         className="text-end",
                                     ),
                                     html.Td("Signal Units", className="text-muted"),
@@ -1742,7 +1770,9 @@ def generate_analysis_results(
                                 [
                                     html.Td("RMS", className="fw-bold"),
                                     html.Td(
-                                        f"{np.sqrt(np.mean(signal_data**2)):.2f}",
+                                        format_large_number(
+                                            np.sqrt(np.mean(signal_data**2))
+                                        ),
                                         className="text-end",
                                     ),
                                     html.Td("Signal Units", className="text-muted"),
@@ -2076,7 +2106,10 @@ def generate_analysis_results(
                                                 "Signal Range", className="fw-bold"
                                             ),
                                             html.Td(
-                                                f"{np.max(signal_data) - np.min(signal_data):.2f}",
+                                                format_large_number(
+                                                    np.max(signal_data)
+                                                    - np.min(signal_data)
+                                                ),
                                                 className="text-end",
                                             ),
                                             html.Td(
@@ -2969,7 +3002,10 @@ def create_signal_quality_table(
                                     [
                                         html.Td("DC (0-0.5 Hz)", className="fw-bold"),
                                         html.Td(
-                                            f"{dc_power:.2e}", className="text-end"
+                                            format_large_number(
+                                                dc_power, use_scientific=True
+                                            ),
+                                            className="text-end",
                                         ),
                                         html.Td(
                                             f"{dc_percentage:.1f}%",
@@ -2984,7 +3020,9 @@ def create_signal_quality_table(
                                     [
                                         html.Td("Low (0.5-5 Hz)", className="fw-bold"),
                                         html.Td(
-                                            f"{low_freq_power:.2e}",
+                                            format_large_number(
+                                                low_freq_power, use_scientific=True
+                                            ),
                                             className="text-end",
                                         ),
                                         html.Td(
@@ -3001,7 +3039,9 @@ def create_signal_quality_table(
                                     [
                                         html.Td("Mid (5-40 Hz)", className="fw-bold"),
                                         html.Td(
-                                            f"{mid_freq_power:.2e}",
+                                            format_large_number(
+                                                mid_freq_power, use_scientific=True
+                                            ),
                                             className="text-end",
                                         ),
                                         html.Td(
@@ -3018,7 +3058,9 @@ def create_signal_quality_table(
                                     [
                                         html.Td("High (>40 Hz)", className="fw-bold"),
                                         html.Td(
-                                            f"{high_freq_power:.2e}",
+                                            format_large_number(
+                                                high_freq_power, use_scientific=True
+                                            ),
                                             className="text-end",
                                         ),
                                         html.Td(
@@ -3913,7 +3955,8 @@ def create_additional_metrics_table(
                                     [
                                         html.Td("Mean", className="fw-bold"),
                                         html.Td(
-                                            f"{signal_mean:.3f}", className="text-end"
+                                            format_large_number(signal_mean),
+                                            className="text-end",
                                         ),
                                         html.Td(
                                             "Central tendency", className="text-muted"
@@ -3924,7 +3967,8 @@ def create_additional_metrics_table(
                                     [
                                         html.Td("Median", className="fw-bold"),
                                         html.Td(
-                                            f"{signal_median:.3f}", className="text-end"
+                                            format_large_number(signal_median),
+                                            className="text-end",
                                         ),
                                         html.Td("Middle value", className="text-muted"),
                                     ]
@@ -3935,7 +3979,8 @@ def create_additional_metrics_table(
                                             "Standard Deviation", className="fw-bold"
                                         ),
                                         html.Td(
-                                            f"{signal_std:.3f}", className="text-end"
+                                            format_large_number(signal_std),
+                                            className="text-end",
                                         ),
                                         html.Td(
                                             "Variability measure",
@@ -3947,7 +3992,8 @@ def create_additional_metrics_table(
                                     [
                                         html.Td("Range", className="fw-bold"),
                                         html.Td(
-                                            f"{signal_range:.3f}", className="text-end"
+                                            format_large_number(signal_range),
+                                            className="text-end",
                                         ),
                                         html.Td(
                                             "Min to max spread", className="text-muted"
@@ -4121,7 +4167,8 @@ def create_additional_metrics_table(
                                     [
                                         html.Td("Peak-to-Peak", className="fw-bold"),
                                         html.Td(
-                                            f"{peak_to_peak:.3f}", className="text-end"
+                                            format_large_number(peak_to_peak),
+                                            className="text-end",
                                         ),
                                         html.Td(
                                             "Amplitude range", className="text-muted"
