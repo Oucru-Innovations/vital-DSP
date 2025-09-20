@@ -1,6 +1,6 @@
 import uvicorn
 import os
-from vitalDSP_webapp.app import create_fastapi_app
+from .app import create_fastapi_app
 
 fastapi_app = create_fastapi_app()
 

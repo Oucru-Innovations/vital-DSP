@@ -27,4 +27,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
 
 # Run the application with gunicorn
-CMD exec gunicorn -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} -w 1 --timeout 120 --access-logfile - --error-logfile - --log-level debug src.vitalDSP_webapp.run_webapp:app
+CMD exec gunicorn -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} -w 1 --timeout 120 --access-logfile - --error-logfile - --log-level debug vitalDSP_webapp.run_webapp:app
