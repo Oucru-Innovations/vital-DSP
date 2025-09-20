@@ -10,16 +10,16 @@ from starlette.middleware.wsgi import WSGIMiddleware
 import dash_bootstrap_components as dbc
 
 # Import configuration
-from src.vitalDSP_webapp.config.settings import app_config, ui_styles
+from vitalDSP_webapp.config.settings import app_config, ui_styles
 
 # Import layout components from new modular structure
-from src.vitalDSP_webapp.layout import Header, Sidebar, Footer
+from vitalDSP_webapp.layout import Header, Sidebar, Footer
 
 # Import FastAPI routes
-from src.vitalDSP_webapp.api.endpoints import router as api_router
+from vitalDSP_webapp.api.endpoints import router as api_router
 
 # Import callbacks from new modular structure
-from src.vitalDSP_webapp.callbacks import (
+from vitalDSP_webapp.callbacks import (
     register_sidebar_callbacks,
     register_page_routing_callbacks,
     register_upload_callbacks,
