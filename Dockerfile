@@ -22,4 +22,4 @@ RUN mkdir -p /app/uploads
 
 EXPOSE 8000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "src.vitalDSP_webapp.run_webapp:app"]
+CMD exec gunicorn --bind 0.0.0.0:${PORT:-8000} src.vitalDSP_webapp.run_webapp:app

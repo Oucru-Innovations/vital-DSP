@@ -11,8 +11,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc g++ curl && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/requirements.txt
+COPY src/vitalDSP_webapp/requirements.txt /app/webapp_requirements.txt
 RUN pip install --no-cache-dir -U pip \
- && pip install --no-cache-dir -r /app/requirements.txt
+ && pip install --no-cache-dir -r /app/requirements.txt \
+ && pip install --no-cache-dir -r /app/webapp_requirements.txt
 
 COPY . /app
 RUN mkdir -p /app/uploads
@@ -24,5 +26,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
 
-# Run the application directly with Python
-CMD ["python", "src/vitalDSP_webapp/run_webapp.py"]
+# Run the application with gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "src.vitalDSP_webapp.run_webapp:app"]

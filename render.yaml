@@ -4,7 +4,6 @@ services:
     env: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    dockerCommand: gunicorn --bind 0.0.0.0:${PORT} src.vitalDSP_webapp.run_webapp:app
     healthCheckPath: /api/health
     envVars:
       - key: PYTHONPATH
