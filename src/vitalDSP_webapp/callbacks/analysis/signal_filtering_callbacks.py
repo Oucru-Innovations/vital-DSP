@@ -341,9 +341,33 @@ def register_signal_filtering_callbacks(app):
             logger.info(
                 f"Signal column data sample: {df[signal_column].head(10).values}"
             )
-            logger.info(
-                f"Signal column data info: min={df[signal_column].min()}, max={df[signal_column].max()}, mean={df[signal_column].mean():.4f}"
-            )
+
+            # Check if signal column contains numeric data
+            try:
+                signal_data_numeric = pd.to_numeric(df[signal_column], errors="coerce")
+                if signal_data_numeric.isna().any():
+                    logger.warning(
+                        "Signal column contains non-numeric data. Converting to numeric with coercion."
+                    )
+                    df[signal_column] = signal_data_numeric
+
+                logger.info(
+                    f"Signal column data info: min={df[signal_column].min()}, max={df[signal_column].max()}, mean={df[signal_column].mean():.4f}"
+                )
+            except Exception as e:
+                logger.error(f"Error processing signal column data: {e}")
+                logger.info(f"Signal column data type: {df[signal_column].dtype}")
+                logger.info(
+                    f"Signal column data sample: {df[signal_column].head(5).tolist()}"
+                )
+                return (
+                    create_empty_figure(),
+                    create_empty_figure(),
+                    create_empty_figure(),
+                    "Error: Signal column contains non-numeric data that cannot be processed",
+                    create_empty_figure(),
+                    None,
+                )
 
             # Initialize start_idx and end_idx
             start_idx = 0
@@ -354,14 +378,65 @@ def register_signal_filtering_callbacks(app):
                 # Use actual time column if available
                 time_data = df[time_column].values
                 logger.info(f"Using actual time column: {time_column}")
-                logger.info(
-                    f"Full time data range: {np.min(time_data):.4f} to {np.max(time_data):.4f}"
-                )
-                logger.info(f"Time column data sample: {time_data[:10]}")
-                logger.info(f"Time column data type: {type(time_data[0])}")
-                logger.info(
-                    f"Time column data info: min={np.min(time_data):.4f}, max={np.max(time_data):.4f}, mean={np.mean(time_data):.4f}"
-                )
+
+                # Check if time column contains datetime data
+                try:
+                    # First try to convert to datetime if it's not already
+                    if not pd.api.types.is_datetime64_any_dtype(df[time_column]):
+                        logger.info("Converting time column to datetime")
+                        df[time_column] = pd.to_datetime(
+                            df[time_column], errors="coerce"
+                        )
+
+                    # Convert datetime to numeric (seconds since first timestamp)
+                    if pd.api.types.is_datetime64_any_dtype(df[time_column]):
+                        logger.info("Converting datetime to numeric seconds")
+                        first_timestamp = df[time_column].iloc[0]
+                        time_data = (
+                            (df[time_column] - first_timestamp)
+                            .dt.total_seconds()
+                            .values
+                        )
+                        logger.info(f"First timestamp: {first_timestamp}")
+                        logger.info(
+                            "Time data converted to seconds from first timestamp"
+                        )
+                        logger.info(f"Converted time data sample: {time_data[:5]}")
+                        logger.info(
+                            f"Converted time data range: {np.min(time_data):.4f} to {np.max(time_data):.4f}"
+                        )
+                    else:
+                        # Try numeric conversion
+                        time_data_numeric = pd.to_numeric(time_data, errors="coerce")
+                        if np.isnan(time_data_numeric).any():
+                            logger.warning(
+                                "Time column contains non-numeric data. Converting to numeric with coercion."
+                            )
+                            time_data = time_data_numeric
+
+                    logger.info(
+                        f"Full time data range: {np.min(time_data):.4f} to {np.max(time_data):.4f}"
+                    )
+                    logger.info(f"Time column data sample: {time_data[:10]}")
+                    logger.info(f"Time column data type: {type(time_data[0])}")
+                    logger.info(
+                        f"Time column data info: min={np.min(time_data):.4f}, max={np.max(time_data):.4f}, mean={np.mean(time_data):.4f}"
+                    )
+                except Exception as e:
+                    logger.error(f"Error processing time column data: {e}")
+                    logger.info(f"Time column data type: {type(time_data[0])}")
+                    logger.info(f"Time column data sample: {time_data[:5].tolist()}")
+                    # Fall back to index-based time axis
+                    time_column = None
+                    logger.info(
+                        "Falling back to index-based time axis due to non-numeric time data"
+                    )
+                    # Generate time axis based on sampling frequency
+                    sampling_freq = data_info.get("sampling_frequency", 1000)
+                    time_data = np.arange(len(df)) / sampling_freq
+                    logger.info(
+                        f"Generated index-based time axis: {np.min(time_data):.4f} to {np.max(time_data):.4f} seconds"
+                    )
 
                 # Find indices for the selected time range
                 if effective_start_time is not None and effective_end_time is not None:
@@ -471,18 +546,11 @@ def register_signal_filtering_callbacks(app):
                 signal_data = df[signal_column].iloc[start_idx:end_idx].values
 
                 # Generate time axis in seconds
-                if np.max(time_data) > 1000:  # Likely milliseconds
-                    time_axis = (
-                        time_data[start_idx:end_idx] / 1000.0
-                    )  # Convert to seconds
-                    logger.info(
-                        f"Time axis converted from milliseconds to seconds: {np.min(time_axis):.4f} to {np.max(time_axis):.4f}"
-                    )
-                else:
-                    time_axis = time_data[start_idx:end_idx]  # Already in seconds
-                    logger.info(
-                        f"Time axis in seconds: {np.min(time_axis):.4f} to {np.max(time_axis):.4f}"
-                    )
+                # Use the converted time_data (already in seconds from datetime conversion)
+                time_axis = time_data[start_idx:end_idx]
+                logger.info(
+                    f"Time axis in seconds: {np.min(time_axis):.4f} to {np.max(time_axis):.4f}"
+                )
 
             else:
                 # Generate time axis based on sampling frequency
@@ -514,6 +582,41 @@ def register_signal_filtering_callbacks(app):
                 # Extract data for the selected range
                 signal_data = df[signal_column].iloc[start_idx:end_idx].values
                 time_axis = np.arange(start_idx, end_idx) / sampling_freq
+
+            # Ensure signal data is numeric
+            try:
+                signal_data = pd.to_numeric(signal_data, errors="coerce")
+                if np.isnan(signal_data).any():
+                    logger.warning(
+                        "Signal data contains non-numeric values. Converting with coercion."
+                    )
+                    # Remove NaN values
+                    valid_mask = ~np.isnan(signal_data)
+                    signal_data = signal_data[valid_mask]
+                    time_axis = time_axis[valid_mask]
+                    logger.info(
+                        f"Removed {np.sum(~valid_mask)} non-numeric values from signal data"
+                    )
+            except Exception as e:
+                logger.error(f"Error converting signal data to numeric: {e}")
+                return (
+                    create_empty_figure(),
+                    create_empty_figure(),
+                    create_empty_figure(),
+                    "Error: Signal data contains non-numeric values that cannot be processed",
+                    create_empty_figure(),
+                    None,
+                )
+
+            # Ensure time axis is valid for plotting
+            if np.isnan(time_axis).any() or np.isinf(time_axis).any():
+                logger.warning(
+                    "Time axis contains invalid values (NaN or Inf). Generating index-based time axis."
+                )
+                time_axis = np.arange(len(signal_data)) / sampling_freq
+                logger.info(
+                    f"Generated index-based time axis: {np.min(time_axis):.4f} to {np.max(time_axis):.4f} seconds"
+                )
 
             logger.info(f"Signal data shape: {signal_data.shape}")
             logger.info(
@@ -836,7 +939,16 @@ def register_signal_filtering_callbacks(app):
 
         except Exception as e:
             logger.error(f"Error in advanced filtering callback: {e}")
-            error_msg = f"Error during filtering: {str(e)}"
+            import traceback
+
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+
+            # Handle string formatting errors specifically
+            if "format code" in str(e) and "object of type 'str'" in str(e):
+                error_msg = "Error: Data contains non-numeric values that cannot be processed. Please check your data format."
+            else:
+                error_msg = f"Error during filtering: {str(e)}"
+
             return (
                 create_empty_figure(),
                 create_empty_figure(),

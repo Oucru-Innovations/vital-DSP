@@ -1049,8 +1049,15 @@ def register_physiological_callbacks(app):
                 time_range = time_data[-1] - time_data[0]
                 logger.info(f"Full time range: {time_range}")
 
-                # If time data appears to be in milliseconds, convert to seconds for analysis
-                if time_range > 1000:  # Likely milliseconds
+                # Handle datetime data conversion
+                if pd.api.types.is_datetime64_any_dtype(df[time_col]):
+                    logger.info("Converting datetime time data to numeric seconds")
+                    first_timestamp = df[time_col].iloc[0]
+                    time_data_seconds = (
+                        (df[time_col] - first_timestamp).dt.total_seconds().values
+                    )
+                    logger.info("Time data converted to seconds from first timestamp")
+                elif time_range > 1000:  # Likely milliseconds
                     logger.info(
                         "Time data appears to be in milliseconds, converting to seconds"
                     )
@@ -1065,7 +1072,9 @@ def register_physiological_callbacks(app):
                             f"Adjusted time window to: {start_time} - {end_time} seconds"
                         )
                 else:
+                    # Time data is already in seconds
                     time_data_seconds = time_data
+                    logger.info("Time data is already in seconds")
 
                 # Apply time window
                 start_idx = np.searchsorted(time_data_seconds, start_time)
@@ -1264,7 +1273,7 @@ def register_physiological_callbacks(app):
 
             # Create analysis plots
             analysis_fig = create_physiological_analysis_plots(
-                time_data,
+                time_data_seconds,
                 signal_data,
                 signal_type,
                 sampling_freq,

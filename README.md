@@ -14,12 +14,25 @@ A comprehensive toolkit for Digital Signal Processing (DSP) in healthcare applic
 ![PyPI Downloads](https://img.shields.io/pypi/dm/vitalDSP)
 [![PyPI version](https://badge.fury.io/py/vitalDSP.svg)](https://badge.fury.io/py/vitalDSP)
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Oucru-Innovations/vital-DSP/blob/main/docs/source/notebooks/synthesize_data.ipynb)
+[![Deploy on Render](https://img.shields.io/badge/Deploy%20on-Render-46E3B7?style=flat&logo=render)](https://vital-dsp-1.onrender.com/)
 
 <!-- [![Coverage Status](https://coveralls.io/repos/github/Oucru-Innovations/vital-DSP/badge.svg?branch=main)](https://coveralls.io/github/Oucru-Innovations/vital-DSP?branch=main) -->
 <!-- [![codecov](https://codecov.io/gh/Oucru-Innovations/vital-DSP/branch/main/graph/badge.svg)](https://codecov.io/gh/Oucru-Innovations/vital-DSP) -->
 
 
 This repository contains a comprehensive toolkit for Digital Signal Processing (DSP) in healthcare applications. It includes traditional DSP methods as well as advanced machine learning (ML) and deep learning (DL) inspired techniques. The toolkit is designed to process a wide range of physiological signals, such as ECG, EEG, PPG, and respiratory signals, with applications in monitoring, anomaly detection, and signal quality assessment.
+
+## 🌐 Web Application
+
+Try the vital-DSP toolkit directly in your browser! We've deployed a web interface that allows you to explore the toolkit's capabilities without any local installation.
+
+**🔗 [Launch Web Application](https://vital-dsp-1.onrender.com/)**
+
+> **⚠️ Important Note:** This web application is hosted on Render's free tier, which has some limitations:
+> - The application may take a few seconds to start up (cold start)
+> - It spins down after 15 minutes of inactivity to save resources
+> - Please use only the provided sample datasets for testing
+> - For production use or large datasets, consider running the toolkit locally
 
 ## Features
 - **Filtering**: Traditional filters (e.g., moving average, Gaussian, Butterworth) and advanced ML-inspired filters.
