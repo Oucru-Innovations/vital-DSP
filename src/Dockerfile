@@ -3,7 +3,7 @@ FROM python:3.10-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH=/app:/app/vitalDSP
+    PYTHONPATH=/app:/app/src:/app/src/vitalDSP_webapp
 
 WORKDIR /app
 
