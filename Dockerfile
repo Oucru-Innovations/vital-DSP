@@ -22,4 +22,4 @@ RUN mkdir -p /app/uploads
 
 EXPOSE 8000
 
-CMD exec gunicorn --bind 0.0.0.0:${PORT:-8000} src.vitalDSP_webapp.run_webapp:app
+CMD exec gunicorn -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} -w 1 --timeout 120 --access-logfile - --error-logfile - --log-level debug src.vitalDSP_webapp.run_webapp:app
