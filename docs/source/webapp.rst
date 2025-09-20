@@ -32,15 +32,51 @@ The application will be available at `http://localhost:8050` by default.
 Main Features
 =============
 
+The VitalDSP web application provides a comprehensive, user-friendly interface for physiological signal analysis. The application is organized into several specialized screens, each designed for specific aspects of signal processing and analysis.
+
+Application Screens Overview
+----------------------------
+
+The web application consists of the following main screens:
+
+1. **Upload Screen**: Data upload and initial configuration
+2. **Filtering Screen**: Signal preprocessing and filtering
+3. **Time Domain Analysis**: Temporal signal analysis and visualization
+4. **Frequency Domain Analysis**: Spectral analysis and frequency features
+5. **Physiological Analysis**: Comprehensive physiological feature extraction
+6. **Respiratory Analysis**: Respiratory rate estimation and breathing pattern analysis
+7. **Advanced Features**: Machine learning and advanced signal processing
+
 Signal Upload and Management
 ----------------------------
 
-The web application supports various data formats for signal upload:
+The upload screen is the entry point for all signal processing workflows. It provides comprehensive data management capabilities:
 
-* **CSV Files**: Comma-separated values with time and signal columns
-* **Excel Files**: Multiple sheets and data ranges
-* **JSON Files**: Structured data with metadata
-* **Real-time Data**: Live streaming from connected devices
+**Supported Data Formats**
+    * **CSV Files**: Comma-separated values with time and signal columns
+    * **Excel Files**: Multiple sheets and data ranges
+    * **JSON Files**: Structured data with metadata
+    * **Real-time Data**: Live streaming from connected devices
+
+**Automatic Signal Type Detection**
+    The application automatically detects signal types based on:
+    * Column names (e.g., "ecg", "ppg", "pleth")
+    * Signal characteristics and frequency content
+    * Data patterns and morphology
+
+**Column Mapping**
+    Intelligent column detection and mapping:
+    * **Time Column**: Automatically identifies time/timestamp columns
+    * **Signal Column**: Detects signal data columns (ECG, PPG, etc.)
+    * **Multi-Channel Support**: Handles RED/IR channels for pulse oximetry
+    * **Custom Mapping**: Manual override for complex data structures
+
+**Data Validation**
+    Comprehensive data validation including:
+    * Format verification and error checking
+    * Sampling frequency validation
+    * Data quality assessment
+    * Missing value detection and handling
 
 .. code-block:: python
 
@@ -131,10 +167,132 @@ The web application provides rich, interactive visualizations with enhanced feat
 * **Filter Information Display**: Clear presentation of applied filter parameters
 * **Quality Metrics Visualization**: Interactive display of signal quality indicators
 
+Detailed Screen Descriptions
+============================
+
+Filtering Screen
+----------------
+
+The filtering screen is the central hub for signal preprocessing and enhancement. It provides comprehensive filtering capabilities with automatic signal type detection and intelligent defaults.
+
+**Key Features**
+    * **Multi-Type Filtering**: Traditional, advanced, artifact removal, neural network, and ensemble filtering
+    * **Automatic Signal Type Detection**: Automatically detects ECG, PPG, or other signal types
+    * **Smart Defaults**: ECG signals default to Advanced Filters with convolution method
+    * **Real-Time Preview**: Live preview of filtered results
+    * **Quality Metrics**: Built-in signal quality assessment
+
+**Filter Types Available**
+    * **Traditional Filters**: Butterworth, Chebyshev, Elliptic, and Bessel filters
+    * **Advanced Filters**: Kalman, adaptive, and machine learning-based filtering
+    * **Artifact Removal**: Motion artifacts, powerline interference, and baseline wander
+    * **Neural Network Filters**: Deep learning-based artifact removal
+    * **Ensemble Methods**: Combination of multiple filtering approaches
+
+**Usage Instructions**
+    1. Upload your signal data on the Upload screen
+    2. Navigate to the Filtering screen
+    3. The signal type will be automatically detected and appropriate defaults set
+    4. Select your desired filter type and configure parameters
+    5. Apply filtering and review results
+    6. Filtered data is automatically available for analysis screens
+
+**Clinical Applications**
+    * **ECG Processing**: Removal of powerline interference, muscle artifacts, and baseline wander
+    * **PPG Enhancement**: Filtering of motion artifacts and ambient light interference
+    * **Real-Time Monitoring**: Live filtering for clinical monitoring applications
+
+Physiological Analysis Screen
+-----------------------------
+
+The physiological analysis screen provides comprehensive feature extraction and analysis for physiological signals, with automatic signal type detection and clinical interpretation.
+
+**Key Features**
+    * **Comprehensive HRV Analysis**: 50+ heart rate variability metrics
+    * **Morphological Analysis**: Waveform shape and structure analysis
+    * **Quality Assessment**: Signal quality metrics and validation
+    * **Clinical Interpretation**: Built-in clinical significance assessment
+    * **Multi-Signal Support**: ECG, PPG, and other physiological signals
+
+**Analysis Categories**
+    * **HRV Analysis**: Time-domain, frequency-domain, and nonlinear HRV metrics
+    * **Morphological Features**: Peak detection, duration analysis, and waveform characteristics
+    * **Quality Metrics**: Signal-to-noise ratio, stability, and artifact detection
+    * **Advanced Features**: Cross-signal analysis and complexity measures
+
+**Clinical Applications**
+    * **Cardiovascular Health**: Assessment of heart function and vascular compliance
+    * **Stress and Infection Detection**: Early identification of physiological stress
+    * **Disease Progression**: Monitoring of chronic conditions and treatment response
+    * **Sleep and Respiratory Health**: Analysis of breathing patterns and sleep quality
+
+**Usage Instructions**
+    1. Ensure signal data is uploaded and filtered
+    2. Navigate to the Physiological Analysis screen
+    3. Signal type is automatically detected and appropriate analysis configured
+    4. Select analysis categories and parameters
+    5. Review comprehensive analysis results with clinical interpretation
+
+Frequency Domain Analysis Screen
+--------------------------------
+
+The frequency domain analysis screen provides spectral analysis and frequency-based feature extraction with support for both original and filtered signals.
+
+**Key Features**
+    * **Spectral Analysis**: FFT, PSD, and spectrogram analysis
+    * **Frequency Features**: Power spectral density and frequency domain metrics
+    * **Multi-Signal Support**: Analysis of original or filtered signals
+    * **Interactive Visualization**: Zoom, pan, and export capabilities
+    * **Clinical Interpretation**: Frequency-based health indicators
+
+**Analysis Types**
+    * **FFT Analysis**: Fast Fourier Transform with configurable parameters
+    * **Power Spectral Density**: Welch's method and other PSD techniques
+    * **Spectrogram**: Time-frequency analysis using STFT
+    * **Wavelet Analysis**: Continuous and discrete wavelet transforms
+
+**Usage Instructions**
+    1. Upload and optionally filter your signal data
+    2. Navigate to the Frequency Domain Analysis screen
+    3. Select signal source (original or filtered)
+    4. Configure analysis parameters (window type, overlap, etc.)
+    5. Review spectral analysis results and frequency features
+
+Respiratory Analysis Screen
+---------------------------
+
+The respiratory analysis screen specializes in respiratory rate estimation and breathing pattern analysis using multiple estimation methods.
+
+**Key Features**
+    * **Multi-Modal Estimation**: Peak detection, FFT-based, and ensemble methods
+    * **Breathing Pattern Analysis**: Detection of apnea, hypopnea, and irregular patterns
+    * **Real-Time Processing**: Live respiratory rate monitoring
+    * **Clinical Validation**: Methods validated on clinical datasets
+    * **Signal-Specific Optimization**: Optimized for ECG, PPG, and respiratory signals
+
+**Estimation Methods**
+    * **Peak Detection**: Time-domain peak detection for respiratory cycles
+    * **FFT-Based**: Frequency domain analysis of respiratory patterns
+    * **Ensemble Methods**: Combination of multiple estimation approaches
+    * **Machine Learning**: Advanced algorithms for complex breathing patterns
+
+**Clinical Applications**
+    * **Sleep Apnea Detection**: Identification of breathing irregularities during sleep
+    * **ICU Monitoring**: Real-time respiratory rate monitoring in critical care
+    * **COVID-19 Assessment**: Respiratory pattern analysis for infection monitoring
+    * **Chronic Disease Management**: Long-term respiratory health monitoring
+
+**Usage Instructions**
+    1. Upload signal data (ECG, PPG, or respiratory signals)
+    2. Navigate to the Respiratory Analysis screen
+    3. Signal type is automatically detected
+    4. Select estimation methods and configure parameters
+    5. Review respiratory rate estimates and breathing pattern analysis
+
 Updated Workflow
 ================
 
-The web application now follows an improved workflow that separates filtering from analysis:
+The web application follows an improved workflow that separates filtering from analysis:
 
 Signal Upload and Processing
 ----------------------------

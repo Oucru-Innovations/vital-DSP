@@ -33,6 +33,11 @@ Try the vital-DSP toolkit directly in your browser! We've deployed a web interfa
 > - It spins down after 15 minutes of inactivity to save resources
 > - Please use only the provided sample datasets for testing
 > - For production use or large datasets, consider running the toolkit locally
+> 
+> **📁 Sample Data:** Use the sample datasets available in the repository:
+> - **ECG Data**: `sample_data/ECG/` - Contains sample electrocardiogram signals
+> - **PPG Data**: `sample_data/PPG/` - Contains sample photoplethysmography signals
+> - These sample files are optimized for the web application's free tier limitations
 
 ## Features
 - **Filtering**: Traditional filters (e.g., moving average, Gaussian, Butterworth) and advanced ML-inspired filters.

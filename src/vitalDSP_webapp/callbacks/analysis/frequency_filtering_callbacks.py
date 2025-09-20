@@ -47,6 +47,48 @@ logger = logging.getLogger(__name__)
 def register_frequency_filtering_callbacks(app):
     """Register all frequency domain analysis and filtering callbacks."""
 
+    # Auto-select signal type based on uploaded data
+    @app.callback(
+        [Output("freq-signal-source-select", "value")],
+        [Input("url", "pathname")],
+        prevent_initial_call=True,
+    )
+    def auto_select_freq_signal_source(pathname):
+        """Auto-select signal source based on uploaded data."""
+        if pathname != "/frequency":
+            raise PreventUpdate
+
+        try:
+            from vitalDSP_webapp.services.data.data_service import get_data_service
+
+            data_service = get_data_service()
+            if not data_service:
+                logger.warning("Data service not available")
+                return ["original"]
+
+            # Get the latest data
+            all_data = data_service.get_all_data()
+            if not all_data:
+                logger.info("No data available, using defaults")
+                return ["original"]
+
+            # Check if filtered data is available
+            latest_data_id = max(
+                all_data.keys(), key=lambda x: int(x.split("_")[1]) if "_" in x else 0
+            )
+            has_filtered = data_service.has_filtered_data(latest_data_id)
+
+            if has_filtered:
+                logger.info("Filtered data available, defaulting to filtered signal")
+                return ["filtered"]
+            else:
+                logger.info("No filtered data available, using original signal")
+                return ["original"]
+
+        except Exception as e:
+            logger.error(f"Error in auto-selection: {e}")
+            return ["original"]
+
     # Frequency Domain Analysis Callback
     @app.callback(
         [

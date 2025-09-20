@@ -502,6 +502,48 @@ def create_signal_comparison_plot(
                     except Exception as e:
                         logger.warning(f"Raw T peak detection failed: {e}")
 
+                    # Q valleys
+                    try:
+                        q_valleys = original_wm.detect_q_valley()
+                        if q_valleys is not None and len(q_valleys) > 0:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time_axis_trimmed[q_valleys],
+                                    y=original_signal_trimmed[q_valleys],
+                                    mode="markers",
+                                    name="Raw Q Valleys",
+                                    marker=dict(
+                                        color="orange", size=6, symbol="triangle-down"
+                                    ),
+                                    hovertemplate="<b>Raw Q Valley:</b> %{y}<extra></extra>",
+                                ),
+                                row=1,
+                                col=1,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Raw Q valley detection failed: {e}")
+
+                    # S valleys
+                    try:
+                        s_valleys = original_wm.detect_s_valley()
+                        if s_valleys is not None and len(s_valleys) > 0:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time_axis_trimmed[s_valleys],
+                                    y=original_signal_trimmed[s_valleys],
+                                    mode="markers",
+                                    name="Raw S Valleys",
+                                    marker=dict(
+                                        color="red", size=6, symbol="triangle-down"
+                                    ),
+                                    hovertemplate="<b>Raw S Valley:</b> %{y}<extra></extra>",
+                                ),
+                                row=1,
+                                col=1,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Raw S valley detection failed: {e}")
+
                 else:
                     # For other signal types, use basic peak detection
                     try:
@@ -656,6 +698,48 @@ def create_signal_comparison_plot(
                             )
                     except Exception as e:
                         logger.warning(f"Filtered T peak detection failed: {e}")
+
+                    # Q valleys
+                    try:
+                        q_valleys = filtered_wm.detect_q_valley()
+                        if q_valleys is not None and len(q_valleys) > 0:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time_axis_trimmed[q_valleys],
+                                    y=filtered_signal_trimmed[q_valleys],
+                                    mode="markers",
+                                    name="Filtered Q Valleys",
+                                    marker=dict(
+                                        color="orange", size=6, symbol="triangle-down"
+                                    ),
+                                    hovertemplate="<b>Filtered Q Valley:</b> %{y}<extra></extra>",
+                                ),
+                                row=2,
+                                col=1,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Filtered Q valley detection failed: {e}")
+
+                    # S valleys
+                    try:
+                        s_valleys = filtered_wm.detect_s_valley()
+                        if s_valleys is not None and len(s_valleys) > 0:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=time_axis_trimmed[s_valleys],
+                                    y=filtered_signal_trimmed[s_valleys],
+                                    mode="markers",
+                                    name="Filtered S Valleys",
+                                    marker=dict(
+                                        color="red", size=6, symbol="triangle-down"
+                                    ),
+                                    hovertemplate="<b>Filtered S Valley:</b> %{y}<extra></extra>",
+                                ),
+                                row=2,
+                                col=1,
+                            )
+                    except Exception as e:
+                        logger.warning(f"Filtered S valley detection failed: {e}")
 
                 else:
                     # For other signal types, use basic peak detection
@@ -857,6 +941,44 @@ def create_time_domain_plot(
                         )
                 except Exception as e:
                     logger.warning(f"T peak detection failed: {e}")
+
+                # Detect and plot Q valleys
+                try:
+                    q_valleys = wm.detect_q_valley()
+                    if q_valleys is not None and len(q_valleys) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[q_valleys],
+                                y=signal_data[q_valleys],
+                                mode="markers",
+                                name="Q Valleys",
+                                marker=dict(
+                                    color="orange", size=6, symbol="triangle-down"
+                                ),
+                                hovertemplate="<b>Q Valley:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Q valley detection failed: {e}")
+
+                # Detect and plot S valleys
+                try:
+                    s_valleys = wm.detect_s_valley()
+                    if s_valleys is not None and len(s_valleys) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[s_valleys],
+                                y=signal_data[s_valleys],
+                                mode="markers",
+                                name="S Valleys",
+                                marker=dict(
+                                    color="red", size=6, symbol="triangle-down"
+                                ),
+                                hovertemplate="<b>S Valley:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"S valley detection failed: {e}")
 
             else:
                 # For other signal types, use basic peak detection

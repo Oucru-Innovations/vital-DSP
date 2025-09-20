@@ -190,6 +190,133 @@ def register_respiratory_callbacks(app):
     # Import vitalDSP modules when callbacks are registered
     _import_vitaldsp_modules()
 
+    # Auto-select signal type based on uploaded data
+    @app.callback(
+        [Output("resp-signal-type", "value")],
+        [Input("url", "pathname")],
+        prevent_initial_call=True,
+    )
+    def auto_select_resp_signal_type(pathname):
+        """Auto-select signal type based on uploaded data."""
+        logger.info("=== AUTO-SELECT RESP SIGNAL TYPE CALLBACK TRIGGERED ===")
+        logger.info(f"Pathname: {pathname}")
+
+        if pathname != "/respiratory":
+            logger.info("Not on respiratory page, preventing update")
+            raise PreventUpdate
+
+        try:
+            from vitalDSP_webapp.services.data.data_service import get_data_service
+
+            data_service = get_data_service()
+            if not data_service:
+                logger.warning("Data service not available")
+                return ["PPG"]
+
+            # Get the latest data
+            all_data = data_service.get_all_data()
+            if not all_data:
+                logger.info("No data available, using defaults")
+                return ["PPG"]
+
+            # Get the most recent data
+            latest_data_id = max(
+                all_data.keys(), key=lambda x: int(x.split("_")[1]) if "_" in x else 0
+            )
+            data_info = data_service.get_data_info(latest_data_id)
+
+            if not data_info:
+                logger.info("No data info available, using defaults")
+                return ["PPG"]
+
+            # Debug: Log the data_info to see what's stored
+            logger.info(
+                f"Resp data info keys: {list(data_info.keys()) if data_info else 'None'}"
+            )
+            logger.info(f"Resp full data info: {data_info}")
+
+            # First, check if signal type is stored in data info
+            stored_signal_type = data_info.get("signal_type", None)
+            logger.info(f"Resp stored signal type: {stored_signal_type}")
+
+            if stored_signal_type and stored_signal_type.lower() != "auto":
+                # Convert stored value to match respiratory screen dropdown format (lowercase)
+                signal_type = stored_signal_type.lower()
+                logger.info(f"Resp using stored signal type: {signal_type}")
+            else:
+                # Auto-detect signal type based on data characteristics
+                signal_type = "ppg"  # Default (lowercase for respiratory screen)
+                logger.info("Resp auto-detecting signal type from data characteristics")
+
+            # Try to detect signal type from column names or data characteristics if not stored
+            if (
+                stored_signal_type
+                and stored_signal_type.lower() == "auto"
+                or not stored_signal_type
+            ):
+                df = data_service.get_data(latest_data_id)
+                if df is not None and not df.empty:
+                    column_mapping = data_service.get_column_mapping(latest_data_id)
+                    signal_column = column_mapping.get("signal", "")
+
+                    # Check column names for signal type hints
+                    if any(
+                        keyword in signal_column.lower()
+                        for keyword in ["ecg", "electrocardio"]
+                    ):
+                        signal_type = "ECG"
+                        logger.info("Auto-detected ECG signal type from column name")
+                    elif any(
+                        keyword in signal_column.lower()
+                        for keyword in ["ppg", "pleth", "photopleth"]
+                    ):
+                        signal_type = "PPG"
+                        logger.info("Auto-detected PPG signal type from column name")
+                    else:
+                        # Try to detect from data characteristics
+                        try:
+                            signal_data = (
+                                df[signal_column].values
+                                if signal_column
+                                else df.iloc[:, 1].values
+                            )
+                            sampling_freq = data_info.get("sampling_freq", 1000)
+
+                            # Simple heuristic: ECG typically has higher frequency content
+                            from scipy import signal
+
+                            f, psd = signal.welch(
+                                signal_data,
+                                fs=sampling_freq,
+                                nperseg=min(1024, len(signal_data) // 4),
+                            )
+                            dominant_freq = f[np.argmax(psd)]
+
+                            if (
+                                dominant_freq > 1.0
+                            ):  # Higher frequency content suggests ECG
+                                signal_type = "ECG"
+                                logger.info(
+                                    "Auto-detected ECG signal type from frequency analysis"
+                                )
+                            else:
+                                signal_type = "PPG"
+                                logger.info(
+                                    "Auto-detected PPG signal type from frequency analysis"
+                                )
+                        except Exception as e:
+                            logger.warning(
+                                f"Could not analyze signal characteristics: {e}"
+                            )
+                            signal_type = "PPG"
+
+            logger.info(f"Auto-selected respiratory signal type: {signal_type}")
+            return [signal_type]
+
+        except Exception as e:
+            logger.error(f"Error in auto-selection: {e}")
+            return ["PPG"]
+
     @app.callback(
         Output("resp-ensemble-options", "style"),
         Input("resp-estimation-methods", "value"),

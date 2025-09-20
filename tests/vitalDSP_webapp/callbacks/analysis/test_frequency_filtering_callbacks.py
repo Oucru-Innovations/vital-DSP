@@ -133,9 +133,9 @@ class TestFrequencyFilteringCallbacks:
         self.mock_app.callback = mock_callback
         register_frequency_filtering_callbacks(self.mock_app)
         
-        # Check the first callback (main frequency analysis callback)
-        if captured_callbacks:
-            args, kwargs, func = captured_callbacks[0]
+        # Check the main frequency analysis callback (second callback, after auto-selection)
+        if len(captured_callbacks) >= 2:
+            args, kwargs, func = captured_callbacks[1]  # Main frequency callback
             outputs = args[0] if args else []
             
             # The main frequency callback should have multiple outputs
@@ -153,9 +153,9 @@ class TestFrequencyFilteringCallbacks:
         self.mock_app.callback = mock_callback
         register_frequency_filtering_callbacks(self.mock_app)
         
-        # Check the first callback (main frequency analysis callback)
-        if captured_callbacks:
-            args, kwargs, func = captured_callbacks[0]
+        # Check the main frequency analysis callback (second callback, after auto-selection)
+        if len(captured_callbacks) >= 2:
+            args, kwargs, func = captured_callbacks[1]  # Main frequency callback
             inputs = args[1] if len(args) > 1 else []
             
             # The main frequency callback should have multiple inputs

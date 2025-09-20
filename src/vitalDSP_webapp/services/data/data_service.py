@@ -96,6 +96,7 @@ class DataService:
             logger.info(f"Data shape: {df.shape}")
             logger.info(f"Data columns: {list(df.columns)}")
             logger.info(f"Data info: {info}")
+            logger.info(f"Signal type in info: {info.get('signal_type', 'NOT FOUND')}")
 
             self._data_store[data_id] = {
                 "data": df,
@@ -210,7 +211,15 @@ class DataService:
     def get_data_info(self, data_id: str) -> Optional[Dict[str, Any]]:
         """Get data info by ID."""
         if data_id in self._data_store:
-            return self._data_store[data_id]["info"]
+            info = self._data_store[data_id]["info"]
+            logger.info("=== RETRIEVING DATA INFO ===")
+            logger.info(f"Data ID: {data_id}")
+            logger.info(f"Info keys: {list(info.keys()) if info else 'None'}")
+            logger.info(
+                f"Signal type in retrieved info: {info.get('signal_type', 'NOT FOUND')}"
+            )
+            return info
+        logger.warning(f"Data ID {data_id} not found in data store")
         return None
 
     def get_current_data(self) -> Optional[pd.DataFrame]:

@@ -94,6 +94,7 @@ def register_upload_callbacks(app):
             State("file-path-input", "value"),
             State("sampling-freq", "value"),
             State("time-unit", "value"),
+            State("data-type", "value"),
         ],
         prevent_initial_call="initial_duplicate",
     )
@@ -105,6 +106,7 @@ def register_upload_callbacks(app):
         file_path,
         sampling_freq,
         time_unit,
+        data_type,
     ):
         """Handle all types of data uploads"""
         ctx = callback_context
@@ -206,6 +208,15 @@ def register_upload_callbacks(app):
             data_info = DataProcessor.process_uploaded_data(
                 df, filename, sampling_freq, time_unit
             )
+
+            # Add data type to the data info
+            logger.info(f"Data type from upload: {data_type}")
+            if data_type and data_type != "auto":
+                data_info["signal_type"] = data_type.upper()
+                logger.info(f"Set signal_type to: {data_info['signal_type']}")
+            else:
+                data_info["signal_type"] = "AUTO"
+                logger.info(f"Set signal_type to: {data_info['signal_type']}")
 
             # Store data temporarily (will be processed after column mapping)
             data_service = get_data_service()
@@ -510,7 +521,10 @@ def register_upload_callbacks(app):
                 "waveform": waveform_col,
             }
 
+            # Debug: Log the data_config before and after
+            logger.info(f"Data config before column mapping: {data_config}")
             data_config["column_mapping"] = column_mapping
+            logger.info(f"Data config after column mapping: {data_config}")
 
             # Store the final processed data
             data_service = get_data_service()

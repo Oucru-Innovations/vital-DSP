@@ -20,6 +20,155 @@ logger = logging.getLogger(__name__)
 def register_signal_filtering_callbacks(app):
     """Register all signal filtering callbacks."""
 
+    # Auto-select signal type and set defaults based on uploaded data
+    @app.callback(
+        [
+            Output("filter-signal-type-select", "value"),
+            Output("filter-type-select", "value"),
+            Output("advanced-filter-method", "value"),
+        ],
+        [Input("url", "pathname")],
+        prevent_initial_call=True,
+    )
+    def auto_select_signal_type_and_defaults(pathname):
+        """Auto-select signal type and set appropriate defaults based on uploaded data."""
+        logger.info("=== AUTO-SELECT SIGNAL TYPE CALLBACK TRIGGERED ===")
+        logger.info(f"Pathname: {pathname}")
+
+        if pathname != "/filtering":
+            logger.info("Not on filtering page, preventing update")
+            raise PreventUpdate
+
+        try:
+            from vitalDSP_webapp.services.data.data_service import get_data_service
+
+            data_service = get_data_service()
+            if not data_service:
+                logger.warning("Data service not available")
+                return "PPG", "traditional", "convolution"
+
+            # Get the latest data
+            all_data = data_service.get_all_data()
+            if not all_data:
+                logger.info("No data available, using defaults")
+                return "PPG", "traditional", "convolution"
+
+            # Get the most recent data
+            latest_data_id = max(
+                all_data.keys(), key=lambda x: int(x.split("_")[1]) if "_" in x else 0
+            )
+            data_info = data_service.get_data_info(latest_data_id)
+
+            if not data_info:
+                logger.info("No data info available, using defaults")
+                return "PPG", "traditional", "convolution"
+
+            # Debug: Log the data_info to see what's stored
+            logger.info(
+                f"Data info keys: {list(data_info.keys()) if data_info else 'None'}"
+            )
+            logger.info(f"Full data info: {data_info}")
+
+            # First, check if signal type is stored in data info
+            stored_signal_type = data_info.get("signal_type", None)
+            logger.info(f"Stored signal type: {stored_signal_type}")
+
+            if stored_signal_type and stored_signal_type.lower() != "auto":
+                # Convert stored value to match filtering screen dropdown format
+                if stored_signal_type.lower() == "ecg":
+                    signal_type = "ECG"
+                elif stored_signal_type.lower() == "ppg":
+                    signal_type = "PPG"
+                elif stored_signal_type.lower() == "other":
+                    signal_type = "Other"
+                else:
+                    signal_type = stored_signal_type.upper()
+                logger.info(f"Using stored signal type: {signal_type}")
+            else:
+                # Auto-detect signal type based on data characteristics
+                signal_type = "PPG"  # Default
+                logger.info("Auto-detecting signal type from data characteristics")
+
+            filter_type = "traditional"  # Default
+            advanced_method = "convolution"  # Default
+
+            # Try to detect signal type from column names or data characteristics if not stored
+            if (
+                stored_signal_type
+                and stored_signal_type.lower() == "auto"
+                or not stored_signal_type
+            ):
+                df = data_service.get_data(latest_data_id)
+                if df is not None and not df.empty:
+                    column_mapping = data_service.get_column_mapping(latest_data_id)
+                    signal_column = column_mapping.get("signal", "")
+
+                    # Check column names for signal type hints
+                    if any(
+                        keyword in signal_column.lower()
+                        for keyword in ["ecg", "electrocardio"]
+                    ):
+                        signal_type = "ECG"
+                        filter_type = "advanced"  # Set ECG default to advanced filters
+                        advanced_method = (
+                            "convolution"  # Set convolution as default method
+                        )
+                        logger.info("Auto-detected ECG signal type from column name")
+                    elif any(
+                        keyword in signal_column.lower()
+                        for keyword in ["ppg", "pleth", "photopleth"]
+                    ):
+                        signal_type = "PPG"
+                        logger.info("Auto-detected PPG signal type from column name")
+                    else:
+                        # Try to detect from data characteristics
+                        try:
+                            signal_data = (
+                                df[signal_column].values
+                                if signal_column
+                                else df.iloc[:, 1].values
+                            )
+                            sampling_freq = data_info.get("sampling_freq", 1000)
+
+                            # Simple heuristic: ECG typically has higher frequency content
+                            from scipy import signal
+
+                            f, psd = signal.welch(
+                                signal_data,
+                                fs=sampling_freq,
+                                nperseg=min(1024, len(signal_data) // 4),
+                            )
+                            dominant_freq = f[np.argmax(psd)]
+
+                            if (
+                                dominant_freq > 1.0
+                            ):  # Higher frequency content suggests ECG
+                                signal_type = "ECG"
+                                filter_type = "advanced"
+                                advanced_method = "convolution"
+                                logger.info(
+                                    "Auto-detected ECG signal type from frequency analysis"
+                                )
+                            else:
+                                signal_type = "PPG"
+                                logger.info(
+                                    "Auto-detected PPG signal type from frequency analysis"
+                                )
+                        except Exception as e:
+                            logger.warning(
+                                f"Could not analyze signal characteristics: {e}"
+                            )
+                            signal_type = "PPG"
+
+            logger.info(
+                f"Auto-selected signal type: {signal_type}, filter type: {filter_type}, method: {advanced_method}"
+            )
+            return signal_type, filter_type, advanced_method
+
+        except Exception as e:
+            logger.error(f"Error in auto-selection: {e}")
+            return "PPG", "traditional", "convolution"
+
     # Filter Type Selection Callback
     @app.callback(
         [
@@ -1633,6 +1782,44 @@ def create_filter_comparison_plot(
                 except Exception as e:
                     logger.warning(f"Original T peak detection failed: {e}")
 
+                # Detect and plot Q valleys for original signal
+                try:
+                    q_valleys_orig = wm_orig.detect_q_valley()
+                    if q_valleys_orig is not None and len(q_valleys_orig) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[q_valleys_orig],
+                                y=original_signal[q_valleys_orig],
+                                mode="markers",
+                                name="Q Valleys (Original)",
+                                marker=dict(
+                                    color="darkorange", size=6, symbol="triangle-down"
+                                ),
+                                hovertemplate="<b>Original Q Valley:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Original Q valley detection failed: {e}")
+
+                # Detect and plot S valleys for original signal
+                try:
+                    s_valleys_orig = wm_orig.detect_s_valley()
+                    if s_valleys_orig is not None and len(s_valleys_orig) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[s_valleys_orig],
+                                y=original_signal[s_valleys_orig],
+                                mode="markers",
+                                name="S Valleys (Original)",
+                                marker=dict(
+                                    color="darkred", size=6, symbol="triangle-down"
+                                ),
+                                hovertemplate="<b>Original S Valley:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Original S valley detection failed: {e}")
+
                 # Detect and plot critical points for filtered signal
                 if hasattr(wm_filt, "r_peaks") and wm_filt.r_peaks is not None:
                     fig.add_trace(
@@ -1679,6 +1866,44 @@ def create_filter_comparison_plot(
                         )
                 except Exception as e:
                     logger.warning(f"Filtered T peak detection failed: {e}")
+
+                # Detect and plot Q valleys for filtered signal
+                try:
+                    q_valleys_filt = wm_filt.detect_q_valley()
+                    if q_valleys_filt is not None and len(q_valleys_filt) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[q_valleys_filt],
+                                y=filtered_signal[q_valleys_filt],
+                                mode="markers",
+                                name="Q Valleys (Filtered)",
+                                marker=dict(
+                                    color="orange", size=6, symbol="triangle-down"
+                                ),
+                                hovertemplate="<b>Filtered Q Valley:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Filtered Q valley detection failed: {e}")
+
+                # Detect and plot S valleys for filtered signal
+                try:
+                    s_valleys_filt = wm_filt.detect_s_valley()
+                    if s_valleys_filt is not None and len(s_valleys_filt) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_axis[s_valleys_filt],
+                                y=filtered_signal[s_valleys_filt],
+                                mode="markers",
+                                name="S Valleys (Filtered)",
+                                marker=dict(
+                                    color="red", size=6, symbol="triangle-down"
+                                ),
+                                hovertemplate="<b>Filtered S Valley:</b> %{y}<extra></extra>",
+                            )
+                        )
+                except Exception as e:
+                    logger.warning(f"Filtered S valley detection failed: {e}")
 
             else:
                 # For other signal types, use basic peak detection

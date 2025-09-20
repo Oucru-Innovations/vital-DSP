@@ -701,6 +701,135 @@ def register_physiological_callbacks(app):
     # Register additional callbacks for enhanced features
     register_additional_physiological_callbacks(app)
 
+    # Auto-select signal type based on uploaded data
+    @app.callback(
+        [Output("physio-signal-type", "value")],
+        [Input("url", "pathname")],
+        prevent_initial_call=True,
+    )
+    def auto_select_physio_signal_type(pathname):
+        """Auto-select signal type based on uploaded data."""
+        logger.info("=== AUTO-SELECT PHYSIO SIGNAL TYPE CALLBACK TRIGGERED ===")
+        logger.info(f"Pathname: {pathname}")
+
+        if pathname != "/physiological":
+            logger.info("Not on physiological page, preventing update")
+            raise PreventUpdate
+
+        try:
+            from vitalDSP_webapp.services.data.data_service import get_data_service
+
+            data_service = get_data_service()
+            if not data_service:
+                logger.warning("Data service not available")
+                return ["PPG"]
+
+            # Get the latest data
+            all_data = data_service.get_all_data()
+            if not all_data:
+                logger.info("No data available, using defaults")
+                return ["PPG"]
+
+            # Get the most recent data
+            latest_data_id = max(
+                all_data.keys(), key=lambda x: int(x.split("_")[1]) if "_" in x else 0
+            )
+            data_info = data_service.get_data_info(latest_data_id)
+
+            if not data_info:
+                logger.info("No data info available, using defaults")
+                return ["PPG"]
+
+            # Debug: Log the data_info to see what's stored
+            logger.info(
+                f"Physio data info keys: {list(data_info.keys()) if data_info else 'None'}"
+            )
+            logger.info(f"Physio full data info: {data_info}")
+
+            # First, check if signal type is stored in data info
+            stored_signal_type = data_info.get("signal_type", None)
+            logger.info(f"Physio stored signal type: {stored_signal_type}")
+
+            if stored_signal_type and stored_signal_type.lower() != "auto":
+                # Convert stored value to match physiological screen dropdown format (lowercase)
+                signal_type = stored_signal_type.lower()
+                logger.info(f"Physio using stored signal type: {signal_type}")
+            else:
+                # Auto-detect signal type based on data characteristics
+                signal_type = "ppg"  # Default (lowercase for physiological screen)
+                logger.info(
+                    "Physio auto-detecting signal type from data characteristics"
+                )
+
+            # Try to detect signal type from column names or data characteristics if not stored
+            if (
+                stored_signal_type
+                and stored_signal_type.lower() == "auto"
+                or not stored_signal_type
+            ):
+                df = data_service.get_data(latest_data_id)
+                if df is not None and not df.empty:
+                    column_mapping = data_service.get_column_mapping(latest_data_id)
+                    signal_column = column_mapping.get("signal", "")
+
+                    # Check column names for signal type hints
+                    if any(
+                        keyword in signal_column.lower()
+                        for keyword in ["ecg", "electrocardio"]
+                    ):
+                        signal_type = "ECG"
+                        logger.info("Auto-detected ECG signal type from column name")
+                    elif any(
+                        keyword in signal_column.lower()
+                        for keyword in ["ppg", "pleth", "photopleth"]
+                    ):
+                        signal_type = "PPG"
+                        logger.info("Auto-detected PPG signal type from column name")
+                    else:
+                        # Try to detect from data characteristics
+                        try:
+                            signal_data = (
+                                df[signal_column].values
+                                if signal_column
+                                else df.iloc[:, 1].values
+                            )
+                            sampling_freq = data_info.get("sampling_freq", 1000)
+
+                            # Simple heuristic: ECG typically has higher frequency content
+                            from scipy import signal
+
+                            f, psd = signal.welch(
+                                signal_data,
+                                fs=sampling_freq,
+                                nperseg=min(1024, len(signal_data) // 4),
+                            )
+                            dominant_freq = f[np.argmax(psd)]
+
+                            if (
+                                dominant_freq > 1.0
+                            ):  # Higher frequency content suggests ECG
+                                signal_type = "ECG"
+                                logger.info(
+                                    "Auto-detected ECG signal type from frequency analysis"
+                                )
+                            else:
+                                signal_type = "PPG"
+                                logger.info(
+                                    "Auto-detected PPG signal type from frequency analysis"
+                                )
+                        except Exception as e:
+                            logger.warning(
+                                f"Could not analyze signal characteristics: {e}"
+                            )
+                            signal_type = "PPG"
+
+            logger.info(f"Auto-selected physiological signal type: {signal_type}")
+            return [signal_type]
+
+        except Exception as e:
+            logger.error(f"Error in auto-selection: {e}")
+            return ["PPG"]
+
     @app.callback(
         [
             Output("physio-main-signal-plot", "figure"),
@@ -1936,6 +2065,60 @@ def create_physiological_analysis_plots(
                 row=1,
                 col=1,
             )
+
+            # Add ECG-specific trough detection (Q and S valleys) for ECG signals
+            if signal_type.lower() == "ecg":
+                try:
+                    from vitalDSP.physiological_features.waveform import (
+                        WaveformMorphology,
+                    )
+
+                    # Create waveform morphology object
+                    wm = WaveformMorphology(
+                        waveform=signal_data,
+                        fs=sampling_freq,
+                        signal_type="ECG",
+                        simple_mode=True,
+                    )
+
+                    # Detect Q valleys
+                    q_valleys = wm.detect_q_valley()
+                    if q_valleys is not None and len(q_valleys) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_data[q_valleys],
+                                y=signal_data[q_valleys],
+                                mode="markers",
+                                name="Q Valleys",
+                                marker=dict(
+                                    color="orange", size=6, symbol="triangle-down"
+                                ),
+                                hovertemplate="<b>Q Valley:</b> %{y}<extra></extra>",
+                            ),
+                            row=1,
+                            col=1,
+                        )
+
+                    # Detect S valleys
+                    s_valleys = wm.detect_s_valley()
+                    if s_valleys is not None and len(s_valleys) > 0:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=time_data[s_valleys],
+                                y=signal_data[s_valleys],
+                                mode="markers",
+                                name="S Valleys",
+                                marker=dict(
+                                    color="red", size=6, symbol="triangle-down"
+                                ),
+                                hovertemplate="<b>S Valley:</b> %{y}<extra></extra>",
+                            ),
+                            row=1,
+                            col=1,
+                        )
+
+                except Exception as e:
+                    logger.warning(f"ECG trough detection failed: {e}")
 
             # Add peak statistics
             mean_interval = (

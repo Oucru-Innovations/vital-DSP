@@ -176,7 +176,8 @@ class TestUploadCallbacksComprehensive:
                     filename="test.csv",
                     file_path=None,
                     sampling_freq=100,
-                    time_unit="seconds"
+                    time_unit="seconds",
+                    data_type="ppg"
                 )
                 
                 # Should return multiple outputs
@@ -225,7 +226,8 @@ class TestUploadCallbacksComprehensive:
                     filename=None,
                     file_path=None,
                     sampling_freq=100,
-                    time_unit="seconds"
+                    time_unit="seconds",
+                    data_type="ppg"
                 )
                 
                 # Should return multiple outputs
@@ -266,7 +268,8 @@ class TestUploadCallbacksComprehensive:
                 filename=None,
                 file_path=None,
                 sampling_freq=100,
-                time_unit="seconds"
+                time_unit="seconds",
+                data_type="ppg"
             )
 
     def test_callback_with_invalid_file_format(self):
@@ -304,7 +307,8 @@ class TestUploadCallbacksComprehensive:
                 filename="test.xyz",  # Invalid extension
                 file_path=None,
                 sampling_freq=100,
-                time_unit="seconds"
+                time_unit="seconds",
+                data_type="ppg"
             )
             
             # Should return error status
