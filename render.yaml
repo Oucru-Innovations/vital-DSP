@@ -4,4 +4,3 @@ services:
     env: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    healthCheckPath: /api/health
