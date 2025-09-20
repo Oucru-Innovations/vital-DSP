@@ -4,3 +4,13 @@ services:
     env: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHONPATH
+        value: /app:/app/src
+      - key: PORT
+        value: 8000
+      - key: PYTHONUNBUFFERED
+        value: 1
+      - key: PYTHONDONTWRITEBYTECODE
+        value: 1

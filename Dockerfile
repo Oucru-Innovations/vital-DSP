@@ -22,4 +22,4 @@ RUN mkdir -p /app/uploads
 
 EXPOSE 8000
 
-CMD ["gunicorn", "--config", "gunicorn.conf.py", "src.vitalDSP_webapp.run_webapp:app"]
+CMD ["python", "src/vitalDSP_webapp/run_webapp.py"]
