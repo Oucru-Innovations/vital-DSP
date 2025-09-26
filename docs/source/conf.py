@@ -60,18 +60,8 @@ html_static_path = ["_static"]
 # Use RTD-hosted bundled JS (default). Set to True to inline plotly.js if needed.
 plotly_include_plotlyjs = True
 
-# -- matplotlib configuration for ReadTheDocs --------------------------------
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend for ReadTheDocs
-import matplotlib.pyplot as plt
-plt.ioff()  # Turn off interactive mode
-
-# Configure matplotlib for better ReadTheDocs rendering
-matplotlib.rcParams['figure.figsize'] = (10, 6)
-matplotlib.rcParams['figure.dpi'] = 100
-matplotlib.rcParams['savefig.dpi'] = 100
-matplotlib.rcParams['savefig.bbox'] = 'tight'
-matplotlib.rcParams['savefig.pad_inches'] = 0.1
+# -- Plotly configuration for ReadTheDocs -----------------------------------
+# Plotly is already configured above with plotly_include_plotlyjs = True
 
 # Additional MyST configurations (optional)
 myst_enable_extensions = [
