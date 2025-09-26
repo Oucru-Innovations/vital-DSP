@@ -1410,6 +1410,11 @@ class WaveformMorphology:
                     raise ValueError("Volume mode must be 'peak' or 'trough'.")
                 volumes.append(volume)
 
+        # Return None if no valid volumes were computed
+        if len(volumes) == 0:
+            logger.warning(f"No valid volumes computed for {interval_type}.")
+            return None
+            
         return np.array(volumes)
 
     def compute_skewness(self, signal_type="ECG"):
@@ -1457,6 +1462,11 @@ class WaveformMorphology:
                 complex_segment = self.waveform[start : end + 1]
                 skewness_values.append(skew(complex_segment))
 
+        # Return None if no valid skewness values were computed
+        if len(skewness_values) == 0:
+            logger.warning(f"No valid skewness values computed for {signal_type}.")
+            return None
+            
         return np.array(skewness_values)
 
     def compute_duration(self, sessions=None, mode="Custom"):
@@ -1829,7 +1839,7 @@ class WaveformMorphology:
                 )
             elif session_type == "qrs":
                 sessions = self.detect_qrs_session()
-                if sessions is None or len(sessions) == 0:
+                if sessions is None or (hasattr(sessions, '__len__') and len(sessions) == 0):
                     raise ValueError("No valid QRS sessions for duration calculation.")
                 return self._summarize_list(
                     self.compute_duration(sessions), summary_type
@@ -1872,7 +1882,7 @@ class WaveformMorphology:
                     )
                     if end > start
                 ]
-                if sessions is None or len(sessions) == 0:
+                if sessions is None or (hasattr(sessions, '__len__') and len(sessions) == 0):
                     raise ValueError(
                         f"No valid durations computed for {session_type} sessions."
                     )
