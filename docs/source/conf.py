@@ -151,3 +151,18 @@ html_sidebars = {
 
 # -- Options for Extensions -------------------------------------------------
 todo_include_todos = True  # Enable the todo extension if needed
+
+# nbsphinx configuration
+nbsphinx_allow_errors = True  # Allow notebook execution errors
+nbsphinx_execute = 'never'  # Don't execute notebooks during build
+nbsphinx_timeout = 60  # Timeout for notebook execution
+
+# Plotly configuration for nbsphinx
+nbsphinx_prolog = """
+.. raw:: html
+
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+"""
+
+# Suppress warnings
+suppress_warnings = ['nbsphinx']

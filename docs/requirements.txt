@@ -7,3 +7,6 @@ plotly
 ipykernel
 pandas
 ipython
+pyyaml
+seaborn
+dash-bootstrap-components
