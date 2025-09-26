@@ -92,9 +92,9 @@ Process multiple signals efficiently:
            filtered = sf.bandpass_filter(low_cut=0.5, high_cut=40.0)
            
            # Extract features
-           from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
-           tdf = TimeDomainFeatures(filtered, fs)
-           features = tdf.extract_features()
+           from vitalDSP.feature_engineering.morphology_features import PhysiologicalFeatureExtractor
+           extractor = PhysiologicalFeatureExtractor(filtered, fs=fs)
+           features = extractor.extract_features(signal_type="ECG")
            
            return signal_id, features
        
@@ -130,9 +130,9 @@ Optimize memory usage for large datasets:
            filtered_chunk = sf.bandpass_filter(low_cut=0.5, high_cut=40.0)
            
            # Extract features
-           from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
-           tdf = TimeDomainFeatures(filtered_chunk, fs)
-           features = tdf.extract_features()
+           from vitalDSP.feature_engineering.morphology_features import PhysiologicalFeatureExtractor
+           extractor = PhysiologicalFeatureExtractor(filtered_chunk, fs=fs)
+           features = extractor.extract_features(signal_type="ECG")
            
            results.append(features)
            
@@ -210,9 +210,9 @@ Optimize for real-time processing:
                filtered = sf.bandpass_filter(low_cut=0.5, high_cut=40.0, filter_order=2)
                
                # Quick feature extraction
-               from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
-               tdf = TimeDomainFeatures(filtered, self.fs)
-               features = tdf.extract_features()
+               from vitalDSP.feature_engineering.morphology_features import PhysiologicalFeatureExtractor
+               extractor = PhysiologicalFeatureExtractor(filtered, fs=self.fs)
+               features = extractor.extract_features(signal_type="ECG")
                
                # Store results
                self._store_results(features)

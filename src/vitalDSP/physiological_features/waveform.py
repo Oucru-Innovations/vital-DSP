@@ -1410,11 +1410,11 @@ class WaveformMorphology:
                     raise ValueError("Volume mode must be 'peak' or 'trough'.")
                 volumes.append(volume)
 
-        # Return None if no valid volumes were computed
+        # Return empty array if no valid volumes were computed
         if len(volumes) == 0:
             logger.warning(f"No valid volumes computed for {interval_type}.")
-            return None
-            
+            return np.array([])
+
         return np.array(volumes)
 
     def compute_skewness(self, signal_type="ECG"):
@@ -1462,11 +1462,11 @@ class WaveformMorphology:
                 complex_segment = self.waveform[start : end + 1]
                 skewness_values.append(skew(complex_segment))
 
-        # Return None if no valid skewness values were computed
+        # Return empty array if no valid skewness values were computed
         if len(skewness_values) == 0:
             logger.warning(f"No valid skewness values computed for {signal_type}.")
-            return None
-            
+            return np.array([])
+
         return np.array(skewness_values)
 
     def compute_duration(self, sessions=None, mode="Custom"):

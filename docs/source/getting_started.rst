@@ -134,16 +134,16 @@ Extract meaningful features from physiological signals:
 
 .. code-block:: python
 
-   from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
+   from vitalDSP.feature_engineering.morphology_features import PhysiologicalFeatureExtractor
    from vitalDSP.physiological_features.hrv_analysis import HRVFeatures
    
-   # Time domain features
-   tdf = TimeDomainFeatures(signal, sampling_rate)
-   time_features = tdf.extract_features()
+   # Extract physiological features
+   extractor = PhysiologicalFeatureExtractor(signal, fs=sampling_rate)
+   features = extractor.extract_features(signal_type="ECG")
    
    # HRV analysis
    hrv = HRVFeatures(rr_intervals)
-   hrv_features = hrv.analyze_hrv()
+   hrv_features = hrv.compute_all_features()
 
 Respiratory Analysis
 ~~~~~~~~~~~~~~~~~~~~
@@ -155,8 +155,7 @@ Analyze respiratory patterns and estimate respiratory rate:
    from vitalDSP.respiratory_analysis.respiratory_analysis import RespiratoryAnalysis
    
    resp_analysis = RespiratoryAnalysis(signal, sampling_rate)
-   respiratory_rate = resp_analysis.estimate_respiratory_rate()
-   features = resp_analysis.extract_respiratory_features()
+   respiratory_rate = resp_analysis.compute_respiratory_rate()
 
 Advanced Computation
 ~~~~~~~~~~~~~~~~~~~~
@@ -259,20 +258,21 @@ Create a complete analysis pipeline:
        filtered = sf.bandpass_filter(low_cut=0.5, high_cut=40.0)
        
        # 2. Feature extraction
-       tdf = TimeDomainFeatures(filtered, sampling_rate)
-       time_features = tdf.extract_features()
-       
-       fdf = FrequencyDomainFeatures(filtered, sampling_rate)
-       freq_features = fdf.extract_features()
+       from vitalDSP.feature_engineering.morphology_features import PhysiologicalFeatureExtractor
+       extractor = PhysiologicalFeatureExtractor(filtered, fs=sampling_rate)
+       features = extractor.extract_features(signal_type="ECG")
        
        # 3. Quality assessment
        from vitalDSP.signal_quality_assessment.signal_quality import SignalQuality
-       sq = SignalQuality(filtered, sampling_rate)
-       quality_metrics = sq.assess_quality()
+       sq = SignalQuality(signal, filtered)
+       quality_metrics = {
+           'snr': sq.snr(),
+           'psnr': sq.psnr(),
+           'mse': sq.mse()
+       }
        
        return {
-           'time_features': time_features,
-           'frequency_features': freq_features,
+           'features': features,
            'quality_metrics': quality_metrics
        }
 

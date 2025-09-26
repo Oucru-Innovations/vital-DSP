@@ -127,7 +127,7 @@ A: This is often due to signal quality or parameter issues:
    .. code-block:: python
    
       from vitalDSP.physiological_features.waveform import WaveformMorphology
-      wm = WaveformMorphology(signal, fs=fs, signal_type="ecg")
+      wm = WaveformMorphology(signal, fs=fs, signal_type="ECG")
       
       # Check detected peaks
       r_peaks = wm.r_peaks
@@ -147,7 +147,7 @@ A: This is often due to signal quality or parameter issues:
       filtered_signal = sf.bandpass_filter(low_cut=0.5, high_cut=40.0)
       
       # Then detect peaks
-      wm = WaveformMorphology(filtered_signal, fs=fs, signal_type="ecg")
+      wm = WaveformMorphology(filtered_signal, fs=fs, signal_type="ECG")
 
 **Q: HRV analysis produces unrealistic values**
 
@@ -177,7 +177,7 @@ A: HRV analysis requires high-quality RR intervals:
       hrv = HRVFeatures(valid_rr)
       
       # For short-term analysis (2-5 minutes)
-      hrv_features = hrv.analyze_hrv()
+      hrv_features = hrv.compute_all_features()
       
       # For long-term analysis (24 hours)
       hrv_features = hrv.analyze_hrv(long_term=True)
@@ -204,18 +204,10 @@ A: Respiratory rate estimation depends on signal quality and method selection:
 2. **Try multiple estimation methods:**
    .. code-block:: python
    
-      # Peak detection method
-      resp_rate_peak = resp_analysis.estimate_respiratory_rate_peak_detection()
+      # Compute respiratory rate
+      resp_rate = resp_analysis.compute_respiratory_rate()
       
-      # FFT method
-      resp_rate_fft = resp_analysis.estimate_respiratory_rate_fft()
-      
-      # Ensemble method
-      resp_rate_ensemble = resp_analysis.estimate_respiratory_rate_ensemble()
-      
-      print(f"Peak detection: {resp_rate_peak:.1f} breaths/min")
-      print(f"FFT method: {resp_rate_fft:.1f} breaths/min")
-      print(f"Ensemble method: {resp_rate_ensemble:.1f} breaths/min")
+      print(f"Respiratory rate: {resp_rate:.1f} breaths/min")
 
 3. **Validate against known respiratory rate:**
    .. code-block:: python
@@ -420,7 +412,7 @@ A: Optimize for real-time performance:
       filtered = sf.bandpass_filter(low_cut=0.5, high_cut=40.0, filter_order=2)
       
       # Use faster peak detection
-      wm = WaveformMorphology(signal, fs=fs, signal_type="ecg")
+      wm = WaveformMorphology(signal, fs=fs, signal_type="ECG")
       r_peaks = wm.r_peaks
 
 2. **Reduce processing frequency:**

@@ -274,13 +274,14 @@ Test integration between modules:
        filtered = sf.bandpass_filter(low_cut=0.5, high_cut=40.0)
        
        # Extract features
-       tdf = TimeDomainFeatures(filtered, 1000)
-       features = tdf.extract_features()
+       from vitalDSP.feature_engineering.morphology_features import PhysiologicalFeatureExtractor
+       extractor = PhysiologicalFeatureExtractor(filtered, fs=1000)
+       features = extractor.extract_features(signal_type="ECG")
        
        # Validate results
-       assert 'mean' in features
-       assert 'std' in features
-       assert features['mean'] is not None
+       assert 'qrs_duration' in features
+       assert 'heart_rate' in features
+       assert features['heart_rate'] is not None
 
 Documentation Contributions
 ============================

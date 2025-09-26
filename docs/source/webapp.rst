@@ -402,12 +402,12 @@ Automatic signal type detection and appropriate critical points detection:
    from vitalDSP.physiological_features.waveform import WaveformMorphology
    
    # PPG signal analysis
-   wm_ppg = WaveformMorphology(signal_data, fs=100, signal_type="ppg")
+   wm_ppg = WaveformMorphology(signal_data, fs=100, signal_type="PPG")
    systolic_peaks = wm_ppg.systolic_peaks
    dicrotic_notches = wm_ppg.dicrotic_notches
    
    # ECG signal analysis
-   wm_ecg = WaveformMorphology(signal_data, fs=100, signal_type="ecg")
+   wm_ecg = WaveformMorphology(signal_data, fs=100, signal_type="ECG")
    r_peaks = wm_ecg.r_peaks
    p_waves = wm_ecg.p_peaks
 

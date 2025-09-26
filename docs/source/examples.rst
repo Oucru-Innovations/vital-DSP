@@ -105,7 +105,7 @@ This example demonstrates comprehensive ECG analysis for cardiovascular research
        results['quality_metrics'] = quality_metrics
        
        # 3. R-Peak Detection and RR Interval Analysis
-       wm = WaveformMorphology(filtered_ecg, fs=fs, signal_type="ecg")
+       wm = WaveformMorphology(filtered_ecg, fs=fs, signal_type="ECG")
        r_peaks = wm.r_peaks
        
        if len(r_peaks) > 10:  # Ensure sufficient data
@@ -121,7 +121,7 @@ This example demonstrates comprehensive ECG analysis for cardiovascular research
                
                # HRV Analysis
                hrv = HRVFeatures(valid_rr)
-               hrv_features = hrv.analyze_hrv()
+               hrv_features = hrv.compute_all_features()
                
                results['heart_rate'] = heart_rate
                results['rr_intervals'] = {
@@ -261,7 +261,7 @@ This example demonstrates PPG signal analysis for hemodynamic studies and cardio
        results['quality_metrics'] = quality_metrics
        
        # 3. PPG-Specific Analysis
-       wm = WaveformMorphology(filtered_ppg, fs=fs, signal_type="ppg")
+       wm = WaveformMorphology(filtered_ppg, fs=fs, signal_type="PPG")
        
        # Detect systolic peaks
        systolic_peaks = wm.systolic_peaks
@@ -513,7 +513,7 @@ This example demonstrates real-time vital signs monitoring using VitalDSP.
                vital_signs['signal_quality'] = np.mean(quality_sqi)
                
                # Detect peaks (assuming ECG signal)
-               wm = WaveformMorphology(filtered_signal, fs=self.fs, signal_type="ecg")
+               wm = WaveformMorphology(filtered_signal, fs=self.fs, signal_type="ECG")
                r_peaks = wm.r_peaks
                
                if len(r_peaks) > 2:

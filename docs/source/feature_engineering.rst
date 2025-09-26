@@ -215,12 +215,12 @@ Basic Feature Extraction
 
 .. code-block:: python
 
-   from vitalDSP.feature_engineering.morphology_features import MorphologyFeatures
+   from vitalDSP.feature_engineering.morphology_features import PhysiologicalFeatureExtractor
    from vitalDSP.feature_engineering.ecg_autonomic_features import ECGAutonomicFeatures
    
    # Extract morphological features
-   morph = MorphologyFeatures(ecg_signal, sampling_rate)
-   morph_features = morph.extract_features()
+   extractor = PhysiologicalFeatureExtractor(ecg_signal, fs=sampling_rate)
+   morph_features = extractor.extract_features(signal_type="ECG")
    
    # Extract autonomic features
    autonomic = ECGAutonomicFeatures(ecg_signal, sampling_rate)

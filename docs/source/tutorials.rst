@@ -55,7 +55,7 @@ Learn the fundamentals of signal processing with VitalDSP.
    import numpy as np
    import matplotlib.pyplot as plt
    from vitalDSP.filtering.signal_filtering import SignalFiltering
-   from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
+   from vitalDSP.feature_engineering.morphology_features import PhysiologicalFeatureExtractor
    from vitalDSP.signal_quality_assessment.signal_quality_index import SignalQualityIndex
 
 **Step 2: Load Sample Data**
@@ -117,16 +117,16 @@ Learn the fundamentals of signal processing with VitalDSP.
 
 .. code-block:: python
 
-   # Extract time domain features
-   tdf = TimeDomainFeatures(filtered_signal, fs)
-   features = tdf.extract_features()
+   # Extract physiological features
+   extractor = PhysiologicalFeatureExtractor(filtered_signal, fs=fs)
+   features = extractor.extract_features(signal_type="ECG")
    
    # Display key features
-   print("Time Domain Features:")
-   print(f"Mean: {features['mean']:.4f}")
-   print(f"Std: {features['std']:.4f}")
-   print(f"RMS: {features['rms']:.4f}")
-   print(f"Peak-to-Peak: {features['peak_to_peak']:.4f}")
+   print("Physiological Features:")
+   print(f"QRS Duration: {features.get('qrs_duration', 'N/A'):.4f}")
+   print(f"Heart Rate: {features.get('heart_rate', 'N/A'):.2f} BPM")
+   print(f"QRS Amplitude: {features.get('qrs_amplitude', 'N/A'):.4f}")
+   print(f"Signal Skewness: {features.get('signal_skewness', 'N/A'):.4f}")
 
 **Step 5: Signal Quality Assessment**
 
@@ -175,7 +175,7 @@ Learn to perform comprehensive HRV analysis using VitalDSP.
    from vitalDSP.physiological_features.waveform import WaveformMorphology
    
    # Initialize waveform morphology for ECG
-   wm = WaveformMorphology(filtered_signal, fs=fs, signal_type="ecg")
+   wm = WaveformMorphology(filtered_signal, fs=fs, signal_type="ECG")
    
    # Detect R-peaks
    r_peaks = wm.r_peaks
@@ -231,7 +231,7 @@ Learn to perform comprehensive HRV analysis using VitalDSP.
 .. code-block:: python
 
    # Perform comprehensive HRV analysis
-   comprehensive_hrv = hrv.analyze_hrv()
+   comprehensive_hrv = hrv.compute_all_features()
    
    # Display all features
    print("Comprehensive HRV Analysis:")
@@ -309,14 +309,10 @@ Learn to analyze respiratory signals and estimate respiratory rate.
 .. code-block:: python
 
    # Estimate respiratory rate using multiple methods
-   resp_rate_peak = resp_analysis.estimate_respiratory_rate_peak_detection()
-   resp_rate_fft = resp_analysis.estimate_respiratory_rate_fft()
-   resp_rate_ensemble = resp_analysis.estimate_respiratory_rate_ensemble()
+   resp_rate = resp_analysis.compute_respiratory_rate()
    
-   print("Respiratory Rate Estimates:")
-   print(f"Peak Detection: {resp_rate_peak:.1f} breaths/min")
-   print(f"FFT Method: {resp_rate_fft:.1f} breaths/min")
-   print(f"Ensemble Method: {resp_rate_ensemble:.1f} breaths/min")
+   print("Respiratory Rate Estimate:")
+   print(f"Respiratory Rate: {resp_rate:.1f} breaths/min")
    print(f"True Rate: {resp_rate:.1f} breaths/min")
 
 **Step 4: Breathing Pattern Analysis**
@@ -324,13 +320,9 @@ Learn to analyze respiratory signals and estimate respiratory rate.
 .. code-block:: python
 
    # Analyze breathing patterns
-   breathing_features = resp_analysis.extract_respiratory_features()
+   # RespiratoryAnalysis only provides respiratory rate computation
    
-   print("Breathing Pattern Features:")
-   print(f"Inspiration Duration: {breathing_features['insp_duration']:.2f} s")
-   print(f"Expiration Duration: {breathing_features['exp_duration']:.2f} s")
-   print(f"I:E Ratio: {breathing_features['ie_ratio']:.2f}")
-   print(f"Breathing Variability: {breathing_features['breathing_variability']:.2f}")
+   print("Respiratory Analysis Complete")
 
 **Step 5: Respiratory Event Detection**
 
