@@ -87,13 +87,13 @@ jobs:
       - name: Build package
         run: make build
       
-      - name: Send coverage to Coveralls
-        run: coveralls
-        env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
-      # - name: Deploy to PyPI
-      #   if: github.ref == 'refs/heads/main'
-      #   run: make upload
+      # - name: Send coverage to Coveralls
+      #   run: coveralls
       #   env:
-      #     TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-      #     TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      #     COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+      # # - name: Deploy to PyPI
+      # #   if: github.ref == 'refs/heads/main'
+      # #   run: make upload
+      # #   env:
+      # #     TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+      # #     TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
