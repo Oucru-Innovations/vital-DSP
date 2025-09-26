@@ -63,10 +63,10 @@ Whether you're a beginner or an experienced user, this documentation will guide 
 
 **🚀 Quick Start Options:**
 
-* **New to VitalDSP?** Start with the :ref:`getting_started` guide for installation and basic usage
-* **Want to see examples?** Check out our :ref:`tutorials` section with step-by-step tutorials
-* **Need practical examples?** Explore our :ref:`examples` section with real-world use cases
-* **Prefer visual learning?** Use our :ref:`webapp` for interactive signal processing
+* **New to VitalDSP?** Start with the :doc:`getting_started` guide for installation and basic usage
+* **Want to see examples?** Check out our :doc:`tutorials` section with step-by-step tutorials
+* **Need practical examples?** Explore our :doc:`examples` section with real-world use cases
+* **Prefer visual learning?** Use our :doc:`webapp` for interactive signal processing
 
 .. note::
    If you're new to DSP or healthcare signal processing, check out the **Getting Started** section first!
@@ -162,16 +162,16 @@ Additional Resources
 
 **🔧 Development & Support:**
 
-* :ref:`troubleshooting`: Common issues and solutions
-* :ref:`performance`: Performance optimization and best practices
-* :ref:`deployment`: Production deployment guide
-* :ref:`contributing`: Contributing guidelines and development setup
+* :doc:`troubleshooting`: Common issues and solutions
+* :doc:`performance`: Performance optimization and best practices
+* :doc:`deployment`: Production deployment guide
+* :doc:`contributing`: Contributing guidelines and development setup
 
 **📊 Data & Analysis:**
 
-* :ref:`sample_notebooks`: Interactive Jupyter notebooks with examples
-* :ref:`health_report_analysis`: Automated health report generation
-* :ref:`signal_quality_index`: Signal quality assessment and validation
+* :doc:`sample_notebooks`: Interactive Jupyter notebooks with examples
+* :doc:`health_report_analysis`: Automated health report generation
+* :doc:`signal_quality_index`: Signal quality assessment and validation
 
 **🌐 Community & Support:**
 
