@@ -36,8 +36,7 @@ extensions = [
     'sphinx_rtd_theme',
     'sphinx_markdown_builder',
     "myst_nb",
-    "jupyter_sphinx",          # for widget-backed outputs (fallback)
-    "sphinxcontrib.plotly",    # registers plotly MIME + JS
+    "jupyter_sphinx",          # for widget-backed outputs (fallback) # registers plotly MIME + JS
     "sphinxcontrib.jquery",    # ensures jQuery is available to extensions that expect it
 ]
 
