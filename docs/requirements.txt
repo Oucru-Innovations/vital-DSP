@@ -10,3 +10,10 @@ ipython
 pyyaml
 seaborn
 dash-bootstrap-components
+myst-nb
+jupyter-sphinx
+ipywidgets>=7
+sphinxcontrib-plotly>=1.9.0
+sphinxcontrib-jquery
+pydata-sphinx-theme
+vitalDSP

@@ -14,9 +14,9 @@ sys.path.insert(0, os.path.abspath('../../src'))
 
 project = 'VitalDSP'
 copyright = '2024, VitalDSP Team'
-author = 'VitalDSP Team'
-release = '1.0.0'
-version = '1.0.0'
+author = 'van-koha'
+release = '0.1.4'
+version = '0.1.4'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -34,8 +34,32 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.githubpages',
     'sphinx_rtd_theme',
-    'sphinx_markdown_builder'
+    'sphinx_markdown_builder',
+    "myst_nb",
+    "jupyter_sphinx",          # for widget-backed outputs (fallback)
+    "sphinxcontrib.plotly",    # registers plotly MIME + JS
+    "sphinxcontrib.jquery",    # ensures jQuery is available to extensions that expect it
 ]
+
+# Execute notebooks during build (recommended for RTD)
+nb_execution_mode = "auto"           # "auto" or "force"
+nb_execution_timeout = 180           # bump if  notebooks are heavy
+nb_render_plugin = "default"         # myst-nb’s default HTML render
+
+# MyST config (optional, but useful)
+myst_enable_extensions = [
+    "colon_fence",
+    "deflist",
+    "linkify",
+]
+
+# HTML/theme
+html_theme = "pydata_sphinx_theme"
+html_static_path = ["_static"]
+
+# -- sphinxcontrib-plotly options -------------------------------------------
+# Use RTD-hosted bundled JS (default). Set to True to inline plotly.js if needed.
+plotly_include_plotlyjs = True
 
 # Additional MyST configurations (optional)
 myst_enable_extensions = [
