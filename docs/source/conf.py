@@ -60,6 +60,9 @@ html_static_path = ["_static"]
 # Use RTD-hosted bundled JS (default). Set to True to inline plotly.js if needed.
 plotly_include_plotlyjs = True
 
+# -- Plotly configuration for ReadTheDocs -----------------------------------
+# Plotly is already configured above with plotly_include_plotlyjs = True
+
 # Additional MyST configurations (optional)
 myst_enable_extensions = [
     "dollarmath",  # Use $...$ syntax for math
