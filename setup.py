@@ -8,19 +8,19 @@ class PostInstallCommand(install):
 
     @staticmethod
     def display_message():
-        print("\n🌟 Thank you for installing vitalDSP! 🌟")
+        print("\nThank you for installing vitalDSP!")
         print("Explore the full potential of this toolkit and stay up-to-date with the latest features.")
-        print("🔗 Visit our GitHub repository: https://github.com/Oucru-Innovations/vital-DSP")
-        print("🚀 For updates, contributions, or to report issues, head over to GitHub!")
+        print("Visit our GitHub repository: https://github.com/Oucru-Innovations/vital-DSP")
+        print("For updates, contributions, or to report issues, head over to GitHub!")
         print("Your feedback and contributions make vitalDSP better for everyone. Happy coding! 💻\n")
 
 setup(
     name='vitalDSP', 
-    version='0.1.2',  
+    version='0.1.4',  
     author='van-koha',  
     author_email='vital.data@oucru.org', 
     description='A comprehensive toolkit for Digital Signal Processing in healthcare applications.',
-    long_description=open('README.md').read(),  # Use the README file as the long description
+    long_description=open('README.md', encoding='utf-8').read(),  # Use the README file as the long description
     long_description_content_type='text/markdown',  # The format of the long description (markdown in this case)
     url='https://github.com/Oucru-Innovations/vital-DSP',  
     packages=find_packages(where='src',include=['vitalDSP', 'vitalDSP.*', 'vitalDSP_webapp', 'vitalDSP_webapp.*']),  # Find all packages in the 'src' directory
