@@ -397,7 +397,7 @@ def generate_basic_features(signal_data, sampling_freq):
     
     return features
 
-def generate_comprehensive_feature_analysis(signal_data, sampling_freq, signal_type="ppg"):
+def generate_comprehensive_feature_analysis(signal_data, sampling_freq, signal_type="PPG"):
     """
     Generate comprehensive feature analysis using all available vitalDSP feature engineering modules.
     
@@ -737,7 +737,7 @@ def generate_comprehensive_feature_analysis(signal_data, sampling_freq, signal_t
     
     return features
 
-def generate_comprehensive_feature_analysis_enhanced(signal_data, sampling_freq, signal_type="auto", preprocessing_options=None):
+def generate_comprehensive_feature_analysis_enhanced(signal_data, sampling_freq, signal_type="AUTO", preprocessing_options=None):
     """Generate comprehensive feature analysis with enhanced error handling, progress tracking, and fallback mechanisms."""
     logger.info("=== GENERATING COMPREHENSIVE FEATURE ANALYSIS (ENHANCED) ===")
     logger.info(f"Signal type: {signal_type}")

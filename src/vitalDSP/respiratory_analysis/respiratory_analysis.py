@@ -24,6 +24,35 @@ class RespiratoryAnalysis:
         The raw PPG or ECG signal to analyze.
     fs : int
         The sampling frequency of the signal in Hz.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from vitalDSP.respiratory_analysis.respiratory_analysis import RespiratoryAnalysis
+    >>>
+    >>> # Example 1: Basic respiratory rate estimation
+    >>> ppg_signal = np.random.randn(2000)  # Simulated PPG signal
+    >>> resp_analysis = RespiratoryAnalysis(ppg_signal, fs=128)
+    >>> rr_result = resp_analysis.compute_respiratory_rate(method="counting")
+    >>> print(f"Respiratory rate: {rr_result['respiratory_rate']:.2f} breaths/min")
+    >>>
+    >>> # Example 2: FFT-based respiratory rate estimation
+    >>> rr_fft = resp_analysis.compute_respiratory_rate(method="fft_based")
+    >>> print(f"FFT-based RR: {rr_fft['respiratory_rate']:.2f} breaths/min")
+    >>>
+    >>> # Example 3: Respiratory rate with preprocessing
+    >>> from vitalDSP.preprocess.preprocess_operations import PreprocessConfig
+    >>> config = PreprocessConfig(
+    ...     filter_type="bandpass",
+    ...     lowcut=0.1,
+    ...     highcut=2.0,
+    ...     noise_reduction_method="wavelet"
+    ... )
+    >>> rr_preprocessed = resp_analysis.compute_respiratory_rate(
+    ...     method="peaks",
+    ...     preprocess_config=config
+    ... )
+    >>> print(f"Preprocessed RR: {rr_preprocessed['respiratory_rate']:.2f} breaths/min")
     """
 
     def __init__(self, signal, fs=256):
@@ -42,7 +71,7 @@ class RespiratoryAnalysis:
 
     def compute_respiratory_rate(
         self,
-        method="peaks",
+        method="counting",
         correction_method=None,
         min_breath_duration=0.5,
         max_breath_duration=6,
@@ -55,9 +84,9 @@ class RespiratoryAnalysis:
         Parameters
         ----------
         method : str, optional
-            Method used for breath detection ('peaks', 'zero_crossing'). Default is 'peaks'.
+            Method used for breath detection. Options: 'peaks', 'zero_crossing', 'time_domain', 'frequency_domain', 'fft_based', 'counting'. Default is 'counting'.
         correction_method : str, optional
-            Method for correcting false detections ('interpolation', 'adaptive_threshold'). Default is None.
+            Method for correcting false detections. Options: 'interpolation', 'adaptive_threshold'. Default is None.
         min_breath_duration : float, optional
             Minimum breath duration in seconds. Default is 0.5s (30 breaths/min).
         max_breath_duration : float, optional

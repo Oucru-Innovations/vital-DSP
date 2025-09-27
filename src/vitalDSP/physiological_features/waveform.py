@@ -16,6 +16,36 @@ class WaveformMorphology:
         fs (int): The sampling frequency of the signal in Hz. Default is 1000 Hz.
         signal_type (str): The type of signal ('ECG', 'PPG', 'EEG').
         simple_mode (bool, optional): If True, uses simplified diastolic peak detection (midpoint-based). Default is True.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from vitalDSP.physiological_features.waveform import WaveformMorphology
+    >>>
+    >>> # Example 1: ECG waveform analysis
+    >>> ecg_signal = np.random.randn(1000)  # Simulated ECG signal
+    >>> wm_ecg = WaveformMorphology(ecg_signal, fs=256, signal_type="ECG")
+    >>> r_peaks = wm_ecg.r_peaks
+    >>> q_valleys = wm_ecg.detect_q_valley()
+    >>> print(f"Detected {len(r_peaks)} R-peaks")
+    >>>
+    >>> # Example 2: PPG waveform analysis
+    >>> ppg_signal = np.random.randn(2000)  # Simulated PPG signal
+    >>> wm_ppg = WaveformMorphology(ppg_signal, fs=128, signal_type="PPG")
+    >>> systolic_peaks = wm_ppg.detect_systolic_peaks()
+    >>> diastolic_peaks = wm_ppg.detect_diastolic_peaks()
+    >>> print(f"Detected {len(systolic_peaks)} systolic peaks")
+    >>>
+    >>> # Example 3: Custom peak detection configuration
+    >>> custom_config = {
+    ...     "distance": 30,
+    ...     "window_size": 5,
+    ...     "threshold_factor": 1.2,
+    ...     "search_window": 4
+    ... }
+    >>> wm_custom = WaveformMorphology(ecg_signal, fs=256, signal_type="ECG", peak_config=custom_config)
+    >>> r_peaks_custom = wm_custom.r_peaks
+    >>> print(f"Custom detection found {len(r_peaks_custom)} R-peaks")
     """
 
     def __init__(
@@ -35,7 +65,7 @@ class WaveformMorphology:
             waveform (np.array): The waveform signal.
             fs (int): The sampling frequency of the signal in Hz. Default is 256 Hz.
             qrs_ratio (float): The ratio for QRS detection. Default is 0.05.
-            signal_type (str): The type of signal (ECG, PPG, EEG).
+            signal_type (str): The type of signal. Options: 'ECG', 'PPG', 'EEG'.
             peak_config : dict, optional
                 Configuration for peak detection parameters. If None, default settings are used.
                 For ECG: {
@@ -141,14 +171,18 @@ class WaveformMorphology:
             detector = PeakDetection(self.waveform, "ecg_r_peak", **(self.peak_config))
             self.r_peaks = detector.detect_peaks()
             if len(self.r_peaks) == 0:
-                logger.warning("No R peaks detected in ECG signal. This may cause issues with feature extraction.")
+                logger.warning(
+                    "No R peaks detected in ECG signal. This may cause issues with feature extraction."
+                )
         elif signal_type == "PPG":
             detector = PeakDetection(
                 self.waveform, "ppg_systolic_peaks", **(self.peak_config)
             )
             self.systolic_peaks = detector.detect_peaks()
             if len(self.systolic_peaks) == 0:
-                logger.warning("No systolic peaks detected in PPG signal. This may cause issues with feature extraction.")
+                logger.warning(
+                    "No systolic peaks detected in PPG signal. This may cause issues with feature extraction."
+                )
 
         elif signal_type == "EEG":
             detector = PeakDetection(self.waveform)
@@ -764,7 +798,9 @@ class WaveformMorphology:
             # Define search range with midpoint as start and Q valley as end
             if i == 0:
                 # For the first Q valley, use the beginning of the signal as start
-                search_start = max(0, q_valleys[i] - int(self.fs * 0.2))  # 200ms before Q valley
+                search_start = max(
+                    0, q_valleys[i] - int(self.fs * 0.2)
+                )  # 200ms before Q valley
             else:
                 # For subsequent Q valleys, use midpoint between previous and current R peaks
                 midpoint = (r_peaks[i - 1] + r_peaks[i]) // 2
@@ -1390,7 +1426,9 @@ class WaveformMorphology:
 
         # Check if peaks and valleys are empty
         if len(peaks) == 0 or len(valleys) == 0:
-            logger.warning(f"No peaks or valleys available for {interval_type} volume computation.")
+            logger.warning(
+                f"No peaks or valleys available for {interval_type} volume computation."
+            )
             return np.array([])
 
         # Compute area for each interval
@@ -1448,7 +1486,9 @@ class WaveformMorphology:
 
         # Check if sessions are empty
         if len(sessions) == 0:
-            logger.warning(f"No sessions detected for {signal_type} skewness computation.")
+            logger.warning(
+                f"No sessions detected for {signal_type} skewness computation."
+            )
             return np.array([])
 
         # Compute skewness for each complex
@@ -1839,7 +1879,9 @@ class WaveformMorphology:
                 )
             elif session_type == "qrs":
                 sessions = self.detect_qrs_session()
-                if sessions is None or (hasattr(sessions, '__len__') and len(sessions) == 0):
+                if sessions is None or (
+                    hasattr(sessions, "__len__") and len(sessions) == 0
+                ):
                     raise ValueError("No valid QRS sessions for duration calculation.")
                 return self._summarize_list(
                     self.compute_duration(sessions), summary_type
@@ -1882,7 +1924,9 @@ class WaveformMorphology:
                     )
                     if end > start
                 ]
-                if sessions is None or (hasattr(sessions, '__len__') and len(sessions) == 0):
+                if sessions is None or (
+                    hasattr(sessions, "__len__") and len(sessions) == 0
+                ):
                     raise ValueError(
                         f"No valid durations computed for {session_type} sessions."
                     )
@@ -1979,7 +2023,9 @@ class WaveformMorphology:
                     )
                 min_length = min(len(areas_r_to_q), len(areas_r_to_s))
                 if len(areas_r_to_q) != len(areas_r_to_s):
-                    logger.warning("Mismatch in lengths for R-to-Q and R-to-S areas. Truncating to minimum length.")
+                    logger.warning(
+                        "Mismatch in lengths for R-to-Q and R-to-S areas. Truncating to minimum length."
+                    )
                     areas_r_to_q = areas_r_to_q[:min_length]
                     areas_r_to_s = areas_r_to_s[:min_length]
                 areas = np.array(areas_r_to_q) + np.array(areas_r_to_s)

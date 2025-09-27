@@ -756,7 +756,7 @@ def register_physiological_callbacks(app):
                 logger.info(f"Physio using stored signal type: {signal_type}")
             else:
                 # Auto-detect signal type based on data characteristics
-                signal_type = "ppg"  # Default (lowercase for physiological screen)
+                signal_type = "PPG"  # Default for physiological screen
                 logger.info(
                     "Physio auto-detecting signal type from data characteristics"
                 )
@@ -5564,7 +5564,7 @@ def _import_vitaldsp_modules():
 
 
 def get_vitaldsp_hrv_analysis(
-    signal_data, sampling_freq, hrv_options, signal_type="ppg"
+    signal_data, sampling_freq, hrv_options, signal_type="PPG"
 ):
     """Get HRV analysis using vitalDSP modules if available."""
     try:
@@ -5646,7 +5646,7 @@ def get_vitaldsp_hrv_analysis(
 
 
 def get_vitaldsp_morphology_analysis(
-    signal_data, sampling_freq, morphology_options, signal_type="ppg"
+    signal_data, sampling_freq, morphology_options, signal_type="PPG"
 ):
     """Get morphology analysis using vitalDSP modules if available."""
     try:
@@ -5745,7 +5745,7 @@ def get_vitaldsp_morphology_analysis(
 
 
 def get_vitaldsp_signal_quality(
-    signal_data, sampling_freq, quality_options, signal_type="ppg"
+    signal_data, sampling_freq, quality_options, signal_type="PPG"
 ):
     """Get signal quality analysis using vitalDSP modules if available."""
     try:
@@ -5845,7 +5845,7 @@ def get_vitaldsp_signal_quality(
 
 
 def get_vitaldsp_transforms(
-    signal_data, sampling_freq, transform_options, signal_type="ppg"
+    signal_data, sampling_freq, transform_options, signal_type="PPG"
 ):
     """Get signal transforms using vitalDSP modules if available."""
     try:
@@ -5951,7 +5951,7 @@ def get_vitaldsp_transforms(
 
 
 def get_vitaldsp_advanced_computation(
-    signal_data, sampling_freq, advanced_computation, signal_type="ppg"
+    signal_data, sampling_freq, advanced_computation, signal_type="PPG"
 ):
     """Get advanced computation features using vitalDSP modules if available."""
     try:

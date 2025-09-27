@@ -2,7 +2,6 @@ from vitalDSP.health_analysis.interpretation_engine import InterpretationEngine
 from vitalDSP.health_analysis.health_report_visualization import HealthReportVisualizer
 from vitalDSP.health_analysis.html_template import (
     render_report,
-    process_interpretations,
 )
 import logging
 
@@ -22,9 +21,31 @@ class HealthReportGenerator:
 
     Attributes:
         feature_data (dict): Dictionary containing feature names as keys and their corresponding values.
-        segment_duration (str): Duration of the segment, either "1_min" or "5_min". Default is "1 min".
+        segment_duration (str): Duration of the segment, either "1_min" or "5_min". Default is "1_min".
         interpreter (InterpretationEngine): Instance of InterpretationEngine to interpret feature data.
         visualizer (HealthReportVisualizer): Instance of HealthReportVisualizer to create visualizations.
+
+    Examples
+    --------
+    >>> from vitalDSP.health_analysis.health_report_generator import HealthReportGenerator
+    >>>
+    >>> # Example 1: Basic health report generation
+    >>> feature_data = {"nn50": 45, "rmssd": 70, "sdnn": 120}
+    >>> generator = HealthReportGenerator(feature_data, segment_duration="5_min")
+    >>> report_html = generator.generate()
+    >>> print(f"Report generated: {len(report_html)} characters")
+    >>>
+    >>> # Example 2: Health report with custom configuration
+    >>> generator_custom = HealthReportGenerator(
+    ...     feature_data,
+    ...     segment_duration="1_min",
+    ...     feature_config_path="path/to/custom_config.yml"
+    ... )
+    >>> report_custom = generator_custom.generate()
+    >>>
+    >>> # Example 3: Health report with filtering
+    >>> report_filtered = generator.generate(filter_status="above_range")
+    >>> print("Filtered report for above-range parameters only")
     """
 
     def __init__(
@@ -36,21 +57,37 @@ class HealthReportGenerator:
         Args:
             feature_data (dict): Dictionary containing feature names as keys and their corresponding values as values.
                                 Example: {"nn50": 35, "rmssd": 55, "sdnn": 70}
-            segment_duration (str): The duration of the analyzed segment, either '1 min' or '5 min'. Default is '1 min'.
+            segment_duration (str): The duration of the analyzed segment, either '1_min' or '5_min'. Default is '1_min'.
             feature_config_path (str, optional): Path to a custom feature YAML configuration file. If not provided, the default config will be used.
 
-        Example Usage:
-            >>> feature_data = {"nn50": 45, "rmssd": 70, "sdnn": 120}
-            >>> generator = HealthReportGenerator(feature_data, segment_duration="5 min", feature_config_path="path/to/config.yml")
-            >>> report_html = generator.generate()
+        Examples
+        --------
+        >>> feature_data = {"nn50": 45, "rmssd": 70, "sdnn": 120}
+        >>> generator = HealthReportGenerator(feature_data, segment_duration="5_min")
+        >>> report_html = generator.generate()
         """
         self.feature_data = feature_data
-        self.segment_duration = segment_duration
+        self.segment_duration = self._validate_segment_duration(segment_duration)
         self.interpreter = InterpretationEngine(feature_config_path)
         self.visualizer = HealthReportVisualizer(
-            self.interpreter.config, segment_duration
+            self.interpreter.config, self.segment_duration
         )
         self.logger = logging.getLogger(__name__)
+
+    def _validate_segment_duration(self, segment_duration):
+        """Validate and normalize segment duration format."""
+        valid_durations = ["1_min", "5_min"]
+
+        # Handle common variations
+        if segment_duration in ["1 min", "1min", "1"]:
+            return "1_min"
+        elif segment_duration in ["5 min", "5min", "5"]:
+            return "5_min"
+        elif segment_duration in valid_durations:
+            return segment_duration
+        else:
+            self.logger.warning(f"Invalid segment duration '{segment_duration}', defaulting to '1_min'")
+            return "1_min"
 
     @staticmethod
     def downsample(values, factor=10):
@@ -76,17 +113,41 @@ class HealthReportGenerator:
         Returns:
             dict: Paths to the generated visualizations.
         """
+        # Generate visualizations for all features
+        filtered_data = feature_data
 
-        def generate_visualizations_batch(args):
-            feature, values = args
-            return feature, visualizer.create_visualizations(
-                {feature: values}, output_dir
-            )
+        print(f"Generating visualizations for {len(filtered_data)} features...")
 
-        with multiprocessing.Pool(processes) as pool:
-            results = pool.map(generate_visualizations_batch, feature_data.items())
+        visualizations = {}
+        total_features = len(filtered_data)
 
-        return {feature: paths for feature, paths in results}
+        for i, (feature, values) in enumerate(filtered_data.items(), 1):
+            try:
+                print(f"Processing {feature} ({i}/{total_features})...")
+                feature_visualizations = visualizer.create_visualizations(
+                    {feature: values}, output_dir
+                )
+                visualizations[feature] = feature_visualizations[feature]
+                print(f"✅ Completed {feature}")
+
+            except Exception as e:
+                print(f"❌ Error generating visualization for {feature}: {e}")
+                visualizations[feature] = {}
+
+        # Normalize all paths for web compatibility
+        normalized_visualizations = {}
+        for feature, plots in visualizations.items():
+            normalized_visualizations[feature] = {}
+            for plot_type, path in plots.items():
+                if path:
+                    # Convert backslashes to forward slashes for web compatibility
+                    web_path = path.replace('\\', '/')
+                    # Keep relative paths for file:// protocol compatibility
+                    normalized_visualizations[feature][plot_type] = web_path
+                else:
+                    normalized_visualizations[feature][plot_type] = path
+
+        return normalized_visualizations
 
     def generate(self, filter_status="all", output_dir=None):
         """
@@ -100,7 +161,7 @@ class HealthReportGenerator:
 
         Example Usage:
             >>> feature_data = {"nn50": 45, "rmssd": 70, "sdnn": 120}
-            >>> generator = HealthReportGenerator(feature_data, segment_duration="5 min")
+            >>> generator = HealthReportGenerator(feature_data, segment_duration="5_min")
             >>> report_html = generator.generate()
             >>> with open('health_report.html', 'w') as file:
             >>>     file.write(report_html)
@@ -111,6 +172,10 @@ class HealthReportGenerator:
             # Step 1: Interpret each feature with the loaded configuration
             for feature_name, values in self.feature_data.items():
                 try:
+                    # Handle both single values and arrays
+                    if not isinstance(values, (list, tuple, np.ndarray)):
+                        values = [values]
+
                     # Convert the values to a NumPy array
                     values = np.array(values)
 
@@ -164,28 +229,41 @@ class HealthReportGenerator:
                     self.logger.error(f"Error processing {feature_name}: {e}")
                     continue
 
-            # Step 1.5: Process contradictions and correlations
-            segment_values = process_interpretations(segment_values)
+            # Step 1.5: Process contradictions and correlations (now handled dynamically)
+            # segment_values = process_interpretations(segment_values)  # No longer needed
 
         except Exception as e:
             # Log the error if step 1 fails
             self.logger.error(f"Error in processing feature interpretations: {e}")
 
-        # Step 2: Generate visualizations for all features
-        # visualizations = self.visualizer.create_visualizations(
-        #     self.feature_data, output_dir=output_dir
-        # )
-        try:
-            visualizations = self.batch_visualization(
-                self.visualizer, self.feature_data, output_dir, processes=4
-            )
-        except Exception as e:
-            self.logger.error(f"Error generating visualizations: {e}")
-            visualizations = {}
+        # Step 2: Generate visualizations for all features (optional)
+        visualizations = {}
+        if output_dir:
+            try:
+                print("Generating visualizations... This may take a moment.")
+                visualizations = self.batch_visualization(
+                    self.visualizer, self.feature_data, output_dir, processes=4
+                )
+                print(f"Generated visualizations for {len(visualizations)} features.")
+            except Exception as e:
+                self.logger.error(f"Error generating visualizations: {e}")
+                print("Skipping visualizations due to error.")
+                visualizations = {}
+        else:
+            print("No output directory specified, skipping visualizations.")
 
         try:
-            # Step 3: Render the report
-            report_html = render_report(segment_values, visualizations)
+            # Step 3: Generate dynamic analysis components
+            if not segment_values:
+                self.logger.warning("No segment values available for dynamic analysis")
+                dynamic_analysis = {}
+            else:
+                dynamic_analysis = self._generate_dynamic_analysis(segment_values)
+
+            # Step 4: Render the report with dynamic components
+            report_html = render_report(
+                segment_values, visualizations, dynamic_analysis=dynamic_analysis
+            )
         except Exception as e:
             # Log the error if report rendering fails
             self.logger.error(f"Error rendering report: {e}")
@@ -248,3 +326,299 @@ class HealthReportGenerator:
         }
 
         return feature_report
+
+    def _generate_dynamic_analysis(self, segment_values):
+        """
+        Generates dynamic analysis components based on the feature results.
+
+        Args:
+            segment_values (dict): Dictionary containing processed feature data.
+
+        Returns:
+            dict: Dictionary containing dynamic analysis components including:
+                - executive_summary: Overall assessment summary
+                - risk_assessment: Risk level and concerns
+                - recommendations: Dynamic recommendations based on findings
+                - key_insights: Important findings and patterns
+                - overall_health_score: Calculated health score
+        """
+        try:
+            # Analyze overall patterns
+            total_features = len(segment_values)
+            in_range_count = sum(
+                1
+                for f in segment_values.values()
+                if f.get("range_status") == "in_range"
+            )
+            above_range_count = sum(
+                1
+                for f in segment_values.values()
+                if f.get("range_status") == "above_range"
+            )
+            below_range_count = sum(
+                1
+                for f in segment_values.values()
+                if f.get("range_status") == "below_range"
+            )
+
+            # Calculate health score (0-100)
+            health_score = (
+                (in_range_count / total_features * 100) if total_features > 0 else 0
+            )
+
+            # Generate executive summary
+            executive_summary = self._generate_executive_summary(
+                total_features,
+                in_range_count,
+                above_range_count,
+                below_range_count,
+                health_score,
+            )
+
+            # Generate risk assessment
+            risk_assessment = self._generate_risk_assessment(
+                segment_values, health_score
+            )
+
+            # Generate recommendations
+            recommendations = self._generate_recommendations(
+                segment_values, risk_assessment
+            )
+
+            # Generate key insights
+            key_insights = self._generate_key_insights(segment_values)
+
+            # Generate cross-correlations
+            cross_correlations = self._generate_cross_correlations(segment_values)
+
+            return {
+                "executive_summary": executive_summary,
+                "risk_assessment": risk_assessment,
+                "recommendations": recommendations,
+                "key_insights": key_insights,
+                "cross_correlations": cross_correlations,
+                "overall_health_score": health_score,
+                "statistics": {
+                    "total_features": total_features,
+                    "in_range": in_range_count,
+                    "above_range": above_range_count,
+                    "below_range": below_range_count,
+                },
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error generating dynamic analysis: {e}")
+            return {
+                "executive_summary": "Unable to generate summary due to processing error.",
+                "risk_assessment": {"level": "unknown", "concerns": []},
+                "recommendations": [
+                    "Consult with a healthcare professional for detailed analysis."
+                ],
+                "key_insights": [],
+                "overall_health_score": 0,
+                "statistics": {
+                    "total_features": 0,
+                    "in_range": 0,
+                    "above_range": 0,
+                    "below_range": 0,
+                },
+            }
+
+    def _generate_executive_summary(
+        self,
+        total_features,
+        in_range_count,
+        above_range_count,
+        below_range_count,
+        health_score,
+    ):
+        """Generate dynamic executive summary based on results."""
+        if total_features == 0:
+            return "No features available for analysis."
+
+        in_range_percentage = (in_range_count / total_features) * 100
+
+        if health_score >= 80:
+            status = "excellent"
+            summary = f"Your physiological parameters show excellent overall health with {in_range_percentage:.1f}% of features within normal ranges."
+        elif health_score >= 60:
+            status = "good"
+            summary = f"Your physiological parameters indicate good health with {in_range_percentage:.1f}% of features within normal ranges."
+        elif health_score >= 40:
+            status = "fair"
+            summary = f"Your physiological parameters show fair health with {in_range_percentage:.1f}% of features within normal ranges. Some areas may need attention."
+        else:
+            status = "poor"
+            summary = f"Your physiological parameters indicate areas of concern with only {in_range_percentage:.1f}% of features within normal ranges."
+
+        # Add specific concerns
+        concerns = []
+        if above_range_count > 0:
+            concerns.append(f"{above_range_count} parameter(s) above normal range")
+        if below_range_count > 0:
+            concerns.append(f"{below_range_count} parameter(s) below normal range")
+
+        if concerns:
+            summary += f" Areas of concern include: {', '.join(concerns)}."
+
+        return {"status": status, "summary": summary, "health_score": health_score}
+
+    def _generate_risk_assessment(self, segment_values, health_score):
+        """Generate dynamic risk assessment based on results."""
+        risk_level = "low"
+        concerns = []
+
+        # Assess based on health score
+        if health_score < 40:
+            risk_level = "high"
+            concerns.append("Multiple parameters outside normal ranges")
+        elif health_score < 60:
+            risk_level = "moderate"
+            concerns.append("Several parameters outside normal ranges")
+
+        # Check for specific high-risk patterns
+        hrv_features = ["sdnn", "rmssd", "nn50", "pnn50"]
+        hrv_out_of_range = sum(
+            1
+            for f in hrv_features
+            if f in segment_values
+            and segment_values[f].get("range_status") != "in_range"
+        )
+
+        if hrv_out_of_range >= 3:
+            risk_level = "high" if risk_level == "low" else risk_level
+            concerns.append("Multiple heart rate variability parameters abnormal")
+
+        # Check for cardiovascular risk indicators
+        if (
+            "sdnn" in segment_values
+            and segment_values["sdnn"].get("range_status") == "below_range"
+        ):
+            concerns.append(
+                "Low heart rate variability may indicate cardiovascular risk"
+            )
+
+        return {
+            "level": risk_level,
+            "concerns": concerns,
+            "recommendation": self._get_risk_recommendation(risk_level),
+        }
+
+    def _get_risk_recommendation(self, risk_level):
+        """Get recommendation based on risk level."""
+        recommendations = {
+            "low": "Continue current lifestyle and regular monitoring",
+            "moderate": "Consider lifestyle modifications and increased monitoring frequency",
+            "high": "Consult healthcare professional immediately for comprehensive evaluation",
+        }
+        return recommendations.get(
+            risk_level, "Consult healthcare professional for evaluation"
+        )
+
+    def _generate_recommendations(self, segment_values, risk_assessment):
+        """Generate dynamic recommendations based on findings."""
+        recommendations = []
+
+        # General recommendations based on risk level
+        if risk_assessment["level"] == "high":
+            recommendations.append(
+                "Schedule immediate consultation with a healthcare professional"
+            )
+        elif risk_assessment["level"] == "moderate":
+            recommendations.append(
+                "Consider lifestyle modifications and regular health monitoring"
+            )
+
+        # Specific recommendations based on out-of-range features
+        for feature_name, feature_data in segment_values.items():
+            if feature_data.get("range_status") == "below_range":
+                if feature_name in ["sdnn", "rmssd", "nn50"]:
+                    recommendations.append(
+                        "Consider stress management techniques and regular exercise to improve heart rate variability"
+                    )
+                elif feature_name in ["heart_rate"]:
+                    recommendations.append(
+                        "Monitor heart rate patterns and consider cardiovascular assessment"
+                    )
+            elif feature_data.get("range_status") == "above_range":
+                if feature_name in ["heart_rate"]:
+                    recommendations.append(
+                        "Monitor for signs of tachycardia and consider cardiovascular evaluation"
+                    )
+
+        # Add general health recommendations
+        if not recommendations:
+            recommendations.append("Continue maintaining healthy lifestyle habits")
+
+        recommendations.append(
+            "Regular monitoring and follow-up assessments are recommended"
+        )
+
+        return recommendations
+
+    def _generate_key_insights(self, segment_values):
+        """Generate key insights based on feature analysis."""
+        insights = []
+
+        # Analyze patterns
+        out_of_range_features = [
+            name
+            for name, data in segment_values.items()
+            if data.get("range_status") != "in_range"
+        ]
+
+        if len(out_of_range_features) == 0:
+            insights.append("All analyzed parameters are within normal ranges")
+        elif len(out_of_range_features) <= 2:
+            insights.append(
+                f"Most parameters are normal, with {len(out_of_range_features)} requiring attention"
+            )
+        else:
+            insights.append(
+                f"Multiple parameters ({len(out_of_range_features)}) require attention"
+            )
+
+        # Check for specific patterns
+        hrv_features = ["sdnn", "rmssd", "nn50", "pnn50"]
+        hrv_status = [
+            segment_values.get(f, {}).get("range_status")
+            for f in hrv_features
+            if f in segment_values
+        ]
+
+        if all(status == "in_range" for status in hrv_status):
+            insights.append(
+                "Heart rate variability parameters indicate healthy autonomic function"
+            )
+        elif any(status == "below_range" for status in hrv_status):
+            insights.append(
+                "Some heart rate variability parameters suggest reduced autonomic function"
+            )
+
+        return insights
+
+    def _generate_cross_correlations(self, segment_values):
+        """Generate cross-feature correlation analysis."""
+        try:
+            # Extract raw feature values for correlation analysis
+            feature_data = {}
+            for feature_name, feature_data_dict in segment_values.items():
+                if isinstance(feature_data_dict, dict) and 'value' in feature_data_dict:
+                    # Extract mean value from the list of values
+                    values = feature_data_dict['value']
+                    if isinstance(values, list) and len(values) > 0:
+                        feature_data[feature_name] = np.mean(values)
+                    else:
+                        feature_data[feature_name] = values
+                else:
+                    # If it's already a raw value
+                    feature_data[feature_name] = feature_data_dict
+
+            # Use the interpretation engine to analyze cross-correlations
+            cross_correlations = self.interpreter._analyze_cross_feature_correlations(
+                feature_data, self.segment_duration
+            )
+            return cross_correlations
+        except Exception as e:
+            self.logger.error(f"Error generating cross-correlations: {e}")
+            return []
