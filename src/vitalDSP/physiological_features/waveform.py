@@ -35,7 +35,7 @@ class WaveformMorphology:
             waveform (np.array): The waveform signal.
             fs (int): The sampling frequency of the signal in Hz. Default is 256 Hz.
             qrs_ratio (float): The ratio for QRS detection. Default is 0.05.
-            signal_type (str): The type of signal (ECG, PPG, EEG).
+            signal_type (str): The type of signal. Options: 'ECG', 'PPG', 'EEG'.
             peak_config : dict, optional
                 Configuration for peak detection parameters. If None, default settings are used.
                 For ECG: {

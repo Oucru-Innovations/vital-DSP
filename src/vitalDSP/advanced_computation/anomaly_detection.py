@@ -43,8 +43,8 @@ class AnomalyDetection:
         Parameters
         ----------
         method : str, optional
-            The method to use for detecting anomalies. Options include "z_score", "moving_average", "lof", "fft", "threshold".
-            Default is "z_score".
+            The method to use for detecting anomalies. Options: 'z_score', 'moving_average', 'lof', 'fft', 'threshold'.
+            Default is 'z_score'.
         **kwargs : additional arguments
             Additional parameters depending on the chosen method.
 

@@ -37,8 +37,10 @@ class HRVFeatures:
         ----------
         nn_intervals : np.array
             The NN intervals (in milliseconds) between heartbeats.
-        signal : np.array
+        signals : np.array
             The physiological signal (e.g., ECG, PPG).
+        signal_type : str, optional (default="PPG")
+            The type of signal. Options: 'ECG', 'PPG', 'EEG'.
         fs : int, optional
             The sampling frequency in Hz. Default is 1000 Hz.
         """

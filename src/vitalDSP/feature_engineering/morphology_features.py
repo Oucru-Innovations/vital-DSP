@@ -180,7 +180,7 @@ class PhysiologicalFeatureExtractor:
         Parameters
         ----------
         signal_type : str, optional
-            The type of signal ("ECG" or "PPG"). Default is "ECG".
+            The type of signal. Options: 'ECG', 'PPG', 'EEG'. Default is "ECG".
         preprocess_config : PreprocessConfig, optional
             The configuration object for signal preprocessing. If None, default settings are used.
         peak_config : dict, optional

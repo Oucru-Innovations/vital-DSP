@@ -17,9 +17,9 @@ class PreprocessConfig:
     Attributes
     ----------
     filter_type : str
-        The type of filtering to apply ('bandpass', 'butterworth', 'chebyshev', 'elliptic').
+        The type of filtering to apply. Options: 'bandpass', 'butterworth', 'chebyshev', 'elliptic', 'ignore'.
     noise_reduction_method : str
-        The noise reduction method to apply ('wavelet', 'savgol', 'median', 'gaussian', 'moving_average').
+        The noise reduction method to apply. Options: 'wavelet', 'savgol', 'median', 'gaussian', 'moving_average', 'ignore'.
     lowcut : float
         The lower cutoff frequency for filtering.
     highcut : float
@@ -102,7 +102,7 @@ def preprocess_signal(
     sampling_rate : float
         The sampling rate of the signal in Hz.
     filter_type : str, optional (default="bandpass")
-        The type of filtering to apply ('bandpass', 'butterworth', 'chebyshev', 'elliptic').
+        The type of filtering to apply. Options: 'bandpass', 'butterworth', 'chebyshev', 'elliptic', 'ignore'.
     lowcut : float, optional (default=0.1)
         The lower cutoff frequency for bandpass filtering.
     highcut : float, optional (default=0.5)
@@ -110,7 +110,7 @@ def preprocess_signal(
     order : int, optional (default=4)
         The order of the filter.
     noise_reduction_method : str, optional (default="wavelet")
-        The noise reduction method to apply ('wavelet', 'savgol', 'median', 'gaussian', 'moving_average').
+        The noise reduction method to apply. Options: 'wavelet', 'savgol', 'median', 'gaussian', 'moving_average', 'ignore'.
     wavelet_name : str, optional (default="db")
         The type of wavelet to use for wavelet denoising.
     level : int, optional (default=1)

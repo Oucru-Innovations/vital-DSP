@@ -55,9 +55,9 @@ class RespiratoryAnalysis:
         Parameters
         ----------
         method : str, optional
-            Method used for breath detection ('peaks', 'zero_crossing', 'time_domain', 'frequency_domain', 'fft_based', 'counting'). Default is 'peaks'.
+            Method used for breath detection. Options: 'peaks', 'zero_crossing', 'time_domain', 'frequency_domain', 'fft_based', 'counting'. Default is 'counting'.
         correction_method : str, optional
-            Method for correcting false detections ('interpolation', 'adaptive_threshold'). Default is None.
+            Method for correcting false detections. Options: 'interpolation', 'adaptive_threshold'. Default is None.
         min_breath_duration : float, optional
             Minimum breath duration in seconds. Default is 0.5s (30 breaths/min).
         max_breath_duration : float, optional

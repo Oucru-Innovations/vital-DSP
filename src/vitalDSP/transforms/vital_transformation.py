@@ -18,7 +18,7 @@ class VitalTransformation:
     fs : int, optional
         Sampling frequency of the signal. Default is 256 Hz.
     signal_type : str, optional
-        Type of signal ('ecg' or 'ppg'). Default is 'ecg'.
+        Type of signal. Options: 'ECG', 'PPG', 'EEG'. Default is 'ECG'.
 
     Methods
     -------
