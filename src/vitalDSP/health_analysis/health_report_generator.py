@@ -554,11 +554,16 @@ class HealthReportGenerator:
             feature_data = {}
             for feature_name, feature_data_dict in segment_values.items():
                 if isinstance(feature_data_dict, dict) and 'value' in feature_data_dict:
-                    feature_data[feature_name] = feature_data_dict['value']
+                    # Extract mean value from the list of values
+                    values = feature_data_dict['value']
+                    if isinstance(values, list) and len(values) > 0:
+                        feature_data[feature_name] = np.mean(values)
+                    else:
+                        feature_data[feature_name] = values
                 else:
                     # If it's already a raw value
                     feature_data[feature_name] = feature_data_dict
-            
+
             # Use the interpretation engine to analyze cross-correlations
             cross_correlations = self.interpreter._analyze_cross_feature_correlations(
                 feature_data, self.segment_duration
