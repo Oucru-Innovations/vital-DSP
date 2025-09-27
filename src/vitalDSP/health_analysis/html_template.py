@@ -353,6 +353,111 @@ def _get_base_css():
                     padding: 4px 0;
                 }
                 
+                .cross-correlations {
+                    margin-bottom: 30px;
+                    padding: 20px;
+                    background: rgba(255, 255, 255, 0.05);
+                    backdrop-filter: blur(10px);
+                    border-radius: 16px;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+                }
+
+                .cross-correlations h2 {
+                    color: #ffffff;
+                    margin-bottom: 20px;
+                    font-size: 1.4rem;
+                    font-weight: 600;
+                    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                }
+
+                .correlations-card {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 15px;
+                }
+
+                .correlation-item {
+                    padding: 18px;
+                    border-radius: 12px;
+                    background: rgba(255, 255, 255, 0.08);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255, 255, 255, 0.15);
+                    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+                    transition: all 0.3s ease;
+                }
+
+                .correlation-item:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+                    background: rgba(255, 255, 255, 0.12);
+                }
+
+                .correlation-item.strong {
+                    border-left: 4px solid #4CAF50;
+                    background: rgba(76, 175, 80, 0.1);
+                }
+
+                .correlation-item.moderate {
+                    border-left: 4px solid #FF9800;
+                    background: rgba(255, 152, 0, 0.1);
+                }
+
+                .correlation-item.weak {
+                    border-left: 4px solid #F44336;
+                    background: rgba(244, 67, 54, 0.1);
+                }
+
+                .correlation-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                }
+
+                .correlation-features {
+                    font-weight: 600;
+                    color: #ffffff;
+                    font-size: 1.1rem;
+                    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                }
+
+                .correlation-strength {
+                    padding: 4px 12px;
+                    border-radius: 20px;
+                    font-size: 0.85rem;
+                    font-weight: 500;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+
+                .correlation-item.strong .correlation-strength {
+                    background: rgba(76, 175, 80, 0.2);
+                    color: #4CAF50;
+                    border: 1px solid rgba(76, 175, 80, 0.3);
+                }
+
+                .correlation-item.moderate .correlation-strength {
+                    background: rgba(255, 152, 0, 0.2);
+                    color: #FF9800;
+                    border: 1px solid rgba(255, 152, 0, 0.3);
+                }
+
+                .correlation-item.weak .correlation-strength {
+                    background: rgba(244, 67, 54, 0.2);
+                    color: #F44336;
+                    border: 1px solid rgba(244, 67, 54, 0.3);
+                }
+
+                .correlation-description {
+                    color: rgba(255, 255, 255, 0.9);
+                    line-height: 1.6;
+                    margin: 0;
+                    font-size: 0.95rem;
+                }
+                
                 .stats-grid {
                     display: grid;
                     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -668,22 +773,11 @@ def _get_correlation_contradiction_template():
                     {% endif %}
 
                     <!-- Correlation Section -->
-                    {% if interpretation.get('correlation_strength') %}
+                    {% if interpretation.get('correlation') %}
                     <div class="correlation-block">
-                        <p class="highlight">Correlation:</p>
+                        <p class="highlight">Correlation Analysis:</p>
                         <div class="correlation-content">
-                            {% for related_feature, explanation in interpretation['correlation'].items() %}
-                            <p><strong>{{ related_feature }}: </strong></p>
-                            <p>
-                                {% if interpretation['correlation_strength'] == 'Strong correlation' %}
-                                    ✅ Strong correlation. {{ explanation }}
-                                {% elif interpretation['correlation_strength'] == 'Slight correlation' %}
-                                    ⚪ Slight correlation. {{ explanation }}
-                                {% else %}
-                                    ⭕ No significant correlation. {{ explanation }}
-                                {% endif %}
-                            </p>
-                            {% endfor %}
+                            <p>{{ interpretation['correlation'] }}</p>
                         </div>
                     </div>
                     {% endif %}
@@ -907,6 +1001,24 @@ def _get_dynamic_analysis_template():
                         <li>{{ insight }}</li>
                         {% endfor %}
                     </ul>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Cross-Feature Correlations -->
+            {% if dynamic_analysis.get('cross_correlations') %}
+            <div class="cross-correlations">
+                <h2>Feature Correlations</h2>
+                <div class="correlations-card">
+                    {% for correlation in dynamic_analysis.cross_correlations %}
+                    <div class="correlation-item {{ correlation.strength }}">
+                        <div class="correlation-header">
+                            <span class="correlation-features">{{ correlation.features | join(' ↔ ') }}</span>
+                            <span class="correlation-strength">{{ correlation.strength|title }} Correlation</span>
+                        </div>
+                        <p class="correlation-description">{{ correlation.description }}</p>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
             {% endif %}

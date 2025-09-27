@@ -192,7 +192,7 @@ class InterpretationEngine:
             "normal_range": normal_range,
             "interpretation": interpretation,
             "contradiction": self._get_feature_contradiction(feature_name),
-            "correlation": self._get_feature_correlation(feature_name),
+            "correlation": self._generate_dynamic_correlation(feature_name, value, normal_range, feature_info, segment_duration),
         }
 
     def _parse_inf_values(self, val):
@@ -257,6 +257,245 @@ class InterpretationEngine:
         correlation_info = feature_info.get("correlation", "No correlation found.")
         return correlation_info
 
+    def _generate_dynamic_correlation(self, feature_name, value, normal_range, feature_info, segment_duration):
+        """Generate dynamic correlation information based on feature value and context."""
+        base_correlation = feature_info.get("correlation", "No correlation found.")
+        
+        # Get correlation thresholds and related features
+        correlation_thresholds = feature_info.get("thresholds", {}).get("correlation", {})
+        
+        # Generate dynamic correlation context based on feature type and value
+        dynamic_context = self._get_correlation_context(feature_name, value, normal_range, correlation_thresholds)
+        
+        # Combine base correlation with dynamic context
+        if dynamic_context:
+            return f"{base_correlation} {dynamic_context}"
+        else:
+            return base_correlation
+
+    def _get_correlation_context(self, feature_name, value, normal_range, correlation_thresholds):
+        """Generate contextual correlation information based on feature value."""
+        min_val, max_val = normal_range
+        range_span = max_val - min_val
+        
+        # Calculate how the value relates to the normal range
+        if value < min_val:
+            range_position = "below_normal"
+            deviation = (min_val - value) / range_span if range_span > 0 else 1
+        elif value > max_val:
+            range_position = "above_normal"
+            deviation = (value - max_val) / range_span if range_span > 0 else 1
+        else:
+            range_position = "within_normal"
+            center = (min_val + max_val) / 2
+            distance_from_center = abs(value - center) / (range_span / 2) if range_span > 0 else 0
+            if distance_from_center < 0.2:
+                range_position = "optimal"
+            elif distance_from_center < 0.5:
+                range_position = "good"
+            else:
+                range_position = "acceptable"
+        
+        # Generate correlation context based on feature type and range position
+        correlation_contexts = {
+            "sdnn": {
+                "below_normal": f"Your SDNN of {value:.1f} ms is below normal, which typically correlates with reduced overall heart rate variability. This may indicate that other HRV parameters like RMSSD and NN50 are also likely to be reduced, suggesting a pattern of decreased autonomic function.",
+                "above_normal": f"Your SDNN of {value:.1f} ms is above normal, which typically correlates with increased overall heart rate variability. This may indicate that other HRV parameters like RMSSD and NN50 are also likely to be elevated, suggesting enhanced autonomic function or potential measurement artifacts.",
+                "optimal": f"Your SDNN of {value:.1f} ms is in the optimal range, which typically correlates well with other HRV parameters. This suggests a balanced autonomic nervous system where RMSSD, NN50, and other variability measures should also be within healthy ranges.",
+                "good": f"Your SDNN of {value:.1f} ms is in the good range, which typically correlates positively with other HRV parameters. This suggests that RMSSD, NN50, and other variability measures should also be within acceptable ranges.",
+                "acceptable": f"Your SDNN of {value:.1f} ms is within normal limits, which typically correlates moderately with other HRV parameters. This suggests that other variability measures should also be within normal ranges."
+            },
+            "rmssd": {
+                "below_normal": f"Your RMSSD of {value:.1f} ms is below normal, which typically correlates with reduced parasympathetic activity. This may indicate that other short-term variability measures like NN50 are also likely to be reduced, suggesting decreased vagal tone.",
+                "above_normal": f"Your RMSSD of {value:.1f} ms is above normal, which typically correlates with increased parasympathetic activity. This may indicate that other short-term variability measures like NN50 are also likely to be elevated, suggesting enhanced vagal tone or potential measurement artifacts.",
+                "optimal": f"Your RMSSD of {value:.1f} ms is in the optimal range, which typically correlates strongly with other short-term HRV parameters. This suggests that NN50 and other parasympathetic indicators should also be within healthy ranges.",
+                "good": f"Your RMSSD of {value:.1f} ms is in the good range, which typically correlates well with other short-term HRV parameters. This suggests that NN50 and other parasympathetic indicators should also be within acceptable ranges.",
+                "acceptable": f"Your RMSSD of {value:.1f} ms is within normal limits, which typically correlates moderately with other short-term HRV parameters. This suggests that other parasympathetic indicators should also be within normal ranges."
+            },
+            "nn50": {
+                "below_normal": f"Your NN50 of {value:.0f} is below normal, which typically correlates with reduced short-term heart rate variability. This may indicate that other variability measures like RMSSD and SDNN are also likely to be reduced, suggesting decreased autonomic function.",
+                "above_normal": f"Your NN50 of {value:.0f} is above normal, which typically correlates with increased short-term heart rate variability. This may indicate that other variability measures like RMSSD and SDNN are also likely to be elevated, suggesting enhanced autonomic function or potential measurement artifacts.",
+                "optimal": f"Your NN50 of {value:.0f} is in the optimal range, which typically correlates strongly with other HRV parameters. This suggests that RMSSD, SDNN, and other variability measures should also be within healthy ranges.",
+                "good": f"Your NN50 of {value:.0f} is in the good range, which typically correlates well with other HRV parameters. This suggests that RMSSD, SDNN, and other variability measures should also be within acceptable ranges.",
+                "acceptable": f"Your NN50 of {value:.0f} is within normal limits, which typically correlates moderately with other HRV parameters. This suggests that other variability measures should also be within normal ranges."
+            },
+            "pnn50": {
+                "below_normal": f"Your pNN50 of {value:.1f}% is below normal, which typically correlates with reduced short-term heart rate variability. This may indicate that other variability measures like RMSSD and NN50 are also likely to be reduced, suggesting decreased parasympathetic activity.",
+                "above_normal": f"Your pNN50 of {value:.1f}% is above normal, which typically correlates with increased short-term heart rate variability. This may indicate that other variability measures like RMSSD and NN50 are also likely to be elevated, suggesting enhanced parasympathetic activity or potential measurement artifacts.",
+                "optimal": f"Your pNN50 of {value:.1f}% is in the optimal range, which typically correlates strongly with other short-term HRV parameters. This suggests that RMSSD, NN50, and other parasympathetic indicators should also be within healthy ranges.",
+                "good": f"Your pNN50 of {value:.1f}% is in the good range, which typically correlates well with other short-term HRV parameters. This suggests that RMSSD, NN50, and other parasympathetic indicators should also be within acceptable ranges.",
+                "acceptable": f"Your pNN50 of {value:.1f}% is within normal limits, which typically correlates moderately with other short-term HRV parameters. This suggests that other parasympathetic indicators should also be within normal ranges."
+            }
+        }
+        
+        # Get the appropriate correlation context
+        feature_contexts = correlation_contexts.get(feature_name.lower(), {})
+        return feature_contexts.get(range_position, "")
+
+    def _analyze_cross_feature_correlations(self, feature_data, segment_duration):
+        """Analyze correlations between different features based on their values."""
+        correlations = []
+        
+        # Define feature groups for correlation analysis
+        hrv_features = ['sdnn', 'rmssd', 'nn50', 'pnn50']
+        available_hrv_features = [f for f in hrv_features if f in feature_data]
+        
+        if len(available_hrv_features) >= 2:
+            # Analyze HRV feature correlations
+            hrv_correlations = self._analyze_hrv_correlations(available_hrv_features, feature_data, segment_duration)
+            correlations.extend(hrv_correlations)
+        
+        # Analyze other feature correlations
+        other_correlations = self._analyze_other_correlations(feature_data, segment_duration)
+        correlations.extend(other_correlations)
+        
+        return correlations
+
+    def _analyze_hrv_correlations(self, hrv_features, feature_data, segment_duration):
+        """Analyze correlations between HRV features."""
+        correlations = []
+        
+        # Check SDNN-RMSSD correlation
+        if 'sdnn' in hrv_features and 'rmssd' in hrv_features:
+            sdnn_value = feature_data['sdnn']
+            rmssd_value = feature_data['rmssd']
+            correlation_analysis = self._analyze_sdnn_rmssd_correlation(sdnn_value, rmssd_value, segment_duration)
+            if correlation_analysis:
+                correlations.append(correlation_analysis)
+        
+        # Check RMSSD-NN50 correlation
+        if 'rmssd' in hrv_features and 'nn50' in hrv_features:
+            rmssd_value = feature_data['rmssd']
+            nn50_value = feature_data['nn50']
+            correlation_analysis = self._analyze_rmssd_nn50_correlation(rmssd_value, nn50_value, segment_duration)
+            if correlation_analysis:
+                correlations.append(correlation_analysis)
+        
+        # Check SDNN-NN50 correlation
+        if 'sdnn' in hrv_features and 'nn50' in hrv_features:
+            sdnn_value = feature_data['sdnn']
+            nn50_value = feature_data['nn50']
+            correlation_analysis = self._analyze_sdnn_nn50_correlation(sdnn_value, nn50_value, segment_duration)
+            if correlation_analysis:
+                correlations.append(correlation_analysis)
+        
+        return correlations
+
+    def _analyze_sdnn_rmssd_correlation(self, sdnn_value, rmssd_value, segment_duration):
+        """Analyze correlation between SDNN and RMSSD."""
+        # Get normal ranges
+        sdnn_range = self.config.get('sdnn', {}).get('normal_range', {}).get(segment_duration, [20, 50])
+        rmssd_range = self.config.get('rmssd', {}).get('normal_range', {}).get(segment_duration, [10, 30])
+        
+        # Calculate relative positions within normal ranges
+        sdnn_position = self._get_relative_position(sdnn_value, sdnn_range)
+        rmssd_position = self._get_relative_position(rmssd_value, rmssd_range)
+        
+        # Analyze correlation strength
+        position_diff = abs(sdnn_position - rmssd_position)
+        
+        if position_diff < 0.2:
+            return {
+                'features': ['SDNN', 'RMSSD'],
+                'type': 'strong_positive',
+                'description': f"SDNN ({sdnn_value:.1f} ms) and RMSSD ({rmssd_value:.1f} ms) show strong positive correlation, both indicating similar levels of heart rate variability. This suggests consistent autonomic function across different time scales.",
+                'strength': 'strong'
+            }
+        elif position_diff < 0.5:
+            return {
+                'features': ['SDNN', 'RMSSD'],
+                'type': 'moderate_positive',
+                'description': f"SDNN ({sdnn_value:.1f} ms) and RMSSD ({rmssd_value:.1f} ms) show moderate positive correlation, indicating generally consistent heart rate variability patterns.",
+                'strength': 'moderate'
+            }
+        else:
+            return {
+                'features': ['SDNN', 'RMSSD'],
+                'type': 'weak_correlation',
+                'description': f"SDNN ({sdnn_value:.1f} ms) and RMSSD ({rmssd_value:.1f} ms) show weak correlation, suggesting different patterns of heart rate variability. This may indicate mixed autonomic function or measurement inconsistencies.",
+                'strength': 'weak'
+            }
+
+    def _analyze_rmssd_nn50_correlation(self, rmssd_value, nn50_value, segment_duration):
+        """Analyze correlation between RMSSD and NN50."""
+        rmssd_range = self.config.get('rmssd', {}).get('normal_range', {}).get(segment_duration, [10, 30])
+        nn50_range = self.config.get('nn50', {}).get('normal_range', {}).get(segment_duration, [10, 50])
+        
+        rmssd_position = self._get_relative_position(rmssd_value, rmssd_range)
+        nn50_position = self._get_relative_position(nn50_value, nn50_range)
+        
+        position_diff = abs(rmssd_position - nn50_position)
+        
+        if position_diff < 0.2:
+            return {
+                'features': ['RMSSD', 'NN50'],
+                'type': 'strong_positive',
+                'description': f"RMSSD ({rmssd_value:.1f} ms) and NN50 ({nn50_value:.0f}) show strong positive correlation, both indicating similar levels of short-term heart rate variability. This suggests consistent parasympathetic activity.",
+                'strength': 'strong'
+            }
+        elif position_diff < 0.5:
+            return {
+                'features': ['RMSSD', 'NN50'],
+                'type': 'moderate_positive',
+                'description': f"RMSSD ({rmssd_value:.1f} ms) and NN50 ({nn50_value:.0f}) show moderate positive correlation, indicating generally consistent short-term variability patterns.",
+                'strength': 'moderate'
+            }
+        else:
+            return {
+                'features': ['RMSSD', 'NN50'],
+                'type': 'weak_correlation',
+                'description': f"RMSSD ({rmssd_value:.1f} ms) and NN50 ({nn50_value:.0f}) show weak correlation, suggesting different patterns of short-term heart rate variability. This may indicate mixed parasympathetic function.",
+                'strength': 'weak'
+            }
+
+    def _analyze_sdnn_nn50_correlation(self, sdnn_value, nn50_value, segment_duration):
+        """Analyze correlation between SDNN and NN50."""
+        sdnn_range = self.config.get('sdnn', {}).get('normal_range', {}).get(segment_duration, [20, 50])
+        nn50_range = self.config.get('nn50', {}).get('normal_range', {}).get(segment_duration, [10, 50])
+        
+        sdnn_position = self._get_relative_position(sdnn_value, sdnn_range)
+        nn50_position = self._get_relative_position(nn50_value, nn50_range)
+        
+        position_diff = abs(sdnn_position - nn50_position)
+        
+        if position_diff < 0.2:
+            return {
+                'features': ['SDNN', 'NN50'],
+                'type': 'strong_positive',
+                'description': f"SDNN ({sdnn_value:.1f} ms) and NN50 ({nn50_value:.0f}) show strong positive correlation, both indicating similar levels of heart rate variability. This suggests consistent overall autonomic function.",
+                'strength': 'strong'
+            }
+        elif position_diff < 0.5:
+            return {
+                'features': ['SDNN', 'NN50'],
+                'type': 'moderate_positive',
+                'description': f"SDNN ({sdnn_value:.1f} ms) and NN50 ({nn50_value:.0f}) show moderate positive correlation, indicating generally consistent variability patterns.",
+                'strength': 'moderate'
+            }
+        else:
+            return {
+                'features': ['SDNN', 'NN50'],
+                'type': 'weak_correlation',
+                'description': f"SDNN ({sdnn_value:.1f} ms) and NN50 ({nn50_value:.0f}) show weak correlation, suggesting different patterns of heart rate variability. This may indicate mixed autonomic function.",
+                'strength': 'weak'
+            }
+
+    def _analyze_other_correlations(self, feature_data, segment_duration):
+        """Analyze correlations between other features."""
+        correlations = []
+        
+        # Add other feature correlation analyses here as needed
+        # For example, heart rate vs HRV features, etc.
+        
+        return correlations
+
+    def _get_relative_position(self, value, normal_range):
+        """Get the relative position of a value within its normal range (0-1 scale)."""
+        min_val, max_val = normal_range
+        if max_val == min_val:
+            return 0.5
+        return (value - min_val) / (max_val - min_val)
+
     def interpret_multiple_features(self, feature_data, segment_duration="1 min"):
         """
         Interprets multiple features together to provide context-aware analysis.
@@ -280,12 +519,16 @@ class InterpretationEngine:
             # Analyze patterns across features
             patterns = self._analyze_cross_feature_patterns(feature_data, segment_duration)
             
+            # Analyze cross-feature correlations
+            cross_correlations = self._analyze_cross_feature_correlations(feature_data, segment_duration)
+            
             # Generate warnings based on combinations
             warnings = self._generate_cross_feature_warnings(feature_data, segment_duration)
             
             return {
                 'individual_interpretations': interpretations,
                 'cross_feature_patterns': patterns,
+                'cross_correlations': cross_correlations,
                 'warnings': warnings,
                 'overall_assessment': self._generate_overall_assessment(interpretations)
             }

@@ -62,26 +62,27 @@ def test_interpret_feature_in_range(engine_with_mocked_config):
     """Test feature interpretation for a value within normal range."""
     engine = engine_with_mocked_config
     interpretation = engine.interpret_feature("rmssd", 50, segment_duration="1_min")
-    assert interpretation["interpretation"] == "RMSSD is within the normal range."
+    # Check that the interpretation contains the base interpretation and dynamic context
+    assert "RMSSD is within the normal range" in interpretation["interpretation"]
+    assert "Your RMSSD of 50.0 ms" in interpretation["interpretation"]
 
 
 def test_interpret_feature_below_range(engine_with_mocked_config):
     """Test feature interpretation for a value below normal range."""
     engine = engine_with_mocked_config
     interpretation = engine.interpret_feature("rmssd", 10, segment_duration="1_min")
-    assert (
-        interpretation["interpretation"]
-        == "Low RMSSD suggests reduced parasympathetic activity."
-    )
+    # Check that the interpretation contains the base interpretation and dynamic context
+    assert "Low RMSSD suggests reduced parasympathetic activity" in interpretation["interpretation"]
+    assert "Your RMSSD of 10.0 ms" in interpretation["interpretation"]
 
 
 def test_interpret_feature_above_range(engine_with_mocked_config):
     """Test feature interpretation for a value above normal range."""
     engine = engine_with_mocked_config
     interpretation = engine.interpret_feature("rmssd", 70, segment_duration="1_min")
-    assert (
-        interpretation["interpretation"] == "High RMSSD may indicate strong vagal tone."
-    )
+    # Check that the interpretation contains the base interpretation and dynamic context
+    assert "High RMSSD may indicate strong vagal tone" in interpretation["interpretation"]
+    assert "Your RMSSD of 70.0 ms" in interpretation["interpretation"]
 
 
 def test_parse_inf_values(engine_with_mocked_config):

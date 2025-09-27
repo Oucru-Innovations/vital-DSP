@@ -314,11 +314,15 @@ class HealthReportGenerator:
             # Generate key insights
             key_insights = self._generate_key_insights(segment_values)
             
+            # Generate cross-correlations
+            cross_correlations = self._generate_cross_correlations(segment_values)
+            
             return {
                 'executive_summary': executive_summary,
                 'risk_assessment': risk_assessment,
                 'recommendations': recommendations,
                 'key_insights': key_insights,
+                'cross_correlations': cross_correlations,
                 'overall_health_score': health_score,
                 'statistics': {
                     'total_features': total_features,
@@ -468,3 +472,15 @@ class HealthReportGenerator:
             insights.append("Some heart rate variability parameters suggest reduced autonomic function")
         
         return insights
+
+    def _generate_cross_correlations(self, segment_values):
+        """Generate cross-feature correlation analysis."""
+        try:
+            # Use the interpretation engine to analyze cross-correlations
+            cross_correlations = self.interpreter._analyze_cross_feature_correlations(
+                segment_values, self.segment_duration
+            )
+            return cross_correlations
+        except Exception as e:
+            self.logger.error(f"Error generating cross-correlations: {e}")
+            return []
