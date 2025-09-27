@@ -53,7 +53,7 @@ class PreprocessConfig:
     ...     highcut=40.0,
     ...     order=4
     ... )
-    >>> 
+    >>>
     >>> # Configuration for PPG preprocessing with respiratory analysis
     >>> config_ppg = PreprocessConfig(
     ...     filter_type="bandpass",
@@ -64,7 +64,7 @@ class PreprocessConfig:
     ...     window_length=5,
     ...     polyorder=2
     ... )
-    >>> 
+    >>>
     >>> # Configuration for noise reduction only
     >>> config_denoise = PreprocessConfig(
     ...     filter_type="ignore",

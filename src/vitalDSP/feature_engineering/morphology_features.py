@@ -37,14 +37,14 @@ class PhysiologicalFeatureExtractor:
     >>> import numpy as np
     >>> from vitalDSP.feature_engineering.morphology_features import PhysiologicalFeatureExtractor
     >>> from vitalDSP.preprocess.preprocess_operations import PreprocessConfig
-    >>> 
+    >>>
     >>> # Example 1: ECG feature extraction
     >>> ecg_signal = np.random.randn(1000)  # Simulated ECG signal
     >>> extractor = PhysiologicalFeatureExtractor(ecg_signal, fs=256)
     >>> ecg_features = extractor.extract_features(signal_type="ECG")
     >>> print(f"ECG features extracted: {len(ecg_features)}")
     >>> print(f"QRS duration: {ecg_features.get('qrs_duration', 'N/A')}")
-    >>> 
+    >>>
     >>> # Example 2: PPG feature extraction with preprocessing
     >>> ppg_signal = np.random.randn(2000)  # Simulated PPG signal
     >>> extractor_ppg = PhysiologicalFeatureExtractor(ppg_signal, fs=128)
@@ -57,7 +57,7 @@ class PhysiologicalFeatureExtractor:
     >>> ppg_features = extractor_ppg.extract_features(signal_type="PPG", preprocess_config=config)
     >>> print(f"PPG features extracted: {len(ppg_features)}")
     >>> print(f"Systolic duration: {ppg_features.get('systolic_duration', 'N/A')}")
-    >>> 
+    >>>
     >>> # Example 3: EEG feature extraction
     >>> eeg_signal = np.random.randn(1500)  # Simulated EEG signal
     >>> extractor_eeg = PhysiologicalFeatureExtractor(eeg_signal, fs=512)

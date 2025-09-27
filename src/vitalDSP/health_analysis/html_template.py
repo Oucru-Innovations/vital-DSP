@@ -233,7 +233,7 @@ def _get_base_css():
                     background: rgba(255, 255, 255, 0.7);
                     backdrop-filter: blur(5px);
                 }
-                
+
                 /* Dynamic Analysis Styles */
                 .dynamic-analysis-container {
                     margin-bottom: 24px;
@@ -244,7 +244,7 @@ def _get_base_css():
                     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
                     border: 1px solid rgba(255, 255, 255, 0.2);
                 }
-                
+
                 .executive-summary, .risk-assessment, .key-insights, .recommendations, .statistics-summary {
                     margin-bottom: 20px;
                     padding: 20px;
@@ -258,7 +258,7 @@ def _get_base_css():
                     transform: translateY(-1px);
                     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
                 }
-                
+
                 .summary-card, .risk-card, .insights-card, .recommendations-card {
                     padding: 20px;
                     border-radius: 12px;
@@ -270,27 +270,27 @@ def _get_base_css():
                     transform: translateY(-1px);
                     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
                 }
-                
+
                 .summary-card.excellent {
                     background-color: #d4edda;
                     border-left: 4px solid #28a745;
                 }
-                
+
                 .summary-card.good {
                     background-color: #d1ecf1;
                     border-left: 4px solid #17a2b8;
                 }
-                
+
                 .summary-card.fair {
                     background-color: #fff3cd;
                     border-left: 4px solid #ffc107;
                 }
-                
+
                 .summary-card.poor {
                     background-color: #f8d7da;
                     border-left: 4px solid #dc3545;
                 }
-                
+
                 .health-score {
                     display: flex;
                     justify-content: space-between;
@@ -301,29 +301,29 @@ def _get_base_css():
                     border-radius: 12px;
                     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
                 }
-                
+
                 .score-value {
                     font-size: 2rem;
                     font-weight: 700;
                     color: #2c3e50;
                     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                 }
-                
+
                 .risk-card.low {
                     background-color: #d4edda;
                     border-left: 4px solid #28a745;
                 }
-                
+
                 .risk-card.moderate {
                     background-color: #fff3cd;
                     border-left: 4px solid #ffc107;
                 }
-                
+
                 .risk-card.high {
                     background-color: #f8d7da;
                     border-left: 4px solid #dc3545;
                 }
-                
+
                 .risk-level {
                     display: flex;
                     justify-content: space-between;
@@ -334,25 +334,25 @@ def _get_base_css():
                     border-radius: 12px;
                     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
                 }
-                
+
                 .risk-value {
                     font-size: 1.25rem;
                     font-weight: 700;
                     text-transform: uppercase;
                     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                 }
-                
+
                 .concerns ul, .insights-card ul, .recommendations-card ol {
                     margin: 12px 0;
                     padding-left: 24px;
                 }
-                
+
                 .concerns li, .insights-card li, .recommendations-card li {
                     margin: 6px 0;
                     line-height: 1.6;
                     padding: 4px 0;
                 }
-                
+
                 .cross-correlations {
                     margin-bottom: 30px;
                     padding: 20px;
@@ -457,14 +457,14 @@ def _get_base_css():
                     margin: 0;
                     font-size: 0.95rem;
                 }
-                
+
                 .stats-grid {
                     display: grid;
                     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
                     gap: 12px;
                     margin-top: 16px;
                 }
-                
+
                 .stat-item {
                     text-align: center;
                     padding: 16px 12px;
@@ -477,19 +477,19 @@ def _get_base_css():
                     transform: translateY(-2px);
                     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
                 }
-                
+
                 .stat-item.in-range {
                     border-top: 3px solid #28a745;
                 }
-                
+
                 .stat-item.above-range {
                     border-top: 3px solid #ffc107;
                 }
-                
+
                 .stat-item.below-range {
                     border-top: 3px solid #dc3545;
                 }
-                
+
                 .stat-number {
                     display: block;
                     font-size: 1.5rem;
@@ -498,7 +498,7 @@ def _get_base_css():
                     margin-bottom: 4px;
                     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
                 }
-                
+
                 .stat-label {
                     font-size: 0.75rem;
                     color: #6c757d;
@@ -506,7 +506,7 @@ def _get_base_css():
                     letter-spacing: 0.5px;
                     font-weight: 500;
                 }
-                
+
                 /* Responsive Design */
                 @media (max-width: 768px) {
                     body {
@@ -537,7 +537,7 @@ def _get_base_css():
                         padding: 12px 8px;
                     }
                 }
-                
+
                 @media (max-width: 480px) {
                     .stats-grid {
                         grid-template-columns: 1fr;
@@ -1128,7 +1128,9 @@ def _get_javascript_content():
     """
 
 
-def render_report(feature_interpretations, visualizations, filter_status="all", dynamic_analysis=None):
+def render_report(
+    feature_interpretations, visualizations, filter_status="all", dynamic_analysis=None
+):
     """
     Renders the health report in HTML format using the given feature interpretations and visualizations.
 

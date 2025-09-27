@@ -43,13 +43,13 @@ class VitalTransformation:
     --------
     >>> import numpy as np
     >>> from vitalDSP.transforms.vital_transformation import VitalTransformation
-    >>> 
+    >>>
     >>> # Example 1: Basic ECG signal transformation
     >>> ecg_signal = np.random.randn(1000)  # Simulated ECG signal
     >>> transformer = VitalTransformation(ecg_signal, fs=256, signal_type="ECG")
     >>> transformed_signal = transformer.apply_transformations()
     >>> print(f"Transformed signal shape: {transformed_signal.shape}")
-    >>> 
+    >>>
     >>> # Example 2: PPG signal with custom options
     >>> ppg_signal = np.random.randn(2000)  # Simulated PPG signal
     >>> transformer_ppg = VitalTransformation(ppg_signal, fs=128, signal_type="PPG")
@@ -62,7 +62,7 @@ class VitalTransformation:
     ... }
     >>> transformed_ppg = transformer_ppg.apply_transformations(options=options)
     >>> print(f"Transformed PPG shape: {transformed_ppg.shape}")
-    >>> 
+    >>>
     >>> # Example 3: Individual transformation methods
     >>> transformer = VitalTransformation(ecg_signal, fs=256, signal_type="ECG")
     >>> detrended = transformer.apply_detrending(method='linear')

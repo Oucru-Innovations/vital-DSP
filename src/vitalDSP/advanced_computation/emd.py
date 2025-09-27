@@ -16,18 +16,18 @@ class EMD:
     --------
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.emd import EMD
-    >>> 
+    >>>
     >>> # Example 1: Basic EMD decomposition
     >>> signal = np.sin(np.linspace(0, 10, 100)) + 0.5 * np.random.normal(size=100)
     >>> emd = EMD(signal)
     >>> imfs = emd.emd()
     >>> print(f"Number of IMFs: {len(imfs)}")
-    >>> 
+    >>>
     >>> # Example 2: EMD with limited number of IMFs
     >>> emd_limited = EMD(signal)
     >>> imfs_limited = emd_limited.emd(max_imfs=3)
     >>> print(f"Limited IMFs: {len(imfs_limited)}")
-    >>> 
+    >>>
     >>> # Example 3: EMD with custom stop criterion
     >>> emd_custom = EMD(signal)
     >>> imfs_custom = emd_custom.emd(stop_criterion=0.01)

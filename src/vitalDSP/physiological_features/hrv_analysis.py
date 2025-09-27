@@ -30,19 +30,19 @@ class HRVFeatures:
     --------
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.hrv_analysis import HRVFeatures
-    >>> 
+    >>>
     >>> # Example 1: Using ECG signal
     >>> ecg_signal = np.random.randn(1000)  # Simulated ECG signal
     >>> hrv_ecg = HRVFeatures(ecg_signal, fs=256, signal_type="ECG")
     >>> hrv_features = hrv_ecg.compute_all_features()
     >>> print(f"SDNN: {hrv_features.get('sdnn', 'N/A')}")
-    >>> 
+    >>>
     >>> # Example 2: Using PPG signal
     >>> ppg_signal = np.random.randn(2000)  # Simulated PPG signal
     >>> hrv_ppg = HRVFeatures(ppg_signal, fs=128, signal_type="PPG")
     >>> hrv_features = hrv_ppg.compute_all_features()
     >>> print(f"RMSSD: {hrv_features.get('rmssd', 'N/A')}")
-    >>> 
+    >>>
     >>> # Example 3: Using pre-computed NN intervals
     >>> nn_intervals = np.array([800, 850, 820, 900, 780])  # RR intervals in ms
     >>> hrv_precomputed = HRVFeatures(None, nn_intervals=nn_intervals, fs=100)
