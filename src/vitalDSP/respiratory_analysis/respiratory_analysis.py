@@ -42,7 +42,7 @@ class RespiratoryAnalysis:
 
     def compute_respiratory_rate(
         self,
-        method="peaks",
+        method="counting",
         correction_method=None,
         min_breath_duration=0.5,
         max_breath_duration=6,
@@ -55,7 +55,7 @@ class RespiratoryAnalysis:
         Parameters
         ----------
         method : str, optional
-            Method used for breath detection ('peaks', 'zero_crossing'). Default is 'peaks'.
+            Method used for breath detection ('peaks', 'zero_crossing', 'time_domain', 'frequency_domain', 'fft_based', 'counting'). Default is 'peaks'.
         correction_method : str, optional
             Method for correcting false detections ('interpolation', 'adaptive_threshold'). Default is None.
         min_breath_duration : float, optional

@@ -28,7 +28,7 @@ class HRVFeatures:
     """
 
     def __init__(
-        self, signals, nn_intervals=None, fs=100, signal_type="ppg", options=None
+        self, signals, nn_intervals=None, fs=100, signal_type="PPG", options=None
     ):
         """
         Initializes the HRVFeatures object.
