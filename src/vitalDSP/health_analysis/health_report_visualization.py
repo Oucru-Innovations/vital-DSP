@@ -42,6 +42,21 @@ class HealthReportVisualizer:
         self.logger = logging.getLogger(__name__)
         self.segment_duration = segment_duration
 
+    def _normalize_web_path(self, filepath):
+        """
+        Normalize file path for web usage by ensuring forward slashes.
+
+        Args:
+            filepath (str): The file path to normalize.
+
+        Returns:
+            str: Web-compatible path with forward slashes.
+        """
+        if filepath is None:
+            return None
+        # Convert backslashes to forward slashes for web compatibility
+        return filepath.replace('\\', '/')
+
     def _fetch_and_validate_normal_range(self, feature, value):
         """
         Fetches the normal range for a given feature, handles NaN, Inf values, and validates the feature.
@@ -110,36 +125,36 @@ class HealthReportVisualizer:
             if not isinstance(values, list):
                 values = [values]  # Handle list (multiple segments) for each feature
             visualization_paths[feature] = {
-                "heatmap": os.path.normpath(
+                "heatmap": self._normalize_web_path(
                     self._create_heatmap_plot(feature, values, output_dir)
                 ),
-                "bell_plot": os.path.normpath(
+                "bell_plot": self._normalize_web_path(
                     self._create_bell_shape_plot(feature, values, output_dir)
                 ),
-                "radar_plot": os.path.normpath(
+                "radar_plot": self._normalize_web_path(
                     self._create_radar_plot(feature, values, output_dir)
                 ),
-                "violin_plot": os.path.normpath(
+                "violin_plot": self._normalize_web_path(
                     self._create_violin_plot(feature, values, output_dir)
                 ),
-                "line_with_rolling_stats": os.path.normpath(
+                "line_with_rolling_stats": self._normalize_web_path(
                     self._create_plot_line_with_rolling_stats(
                         feature, values, output_dir
                     )
                 ),
-                "lag_plot": os.path.normpath(
+                "lag_plot": self._normalize_web_path(
                     self._create_plot_lag(feature, values, output_dir)
                 ),
-                "plot_periodogram": os.path.normpath(
+                "plot_periodogram": self._normalize_web_path(
                     self._create_plot_periodogram(feature, values, output_dir)
                 ),
-                "plot_spectrogram": os.path.normpath(
+                "plot_spectrogram": self._normalize_web_path(
                     self._create_plot_spectrogram(feature, values, output_dir)
                 ),
-                "plot_spectral_density": os.path.normpath(
+                "plot_spectral_density": self._normalize_web_path(
                     self._create_spectral_density_plot(feature, values, output_dir)
                 ),
-                "plot_box_swarm": os.path.normpath(
+                "plot_box_swarm": self._normalize_web_path(
                     self._create_box_swarm_plot(feature, values, output_dir)
                 ),
             }

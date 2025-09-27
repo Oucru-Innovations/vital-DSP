@@ -240,7 +240,14 @@ class InterpretationEngine:
         contradiction_info = feature_info.get(
             "contradiction", "No contradiction found."
         )
-        return contradiction_info
+
+        # Handle both string and dictionary formats for contradiction
+        if isinstance(contradiction_info, dict):
+            # If it's a dictionary, get the first contradiction description
+            contradiction_descriptions = list(contradiction_info.values())
+            return contradiction_descriptions[0] if contradiction_descriptions else "No contradiction found."
+        else:
+            return contradiction_info
 
     def _get_feature_correlation(self, feature_name):
         """
@@ -259,13 +266,28 @@ class InterpretationEngine:
         """
         feature_info = self.config.get(feature_name, {})
         correlation_info = feature_info.get("correlation", "No correlation found.")
-        return correlation_info
+
+        # Handle both string and dictionary formats for correlation
+        if isinstance(correlation_info, dict):
+            # If it's a dictionary, get the first correlation description
+            correlation_descriptions = list(correlation_info.values())
+            return correlation_descriptions[0] if correlation_descriptions else "No correlation found."
+        else:
+            return correlation_info
 
     def _generate_dynamic_correlation(
         self, feature_name, value, normal_range, feature_info, segment_duration
     ):
         """Generate dynamic correlation information based on feature value and context."""
         base_correlation = feature_info.get("correlation", "No correlation found.")
+
+        # Handle both string and dictionary formats for base correlation
+        if isinstance(base_correlation, dict):
+            # If it's a dictionary, get the first correlation description
+            correlation_descriptions = list(base_correlation.values())
+            base_correlation_text = correlation_descriptions[0] if correlation_descriptions else "No correlation found."
+        else:
+            base_correlation_text = base_correlation
 
         # Get correlation thresholds and related features
         correlation_thresholds = feature_info.get("thresholds", {}).get(
@@ -279,9 +301,9 @@ class InterpretationEngine:
 
         # Combine base correlation with dynamic context
         if dynamic_context:
-            return f"{base_correlation} {dynamic_context}"
+            return f"{base_correlation_text} {dynamic_context}"
         else:
-            return base_correlation
+            return base_correlation_text
 
     def _get_correlation_context(
         self, feature_name, value, normal_range, correlation_thresholds

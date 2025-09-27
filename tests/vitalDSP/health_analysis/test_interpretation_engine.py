@@ -97,16 +97,14 @@ def test_get_feature_contradiction(engine_with_mocked_config):
     """Test retrieving contradiction for a feature."""
     engine = engine_with_mocked_config
     contradiction = engine._get_feature_contradiction("rmssd")
-    assert contradiction == {
-        "lf_hf_ratio": "High RMSSD and high LF/HF ratio may suggest imbalance."
-    }
+    assert contradiction == "High RMSSD and high LF/HF ratio may suggest imbalance."
 
 
 def test_get_feature_correlation(engine_with_mocked_config):
     """Test retrieving correlation for a feature."""
     engine = engine_with_mocked_config
     correlation = engine._get_feature_correlation("rmssd")
-    assert correlation == {"hf_power": "RMSSD positively correlates with HF power."}
+    assert correlation == "RMSSD positively correlates with HF power."
 
 
 def test_get_range_status_unknown_feature(engine_with_mocked_config):

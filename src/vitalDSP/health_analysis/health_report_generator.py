@@ -2,7 +2,6 @@ from vitalDSP.health_analysis.interpretation_engine import InterpretationEngine
 from vitalDSP.health_analysis.health_report_visualization import HealthReportVisualizer
 from vitalDSP.health_analysis.html_template import (
     render_report,
-    process_interpretations,
 )
 import logging
 
@@ -22,7 +21,7 @@ class HealthReportGenerator:
 
     Attributes:
         feature_data (dict): Dictionary containing feature names as keys and their corresponding values.
-        segment_duration (str): Duration of the segment, either "1_min" or "5_min". Default is "1 min".
+        segment_duration (str): Duration of the segment, either "1_min" or "5_min". Default is "1_min".
         interpreter (InterpretationEngine): Instance of InterpretationEngine to interpret feature data.
         visualizer (HealthReportVisualizer): Instance of HealthReportVisualizer to create visualizations.
 
@@ -58,7 +57,7 @@ class HealthReportGenerator:
         Args:
             feature_data (dict): Dictionary containing feature names as keys and their corresponding values as values.
                                 Example: {"nn50": 35, "rmssd": 55, "sdnn": 70}
-            segment_duration (str): The duration of the analyzed segment, either '1 min' or '5 min'. Default is '1 min'.
+            segment_duration (str): The duration of the analyzed segment, either '1_min' or '5_min'. Default is '1_min'.
             feature_config_path (str, optional): Path to a custom feature YAML configuration file. If not provided, the default config will be used.
 
         Examples
@@ -68,12 +67,27 @@ class HealthReportGenerator:
         >>> report_html = generator.generate()
         """
         self.feature_data = feature_data
-        self.segment_duration = segment_duration
+        self.segment_duration = self._validate_segment_duration(segment_duration)
         self.interpreter = InterpretationEngine(feature_config_path)
         self.visualizer = HealthReportVisualizer(
-            self.interpreter.config, segment_duration
+            self.interpreter.config, self.segment_duration
         )
         self.logger = logging.getLogger(__name__)
+
+    def _validate_segment_duration(self, segment_duration):
+        """Validate and normalize segment duration format."""
+        valid_durations = ["1_min", "5_min"]
+
+        # Handle common variations
+        if segment_duration in ["1 min", "1min", "1"]:
+            return "1_min"
+        elif segment_duration in ["5 min", "5min", "5"]:
+            return "5_min"
+        elif segment_duration in valid_durations:
+            return segment_duration
+        else:
+            self.logger.warning(f"Invalid segment duration '{segment_duration}', defaulting to '1_min'")
+            return "1_min"
 
     @staticmethod
     def downsample(values, factor=10):
@@ -99,17 +113,41 @@ class HealthReportGenerator:
         Returns:
             dict: Paths to the generated visualizations.
         """
+        # Generate visualizations for all features
+        filtered_data = feature_data
 
-        def generate_visualizations_batch(args):
-            feature, values = args
-            return feature, visualizer.create_visualizations(
-                {feature: values}, output_dir
-            )
+        print(f"Generating visualizations for {len(filtered_data)} features...")
 
-        with multiprocessing.Pool(processes) as pool:
-            results = pool.map(generate_visualizations_batch, feature_data.items())
+        visualizations = {}
+        total_features = len(filtered_data)
 
-        return {feature: paths for feature, paths in results}
+        for i, (feature, values) in enumerate(filtered_data.items(), 1):
+            try:
+                print(f"Processing {feature} ({i}/{total_features})...")
+                feature_visualizations = visualizer.create_visualizations(
+                    {feature: values}, output_dir
+                )
+                visualizations[feature] = feature_visualizations[feature]
+                print(f"✅ Completed {feature}")
+
+            except Exception as e:
+                print(f"❌ Error generating visualization for {feature}: {e}")
+                visualizations[feature] = {}
+
+        # Normalize all paths for web compatibility
+        normalized_visualizations = {}
+        for feature, plots in visualizations.items():
+            normalized_visualizations[feature] = {}
+            for plot_type, path in plots.items():
+                if path:
+                    # Convert backslashes to forward slashes for web compatibility
+                    web_path = path.replace('\\', '/')
+                    # Keep relative paths for file:// protocol compatibility
+                    normalized_visualizations[feature][plot_type] = web_path
+                else:
+                    normalized_visualizations[feature][plot_type] = path
+
+        return normalized_visualizations
 
     def generate(self, filter_status="all", output_dir=None):
         """
@@ -123,7 +161,7 @@ class HealthReportGenerator:
 
         Example Usage:
             >>> feature_data = {"nn50": 45, "rmssd": 70, "sdnn": 120}
-            >>> generator = HealthReportGenerator(feature_data, segment_duration="5 min")
+            >>> generator = HealthReportGenerator(feature_data, segment_duration="5_min")
             >>> report_html = generator.generate()
             >>> with open('health_report.html', 'w') as file:
             >>>     file.write(report_html)
@@ -134,6 +172,10 @@ class HealthReportGenerator:
             # Step 1: Interpret each feature with the loaded configuration
             for feature_name, values in self.feature_data.items():
                 try:
+                    # Handle both single values and arrays
+                    if not isinstance(values, (list, tuple, np.ndarray)):
+                        values = [values]
+
                     # Convert the values to a NumPy array
                     values = np.array(values)
 
@@ -187,28 +229,36 @@ class HealthReportGenerator:
                     self.logger.error(f"Error processing {feature_name}: {e}")
                     continue
 
-            # Step 1.5: Process contradictions and correlations
-            segment_values = process_interpretations(segment_values)
+            # Step 1.5: Process contradictions and correlations (now handled dynamically)
+            # segment_values = process_interpretations(segment_values)  # No longer needed
 
         except Exception as e:
             # Log the error if step 1 fails
             self.logger.error(f"Error in processing feature interpretations: {e}")
 
-        # Step 2: Generate visualizations for all features
-        # visualizations = self.visualizer.create_visualizations(
-        #     self.feature_data, output_dir=output_dir
-        # )
-        try:
-            visualizations = self.batch_visualization(
-                self.visualizer, self.feature_data, output_dir, processes=4
-            )
-        except Exception as e:
-            self.logger.error(f"Error generating visualizations: {e}")
-            visualizations = {}
+        # Step 2: Generate visualizations for all features (optional)
+        visualizations = {}
+        if output_dir:
+            try:
+                print("Generating visualizations... This may take a moment.")
+                visualizations = self.batch_visualization(
+                    self.visualizer, self.feature_data, output_dir, processes=4
+                )
+                print(f"Generated visualizations for {len(visualizations)} features.")
+            except Exception as e:
+                self.logger.error(f"Error generating visualizations: {e}")
+                print("Skipping visualizations due to error.")
+                visualizations = {}
+        else:
+            print("No output directory specified, skipping visualizations.")
 
         try:
             # Step 3: Generate dynamic analysis components
-            dynamic_analysis = self._generate_dynamic_analysis(segment_values)
+            if not segment_values:
+                self.logger.warning("No segment values available for dynamic analysis")
+                dynamic_analysis = {}
+            else:
+                dynamic_analysis = self._generate_dynamic_analysis(segment_values)
 
             # Step 4: Render the report with dynamic components
             report_html = render_report(

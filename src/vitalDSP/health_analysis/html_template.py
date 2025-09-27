@@ -234,29 +234,66 @@ def _get_base_css():
                     backdrop-filter: blur(5px);
                 }
 
-                /* Dynamic Analysis Styles */
+                /* Dynamic Analysis Styles - Compact & Elegant */
                 .dynamic-analysis-container {
-                    margin-bottom: 24px;
-                    padding: 24px;
+                    margin-bottom: 20px;
+                    padding: 20px;
                     background: rgba(255, 255, 255, 0.95);
                     backdrop-filter: blur(10px);
-                    border-radius: 20px;
-                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+                    border-radius: 16px;
+                    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
                     border: 1px solid rgba(255, 255, 255, 0.2);
                 }
 
-                .executive-summary, .risk-assessment, .key-insights, .recommendations, .statistics-summary {
-                    margin-bottom: 20px;
-                    padding: 20px;
+                .analysis-grid {
+                    display: grid;
+                    grid-template-columns: 2fr 1fr;
+                    gap: 16px;
+                    margin-bottom: 16px;
+                }
+
+                .main-analysis {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 12px;
+                }
+
+                .executive-summary {
+                    grid-column: 1 / -1;
+                    padding: 16px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+                    margin-bottom: 12px;
+                }
+
+                .risk-assessment, .key-insights {
+                    padding: 14px;
                     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                    border-radius: 16px;
-                    border-left: 4px solid #3498db;
-                    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+                    border-radius: 10px;
+                    border-left: 3px solid #3498db;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
                     transition: all 0.3s ease;
                 }
-                .executive-summary:hover, .risk-assessment:hover, .key-insights:hover, .recommendations:hover, .statistics-summary:hover {
+
+                .risk-assessment:hover, .key-insights:hover {
                     transform: translateY(-1px);
-                    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                }
+
+                .recommendations, .statistics-summary {
+                    padding: 14px;
+                    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                    border-radius: 10px;
+                    border-left: 3px solid #e74c3c;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                    transition: all 0.3s ease;
+                }
+
+                .recommendations:hover, .statistics-summary:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
                 }
 
                 .summary-card, .risk-card, .insights-card, .recommendations-card {
@@ -526,8 +563,19 @@ def _get_base_css():
                     .dynamic-analysis-container {
                         padding: 16px;
                     }
-                    .executive-summary, .risk-assessment, .key-insights, .recommendations, .statistics-summary {
-                        padding: 16px;
+                    .analysis-grid {
+                        grid-template-columns: 1fr;
+                        gap: 12px;
+                    }
+                    .main-analysis {
+                        grid-template-columns: 1fr;
+                        gap: 8px;
+                    }
+                    .executive-summary {
+                        padding: 12px;
+                    }
+                    .risk-assessment, .key-insights, .recommendations, .statistics-summary {
+                        padding: 12px;
                     }
                     .stats-grid {
                         grid-template-columns: repeat(2, 1fr);
@@ -535,6 +583,11 @@ def _get_base_css():
                     }
                     .stat-item {
                         padding: 12px 8px;
+                    }
+                    /* Mobile: Stack bottom row vertically */
+                    .dynamic-analysis-container > div:last-child {
+                        grid-template-columns: 1fr !important;
+                        gap: 8px !important;
                     }
                 }
 
@@ -752,22 +805,11 @@ def _get_correlation_contradiction_template():
         <!-- Correlation and Contradiction Grid Layout -->
                 <div class="grid-2-cols">
                     <!-- Contradiction Section -->
-                    {% if interpretation.get('contradiction_strength') %}
+                    {% if interpretation.get('contradiction') %}
                     <div class="contradiction-block">
                         <p class="highlight">Contradiction:</p>
                         <div class="contradiction-content">
-                            {% for related_feature, explanation in interpretation['contradiction'].items() %}
-                            <p><strong>{{ related_feature }}: </strong></p>
-                            <p>
-                                {% if interpretation['contradiction_strength'] == 'Strong contradiction' %}
-                                    🔴 Strong contradiction. {{ explanation }}
-                                {% elif interpretation['contradiction_strength'] == 'Slight contradiction' %}
-                                    🟡 Slight contradiction. {{ explanation }}
-                                {% else %}
-                                    🟢 No significant contradiction. {{ explanation }}
-                                {% endif %}
-                            </p>
-                            {% endfor %}
+                            <p>{{ interpretation['contradiction'] }}</p>
                         </div>
                     </div>
                     {% endif %}
@@ -892,32 +934,7 @@ def _get_visualization_template():
                         </div>
                     </div>
 
-                    <!--
-                    <div class="visualization-block">
-                        {% if interpretation.get('correlation') %}
-                            <div class="plot-dropdown">
-                                <label for="related_feature_dropdown_{{ feature }}">Compare with:</label>
-                                <select id="related_feature_dropdown_{{ feature }}" onchange="changeRelatedFeaturePlot('{{ feature }}', this.value)">
-                                    <option value="">Select a related feature</option>
-                                    {% set first_related_feature = interpretation['correlation'].keys() | list | first %}
-                                    {% for related_feature in interpretation['correlation'].keys() %}
-                                        <option value="{{ related_feature }}" {% if related_feature == first_related_feature %}selected{% endif %}>
-                                            {{ related_feature }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <div id="related_visualization_{{ feature }}" class="visualization">
-                                {% if visualizations.get(first_related_feature) and visualizations[first_related_feature]['bell_plot'] is not none %}
-                                    <img id="related_feature_plot_{{ feature }}" src="{{ visualizations[first_related_feature]['bell_plot'] }}" alt="Related Feature Plot" style="max-width: 100%; height: auto;">
-                                {% else %}
-                                    <p>No related plot available for the selected feature.</p>
-                                {% endif %}
-                            </div>
-                        {% endif %}
-                    </div>
-                    -->
+                    <!-- Correlation dropdown removed - now using dynamic string-based correlations -->
                 </div>
             {% endif %}
     """
@@ -946,128 +963,95 @@ def _get_feature_template():
 
 
 def _get_dynamic_analysis_template():
-    """Generate template for dynamic analysis sections."""
+    """Generate template for dynamic analysis sections - Compact & Elegant."""
     return """
         {% if dynamic_analysis %}
-        <!-- Dynamic Analysis Section -->
+        <!-- Dynamic Analysis Section - Compact & Elegant -->
         <div class="dynamic-analysis-container">
-            <!-- Executive Summary -->
-            {% if dynamic_analysis.get('executive_summary') %}
+            <!-- Executive Summary - Full Width -->
             <div class="executive-summary">
-                <h2>Executive Summary</h2>
-                <div class="summary-card {{ dynamic_analysis.executive_summary.status }}">
-                    <div class="health-score">
-                        <span class="score-label">Overall Health Score:</span>
-                        <span class="score-value">{{ "%.1f"|format(dynamic_analysis.overall_health_score) }}/100</span>
-                    </div>
-                    <p class="summary-text">{{ dynamic_analysis.executive_summary.summary }}</p>
+                <h2 style="margin: 0 0 12px 0; font-size: 1.4rem;">📊 Executive Summary</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 0.9rem; opacity: 0.9;">Overall Health Score:</span>
+                    <span style="font-size: 1.8rem; font-weight: 700;">{{ "%.1f"|format(dynamic_analysis.overall_health_score) }}/100</span>
                 </div>
+                <p style="margin: 0; font-size: 0.95rem; line-height: 1.4; opacity: 0.95;">{{ dynamic_analysis.executive_summary.summary }}</p>
             </div>
-            {% endif %}
 
-            <!-- Risk Assessment -->
-            {% if dynamic_analysis.get('risk_assessment') %}
-            <div class="risk-assessment">
-                <h2>Risk Assessment</h2>
-                <div class="risk-card {{ dynamic_analysis.risk_assessment.level }}">
-                    <div class="risk-level">
-                        <span class="risk-label">Risk Level:</span>
-                        <span class="risk-value">{{ dynamic_analysis.risk_assessment.level|title }}</span>
+            <!-- Main Analysis Grid -->
+            <div class="analysis-grid">
+                <!-- Left Column: Risk & Insights -->
+                <div class="main-analysis">
+                    <div class="risk-assessment">
+                        <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">⚠️ Risk Assessment</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 0.85rem; color: #7f8c8d;">Risk Level:</span>
+                            <span style="font-size: 1rem; font-weight: 600; color: #e74c3c;">{{ dynamic_analysis.risk_assessment.level|title }}</span>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #555;">
+                            <strong>Recommendation:</strong> {{ dynamic_analysis.risk_assessment.recommendation }}
+                        </div>
                     </div>
-                    {% if dynamic_analysis.risk_assessment.concerns %}
-                    <div class="concerns">
-                        <h4>Areas of Concern:</h4>
-                        <ul>
-                            {% for concern in dynamic_analysis.risk_assessment.concerns %}
-                            <li>{{ concern }}</li>
+
+                    <div class="key-insights">
+                        <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">💡 Key Insights</h3>
+                        <ul style="margin: 0; padding-left: 16px; font-size: 0.85rem; color: #555;">
+                            {% for insight in dynamic_analysis.key_insights[:3] %}
+                            <li style="margin-bottom: 4px;">{{ insight }}</li>
                             {% endfor %}
                         </ul>
                     </div>
-                    {% endif %}
-                    <div class="risk-recommendation">
-                        <strong>Recommendation:</strong> {{ dynamic_analysis.risk_assessment.recommendation }}
-                    </div>
                 </div>
-            </div>
-            {% endif %}
 
-            <!-- Key Insights -->
-            {% if dynamic_analysis.get('key_insights') %}
-            <div class="key-insights">
-                <h2>Key Insights</h2>
-                <div class="insights-card">
-                    <ul>
-                        {% for insight in dynamic_analysis.key_insights %}
-                        <li>{{ insight }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Cross-Feature Correlations -->
-            {% if dynamic_analysis.get('cross_correlations') and dynamic_analysis.cross_correlations|length > 0 %}
-            <div class="cross-correlations">
-                <h2>Feature Correlations</h2>
-                <div class="correlations-card">
-                    {% for correlation in dynamic_analysis.cross_correlations %}
-                    <div class="correlation-item {{ correlation.strength }}">
-                        <div class="correlation-header">
-                            <span class="correlation-features">{{ correlation.features[0] }} ↔ {{ correlation.features[1] }}</span>
-                            <span class="correlation-strength">{{ correlation.strength|title }} Correlation</span>
+                <!-- Right Column: Statistics -->
+                <div class="statistics-summary">
+                    <h3 style="margin: 0 0 12px 0; font-size: 1.1rem; color: #2c3e50;">📈 Analysis Summary</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.7); border-radius: 6px;">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: #2c3e50;">{{ dynamic_analysis.statistics.total_features }}</div>
+                            <div style="font-size: 0.7rem; color: #7f8c8d; text-transform: uppercase;">Total</div>
                         </div>
-                        <p class="correlation-description">{{ correlation.description }}</p>
+                        <div style="text-align: center; padding: 8px; background: rgba(40, 167, 69, 0.1); border-radius: 6px; border-top: 2px solid #28a745;">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: #28a745;">{{ dynamic_analysis.statistics.in_range }}</div>
+                            <div style="font-size: 0.7rem; color: #7f8c8d; text-transform: uppercase;">In Range</div>
+                        </div>
+                        <div style="text-align: center; padding: 8px; background: rgba(255, 193, 7, 0.1); border-radius: 6px; border-top: 2px solid #ffc107;">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: #ffc107;">{{ dynamic_analysis.statistics.above_range }}</div>
+                            <div style="font-size: 0.7rem; color: #7f8c8d; text-transform: uppercase;">Above</div>
+                        </div>
+                        <div style="text-align: center; padding: 8px; background: rgba(220, 53, 69, 0.1); border-radius: 6px; border-top: 2px solid #dc3545;">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: #dc3545;">{{ dynamic_analysis.statistics.below_range }}</div>
+                            <div style="font-size: 0.7rem; color: #7f8c8d; text-transform: uppercase;">Below</div>
+                        </div>
                     </div>
-                    {% endfor %}
                 </div>
             </div>
-            {% elif dynamic_analysis.get('cross_correlations') %}
-            <div class="cross-correlations">
-                <h2>Feature Correlations</h2>
-                <div class="correlations-card">
-                    <p style="color: #888; font-style: italic;">No significant correlations found between features.</p>
-                </div>
-            </div>
-            {% endif %}
 
-            <!-- Recommendations -->
-            {% if dynamic_analysis.get('recommendations') %}
-            <div class="recommendations">
-                <h2>Recommendations</h2>
-                <div class="recommendations-card">
-                    <ol>
-                        {% for recommendation in dynamic_analysis.recommendations %}
-                        <li>{{ recommendation }}</li>
+            <!-- Bottom Row: Correlations & Recommendations -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                <!-- Cross-Feature Correlations -->
+                <div class="cross-correlations" style="margin: 0; padding: 12px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 10px; border-left: 3px solid #9b59b6;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">🔗 Key Correlations</h3>
+                    <div style="font-size: 0.85rem; color: #555;">
+                        {% for correlation in dynamic_analysis.cross_correlations[:2] %}
+                        <div style="margin-bottom: 6px; padding: 6px; background: rgba(255,255,255,0.7); border-radius: 4px;">
+                            <strong>{{ correlation.features[0] }} ↔ {{ correlation.features[1] }}</strong><br>
+                            <span style="font-size: 0.8rem;">{{ correlation.description[:80] }}{% if correlation.description|length > 80 %}...{% endif %}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Recommendations -->
+                <div class="recommendations" style="margin: 0; padding: 12px;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">💊 Recommendations</h3>
+                    <ol style="margin: 0; padding-left: 16px; font-size: 0.85rem; color: #555;">
+                        {% for recommendation in dynamic_analysis.recommendations[:3] %}
+                        <li style="margin-bottom: 4px;">{{ recommendation }}</li>
                         {% endfor %}
                     </ol>
                 </div>
             </div>
-            {% endif %}
-
-            <!-- Statistics Summary -->
-            {% if dynamic_analysis.get('statistics') %}
-            <div class="statistics-summary">
-                <h2>Analysis Summary</h2>
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <span class="stat-number">{{ dynamic_analysis.statistics.total_features }}</span>
-                        <span class="stat-label">Total Parameters</span>
-                    </div>
-                    <div class="stat-item in-range">
-                        <span class="stat-number">{{ dynamic_analysis.statistics.in_range }}</span>
-                        <span class="stat-label">In Range</span>
-                    </div>
-                    <div class="stat-item above-range">
-                        <span class="stat-number">{{ dynamic_analysis.statistics.above_range }}</span>
-                        <span class="stat-label">Above Range</span>
-                    </div>
-                    <div class="stat-item below-range">
-                        <span class="stat-number">{{ dynamic_analysis.statistics.below_range }}</span>
-                        <span class="stat-label">Below Range</span>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
         </div>
         {% endif %}
     """
@@ -1175,12 +1159,29 @@ def render_report(
     """
 
     # Use Jinja2 template rendering
-    template = Template(html_template)
-    rendered_html = template.render(
-        feature_interpretations=feature_interpretations,
-        visualizations=visualizations,
-        filter_status=filter_status,
-        dynamic_analysis=dynamic_analysis or {},
-    )
+    try:
+        template = Template(html_template)
+        rendered_html = template.render(
+            feature_interpretations=feature_interpretations,
+            visualizations=visualizations,
+            filter_status=filter_status,
+            dynamic_analysis=dynamic_analysis or {},
+        )
+        return rendered_html
+    except Exception as e:
+        # More specific error handling
+        print(f"Template rendering error: {e}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        traceback.print_exc()
 
-    return rendered_html
+        # Return a simple error report
+        return f"""
+        <html>
+        <body>
+            <h1>Error Generating Report</h1>
+            <p>Error: {e}</p>
+            <p>Please check the console for more details.</p>
+        </body>
+        </html>
+        """

@@ -210,11 +210,12 @@ def test_generate_feature_processing_exception(generator):
         # mock_log_error.assert_called_with("Error processing rmssd: Mock Error")
 
 def test_generate_process_interpretations_exception(generator):
-    # Mock process_interpretations to raise an exception
-    with patch("vitalDSP.health_analysis.health_report_generator.process_interpretations", side_effect=Exception("Mock Error")), \
-        patch.object(generator.logger, 'error') as mock_log_error:
-        generator.generate()
-        # mock_log_error.assert_called_with("Error in processing feature interpretations: Mock Error")
+    # This test is no longer relevant as process_interpretations was removed
+    # The functionality is now handled directly in the interpretation engine
+    # Test that the generator still works without process_interpretations
+    report_html = generator.generate()
+    assert isinstance(report_html, str)
+    assert len(report_html) > 0
 
 def test_generate_feature_report(generator):
     # Call _generate_feature_report for nn50 with mock data
