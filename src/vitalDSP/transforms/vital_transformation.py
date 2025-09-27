@@ -53,12 +53,12 @@ class VitalTransformation:
     >>>     'advanced_filtering': {'filter_type': 'kalman_filter', 'options': {'R': 0.1, 'Q': 0.01}},
     >>> }
     >>> method_order = ['artifact_removal', 'bandpass_filter', 'detrending', 'normalization', 'smoothing', 'enhancement', 'advanced_filtering']
-    >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ecg')
+    >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ECG')
     >>> transformed_signal = transformer.apply_transformations(options, method_order)
     >>> print(transformed_signal)
     """
 
-    def __init__(self, signal, fs=256, signal_type="ecg"):
+    def __init__(self, signal, fs=256, signal_type="ECG"):
         self.signal = signal
         self.fs = fs
         self.signal_type = signal_type
@@ -93,7 +93,7 @@ class VitalTransformation:
         >>>     'advanced_filtering': {'filter_type': 'kalman_filter', 'options': {'R': 0.1, 'Q': 0.01}},
         >>> }
         >>> method_order = ['artifact_removal', 'bandpass_filter', 'detrending', 'normalization', 'smoothing', 'enhancement', 'advanced_filtering']
-        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ecg')
+        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ECG')
         >>> transformed_signal = transformer.apply_transformations(options, method_order)
         >>> print(transformed_signal)
         """
@@ -176,7 +176,7 @@ class VitalTransformation:
         Examples
         --------
         >>> signal = np.random.randn(1000)  # Example signal
-        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ecg')
+        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ECG')
         >>> transformer.apply_artifact_removal(method='baseline_correction', options={'cutoff': 0.5})
         >>> print(transformer.signal)
         """
@@ -244,7 +244,7 @@ class VitalTransformation:
         Examples
         --------
         >>> signal = np.random.randn(1000)  # Example signal
-        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ecg')
+        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ECG')
         >>> transformer.apply_bandpass_filter(options={'lowcut': 0.5, 'highcut': 30, 'filter_order': 4, 'filter_type': 'butter'})
         >>> print(transformer.signal)
         """
@@ -310,7 +310,7 @@ class VitalTransformation:
         Examples
         --------
         >>> signal = np.random.randn(1000)  # Example signal
-        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ecg')
+        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ECG')
         >>> transformer.apply_detrending(options={'detrend_type': 'linear'})
         >>> print(transformer.signal)
         """
@@ -347,7 +347,7 @@ class VitalTransformation:
         Examples
         --------
         >>> signal = np.random.randn(1000)  # Example signal
-        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ecg')
+        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ECG')
         >>> transformer.apply_normalization(options={'normalization_range': (0, 1)})
         >>> print(transformer.signal)
         """
@@ -377,7 +377,7 @@ class VitalTransformation:
         Examples
         --------
         >>> signal = np.random.randn(1000)  # Example signal
-        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ecg')
+        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ECG')
         >>> transformer.apply_smoothing(options={'smoothing_method': 'moving_average', 'window_size': 5, 'iterations': 2})
         >>> print(transformer.signal)
         """
@@ -420,7 +420,7 @@ class VitalTransformation:
         Examples
         --------
         >>> signal = np.random.randn(1000)  # Example signal
-        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ecg')
+        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ECG')
         >>> transformer.apply_enhancement(options={'enhance_method': 'square'})
         >>> print(transformer.signal)
         """
@@ -455,7 +455,7 @@ class VitalTransformation:
         Examples
         --------
         >>> signal = np.random.randn(1000)  # Example signal
-        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ecg')
+        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ECG')
         >>> transformer.apply_advanced_filtering(options={'filter_type': 'kalman_filter', 'R': 0.1, 'Q': 0.01})
         >>> print(transformer.signal)
         """
