@@ -550,9 +550,18 @@ class HealthReportGenerator:
     def _generate_cross_correlations(self, segment_values):
         """Generate cross-feature correlation analysis."""
         try:
+            # Extract raw feature values for correlation analysis
+            feature_data = {}
+            for feature_name, feature_data_dict in segment_values.items():
+                if isinstance(feature_data_dict, dict) and 'value' in feature_data_dict:
+                    feature_data[feature_name] = feature_data_dict['value']
+                else:
+                    # If it's already a raw value
+                    feature_data[feature_name] = feature_data_dict
+            
             # Use the interpretation engine to analyze cross-correlations
             cross_correlations = self.interpreter._analyze_cross_feature_correlations(
-                segment_values, self.segment_duration
+                feature_data, self.segment_duration
             )
             return cross_correlations
         except Exception as e:

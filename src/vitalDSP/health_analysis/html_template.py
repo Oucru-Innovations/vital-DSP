@@ -458,6 +458,22 @@ def _get_base_css():
                     font-size: 0.95rem;
                 }
 
+                .correlation-text {
+                    color: rgba(255, 255, 255, 0.9);
+                    line-height: 1.6;
+                    font-size: 0.95rem;
+                    padding: 12px;
+                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: 8px;
+                    border-left: 3px solid #3498db;
+                    margin-top: 8px;
+                }
+
+                .correlation-text p {
+                    margin: 0;
+                    padding: 0;
+                }
+
                 .stats-grid {
                     display: grid;
                     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -777,7 +793,9 @@ def _get_correlation_contradiction_template():
                     <div class="correlation-block">
                         <p class="highlight">Correlation Analysis:</p>
                         <div class="correlation-content">
-                            <p>{{ interpretation['correlation'] }}</p>
+                            <div class="correlation-text">
+                                <p>{{ interpretation['correlation'] }}</p>
+                            </div>
                         </div>
                     </div>
                     {% endif %}
@@ -1006,7 +1024,7 @@ def _get_dynamic_analysis_template():
             {% endif %}
 
             <!-- Cross-Feature Correlations -->
-            {% if dynamic_analysis.get('cross_correlations') %}
+            {% if dynamic_analysis.get('cross_correlations') and dynamic_analysis.cross_correlations %}
             <div class="cross-correlations">
                 <h2>Feature Correlations</h2>
                 <div class="correlations-card">
@@ -1019,6 +1037,15 @@ def _get_dynamic_analysis_template():
                         <p class="correlation-description">{{ correlation.description }}</p>
                     </div>
                     {% endfor %}
+                </div>
+            </div>
+            {% elif dynamic_analysis.get('cross_correlations') is defined %}
+            <div class="cross-correlations">
+                <h2>Feature Correlations</h2>
+                <div class="correlations-card">
+                    <div class="correlation-item">
+                        <p class="correlation-description">No significant correlations found between the analyzed features.</p>
+                    </div>
                 </div>
             </div>
             {% endif %}
