@@ -12,6 +12,25 @@ class InterpretationEngine:
 
     Attributes:
         config (dict): The loaded YAML configuration data for feature interpretation.
+
+    Examples
+    --------
+    >>> from vitalDSP.health_analysis.interpretation_engine import InterpretationEngine
+    >>> 
+    >>> # Example 1: Using default configuration
+    >>> engine = InterpretationEngine()
+    >>> result = engine.interpret_feature("sdnn", 45.0, "1_min")
+    >>> print(f"SDNN interpretation: {result['interpretation']}")
+    >>> 
+    >>> # Example 2: Using custom configuration file
+    >>> engine_custom = InterpretationEngine("path/to/custom_config.yml")
+    >>> result_custom = engine_custom.interpret_feature("rmssd", 25.0, "5_min")
+    >>> print(f"RMSSD range status: {engine_custom.get_range_status('rmssd', 25.0, '5_min')}")
+    >>> 
+    >>> # Example 3: Multiple feature interpretation
+    >>> feature_data = {"sdnn": 45.0, "rmssd": 25.0, "nn50": 15}
+    >>> multi_result = engine.interpret_multiple_features(feature_data, "1_min")
+    >>> print(f"Overall assessment: {multi_result['overall_assessment']}")
     """
 
     def __init__(self, yaml_file=None):
@@ -23,9 +42,10 @@ class InterpretationEngine:
         Args:
             yaml_file (str, optional): Path to a custom YAML configuration file. If not provided, it loads the default feature_config.yml.
 
-        Example Usage:
-            >>> engine = InterpretationEngine("path/to/custom_feature_config.yml")
-            >>> engine = InterpretationEngine()  # Will load the default feature_config.yml from the package
+        Examples
+        --------
+        >>> engine = InterpretationEngine("path/to/custom_feature_config.yml")
+        >>> engine = InterpretationEngine()  # Will load the default feature_config.yml from the package
         """
         if yaml_file is None:
             self.config = self.load_feature_config()

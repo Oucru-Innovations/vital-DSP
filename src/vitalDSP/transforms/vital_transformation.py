@@ -41,21 +41,35 @@ class VitalTransformation:
 
     Examples
     --------
-    >>> signal = np.random.randn(1000)  # Example signal
+    >>> import numpy as np
+    >>> from vitalDSP.transforms.vital_transformation import VitalTransformation
+    >>> 
+    >>> # Example 1: Basic ECG signal transformation
+    >>> ecg_signal = np.random.randn(1000)  # Simulated ECG signal
+    >>> transformer = VitalTransformation(ecg_signal, fs=256, signal_type="ECG")
+    >>> transformed_signal = transformer.apply_transformations()
+    >>> print(f"Transformed signal shape: {transformed_signal.shape}")
+    >>> 
+    >>> # Example 2: PPG signal with custom options
+    >>> ppg_signal = np.random.randn(2000)  # Simulated PPG signal
+    >>> transformer_ppg = VitalTransformation(ppg_signal, fs=128, signal_type="PPG")
     >>> options = {
-    >>>     'artifact_removal': 'baseline_correction',
-    >>>     'artifact_removal_options': {'cutoff': 0.5},
-    >>>     'bandpass_filter': {'lowcut': 0.5, 'highcut': 30, 'filter_order': 4, 'filter_type': 'butter'},
-    >>>     'detrending': {'detrend_type': 'linear'},
-    >>>     'normalization': {'normalization_range': (0, 1)},
-    >>>     'smoothing': {'smoothing_method': 'moving_average', 'window_size': 5, 'iterations': 2},
-    >>>     'enhancement': {'enhance_method': 'square'},
-    >>>     'advanced_filtering': {'filter_type': 'kalman_filter', 'options': {'R': 0.1, 'Q': 0.01}},
-    >>> }
-    >>> method_order = ['artifact_removal', 'bandpass_filter', 'detrending', 'normalization', 'smoothing', 'enhancement', 'advanced_filtering']
-    >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ECG')
-    >>> transformed_signal = transformer.apply_transformations(options, method_order)
-    >>> print(transformed_signal)
+    ...     'artifact_removal': 'baseline_correction',
+    ...     'artifact_removal_options': {'cutoff': 0.5},
+    ...     'bandpass_filter': {'lowcut': 0.5, 'highcut': 8.0, 'filter_order': 4, 'filter_type': 'butter'},
+    ...     'detrending': {'detrend_type': 'linear'},
+    ...     'normalization': {'normalization_range': (0, 1)}
+    ... }
+    >>> transformed_ppg = transformer_ppg.apply_transformations(options=options)
+    >>> print(f"Transformed PPG shape: {transformed_ppg.shape}")
+    >>> 
+    >>> # Example 3: Individual transformation methods
+    >>> transformer = VitalTransformation(ecg_signal, fs=256, signal_type="ECG")
+    >>> detrended = transformer.apply_detrending(method='linear')
+    >>> normalized = transformer.apply_normalization(normalization_range=(0, 1))
+    >>> filtered = transformer.apply_bandpass_filter(options={'lowcut': 0.5, 'highcut': 40, 'order': 4})
+    >>> print(f"Detrended signal range: [{detrended.min():.3f}, {detrended.max():.3f}]")
+    >>> print(f"Normalized signal range: [{normalized.min():.3f}, {normalized.max():.3f}]")
     """
 
     def __init__(self, signal, fs=256, signal_type="ECG"):

@@ -16,6 +16,36 @@ class WaveformMorphology:
         fs (int): The sampling frequency of the signal in Hz. Default is 1000 Hz.
         signal_type (str): The type of signal ('ECG', 'PPG', 'EEG').
         simple_mode (bool, optional): If True, uses simplified diastolic peak detection (midpoint-based). Default is True.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from vitalDSP.physiological_features.waveform import WaveformMorphology
+    >>> 
+    >>> # Example 1: ECG waveform analysis
+    >>> ecg_signal = np.random.randn(1000)  # Simulated ECG signal
+    >>> wm_ecg = WaveformMorphology(ecg_signal, fs=256, signal_type="ECG")
+    >>> r_peaks = wm_ecg.r_peaks
+    >>> q_valleys = wm_ecg.detect_q_valley()
+    >>> print(f"Detected {len(r_peaks)} R-peaks")
+    >>> 
+    >>> # Example 2: PPG waveform analysis
+    >>> ppg_signal = np.random.randn(2000)  # Simulated PPG signal
+    >>> wm_ppg = WaveformMorphology(ppg_signal, fs=128, signal_type="PPG")
+    >>> systolic_peaks = wm_ppg.detect_systolic_peaks()
+    >>> diastolic_peaks = wm_ppg.detect_diastolic_peaks()
+    >>> print(f"Detected {len(systolic_peaks)} systolic peaks")
+    >>> 
+    >>> # Example 3: Custom peak detection configuration
+    >>> custom_config = {
+    ...     "distance": 30,
+    ...     "window_size": 5,
+    ...     "threshold_factor": 1.2,
+    ...     "search_window": 4
+    ... }
+    >>> wm_custom = WaveformMorphology(ecg_signal, fs=256, signal_type="ECG", peak_config=custom_config)
+    >>> r_peaks_custom = wm_custom.r_peaks
+    >>> print(f"Custom detection found {len(r_peaks_custom)} R-peaks")
     """
 
     def __init__(

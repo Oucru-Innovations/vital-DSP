@@ -25,6 +25,28 @@ class HealthReportGenerator:
         segment_duration (str): Duration of the segment, either "1_min" or "5_min". Default is "1 min".
         interpreter (InterpretationEngine): Instance of InterpretationEngine to interpret feature data.
         visualizer (HealthReportVisualizer): Instance of HealthReportVisualizer to create visualizations.
+
+    Examples
+    --------
+    >>> from vitalDSP.health_analysis.health_report_generator import HealthReportGenerator
+    >>> 
+    >>> # Example 1: Basic health report generation
+    >>> feature_data = {"nn50": 45, "rmssd": 70, "sdnn": 120}
+    >>> generator = HealthReportGenerator(feature_data, segment_duration="5_min")
+    >>> report_html = generator.generate()
+    >>> print(f"Report generated: {len(report_html)} characters")
+    >>> 
+    >>> # Example 2: Health report with custom configuration
+    >>> generator_custom = HealthReportGenerator(
+    ...     feature_data, 
+    ...     segment_duration="1_min", 
+    ...     feature_config_path="path/to/custom_config.yml"
+    ... )
+    >>> report_custom = generator_custom.generate()
+    >>> 
+    >>> # Example 3: Health report with filtering
+    >>> report_filtered = generator.generate(filter_status="above_range")
+    >>> print("Filtered report for above-range parameters only")
     """
 
     def __init__(
@@ -39,10 +61,11 @@ class HealthReportGenerator:
             segment_duration (str): The duration of the analyzed segment, either '1 min' or '5 min'. Default is '1 min'.
             feature_config_path (str, optional): Path to a custom feature YAML configuration file. If not provided, the default config will be used.
 
-        Example Usage:
-            >>> feature_data = {"nn50": 45, "rmssd": 70, "sdnn": 120}
-            >>> generator = HealthReportGenerator(feature_data, segment_duration="5 min", feature_config_path="path/to/config.yml")
-            >>> report_html = generator.generate()
+        Examples
+        --------
+        >>> feature_data = {"nn50": 45, "rmssd": 70, "sdnn": 120}
+        >>> generator = HealthReportGenerator(feature_data, segment_duration="5_min")
+        >>> report_html = generator.generate()
         """
         self.feature_data = feature_data
         self.segment_duration = segment_duration

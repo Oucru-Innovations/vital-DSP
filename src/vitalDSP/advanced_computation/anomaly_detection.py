@@ -13,16 +13,28 @@ class AnomalyDetection:
     detect_anomalies : function
         Detects anomalies using various methods including z-score, moving average, custom LOF, and more.
 
-    Example Usage
-    -------------
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from vitalDSP.advanced_computation.anomaly_detection import AnomalyDetection
+    >>> 
+    >>> # Example 1: Z-score anomaly detection
     >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
     >>> anomaly_detector = AnomalyDetection(signal)
     >>> anomalies_z_score = anomaly_detector.detect_anomalies(method="z_score", threshold=2.0)
+    >>> print(f"Z-score anomalies: {len(anomalies_z_score)}")
+    >>> 
+    >>> # Example 2: Moving average anomaly detection
     >>> anomalies_moving_avg = anomaly_detector.detect_anomalies(method="moving_average", window_size=5, threshold=0.5)
+    >>> print(f"Moving average anomalies: {len(anomalies_moving_avg)}")
+    >>> 
+    >>> # Example 3: LOF anomaly detection
     >>> anomalies_lof = anomaly_detector.detect_anomalies(method="lof", n_neighbors=20)
-    >>> print("Anomalies (Z-Score):", anomalies_z_score)
-    >>> print("Anomalies (Moving Average):", anomalies_moving_avg)
-    >>> print("Anomalies (LOF):", anomalies_lof)
+    >>> print(f"LOF anomalies: {len(anomalies_lof)}")
+    >>> 
+    >>> # Example 4: FFT-based anomaly detection
+    >>> anomalies_fft = anomaly_detector.detect_anomalies(method="fft", threshold=0.1)
+    >>> print(f"FFT anomalies: {len(anomalies_fft)}")
     """
 
     def __init__(self, signal):

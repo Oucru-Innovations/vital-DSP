@@ -42,6 +42,35 @@ class PreprocessConfig:
         Apply the preprocessing function specifically for respiratory signals (e.g., PPG or ECG-derived respiration).
     repreprocess: bool
         Re preprocessing function
+
+    Examples
+    --------
+    >>> # Basic configuration for ECG preprocessing
+    >>> config = PreprocessConfig(
+    ...     filter_type="bandpass",
+    ...     noise_reduction_method="wavelet",
+    ...     lowcut=0.5,
+    ...     highcut=40.0,
+    ...     order=4
+    ... )
+    >>> 
+    >>> # Configuration for PPG preprocessing with respiratory analysis
+    >>> config_ppg = PreprocessConfig(
+    ...     filter_type="bandpass",
+    ...     noise_reduction_method="savgol",
+    ...     lowcut=0.5,
+    ...     highcut=8.0,
+    ...     respiratory_mode=True,
+    ...     window_length=5,
+    ...     polyorder=2
+    ... )
+    >>> 
+    >>> # Configuration for noise reduction only
+    >>> config_denoise = PreprocessConfig(
+    ...     filter_type="ignore",
+    ...     noise_reduction_method="median",
+    ...     kernel_size=5
+    ... )
     """
 
     def __init__(

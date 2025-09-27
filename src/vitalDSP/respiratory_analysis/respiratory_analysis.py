@@ -24,6 +24,35 @@ class RespiratoryAnalysis:
         The raw PPG or ECG signal to analyze.
     fs : int
         The sampling frequency of the signal in Hz.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from vitalDSP.respiratory_analysis.respiratory_analysis import RespiratoryAnalysis
+    >>> 
+    >>> # Example 1: Basic respiratory rate estimation
+    >>> ppg_signal = np.random.randn(2000)  # Simulated PPG signal
+    >>> resp_analysis = RespiratoryAnalysis(ppg_signal, fs=128)
+    >>> rr_result = resp_analysis.compute_respiratory_rate(method="counting")
+    >>> print(f"Respiratory rate: {rr_result['respiratory_rate']:.2f} breaths/min")
+    >>> 
+    >>> # Example 2: FFT-based respiratory rate estimation
+    >>> rr_fft = resp_analysis.compute_respiratory_rate(method="fft_based")
+    >>> print(f"FFT-based RR: {rr_fft['respiratory_rate']:.2f} breaths/min")
+    >>> 
+    >>> # Example 3: Respiratory rate with preprocessing
+    >>> from vitalDSP.preprocess.preprocess_operations import PreprocessConfig
+    >>> config = PreprocessConfig(
+    ...     filter_type="bandpass",
+    ...     lowcut=0.1,
+    ...     highcut=2.0,
+    ...     noise_reduction_method="wavelet"
+    ... )
+    >>> rr_preprocessed = resp_analysis.compute_respiratory_rate(
+    ...     method="peaks",
+    ...     preprocess_config=config
+    ... )
+    >>> print(f"Preprocessed RR: {rr_preprocessed['respiratory_rate']:.2f} breaths/min")
     """
 
     def __init__(self, signal, fs=256):

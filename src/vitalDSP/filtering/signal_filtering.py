@@ -186,6 +186,29 @@ class SignalFiltering:
         Applies a median filter.
     _apply_iir_filter : function
         Internal method to apply IIR filters.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from vitalDSP.filtering.signal_filtering import SignalFiltering
+    >>> 
+    >>> # Example 1: Basic signal filtering
+    >>> signal = np.random.randn(1000)  # Simulated signal
+    >>> sf = SignalFiltering(signal)
+    >>> filtered_signal = sf.bandpass(lowcut=0.5, highcut=30, fs=256, order=4)
+    >>> print(f"Filtered signal shape: {filtered_signal.shape}")
+    >>> 
+    >>> # Example 2: Moving average filtering
+    >>> ma_filtered = sf.moving_average(window_size=5)
+    >>> print(f"Moving average filtered: {ma_filtered.shape}")
+    >>> 
+    >>> # Example 3: Gaussian filtering
+    >>> gaussian_filtered = sf.gaussian(sigma=1.0)
+    >>> print(f"Gaussian filtered: {gaussian_filtered.shape}")
+    >>> 
+    >>> # Example 4: Savitzky-Golay filtering
+    >>> sg_filtered = SignalFiltering.savgol_filter(signal, window_length=5, polyorder=2)
+    >>> print(f"Savitzky-Golay filtered: {sg_filtered.shape}")
     """
 
     def __init__(self, signal):

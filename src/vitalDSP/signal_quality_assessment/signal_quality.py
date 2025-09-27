@@ -19,6 +19,31 @@ class SignalQuality:
         Computes the Mean Square Error between the original and processed signals.
     snr_of_noise : function
         Computes the Signal-to-Noise Ratio given a noise signal.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from vitalDSP.signal_quality_assessment.signal_quality import SignalQuality
+    >>> 
+    >>> # Example 1: Basic signal quality assessment
+    >>> original_signal = np.sin(np.linspace(0, 10, 1000))
+    >>> noise = np.random.normal(0, 0.1, 1000)
+    >>> noisy_signal = original_signal + noise
+    >>> sq = SignalQuality(original_signal, noisy_signal)
+    >>> print(f"SNR: {sq.snr():.2f} dB")
+    >>> print(f"PSNR: {sq.psnr():.2f} dB")
+    >>> print(f"MSE: {sq.mse():.6f}")
+    >>> 
+    >>> # Example 2: Quality assessment with different noise levels
+    >>> high_noise = np.random.normal(0, 0.5, 1000)
+    >>> very_noisy_signal = original_signal + high_noise
+    >>> sq_high_noise = SignalQuality(original_signal, very_noisy_signal)
+    >>> print(f"High noise SNR: {sq_high_noise.snr():.2f} dB")
+    >>> 
+    >>> # Example 3: Using noise signal directly
+    >>> sq_noise = SignalQuality(original_signal)
+    >>> snr_from_noise = sq_noise.snr_of_noise(noise)
+    >>> print(f"SNR from noise: {snr_from_noise:.2f} dB")
     """
 
     def __init__(self, original_signal, processed_signal=None):
