@@ -245,3 +245,123 @@ class InterpretationEngine:
         feature_info = self.config.get(feature_name, {})
         correlation_info = feature_info.get("correlation", "No correlation found.")
         return correlation_info
+
+    def interpret_multiple_features(self, feature_data, segment_duration="1 min"):
+        """
+        Interprets multiple features together to provide context-aware analysis.
+        
+        Args:
+            feature_data (dict): Dictionary containing feature names and their values.
+            segment_duration (str): The duration of the segment, either '1 min' or '5 min'.
+            
+        Returns:
+            dict: Dictionary containing cross-feature analysis and patterns.
+        """
+        try:
+            interpretations = {}
+            patterns = []
+            warnings = []
+            
+            # Interpret each feature individually
+            for feature_name, value in feature_data.items():
+                interpretations[feature_name] = self.interpret_feature(feature_name, value, segment_duration)
+            
+            # Analyze patterns across features
+            patterns = self._analyze_cross_feature_patterns(feature_data, segment_duration)
+            
+            # Generate warnings based on combinations
+            warnings = self._generate_cross_feature_warnings(feature_data, segment_duration)
+            
+            return {
+                'individual_interpretations': interpretations,
+                'cross_feature_patterns': patterns,
+                'warnings': warnings,
+                'overall_assessment': self._generate_overall_assessment(interpretations)
+            }
+            
+        except Exception as e:
+            return {
+                'individual_interpretations': {},
+                'cross_feature_patterns': [],
+                'warnings': [f"Error in cross-feature analysis: {str(e)}"],
+                'overall_assessment': "Unable to complete cross-feature analysis"
+            }
+
+    def _analyze_cross_feature_patterns(self, feature_data, segment_duration):
+        """Analyze patterns across multiple features."""
+        patterns = []
+        
+        # Check for autonomic dysfunction patterns
+        hrv_features = ['sdnn', 'rmssd', 'nn50', 'pnn50']
+        hrv_values = {f: feature_data.get(f) for f in hrv_features if f in feature_data}
+        
+        if len(hrv_values) >= 2:
+            out_of_range_hrv = sum(1 for f, v in hrv_values.items() 
+                                 if self.get_range_status(f, v, segment_duration) != 'in_range')
+            
+            if out_of_range_hrv >= 2:
+                patterns.append({
+                    'type': 'autonomic_dysfunction',
+                    'description': 'Multiple heart rate variability parameters are abnormal, suggesting potential autonomic dysfunction',
+                    'severity': 'moderate' if out_of_range_hrv == 2 else 'high',
+                    'affected_features': [f for f, v in hrv_values.items() 
+                                       if self.get_range_status(f, v, segment_duration) != 'in_range']
+                })
+        
+        # Check for cardiovascular risk patterns
+        if 'sdnn' in feature_data and 'heart_rate' in feature_data:
+            sdnn_status = self.get_range_status('sdnn', feature_data['sdnn'], segment_duration)
+            hr_status = self.get_range_status('heart_rate', feature_data['heart_rate'], segment_duration)
+            
+            if sdnn_status == 'below_range' and hr_status == 'above_range':
+                patterns.append({
+                    'type': 'cardiovascular_risk',
+                    'description': 'Low heart rate variability combined with elevated heart rate may indicate cardiovascular stress',
+                    'severity': 'high',
+                    'affected_features': ['sdnn', 'heart_rate']
+                })
+        
+        return patterns
+
+    def _generate_cross_feature_warnings(self, feature_data, segment_duration):
+        """Generate warnings based on feature combinations."""
+        warnings = []
+        
+        # Check for contradictory patterns
+        if 'sdnn' in feature_data and 'rmssd' in feature_data:
+            sdnn_status = self.get_range_status('sdnn', feature_data['sdnn'], segment_duration)
+            rmssd_status = self.get_range_status('rmssd', feature_data['rmssd'], segment_duration)
+            
+            if sdnn_status != rmssd_status:
+                warnings.append(f"Contradictory HRV patterns: SDNN is {sdnn_status} while RMSSD is {rmssd_status}")
+        
+        # Check for extreme values
+        for feature_name, value in feature_data.items():
+            if feature_name in self.config:
+                normal_range = self.config[feature_name].get('normal_range', {}).get(segment_duration, [])
+                if normal_range and len(normal_range) == 2:
+                    min_val, max_val = normal_range
+                    if value < min_val * 0.5:  # Extremely low
+                        warnings.append(f"Extremely low {feature_name} value may indicate measurement error or critical condition")
+                    elif value > max_val * 2:  # Extremely high
+                        warnings.append(f"Extremely high {feature_name} value may indicate measurement error or critical condition")
+        
+        return warnings
+
+    def _generate_overall_assessment(self, interpretations):
+        """Generate overall assessment based on individual interpretations."""
+        if not interpretations:
+            return "No features available for assessment"
+        
+        in_range_count = sum(1 for i in interpretations.values() 
+                           if i.get('range_status') == 'in_range')
+        total_count = len(interpretations)
+        
+        if in_range_count == total_count:
+            return "All parameters are within normal ranges - excellent overall health"
+        elif in_range_count >= total_count * 0.8:
+            return "Most parameters are normal - good overall health with minor areas of concern"
+        elif in_range_count >= total_count * 0.6:
+            return "Mixed results - some parameters require attention"
+        else:
+            return "Multiple parameters are abnormal - comprehensive evaluation recommended"

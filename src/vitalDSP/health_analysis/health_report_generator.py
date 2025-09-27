@@ -184,8 +184,11 @@ class HealthReportGenerator:
             visualizations = {}
 
         try:
-            # Step 3: Render the report
-            report_html = render_report(segment_values, visualizations)
+            # Step 3: Generate dynamic analysis components
+            dynamic_analysis = self._generate_dynamic_analysis(segment_values)
+            
+            # Step 4: Render the report with dynamic components
+            report_html = render_report(segment_values, visualizations, dynamic_analysis=dynamic_analysis)
         except Exception as e:
             # Log the error if report rendering fails
             self.logger.error(f"Error rendering report: {e}")
@@ -248,3 +251,197 @@ class HealthReportGenerator:
         }
 
         return feature_report
+
+    def _generate_dynamic_analysis(self, segment_values):
+        """
+        Generates dynamic analysis components based on the feature results.
+        
+        Args:
+            segment_values (dict): Dictionary containing processed feature data.
+            
+        Returns:
+            dict: Dictionary containing dynamic analysis components including:
+                - executive_summary: Overall assessment summary
+                - risk_assessment: Risk level and concerns
+                - recommendations: Dynamic recommendations based on findings
+                - key_insights: Important findings and patterns
+                - overall_health_score: Calculated health score
+        """
+        try:
+            # Analyze overall patterns
+            total_features = len(segment_values)
+            in_range_count = sum(1 for f in segment_values.values() if f.get('range_status') == 'in_range')
+            above_range_count = sum(1 for f in segment_values.values() if f.get('range_status') == 'above_range')
+            below_range_count = sum(1 for f in segment_values.values() if f.get('range_status') == 'below_range')
+            
+            # Calculate health score (0-100)
+            health_score = (in_range_count / total_features * 100) if total_features > 0 else 0
+            
+            # Generate executive summary
+            executive_summary = self._generate_executive_summary(
+                total_features, in_range_count, above_range_count, below_range_count, health_score
+            )
+            
+            # Generate risk assessment
+            risk_assessment = self._generate_risk_assessment(segment_values, health_score)
+            
+            # Generate recommendations
+            recommendations = self._generate_recommendations(segment_values, risk_assessment)
+            
+            # Generate key insights
+            key_insights = self._generate_key_insights(segment_values)
+            
+            return {
+                'executive_summary': executive_summary,
+                'risk_assessment': risk_assessment,
+                'recommendations': recommendations,
+                'key_insights': key_insights,
+                'overall_health_score': health_score,
+                'statistics': {
+                    'total_features': total_features,
+                    'in_range': in_range_count,
+                    'above_range': above_range_count,
+                    'below_range': below_range_count
+                }
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error generating dynamic analysis: {e}")
+            return {
+                'executive_summary': "Unable to generate summary due to processing error.",
+                'risk_assessment': {'level': 'unknown', 'concerns': []},
+                'recommendations': ["Consult with a healthcare professional for detailed analysis."],
+                'key_insights': [],
+                'overall_health_score': 0,
+                'statistics': {'total_features': 0, 'in_range': 0, 'above_range': 0, 'below_range': 0}
+            }
+
+    def _generate_executive_summary(self, total_features, in_range_count, above_range_count, below_range_count, health_score):
+        """Generate dynamic executive summary based on results."""
+        if total_features == 0:
+            return "No features available for analysis."
+        
+        in_range_percentage = (in_range_count / total_features) * 100
+        
+        if health_score >= 80:
+            status = "excellent"
+            summary = f"Your physiological parameters show excellent overall health with {in_range_percentage:.1f}% of features within normal ranges."
+        elif health_score >= 60:
+            status = "good"
+            summary = f"Your physiological parameters indicate good health with {in_range_percentage:.1f}% of features within normal ranges."
+        elif health_score >= 40:
+            status = "fair"
+            summary = f"Your physiological parameters show fair health with {in_range_percentage:.1f}% of features within normal ranges. Some areas may need attention."
+        else:
+            status = "poor"
+            summary = f"Your physiological parameters indicate areas of concern with only {in_range_percentage:.1f}% of features within normal ranges."
+        
+        # Add specific concerns
+        concerns = []
+        if above_range_count > 0:
+            concerns.append(f"{above_range_count} parameter(s) above normal range")
+        if below_range_count > 0:
+            concerns.append(f"{below_range_count} parameter(s) below normal range")
+        
+        if concerns:
+            summary += f" Areas of concern include: {', '.join(concerns)}."
+        
+        return {
+            'status': status,
+            'summary': summary,
+            'health_score': health_score
+        }
+
+    def _generate_risk_assessment(self, segment_values, health_score):
+        """Generate dynamic risk assessment based on results."""
+        risk_level = "low"
+        concerns = []
+        
+        # Assess based on health score
+        if health_score < 40:
+            risk_level = "high"
+            concerns.append("Multiple parameters outside normal ranges")
+        elif health_score < 60:
+            risk_level = "moderate"
+            concerns.append("Several parameters outside normal ranges")
+        
+        # Check for specific high-risk patterns
+        hrv_features = ['sdnn', 'rmssd', 'nn50', 'pnn50']
+        hrv_out_of_range = sum(1 for f in hrv_features if f in segment_values and segment_values[f].get('range_status') != 'in_range')
+        
+        if hrv_out_of_range >= 3:
+            risk_level = "high" if risk_level == "low" else risk_level
+            concerns.append("Multiple heart rate variability parameters abnormal")
+        
+        # Check for cardiovascular risk indicators
+        if 'sdnn' in segment_values and segment_values['sdnn'].get('range_status') == 'below_range':
+            concerns.append("Low heart rate variability may indicate cardiovascular risk")
+        
+        return {
+            'level': risk_level,
+            'concerns': concerns,
+            'recommendation': self._get_risk_recommendation(risk_level)
+        }
+
+    def _get_risk_recommendation(self, risk_level):
+        """Get recommendation based on risk level."""
+        recommendations = {
+            'low': "Continue current lifestyle and regular monitoring",
+            'moderate': "Consider lifestyle modifications and increased monitoring frequency",
+            'high': "Consult healthcare professional immediately for comprehensive evaluation"
+        }
+        return recommendations.get(risk_level, "Consult healthcare professional for evaluation")
+
+    def _generate_recommendations(self, segment_values, risk_assessment):
+        """Generate dynamic recommendations based on findings."""
+        recommendations = []
+        
+        # General recommendations based on risk level
+        if risk_assessment['level'] == 'high':
+            recommendations.append("Schedule immediate consultation with a healthcare professional")
+        elif risk_assessment['level'] == 'moderate':
+            recommendations.append("Consider lifestyle modifications and regular health monitoring")
+        
+        # Specific recommendations based on out-of-range features
+        for feature_name, feature_data in segment_values.items():
+            if feature_data.get('range_status') == 'below_range':
+                if feature_name in ['sdnn', 'rmssd', 'nn50']:
+                    recommendations.append("Consider stress management techniques and regular exercise to improve heart rate variability")
+                elif feature_name in ['heart_rate']:
+                    recommendations.append("Monitor heart rate patterns and consider cardiovascular assessment")
+            elif feature_data.get('range_status') == 'above_range':
+                if feature_name in ['heart_rate']:
+                    recommendations.append("Monitor for signs of tachycardia and consider cardiovascular evaluation")
+        
+        # Add general health recommendations
+        if not recommendations:
+            recommendations.append("Continue maintaining healthy lifestyle habits")
+        
+        recommendations.append("Regular monitoring and follow-up assessments are recommended")
+        
+        return recommendations
+
+    def _generate_key_insights(self, segment_values):
+        """Generate key insights based on feature analysis."""
+        insights = []
+        
+        # Analyze patterns
+        out_of_range_features = [name for name, data in segment_values.items() if data.get('range_status') != 'in_range']
+        
+        if len(out_of_range_features) == 0:
+            insights.append("All analyzed parameters are within normal ranges")
+        elif len(out_of_range_features) <= 2:
+            insights.append(f"Most parameters are normal, with {len(out_of_range_features)} requiring attention")
+        else:
+            insights.append(f"Multiple parameters ({len(out_of_range_features)}) require attention")
+        
+        # Check for specific patterns
+        hrv_features = ['sdnn', 'rmssd', 'nn50', 'pnn50']
+        hrv_status = [segment_values.get(f, {}).get('range_status') for f in hrv_features if f in segment_values]
+        
+        if all(status == 'in_range' for status in hrv_status):
+            insights.append("Heart rate variability parameters indicate healthy autonomic function")
+        elif any(status == 'below_range' for status in hrv_status):
+            insights.append("Some heart rate variability parameters suggest reduced autonomic function")
+        
+        return insights

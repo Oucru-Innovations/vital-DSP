@@ -194,6 +194,148 @@ def _get_base_css():
                     margin: 15px 0;
                     border-radius: 5px;
                 }
+                
+                /* Dynamic Analysis Styles */
+                .dynamic-analysis-container {
+                    margin-bottom: 30px;
+                    padding: 20px;
+                    background-color: #ffffff;
+                    border-radius: 10px;
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                }
+                
+                .executive-summary, .risk-assessment, .key-insights, .recommendations, .statistics-summary {
+                    margin-bottom: 25px;
+                    padding: 20px;
+                    background-color: #f8f9fa;
+                    border-radius: 8px;
+                    border-left: 4px solid #3498db;
+                }
+                
+                .summary-card, .risk-card, .insights-card, .recommendations-card {
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin-top: 10px;
+                }
+                
+                .summary-card.excellent {
+                    background-color: #d4edda;
+                    border-left: 4px solid #28a745;
+                }
+                
+                .summary-card.good {
+                    background-color: #d1ecf1;
+                    border-left: 4px solid #17a2b8;
+                }
+                
+                .summary-card.fair {
+                    background-color: #fff3cd;
+                    border-left: 4px solid #ffc107;
+                }
+                
+                .summary-card.poor {
+                    background-color: #f8d7da;
+                    border-left: 4px solid #dc3545;
+                }
+                
+                .health-score {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 15px;
+                    padding: 10px;
+                    background-color: rgba(255, 255, 255, 0.7);
+                    border-radius: 5px;
+                }
+                
+                .score-value {
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #2c3e50;
+                }
+                
+                .risk-card.low {
+                    background-color: #d4edda;
+                    border-left: 4px solid #28a745;
+                }
+                
+                .risk-card.moderate {
+                    background-color: #fff3cd;
+                    border-left: 4px solid #ffc107;
+                }
+                
+                .risk-card.high {
+                    background-color: #f8d7da;
+                    border-left: 4px solid #dc3545;
+                }
+                
+                .risk-level {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 15px;
+                    padding: 10px;
+                    background-color: rgba(255, 255, 255, 0.7);
+                    border-radius: 5px;
+                }
+                
+                .risk-value {
+                    font-size: 18px;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                }
+                
+                .concerns ul, .insights-card ul, .recommendations-card ol {
+                    margin: 10px 0;
+                    padding-left: 20px;
+                }
+                
+                .concerns li, .insights-card li, .recommendations-card li {
+                    margin: 8px 0;
+                    line-height: 1.5;
+                }
+                
+                .stats-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                    gap: 15px;
+                    margin-top: 15px;
+                }
+                
+                .stat-item {
+                    text-align: center;
+                    padding: 15px;
+                    background-color: #ffffff;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
+                
+                .stat-item.in-range {
+                    border-top: 3px solid #28a745;
+                }
+                
+                .stat-item.above-range {
+                    border-top: 3px solid #ffc107;
+                }
+                
+                .stat-item.below-range {
+                    border-top: 3px solid #dc3545;
+                }
+                
+                .stat-number {
+                    display: block;
+                    font-size: 24px;
+                    font-weight: bold;
+                    color: #2c3e50;
+                    margin-bottom: 5px;
+                }
+                
+                .stat-label {
+                    font-size: 12px;
+                    color: #6c757d;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
                 .description-block {
                     padding: 15px;
                     border-radius: 8px;
@@ -593,6 +735,109 @@ def _get_feature_template():
     )
 
 
+def _get_dynamic_analysis_template():
+    """Generate template for dynamic analysis sections."""
+    return """
+        {% if dynamic_analysis %}
+        <!-- Dynamic Analysis Section -->
+        <div class="dynamic-analysis-container">
+            <!-- Executive Summary -->
+            {% if dynamic_analysis.get('executive_summary') %}
+            <div class="executive-summary">
+                <h2>Executive Summary</h2>
+                <div class="summary-card {{ dynamic_analysis.executive_summary.status }}">
+                    <div class="health-score">
+                        <span class="score-label">Overall Health Score:</span>
+                        <span class="score-value">{{ "%.1f"|format(dynamic_analysis.overall_health_score) }}/100</span>
+                    </div>
+                    <p class="summary-text">{{ dynamic_analysis.executive_summary.summary }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Risk Assessment -->
+            {% if dynamic_analysis.get('risk_assessment') %}
+            <div class="risk-assessment">
+                <h2>Risk Assessment</h2>
+                <div class="risk-card {{ dynamic_analysis.risk_assessment.level }}">
+                    <div class="risk-level">
+                        <span class="risk-label">Risk Level:</span>
+                        <span class="risk-value">{{ dynamic_analysis.risk_assessment.level|title }}</span>
+                    </div>
+                    {% if dynamic_analysis.risk_assessment.concerns %}
+                    <div class="concerns">
+                        <h4>Areas of Concern:</h4>
+                        <ul>
+                            {% for concern in dynamic_analysis.risk_assessment.concerns %}
+                            <li>{{ concern }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    <div class="risk-recommendation">
+                        <strong>Recommendation:</strong> {{ dynamic_analysis.risk_assessment.recommendation }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Key Insights -->
+            {% if dynamic_analysis.get('key_insights') %}
+            <div class="key-insights">
+                <h2>Key Insights</h2>
+                <div class="insights-card">
+                    <ul>
+                        {% for insight in dynamic_analysis.key_insights %}
+                        <li>{{ insight }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Recommendations -->
+            {% if dynamic_analysis.get('recommendations') %}
+            <div class="recommendations">
+                <h2>Recommendations</h2>
+                <div class="recommendations-card">
+                    <ol>
+                        {% for recommendation in dynamic_analysis.recommendations %}
+                        <li>{{ recommendation }}</li>
+                        {% endfor %}
+                    </ol>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Statistics Summary -->
+            {% if dynamic_analysis.get('statistics') %}
+            <div class="statistics-summary">
+                <h2>Analysis Summary</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-number">{{ dynamic_analysis.statistics.total_features }}</span>
+                        <span class="stat-label">Total Parameters</span>
+                    </div>
+                    <div class="stat-item in-range">
+                        <span class="stat-number">{{ dynamic_analysis.statistics.in_range }}</span>
+                        <span class="stat-label">In Range</span>
+                    </div>
+                    <div class="stat-item above-range">
+                        <span class="stat-number">{{ dynamic_analysis.statistics.above_range }}</span>
+                        <span class="stat-label">Above Range</span>
+                    </div>
+                    <div class="stat-item below-range">
+                        <span class="stat-number">{{ dynamic_analysis.statistics.below_range }}</span>
+                        <span class="stat-label">Below Range</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    """
+
+
 def _get_javascript_content():
     return """
         <script>
@@ -655,7 +900,7 @@ def _get_javascript_content():
     """
 
 
-def render_report(feature_interpretations, visualizations, filter_status="all"):
+def render_report(feature_interpretations, visualizations, filter_status="all", dynamic_analysis=None):
     """
     Renders the health report in HTML format using the given feature interpretations and visualizations.
 
@@ -663,6 +908,7 @@ def render_report(feature_interpretations, visualizations, filter_status="all"):
         feature_interpretations (dict): Dictionary containing interpreted feature results.
         visualizations (dict): Dictionary containing paths or embedded links to visualizations.
         filter_status (str): Filter for displaying specific features (in_range, below_range, above_range, or all).
+        dynamic_analysis (dict, optional): Dictionary containing dynamic analysis components.
 
     Returns:
         str: HTML report as a string.
@@ -678,6 +924,8 @@ def render_report(feature_interpretations, visualizations, filter_status="all"):
     </head>
     <body>
         <h1>Health Analysis Report</h1>
+
+        {_get_dynamic_analysis_template()}
 
         {_get_filter_dropdown()}
 
@@ -695,6 +943,7 @@ def render_report(feature_interpretations, visualizations, filter_status="all"):
         feature_interpretations=feature_interpretations,
         visualizations=visualizations,
         filter_status=filter_status,
+        dynamic_analysis=dynamic_analysis or {},
     )
 
     return rendered_html
