@@ -182,22 +182,13 @@ class InterpretationEngine:
         # Parse and handle 'inf' and '-inf' strings in the normal range
         normal_range = [self._parse_inf_values(val) for val in normal_range]
 
-        # Interpretation based on value
-        if value < normal_range[0]:
-            interpretation = feature_info.get("interpretation", {}).get(
-                "below_range", "Value is below the normal range."
-            )
-        elif value > normal_range[1]:
-            interpretation = feature_info.get("interpretation", {}).get(
-                "above_range", "Value is above the normal range."
-            )
-        else:
-            interpretation = feature_info.get("interpretation", {}).get(
-                "in_range", "Value is within the normal range."
-            )
+        # Dynamic interpretation based on value and context
+        interpretation = self._generate_dynamic_interpretation(
+            feature_name, value, normal_range, feature_info, segment_duration
+        )
 
         return {
-            "description": feature_info.get("description", "No description available."),
+            "description": self._generate_dynamic_description(feature_name, value, normal_range, feature_info, segment_duration),
             "normal_range": normal_range,
             "interpretation": interpretation,
             "contradiction": self._get_feature_contradiction(feature_name),
@@ -385,3 +376,140 @@ class InterpretationEngine:
             return "Mixed results - some parameters require attention"
         else:
             return "Multiple parameters are abnormal - comprehensive evaluation recommended"
+
+    def _generate_dynamic_interpretation(self, feature_name, value, normal_range, feature_info, segment_duration):
+        """Generate dynamic interpretation based on value, context, and severity."""
+        min_val, max_val = normal_range
+        range_span = max_val - min_val
+        
+        # Calculate how far from normal range
+        if value < min_val:
+            deviation = (min_val - value) / range_span if range_span > 0 else 1
+            severity = self._get_deviation_severity(deviation)
+            base_interpretation = feature_info.get("interpretation", {}).get("below_range", "Value is below normal range.")
+            context = self._get_contextual_interpretation(feature_name, value, "below", severity, segment_duration)
+        elif value > max_val:
+            deviation = (value - max_val) / range_span if range_span > 0 else 1
+            severity = self._get_deviation_severity(deviation)
+            base_interpretation = feature_info.get("interpretation", {}).get("above_range", "Value is above normal range.")
+            context = self._get_contextual_interpretation(feature_name, value, "above", severity, segment_duration)
+        else:
+            # Within normal range - check if it's optimal, good, or just acceptable
+            center = (min_val + max_val) / 2
+            distance_from_center = abs(value - center) / (range_span / 2) if range_span > 0 else 0
+            severity = "optimal" if distance_from_center < 0.2 else "good" if distance_from_center < 0.5 else "acceptable"
+            base_interpretation = feature_info.get("interpretation", {}).get("in_range", "Value is within normal range.")
+            context = self._get_contextual_interpretation(feature_name, value, "normal", severity, segment_duration)
+        
+        # Combine base interpretation with dynamic context
+        return f"{base_interpretation} {context}"
+
+    def _get_deviation_severity(self, deviation):
+        """Determine severity based on deviation from normal range."""
+        if deviation >= 2.0:
+            return "critical"
+        elif deviation >= 1.0:
+            return "severe"
+        elif deviation >= 0.5:
+            return "moderate"
+        else:
+            return "mild"
+
+    def _get_contextual_interpretation(self, feature_name, value, range_status, severity, segment_duration):
+        """Generate contextual interpretation based on feature type and severity."""
+        context_templates = {
+            "sdnn": {
+                "below": {
+                    "critical": f"Your SDNN of {value:.1f} ms indicates critically low heart rate variability, suggesting severe autonomic dysfunction. This may indicate advanced cardiovascular disease, heart failure, or severe stress. Immediate medical evaluation is strongly recommended.",
+                    "severe": f"Your SDNN of {value:.1f} ms shows severely reduced heart rate variability, indicating significant autonomic dysfunction. This suggests increased cardiovascular risk and may be associated with chronic stress or underlying heart conditions. Medical consultation is advised.",
+                    "moderate": f"Your SDNN of {value:.1f} ms indicates moderately reduced heart rate variability. This may suggest increased sympathetic activity or early signs of autonomic dysfunction. Consider stress management and lifestyle modifications.",
+                    "mild": f"Your SDNN of {value:.1f} ms is slightly below optimal, indicating mild reduction in heart rate variability. This could be due to temporary stress or minor autonomic changes. Monitor and consider relaxation techniques."
+                },
+                "above": {
+                    "critical": f"Your SDNN of {value:.1f} ms is critically high, indicating extreme heart rate variability. This may suggest arrhythmias, vagal overactivity, or measurement artifacts. Immediate medical evaluation is recommended.",
+                    "severe": f"Your SDNN of {value:.1f} ms shows severely elevated heart rate variability. This may indicate arrhythmias, vagal overactivity, or compensatory mechanisms. Medical consultation is advised.",
+                    "moderate": f"Your SDNN of {value:.1f} ms is moderately elevated, suggesting increased heart rate variability. This could indicate good recovery, athletic conditioning, or potential arrhythmias. Monitor closely.",
+                    "mild": f"Your SDNN of {value:.1f} ms is slightly above optimal, indicating increased heart rate variability. This may suggest good cardiovascular fitness or minor autonomic changes."
+                },
+                "normal": {
+                    "optimal": f"Your SDNN of {value:.1f} ms is in the optimal range, indicating excellent heart rate variability and balanced autonomic function. This suggests good cardiovascular health and stress resilience.",
+                    "good": f"Your SDNN of {value:.1f} ms is in the good range, indicating healthy heart rate variability and well-functioning autonomic nervous system. This suggests good cardiovascular health.",
+                    "acceptable": f"Your SDNN of {value:.1f} ms is within normal limits, indicating adequate heart rate variability. While not optimal, this suggests functional autonomic regulation."
+                }
+            },
+            "rmssd": {
+                "below": {
+                    "critical": f"Your RMSSD of {value:.1f} ms indicates critically low parasympathetic activity, suggesting severe autonomic dysfunction. This may indicate advanced cardiovascular disease or severe stress. Immediate medical evaluation is strongly recommended.",
+                    "severe": f"Your RMSSD of {value:.1f} ms shows severely reduced parasympathetic activity, indicating significant autonomic dysfunction. This suggests increased cardiovascular risk. Medical consultation is advised.",
+                    "moderate": f"Your RMSSD of {value:.1f} ms indicates moderately reduced parasympathetic activity. This may suggest increased sympathetic dominance or early autonomic dysfunction. Consider stress management techniques.",
+                    "mild": f"Your RMSSD of {value:.1f} ms is slightly below optimal, indicating mild reduction in parasympathetic activity. This could be due to temporary stress. Consider relaxation techniques."
+                },
+                "above": {
+                    "critical": f"Your RMSSD of {value:.1f} ms is critically high, indicating extreme parasympathetic activity. This may suggest vagal overactivity or measurement artifacts. Immediate medical evaluation is recommended.",
+                    "severe": f"Your RMSSD of {value:.1f} ms shows severely elevated parasympathetic activity. This may indicate vagal overactivity or compensatory mechanisms. Medical consultation is advised.",
+                    "moderate": f"Your RMSSD of {value:.1f} ms is moderately elevated, suggesting increased parasympathetic activity. This could indicate good recovery or athletic conditioning.",
+                    "mild": f"Your RMSSD of {value:.1f} ms is slightly above optimal, indicating increased parasympathetic activity. This may suggest good cardiovascular fitness."
+                },
+                "normal": {
+                    "optimal": f"Your RMSSD of {value:.1f} ms is in the optimal range, indicating excellent parasympathetic function and healthy short-term heart rate variability. This suggests good stress resilience and cardiovascular health.",
+                    "good": f"Your RMSSD of {value:.1f} ms is in the good range, indicating healthy parasympathetic activity and well-functioning autonomic nervous system. This suggests good cardiovascular health.",
+                    "acceptable": f"Your RMSSD of {value:.1f} ms is within normal limits, indicating adequate parasympathetic function. While not optimal, this suggests functional autonomic regulation."
+                }
+            },
+            "nn50": {
+                "below": {
+                    "critical": f"Your NN50 of {value:.0f} indicates critically low heart rate variability, suggesting severe autonomic dysfunction. This may indicate advanced cardiovascular disease. Immediate medical evaluation is strongly recommended.",
+                    "severe": f"Your NN50 of {value:.0f} shows severely reduced heart rate variability, indicating significant autonomic dysfunction. Medical consultation is advised.",
+                    "moderate": f"Your NN50 of {value:.0f} indicates moderately reduced heart rate variability. Consider stress management and lifestyle modifications.",
+                    "mild": f"Your NN50 of {value:.0f} is slightly below optimal, indicating mild reduction in heart rate variability. Consider relaxation techniques."
+                },
+                "above": {
+                    "critical": f"Your NN50 of {value:.0f} is critically high, indicating extreme heart rate variability. This may suggest arrhythmias or measurement artifacts. Immediate medical evaluation is recommended.",
+                    "severe": f"Your NN50 of {value:.0f} shows severely elevated heart rate variability. This may indicate arrhythmias or compensatory mechanisms. Medical consultation is advised.",
+                    "moderate": f"Your NN50 of {value:.0f} is moderately elevated, suggesting increased heart rate variability. This could indicate good recovery or potential arrhythmias.",
+                    "mild": f"Your NN50 of {value:.0f} is slightly above optimal, indicating increased heart rate variability. This may suggest good cardiovascular fitness."
+                },
+                "normal": {
+                    "optimal": f"Your NN50 of {value:.0f} is in the optimal range, indicating excellent heart rate variability and balanced autonomic function. This suggests good cardiovascular health.",
+                    "good": f"Your NN50 of {value:.0f} is in the good range, indicating healthy heart rate variability and well-functioning autonomic nervous system.",
+                    "acceptable": f"Your NN50 of {value:.0f} is within normal limits, indicating adequate heart rate variability and functional autonomic regulation."
+                }
+            }
+        }
+        
+        # Get the appropriate context template
+        feature_contexts = context_templates.get(feature_name.lower(), {})
+        range_contexts = feature_contexts.get(range_status, {})
+        return range_contexts.get(severity, f"Your {feature_name} value of {value:.1f} is {range_status} the normal range.")
+
+    def _generate_dynamic_description(self, feature_name, value, normal_range, feature_info, segment_duration):
+        """Generate dynamic description based on the feature value and context."""
+        base_description = feature_info.get("description", "No description available.")
+        
+        # Add contextual information based on the value
+        min_val, max_val = normal_range
+        range_span = max_val - min_val
+        
+        if value < min_val:
+            deviation = (min_val - value) / range_span if range_span > 0 else 1
+            if deviation >= 1.0:
+                context = f" Your current value of {value:.1f} is significantly below the normal range of {min_val}-{max_val}, indicating potential health concerns."
+            else:
+                context = f" Your current value of {value:.1f} is below the normal range of {min_val}-{max_val}."
+        elif value > max_val:
+            deviation = (value - max_val) / range_span if range_span > 0 else 1
+            if deviation >= 1.0:
+                context = f" Your current value of {value:.1f} is significantly above the normal range of {min_val}-{max_val}, which may require attention."
+            else:
+                context = f" Your current value of {value:.1f} is above the normal range of {min_val}-{max_val}."
+        else:
+            center = (min_val + max_val) / 2
+            distance_from_center = abs(value - center) / (range_span / 2) if range_span > 0 else 0
+            if distance_from_center < 0.2:
+                context = f" Your current value of {value:.1f} is in the optimal range of {min_val}-{max_val}, indicating excellent health."
+            elif distance_from_center < 0.5:
+                context = f" Your current value of {value:.1f} is in the good range of {min_val}-{max_val}, indicating healthy function."
+            else:
+                context = f" Your current value of {value:.1f} is within the normal range of {min_val}-{max_val}."
+        
+        return base_description + context
