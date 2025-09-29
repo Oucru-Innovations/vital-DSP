@@ -1173,6 +1173,7 @@ def render_report(
         print(f"Template rendering error: {e}")
         print(f"Error type: {type(e)}")
         import traceback
+
         traceback.print_exc()
 
         # Return a simple error report

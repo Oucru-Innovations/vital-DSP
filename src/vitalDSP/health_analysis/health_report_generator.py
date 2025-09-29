@@ -4,6 +4,10 @@ from vitalDSP.health_analysis.html_template import (
     render_report,
 )
 import logging
+import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+import threading
+import time
 
 # from vitalDSP.health_analysis.file_io import FileIO
 import numpy as np
@@ -12,18 +16,51 @@ import multiprocessing
 # from functools import lru_cache
 
 
+def process_single_feature_visualization(
+    feature_item, config, segment_duration, output_dir
+):
+    """
+    Process a single feature for visualization in a separate process.
+    This function must be at module level for multiprocessing to work.
+    """
+    feature, values = feature_item
+
+    try:
+        # Import here to avoid issues with multiprocessing
+        from vitalDSP.health_analysis.health_report_visualization import (
+            HealthReportVisualizer,
+        )
+
+        # Create a new visualizer instance for each process
+        process_visualizer = HealthReportVisualizer(config, segment_duration)
+
+        print(f"Processing {feature}...")
+        feature_visualizations = process_visualizer.create_visualizations(
+            {feature: values}, output_dir
+        )
+        print(f"✅ Completed {feature}")
+        return (feature, feature_visualizations[feature])
+
+    except Exception as e:
+        print(f"❌ Error generating visualization for {feature}: {e}")
+        return (feature, {})
+
+
 class HealthReportGenerator:
     """
     A class to generate a health report based on feature data, including interpretations, visualizations, and contradictions/correlations.
 
     This class handles the process of interpreting feature data (e.g., heart rate variability, ECG/PPG data),
-    generating visualizations for features, and rendering the final HTML report.
+    generating visualizations for features, and rendering the final HTML report. It uses fully concurrent processing:
+    - Feature interpretation: Concurrent processing using ThreadPoolExecutor (CPU-bound, thread-safe)
+    - Visualization generation: Concurrent processing using ProcessPoolExecutor (matplotlib process-safe)
 
     Attributes:
         feature_data (dict): Dictionary containing feature names as keys and their corresponding values.
         segment_duration (str): Duration of the segment, either "1_min" or "5_min". Default is "1_min".
         interpreter (InterpretationEngine): Instance of InterpretationEngine to interpret feature data.
         visualizer (HealthReportVisualizer): Instance of HealthReportVisualizer to create visualizations.
+        max_workers (int): Maximum number of concurrent workers for processing. Default is CPU count.
 
     Examples
     --------
@@ -49,7 +86,11 @@ class HealthReportGenerator:
     """
 
     def __init__(
-        self, feature_data, segment_duration="1_min", feature_config_path=None
+        self,
+        feature_data,
+        segment_duration="1_min",
+        feature_config_path=None,
+        max_workers=None,
     ):
         """
         Initializes the HealthReportGenerator with the provided feature data and segment duration.
@@ -59,12 +100,17 @@ class HealthReportGenerator:
                                 Example: {"nn50": 35, "rmssd": 55, "sdnn": 70}
             segment_duration (str): The duration of the analyzed segment, either '1_min' or '5_min'. Default is '1_min'.
             feature_config_path (str, optional): Path to a custom feature YAML configuration file. If not provided, the default config will be used.
+            max_workers (int, optional): Maximum number of concurrent workers for processing. Default is CPU count.
 
         Examples
         --------
         >>> feature_data = {"nn50": 45, "rmssd": 70, "sdnn": 120}
         >>> generator = HealthReportGenerator(feature_data, segment_duration="5_min")
         >>> report_html = generator.generate()
+        >>>
+        >>> # With custom concurrency settings
+        >>> generator_fast = HealthReportGenerator(feature_data, max_workers=8)
+        >>> report_html = generator_fast.generate()
         """
         self.feature_data = feature_data
         self.segment_duration = self._validate_segment_duration(segment_duration)
@@ -73,6 +119,46 @@ class HealthReportGenerator:
             self.interpreter.config, self.segment_duration
         )
         self.logger = logging.getLogger(__name__)
+        self.max_workers = max_workers or multiprocessing.cpu_count()
+
+    def set_concurrency(self, max_workers=None):
+        """
+        Configure concurrency settings for report generation.
+
+        Args:
+            max_workers (int, optional): Maximum number of concurrent workers.
+                                       If None, uses CPU count.
+
+        Example:
+            >>> generator.set_concurrency(max_workers=4)
+            >>> generator.set_concurrency()  # Reset to CPU count
+        """
+        if max_workers is None:
+            self.max_workers = multiprocessing.cpu_count()
+        else:
+            self.max_workers = max(1, min(max_workers, multiprocessing.cpu_count() * 2))
+        print(f"Concurrency set to {self.max_workers} workers")
+
+    def get_performance_info(self):
+        """
+        Get information about system performance and recommended settings.
+
+        Returns:
+            dict: Performance information including CPU count, recommended workers, etc.
+        """
+        cpu_count = multiprocessing.cpu_count()
+        feature_count = len(self.feature_data)
+
+        return {
+            "cpu_count": cpu_count,
+            "feature_count": feature_count,
+            "current_max_workers": self.max_workers,
+            "recommended_feature_workers": min(feature_count, cpu_count),
+            "recommended_viz_workers": min(cpu_count, 8),
+            "estimated_speedup": (
+                min(feature_count, cpu_count) if feature_count > 1 else 1
+            ),
+        }
 
     def _validate_segment_duration(self, segment_duration):
         """Validate and normalize segment duration format."""
@@ -86,7 +172,9 @@ class HealthReportGenerator:
         elif segment_duration in valid_durations:
             return segment_duration
         else:
-            self.logger.warning(f"Invalid segment duration '{segment_duration}', defaulting to '1_min'")
+            self.logger.warning(
+                f"Invalid segment duration '{segment_duration}', defaulting to '1_min'"
+            )
             return "1_min"
 
     @staticmethod
@@ -101,10 +189,85 @@ class HealthReportGenerator:
         """
         return values[::factor]
 
+    def _process_feature(self, feature_name, values, filter_status):
+        """
+        Process a single feature for interpretation.
+
+        Args:
+            feature_name (str): Name of the feature
+            values: Feature values
+            filter_status (str): Filter status for feature selection
+
+        Returns:
+            tuple: (feature_name, processed_data) or (feature_name, None) if error
+        """
+        try:
+            # Handle both single values and arrays
+            if not isinstance(values, (list, tuple, np.ndarray)):
+                values = [values]
+
+            # Convert the values to a NumPy array
+            values = np.array(values)
+
+            # Drop NaN or Inf values
+            values = values[np.isfinite(values)]
+
+            # If all values are NaN/Inf and nothing remains, raise an error
+            if len(values) == 0:
+                raise ValueError(
+                    f"All values for feature '{feature_name}' are NaN or Inf"
+                )
+
+            # Downsample data to reduce memory overhead for large datasets
+            if len(values) > 1000:
+                self.logger.warning(
+                    logging.UserWarning,
+                    f"Downsampling feature '{feature_name}' to reduce memory usage",
+                )
+                values = self.downsample(values)
+
+            # Calculate the mean of the feature's values
+            mean_value = np.mean(values)
+
+            # Interpret based on the mean value
+            interpretation = self.interpreter.interpret_feature(
+                feature_name, mean_value, self.segment_duration
+            )
+            range_status = self.interpreter.get_range_status(
+                feature_name, mean_value, self.segment_duration
+            )
+
+            # Skip features not matching the filter status
+            if filter_status != "all" and range_status != filter_status:
+                return (feature_name, None)
+
+            # Store aggregated information
+            median_value = np.median(values)
+            stddev_value = np.std(values)
+
+            processed_data = {
+                "description": interpretation["description"],
+                "value": values.tolist(),  # Store the list of valid values
+                "median": median_value,
+                "stddev": stddev_value,
+                "interpretation": interpretation["interpretation"],
+                "normal_range": interpretation["normal_range"],
+                "contradiction": interpretation.get("contradiction", None),
+                "correlation": interpretation.get("correlation", None),
+                "range_status": range_status,
+            }
+
+            return (feature_name, processed_data)
+
+        except Exception as e:
+            # Log the error but continue processing other features
+            self.logger.error(f"Error processing {feature_name}: {e}")
+            return (feature_name, None)
+
     @staticmethod
     def batch_visualization(visualizer, feature_data, output_dir, processes=4):
         """
-        Generate visualizations in parallel batches with limited processes.
+        Generate visualizations in parallel using ProcessPoolExecutor to avoid matplotlib threading issues.
         Args:
             visualizer (HealthReportVisualizer): The visualizer instance.
             feature_data (dict): Dictionary of features and their values.
@@ -113,26 +276,38 @@ class HealthReportGenerator:
         Returns:
             dict: Paths to the generated visualizations.
         """
-        # Generate visualizations for all features
+        # Generate visualizations for all features using processes to avoid matplotlib threading issues
         filtered_data = feature_data
 
-        print(f"Generating visualizations for {len(filtered_data)} features...")
+        print(
+            f"Generating visualizations for {len(filtered_data)} features using {processes} processes (matplotlib process-safe)..."
+        )
 
         visualizations = {}
-        total_features = len(filtered_data)
 
-        for i, (feature, values) in enumerate(filtered_data.items(), 1):
-            try:
-                print(f"Processing {feature} ({i}/{total_features})...")
-                feature_visualizations = visualizer.create_visualizations(
-                    {feature: values}, output_dir
-                )
-                visualizations[feature] = feature_visualizations[feature]
-                print(f"✅ Completed {feature}")
+        # Use ProcessPoolExecutor to avoid matplotlib threading issues
+        with ProcessPoolExecutor(max_workers=processes) as executor:
+            # Submit all tasks using the module-level function
+            future_to_feature = {
+                executor.submit(
+                    process_single_feature_visualization,
+                    item,
+                    visualizer.config,
+                    visualizer.segment_duration,
+                    output_dir,
+                ): item[0]
+                for item in filtered_data.items()
+            }
 
-            except Exception as e:
-                print(f"❌ Error generating visualization for {feature}: {e}")
-                visualizations[feature] = {}
+            # Collect results as they complete
+            for future in concurrent.futures.as_completed(future_to_feature):
+                feature_name = future_to_feature[future]
+                try:
+                    feature, feature_plots = future.result()
+                    visualizations[feature] = feature_plots
+                except Exception as e:
+                    print(f"❌ Error processing {feature_name}: {e}")
+                    visualizations[feature_name] = {}
 
         # Normalize all paths for web compatibility
         normalized_visualizations = {}
@@ -141,12 +316,15 @@ class HealthReportGenerator:
             for plot_type, path in plots.items():
                 if path:
                     # Convert backslashes to forward slashes for web compatibility
-                    web_path = path.replace('\\', '/')
+                    web_path = path.replace("\\", "/")
                     # Keep relative paths for file:// protocol compatibility
                     normalized_visualizations[feature][plot_type] = web_path
                 else:
                     normalized_visualizations[feature][plot_type] = path
 
+        print(
+            f"✅ Completed visualization generation for {len(normalized_visualizations)} features"
+        )
         return normalized_visualizations
 
     def generate(self, filter_status="all", output_dir=None):
@@ -169,65 +347,35 @@ class HealthReportGenerator:
         segment_values = {}
 
         try:
-            # Step 1: Interpret each feature with the loaded configuration
-            for feature_name, values in self.feature_data.items():
-                try:
-                    # Handle both single values and arrays
-                    if not isinstance(values, (list, tuple, np.ndarray)):
-                        values = [values]
+            # Step 1: Interpret each feature concurrently
+            print(f"Processing {len(self.feature_data)} features concurrently...")
+            start_time = time.time()
 
-                    # Convert the values to a NumPy array
-                    values = np.array(values)
+            # Determine optimal number of workers (CPU bound tasks)
+            max_workers = min(len(self.feature_data), self.max_workers)
 
-                    # Drop NaN or Inf values
-                    values = values[np.isfinite(values)]
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # Submit all feature processing tasks
+                future_to_feature = {
+                    executor.submit(
+                        self._process_feature, feature_name, values, filter_status
+                    ): feature_name
+                    for feature_name, values in self.feature_data.items()
+                }
 
-                    # If all values are NaN/Inf and nothing remains, log an error and continue
-                    if len(values) == 0:
-                        raise ValueError(
-                            f"All values for feature '{feature_name}' are NaN or Inf"
-                        )
-                    # Downsample data to reduce memory overhead for large datasets
-                    if len(values) > 1000:
-                        self.logger.warning(
-                            logging.UserWarning,
-                            f"Downsampling feature '{feature_name}' to reduce memory usage",
-                        )
-                        values = self.downsample(values)
-
-                    # Calculate the mean of the feature's values
-                    mean_value = np.mean(values)
-
-                    # Interpret based on the mean value
-                    interpretation = self.interpreter.interpret_feature(
-                        feature_name, mean_value, self.segment_duration
-                    )
-                    range_status = self.interpreter.get_range_status(
-                        feature_name, mean_value, self.segment_duration
-                    )
-
-                    # Skip features not matching the filter status
-                    if filter_status != "all" and range_status != filter_status:
+                # Collect results as they complete
+                for future in concurrent.futures.as_completed(future_to_feature):
+                    feature_name = future_to_feature[future]
+                    try:
+                        processed_feature, processed_data = future.result()
+                        if processed_data is not None:
+                            segment_values[processed_feature] = processed_data
+                    except Exception as e:
+                        self.logger.error(f"Error processing {feature_name}: {e}")
                         continue
 
-                    # Store aggregated information
-                    median_value = np.median(values)
-                    stddev_value = np.std(values)
-                    segment_values[feature_name] = {
-                        "description": interpretation["description"],
-                        "value": values.tolist(),  # Store the list of valid values
-                        "median": median_value,
-                        "stddev": stddev_value,
-                        "interpretation": interpretation["interpretation"],
-                        "normal_range": interpretation["normal_range"],
-                        "contradiction": interpretation.get("contradiction", None),
-                        "correlation": interpretation.get("correlation", None),
-                        "range_status": range_status,
-                    }
-                except Exception as e:
-                    # Log the error but continue processing other features
-                    self.logger.error(f"Error processing {feature_name}: {e}")
-                    continue
+            processing_time = time.time() - start_time
+            print(f"✅ Feature processing completed in {processing_time:.2f} seconds")
 
             # Step 1.5: Process contradictions and correlations (now handled dynamically)
             # segment_values = process_interpretations(segment_values)  # No longer needed
@@ -238,13 +386,30 @@ class HealthReportGenerator:
 
         # Step 2: Generate visualizations for all features (optional)
         visualizations = {}
+        optimal_processes = 0  # Initialize to avoid UnboundLocalError
         if output_dir:
             try:
-                print("Generating visualizations... This may take a moment.")
-                visualizations = self.batch_visualization(
-                    self.visualizer, self.feature_data, output_dir, processes=4
+                print(
+                    "Generating visualizations concurrently using processes (matplotlib process-safe)... This may take a moment."
                 )
-                print(f"Generated visualizations for {len(visualizations)} features.")
+                viz_start_time = time.time()
+
+                # Use optimal number of processes for visualization (CPU-bound)
+                optimal_processes = min(
+                    self.max_workers, 8
+                )  # Cap at 8 for CPU-bound tasks
+
+                visualizations = self.batch_visualization(
+                    self.visualizer,
+                    self.feature_data,
+                    output_dir,
+                    processes=optimal_processes,
+                )
+
+                viz_time = time.time() - viz_start_time
+                print(
+                    f"✅ Generated visualizations for {len(visualizations)} features in {viz_time:.2f} seconds"
+                )
             except Exception as e:
                 self.logger.error(f"Error generating visualizations: {e}")
                 print("Skipping visualizations due to error.")
@@ -268,6 +433,20 @@ class HealthReportGenerator:
             # Log the error if report rendering fails
             self.logger.error(f"Error rendering report: {e}")
             report_html = "<h1>Error generating report</h1>"
+
+        # Print total timing summary
+        total_time = time.time() - start_time
+        print("\n🚀 Report generation completed!")
+        print(f"📊 Total time: {total_time:.2f} seconds")
+        print(f"⚡ Features processed: {len(segment_values)}")
+        print(f"📈 Visualizations generated: {len(visualizations)}")
+        print(f"🔧 Feature processing: Concurrent ({max_workers} workers)")
+        if optimal_processes > 0:
+            print(
+                f"🎨 Visualization generation: Concurrent ({optimal_processes} processes)"
+            )
+        else:
+            print("🎨 Visualization generation: Skipped (no output directory)")
 
         return report_html
 
@@ -603,9 +782,9 @@ class HealthReportGenerator:
             # Extract raw feature values for correlation analysis
             feature_data = {}
             for feature_name, feature_data_dict in segment_values.items():
-                if isinstance(feature_data_dict, dict) and 'value' in feature_data_dict:
+                if isinstance(feature_data_dict, dict) and "value" in feature_data_dict:
                     # Extract mean value from the list of values
-                    values = feature_data_dict['value']
+                    values = feature_data_dict["value"]
                     if isinstance(values, list) and len(values) > 0:
                         feature_data[feature_name] = np.mean(values)
                     else:

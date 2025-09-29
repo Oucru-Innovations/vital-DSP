@@ -245,7 +245,11 @@ class InterpretationEngine:
         if isinstance(contradiction_info, dict):
             # If it's a dictionary, get the first contradiction description
             contradiction_descriptions = list(contradiction_info.values())
-            return contradiction_descriptions[0] if contradiction_descriptions else "No contradiction found."
+            return (
+                contradiction_descriptions[0]
+                if contradiction_descriptions
+                else "No contradiction found."
+            )
         else:
             return contradiction_info
 
@@ -271,7 +275,11 @@ class InterpretationEngine:
         if isinstance(correlation_info, dict):
             # If it's a dictionary, get the first correlation description
             correlation_descriptions = list(correlation_info.values())
-            return correlation_descriptions[0] if correlation_descriptions else "No correlation found."
+            return (
+                correlation_descriptions[0]
+                if correlation_descriptions
+                else "No correlation found."
+            )
         else:
             return correlation_info
 
@@ -285,7 +293,11 @@ class InterpretationEngine:
         if isinstance(base_correlation, dict):
             # If it's a dictionary, get the first correlation description
             correlation_descriptions = list(base_correlation.values())
-            base_correlation_text = correlation_descriptions[0] if correlation_descriptions else "No correlation found."
+            base_correlation_text = (
+                correlation_descriptions[0]
+                if correlation_descriptions
+                else "No correlation found."
+            )
         else:
             base_correlation_text = base_correlation
 

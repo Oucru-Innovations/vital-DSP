@@ -13,8 +13,16 @@ from collections import Counter
 from scipy.interpolate import make_interp_spline
 from vitalDSP.utils.common import find_peaks
 import logging
+import threading
 
+# Set thread-safe matplotlib backend
 matplotlib.use("Agg")
+# Enable thread safety
+matplotlib.rcParams["figure.max_open_warning"] = 0
+
+# Create a global lock for matplotlib operations
+matplotlib_lock = threading.Lock()
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -42,6 +50,36 @@ class HealthReportVisualizer:
         self.logger = logging.getLogger(__name__)
         self.segment_duration = segment_duration
 
+    def _thread_safe_matplotlib_operation(self, func, *args, **kwargs):
+        """
+        Execute matplotlib operations in a thread-safe manner.
+
+        Args:
+            func: The matplotlib function to execute
+            *args: Arguments for the function
+            **kwargs: Keyword arguments for the function
+
+        Returns:
+            The result of the function execution
+        """
+        with matplotlib_lock:
+            try:
+                # Clear any existing figures to prevent conflicts
+                plt.clf()
+                plt.close("all")
+
+                # Execute the function
+                result = func(*args, **kwargs)
+
+                # Ensure proper cleanup
+                plt.clf()
+                return result
+            except Exception as e:
+                # Clean up on error
+                plt.clf()
+                plt.close("all")
+                raise e
+
     def _normalize_web_path(self, filepath):
         """
         Normalize file path for web usage by ensuring forward slashes.
@@ -55,7 +93,7 @@ class HealthReportVisualizer:
         if filepath is None:
             return None
         # Convert backslashes to forward slashes for web compatibility
-        return filepath.replace('\\', '/')
+        return filepath.replace("\\", "/")
 
     def _fetch_and_validate_normal_range(self, feature, value):
         """

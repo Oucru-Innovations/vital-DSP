@@ -129,7 +129,7 @@ def test_generate_report_html(report_generator):
     # Basic checks on the generated HTML content
     assert isinstance(report_html, str), "Report should be a string (HTML format)."
     assert (
-        "<html>" not in report_html.lower()
+        "<html" in report_html.lower()
     ), "Generated report should contain HTML structure."
     assert "sdnn" in report_html, "Report should contain the feature 'sdnn'."
     assert "Normal Range" in report_html, "Report should mention 'Normal Range'."
@@ -228,3 +228,119 @@ def test_generate_feature_report(generator):
     assert feature_report["normal_range"] == [10, 100]
     assert feature_report["contradiction"] == "Mock contradiction"
     assert feature_report["correlation"] == "Mock correlation"
+
+
+def test_concurrent_processing_configuration(generator):
+    """Test concurrent processing configuration methods."""
+    # Test get_performance_info
+    perf_info = generator.get_performance_info()
+    assert "cpu_count" in perf_info
+    assert "feature_count" in perf_info
+    assert "current_max_workers" in perf_info
+    assert "recommended_feature_workers" in perf_info
+    assert "recommended_viz_workers" in perf_info
+    assert "estimated_speedup" in perf_info
+    
+    # Test set_concurrency
+    generator.set_concurrency(max_workers=4)
+    assert generator.max_workers == 4
+    
+    # Test reset to default
+    generator.set_concurrency()
+    assert generator.max_workers > 0  # Should be CPU count
+
+
+def test_generate_with_visualizations(generator):
+    """Test report generation with visualization output directory."""
+    import tempfile
+    import os
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Mock the static batch_visualization method to return empty dict to avoid actual plotting
+        with patch('vitalDSP.health_analysis.health_report_generator.HealthReportGenerator.batch_visualization', return_value={}) as mock_batch:
+            report_html = generator.generate(output_dir=temp_dir)
+            
+            # Should call batch_visualization
+            mock_batch.assert_called_once()
+            
+            # Report should still be generated
+            assert isinstance(report_html, str)
+            assert len(report_html) > 0
+
+
+def test_generate_without_visualizations(generator):
+    """Test report generation without visualization output directory."""
+    report_html = generator.generate(output_dir=None)
+    
+    # Report should be generated without visualizations
+    assert isinstance(report_html, str)
+    assert len(report_html) > 0
+
+
+def test_process_feature_method(generator):
+    """Test the _process_feature method for concurrent processing."""
+    # Test with valid data
+    feature_name, processed_data = generator._process_feature("nn50", [45, 55, 65], "all")
+    
+    assert feature_name == "nn50"
+    assert processed_data is not None
+    assert "description" in processed_data
+    assert "value" in processed_data
+    assert "interpretation" in processed_data
+    
+    # Test with filter mismatch
+    feature_name, processed_data = generator._process_feature("nn50", [45, 55, 65], "in_range")
+    # Should return None due to filter mismatch (mock returns "in_range" but we're filtering for "in_range")
+    assert processed_data is not None  # Actually should pass since mock returns "in_range"
+    
+    # Test with invalid data (all NaN)
+    feature_name, processed_data = generator._process_feature("nn50", [np.nan, np.inf], "all")
+    assert processed_data is None  # Should return None for invalid data
+
+
+def test_concurrent_processing_methods_exist(generator):
+    """Test that concurrent processing methods exist and are callable."""
+    # Test that the methods exist and can be called
+    assert hasattr(generator, 'set_concurrency')
+    assert hasattr(generator, 'get_performance_info')
+    assert hasattr(generator, '_process_feature')
+    assert hasattr(HealthReportGenerator, 'batch_visualization')
+    
+    # Test that they return expected types
+    perf_info = generator.get_performance_info()
+    assert isinstance(perf_info, dict)
+    assert 'cpu_count' in perf_info
+    
+    # Test set_concurrency doesn't raise errors
+    generator.set_concurrency(max_workers=2)
+    assert generator.max_workers == 2
+
+
+def test_dynamic_analysis_generation(generator):
+    """Test dynamic analysis generation."""
+    # Create mock segment values
+    segment_values = {
+        "sdnn": {
+            "value": [50, 55, 60],
+            "range_status": "in_range",
+            "description": "Test description",
+            "interpretation": "Test interpretation"
+        },
+        "rmssd": {
+            "value": [30, 35, 40],
+            "range_status": "above_range", 
+            "description": "Test description 2",
+            "interpretation": "Test interpretation 2"
+        }
+    }
+    
+    dynamic_analysis = generator._generate_dynamic_analysis(segment_values)
+    
+    assert isinstance(dynamic_analysis, dict)
+    assert "executive_summary" in dynamic_analysis
+    assert "risk_assessment" in dynamic_analysis
+    assert "recommendations" in dynamic_analysis
+    assert "key_insights" in dynamic_analysis
+    assert "statistics" in dynamic_analysis
+    assert "cross_correlations" in dynamic_analysis
+    assert "overall_health_score" in dynamic_analysis

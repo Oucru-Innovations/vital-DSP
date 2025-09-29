@@ -91,13 +91,25 @@ feature_data = {
         # "pr_interval": np.random.normal(160, 20, duration).tolist(),  # Normally around 160 ms with std dev of 20
 }
 
-# Initialize the health report generator
-report_generator = HealthReportGenerator(
-        feature_data=feature_data, segment_duration="1_min"
-)
+def main():
+    """Main function to generate health report with proper multiprocessing support."""
+    # Initialize the health report generator
+    report_generator = HealthReportGenerator(
+            feature_data=feature_data, segment_duration="1_min"
+    )
 
-image_dir = "../_static/images"
-os.makedirs(image_dir, exist_ok=True)
+    image_dir = "../_static/images"
+    os.makedirs(image_dir, exist_ok=True)
 
-# Generate the report (HTML)
-report_html = report_generator.generate(output_dir=image_dir)
+    # Generate the report (HTML)
+    report_html = report_generator.generate(output_dir=image_dir)
+    
+    # Write the report to file
+    with open('health_report.html', 'w', encoding='utf-8') as file:
+        file.write(report_html)
+    
+    print("Health report generated successfully!")
+
+
+if __name__ == '__main__':
+    main()
