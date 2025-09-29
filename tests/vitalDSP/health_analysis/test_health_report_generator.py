@@ -344,3 +344,278 @@ def test_dynamic_analysis_generation(generator):
     assert "statistics" in dynamic_analysis
     assert "cross_correlations" in dynamic_analysis
     assert "overall_health_score" in dynamic_analysis
+
+
+def test_generate_with_empty_feature_data(generator):
+    """Test report generation with empty feature data."""
+    empty_generator = HealthReportGenerator({}, segment_duration="1_min")
+    report_html = empty_generator.generate()
+    
+    assert isinstance(report_html, str)
+    assert len(report_html) > 0
+    assert "Error generating report" in report_html or "<html" in report_html.lower()
+
+
+def test_generate_with_invalid_segment_duration(generator):
+    """Test report generation with invalid segment duration."""
+    # Use the existing generator but test with invalid segment duration
+    generator.segment_duration = "invalid_duration"
+    report_html = generator.generate()
+    
+    assert isinstance(report_html, str)
+    assert len(report_html) > 0
+
+
+def test_process_feature_with_empty_values(generator):
+    """Test _process_feature with empty values."""
+    feature_name, processed_data = generator._process_feature("test", [], "all")
+    
+    assert feature_name == "test"
+    assert processed_data is None
+
+
+def test_process_feature_with_single_value(generator):
+    """Test _process_feature with single value."""
+    feature_name, processed_data = generator._process_feature("test", [42], "all")
+    
+    assert feature_name == "test"
+    assert processed_data is not None
+    assert "value" in processed_data
+    assert processed_data["value"] == [42]
+
+
+def test_process_feature_with_large_dataset(generator):
+    """Test _process_feature with large dataset (should trigger downsampling)."""
+    large_data = list(range(2000))  # Large dataset
+    feature_name, processed_data = generator._process_feature("test", large_data, "all")
+    
+    assert feature_name == "test"
+    assert processed_data is not None
+    assert "value" in processed_data
+    # Should be downsampled to 1000 or less
+    assert len(processed_data["value"]) <= 1000
+
+
+def test_generate_feature_report_with_mock_data(generator):
+    """Test _generate_feature_report with various mock data."""
+    # Test with normal value
+    report = generator._generate_feature_report("test_feature", 50.0)
+    assert isinstance(report, dict)
+    assert "description" in report
+    assert "value" in report
+    assert "interpretation" in report
+    assert "normal_range" in report
+    assert "contradiction" in report
+    assert "correlation" in report
+
+
+def test_validate_segment_duration_valid_cases(generator):
+    """Test _validate_segment_duration with valid cases."""
+    # Test various valid formats
+    valid_durations = ["1_min", "5_min", "1min", "5min", "1_minute", "5_minutes"]
+    
+    for duration in valid_durations:
+        result = generator._validate_segment_duration(duration)
+        assert result in ["1_min", "5_min"]
+
+
+def test_validate_segment_duration_invalid_cases(generator):
+    """Test _validate_segment_duration with invalid cases."""
+    # Test invalid duration
+    result = generator._validate_segment_duration("invalid")
+    assert result == "1_min"  # Should default to 1_min
+
+
+def test_generate_dynamic_analysis_with_empty_data(generator):
+    """Test _generate_dynamic_analysis with empty segment values."""
+    empty_analysis = generator._generate_dynamic_analysis({})
+    
+    assert isinstance(empty_analysis, dict)
+    assert "executive_summary" in empty_analysis
+    assert "risk_assessment" in empty_analysis
+    assert "recommendations" in empty_analysis
+    assert "key_insights" in empty_analysis
+    assert "statistics" in empty_analysis
+    assert "cross_correlations" in empty_analysis
+    assert "overall_health_score" in empty_analysis
+
+
+def test_generate_dynamic_analysis_with_mixed_range_statuses(generator):
+    """Test _generate_dynamic_analysis with mixed range statuses."""
+    mixed_data = {
+        "feature1": {
+            "value": [50, 55, 60],
+            "range_status": "in_range",
+            "description": "Normal feature",
+            "interpretation": "Normal interpretation"
+        },
+        "feature2": {
+            "value": [10, 15, 20],
+            "range_status": "below_range",
+            "description": "Low feature",
+            "interpretation": "Low interpretation"
+        },
+        "feature3": {
+            "value": [90, 95, 100],
+            "range_status": "above_range",
+            "description": "High feature",
+            "interpretation": "High interpretation"
+        }
+    }
+    
+    analysis = generator._generate_dynamic_analysis(mixed_data)
+    
+    assert isinstance(analysis, dict)
+    assert "executive_summary" in analysis
+    assert "risk_assessment" in analysis
+    assert "statistics" in analysis
+    assert analysis["statistics"]["in_range"] == 1
+    assert analysis["statistics"]["below_range"] == 1
+    assert analysis["statistics"]["above_range"] == 1
+
+
+def test_generate_with_exception_handling(generator):
+    """Test generate method with exception handling."""
+    # Mock interpreter to raise exception
+    generator.interpreter.interpret_feature.side_effect = Exception("Test error")
+    
+    report_html = generator.generate()
+    
+    assert isinstance(report_html, str)
+    assert len(report_html) > 0
+
+
+def test_generate_with_visualization_exception(generator):
+    """Test generate method with visualization exception."""
+    import tempfile
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Mock batch_visualization to raise exception
+        with patch('vitalDSP.health_analysis.health_report_generator.HealthReportGenerator.batch_visualization', side_effect=Exception("Visualization error")):
+            report_html = generator.generate(output_dir=temp_dir)
+            
+            assert isinstance(report_html, str)
+            assert len(report_html) > 0
+
+
+def test_generate_with_render_exception(generator):
+    """Test generate method with render exception."""
+    # Mock render_report to raise exception
+    with patch('vitalDSP.health_analysis.health_report_generator.render_report', side_effect=Exception("Render error")):
+        report_html = generator.generate()
+        
+        assert isinstance(report_html, str)
+        assert "Error generating report" in report_html
+
+
+def test_downsample_method(generator):
+    """Test the downsample method."""
+    # Test with large array
+    large_array = np.array(list(range(2000)))
+    downsampled = HealthReportGenerator.downsample(large_array)
+    
+    assert len(downsampled) == 200  # 2000 / 10 = 200
+    assert isinstance(downsampled, np.ndarray)
+    
+    # Test with small array (will be downsampled by factor of 10)
+    small_array = np.array([1, 2, 3, 4, 5])
+    small_downsampled = HealthReportGenerator.downsample(small_array)
+    
+    assert len(small_downsampled) == 1  # 5/10 = 0.5, rounded to 1
+    assert small_downsampled[0] == 1  # First element
+
+
+def test_get_performance_info_detailed(generator):
+    """Test get_performance_info with detailed assertions."""
+    perf_info = generator.get_performance_info()
+    
+    assert isinstance(perf_info, dict)
+    assert "cpu_count" in perf_info
+    assert "feature_count" in perf_info
+    assert "current_max_workers" in perf_info
+    assert "recommended_feature_workers" in perf_info
+    assert "recommended_viz_workers" in perf_info
+    assert "estimated_speedup" in perf_info
+    
+    # Check that values are reasonable
+    assert perf_info["cpu_count"] > 0
+    assert perf_info["feature_count"] >= 0
+    assert perf_info["current_max_workers"] > 0
+    assert perf_info["recommended_feature_workers"] > 0
+    assert perf_info["recommended_viz_workers"] > 0
+    assert perf_info["estimated_speedup"] >= 1
+
+
+def test_set_concurrency_edge_cases(generator):
+    """Test set_concurrency with edge cases."""
+    # Test with zero workers
+    generator.set_concurrency(max_workers=0)
+    assert generator.max_workers == 1  # Should be at least 1
+    
+    # Test with negative workers
+    generator.set_concurrency(max_workers=-5)
+    assert generator.max_workers == 1  # Should be at least 1
+    
+    # Test with very large number
+    generator.set_concurrency(max_workers=1000)
+    assert generator.max_workers <= 1000  # Should be capped
+
+
+def test_generate_with_different_filter_statuses(generator):
+    """Test generate with different filter statuses."""
+    # Test with "in_range" filter
+    report_in_range = generator.generate(filter_status="in_range")
+    assert isinstance(report_in_range, str)
+    
+    # Test with "above_range" filter
+    report_above_range = generator.generate(filter_status="above_range")
+    assert isinstance(report_above_range, str)
+    
+    # Test with "below_range" filter
+    report_below_range = generator.generate(filter_status="below_range")
+    assert isinstance(report_below_range, str)
+
+
+def test_process_single_feature_visualization_module_level():
+    """Test the module-level process_single_feature_visualization function."""
+    from vitalDSP.health_analysis.health_report_generator import process_single_feature_visualization
+    import tempfile
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Mock the HealthReportVisualizer import
+        with patch('vitalDSP.health_analysis.health_report_generator.HealthReportVisualizer') as mock_visualizer_class:
+            mock_visualizer = MagicMock()
+            mock_visualizer_class.return_value = mock_visualizer
+            mock_visualizer.create_visualizations.return_value = {"test": {"plot1": "path1.png"}}
+            
+            feature_item = ("test_feature", [1, 2, 3])
+            config = {"test": "config"}
+            segment_duration = "1_min"
+            
+            result = process_single_feature_visualization(feature_item, config, segment_duration, temp_dir)
+            
+            assert isinstance(result, tuple)
+            assert len(result) == 2
+            assert result[0] == "test_feature"
+            assert isinstance(result[1], dict)
+
+
+def test_process_single_feature_visualization_exception():
+    """Test process_single_feature_visualization with exception."""
+    from vitalDSP.health_analysis.health_report_generator import process_single_feature_visualization
+    import tempfile
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Mock to raise exception
+        with patch('vitalDSP.health_analysis.health_report_generator.HealthReportVisualizer', side_effect=Exception("Test error")):
+            feature_item = ("test_feature", [1, 2, 3])
+            config = {"test": "config"}
+            segment_duration = "1_min"
+            
+            result = process_single_feature_visualization(feature_item, config, segment_duration, temp_dir)
+            
+            assert isinstance(result, tuple)
+            assert len(result) == 2
+            assert result[0] == "test_feature"
+            assert isinstance(result[1], dict)  # Should return dict with error messages
+            assert len(result[1]) > 0  # Should have error messages

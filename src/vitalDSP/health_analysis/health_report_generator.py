@@ -221,8 +221,7 @@ class HealthReportGenerator:
             # Downsample data to reduce memory overhead for large datasets
             if len(values) > 1000:
                 self.logger.warning(
-                    logging.UserWarning,
-                    f"Downsampling feature '{feature_name}' to reduce memory usage",
+                    f"Downsampling feature '{feature_name}' to reduce memory usage"
                 )
                 values = self.downsample(values)
 
