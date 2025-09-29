@@ -25,10 +25,13 @@ def visualizer():
 @pytest.fixture
 def sample_data():
     """Create sample data for testing."""
+    import numpy as np
+    # Generate more data points for better spectral analysis
+    np.random.seed(42)  # For reproducible tests
     return {
-        "sdnn": [25.0, 30.0, 35.0, 40.0, 45.0],
-        "rmssd": [15.0, 20.0, 25.0, 30.0, 35.0],
-        "nn50": [10, 15, 20, 25, 30]
+        "sdnn": np.random.normal(35.0, 5.0, 100).tolist(),  # 100 data points
+        "rmssd": np.random.normal(25.0, 3.0, 100).tolist(),  # 100 data points
+        "nn50": np.random.poisson(20, 100).tolist()  # 100 data points
     }
 
 
@@ -150,8 +153,10 @@ def test_create_spectral_density_plot(visualizer, sample_data):
         plot_path = visualizer._create_spectral_density_plot("sdnn", sample_data["sdnn"], temp_dir)
         
         assert plot_path is not None
-        assert os.path.exists(plot_path)
-        assert plot_path.endswith('.png')
+        # The method should return a valid file path for the sample data (100 points)
+        assert not plot_path.startswith("Error"), f"Expected file path but got error: {plot_path}"
+        assert os.path.exists(plot_path), f"Plot file does not exist: {plot_path}"
+        assert plot_path.endswith('.png'), f"Expected .png file but got: {plot_path}"
 
 
 def test_create_radar_plot(visualizer, sample_data):
