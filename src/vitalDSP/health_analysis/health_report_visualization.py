@@ -373,14 +373,14 @@ class HealthReportVisualizer:
             # Ensure we have enough data points for spectral analysis
             if len(values) < 8:  # Minimum required for nperseg=8
                 raise ValueError(f"Insufficient data points: {len(values)} < 8")
-            
+
             # Calculate the Power Spectral Density (PSD) using Welch's method
             freqs, psd = welch(values, fs=sampling_rate, nfft=nfft, nperseg=nperseg)
             freqs = freqs * (60 / segment_overlap)
 
             # Create a smooth curve using interpolation for the PSD
             freqs_smooth = np.linspace(freqs.min(), freqs.max(), 500)
-            
+
             # Use safer interpolation method
             try:
                 spline = make_interp_spline(freqs, psd, k=3)
@@ -477,18 +477,18 @@ class HealthReportVisualizer:
             filepath = os.path.join(
                 output_dir, f"{feature}_enhanced_spectral_density_plot.png"
             )
-            
+
             # Ensure output directory exists
             os.makedirs(output_dir, exist_ok=True)
-            
+
             # Save with error handling
             plt.savefig(filepath, bbox_inches="tight", dpi=150)  # Lower DPI for compatibility
             plt.close()
-            
+
             # Verify file was created successfully
             if not os.path.exists(filepath):
                 raise FileNotFoundError(f"Failed to create plot file: {filepath}")
-                
+
         except Exception as e:
             self.logger.error(
                 f"Error generating spectral density plot for {feature}: {e}"
