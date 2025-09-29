@@ -370,14 +370,25 @@ class HealthReportVisualizer:
             str: Path to the saved spectral density plot image.
         """
         try:
+            # Ensure we have enough data points for spectral analysis
+            if len(values) < 8:  # Minimum required for nperseg=8
+                raise ValueError(f"Insufficient data points: {len(values)} < 8")
+            
             # Calculate the Power Spectral Density (PSD) using Welch's method
             freqs, psd = welch(values, fs=sampling_rate, nfft=nfft, nperseg=nperseg)
             freqs = freqs * (60 / segment_overlap)
 
             # Create a smooth curve using interpolation for the PSD
             freqs_smooth = np.linspace(freqs.min(), freqs.max(), 500)
-            spline = make_interp_spline(freqs, psd, k=3)
-            psd_smooth = spline(freqs_smooth)
+            
+            # Use safer interpolation method
+            try:
+                spline = make_interp_spline(freqs, psd, k=3)
+                psd_smooth = spline(freqs_smooth)
+            except Exception as interp_error:
+                # Fallback to linear interpolation if spline fails
+                self.logger.warning(f"Using linear interpolation fallback: {interp_error}")
+                psd_smooth = np.interp(freqs_smooth, freqs, psd)
 
             # Create the plot
             plt.figure(figsize=(10, 6))
@@ -466,8 +477,18 @@ class HealthReportVisualizer:
             filepath = os.path.join(
                 output_dir, f"{feature}_enhanced_spectral_density_plot.png"
             )
-            plt.savefig(filepath, bbox_inches="tight")
+            
+            # Ensure output directory exists
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # Save with error handling
+            plt.savefig(filepath, bbox_inches="tight", dpi=150)  # Lower DPI for compatibility
             plt.close()
+            
+            # Verify file was created successfully
+            if not os.path.exists(filepath):
+                raise FileNotFoundError(f"Failed to create plot file: {filepath}")
+                
         except Exception as e:
             self.logger.error(
                 f"Error generating spectral density plot for {feature}: {e}"
