@@ -44,7 +44,7 @@ class FileIO:
             bool: True if the report was successfully saved, False otherwise.
         """
         try:
-            with open(output_path, "w") as file:
+            with open(output_path, "w", encoding="utf-8") as file:
                 file.write(report_html)
             return True
         except Exception as e:

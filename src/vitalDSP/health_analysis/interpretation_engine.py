@@ -668,21 +668,22 @@ class InterpretationEngine:
                 )
 
         # Check for cardiovascular risk patterns
-        if "sdnn" in feature_data and "heart_rate" in feature_data:
+        if "sdnn" in feature_data and "mean_nn" in feature_data:
             sdnn_status = self.get_range_status(
                 "sdnn", feature_data["sdnn"], segment_duration
             )
-            hr_status = self.get_range_status(
-                "heart_rate", feature_data["heart_rate"], segment_duration
+            mean_nn_status = self.get_range_status(
+                "mean_nn", feature_data["mean_nn"], segment_duration
             )
 
-            if sdnn_status == "below_range" and hr_status == "above_range":
+            # Low SDNN (below range) + Low mean_nn (below range = high heart rate) = cardiovascular risk
+            if sdnn_status == "below_range" and mean_nn_status == "below_range":
                 patterns.append(
                     {
                         "type": "cardiovascular_risk",
                         "description": "Low heart rate variability combined with elevated heart rate may indicate cardiovascular stress",
                         "severity": "high",
-                        "affected_features": ["sdnn", "heart_rate"],
+                        "affected_features": ["sdnn", "mean_nn"],
                     }
                 )
 

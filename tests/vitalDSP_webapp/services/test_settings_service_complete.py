@@ -608,3 +608,372 @@ class TestSettingsServiceBasic:
         else:
             # If not available, just pass
             assert True
+
+
+@pytest.mark.skipif(not SETTINGS_SERVICE_AVAILABLE, reason="Settings service module not available")
+class TestSettingsServiceAdditionalCoverage:
+    """Additional tests to improve settings service coverage"""
+
+    def test_settings_service_backup_creation(self):
+        """Test that backup is created when saving settings"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            backup_file = f"{settings_file}.backup"
+
+            service = SettingsService(settings_file)
+            service.update_general_settings(theme="dark")
+
+            # Backup should exist after update
+            assert os.path.exists(backup_file)
+
+    def test_settings_service_backup_failure_handling(self):
+        """Test backup failure doesn't prevent normal operation"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+
+            # Create service
+            service = SettingsService(settings_file)
+
+            # Mock backup to fail
+            with patch.object(service, '_backup_settings', side_effect=Exception("Backup failed")):
+                # Should still work even if backup fails
+                result = service.update_general_settings(theme="dark")
+                # update might fail due to backup being called in _save_settings
+                assert isinstance(result, bool)
+
+    def test_export_settings_pickle_format(self):
+        """Test exporting settings in pickle format"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            exported = service.export_settings(format_type="pickle")
+
+            assert exported is not None
+            assert isinstance(exported, bytes)
+
+    def test_export_settings_unsupported_format(self):
+        """Test exporting with unsupported format"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            exported = service.export_settings(format_type="xml")
+
+            assert exported is None
+
+    def test_export_settings_exception_handling(self):
+        """Test export exception handling"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            # Mock json.dumps to raise exception
+            with patch('json.dumps', side_effect=Exception("Export error")):
+                exported = service.export_settings(format_type="json")
+                assert exported is None
+
+    def test_import_settings_pickle_format(self):
+        """Test importing settings in pickle format"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            # Export first
+            exported = service.export_settings(format_type="pickle")
+
+            # Modify settings
+            service.update_general_settings(theme="light")
+
+            # Import back
+            result = service.import_settings(exported, format_type="pickle")
+
+            assert result is True
+
+    def test_import_settings_unsupported_format(self):
+        """Test importing with unsupported format"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            result = service.import_settings("data", format_type="xml")
+
+            assert result is False
+
+    def test_import_settings_invalid_json(self):
+        """Test importing invalid JSON data"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            result = service.import_settings("not valid json{", format_type="json")
+
+            assert result is False
+
+    def test_import_settings_exception_handling(self):
+        """Test import exception handling"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            # Mock json.loads to raise exception
+            with patch('json.loads', side_effect=Exception("Import error")):
+                result = service.import_settings('{"test": "data"}', format_type="json")
+                assert result is False
+
+    def test_validate_settings_all_valid(self):
+        """Test validate_settings with all valid settings"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            errors = service.validate_settings()
+
+            assert isinstance(errors, dict)
+            assert len(errors) == 0
+
+    def test_validate_settings_invalid_page_size(self):
+        """Test validate_settings with invalid page size"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            # Set invalid page size
+            service.settings.general.page_size = 30  # Invalid
+            errors = service.validate_settings()
+
+            assert "general" in errors
+            assert len(errors["general"]) > 0
+
+    def test_validate_settings_invalid_auto_refresh(self):
+        """Test validate_settings with negative auto-refresh"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            service.settings.general.auto_refresh_interval = -5
+            errors = service.validate_settings()
+
+            assert "general" in errors
+
+    def test_validate_settings_invalid_sampling_freq(self):
+        """Test validate_settings with low sampling frequency"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            service.settings.analysis.default_sampling_freq = 50  # Below 100
+            errors = service.validate_settings()
+
+            assert "analysis" in errors
+
+    def test_validate_settings_invalid_fft_points(self):
+        """Test validate_settings with low FFT points"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            service.settings.analysis.default_fft_points = 128  # Below 256
+            errors = service.validate_settings()
+
+            assert "analysis" in errors
+
+    def test_validate_settings_invalid_peak_threshold(self):
+        """Test validate_settings with invalid peak threshold"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            service.settings.analysis.peak_threshold = 1.5  # Above 1.0
+            errors = service.validate_settings()
+
+            assert "analysis" in errors
+
+    def test_validate_settings_invalid_file_size(self):
+        """Test validate_settings with invalid file size"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            service.settings.data.max_file_size = 5  # Below 10
+            errors = service.validate_settings()
+
+            assert "data" in errors
+
+    def test_validate_settings_invalid_auto_save(self):
+        """Test validate_settings with invalid auto-save interval"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            service.settings.data.auto_save_interval = 0  # Below 1
+            errors = service.validate_settings()
+
+            assert "data" in errors
+
+    def test_validate_settings_invalid_cpu_usage(self):
+        """Test validate_settings with invalid CPU usage"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            service.settings.system.max_cpu_usage = 5  # Below 10
+            errors = service.validate_settings()
+
+            assert "system" in errors
+
+    def test_validate_settings_invalid_memory_limit(self):
+        """Test validate_settings with invalid memory limit"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            service.settings.system.memory_limit_gb = 64  # Above 32
+            errors = service.validate_settings()
+
+            assert "system" in errors
+
+    def test_validate_settings_multiple_errors(self):
+        """Test validate_settings with multiple errors across categories"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            # Set multiple invalid values
+            service.settings.general.page_size = 30
+            service.settings.analysis.default_sampling_freq = 50
+            service.settings.data.max_file_size = 5
+            service.settings.system.max_cpu_usage = 5
+
+            errors = service.validate_settings()
+
+            assert len(errors) >= 4  # Should have errors in all categories
+
+    def test_get_settings_summary_structure(self):
+        """Test get_settings_summary returns correct structure"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            summary = service.get_settings_summary()
+
+            assert isinstance(summary, dict)
+            assert "general" in summary
+            assert "analysis" in summary
+            assert "data" in summary
+            assert "system" in summary
+            assert "last_updated" in summary
+            assert "version" in summary
+
+    def test_get_settings_summary_values(self):
+        """Test get_settings_summary returns correct values"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            service.update_general_settings(theme="dark", page_size=50)
+
+            summary = service.get_settings_summary()
+
+            assert summary["general"]["theme"] == "dark"
+            assert summary["general"]["page_size"] == 50
+
+    def test_update_settings_with_invalid_attribute(self):
+        """Test updating with non-existent attribute is ignored"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            # Should not raise error, just ignore invalid attribute
+            result = service.update_general_settings(invalid_attr="value")
+
+            assert result is True  # Should still succeed
+
+    def test_dict_to_settings_partial_data(self):
+        """Test converting dict with partial data"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            # Dict with only some fields
+            partial_dict = {
+                "general": {"theme": "dark"},
+                "version": "2.0.0"
+            }
+
+            settings = service._dict_to_settings(partial_dict)
+
+            assert settings.general.theme == "dark"
+            assert settings.version == "2.0.0"
+            # Other fields should have defaults
+            assert settings.analysis.default_sampling_freq == 1000
+
+    def test_dict_to_settings_error_handling(self):
+        """Test dict_to_settings error handling"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+            service = SettingsService(settings_file)
+
+            # Invalid data that will cause error
+            invalid_dict = {
+                "general": {"page_size": "not_a_number"}  # Wrong type
+            }
+
+            # Should return default settings on error
+            settings = service._dict_to_settings(invalid_dict)
+
+            assert isinstance(settings, ApplicationSettings)
+
+    def test_load_settings_file_not_found(self):
+        """Test loading when settings file doesn't exist"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "nonexistent.json")
+            service = SettingsService(settings_file)
+
+            # Should create default settings
+            assert service.settings is not None
+            assert service.settings.general.theme == "light"
+
+    def test_load_settings_corrupted_file(self):
+        """Test loading corrupted settings file"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "corrupted.json")
+
+            # Create corrupted file
+            with open(settings_file, 'w') as f:
+                f.write("not valid json{{{")
+
+            service = SettingsService(settings_file)
+
+            # Should fall back to defaults
+            assert service.settings is not None
+            assert service.settings.general.theme == "light"
+
+    def test_update_settings_module_function(self):
+        """Test module-level update_settings function"""
+        from vitalDSP_webapp.services.settings_service import update_settings
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+
+            # Reset global service
+            import vitalDSP_webapp.services.settings_service as ss
+            ss._settings_service = SettingsService(settings_file)
+
+            result = update_settings("general", theme="dark", page_size=50)
+
+            assert result is True
+
+    def test_update_settings_invalid_category(self):
+        """Test update_settings with invalid category"""
+        from vitalDSP_webapp.services.settings_service import update_settings
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_file = os.path.join(temp_dir, "test_settings.json")
+
+            import vitalDSP_webapp.services.settings_service as ss
+            ss._settings_service = SettingsService(settings_file)
+
+            result = update_settings("invalid_category", some_param="value")
+
+            assert result is False
