@@ -620,7 +620,11 @@ class TestSettingsServiceAdditionalCoverage:
             settings_file = os.path.join(temp_dir, "test_settings.json")
             backup_file = f"{settings_file}.backup"
 
+            # First create initial settings file
             service = SettingsService(settings_file)
+            service.update_general_settings(theme="light")
+            
+            # Now update settings - this should create a backup
             service.update_general_settings(theme="dark")
 
             # Backup should exist after update

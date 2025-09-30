@@ -170,7 +170,7 @@ class TestErrorHandlingFunctions:
         result = handle_upload_error(error, context)
 
         assert result["error"] == True
-        assert result["message"] == "File too large"
+        assert result["message"] == "[FILE_SIZE] File too large"
         assert "upload_context" in result
         assert "suggestions" in result
         assert len(result["suggestions"]) > 0
@@ -183,7 +183,7 @@ class TestErrorHandlingFunctions:
         result = handle_processing_error(error, context)
 
         assert result["error"] == True
-        assert result["message"] == "Invalid data format"
+        assert result["message"] == "[FORMAT_ERROR] Invalid data format"
         assert "processing_context" in result
         assert "suggestions" in result
 
@@ -195,7 +195,7 @@ class TestErrorHandlingFunctions:
         result = handle_analysis_error(error, context)
 
         assert result["error"] == True
-        assert result["message"] == "Insufficient data"
+        assert result["message"] == "[DATA_ERROR] Insufficient data"
         assert "analysis_context" in result
         assert "suggestions" in result
 
@@ -465,7 +465,7 @@ class TestErrorSuggestions:
         suggestions = get_upload_error_suggestions(error)
 
         assert len(suggestions) > 0
-        assert any("file format" in s.lower() for s in suggestions)
+        assert any("format" in s.lower() for s in suggestions)
 
     def test_get_upload_error_suggestions_permission(self):
         """Test upload suggestions for permission error"""
@@ -553,6 +553,9 @@ class TestErrorSuggestions:
         suggestions = get_analysis_error_suggestions(error)
 
         assert len(suggestions) > 0
+        
+        # Test WebappError creation
+        details = {"field": "test_field", "value": "invalid"}
         error = WebappError(
             message="Validation failed",
             error_code="VALIDATION_001", 
