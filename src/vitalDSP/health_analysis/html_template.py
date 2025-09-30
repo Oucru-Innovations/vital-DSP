@@ -124,14 +124,20 @@ def _get_base_css():
     base_css = """
         <style>
                 body {
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    padding: 20px;
-                    background-color: #f7f9fa;
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    padding: 16px;
+                    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
                     color: #2c3e50;
+                    line-height: 1.6;
+                    margin: 0;
                 }
                 h1 {
                     text-align: center;
                     color: #2c3e50;
+                    font-size: 2.5rem;
+                    font-weight: 700;
+                    margin: 0 0 24px 0;
+                    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 }
                 .filter-dropdown, .plot-dropdown {
                     margin-bottom: 20px;
@@ -155,75 +161,485 @@ def _get_base_css():
                     box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
                 }
                 .container {
-                    display: flex;
-                    flex-wrap: wrap;
-                    {#justify-content: space-between;#}
-                    justify-content: space-around;
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+                    gap: 16px;
                     margin-top: 20px;
+                    max-width: 1400px;
+                    margin-left: auto;
+                    margin-right: auto;
                 }
                 .column {
-                    width: 48%;
-                    margin-bottom: 20px;
+                    width: 100%;
+                    margin-bottom: 0;
                 }
                 .feature-section {
-                    padding: 15px;
-                    background-color: #ffffff;
-                    border: 1px solid #ddd;
-                    border-radius: 10px;
-                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-                    margin-bottom: 20px;
+                    padding: 20px;
+                    background: rgba(255, 255, 255, 0.95);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 16px;
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+                    margin-bottom: 16px;
+                    transition: all 0.3s ease;
+                    position: relative;
+                    overflow: hidden;
+                }
+                .feature-section:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
                 }
                 .feature-title {
-                    font-size: 18px;
+                    font-size: 1.25rem;
                     color: #2c3e50;
-                    margin-bottom: 10px;
+                    margin-bottom: 16px;
                     text-align: center;
+                    font-weight: 600;
+                    position: relative;
+                    padding-bottom: 8px;
+                }
+                .feature-title::after {
+                    content: '';
+                    position: absolute;
+                    bottom: 0;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    width: 40px;
+                    height: 3px;
+                    background: linear-gradient(90deg, #3498db, #2ecc71);
+                    border-radius: 2px;
                 }
                 .column.feature-section {
-                    width: 45%;
-                    margin-bottom: 20px;
+                    width: 100%;
+                    margin-bottom: 16px;
                 }
 
                 .grid-2-cols {
                     display: grid;
                     grid-template-columns: 1fr 1fr;
-                    gap: 20px;
+                    gap: 16px;
+                    margin: 16px 0;
+                }
+                @media (max-width: 768px) {
+                    .grid-2-cols {
+                        grid-template-columns: 1fr;
+                        gap: 12px;
+                    }
                 }
                 .content-block {
-                    padding: 15px;
-                    margin: 15px 0;
-                    border-radius: 5px;
+                    padding: 16px;
+                    margin: 12px 0;
+                    border-radius: 12px;
+                    background: rgba(255, 255, 255, 0.7);
+                    backdrop-filter: blur(5px);
+                }
+
+                /* Dynamic Analysis Styles - Compact & Elegant */
+                .dynamic-analysis-container {
+                    margin-bottom: 20px;
+                    padding: 20px;
+                    background: rgba(255, 255, 255, 0.95);
+                    backdrop-filter: blur(10px);
+                    border-radius: 16px;
+                    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                }
+
+                .analysis-grid {
+                    display: grid;
+                    grid-template-columns: 2fr 1fr;
+                    gap: 16px;
+                    margin-bottom: 16px;
+                }
+
+                .main-analysis {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 12px;
+                }
+
+                .executive-summary {
+                    grid-column: 1 / -1;
+                    padding: 16px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+                    margin-bottom: 12px;
+                }
+
+                .risk-assessment, .key-insights {
+                    padding: 14px;
+                    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                    border-radius: 10px;
+                    border-left: 3px solid #3498db;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                    transition: all 0.3s ease;
+                }
+
+                .risk-assessment:hover, .key-insights:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                }
+
+                .recommendations, .statistics-summary {
+                    padding: 14px;
+                    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                    border-radius: 10px;
+                    border-left: 3px solid #e74c3c;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+                    transition: all 0.3s ease;
+                }
+
+                .recommendations:hover, .statistics-summary:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                }
+
+                .summary-card, .risk-card, .insights-card, .recommendations-card {
+                    padding: 20px;
+                    border-radius: 12px;
+                    margin-top: 12px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                    transition: all 0.3s ease;
+                }
+                .summary-card:hover, .risk-card:hover, .insights-card:hover, .recommendations-card:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                }
+
+                .summary-card.excellent {
+                    background-color: #d4edda;
+                    border-left: 4px solid #28a745;
+                }
+
+                .summary-card.good {
+                    background-color: #d1ecf1;
+                    border-left: 4px solid #17a2b8;
+                }
+
+                .summary-card.fair {
+                    background-color: #fff3cd;
+                    border-left: 4px solid #ffc107;
+                }
+
+                .summary-card.poor {
+                    background-color: #f8d7da;
+                    border-left: 4px solid #dc3545;
+                }
+
+                .health-score {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 16px;
+                    padding: 16px;
+                    background: rgba(255, 255, 255, 0.8);
+                    border-radius: 12px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                }
+
+                .score-value {
+                    font-size: 2rem;
+                    font-weight: 700;
+                    color: #2c3e50;
+                    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
+
+                .risk-card.low {
+                    background-color: #d4edda;
+                    border-left: 4px solid #28a745;
+                }
+
+                .risk-card.moderate {
+                    background-color: #fff3cd;
+                    border-left: 4px solid #ffc107;
+                }
+
+                .risk-card.high {
+                    background-color: #f8d7da;
+                    border-left: 4px solid #dc3545;
+                }
+
+                .risk-level {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 16px;
+                    padding: 16px;
+                    background: rgba(255, 255, 255, 0.8);
+                    border-radius: 12px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                }
+
+                .risk-value {
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
+
+                .concerns ul, .insights-card ul, .recommendations-card ol {
+                    margin: 12px 0;
+                    padding-left: 24px;
+                }
+
+                .concerns li, .insights-card li, .recommendations-card li {
+                    margin: 6px 0;
+                    line-height: 1.6;
+                    padding: 4px 0;
+                }
+
+                .cross-correlations {
+                    margin-bottom: 30px;
+                    padding: 20px;
+                    background: rgba(255, 255, 255, 0.05);
+                    backdrop-filter: blur(10px);
+                    border-radius: 16px;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+                }
+
+                .cross-correlations h2 {
+                    color: #ffffff;
+                    margin-bottom: 20px;
+                    font-size: 1.4rem;
+                    font-weight: 600;
+                    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                }
+
+                .correlations-card {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 15px;
+                }
+
+                .correlation-item {
+                    padding: 18px;
+                    border-radius: 12px;
+                    background: rgba(255, 255, 255, 0.08);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255, 255, 255, 0.15);
+                    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+                    transition: all 0.3s ease;
+                }
+
+                .correlation-item:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+                    background: rgba(255, 255, 255, 0.12);
+                }
+
+                .correlation-item.strong {
+                    border-left: 4px solid #4CAF50;
+                    background: rgba(76, 175, 80, 0.1);
+                }
+
+                .correlation-item.moderate {
+                    border-left: 4px solid #FF9800;
+                    background: rgba(255, 152, 0, 0.1);
+                }
+
+                .correlation-item.weak {
+                    border-left: 4px solid #F44336;
+                    background: rgba(244, 67, 54, 0.1);
+                }
+
+                .correlation-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                }
+
+                .correlation-features {
+                    font-weight: 600;
+                    color: #ffffff;
+                    font-size: 1.1rem;
+                    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+                }
+
+                .correlation-strength {
+                    padding: 4px 12px;
+                    border-radius: 20px;
+                    font-size: 0.85rem;
+                    font-weight: 500;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+
+                .correlation-item.strong .correlation-strength {
+                    background: rgba(76, 175, 80, 0.2);
+                    color: #4CAF50;
+                    border: 1px solid rgba(76, 175, 80, 0.3);
+                }
+
+                .correlation-item.moderate .correlation-strength {
+                    background: rgba(255, 152, 0, 0.2);
+                    color: #FF9800;
+                    border: 1px solid rgba(255, 152, 0, 0.3);
+                }
+
+                .correlation-item.weak .correlation-strength {
+                    background: rgba(244, 67, 54, 0.2);
+                    color: #F44336;
+                    border: 1px solid rgba(244, 67, 54, 0.3);
+                }
+
+                .correlation-description {
+                    color: rgba(255, 255, 255, 0.9);
+                    line-height: 1.6;
+                    margin: 0;
+                    font-size: 0.95rem;
+                }
+
+                .stats-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                    gap: 12px;
+                    margin-top: 16px;
+                }
+
+                .stat-item {
+                    text-align: center;
+                    padding: 16px 12px;
+                    background: rgba(255, 255, 255, 0.9);
+                    border-radius: 12px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                    transition: all 0.3s ease;
+                }
+                .stat-item:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                }
+
+                .stat-item.in-range {
+                    border-top: 3px solid #28a745;
+                }
+
+                .stat-item.above-range {
+                    border-top: 3px solid #ffc107;
+                }
+
+                .stat-item.below-range {
+                    border-top: 3px solid #dc3545;
+                }
+
+                .stat-number {
+                    display: block;
+                    font-size: 1.5rem;
+                    font-weight: 700;
+                    color: #2c3e50;
+                    margin-bottom: 4px;
+                    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                }
+
+                .stat-label {
+                    font-size: 0.75rem;
+                    color: #6c757d;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    font-weight: 500;
+                }
+
+                /* Responsive Design */
+                @media (max-width: 768px) {
+                    body {
+                        padding: 12px;
+                    }
+                    h1 {
+                        font-size: 2rem;
+                        margin-bottom: 20px;
+                    }
+                    .container {
+                        grid-template-columns: 1fr;
+                        gap: 12px;
+                    }
+                    .feature-section {
+                        padding: 16px;
+                    }
+                    .dynamic-analysis-container {
+                        padding: 16px;
+                    }
+                    .analysis-grid {
+                        grid-template-columns: 1fr;
+                        gap: 12px;
+                    }
+                    .main-analysis {
+                        grid-template-columns: 1fr;
+                        gap: 8px;
+                    }
+                    .executive-summary {
+                        padding: 12px;
+                    }
+                    .risk-assessment, .key-insights, .recommendations, .statistics-summary {
+                        padding: 12px;
+                    }
+                    .stats-grid {
+                        grid-template-columns: repeat(2, 1fr);
+                        gap: 8px;
+                    }
+                    .stat-item {
+                        padding: 12px 8px;
+                    }
+                    /* Mobile: Stack bottom row vertically */
+                    .dynamic-analysis-container > div:last-child {
+                        grid-template-columns: 1fr !important;
+                        gap: 8px !important;
+                    }
+                }
+
+                @media (max-width: 480px) {
+                    .stats-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    .health-score, .risk-level {
+                        flex-direction: column;
+                        text-align: center;
+                        gap: 8px;
+                    }
                 }
                 .description-block {
-                    padding: 15px;
-                    border-radius: 8px;
-                    background-color: #d1e7dd;
-                    border-left: 5px solid #0f5132;
+                    padding: 16px;
+                    border-radius: 12px;
+                    background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%);
+                    border-left: 4px solid #27ae60;
+                    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.1);
                 }
                 .interpretation-block {
-                    padding: 15px;
-                    border-radius: 8px;
-                    background-color: #ffe5d9;
-                    border-left: 5px solid #d12e2a;
+                    padding: 16px;
+                    border-radius: 12px;
+                    background: linear-gradient(135deg, #fff2e8 0%, #ffe8d6 100%);
+                    border-left: 4px solid #e67e22;
+                    box-shadow: 0 2px 8px rgba(230, 126, 34, 0.1);
                 }
                 .contradiction-block {
-                    padding: 15px;
-                    border-radius: 8px;
-                    background-color: #fce8f1;
-                    border-left: 5px solid #cc0056;
+                    padding: 16px;
+                    border-radius: 12px;
+                    background: linear-gradient(135deg, #fce8f1 0%, #f8d7da 100%);
+                    border-left: 4px solid #e74c3c;
+                    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.1);
                 }
                 .correlation-block {
-                    padding: 15px;
-                    border-radius: 8px;
-                    background-color: #e8f4fc;
-                    border-left: 5px solid #1a73e8;
+                    padding: 16px;
+                    border-radius: 12px;
+                    background: linear-gradient(135deg, #e8f4fc 0%, #e3f2fd 100%);
+                    border-left: 4px solid #3498db;
+                    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.1);
                 }
                 .correlation-item, .contradiction-item {
                     margin-bottom: 10px;
                 }
                 .highlight {
-                    font-weight: bold;
+                    font-weight: 600;
                     color: #2c3e50;
+                    font-size: 0.9rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    margin-bottom: 8px;
+                    display: block;
                 }
                 .normal-range-bar {
                     background: linear-gradient(to right, #85C1E9, #f1948a);
@@ -389,43 +805,21 @@ def _get_correlation_contradiction_template():
         <!-- Correlation and Contradiction Grid Layout -->
                 <div class="grid-2-cols">
                     <!-- Contradiction Section -->
-                    {% if interpretation.get('contradiction_strength') %}
+                    {% if interpretation.get('contradiction') %}
                     <div class="contradiction-block">
                         <p class="highlight">Contradiction:</p>
                         <div class="contradiction-content">
-                            {% for related_feature, explanation in interpretation['contradiction'].items() %}
-                            <p><strong>{{ related_feature }}: </strong></p>
-                            <p>
-                                {% if interpretation['contradiction_strength'] == 'Strong contradiction' %}
-                                    🔴 Strong contradiction. {{ explanation }}
-                                {% elif interpretation['contradiction_strength'] == 'Slight contradiction' %}
-                                    🟡 Slight contradiction. {{ explanation }}
-                                {% else %}
-                                    🟢 No significant contradiction. {{ explanation }}
-                                {% endif %}
-                            </p>
-                            {% endfor %}
+                            <p>{{ interpretation['contradiction'] }}</p>
                         </div>
                     </div>
                     {% endif %}
 
                     <!-- Correlation Section -->
-                    {% if interpretation.get('correlation_strength') %}
+                    {% if interpretation.get('correlation') %}
                     <div class="correlation-block">
-                        <p class="highlight">Correlation:</p>
+                        <p class="highlight">Correlation Analysis:</p>
                         <div class="correlation-content">
-                            {% for related_feature, explanation in interpretation['correlation'].items() %}
-                            <p><strong>{{ related_feature }}: </strong></p>
-                            <p>
-                                {% if interpretation['correlation_strength'] == 'Strong correlation' %}
-                                    ✅ Strong correlation. {{ explanation }}
-                                {% elif interpretation['correlation_strength'] == 'Slight correlation' %}
-                                    ⚪ Slight correlation. {{ explanation }}
-                                {% else %}
-                                    ⭕ No significant correlation. {{ explanation }}
-                                {% endif %}
-                            </p>
-                            {% endfor %}
+                            <p>{{ interpretation['correlation'] }}</p>
                         </div>
                     </div>
                     {% endif %}
@@ -540,32 +934,7 @@ def _get_visualization_template():
                         </div>
                     </div>
 
-                    <!--
-                    <div class="visualization-block">
-                        {% if interpretation.get('correlation') %}
-                            <div class="plot-dropdown">
-                                <label for="related_feature_dropdown_{{ feature }}">Compare with:</label>
-                                <select id="related_feature_dropdown_{{ feature }}" onchange="changeRelatedFeaturePlot('{{ feature }}', this.value)">
-                                    <option value="">Select a related feature</option>
-                                    {% set first_related_feature = interpretation['correlation'].keys() | list | first %}
-                                    {% for related_feature in interpretation['correlation'].keys() %}
-                                        <option value="{{ related_feature }}" {% if related_feature == first_related_feature %}selected{% endif %}>
-                                            {{ related_feature }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <div id="related_visualization_{{ feature }}" class="visualization">
-                                {% if visualizations.get(first_related_feature) and visualizations[first_related_feature]['bell_plot'] is not none %}
-                                    <img id="related_feature_plot_{{ feature }}" src="{{ visualizations[first_related_feature]['bell_plot'] }}" alt="Related Feature Plot" style="max-width: 100%; height: auto;">
-                                {% else %}
-                                    <p>No related plot available for the selected feature.</p>
-                                {% endif %}
-                            </div>
-                        {% endif %}
-                    </div>
-                    -->
+                    <!-- Correlation dropdown removed - now using dynamic string-based correlations -->
                 </div>
             {% endif %}
     """
@@ -591,6 +960,101 @@ def _get_feature_template():
         </div>
     """
     )
+
+
+def _get_dynamic_analysis_template():
+    """Generate template for dynamic analysis sections - Compact & Elegant."""
+    return """
+        {% if dynamic_analysis %}
+        <!-- Dynamic Analysis Section - Compact & Elegant -->
+        <div class="dynamic-analysis-container">
+            <!-- Executive Summary - Full Width -->
+            <div class="executive-summary">
+                <h2 style="margin: 0 0 12px 0; font-size: 1.4rem;">📊 Executive Summary</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 0.9rem; opacity: 0.9;">Overall Health Score:</span>
+                    <span style="font-size: 1.8rem; font-weight: 700;">{{ "%.1f"|format(dynamic_analysis.overall_health_score) }}/100</span>
+                </div>
+                <p style="margin: 0; font-size: 0.95rem; line-height: 1.4; opacity: 0.95;">{{ dynamic_analysis.executive_summary.summary }}</p>
+            </div>
+
+            <!-- Main Analysis Grid -->
+            <div class="analysis-grid">
+                <!-- Left Column: Risk & Insights -->
+                <div class="main-analysis">
+                    <div class="risk-assessment">
+                        <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">⚠️ Risk Assessment</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 0.85rem; color: #7f8c8d;">Risk Level:</span>
+                            <span style="font-size: 1rem; font-weight: 600; color: #e74c3c;">{{ dynamic_analysis.risk_assessment.level|title }}</span>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #555;">
+                            <strong>Recommendation:</strong> {{ dynamic_analysis.risk_assessment.recommendation }}
+                        </div>
+                    </div>
+
+                    <div class="key-insights">
+                        <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">💡 Key Insights</h3>
+                        <ul style="margin: 0; padding-left: 16px; font-size: 0.85rem; color: #555;">
+                            {% for insight in dynamic_analysis.key_insights[:3] %}
+                            <li style="margin-bottom: 4px;">{{ insight }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Right Column: Statistics -->
+                <div class="statistics-summary">
+                    <h3 style="margin: 0 0 12px 0; font-size: 1.1rem; color: #2c3e50;">📈 Analysis Summary</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                        <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.7); border-radius: 6px;">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: #2c3e50;">{{ dynamic_analysis.statistics.total_features }}</div>
+                            <div style="font-size: 0.7rem; color: #7f8c8d; text-transform: uppercase;">Total</div>
+                        </div>
+                        <div style="text-align: center; padding: 8px; background: rgba(40, 167, 69, 0.1); border-radius: 6px; border-top: 2px solid #28a745;">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: #28a745;">{{ dynamic_analysis.statistics.in_range }}</div>
+                            <div style="font-size: 0.7rem; color: #7f8c8d; text-transform: uppercase;">In Range</div>
+                        </div>
+                        <div style="text-align: center; padding: 8px; background: rgba(255, 193, 7, 0.1); border-radius: 6px; border-top: 2px solid #ffc107;">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: #ffc107;">{{ dynamic_analysis.statistics.above_range }}</div>
+                            <div style="font-size: 0.7rem; color: #7f8c8d; text-transform: uppercase;">Above</div>
+                        </div>
+                        <div style="text-align: center; padding: 8px; background: rgba(220, 53, 69, 0.1); border-radius: 6px; border-top: 2px solid #dc3545;">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: #dc3545;">{{ dynamic_analysis.statistics.below_range }}</div>
+                            <div style="font-size: 0.7rem; color: #7f8c8d; text-transform: uppercase;">Below</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Row: Correlations & Recommendations -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                <!-- Cross-Feature Correlations -->
+                <div class="cross-correlations" style="margin: 0; padding: 12px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 10px; border-left: 3px solid #9b59b6;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">🔗 Key Correlations</h3>
+                    <div style="font-size: 0.85rem; color: #555;">
+                        {% for correlation in dynamic_analysis.cross_correlations[:2] %}
+                        <div style="margin-bottom: 6px; padding: 6px; background: rgba(255,255,255,0.7); border-radius: 4px;">
+                            <strong>{{ correlation.features[0] }} ↔ {{ correlation.features[1] }}</strong><br>
+                            <span style="font-size: 0.8rem;">{{ correlation.description[:80] }}{% if correlation.description|length > 80 %}...{% endif %}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Recommendations -->
+                <div class="recommendations" style="margin: 0; padding: 12px;">
+                    <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">💊 Recommendations</h3>
+                    <ol style="margin: 0; padding-left: 16px; font-size: 0.85rem; color: #555;">
+                        {% for recommendation in dynamic_analysis.recommendations[:3] %}
+                        <li style="margin-bottom: 4px;">{{ recommendation }}</li>
+                        {% endfor %}
+                    </ol>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    """
 
 
 def _get_javascript_content():
@@ -655,7 +1119,9 @@ def _get_javascript_content():
     """
 
 
-def render_report(feature_interpretations, visualizations, filter_status="all"):
+def render_report(
+    feature_interpretations, visualizations, filter_status="all", dynamic_analysis=None
+):
     """
     Renders the health report in HTML format using the given feature interpretations and visualizations.
 
@@ -663,6 +1129,7 @@ def render_report(feature_interpretations, visualizations, filter_status="all"):
         feature_interpretations (dict): Dictionary containing interpreted feature results.
         visualizations (dict): Dictionary containing paths or embedded links to visualizations.
         filter_status (str): Filter for displaying specific features (in_range, below_range, above_range, or all).
+        dynamic_analysis (dict, optional): Dictionary containing dynamic analysis components.
 
     Returns:
         str: HTML report as a string.
@@ -679,6 +1146,8 @@ def render_report(feature_interpretations, visualizations, filter_status="all"):
     <body>
         <h1>Health Analysis Report</h1>
 
+        {_get_dynamic_analysis_template()}
+
         {_get_filter_dropdown()}
 
         {_get_feature_template()}
@@ -690,11 +1159,30 @@ def render_report(feature_interpretations, visualizations, filter_status="all"):
     """
 
     # Use Jinja2 template rendering
-    template = Template(html_template)
-    rendered_html = template.render(
-        feature_interpretations=feature_interpretations,
-        visualizations=visualizations,
-        filter_status=filter_status,
-    )
+    try:
+        template = Template(html_template)
+        rendered_html = template.render(
+            feature_interpretations=feature_interpretations,
+            visualizations=visualizations,
+            filter_status=filter_status,
+            dynamic_analysis=dynamic_analysis or {},
+        )
+        return rendered_html
+    except Exception as e:
+        # More specific error handling
+        print(f"Template rendering error: {e}")
+        print(f"Error type: {type(e)}")
+        import traceback
 
-    return rendered_html
+        traceback.print_exc()
+
+        # Return a simple error report
+        return f"""
+        <html>
+        <body>
+            <h1>Error Generating Report</h1>
+            <p>Error: {e}</p>
+            <p>Please check the console for more details.</p>
+        </body>
+        </html>
+        """

@@ -245,7 +245,7 @@ def register_respiratory_callbacks(app):
                 logger.info(f"Resp using stored signal type: {signal_type}")
             else:
                 # Auto-detect signal type based on data characteristics
-                signal_type = "ppg"  # Default (lowercase for respiratory screen)
+                signal_type = "PPG"  # Default for respiratory screen
                 logger.info("Resp auto-detecting signal type from data characteristics")
 
             # Try to detect signal type from column names or data characteristics if not stored
@@ -2303,7 +2303,7 @@ def generate_comprehensive_respiratory_analysis(
                 logger.info("Processing respiratory variability analysis...")
                 try:
                     # Enhanced respiratory variability analysis
-                    if signal_type == "ppg":
+                    if signal_type == "PPG":
                         if PPGAutonomicFeatures is None:
                             logger.warning("PPGAutonomicFeatures not available")
                             # Fallback to basic RRV calculation

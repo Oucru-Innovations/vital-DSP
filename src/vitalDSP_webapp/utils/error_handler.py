@@ -300,8 +300,6 @@ def log_error_with_context(error: Exception, context: dict, level: str = "ERROR"
     level : str
         Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     """
-    logger = logging.getLogger(__name__)
-
     context_str = " | ".join([f"{k}: {v}" for k, v in context.items()])
     error_msg = f"{str(error)} | Context: {context_str}"
 

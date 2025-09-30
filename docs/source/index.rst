@@ -18,6 +18,7 @@ What is VitalDSP?
 VitalDSP is a cutting-edge digital signal processing library specifically designed for healthcare and biomedical applications. It provides comprehensive tools for analyzing physiological signals such as ECG (electrocardiogram), PPG (photoplethysmogram), respiratory signals, and other vital signs.
 
 **Key Applications:**
+
 * **Clinical Research**: Advanced signal analysis for medical research and clinical trials
 * **Healthcare Monitoring**: Real-time vital signs monitoring and analysis
 * **Wearable Devices**: Signal processing for fitness trackers and health monitoring devices
@@ -35,7 +36,7 @@ Key Features
 **📊 Comprehensive Feature Extraction**
    * **Time-Domain Analysis**: Statistical features, morphological analysis, and waveform characteristics
    * **Frequency-Domain Analysis**: Spectral analysis, power spectral density, and frequency features
-   * **Heart Rate Variability (HRV)**: 50+ HRV metrics for cardiovascular health assessment
+   * **Heart Rate Variability (HRV)**: HRV metrics for cardiovascular health assessment
    * **Respiratory Analysis**: Multi-modal respiratory rate estimation and breathing pattern analysis
 
 **🤖 Machine Learning Integration**
