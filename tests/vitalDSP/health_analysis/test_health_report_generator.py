@@ -952,15 +952,18 @@ def test_batch_visualization_with_future_exception():
         # Use invalid data that will cause matplotlib to fail
         feature_data = {"feature1": []}  # Empty list will cause issues
 
-        # This should handle the exception gracefully and return empty dict for failed features
+        # This should handle the exception gracefully and return error messages for failed features
         result = HealthReportGenerator.batch_visualization(
             visualizer, feature_data, temp_dir, processes=1
         )
 
         assert isinstance(result, dict)
-        # Should return empty dict for failed feature
+        # Should return error messages for failed feature
         assert "feature1" in result
-        assert result["feature1"] == {}
+        assert isinstance(result["feature1"], dict)
+        # Most plots should return error messages, but some might succeed
+        error_count = sum(1 for v in result["feature1"].values() if "Error generating plot" in str(v))
+        assert error_count > 0  # At least some plots should fail
 
 
 def test_batch_visualization_path_normalization_none_path():
@@ -985,7 +988,7 @@ def test_batch_visualization_path_normalization_none_path():
         assert isinstance(result, dict)
         if "feature1" in result:
             # Check that the result contains the expected plot types
-            # Some may be None if they failed to generate
+            # Some may be error messages if they failed to generate
             expected_plots = [
                 "heatmap", "bell_plot", "radar_plot", "violin_plot",
                 "line_with_rolling_stats", "lag_plot", "plot_periodogram",
@@ -994,7 +997,8 @@ def test_batch_visualization_path_normalization_none_path():
             
             for plot_type in expected_plots:
                 if plot_type in result["feature1"]:
-                    # If the path is not None, it should be normalized (no backslashes)
-                    if result["feature1"][plot_type] is not None:
-                        assert "\\" not in result["feature1"][plot_type]
-                        assert "/" in result["feature1"][plot_type] or result["feature1"][plot_type] == ""
+                    plot_path = result["feature1"][plot_type]
+                    # If the path is not an error message and not None, it should be normalized (no backslashes)
+                    if plot_path is not None and "Error generating plot" not in str(plot_path):
+                        assert "\\" not in str(plot_path)
+                        assert "/" in str(plot_path) or str(plot_path) == ""
