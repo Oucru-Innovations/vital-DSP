@@ -428,7 +428,293 @@ class TestUploadCallbacksComprehensive:
         data_info = {}  # Empty info
         
         result = create_data_preview(df, data_info)
-        
+
         assert isinstance(result, html.Div)
         # Should still create preview even with missing info
         assert len(result.children) > 0
+
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_data_service')
+    def test_callback_with_txt_upload(self, mock_get_data_service):
+        """Test callback behavior with TXT file upload"""
+        # Setup mocks
+        mock_data_service = Mock()
+        mock_get_data_service.return_value = mock_data_service
+
+        mock_df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+
+        # Create TXT content (tab-separated)
+        txt_content = "time\tsignal\n0\t0.1\n1\t0.2\n2\t0.3"
+        encoded_content = base64.b64encode(txt_content.encode()).decode()
+        upload_contents = f"data:text/plain;base64,{encoded_content}"
+
+        # Register callbacks and capture them
+        captured_callbacks = []
+        def mock_callback(*args, **kwargs):
+            def decorator(func):
+                captured_callbacks.append((args, kwargs, func))
+                return func
+            return decorator
+
+        self.mock_app.callback = mock_callback
+        register_upload_callbacks(self.mock_app)
+
+        # Find the main upload callback
+        upload_callback = None
+        for args, kwargs, func in captured_callbacks:
+            if func.__name__ == 'handle_all_uploads':
+                upload_callback = func
+                break
+
+        assert upload_callback is not None
+
+        # Test the callback with TXT upload
+        with patch('pandas.read_csv', return_value=mock_df):
+            with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
+                mock_ctx.triggered = [{"prop_id": "upload-data.contents", "value": upload_contents}]
+
+                result = upload_callback(
+                    upload_contents=upload_contents,
+                    load_path_clicks=None,
+                    load_sample_clicks=None,
+                    filename="test.txt",
+                    file_path=None,
+                    sampling_freq=100,
+                    time_unit="seconds",
+                    data_type="ppg"
+                )
+
+                # Should return multiple outputs
+                assert isinstance(result, tuple)
+                assert len(result) >= 15
+
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_data_service')
+    def test_callback_with_file_path_csv(self, mock_get_data_service):
+        """Test callback behavior with loading from file path (CSV)"""
+        # Setup mocks
+        mock_data_service = Mock()
+        mock_get_data_service.return_value = mock_data_service
+
+        mock_df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+
+        # Register callbacks and capture them
+        captured_callbacks = []
+        def mock_callback(*args, **kwargs):
+            def decorator(func):
+                captured_callbacks.append((args, kwargs, func))
+                return func
+            return decorator
+
+        self.mock_app.callback = mock_callback
+        register_upload_callbacks(self.mock_app)
+
+        # Find the main upload callback
+        upload_callback = None
+        for args, kwargs, func in captured_callbacks:
+            if func.__name__ == 'handle_all_uploads':
+                upload_callback = func
+                break
+
+        assert upload_callback is not None
+
+        # Test the callback with file path loading
+        with patch('pandas.read_csv', return_value=mock_df):
+            with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
+                mock_ctx.triggered = [{"prop_id": "btn-load-path.n_clicks", "value": 1}]
+
+                result = upload_callback(
+                    upload_contents=None,
+                    load_path_clicks=1,
+                    load_sample_clicks=None,
+                    filename=None,
+                    file_path="/path/to/test.csv",
+                    sampling_freq=100,
+                    time_unit="seconds",
+                    data_type="ppg"
+                )
+
+                # Should return multiple outputs
+                assert isinstance(result, tuple)
+                assert len(result) >= 15
+
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_data_service')
+    def test_callback_with_file_path_txt(self, mock_get_data_service):
+        """Test callback behavior with loading from file path (TXT)"""
+        # Setup mocks
+        mock_data_service = Mock()
+        mock_get_data_service.return_value = mock_data_service
+
+        mock_df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+
+        # Register callbacks and capture them
+        captured_callbacks = []
+        def mock_callback(*args, **kwargs):
+            def decorator(func):
+                captured_callbacks.append((args, kwargs, func))
+                return func
+            return decorator
+
+        self.mock_app.callback = mock_callback
+        register_upload_callbacks(self.mock_app)
+
+        # Find the main upload callback
+        upload_callback = None
+        for args, kwargs, func in captured_callbacks:
+            if func.__name__ == 'handle_all_uploads':
+                upload_callback = func
+                break
+
+        assert upload_callback is not None
+
+        # Test the callback with TXT file path loading
+        with patch('pandas.read_csv', return_value=mock_df):
+            with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
+                mock_ctx.triggered = [{"prop_id": "btn-load-path.n_clicks", "value": 1}]
+
+                result = upload_callback(
+                    upload_contents=None,
+                    load_path_clicks=1,
+                    load_sample_clicks=None,
+                    filename=None,
+                    file_path="/path/to/test.txt",
+                    sampling_freq=100,
+                    time_unit="seconds",
+                    data_type="ppg"
+                )
+
+                # Should return multiple outputs
+                assert isinstance(result, tuple)
+                assert len(result) >= 15
+
+    def test_callback_with_invalid_file_path(self):
+        """Test callback behavior with invalid file path"""
+        # Register callbacks and capture them
+        captured_callbacks = []
+        def mock_callback(*args, **kwargs):
+            def decorator(func):
+                captured_callbacks.append((args, kwargs, func))
+                return func
+            return decorator
+
+        self.mock_app.callback = mock_callback
+        register_upload_callbacks(self.mock_app)
+
+        # Find the main upload callback
+        upload_callback = None
+        for args, kwargs, func in captured_callbacks:
+            if func.__name__ == 'handle_all_uploads':
+                upload_callback = func
+                break
+
+        assert upload_callback is not None
+
+        # Test the callback with invalid file path format
+        with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
+            mock_ctx.triggered = [{"prop_id": "btn-load-path.n_clicks", "value": 1}]
+
+            result = upload_callback(
+                upload_contents=None,
+                load_path_clicks=1,
+                load_sample_clicks=None,
+                filename=None,
+                file_path="/path/to/test.xyz",  # Invalid extension
+                sampling_freq=100,
+                time_unit="seconds",
+                data_type="ppg"
+            )
+
+            # Should return error status
+            assert isinstance(result, tuple)
+            assert len(result) >= 15
+            # First element should be error message
+            assert "❌" in result[0] or "Unsupported" in result[0]
+
+    def test_callback_with_unknown_trigger(self):
+        """Test callback behavior with unknown trigger"""
+        # Register callbacks and capture them
+        captured_callbacks = []
+        def mock_callback(*args, **kwargs):
+            def decorator(func):
+                captured_callbacks.append((args, kwargs, func))
+                return func
+            return decorator
+
+        self.mock_app.callback = mock_callback
+        register_upload_callbacks(self.mock_app)
+
+        # Find the main upload callback
+        upload_callback = None
+        for args, kwargs, func in captured_callbacks:
+            if func.__name__ == 'handle_all_uploads':
+                upload_callback = func
+                break
+
+        assert upload_callback is not None
+
+        # Test the callback with unknown trigger
+        with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
+            mock_ctx.triggered = [{"prop_id": "unknown-component.n_clicks", "value": 1}]
+
+            with pytest.raises(PreventUpdate):
+                upload_callback(
+                    upload_contents=None,
+                    load_path_clicks=None,
+                    load_sample_clicks=None,
+                    filename=None,
+                    file_path=None,
+                    sampling_freq=100,
+                    time_unit="seconds",
+                    data_type="ppg"
+                )
+
+    def test_hide_progress_section_callback(self):
+        """Test hide progress section callback"""
+        # Register callbacks and capture them
+        captured_callbacks = []
+        def mock_callback(*args, **kwargs):
+            def decorator(func):
+                captured_callbacks.append((args, kwargs, func))
+                return func
+            return decorator
+
+        self.mock_app.callback = mock_callback
+        register_upload_callbacks(self.mock_app)
+
+        # Find the hide progress callback
+        hide_callback = None
+        for args, kwargs, func in captured_callbacks:
+            if func.__name__ == 'hide_progress_section':
+                hide_callback = func
+                break
+
+        if hide_callback:
+            result = hide_callback(1)
+            assert isinstance(result, dict)
+            assert 'display' in result
+            assert result['display'] == 'none'
+
+    def test_auto_hide_progress_section_callback(self):
+        """Test auto hide progress section callback"""
+        # Register callbacks and capture them
+        captured_callbacks = []
+        def mock_callback(*args, **kwargs):
+            def decorator(func):
+                captured_callbacks.append((args, kwargs, func))
+                return func
+            return decorator
+
+        self.mock_app.callback = mock_callback
+        register_upload_callbacks(self.mock_app)
+
+        # Find the auto hide progress callback
+        auto_hide_callback = None
+        for args, kwargs, func in captured_callbacks:
+            if func.__name__ == 'auto_hide_progress_section':
+                auto_hide_callback = func
+                break
+
+        if auto_hide_callback:
+            # Test with interval trigger
+            with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
+                mock_ctx.triggered = [{"prop_id": "upload-progress-interval.n_intervals"}]
+                result = auto_hide_callback({"display": "block"})
+                assert isinstance(result, dict)

@@ -112,3 +112,63 @@ def test_psd_invalid_nperseg(sample_signal):
     nperseg = 10  # nperseg larger than signal length
     with pytest.raises(ValueError):
         spa.compute_psd(fs=fs, nperseg=nperseg)
+
+
+def test_compute_rmse_empty():
+    """Test RMSE with empty signal after initialization"""
+    spa = SignalPowerAnalysis(np.array([1, 2, 3]))
+    spa.signal = np.array([])  # Empty the signal after initialization
+    with pytest.raises(ValueError, match="Signal is empty"):
+        spa.compute_rmse()
+
+
+def test_compute_mean_square_empty():
+    """Test mean square with empty signal after initialization"""
+    spa = SignalPowerAnalysis(np.array([1, 2, 3]))
+    spa.signal = np.array([])
+    with pytest.raises(ValueError, match="Signal is empty"):
+        spa.compute_mean_square()
+
+
+def test_compute_total_power_empty():
+    """Test total power with empty signal after initialization"""
+    spa = SignalPowerAnalysis(np.array([1, 2, 3]))
+    spa.signal = np.array([])
+    with pytest.raises(ValueError, match="Signal is empty"):
+        spa.compute_total_power()
+
+
+def test_compute_peak_power_empty():
+    """Test peak power with empty signal after initialization"""
+    spa = SignalPowerAnalysis(np.array([1, 2, 3]))
+    spa.signal = np.array([])
+    with pytest.raises(ValueError, match="Signal is empty"):
+        spa.compute_peak_power()
+
+
+def test_compute_snr_empty_noise(sample_signal):
+    """Test SNR with empty noise signal"""
+    spa = SignalPowerAnalysis(sample_signal)
+    empty_noise = np.array([])
+    with pytest.raises(ValueError, match="Noise signal is empty"):
+        spa.compute_snr(empty_noise)
+
+
+def test_compute_band_power_default_nperseg(sample_signal):
+    """Test band power with default nperseg (None)"""
+    spa = SignalPowerAnalysis(sample_signal)
+    band = (1, 3)
+    fs = 10.0
+
+    # Test with nperseg=None (default)
+    band_power = spa.compute_band_power(band, fs=fs, nperseg=None)
+    assert isinstance(band_power, float)
+    assert band_power >= 0
+
+
+def test_compute_energy_empty():
+    """Test energy with empty signal after initialization"""
+    spa = SignalPowerAnalysis(np.array([1, 2, 3]))
+    spa.signal = np.array([])
+    with pytest.raises(ValueError, match="Signal is empty"):
+        spa.compute_energy()

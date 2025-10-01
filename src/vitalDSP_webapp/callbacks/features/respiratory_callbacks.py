@@ -37,6 +37,10 @@ def create_empty_figure():
 def detect_respiratory_signal_type(signal_data, sampling_freq):
     """Auto-detect if signal is respiratory or cardiac based on frequency content."""
     try:
+        # Validate sampling frequency
+        if sampling_freq <= 0:
+            return "unknown"
+            
         # Compute FFT
         fft_result = np.fft.fft(signal_data)
         fft_freq = np.fft.fftfreq(len(signal_data), 1 / sampling_freq)
@@ -46,6 +50,10 @@ def detect_respiratory_signal_type(signal_data, sampling_freq):
         fft_freq = fft_freq[positive_mask]
         fft_magnitude = np.abs(fft_result[positive_mask])
 
+        # Check for constant or near-constant signals
+        if np.std(signal_data) < 1e-10:  # Very small standard deviation indicates constant signal
+            return "unknown"
+            
         # Find dominant frequency
         dominant_idx = np.argmax(fft_magnitude)
         dominant_freq = fft_freq[dominant_idx]
@@ -72,6 +80,10 @@ def create_respiratory_signal_plot(
 ):
     """Create the main respiratory signal plot with annotations."""
     try:
+        # Validate inputs
+        if signal_data is None or time_axis is None or sampling_freq is None:
+            return create_empty_figure()
+            
         fig = go.Figure()
 
         # Add main signal
@@ -328,12 +340,10 @@ def generate_comprehensive_respiratory_analysis(
                 )
             )
 
-        return html.Div(results)
+        return results
     except Exception as e:
         logger.error(f"Error generating respiratory analysis results: {e}")
-        return html.Div(
-            [html.H5("Error"), html.P(f"Failed to generate results: {str(e)}")]
-        )
+        return [html.H5("Error"), html.P(f"Failed to generate results: {str(e)}")]
 
 
 def create_comprehensive_respiratory_plots(
@@ -346,6 +356,8 @@ def create_comprehensive_respiratory_plots(
     preprocessing_options,
     low_cut,
     high_cut,
+    min_breath_duration,
+    max_breath_duration,
 ):
     """Create comprehensive respiratory analysis plots."""
     try:

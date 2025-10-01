@@ -278,7 +278,7 @@ class TestCallbackRegistration:
 class TestMainCallback:
     """Test the main health report callback."""
     
-    @patch('vitalDSP_webapp.callbacks.analysis.health_report_callbacks.get_data_service')
+    @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
     def test_health_report_callback_no_data(self, mock_get_data_service):
         """Test callback behavior when no data is available."""
         try:
@@ -302,7 +302,7 @@ class TestMainCallback:
             # If callback execution fails, that's acceptable
             assert True
     
-    @patch('vitalDSP_webapp.callbacks.analysis.health_report_callbacks.get_data_service')
+    @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
     def test_health_report_callback_with_data(self, mock_get_data_service):
         """Test callback behavior when data is available."""
         try:

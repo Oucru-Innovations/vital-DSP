@@ -38,12 +38,25 @@ def process_single_feature_visualization(
         feature_visualizations = process_visualizer.create_visualizations(
             {feature: values}, output_dir
         )
-        print(f"✅ Completed {feature}")
+        print(f"Completed {feature}")
         return (feature, feature_visualizations[feature])
 
     except Exception as e:
-        print(f"❌ Error generating visualization for {feature}: {e}")
-        return (feature, {})
+        print(f"Error generating visualization for {feature}: {e}")
+        # Return error messages for each plot type instead of empty dict
+        error_plots = {
+            "heatmap": f"Error generating plot for {feature}",
+            "bell_plot": f"Error generating plot for {feature}",
+            "radar_plot": f"Error generating plot for {feature}",
+            "violin_plot": f"Error generating plot for {feature}",
+            "line_with_rolling_stats": f"Error generating plot for {feature}",
+            "lag_plot": f"Error generating plot for {feature}",
+            "plot_periodogram": f"Error generating plot for {feature}",
+            "plot_spectrogram": f"Error generating plot for {feature}",
+            "plot_spectral_density": f"Error generating plot for {feature}",
+            "plot_box_swarm": f"Error generating plot for {feature}",
+        }
+        return (feature, error_plots)
 
 
 class HealthReportGenerator:
@@ -305,8 +318,21 @@ class HealthReportGenerator:
                     feature, feature_plots = future.result()
                     visualizations[feature] = feature_plots
                 except Exception as e:
-                    print(f"❌ Error processing {feature_name}: {e}")
-                    visualizations[feature_name] = {}
+                    print(f"Error processing {feature_name}: {e}")
+                    # Return error messages for each plot type instead of empty dict
+                    error_plots = {
+                        "heatmap": f"Error generating plot for {feature_name}",
+                        "bell_plot": f"Error generating plot for {feature_name}",
+                        "radar_plot": f"Error generating plot for {feature_name}",
+                        "violin_plot": f"Error generating plot for {feature_name}",
+                        "line_with_rolling_stats": f"Error generating plot for {feature_name}",
+                        "lag_plot": f"Error generating plot for {feature_name}",
+                        "plot_periodogram": f"Error generating plot for {feature_name}",
+                        "plot_spectrogram": f"Error generating plot for {feature_name}",
+                        "plot_spectral_density": f"Error generating plot for {feature_name}",
+                        "plot_box_swarm": f"Error generating plot for {feature_name}",
+                    }
+                    visualizations[feature_name] = error_plots
 
         # Normalize all paths for web compatibility
         normalized_visualizations = {}
@@ -322,7 +348,7 @@ class HealthReportGenerator:
                     normalized_visualizations[feature][plot_type] = path
 
         print(
-            f"✅ Completed visualization generation for {len(normalized_visualizations)} features"
+            f"Completed visualization generation for {len(normalized_visualizations)} features"
         )
         return normalized_visualizations
 
@@ -374,7 +400,7 @@ class HealthReportGenerator:
                         continue
 
             processing_time = time.time() - start_time
-            print(f"✅ Feature processing completed in {processing_time:.2f} seconds")
+            print(f"Feature processing completed in {processing_time:.2f} seconds")
 
             # Step 1.5: Process contradictions and correlations (now handled dynamically)
             # segment_values = process_interpretations(segment_values)  # No longer needed
@@ -407,7 +433,7 @@ class HealthReportGenerator:
 
                 viz_time = time.time() - viz_start_time
                 print(
-                    f"✅ Generated visualizations for {len(visualizations)} features in {viz_time:.2f} seconds"
+                    f"Generated visualizations for {len(visualizations)} features in {viz_time:.2f} seconds"
                 )
             except Exception as e:
                 self.logger.error(f"Error generating visualizations: {e}")

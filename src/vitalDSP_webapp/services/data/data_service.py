@@ -150,7 +150,7 @@ class DataService:
         """Auto-detect column types based on data characteristics."""
         mapping = {}
 
-        if len(df.columns) >= 2:
+        if len(df.columns) >= 1:
             # Look for specific column types based on names first
             for col in df.columns:
                 col_lower = col.lower()
@@ -204,6 +204,13 @@ class DataService:
                     # If only one column, use it for signal (time was already assigned)
                     mapping["signal"] = df.columns[0]
                     logger.info(f"Using single column for signal: {df.columns[0]}")
+
+        # Special case: single column dataframe
+        if len(df.columns) == 1:
+            single_col = df.columns[0]
+            mapping["time"] = single_col
+            mapping["signal"] = single_col
+            logger.info(f"Single column detected, mapping both time and signal to: {single_col}")
 
         logger.info(f"Auto-detected column mapping: {mapping}")
         return mapping

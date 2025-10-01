@@ -46,3 +46,27 @@ def test_invalid_signal_type():
     # Test the initialization with invalid signal input
     with pytest.raises(TypeError):
         HarmonicPercussiveSeparation("invalid_signal")
+
+
+def test_median_filter_2d():
+    # Test the _median_filter method with 2D signal for row-wise filtering
+    np.random.seed(42)
+    signal_2d = np.random.randn(10, 10)
+    hps = HarmonicPercussiveSeparation(signal_2d)
+
+    # Test row-wise filtering (size=(31, 1))
+    filtered_signal = hps._median_filter(signal_2d, size=(31, 1))
+    assert filtered_signal.shape == signal_2d.shape
+    assert isinstance(filtered_signal, np.ndarray)
+
+
+def test_median_filter_2d_column():
+    # Test the _median_filter method with 2D signal for column-wise filtering
+    np.random.seed(42)
+    signal_2d = np.random.randn(10, 10)
+    hps = HarmonicPercussiveSeparation(signal_2d)
+
+    # Test column-wise filtering (size=(1, 31))
+    filtered_signal = hps._median_filter(signal_2d, size=(1, 31))
+    assert filtered_signal.shape == signal_2d.shape
+    assert isinstance(filtered_signal, np.ndarray)
