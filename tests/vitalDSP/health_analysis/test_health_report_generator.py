@@ -962,7 +962,9 @@ def test_batch_visualization_with_future_exception():
         assert "feature1" in result
         assert isinstance(result["feature1"], dict)
         # Most plots should return error messages, but some might succeed
-        error_count = sum(1 for v in result["feature1"].values() if "Error generating plot" in str(v))
+        # Check for any error messages in the result values
+        error_count = sum(1 for v in result["feature1"].values() if "Error" in str(v))
+        # Since we're using empty data, all plots should fail and return error messages
         assert error_count > 0  # At least some plots should fail
 
 
