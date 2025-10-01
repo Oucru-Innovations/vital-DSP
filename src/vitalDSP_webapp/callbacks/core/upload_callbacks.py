@@ -47,11 +47,10 @@ except ImportError:
             @staticmethod
             def process_uploaded_data(*args, **kwargs):
                 return None
-            
+
             @staticmethod
             def generate_sample_ppg_data(sampling_freq):
                 # Generate sample PPG data for testing
-                import numpy as np
                 duration = 10  # seconds
                 t = np.linspace(0, duration, int(sampling_freq * duration))
                 signal = np.sin(2 * np.pi * 1.2 * t) + 0.5 * np.sin(2 * np.pi * 2.4 * t)

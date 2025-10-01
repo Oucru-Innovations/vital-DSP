@@ -40,7 +40,7 @@ def detect_respiratory_signal_type(signal_data, sampling_freq):
         # Validate sampling frequency
         if sampling_freq <= 0:
             return "unknown"
-            
+
         # Compute FFT
         fft_result = np.fft.fft(signal_data)
         fft_freq = np.fft.fftfreq(len(signal_data), 1 / sampling_freq)
@@ -53,7 +53,7 @@ def detect_respiratory_signal_type(signal_data, sampling_freq):
         # Check for constant or near-constant signals
         if np.std(signal_data) < 1e-10:  # Very small standard deviation indicates constant signal
             return "unknown"
-            
+
         # Find dominant frequency
         dominant_idx = np.argmax(fft_magnitude)
         dominant_freq = fft_freq[dominant_idx]
@@ -83,7 +83,7 @@ def create_respiratory_signal_plot(
         # Validate inputs
         if signal_data is None or time_axis is None or sampling_freq is None:
             return create_empty_figure()
-            
+
         fig = go.Figure()
 
         # Add main signal
