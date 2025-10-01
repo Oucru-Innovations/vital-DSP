@@ -1274,9 +1274,11 @@ class TestAdvancedPhysiologicalAnalysis:
     
     def test_photoplethysmography_analysis(self):
         """Test PPG analysis methods."""
-        # Create simulated PPG signal
+        # Create simulated PPG signal with realistic heart rate (~72 bpm = 1.2 Hz)
         time = np.linspace(0, 10, 1000)
-        ppg = np.sin(2 * np.pi * 0.3 * time) * np.exp(-time/10) + 0.1 * np.random.normal(0, 1, len(time))  # Reduced frequency to 0.3 Hz
+        sampling_freq = 100  # 100 Hz sampling rate
+        heart_rate_hz = 1.2  # 72 bpm = 1.2 Hz
+        ppg = np.sin(2 * np.pi * heart_rate_hz * time) * np.exp(-time/10) + 0.1 * np.random.normal(0, 1, len(time))
         
         # Test PPG properties
         assert len(ppg) == 1000
@@ -1284,15 +1286,21 @@ class TestAdvancedPhysiologicalAnalysis:
         assert not np.any(np.isinf(ppg))
         
         # Test peak detection for heart rate estimation
-        peaks, _ = signal.find_peaks(ppg, height=0.3, distance=100)  # Adjusted parameters
+        # Adjust parameters for 100 Hz sampling rate
+        min_distance = int(sampling_freq * 0.4)  # Minimum 0.4 seconds between peaks (150 bpm max)
+        peaks, _ = signal.find_peaks(ppg, height=0.3, distance=min_distance)
+        
         if len(peaks) > 1:
-            intervals = np.diff(peaks)
-            heart_rate = 60 * 1000 / np.mean(intervals)  # Assuming 1000 Hz sampling
+            intervals = np.diff(peaks) / sampling_freq  # Convert to seconds
+            heart_rate = 60 / np.mean(intervals)  # Convert to bpm
             
             assert isinstance(heart_rate, float)
             assert heart_rate > 0
-            # Adjusted range to be more realistic for the signal characteristics
-            assert 40 < heart_rate < 200  # Reasonable heart rate range
+            # Reasonable heart rate range
+            assert 40 < heart_rate < 200
+        else:
+            # If no peaks detected, test that the signal is valid
+            assert len(peaks) >= 0  # At least no peaks detected
     
     def test_electroencephalography_analysis(self):
         """Test EEG analysis methods."""

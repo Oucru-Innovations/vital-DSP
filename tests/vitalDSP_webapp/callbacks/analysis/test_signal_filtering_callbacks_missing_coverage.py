@@ -62,7 +62,7 @@ class TestAutoSelectSignalTypeMissingCoverage:
         assert auto_select_callback is not None
         
         # Mock data service to return data but no data_info
-        mock_data_service.get_all_data.return_value = {"test_data_1": "some_data"}
+        mock_data_service.get_all_data.return_value = {"data_1": "some_data"}
         mock_data_service.get_data_info.return_value = None
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
@@ -96,8 +96,10 @@ class TestAutoSelectSignalTypeMissingCoverage:
         assert auto_select_callback is not None
         
         # Mock data service with PPG signal type
-        mock_data_service.get_all_data.return_value = {"test_data_1": "some_data"}
+        mock_data_service.get_all_data.return_value = {"data_1": "some_data"}
         mock_data_service.get_data_info.return_value = {"signal_type": "ppg"}
+        mock_data_service.get_data.return_value = None  # Mock get_data method
+        mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
             result = auto_select_callback("/filtering")
@@ -130,8 +132,10 @@ class TestAutoSelectSignalTypeMissingCoverage:
         assert auto_select_callback is not None
         
         # Mock data service with Other signal type
-        mock_data_service.get_all_data.return_value = {"test_data_1": "some_data"}
+        mock_data_service.get_all_data.return_value = {"data_1": "some_data"}
         mock_data_service.get_data_info.return_value = {"signal_type": "other"}
+        mock_data_service.get_data.return_value = None  # Mock get_data method
+        mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
             result = auto_select_callback("/filtering")
@@ -164,8 +168,10 @@ class TestAutoSelectSignalTypeMissingCoverage:
         assert auto_select_callback is not None
         
         # Mock data service with unknown signal type
-        mock_data_service.get_all_data.return_value = {"test_data_1": "some_data"}
+        mock_data_service.get_all_data.return_value = {"data_1": "some_data"}
         mock_data_service.get_data_info.return_value = {"signal_type": "unknown_type"}
+        mock_data_service.get_data.return_value = None  # Mock get_data method
+        mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
             result = auto_select_callback("/filtering")
@@ -198,8 +204,10 @@ class TestAutoSelectSignalTypeMissingCoverage:
         assert auto_select_callback is not None
         
         # Test case 1: signal_type is "auto"
-        mock_data_service.get_all_data.return_value = {"test_data_1": "some_data"}
+        mock_data_service.get_all_data.return_value = {"data_1": "some_data"}
         mock_data_service.get_data_info.return_value = {"signal_type": "auto"}
+        mock_data_service.get_data.return_value = None  # Mock get_data method
+        mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
             result = auto_select_callback("/filtering")
@@ -240,8 +248,10 @@ class TestAutoSelectSignalTypeMissingCoverage:
         
         # Test the condition: stored_signal_type and stored_signal_type.lower() == "auto" or not stored_signal_type
         # Case 1: stored_signal_type is "auto"
-        mock_data_service.get_all_data.return_value = {"test_data_1": "some_data"}
+        mock_data_service.get_all_data.return_value = {"data_1": "some_data"}
         mock_data_service.get_data_info.return_value = {"signal_type": "auto"}
+        mock_data_service.get_data.return_value = None  # Mock get_data method
+        mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
             result = auto_select_callback("/filtering")
@@ -365,7 +375,7 @@ class TestSignalFilteringCallbacksEdgeCases:
         assert auto_select_callback is not None
         
         # Test with empty data_info to trigger logging
-        mock_data_service.get_all_data.return_value = {"test_data_1": "some_data"}
+        mock_data_service.get_all_data.return_value = {"data_1": "some_data"}
         mock_data_service.get_data_info.return_value = {}
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
@@ -401,8 +411,10 @@ class TestSignalFilteringCallbacksEdgeCases:
         assert auto_select_callback is not None
         
         # Test with stored signal type to trigger logging
-        mock_data_service.get_all_data.return_value = {"test_data_1": "some_data"}
+        mock_data_service.get_all_data.return_value = {"data_1": "some_data"}
         mock_data_service.get_data_info.return_value = {"signal_type": "ppg"}
+        mock_data_service.get_data.return_value = None  # Mock get_data method
+        mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
             with patch('vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks.logger') as mock_logger:
@@ -437,8 +449,10 @@ class TestSignalFilteringCallbacksEdgeCases:
         assert auto_select_callback is not None
         
         # Test with auto signal type to trigger auto-detection logging
-        mock_data_service.get_all_data.return_value = {"test_data_1": "some_data"}
+        mock_data_service.get_all_data.return_value = {"data_1": "some_data"}
         mock_data_service.get_data_info.return_value = {"signal_type": "auto"}
+        mock_data_service.get_data.return_value = None  # Mock get_data method
+        mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
             with patch('vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks.logger') as mock_logger:
@@ -477,8 +491,10 @@ class TestSignalFilteringCallbacksAdditionalCoverage:
         assert auto_select_callback is not None
         
         # Test ECG signal type
-        mock_data_service.get_all_data.return_value = {"test_data_1": "some_data"}
+        mock_data_service.get_all_data.return_value = {"data_1": "some_data"}
         mock_data_service.get_data_info.return_value = {"signal_type": "ecg"}
+        mock_data_service.get_data.return_value = None  # Mock get_data method
+        mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
             result = auto_select_callback("/filtering")
@@ -511,8 +527,10 @@ class TestSignalFilteringCallbacksAdditionalCoverage:
         assert auto_select_callback is not None
         
         # Test with any signal type to verify default values
-        mock_data_service.get_all_data.return_value = {"test_data_1": "some_data"}
+        mock_data_service.get_all_data.return_value = {"data_1": "some_data"}
         mock_data_service.get_data_info.return_value = {"signal_type": "ppg"}
+        mock_data_service.get_data.return_value = None  # Mock get_data method
+        mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
             result = auto_select_callback("/filtering")
