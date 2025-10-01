@@ -397,3 +397,276 @@ class TestDataServiceComprehensive:
         assert self.data_service.current_data is None
         assert self.data_service.data_config == {}
         assert self.data_service._next_id == 1  # Reset to initial value
+
+    def test_process_data_minutes_time_unit(self):
+        """Test processing data with minutes time unit"""
+        df = pd.DataFrame({
+            'time': [0, 1, 2, 3, 4],
+            'signal': [0.1, 0.2, 0.3, 0.4, 0.5]
+        })
+
+        result = self.data_service.process_data(df, sampling_freq=100, time_unit='minutes')
+
+        assert isinstance(result, dict)
+        assert result['time_unit'] == 'minutes'
+        assert result['sampling_freq'] == 100 * 60  # Converted
+
+    def test_process_data_exception_handling(self):
+        """Test process_data exception handling"""
+        df = pd.DataFrame({
+            'time': [0, 1, 2],
+            'signal': [0.1, 0.2, 0.3]
+        })
+
+        # Mock np.mean to raise exception
+        with patch('numpy.mean', side_effect=Exception("Test error")):
+            result = self.data_service.process_data(df, sampling_freq=100)
+
+            assert 'error' in result
+            assert str(result['error']) == "Test error"
+
+    def test_store_data_with_custom_column_mapping(self):
+        """Test storing data with custom column mapping in info"""
+        df = pd.DataFrame({
+            'col1': [0, 1, 2],
+            'col2': [0.1, 0.2, 0.3]
+        })
+
+        info = {
+            'signal_type': 'PPG',
+            'column_mapping': {
+                'time': 'col1',
+                'signal': 'col2'
+            }
+        }
+
+        data_id = self.data_service.store_data(df, info)
+
+        assert isinstance(data_id, str)
+        mapping = self.data_service.get_column_mapping(data_id)
+        assert mapping == info['column_mapping']
+
+    def test_store_data_exception_handling(self):
+        """Test store_data exception handling"""
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+
+        # Mock _auto_detect_columns to raise exception
+        with patch.object(self.data_service, '_auto_detect_columns', side_effect=Exception("Test error")):
+            result = self.data_service.store_data(df, {})
+
+            assert result is None
+
+    def test_update_column_mapping(self):
+        """Test updating column mapping"""
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        data_id = self.data_service.store_data(df, {})
+
+        new_mapping = {'time': 'timestamp', 'signal': 'value'}
+        self.data_service.update_column_mapping(data_id, new_mapping)
+
+        retrieved = self.data_service.get_column_mapping(data_id)
+        assert retrieved == new_mapping
+
+    def test_auto_detect_columns_no_signal_single_column(self):
+        """Test auto-detection with single column that becomes both time and signal"""
+        df = pd.DataFrame({
+            'data': [0.1, 0.2, 0.3, 0.4, 0.5]
+        })
+
+        result = self.data_service._auto_detect_columns(df)
+
+        assert isinstance(result, dict)
+        assert 'time' in result
+        assert 'signal' in result
+
+    def test_get_data_summary_none(self):
+        """Test get_data_summary when current_data is None"""
+        self.data_service.current_data = None
+
+        result = self.data_service.get_data_summary()
+
+        assert result is None
+
+    def test_store_filtered_data_success(self):
+        """Test storing filtered data successfully"""
+        # First store some data
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        data_id = self.data_service.store_data(df, {})
+
+        # Store filtered data
+        filtered_signal = np.array([0.15, 0.25, 0.35])
+        filter_info = {'filter_type': 'lowpass', 'cutoff': 10}
+
+        result = self.data_service.store_filtered_data(data_id, filtered_signal, filter_info)
+
+        assert result is True
+        assert self.data_service.has_filtered_data(data_id) is True
+
+    def test_store_filtered_data_nonexistent_id(self):
+        """Test storing filtered data for nonexistent ID"""
+        filtered_signal = np.array([0.15, 0.25, 0.35])
+        filter_info = {'filter_type': 'lowpass'}
+
+        result = self.data_service.store_filtered_data("nonexistent", filtered_signal, filter_info)
+
+        assert result is False
+
+    def test_store_filtered_data_exception(self):
+        """Test store_filtered_data exception handling"""
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        data_id = self.data_service.store_data(df, {})
+
+        # Create an invalid filtered signal that will cause an exception
+        with patch('pandas.Timestamp.now', side_effect=Exception("Test error")):
+            result = self.data_service.store_filtered_data(data_id, np.array([1, 2, 3]), {})
+
+            assert result is False
+
+    def test_get_filtered_data_success(self):
+        """Test retrieving filtered data successfully"""
+        # Store data and filtered data
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        data_id = self.data_service.store_data(df, {})
+
+        filtered_signal = np.array([0.15, 0.25, 0.35])
+        self.data_service.store_filtered_data(data_id, filtered_signal, {})
+
+        # Retrieve filtered data
+        result = self.data_service.get_filtered_data(data_id)
+
+        assert result is not None
+        np.testing.assert_array_equal(result, filtered_signal)
+
+    def test_get_filtered_data_nonexistent_id(self):
+        """Test retrieving filtered data for nonexistent ID"""
+        result = self.data_service.get_filtered_data("nonexistent")
+
+        assert result is None
+
+    def test_get_filtered_data_no_filtered_data(self):
+        """Test retrieving filtered data when none exists"""
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        data_id = self.data_service.store_data(df, {})
+
+        result = self.data_service.get_filtered_data(data_id)
+
+        assert result is None
+
+    def test_get_filtered_data_exception(self):
+        """Test get_filtered_data exception handling"""
+        # Store some data
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        data_id = self.data_service.store_data(df, {})
+
+        # Mock the data store to raise exception
+        with patch.object(self.data_service, '_data_store', side_effect=Exception("Test error")):
+            result = self.data_service.get_filtered_data(data_id)
+
+            assert result is None
+
+    def test_has_filtered_data_false(self):
+        """Test has_filtered_data returns False when no filtered data"""
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        data_id = self.data_service.store_data(df, {})
+
+        result = self.data_service.has_filtered_data(data_id)
+
+        assert result is False
+
+    def test_has_filtered_data_nonexistent_id(self):
+        """Test has_filtered_data for nonexistent ID"""
+        result = self.data_service.has_filtered_data("nonexistent")
+
+        assert result is False
+
+    def test_has_filtered_data_exception(self):
+        """Test has_filtered_data exception handling"""
+        # Store some data first
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        data_id = self.data_service.store_data(df, {})
+
+        # Mock to raise exception
+        with patch.object(self.data_service, '_data_store', side_effect=Exception("Test error")):
+            result = self.data_service.has_filtered_data(data_id)
+
+            assert result is False
+
+    def test_get_filter_info_success(self):
+        """Test getting filter info successfully"""
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        data_id = self.data_service.store_data(df, {})
+
+        filter_info = {'filter_type': 'bandpass', 'low': 1, 'high': 40}
+        self.data_service.store_filtered_data(data_id, np.array([0.1, 0.2, 0.3]), filter_info)
+
+        result = self.data_service.get_filter_info(data_id)
+
+        assert result == filter_info
+
+    def test_get_filter_info_nonexistent(self):
+        """Test getting filter info for nonexistent ID"""
+        result = self.data_service.get_filter_info("nonexistent")
+
+        assert result is None
+
+    def test_get_filter_info_no_filtered_data(self):
+        """Test getting filter info when no filtered data exists"""
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        data_id = self.data_service.store_data(df, {})
+
+        result = self.data_service.get_filter_info(data_id)
+
+        assert result is None
+
+    def test_get_filter_info_exception(self):
+        """Test get_filter_info exception handling"""
+        # Store some data
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        data_id = self.data_service.store_data(df, {})
+
+        # Mock to raise exception
+        with patch.object(self.data_service, '_data_store', side_effect=Exception("Test error")):
+            result = self.data_service.get_filter_info(data_id)
+
+            assert result is None
+
+    def test_clear_filtered_data_success(self):
+        """Test clearing filtered data successfully"""
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        data_id = self.data_service.store_data(df, {})
+
+        # Store and then clear filtered data
+        self.data_service.store_filtered_data(data_id, np.array([0.1, 0.2, 0.3]), {})
+        assert self.data_service.has_filtered_data(data_id) is True
+
+        result = self.data_service.clear_filtered_data(data_id)
+
+        assert result is True
+        assert self.data_service.has_filtered_data(data_id) is False
+
+    def test_clear_filtered_data_nonexistent_id(self):
+        """Test clearing filtered data for nonexistent ID"""
+        result = self.data_service.clear_filtered_data("nonexistent")
+
+        assert result is False
+
+    def test_clear_filtered_data_no_filtered_data(self):
+        """Test clearing filtered data when none exists"""
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        data_id = self.data_service.store_data(df, {})
+
+        result = self.data_service.clear_filtered_data(data_id)
+
+        assert result is True  # Should succeed even if no filtered data
+
+    def test_clear_filtered_data_exception(self):
+        """Test clear_filtered_data exception handling"""
+        df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        data_id = self.data_service.store_data(df, {})
+
+        # Mock to raise exception during clearing
+        original_store = self.data_service._data_store.copy()
+        with patch.object(self.data_service, '_data_store', {data_id: Mock(side_effect=Exception("Test error"))}):
+            result = self.data_service.clear_filtered_data(data_id)
+
+            assert result is False
