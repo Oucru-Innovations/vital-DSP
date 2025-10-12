@@ -134,7 +134,7 @@ class Wavelet:
     @staticmethod
     def coif(order=1):
         """
-        Generate a Coiflet wavelet of a given order using the wavelet formula.
+        Generate a Coiflet wavelet of a given order.
 
         Coiflet wavelets are nearly symmetric and provide smooth waveforms, making them ideal for analyzing subtle variations in signals.
 
@@ -153,17 +153,28 @@ class Wavelet:
         >>> coif_wavelet = Wavelet.coif(order=1)
         >>> print(coif_wavelet)
         """
-        p = np.poly1d([1])
-        for k in range(1, order + 1):
-            p = np.convolve(p, np.poly1d([1, 1]))
-        p = np.polyder(p)
-        roots = np.roots(p)
-        angles = np.angle(roots)
-        indices = np.argsort(angles)
-        roots = roots[indices]
-        wavelet_coeffs = np.polyval(p, roots)
-        wavelet_coeffs = wavelet_coeffs / np.sqrt(np.sum(wavelet_coeffs**2))
-        return wavelet_coeffs
+        # Predefined Coiflet coefficients for orders 1-4
+        coif_coeffs = {
+            1: np.array([0.038580777748, -0.126969125396, -0.077161555496, 0.607491641386, 
+                         0.745687558934, 0.226584265197]),
+            2: np.array([0.016387336463, -0.041464936781, -0.067372554722, 0.386110066823, 
+                         0.812723635445, 0.417005184424, -0.076488599078, -0.059434418646, 
+                         0.023680171947, 0.005611434819, -0.001823208870, -0.000720549445]),
+            3: np.array([0.007800708325, -0.013532377880, -0.044663748330, 0.191500822714, 
+                         0.479360089564, 0.876501559633, 0.417566506506, -0.054463372698, 
+                         -0.042916387274, 0.016727319306, 0.004870352993, -0.001456841295, 
+                         -0.000590847816, 0.000149764800, 0.000043512627, -0.000014991303]),
+            4: np.array([0.003793512864, -0.004882816378, -0.027219029917, 0.093057364604, 
+                         0.237689909049, 0.619330888566, 0.687750162028, 0.087734129625, 
+                         -0.070928535954, 0.008464837484, 0.004258746704, -0.000539645345, 
+                         -0.000080661204, 0.000004626171, 0.000001465842, -0.000000095539])
+        }
+        
+        if order in coif_coeffs:
+            return coif_coeffs[order]
+        else:
+            # Fallback to Haar wavelet for unsupported orders
+            return np.array([1 / np.sqrt(2), 1 / np.sqrt(2)])
 
     @staticmethod
     def gauchy(sigma=1.0, N=6):

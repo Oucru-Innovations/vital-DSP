@@ -119,6 +119,17 @@ Explore the core modules of the VitalDSP library:
    feature_engineering
    utils
 
+Advanced Features
+=================
+
+State-of-the-art nonlinear dynamics and information-theoretic methods:
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Advanced Features:
+
+   advanced_features_guide
+
 Web Application
 ===============
 

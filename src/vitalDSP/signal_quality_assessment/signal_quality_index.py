@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.stats import pearsonr
 from scipy.stats import zscore, iqr, kurtosis, skew
+from ..utils.validation import SignalValidator
 
 
 class SignalQualityIndex:
@@ -19,6 +20,11 @@ class SignalQualityIndex:
         signal : numpy.ndarray
             The input signal to assess for quality.
 
+        Raises
+        ------
+        ValueError
+            If the signal is empty or invalid.
+
         Examples
         --------
         >>> signal = np.array([1, 2, 3, 4, 5])
@@ -26,6 +32,10 @@ class SignalQualityIndex:
         """
         if not isinstance(signal, np.ndarray):
             signal = np.array(signal)
+        
+        # Validate signal - don't allow empty signals
+        SignalValidator.validate_signal(signal, min_length=1, allow_empty=False, signal_name="signal")
+        
         self.signal = signal
 
     def _scale_sqi(self, sqi_values, scale="zscore"):
@@ -440,6 +450,9 @@ class SignalQualityIndex:
             entropy = -np.sum(
                 probability_distribution * np.log2(probability_distribution + 1e-8)
             )
+            # Prevent division by zero
+            if len(segment) <= 1:
+                return 0.0
             normalized_entropy = entropy / np.log2(len(segment))
             return normalized_entropy
 
@@ -771,7 +784,11 @@ class SignalQualityIndex:
 
         def compute_sqi(segment):
             rmssd = np.sqrt(np.mean(np.diff(segment) ** 2))
-            normalized_rmssd = rmssd / np.mean(segment)
+            mean_segment = np.mean(segment)
+            # Prevent division by zero
+            if mean_segment == 0:
+                return 0.0
+            normalized_rmssd = rmssd / mean_segment
             return normalized_rmssd
 
         return self._process_segments(

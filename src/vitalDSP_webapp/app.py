@@ -27,6 +27,7 @@ from vitalDSP_webapp.callbacks import (
     register_frequency_filtering_callbacks,
     register_signal_filtering_callbacks,
     register_respiratory_callbacks,
+    register_quality_callbacks,
     register_physiological_callbacks,
     register_features_callbacks,
     register_preview_callbacks,
@@ -160,6 +161,7 @@ def create_dash_app() -> Dash:
     register_physiological_callbacks(app)  # Register physiological features callbacks
     register_features_callbacks(app)  # Register feature engineering callbacks
     register_preview_callbacks(app)  # Register preview callbacks
+    register_quality_callbacks(app)  # Register signal quality assessment callbacks
 
     return app
 

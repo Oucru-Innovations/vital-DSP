@@ -26,6 +26,7 @@ import time
 try:
     from vitalDSP_webapp.services.data.data_service import get_data_service
     from vitalDSP_webapp.utils.data_processor import DataProcessor
+    from vitalDSP.utils.data_loader import DataLoader, load_oucru_csv
 except ImportError:
     # Fallback imports for testing
     import sys
@@ -61,6 +62,101 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def load_data_with_format(
+    file_path,
+    data_format,
+    sampling_freq=None,
+    signal_type=None,
+    oucru_sampling_rate_column=None,
+    oucru_interpolate_time=None,
+):
+    """
+    Load data using DataLoader based on the specified format.
+
+    Args:
+        file_path: Path to the data file
+        data_format: Format type ('auto', 'csv', 'oucru_csv', 'excel', etc.)
+        sampling_freq: Sampling frequency (optional)
+        signal_type: Signal type for OUCRU format (ppg/ecg)
+        oucru_sampling_rate_column: Column name for sampling rates in OUCRU format
+        oucru_interpolate_time: Whether to interpolate timestamps in OUCRU format
+
+    Returns:
+        tuple: (DataFrame, metadata dict)
+    """
+    metadata = {}
+
+    # Handle OUCRU CSV format specially
+    if data_format == "oucru_csv":
+        # Prepare OUCRU-specific parameters
+        signal_type_hint = signal_type if signal_type and signal_type != "auto" else None
+        interpolate = True if oucru_interpolate_time and True in oucru_interpolate_time else False
+
+        # Load using load_oucru_csv function
+        signal_data, oucru_metadata = load_oucru_csv(
+            file_path,
+            sampling_rate=sampling_freq,
+            signal_type_hint=signal_type_hint,
+            sampling_rate_column=oucru_sampling_rate_column,
+            interpolate_time=interpolate,
+        )
+
+        # Convert to DataFrame if not already
+        if not isinstance(signal_data, pd.DataFrame):
+            # Assume signal_data is the signal array
+            time = np.arange(len(signal_data)) / oucru_metadata.get("sampling_rate", 100)
+            df = pd.DataFrame({"time": time, "signal": signal_data})
+        else:
+            df = signal_data
+
+        # Use metadata from load_oucru_csv
+        metadata = oucru_metadata
+
+    else:
+        # Use DataLoader for other formats
+        loader = DataLoader(file_path, sampling_rate=sampling_freq)
+
+        # Determine format enum
+        if data_format == "auto" or not data_format:
+            # Auto-detect based on file extension
+            ext = Path(file_path).suffix.lower()
+            if ext in [".csv", ".txt"]:
+                df, metadata = loader.load(format_type="csv")
+            elif ext in [".xlsx", ".xls"]:
+                df, metadata = loader.load(format_type="excel")
+            elif ext == ".h5" or ext == ".hdf5":
+                df, metadata = loader.load(format_type="hdf5")
+            elif ext == ".parquet":
+                df, metadata = loader.load(format_type="parquet")
+            elif ext == ".json":
+                df, metadata = loader.load(format_type="json")
+            elif ext == ".mat":
+                df, metadata = loader.load(format_type="matlab")
+            else:
+                # Try CSV as default
+                df, metadata = loader.load(format_type="csv")
+        else:
+            # Use specified format
+            format_map = {
+                "csv": "csv",
+                "excel": "excel",
+                "hdf5": "hdf5",
+                "parquet": "parquet",
+                "json": "json",
+                "wfdb": "wfdb",
+                "edf": "edf",
+                "matlab": "matlab",
+            }
+            format_type = format_map.get(data_format, "csv")
+            df, metadata = loader.load(format_type=format_type)
+
+    # Add signal type to metadata if provided
+    if signal_type and signal_type != "auto":
+        metadata["signal_type"] = signal_type.upper()
+
+    return df, metadata
+
+
 def register_upload_callbacks(app):
     """Register all upload-related callbacks"""
     # Check if callbacks are already registered to prevent duplicates
@@ -73,6 +169,17 @@ def register_upload_callbacks(app):
 
     logger.info("Registering upload callbacks...")
     app._upload_callbacks_registered = True
+
+    # Callback to toggle OUCRU-specific configuration section
+    @app.callback(
+        Output("oucru-config-section", "style"),
+        Input("data-format", "value"),
+    )
+    def toggle_oucru_config(data_format):
+        """Show/hide OUCRU-specific configuration based on format selection"""
+        if data_format == "oucru_csv":
+            return {"display": "block"}
+        return {"display": "none"}
 
     @app.callback(
         [
@@ -104,6 +211,9 @@ def register_upload_callbacks(app):
             State("sampling-freq", "value"),
             State("time-unit", "value"),
             State("data-type", "value"),
+            State("data-format", "value"),
+            State("oucru-sampling-rate-column", "value"),
+            State("oucru-interpolate-time", "value"),
         ],
         prevent_initial_call="initial_duplicate",
     )
@@ -116,6 +226,9 @@ def register_upload_callbacks(app):
         sampling_freq,
         time_unit,
         data_type,
+        data_format,
+        oucru_sampling_rate_column,
+        oucru_interpolate_time,
     ):
         """Handle all types of data uploads"""
         ctx = callback_context
@@ -145,46 +258,50 @@ def register_upload_callbacks(app):
 
         try:
             # Process the upload
+            df = None
+            metadata = {}
 
             if trigger_id == "upload-data" and upload_contents:
-                # Handle file upload
+                # Handle file upload - save to temp file and use DataLoader
                 content_type, content_string = upload_contents.split(",")
                 decoded = base64.b64decode(content_string)
 
-                if filename.endswith(".csv"):
-                    df = pd.read_csv(io.StringIO(decoded.decode("utf-8")))
-                elif filename.endswith(".txt"):
-                    df = pd.read_csv(io.StringIO(decoded.decode("utf-8")), sep="\t")
-                else:
-                    return (
-                        "❌ Unsupported file format. Please upload CSV or TXT files.",
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        False,
-                        False,
-                        no_update,
-                        {"display": "none"},
-                        "upload-area",
+                # Create temporary file
+                with tempfile.NamedTemporaryFile(delete=False, suffix=Path(filename).suffix) as tmp_file:
+                    tmp_file.write(decoded)
+                    temp_path = tmp_file.name
+
+                try:
+                    # Use DataLoader to load the file based on format
+                    df, metadata = load_data_with_format(
+                        temp_path,
+                        data_format,
+                        sampling_freq,
+                        data_type,
+                        oucru_sampling_rate_column,
+                        oucru_interpolate_time,
                     )
+                finally:
+                    # Clean up temp file
+                    try:
+                        os.unlink(temp_path)
+                    except:
+                        pass
 
             elif trigger_id == "btn-load-path" and file_path:
-                # Handle load from file path
-                if file_path.endswith(".csv"):
-                    df = pd.read_csv(file_path)
-                elif file_path.endswith(".txt"):
-                    df = pd.read_csv(file_path, sep="\t")
-                else:
+                # Handle load from file path using DataLoader
+                try:
+                    df, metadata = load_data_with_format(
+                        file_path,
+                        data_format,
+                        sampling_freq,
+                        data_type,
+                        oucru_sampling_rate_column,
+                        oucru_interpolate_time,
+                    )
+                except Exception as e:
                     return (
-                        "❌ Unsupported file format. Please use CSV or TXT files.",
+                        f"❌ Error loading file: {str(e)}",
                         no_update,
                         no_update,
                         no_update,
@@ -207,25 +324,40 @@ def register_upload_callbacks(app):
                 # Handle sample data generation
                 df = DataProcessor.generate_sample_ppg_data(sampling_freq or 1000)
                 filename = "sample_data.csv"
+                metadata = {"sampling_rate": sampling_freq or 1000}
+
+            # Validate that we have data
+            if df is None:
+                raise ValueError("Failed to load data")
 
             # Get column options for dropdowns
             column_options = [{"label": col, "value": col} for col in df.columns]
 
-            # Process the data
-            sampling_freq = sampling_freq or 1000  # Default sampling freq
+            # Process the data - merge metadata with config
+            sampling_freq = metadata.get("sampling_rate", sampling_freq or 100)
             time_unit = time_unit or "seconds"  # Default time unit
 
-            data_info = DataProcessor.process_uploaded_data(
-                df, filename, sampling_freq, time_unit
-            )
+            # Create data_info from metadata and user config
+            data_info = {
+                "filename": filename if trigger_id != "btn-load-sample" else "sample_data.csv",
+                "sampling_freq": sampling_freq,
+                "time_unit": time_unit,
+                "format": data_format or "auto",
+                "rows": len(df),
+                "columns": len(df.columns),
+                "duration": len(df) / sampling_freq if sampling_freq else None,
+            }
 
-            # Add data type to the data info
-            logger.info(f"Data type from upload: {data_type}")
+            # Add metadata from loader
+            data_info.update(metadata)
+
+            # Add signal type to the data info
+            logger.info(f"Signal type from upload: {data_type}")
             if data_type and data_type != "auto":
                 data_info["signal_type"] = data_type.upper()
                 logger.info(f"Set signal_type to: {data_info['signal_type']}")
             else:
-                data_info["signal_type"] = "AUTO"
+                data_info["signal_type"] = metadata.get("signal_type", "AUTO")
                 logger.info(f"Set signal_type to: {data_info['signal_type']}")
 
             # Store data temporarily (will be processed after column mapping)
@@ -236,7 +368,8 @@ def register_upload_callbacks(app):
             # Generate preview
             preview = create_data_preview(df, data_info)
 
-            status = f"✅ Data loaded successfully: {filename} ({len(df)} rows, {len(df.columns)} columns)"
+            format_display = data_format if data_format != "auto" else "Auto-detected"
+            status = f"✅ Data loaded successfully [{format_display}]: {data_info.get('filename', filename)} ({len(df)} rows, {len(df.columns)} columns, {sampling_freq} Hz)"
 
             # Hide progress bar after completion and re-enable buttons
             progress_style = {"display": "none"}

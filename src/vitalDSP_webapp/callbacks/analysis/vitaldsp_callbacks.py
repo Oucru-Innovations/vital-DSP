@@ -294,33 +294,28 @@ def create_signal_source_table(
         )
 
 
-def higuchi_fractal_dimension(signal, k_max=8):
-    """Calculate Higuchi fractal dimension."""
+def higuchi_fractal_dimension(signal, k_max=10):
+    """
+    Calculate Higuchi fractal dimension using vitalDSP implementation.
+
+    This function now uses the validated vitalDSP NonlinearFeatures class,
+    which provides the mathematically correct implementation of Higuchi's method.
+
+    Args:
+        signal: Signal array
+        k_max: Maximum k value for Higuchi calculation (default: 10)
+
+    Returns:
+        float: Fractal dimension value (typically 1.0-2.0 for physiological signals)
+    """
     try:
-        N = len(signal)
-        L = []
-        x = []
+        from vitalDSP.physiological_features.nonlinear import NonlinearFeatures
 
-        for k in range(1, k_max + 1):
-            Lk = 0
-            for m in range(k):
-                Lmk = 0
-                for i in range(1, int((N - m) / k)):
-                    Lmk += abs(signal[m + i * k] - signal[m + (i - 1) * k])
-                Lmk = Lmk * (N - 1) / (k**2 * int((N - m) / k))
-                Lk += Lmk
-            Lk /= k
-            L.append(Lk)
-            x.append([np.log(1.0 / k), 1])
-
-        # Linear fit to get slope
-        x = np.array(x)
-        L = np.log(L)
-        slope = np.polyfit(x[:, 0], L, 1)[0]
-        return slope
+        nonlinear = NonlinearFeatures(signal)
+        return nonlinear.compute_fractal_dimension(kmax=k_max)
     except Exception as e:
         logger.error(f"Error calculating Higuchi fractal dimension: {e}")
-        return 0
+        return 0.0
 
 
 def create_signal_comparison_plot(
@@ -4529,57 +4524,111 @@ def apply_filter(
     high_freq,
     filter_order,
 ):
-    """Apply filter to the signal."""
+    """
+    Apply filter to the signal using vitalDSP SignalFiltering class.
+
+    This function now uses the validated vitalDSP SignalFiltering implementation
+    for improved error handling, parameter validation, and consistency.
+
+    Args:
+        signal_data: Signal array
+        sampling_freq: Sampling frequency in Hz
+        filter_family: Filter type (butter, cheby1, cheby2, ellip, bessel)
+        filter_response: Filter response (bandpass, lowpass, highpass, bandstop)
+        low_freq: Low cutoff frequency in Hz
+        high_freq: High cutoff frequency in Hz
+        filter_order: Filter order
+
+    Returns:
+        np.ndarray: Filtered signal
+    """
     try:
-        # Normalize cutoff frequencies
-        nyquist = sampling_freq / 2
-        low_freq_norm = low_freq / nyquist
-        high_freq_norm = high_freq / nyquist
+        from vitalDSP.filtering.signal_filtering import SignalFiltering
 
-        # Ensure cutoff frequencies are within valid range
-        low_freq_norm = max(0.001, min(low_freq_norm, 0.999))
-        high_freq_norm = max(0.001, min(high_freq_norm, 0.999))
+        # Create SignalFiltering instance
+        sf = SignalFiltering(signal_data)
 
-        # Determine filter type based on response
+        # Determine cutoff and filter type
         if filter_response == "bandpass":
-            btype = "band"
-            cutoff = [low_freq_norm, high_freq_norm]
-        elif filter_response == "bandstop":
-            btype = "bandstop"
-            cutoff = [low_freq_norm, high_freq_norm]
+            cutoff = [low_freq, high_freq]
+            filter_type = "band"
         elif filter_response == "lowpass":
-            btype = "low"
-            cutoff = high_freq_norm
+            cutoff = high_freq
+            filter_type = "low"
         elif filter_response == "highpass":
-            btype = "high"
-            cutoff = low_freq_norm
+            cutoff = low_freq
+            filter_type = "high"
+        elif filter_response == "bandstop":
+            cutoff = [low_freq, high_freq]
+            filter_type = "bandstop"
         else:
             # Default to bandpass
-            btype = "band"
-            cutoff = [low_freq_norm, high_freq_norm]
+            cutoff = [low_freq, high_freq]
+            filter_type = "band"
 
-        # Apply filter based on family
-        if filter_family == "butter":
-            b, a = signal.butter(filter_order, cutoff, btype=btype)
-        elif filter_family == "cheby1":
-            b, a = signal.cheby1(filter_order, 1, cutoff, btype=btype)
-        elif filter_family == "cheby2":
-            b, a = signal.cheby2(filter_order, 40, cutoff, btype=btype)
-        elif filter_family == "ellip":
-            b, a = signal.ellip(filter_order, 1, 40, cutoff, btype=btype)
+        # Apply appropriate filter using vitalDSP
+        if filter_family == "butter" or filter_family == "butterworth":
+            return sf.butterworth(cutoff, fs=sampling_freq, order=filter_order, btype=filter_type)
+        elif filter_family == "cheby1" or filter_family == "chebyshev1":
+            return sf.chebyshev(cutoff, fs=sampling_freq, order=filter_order, btype=filter_type, ripple=0.5)
+        elif filter_family == "cheby2" or filter_family == "chebyshev2":
+            # Note: vitalDSP uses chebyshev for Type I. For Type II, fallback to scipy
+            from scipy import signal as sp_signal
+            nyquist = sampling_freq / 2
+            if isinstance(cutoff, list):
+                cutoff_norm = [c / nyquist for c in cutoff]
+            else:
+                cutoff_norm = cutoff / nyquist
+            b, a = sp_signal.cheby2(filter_order, 40, cutoff_norm, btype=filter_type)
+            return sp_signal.filtfilt(b, a, signal_data)
+        elif filter_family == "ellip" or filter_family == "elliptic":
+            return sf.elliptic(cutoff, fs=sampling_freq, order=filter_order, btype=filter_type,
+                              ripple=0.5, stopband_attenuation=40)
         elif filter_family == "bessel":
-            b, a = signal.bessel(filter_order, cutoff, btype=btype)
+            # Bessel filter - fallback to scipy (not in vitalDSP SignalFiltering)
+            from scipy import signal as sp_signal
+            nyquist = sampling_freq / 2
+            if isinstance(cutoff, list):
+                cutoff_norm = [c / nyquist for c in cutoff]
+            else:
+                cutoff_norm = cutoff / nyquist
+            b, a = sp_signal.bessel(filter_order, cutoff_norm, btype=filter_type)
+            return sp_signal.filtfilt(b, a, signal_data)
         else:
             # Default to Butterworth
-            b, a = signal.butter(filter_order, cutoff, btype=btype)
-
-        # Apply filter
-        filtered_signal = signal.filtfilt(b, a, signal_data)
-        return filtered_signal
+            logger.warning(f"Unknown filter family '{filter_family}', defaulting to Butterworth")
+            return sf.butterworth(cutoff, fs=sampling_freq, order=filter_order, btype=filter_type)
 
     except Exception as e:
-        logger.error(f"Error applying filter: {e}")
-        return signal_data
+        logger.error(f"Error applying vitalDSP filter: {e}. Falling back to scipy implementation.")
+        # Fallback to scipy if vitalDSP fails
+        try:
+            from scipy import signal as sp_signal
+            nyquist = sampling_freq / 2
+            low_freq_norm = low_freq / nyquist
+            high_freq_norm = high_freq / nyquist
+
+            if filter_response == "bandpass":
+                btype = "band"
+                cutoff = [low_freq_norm, high_freq_norm]
+            elif filter_response == "lowpass":
+                btype = "low"
+                cutoff = high_freq_norm
+            elif filter_response == "highpass":
+                btype = "high"
+                cutoff = low_freq_norm
+            elif filter_response == "bandstop":
+                btype = "bandstop"
+                cutoff = [low_freq_norm, high_freq_norm]
+            else:
+                btype = "band"
+                cutoff = [low_freq_norm, high_freq_norm]
+
+            b, a = sp_signal.butter(filter_order, cutoff, btype=btype)
+            return sp_signal.filtfilt(b, a, signal_data)
+        except Exception as fallback_error:
+            logger.error(f"Scipy fallback also failed: {fallback_error}")
+            return signal_data
 
 
 def detect_peaks(signal_data, sampling_freq):

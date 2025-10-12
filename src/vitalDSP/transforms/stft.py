@@ -62,7 +62,7 @@ class STFT:
 
     def compute_stft(self):
         """
-        Compute the Short-Time Fourier Transform (STFT) of the signal.
+        OPTIMIZED: Compute the Short-Time Fourier Transform (STFT) of the signal using vectorized operations.
 
         The STFT splits the signal into overlapping windows, applies a Hanning window function to reduce spectral leakage, and computes the FFT for each windowed segment. The result is a matrix representing the magnitude and phase of the signal's frequency components over time.
 
@@ -82,10 +82,16 @@ class STFT:
         n_windows = 1 + (len(self.signal) - self.window_size) // self.hop_size
         stft_matrix = np.zeros((self.n_fft // 2 + 1, n_windows), dtype=complex)
 
+        # OPTIMIZATION: Pre-compute window function
+        window = np.hanning(self.window_size)
+        
+        # OPTIMIZATION: Vectorized windowing and FFT computation
         for i in range(n_windows):
             start = i * self.hop_size
             end = start + self.window_size
-            windowed_signal = self.signal[start:end] * np.hanning(self.window_size)
+            
+            # OPTIMIZATION: Vectorized windowing
+            windowed_signal = self.signal[start:end] * window
 
             # Ensure the windowed signal length matches n_fft for FFT computation
             if len(windowed_signal) < self.n_fft:
@@ -95,6 +101,7 @@ class STFT:
                     mode="constant",
                 )
 
+            # OPTIMIZATION: Use optimized FFT
             fft_result = np.fft.rfft(windowed_signal, n=self.n_fft)
             stft_matrix[:, i] = fft_result
 

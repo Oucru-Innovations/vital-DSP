@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 
 
 class EMD:
@@ -53,7 +54,7 @@ class EMD:
             raise ValueError("The input signal must be one-dimensional.")
         self.signal = signal
 
-    def emd(self, max_imfs=None, stop_criterion=0.05):
+    def emd(self, max_imfs=None, stop_criterion=0.05, max_sifting_iterations=20, max_decomposition_iterations=10):
         """
         Perform Empirical Mode Decomposition (EMD) on the input signal.
 
@@ -63,6 +64,10 @@ class EMD:
             Maximum number of IMFs to extract. If None, extract all possible IMFs (default is None).
         stop_criterion : float, optional
             The stopping criterion for the sifting process, which controls how close the IMF is to an ideal IMF (default is 0.05).
+        max_sifting_iterations : int, optional
+            Maximum number of sifting iterations per IMF to prevent infinite loops (default is 20).
+        max_decomposition_iterations : int, optional
+            Maximum number of decomposition iterations to prevent excessive computation (default is 10).
 
         Returns
         -------
@@ -72,6 +77,8 @@ class EMD:
         Notes
         -----
         Each IMF represents a simple oscillatory mode embedded in the signal. The sum of all IMFs plus the final residual will reconstruct the original signal.
+        
+        OPTIMIZATION: Added convergence limits to prevent infinite loops and improve reliability.
 
         Examples
         --------
@@ -82,24 +89,62 @@ class EMD:
         """
         signal = self.signal
         imfs = []
+        decomposition_iterations = 0
+
+        # Handle edge case: max_imfs=0 should return empty list
+        if max_imfs == 0:
+            return imfs
 
         while True:
+            decomposition_iterations += 1
+            
+            # Safety check: prevent excessive decomposition iterations
+            if decomposition_iterations > max_decomposition_iterations:
+                warnings.warn(f"EMD decomposition stopped after {max_decomposition_iterations} iterations. "
+                           f"Signal may not be suitable for EMD decomposition.")
+                break
+            
             h = signal
             sd = np.inf
+            sifting_iterations = 0
 
             while sd > stop_criterion:
+                sifting_iterations += 1
+                
+                # Safety check: prevent infinite sifting loops
+                if sifting_iterations > max_sifting_iterations:
+                    warnings.warn(f"Sifting process stopped after {max_sifting_iterations} iterations "
+                               f"for IMF {len(imfs) + 1}. Convergence may be poor.")
+                    break
+                
                 peaks = self._find_peaks(h)
                 valleys = self._find_peaks(-h)
 
                 if len(peaks) < 2 or len(valleys) < 2:
                     # Not enough peaks/valleys to perform interpolation; stop decomposition
+                    warnings.warn(f"Insufficient extrema found for IMF {len(imfs) + 1}. "
+                               f"Stopping decomposition.")
                     break
 
-                upper_env = self._interpolate(peaks, h[peaks])
-                lower_env = self._interpolate(valleys, h[valleys])
+                try:
+                    upper_env = self._interpolate(peaks, h[peaks])
+                    lower_env = self._interpolate(valleys, h[valleys])
+                except Exception as e:
+                    warnings.warn(f"Interpolation failed for IMF {len(imfs) + 1}: {e}. "
+                               f"Stopping decomposition.")
+                    break
+                
                 mean_env = (upper_env + lower_env) / 2
                 h_new = h - mean_env
-                sd = np.sum((h - h_new) ** 2) / np.sum(h**2)
+                
+                # Prevent division by zero
+                signal_power = np.sum(h**2)
+                if signal_power == 0:
+                    warnings.warn(f"Signal power is zero for IMF {len(imfs) + 1}. "
+                               f"Stopping decomposition.")
+                    break
+                
+                sd = np.sum((h - h_new) ** 2) / signal_power
                 h = h_new
 
             imfs.append(h)
@@ -108,6 +153,10 @@ class EMD:
             if max_imfs is not None and len(imfs) >= max_imfs:
                 break
             if np.all(np.abs(signal) < stop_criterion):
+                break
+                
+            # Additional safety check: if signal becomes too small, stop
+            if np.max(np.abs(signal)) < stop_criterion * 10:
                 break
 
         return imfs

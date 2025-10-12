@@ -177,7 +177,10 @@ class TestUploadCallbacksComprehensive:
                     file_path=None,
                     sampling_freq=100,
                     time_unit="seconds",
-                    data_type="ppg"
+                    data_type="ppg",
+                    data_format='auto',
+                    oucru_sampling_rate_column=None,
+                    oucru_interpolate_time=None
                 )
                 
                 # Should return multiple outputs
@@ -227,7 +230,10 @@ class TestUploadCallbacksComprehensive:
                     file_path=None,
                     sampling_freq=100,
                     time_unit="seconds",
-                    data_type="ppg"
+                    data_type="ppg",
+                    data_format='auto',
+                    oucru_sampling_rate_column=None,
+                    oucru_interpolate_time=None
                 )
                 
                 # Should return multiple outputs
@@ -261,16 +267,19 @@ class TestUploadCallbacksComprehensive:
             mock_ctx.triggered = []
             
             with pytest.raises(PreventUpdate):
-                            upload_callback(
-                upload_contents=None,
-                load_path_clicks=None,
-                load_sample_clicks=None,
-                filename=None,
-                file_path=None,
-                sampling_freq=100,
-                time_unit="seconds",
-                data_type="ppg"
-            )
+                upload_callback(
+                    upload_contents=None,
+                    load_path_clicks=None,
+                    load_sample_clicks=None,
+                    filename=None,
+                    file_path=None,
+                    sampling_freq=100,
+                    time_unit="seconds",
+                    data_type="ppg",
+                    data_format='auto',
+                    oucru_sampling_rate_column=None,
+                    oucru_interpolate_time=None
+                )
 
     def test_callback_with_invalid_file_format(self):
         """Test callback behavior with invalid file format"""
@@ -308,7 +317,10 @@ class TestUploadCallbacksComprehensive:
                 file_path=None,
                 sampling_freq=100,
                 time_unit="seconds",
-                data_type="ppg"
+                data_type="ppg",
+                data_format='auto',
+                oucru_sampling_rate_column=None,
+                oucru_interpolate_time=None
             )
             
             # Should return error status
@@ -360,9 +372,9 @@ class TestUploadCallbacksComprehensive:
         
         self.mock_app.callback = mock_callback
         register_upload_callbacks(self.mock_app)
-        
-        # Should register exactly 6 callbacks
-        assert len(captured_callbacks) == 6
+
+        # Should register exactly 7 callbacks (added toggle_oucru_config)
+        assert len(captured_callbacks) == 7
         
         # Check that all expected callback functions exist
         function_names = [func.__name__ for args, kwargs, func in captured_callbacks]
@@ -480,7 +492,10 @@ class TestUploadCallbacksComprehensive:
                     file_path=None,
                     sampling_freq=100,
                     time_unit="seconds",
-                    data_type="ppg"
+                    data_type="ppg",
+                    data_format='auto',
+                    oucru_sampling_rate_column=None,
+                    oucru_interpolate_time=None
                 )
 
                 # Should return multiple outputs
@@ -529,7 +544,10 @@ class TestUploadCallbacksComprehensive:
                     file_path="/path/to/test.csv",
                     sampling_freq=100,
                     time_unit="seconds",
-                    data_type="ppg"
+                    data_type="ppg",
+                    data_format='auto',
+                    oucru_sampling_rate_column=None,
+                    oucru_interpolate_time=None
                 )
 
                 # Should return multiple outputs
@@ -578,7 +596,10 @@ class TestUploadCallbacksComprehensive:
                     file_path="/path/to/test.txt",
                     sampling_freq=100,
                     time_unit="seconds",
-                    data_type="ppg"
+                    data_type="ppg",
+                    data_format='auto',
+                    oucru_sampling_rate_column=None,
+                    oucru_interpolate_time=None
                 )
 
                 # Should return multiple outputs
@@ -619,7 +640,10 @@ class TestUploadCallbacksComprehensive:
                 file_path="/path/to/test.xyz",  # Invalid extension
                 sampling_freq=100,
                 time_unit="seconds",
-                data_type="ppg"
+                data_type="ppg",
+                data_format='auto',
+                oucru_sampling_rate_column=None,
+                oucru_interpolate_time=None
             )
 
             # Should return error status
@@ -663,7 +687,10 @@ class TestUploadCallbacksComprehensive:
                     file_path=None,
                     sampling_freq=100,
                     time_unit="seconds",
-                    data_type="ppg"
+                    data_type="ppg",
+                    data_format='auto',
+                    oucru_sampling_rate_column=None,
+                    oucru_interpolate_time=None
                 )
 
     def test_hide_progress_section_callback(self):

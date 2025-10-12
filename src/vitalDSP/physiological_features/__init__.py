@@ -20,6 +20,11 @@ from .nonlinear import NonlinearFeatures
 from .cross_correlation import CrossCorrelationFeatures
 from .signal_power_analysis import SignalPowerAnalysis
 
+# Advanced Features (Nonlinear Dynamics & Information Theory)
+from .advanced_entropy import MultiScaleEntropy
+from .symbolic_dynamics import SymbolicDynamics
+from .transfer_entropy import TransferEntropy
+
 __all__ = [
     "TimeDomainFeatures",
     "FrequencyDomainFeatures",
@@ -33,4 +38,8 @@ __all__ = [
     "NonlinearFeatures",
     "CrossCorrelationFeatures",
     "SignalPowerAnalysis",
+    # Advanced Features
+    "MultiScaleEntropy",
+    "SymbolicDynamics",
+    "TransferEntropy",
 ]

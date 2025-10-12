@@ -17,6 +17,7 @@ from .analysis.frequency_filtering_callbacks import (
 )
 from .analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 from .analysis.respiratory_callbacks import register_respiratory_callbacks
+from .analysis.quality_callbacks import register_quality_callbacks
 
 # Feature callbacks
 from .features.physiological_callbacks import register_physiological_callbacks
@@ -33,6 +34,7 @@ __all__ = [
     "register_frequency_filtering_callbacks",
     "register_signal_filtering_callbacks",
     "register_respiratory_callbacks",
+    "register_quality_callbacks",
     # Features
     "register_physiological_callbacks",
     "register_features_callbacks",

@@ -172,6 +172,13 @@ def preprocess_signal(
     signal = np.asarray(signal, dtype=np.float64)
     # Optionally, clip large signal values to avoid overflow
     signal = np.clip(signal, -1e10, 1e10)
+    
+    # Check if signal is too short for filtering
+    if len(signal) < 30:  # Minimum length for reliable filtering
+        import warnings
+        warnings.warn(f"Signal length ({len(signal)}) is too short for reliable filtering. Skipping filtering step.")
+        return signal
+    
     # Apply bandpass filtering or other filter types
     signal_filter = SignalFiltering(signal)
     if filter_type == "bandpass":

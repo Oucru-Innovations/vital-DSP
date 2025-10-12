@@ -63,7 +63,7 @@ class WaveletTransform:
 
     def _wavelet_decompose(self, data):
         """
-        Perform a single-level wavelet transform on the data using the specified wavelet function.
+        OPTIMIZED: Perform a single-level wavelet transform using vectorized convolution.
 
         Parameters
         ----------
@@ -84,17 +84,33 @@ class WaveletTransform:
         else:
             padded_data = np.pad(data, (0, filter_len - 1), "constant")
 
-        approximation = np.zeros(output_length)
-        detail = np.zeros(output_length)
+        # OPTIMIZATION: Use vectorized convolution instead of loops
+        try:
+            from scipy.signal import convolve
+            
+            # OPTIMIZATION: Vectorized convolution for O(n log n) complexity
+            approximation = convolve(padded_data, self.low_pass[::-1], mode='valid')
+            detail = convolve(padded_data, self.high_pass[::-1], mode='valid')
+            
+            # Ensure output length matches expected length
+            if len(approximation) > output_length:
+                approximation = approximation[:output_length]
+            if len(detail) > output_length:
+                detail = detail[:output_length]
+                
+        except ImportError:
+            # Fallback to original implementation if scipy not available
+            approximation = np.zeros(output_length)
+            detail = np.zeros(output_length)
 
-        # Iterate over the signal and apply the filters
-        for i in range(output_length):
-            data_segment = padded_data[i : i + filter_len]
+            # Iterate over the signal and apply the filters
+            for i in range(output_length):
+                data_segment = padded_data[i : i + filter_len]
 
-            if len(data_segment) == len(self.low_pass):
-                approximation[i] = np.dot(self.low_pass, data_segment)
-            if len(data_segment) == len(self.high_pass):
-                detail[i] = np.dot(self.high_pass, data_segment)
+                if len(data_segment) == len(self.low_pass):
+                    approximation[i] = np.dot(self.low_pass, data_segment)
+                if len(data_segment) == len(self.high_pass):
+                    detail[i] = np.dot(self.high_pass, data_segment)
 
         return approximation, detail
 

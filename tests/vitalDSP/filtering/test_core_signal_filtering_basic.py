@@ -60,8 +60,9 @@ class TestSignalFiltering:
 @pytest.mark.skipif(not AVAILABLE, reason="Module not available")
 class TestErrorHandling:
     def test_init_empty_data(self):
-        sf = SignalFiltering(np.array([]))
-        assert sf is not None
+        # Empty data should raise ValueError due to validation
+        with pytest.raises(ValueError, match="signal cannot be empty"):
+            sf = SignalFiltering(np.array([]))
     
     def test_init_zero_freq(self):
         sf = SignalFiltering(SAMPLE_DATA)

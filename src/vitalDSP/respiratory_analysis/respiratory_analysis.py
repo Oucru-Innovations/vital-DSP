@@ -1,3 +1,6 @@
+import numpy as np
+import warnings
+from scipy.signal import find_peaks
 from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 from vitalDSP.respiratory_analysis.estimate_rr.peak_detection_rr import (
     peak_detection_rr,
@@ -66,6 +69,10 @@ class RespiratoryAnalysis:
         fs : int, optional
             The sampling frequency of the signal in Hz. Default is 1000 Hz.
         """
+        # Validate sampling frequency
+        if fs <= 0:
+            raise ValueError("Sampling frequency must be positive")
+        
         self.signal = signal
         self.fs = fs
 
@@ -109,6 +116,14 @@ class RespiratoryAnalysis:
         """
         if preprocess_config is None:
             preprocess_config = PreprocessConfig()
+
+        # Validate signal
+        if len(self.signal) == 0:
+            raise ValueError("Signal cannot be empty")
+        
+        if len(self.signal) < 10:
+            import warnings
+            warnings.warn(f"Signal length ({len(self.signal)}) is very short for reliable respiratory analysis. Results may be inaccurate.")
 
         # Preprocess the signal
         preprocessed_signal = preprocess_signal(
@@ -213,13 +228,47 @@ class RespiratoryAnalysis:
         np.ndarray
             The intervals between breaths in seconds.
         """
+        # Input validation
+        if len(preprocessed_signal) == 0:
+            return np.array([])
+        if self.fs <= 0:
+            raise ValueError("Sampling frequency must be positive")
+        
+        # Validate duration parameters
+        if min_breath_duration <= 0 or max_breath_duration <= 0:
+            raise ValueError("Breath durations must be positive")
+        if min_breath_duration >= max_breath_duration:
+            raise ValueError("Minimum breath duration must be less than maximum")
+        
         min_distance = int(min_breath_duration * self.fs)
-        peaks, _ = find_peaks(preprocessed_signal, distance=min_distance)
+        
+        # Ensure minimum distance is reasonable
+        if min_distance >= len(preprocessed_signal) // 2:
+            warnings.warn("Minimum breath duration too large for signal length")
+            return np.array([])
+        
+        try:
+            peaks, _ = find_peaks(preprocessed_signal, distance=min_distance)
+        except Exception as e:
+            warnings.warn(f"Peak detection failed: {e}")
+            return np.array([])
+        
+        # Check if we have enough peaks
+        if len(peaks) < 2:
+            warnings.warn("Insufficient peaks found for breath interval calculation")
+            return np.array([])
+        
         breath_intervals = np.diff(peaks) / self.fs
-        return breath_intervals[
+        valid_intervals = breath_intervals[
             (breath_intervals > min_breath_duration)
             & (breath_intervals < max_breath_duration)
         ]
+        
+        # Additional validation: check for reasonable intervals
+        if len(valid_intervals) == 0:
+            warnings.warn("No valid breath intervals found within specified duration range")
+        
+        return valid_intervals
 
     def _detect_breaths_by_zero_crossing(
         self, preprocessed_signal, min_breath_duration, max_breath_duration

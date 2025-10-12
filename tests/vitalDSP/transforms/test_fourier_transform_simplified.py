@@ -44,18 +44,18 @@ class TestFourierTransformInitialization:
     def test_init_with_empty_signal(self):
         """Test initialization with empty signal."""
         empty_signal = np.array([])
-        ft = FourierTransform(empty_signal)
         
-        assert isinstance(ft, FourierTransform)
-        assert len(ft.signal) == 0
+        # Should raise ValueError for empty signal
+        with pytest.raises(ValueError):
+            FourierTransform(empty_signal)
     
     def test_init_with_single_sample(self):
         """Test initialization with single sample."""
         single_sample = np.array([1.0])
-        ft = FourierTransform(single_sample)
         
-        assert isinstance(ft, FourierTransform)
-        assert len(ft.signal) == 1
+        # Should raise ValueError for single sample
+        with pytest.raises(ValueError):
+            FourierTransform(single_sample)
 
 
 @pytest.mark.skipif(not FOURIER_AVAILABLE, reason="Fourier transform module not available")
@@ -85,24 +85,15 @@ class TestDFTMethods:
     
     def test_compute_dft_empty_signal(self):
         """Test DFT computation with empty signal."""
-        ft = FourierTransform(np.array([]))
-        
-        # Empty signal should raise an exception or handle gracefully
-        try:
-            dft_result = ft.compute_dft()
-            assert isinstance(dft_result, np.ndarray)
-            assert len(dft_result) == 0
-        except ValueError:
-            # This is acceptable for empty signals
-            assert True
+        # Should raise ValueError for empty signal
+        with pytest.raises(ValueError):
+            FourierTransform(np.array([]))
     
     def test_compute_dft_single_sample(self):
         """Test DFT computation with single sample."""
-        ft = FourierTransform(np.array([1.0]))
-        dft_result = ft.compute_dft()
-        
-        assert isinstance(dft_result, np.ndarray)
-        assert len(dft_result) == 1
+        # Should raise ValueError for single sample
+        with pytest.raises(ValueError):
+            FourierTransform(np.array([1.0]))
     
     def test_dft_idft_roundtrip(self):
         """Test DFT->IDFT roundtrip accuracy."""

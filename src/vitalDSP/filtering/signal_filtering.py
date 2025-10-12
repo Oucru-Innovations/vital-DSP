@@ -3,6 +3,8 @@ import numpy as np
 # from scipy.signal import lfilter
 from scipy import signal
 import warnings
+from ..utils.validation import SignalValidator
+from ..utils.adaptive_parameters import optimize_filtering_parameters
 
 warnings.filterwarnings("ignore")
 
@@ -224,9 +226,15 @@ class SignalFiltering:
         ------
         TypeError
             If the input signal is not a numpy array, it will be converted.
+        ValueError
+            If the signal is empty or invalid.
         """
         if not isinstance(signal, np.ndarray):
             signal = np.array(signal)
+        
+        # Validate signal - allow NaN values for transformation contexts
+        SignalValidator.validate_signal(signal, min_length=2, allow_empty=False, allow_nan=True, signal_name="signal")
+        
         self.signal = signal
 
     @staticmethod
@@ -422,7 +430,7 @@ class SignalFiltering:
         kernel = kernel / np.sum(kernel)
         return kernel
 
-    def butterworth(self, cutoff, fs, order=4, btype="low", iterations=1):
+    def butterworth(self, cutoff, fs, order=4, btype="low", iterations=1, adaptive=True):
         """
         Apply a Butterworth filter to the signal.
 
@@ -438,6 +446,8 @@ class SignalFiltering:
             Type of filter - 'low' or 'high'. Default is 'low'.
         iterations : int, optional
             The number of times to apply the Butterworth filter for additional filtering. Default is 1.
+        adaptive : bool, optional
+            Whether to use adaptive parameter adjustment. Default is True.
 
         Returns
         -------
@@ -454,9 +464,31 @@ class SignalFiltering:
         >>> filtered_signal = sf.butterworth(cutoff, fs, order=4)
         >>> print(filtered_signal)
         """
+        # Input validation
+        SignalValidator.validate_signal(self.signal, min_length=10, signal_name="input signal")
+        cutoff, fs = SignalValidator.validate_frequency_parameters(cutoff, fs)
+        order = SignalValidator.validate_filter_order(order)
+        
+        if iterations < 1:
+            raise ValueError("Iterations must be positive")
+        
+        # Adaptive parameter adjustment
+        if adaptive:
+            base_params = {
+                'cutoff': cutoff,
+                'fs': fs,
+                'order': order,
+                'iterations': iterations
+            }
+            optimized_params = optimize_filtering_parameters(self.signal, fs, base_params)
+            cutoff = optimized_params['cutoff']
+            fs = optimized_params['fs']
+            order = optimized_params['order']
+            iterations = optimized_params['iterations']
+        
         nyquist = 0.5 * fs
         normal_cutoff = cutoff / nyquist
-        b, a = self.butter(order, normal_cutoff, btype=btype)
+        b, a = self.butter(order, normal_cutoff, btype=btype, fs=fs)
         filtered_signal = self.signal.copy()
 
         for _ in range(iterations):
@@ -490,8 +522,14 @@ class SignalFiltering:
         >>> b, a = SignalFiltering().butter(4, 0.3, btype='low', fs=1.0)
         >>> print(b, a)
         """
-        nyquist = 0.5 * fs
-        normalized_cutoff = np.array(cutoff) / nyquist
+        # Check if cutoff is already normalized (between 0 and 1)
+        if np.all(np.array(cutoff) <= 1.0):
+            # Cutoff is already normalized
+            normalized_cutoff = np.array(cutoff)
+        else:
+            # Cutoff needs normalization
+            nyquist = 0.5 * fs
+            normalized_cutoff = np.array(cutoff) / nyquist
         b, a = signal.butter(order, normalized_cutoff, btype=btype, analog=False)
         # if btype == "low":
         #     poles = np.exp(

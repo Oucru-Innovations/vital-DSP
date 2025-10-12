@@ -1,4 +1,5 @@
 import numpy as np
+from ..utils.validation import SignalValidator
 
 
 class FourierTransform:
@@ -28,12 +29,19 @@ class FourierTransform:
             The input signal to be transformed. The signal should be a 1D array representing time-domain data,
             such as an ECG or EEG signal.
 
+        Raises
+        ------
+        ValueError
+            If the signal is empty or invalid.
+
         Examples
         --------
         >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
         >>> ft = FourierTransform(signal)
         >>> print(ft.signal)
         """
+        # Validate signal - require min_length=2, don't allow empty signals
+        SignalValidator.validate_signal(signal, min_length=2, allow_empty=False, allow_nan=True, allow_inf=True, signal_name="signal")
         self.signal = signal
 
     def compute_dft(self):
