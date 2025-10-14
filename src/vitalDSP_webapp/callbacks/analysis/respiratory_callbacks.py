@@ -972,7 +972,11 @@ def create_respiratory_signal_plot(
                     # Add breathing rate annotation
                     if len(peaks) > 1:
                         breath_intervals = np.diff(peaks) / sampling_freq
-                        breathing_rate = 60 / np.mean(breath_intervals)
+                        breathing_rate = (
+                            60 / np.mean(breath_intervals)
+                            if len(breath_intervals) > 0
+                            else 0
+                        )
                         fig.add_annotation(
                             x=0.02,
                             y=0.98,
@@ -989,7 +993,7 @@ def create_respiratory_signal_plot(
                 logger.error(f"Breathing peak detection failed: {e}")
 
         # Add baseline
-        baseline = np.mean(processed_signal)
+        baseline = np.mean(processed_signal) if len(processed_signal) > 0 else 0
         fig.add_hline(
             y=baseline,
             line_dash="dash",
@@ -1078,9 +1082,15 @@ def generate_comprehensive_respiratory_analysis(
 
                 if len(peaks) > 1:
                     breath_intervals = np.diff(peaks) / sampling_freq
-                    rr_bpm = 60 / np.mean(breath_intervals)
+                    rr_bpm = (
+                        60 / np.mean(breath_intervals)
+                        if len(breath_intervals) > 0
+                        else 0
+                    )
                     rr_std = (
                         60 * np.std(breath_intervals) / (np.mean(breath_intervals) ** 2)
+                        if len(breath_intervals) > 0 and np.mean(breath_intervals) > 0
+                        else 0
                     )
 
                     results.append(
@@ -1556,15 +1566,26 @@ def generate_comprehensive_respiratory_analysis(
                                 )
 
                                 if current_ensemble_method == "mean":
-                                    ensemble_result = np.mean(ensemble_estimates)
+                                    ensemble_result = (
+                                        np.mean(ensemble_estimates)
+                                        if len(ensemble_estimates) > 0
+                                        else 0
+                                    )
                                     method_description = "Simple Average"
                                 elif current_ensemble_method == "weighted_mean":
                                     # Weight by inverse of variance (more reliable methods get higher weight)
-                                    weights = [
-                                        1.0
-                                        / (1.0 + abs(est - np.mean(ensemble_estimates)))
-                                        for est in ensemble_estimates
-                                    ]
+                                    weights = (
+                                        [
+                                            1.0
+                                            / (
+                                                1.0
+                                                + abs(est - np.mean(ensemble_estimates))
+                                            )
+                                            for est in ensemble_estimates
+                                        ]
+                                        if len(ensemble_estimates) > 0
+                                        else []
+                                    )
                                     weights = np.array(weights) / np.sum(
                                         weights
                                     )  # Normalize weights
@@ -1589,8 +1610,14 @@ def generate_comprehensive_respiratory_analysis(
                                         ]
                                         bootstrap_estimates.append(
                                             np.mean(bootstrap_sample)
+                                            if len(bootstrap_sample) > 0
+                                            else 0
                                         )
-                                    ensemble_result = np.mean(bootstrap_estimates)
+                                    ensemble_result = (
+                                        np.mean(bootstrap_estimates)
+                                        if len(bootstrap_estimates) > 0
+                                        else 0
+                                    )
                                     method_description = "Bootstrap Aggregation"
                                 elif current_ensemble_method == "boosting":
                                     # Sequential learning (simple implementation)
@@ -1605,7 +1632,11 @@ def generate_comprehensive_respiratory_analysis(
                                         )
                                     method_description = "Sequential Learning"
                                 else:
-                                    ensemble_result = np.mean(ensemble_estimates)
+                                    ensemble_result = (
+                                        np.mean(ensemble_estimates)
+                                        if len(ensemble_estimates) > 0
+                                        else 0
+                                    )
                                     method_description = "Simple Average (fallback)"
 
                                 # Calculate ensemble statistics
@@ -1768,7 +1799,11 @@ def generate_comprehensive_respiratory_analysis(
                     )
                     if len(peaks) > 1:
                         breath_intervals = np.diff(peaks) / sampling_freq
-                        rr_peak = 60.0 / np.mean(breath_intervals)
+                        rr_peak = (
+                            60.0 / np.mean(breath_intervals)
+                            if len(breath_intervals) > 0
+                            else 0
+                        )
                         method_results.append(("Peak Detection", rr_peak, len(peaks)))
                 except Exception as e:
                     logger.warning(f"Peak detection method failed: {e}")
@@ -1813,8 +1848,8 @@ def generate_comprehensive_respiratory_analysis(
                 if len(method_results) > 1:
                     # Calculate agreement metrics
                     rr_values = [result[1] for result in method_results]
-                    mean_rr = np.mean(rr_values)
-                    std_rr = np.std(rr_values)
+                    mean_rr = np.mean(rr_values) if len(rr_values) > 0 else 0
+                    std_rr = np.std(rr_values) if len(rr_values) > 0 else 0
                     cv_rr = std_rr / mean_rr if mean_rr > 0 else 0
 
                     # Calculate pairwise differences
@@ -3273,10 +3308,10 @@ def generate_comprehensive_respiratory_analysis(
                 logger.info("Processing signal quality assessment...")
                 try:
                     # Enhanced signal quality metrics
-                    signal_mean = np.mean(signal_data)
-                    signal_std = np.std(signal_data)
-                    signal_min = np.min(signal_data)
-                    signal_max = np.max(signal_data)
+                    signal_mean = np.mean(signal_data) if len(signal_data) > 0 else 0
+                    signal_std = np.std(signal_data) if len(signal_data) > 0 else 0
+                    signal_min = np.min(signal_data) if len(signal_data) > 0 else 0
+                    signal_max = np.max(signal_data) if len(signal_data) > 0 else 0
                     dynamic_range = signal_max - signal_min
 
                     # Calculate signal-to-noise ratio using different methods
@@ -3291,7 +3326,11 @@ def generate_comprehensive_respiratory_analysis(
 
                     # Method 2: Peak-to-peak SNR
                     peak_to_peak = signal_max - signal_min
-                    rms_noise = np.sqrt(np.mean((signal_data - signal_mean) ** 2))
+                    rms_noise = (
+                        np.sqrt(np.mean((signal_data - signal_mean) ** 2))
+                        if len(signal_data) > 0
+                        else 0
+                    )
                     snr_pp = (
                         20 * np.log10(peak_to_peak / (2 * rms_noise))
                         if rms_noise > 0
@@ -3299,9 +3338,13 @@ def generate_comprehensive_respiratory_analysis(
                     )
 
                     # Method 3: RMS SNR
-                    rms_signal = np.sqrt(np.mean(signal_data**2))
-                    rms_noise_signal = np.sqrt(
-                        np.mean((signal_data - signal_mean) ** 2)
+                    rms_signal = (
+                        np.sqrt(np.mean(signal_data**2)) if len(signal_data) > 0 else 0
+                    )
+                    rms_noise_signal = (
+                        np.sqrt(np.mean((signal_data - signal_mean) ** 2))
+                        if len(signal_data) > 0
+                        else 0
                     )
                     snr_rms = (
                         20 * np.log10(rms_signal / rms_noise_signal)
@@ -3478,11 +3521,11 @@ def generate_comprehensive_respiratory_analysis(
         )
 
         # Basic statistics
-        mean_val = np.mean(signal_data)
-        std_val = np.std(signal_data)
-        min_val = np.min(signal_data)
-        max_val = np.max(signal_data)
-        rms_val = np.sqrt(np.mean(signal_data**2))
+        mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
+        std_val = np.std(signal_data) if len(signal_data) > 0 else 0
+        min_val = np.min(signal_data) if len(signal_data) > 0 else 0
+        max_val = np.max(signal_data) if len(signal_data) > 0 else 0
+        rms_val = np.sqrt(np.mean(signal_data**2)) if len(signal_data) > 0 else 0
         peak_to_peak = max_val - min_val
 
         # Signal quality metrics

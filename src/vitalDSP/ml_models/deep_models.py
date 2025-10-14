@@ -28,6 +28,7 @@ try:
     import tensorflow as tf
     from tensorflow import keras
     from tensorflow.keras import layers, models, callbacks
+
     TF_AVAILABLE = True
 except ImportError:
     TF_AVAILABLE = False
@@ -37,6 +38,7 @@ try:
     import torch
     import torch.nn as nn
     import torch.nn.functional as F
+
     TORCH_AVAILABLE = False
 except ImportError:
     TORCH_AVAILABLE = False
@@ -54,8 +56,8 @@ class BaseDeepModel(ABC):
         self,
         input_shape: Tuple[int, ...],
         n_classes: int,
-        backend: str = 'tensorflow',
-        **kwargs
+        backend: str = "tensorflow",
+        **kwargs,
     ):
         """
         Initialize base model.
@@ -75,9 +77,11 @@ class BaseDeepModel(ABC):
         self.model = None
         self.history = None
 
-        if self.backend == 'tensorflow' and not TF_AVAILABLE:
-            raise ImportError("TensorFlow not available. Install with: pip install tensorflow")
-        elif self.backend == 'pytorch' and not TORCH_AVAILABLE:
+        if self.backend == "tensorflow" and not TF_AVAILABLE:
+            raise ImportError(
+                "TensorFlow not available. Install with: pip install tensorflow"
+            )
+        elif self.backend == "pytorch" and not TORCH_AVAILABLE:
             raise ImportError("PyTorch not available. Install with: pip install torch")
 
     @abstractmethod
@@ -97,16 +101,16 @@ class BaseDeepModel(ABC):
 
     def save(self, filepath: str):
         """Save model to disk."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             self.model.save(filepath)
-        elif self.backend == 'pytorch':
+        elif self.backend == "pytorch":
             torch.save(self.model.state_dict(), filepath)
 
     def load(self, filepath: str):
         """Load model from disk."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             self.model = keras.models.load_model(filepath)
-        elif self.backend == 'pytorch':
+        elif self.backend == "pytorch":
             self.model.load_state_dict(torch.load(filepath))
 
 
@@ -171,8 +175,8 @@ class CNN1D(BaseDeepModel):
         pool_sizes: List[int] = None,
         dropout_rate: float = 0.5,
         use_residual: bool = False,
-        backend: str = 'tensorflow',
-        **kwargs
+        backend: str = "tensorflow",
+        **kwargs,
     ):
         super().__init__(input_shape, n_classes, backend, **kwargs)
 
@@ -184,9 +188,9 @@ class CNN1D(BaseDeepModel):
 
     def build_model(self):
         """Build 1D CNN architecture."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             self._build_tensorflow_model()
-        elif self.backend == 'pytorch':
+        elif self.backend == "pytorch":
             self._build_pytorch_model()
 
         return self.model
@@ -208,56 +212,71 @@ class CNN1D(BaseDeepModel):
             x = layers.Conv1D(
                 n_filters,
                 kernel_size,
-                padding='same',
+                padding="same",
                 activation=None,
-                name=f'conv1d_{i+1}'
+                name=f"conv1d_{i+1}",
             )(x)
-            x = layers.BatchNormalization(name=f'bn_{i+1}')(x)
-            x = layers.Activation('relu', name=f'relu_{i+1}')(x)
+            x = layers.BatchNormalization(name=f"bn_{i+1}")(x)
+            x = layers.Activation("relu", name=f"relu_{i+1}")(x)
 
             # Residual addition
             if self.use_residual and i > 0:
                 # Match dimensions if needed
                 if residual.shape[-1] != x.shape[-1]:
-                    residual = layers.Conv1D(n_filters, 1, padding='same')(residual)
+                    residual = layers.Conv1D(n_filters, 1, padding="same")(residual)
                 x = layers.Add()([x, residual])
 
-            x = layers.MaxPooling1D(pool_size, name=f'maxpool_{i+1}')(x)
-            x = layers.Dropout(self.dropout_rate, name=f'dropout_{i+1}')(x)
+            x = layers.MaxPooling1D(pool_size, name=f"maxpool_{i+1}")(x)
+            x = layers.Dropout(self.dropout_rate, name=f"dropout_{i+1}")(x)
 
         # Global pooling
-        x = layers.GlobalAveragePooling1D(name='global_pool')(x)
+        x = layers.GlobalAveragePooling1D(name="global_pool")(x)
 
         # Dense layers
-        x = layers.Dense(128, activation='relu', name='dense_1')(x)
-        x = layers.Dropout(self.dropout_rate, name='dropout_dense')(x)
-        x = layers.Dense(64, activation='relu', name='dense_2')(x)
+        x = layers.Dense(128, activation="relu", name="dense_1")(x)
+        x = layers.Dropout(self.dropout_rate, name="dropout_dense")(x)
+        x = layers.Dense(64, activation="relu", name="dense_2")(x)
 
         # Output layer
         if self.n_classes == 2:
-            outputs = layers.Dense(1, activation='sigmoid', name='output')(x)
+            outputs = layers.Dense(1, activation="sigmoid", name="output")(x)
         else:
-            outputs = layers.Dense(self.n_classes, activation='softmax', name='output')(x)
+            outputs = layers.Dense(self.n_classes, activation="softmax", name="output")(
+                x
+            )
 
-        self.model = keras.Model(inputs=inputs, outputs=outputs, name='CNN1D')
+        self.model = keras.Model(inputs=inputs, outputs=outputs, name="CNN1D")
 
     def _build_pytorch_model(self):
         """Build PyTorch model."""
+
         class CNN1DModule(nn.Module):
-            def __init__(self, input_shape, n_classes, n_filters, kernel_sizes, pool_sizes, dropout_rate):
+            def __init__(
+                self,
+                input_shape,
+                n_classes,
+                n_filters,
+                kernel_sizes,
+                pool_sizes,
+                dropout_rate,
+            ):
                 super().__init__()
 
                 self.conv_blocks = nn.ModuleList()
 
                 in_channels = input_shape[1] if len(input_shape) > 1 else 1
 
-                for n_filter, kernel_size, pool_size in zip(n_filters, kernel_sizes, pool_sizes):
+                for n_filter, kernel_size, pool_size in zip(
+                    n_filters, kernel_sizes, pool_sizes
+                ):
                     block = nn.Sequential(
-                        nn.Conv1d(in_channels, n_filter, kernel_size, padding=kernel_size//2),
+                        nn.Conv1d(
+                            in_channels, n_filter, kernel_size, padding=kernel_size // 2
+                        ),
                         nn.BatchNorm1d(n_filter),
                         nn.ReLU(),
                         nn.MaxPool1d(pool_size),
-                        nn.Dropout(dropout_rate)
+                        nn.Dropout(dropout_rate),
                     )
                     self.conv_blocks.append(block)
                     in_channels = n_filter
@@ -287,9 +306,12 @@ class CNN1D(BaseDeepModel):
                 return x
 
         self.model = CNN1DModule(
-            self.input_shape, self.n_classes,
-            self.n_filters, self.kernel_sizes,
-            self.pool_sizes, self.dropout_rate
+            self.input_shape,
+            self.n_classes,
+            self.n_filters,
+            self.kernel_sizes,
+            self.pool_sizes,
+            self.dropout_rate,
         )
 
     def train(
@@ -301,7 +323,7 @@ class CNN1D(BaseDeepModel):
         epochs: int = 50,
         batch_size: int = 32,
         learning_rate: float = 0.001,
-        **kwargs
+        **kwargs,
     ):
         """
         Train the CNN model.
@@ -330,79 +352,112 @@ class CNN1D(BaseDeepModel):
         history : dict
             Training history
         """
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             return self._train_tensorflow(
-                X_train, y_train, X_val, y_val,
-                epochs, batch_size, learning_rate, **kwargs
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                epochs,
+                batch_size,
+                learning_rate,
+                **kwargs,
             )
-        elif self.backend == 'pytorch':
+        elif self.backend == "pytorch":
             return self._train_pytorch(
-                X_train, y_train, X_val, y_val,
-                epochs, batch_size, learning_rate, **kwargs
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                epochs,
+                batch_size,
+                learning_rate,
+                **kwargs,
             )
 
     def _train_tensorflow(
-        self, X_train, y_train, X_val, y_val,
-        epochs, batch_size, learning_rate, **kwargs
+        self,
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        epochs,
+        batch_size,
+        learning_rate,
+        **kwargs,
     ):
         """Train TensorFlow model."""
         # Compile model
         optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
 
         if self.n_classes == 2:
-            loss = 'binary_crossentropy'
-            metrics = ['accuracy', keras.metrics.AUC(name='auc')]
+            loss = "binary_crossentropy"
+            metrics = ["accuracy", keras.metrics.AUC(name="auc")]
         else:
-            loss = 'sparse_categorical_crossentropy' if y_train.ndim == 1 else 'categorical_crossentropy'
-            metrics = ['accuracy']
+            loss = (
+                "sparse_categorical_crossentropy"
+                if y_train.ndim == 1
+                else "categorical_crossentropy"
+            )
+            metrics = ["accuracy"]
 
-        self.model.compile(
-            optimizer=optimizer,
-            loss=loss,
-            metrics=metrics
-        )
+        self.model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
         # Callbacks
         callback_list = [
             callbacks.EarlyStopping(
-                monitor='val_loss' if X_val is not None else 'loss',
+                monitor="val_loss" if X_val is not None else "loss",
                 patience=10,
-                restore_best_weights=True
+                restore_best_weights=True,
             ),
             callbacks.ReduceLROnPlateau(
-                monitor='val_loss' if X_val is not None else 'loss',
+                monitor="val_loss" if X_val is not None else "loss",
                 factor=0.5,
                 patience=5,
-                min_lr=1e-7
-            )
+                min_lr=1e-7,
+            ),
         ]
 
         # Train
         validation_data = (X_val, y_val) if X_val is not None else None
 
         history = self.model.fit(
-            X_train, y_train,
+            X_train,
+            y_train,
             validation_data=validation_data,
             epochs=epochs,
             batch_size=batch_size,
             callbacks=callback_list,
-            verbose=kwargs.get('verbose', 1)
+            verbose=kwargs.get("verbose", 1),
         )
 
         self.history = history.history
         return self.history
 
     def _train_pytorch(
-        self, X_train, y_train, X_val, y_val,
-        epochs, batch_size, learning_rate, **kwargs
+        self,
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        epochs,
+        batch_size,
+        learning_rate,
+        **kwargs,
     ):
         """Train PyTorch model."""
         # Convert to PyTorch tensors
         X_train_tensor = torch.FloatTensor(X_train).permute(0, 2, 1)  # (N, C, L)
-        y_train_tensor = torch.LongTensor(y_train) if y_train.dtype == int else torch.FloatTensor(y_train)
+        y_train_tensor = (
+            torch.LongTensor(y_train)
+            if y_train.dtype == int
+            else torch.FloatTensor(y_train)
+        )
 
         train_dataset = torch.utils.data.TensorDataset(X_train_tensor, y_train_tensor)
-        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset, batch_size=batch_size, shuffle=True
+        )
 
         # Loss and optimizer
         if self.n_classes == 2:
@@ -413,12 +468,12 @@ class CNN1D(BaseDeepModel):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
 
         # Training loop
-        self.history = {'loss': [], 'accuracy': []}
+        self.history = {"loss": [], "accuracy": []}
         if X_val is not None:
-            self.history['val_loss'] = []
-            self.history['val_accuracy'] = []
+            self.history["val_loss"] = []
+            self.history["val_accuracy"] = []
 
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(device)
 
         for epoch in range(epochs):
@@ -446,11 +501,13 @@ class CNN1D(BaseDeepModel):
                 total += batch_y.size(0)
                 correct += (predicted == batch_y).sum().item()
 
-            self.history['loss'].append(epoch_loss / len(train_loader))
-            self.history['accuracy'].append(correct / total)
+            self.history["loss"].append(epoch_loss / len(train_loader))
+            self.history["accuracy"].append(correct / total)
 
-            if kwargs.get('verbose', 1) > 0:
-                print(f"Epoch {epoch+1}/{epochs} - loss: {self.history['loss'][-1]:.4f} - accuracy: {self.history['accuracy'][-1]:.4f}")
+            if kwargs.get("verbose", 1) > 0:
+                print(
+                    f"Epoch {epoch+1}/{epochs} - loss: {self.history['loss'][-1]:.4f} - accuracy: {self.history['accuracy'][-1]:.4f}"
+                )
 
         return self.history
 
@@ -468,9 +525,9 @@ class CNN1D(BaseDeepModel):
         predictions : ndarray
             Predicted class probabilities or labels
         """
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             return self.model.predict(X)
-        elif self.backend == 'pytorch':
+        elif self.backend == "pytorch":
             self.model.eval()
             with torch.no_grad():
                 X_tensor = torch.FloatTensor(X).permute(0, 2, 1)
@@ -519,9 +576,9 @@ class LSTMModel(BaseDeepModel):
         lstm_units: List[int] = None,
         dropout_rate: float = 0.3,
         bidirectional: bool = True,
-        task: str = 'classification',
-        backend: str = 'tensorflow',
-        **kwargs
+        task: str = "classification",
+        backend: str = "tensorflow",
+        **kwargs,
     ):
         super().__init__(input_shape, n_classes, backend, **kwargs)
 
@@ -532,9 +589,9 @@ class LSTMModel(BaseDeepModel):
 
     def build_model(self):
         """Build LSTM architecture."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             self._build_tensorflow_model()
-        elif self.backend == 'pytorch':
+        elif self.backend == "pytorch":
             self._build_pytorch_model()
 
         return self.model
@@ -546,55 +603,72 @@ class LSTMModel(BaseDeepModel):
 
         # LSTM layers
         for i, units in enumerate(self.lstm_units):
-            return_sequences = (i < len(self.lstm_units) - 1)
+            return_sequences = i < len(self.lstm_units) - 1
 
             if self.bidirectional:
                 x = layers.Bidirectional(
                     layers.LSTM(units, return_sequences=return_sequences),
-                    name=f'bilstm_{i+1}'
+                    name=f"bilstm_{i+1}",
                 )(x)
             else:
                 x = layers.LSTM(
-                    units,
-                    return_sequences=return_sequences,
-                    name=f'lstm_{i+1}'
+                    units, return_sequences=return_sequences, name=f"lstm_{i+1}"
                 )(x)
 
-            x = layers.Dropout(self.dropout_rate, name=f'dropout_{i+1}')(x)
+            x = layers.Dropout(self.dropout_rate, name=f"dropout_{i+1}")(x)
 
         # Dense layers
-        x = layers.Dense(64, activation='relu', name='dense')(x)
-        x = layers.Dropout(self.dropout_rate, name='dropout_dense')(x)
+        x = layers.Dense(64, activation="relu", name="dense")(x)
+        x = layers.Dropout(self.dropout_rate, name="dropout_dense")(x)
 
         # Output layer
-        if self.task == 'classification':
+        if self.task == "classification":
             if self.n_classes == 2:
-                outputs = layers.Dense(1, activation='sigmoid', name='output')(x)
+                outputs = layers.Dense(1, activation="sigmoid", name="output")(x)
             else:
-                outputs = layers.Dense(self.n_classes, activation='softmax', name='output')(x)
+                outputs = layers.Dense(
+                    self.n_classes, activation="softmax", name="output"
+                )(x)
         else:  # regression
-            outputs = layers.Dense(1, activation='linear', name='output')(x)
+            outputs = layers.Dense(1, activation="linear", name="output")(x)
 
-        self.model = keras.Model(inputs=inputs, outputs=outputs, name='LSTM')
+        self.model = keras.Model(inputs=inputs, outputs=outputs, name="LSTM")
 
     def _build_pytorch_model(self):
         """Build PyTorch LSTM model."""
+
         class LSTMModule(nn.Module):
-            def __init__(self, input_size, lstm_units, n_classes, dropout_rate, bidirectional, task):
+            def __init__(
+                self,
+                input_size,
+                lstm_units,
+                n_classes,
+                dropout_rate,
+                bidirectional,
+                task,
+            ):
                 super().__init__()
 
                 self.lstm_layers = nn.ModuleList()
                 self.task = task
 
                 for i, units in enumerate(lstm_units):
-                    input_dim = input_size if i == 0 else lstm_units[i-1] * (2 if bidirectional else 1)
-                    lstm = nn.LSTM(input_dim, units, batch_first=True, bidirectional=bidirectional)
+                    input_dim = (
+                        input_size
+                        if i == 0
+                        else lstm_units[i - 1] * (2 if bidirectional else 1)
+                    )
+                    lstm = nn.LSTM(
+                        input_dim, units, batch_first=True, bidirectional=bidirectional
+                    )
                     self.lstm_layers.append(lstm)
 
                 final_dim = lstm_units[-1] * (2 if bidirectional else 1)
                 self.dropout = nn.Dropout(dropout_rate)
                 self.fc1 = nn.Linear(final_dim, 64)
-                self.fc2 = nn.Linear(64, n_classes if task == 'classification' and n_classes > 2 else 1)
+                self.fc2 = nn.Linear(
+                    64, n_classes if task == "classification" and n_classes > 2 else 1
+                )
 
             def forward(self, x):
                 for lstm in self.lstm_layers:
@@ -607,7 +681,7 @@ class LSTMModel(BaseDeepModel):
                 x = self.dropout(x)
                 x = self.fc2(x)
 
-                if self.task == 'classification':
+                if self.task == "classification":
                     if x.shape[-1] == 1:
                         x = torch.sigmoid(x)
                     else:
@@ -618,8 +692,12 @@ class LSTMModel(BaseDeepModel):
         input_size = self.input_shape[-1] if len(self.input_shape) > 1 else 1
 
         self.model = LSTMModule(
-            input_size, self.lstm_units, self.n_classes,
-            self.dropout_rate, self.bidirectional, self.task
+            input_size,
+            self.lstm_units,
+            self.n_classes,
+            self.dropout_rate,
+            self.bidirectional,
+            self.task,
         )
 
     def train(
@@ -631,67 +709,113 @@ class LSTMModel(BaseDeepModel):
         epochs: int = 100,
         batch_size: int = 32,
         learning_rate: float = 0.001,
-        **kwargs
+        **kwargs,
     ):
         """Train the LSTM model."""
         # Similar to CNN1D.train()
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             return self._train_tensorflow(
-                X_train, y_train, X_val, y_val,
-                epochs, batch_size, learning_rate, **kwargs
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                epochs,
+                batch_size,
+                learning_rate,
+                **kwargs,
             )
-        elif self.backend == 'pytorch':
+        elif self.backend == "pytorch":
             return self._train_pytorch(
-                X_train, y_train, X_val, y_val,
-                epochs, batch_size, learning_rate, **kwargs
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                epochs,
+                batch_size,
+                learning_rate,
+                **kwargs,
             )
 
-    def _train_tensorflow(self, X_train, y_train, X_val, y_val, epochs, batch_size, learning_rate, **kwargs):
+    def _train_tensorflow(
+        self,
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        epochs,
+        batch_size,
+        learning_rate,
+        **kwargs,
+    ):
         """Train TensorFlow LSTM model."""
         optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
 
-        if self.task == 'classification':
+        if self.task == "classification":
             if self.n_classes == 2:
-                loss = 'binary_crossentropy'
-                metrics = ['accuracy']
+                loss = "binary_crossentropy"
+                metrics = ["accuracy"]
             else:
-                loss = 'sparse_categorical_crossentropy' if y_train.ndim == 1 else 'categorical_crossentropy'
-                metrics = ['accuracy']
+                loss = (
+                    "sparse_categorical_crossentropy"
+                    if y_train.ndim == 1
+                    else "categorical_crossentropy"
+                )
+                metrics = ["accuracy"]
         else:  # regression
-            loss = 'mse'
-            metrics = ['mae']
+            loss = "mse"
+            metrics = ["mae"]
 
         self.model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
         callback_list = [
-            callbacks.EarlyStopping(monitor='val_loss' if X_val is not None else 'loss', patience=15, restore_best_weights=True),
-            callbacks.ReduceLROnPlateau(monitor='val_loss' if X_val is not None else 'loss', factor=0.5, patience=7, min_lr=1e-7)
+            callbacks.EarlyStopping(
+                monitor="val_loss" if X_val is not None else "loss",
+                patience=15,
+                restore_best_weights=True,
+            ),
+            callbacks.ReduceLROnPlateau(
+                monitor="val_loss" if X_val is not None else "loss",
+                factor=0.5,
+                patience=7,
+                min_lr=1e-7,
+            ),
         ]
 
         validation_data = (X_val, y_val) if X_val is not None else None
 
         history = self.model.fit(
-            X_train, y_train,
+            X_train,
+            y_train,
             validation_data=validation_data,
             epochs=epochs,
             batch_size=batch_size,
             callbacks=callback_list,
-            verbose=kwargs.get('verbose', 1)
+            verbose=kwargs.get("verbose", 1),
         )
 
         self.history = history.history
         return self.history
 
-    def _train_pytorch(self, X_train, y_train, X_val, y_val, epochs, batch_size, learning_rate, **kwargs):
+    def _train_pytorch(
+        self,
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        epochs,
+        batch_size,
+        learning_rate,
+        **kwargs,
+    ):
         """Train PyTorch LSTM model."""
         # Similar to CNN1D._train_pytorch()
         pass  # Implementation similar to CNN1D
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Make predictions."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             return self.model.predict(X)
-        elif self.backend == 'pytorch':
+        elif self.backend == "pytorch":
             self.model.eval()
             with torch.no_grad():
                 X_tensor = torch.FloatTensor(X)

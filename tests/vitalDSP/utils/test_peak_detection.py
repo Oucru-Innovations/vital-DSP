@@ -1,9 +1,9 @@
 import pytest
 import numpy as np
-from vitalDSP.utils.common import find_peaks
+from vitalDSP.utils.config_utilities.common import find_peaks
 from vitalDSP.filtering.signal_filtering import SignalFiltering
-from vitalDSP.utils.scaler import StandardScaler
-from vitalDSP.utils.peak_detection import PeakDetection
+from vitalDSP.utils.signal_processing.scaler import StandardScaler
+from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def test_threshold_based_detection(sample_signal,monkeypatch):
     def mock_find_peaks(signal):
         return np.array([4])  # Expect peak at index 4
 
-    monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
+    monkeypatch.setattr("vitalDSP.utils.find_peaks", mock_find_peaks)
     detector = PeakDetection(
         sample_signal, method="threshold", window_length=11, polyorder=2
     )
@@ -49,7 +49,7 @@ def test_savgol_based_detection(sample_signal, monkeypatch):
     def mock_savgol_filter(signal, window_length, polyorder):
         return signal  # Return the original signal for simplicity
 
-    monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
+    monkeypatch.setattr("vitalDSP.utils.find_peaks", mock_find_peaks)
     monkeypatch.setattr(
         "vitalDSP.filtering.signal_filtering.SignalFiltering.savgol_filter",
         mock_savgol_filter,
@@ -71,7 +71,7 @@ def test_gaussian_based_detection(sample_signal, monkeypatch):
     def mock_gaussian_filter1d(signal, sigma):
         return signal  # Return the original signal
 
-    monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
+    monkeypatch.setattr("vitalDSP.utils.find_peaks", mock_find_peaks)
     monkeypatch.setattr(
         "vitalDSP.filtering.signal_filtering.SignalFiltering.gaussian_filter1d",
         mock_gaussian_filter1d,
@@ -88,7 +88,7 @@ def test_relative_extrema_detection(sample_signal, monkeypatch):
     def mock_argrelextrema(signal, comparator, order):
         return np.array([4])  # Expect peak at index 4
 
-    monkeypatch.setattr("vitalDSP.utils.common.argrelextrema", mock_argrelextrema)
+    monkeypatch.setattr("vitalDSP.utils.argrelextrema", mock_argrelextrema)
 
     detector = PeakDetection(sample_signal, method="rel_extrema", order=1)
     peaks = detector.detect_peaks()
@@ -104,7 +104,7 @@ def test_scaler_threshold_based_detection(sample_signal, monkeypatch):
     def mock_find_peaks(signal):
         return np.array([4])  # Expect peak at index 4
 
-    monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
+    monkeypatch.setattr("vitalDSP.utils.find_peaks", mock_find_peaks)
     detector = PeakDetection(
         sample_signal, method="scaler_threshold", window_length=11, polyorder=2
     )
@@ -124,7 +124,7 @@ def test_ecg_r_peak_detection(sample_signal, monkeypatch):
         # Return a signal where we expect a peak at index 4 after convolution
         return np.array([0, 0, 0, 0, 5, 0, 0])  # Peak at index 4
 
-    monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
+    monkeypatch.setattr("vitalDSP.utils.find_peaks", mock_find_peaks)
     monkeypatch.setattr("numpy.convolve", mock_convolve)  # Mocking convolution
 
     detector = PeakDetection(sample_signal, method="ecg_r_peak")
@@ -144,7 +144,7 @@ def test_ecg_derivative_detection(sample_signal, monkeypatch):
         # Return a derivative where a peak is expected at index 4
         return np.array([0, 1, 1, 1, 5, 1, 1, 1])  # Peak at index 4
 
-    monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
+    monkeypatch.setattr("vitalDSP.utils.find_peaks", mock_find_peaks)
     monkeypatch.setattr("numpy.diff", mock_diff)  # Mock the derivative
 
     detector = PeakDetection(sample_signal, method="ecg_derivative")
@@ -164,7 +164,7 @@ def test_ppg_first_derivative_detection(sample_signal, monkeypatch):
         # Return a first derivative signal where a peak is expected at index 4
         return np.array([0, 1, 1, 1, 5, 1, 1, 1])  # Peak at index 4
 
-    monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
+    monkeypatch.setattr("vitalDSP.utils.find_peaks", mock_find_peaks)
     monkeypatch.setattr("numpy.diff", mock_diff)  # Mock the first derivative
 
     detector = PeakDetection(sample_signal, method="ppg_first_derivative")
@@ -186,7 +186,7 @@ def test_ppg_second_derivative_detection(sample_signal, monkeypatch):
             return np.array([0, 0, 0, 0, 5, 0, 0])  # Peak at index 4
         return np.diff(signal)
 
-    monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
+    monkeypatch.setattr("vitalDSP.utils.find_peaks", mock_find_peaks)
     monkeypatch.setattr("numpy.diff", mock_diff)  # Mock the second derivative
 
     detector = PeakDetection(sample_signal, method="ppg_second_derivative")
@@ -209,7 +209,7 @@ def test_invalid_method_detection(sample_signal):
 #     def mock_savgol_filter(signal, window_length, polyorder):
 #         return signal
 
-#     monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
+#     monkeypatch.setattr("vitalDSP.utils.find_peaks", mock_find_peaks)
 #     monkeypatch.setattr("vitalDSP.filtering.signal_filtering.SignalFiltering.savgol_filter", mock_savgol_filter)
 #     detector = PeakDetection(sample_signal, method="abp_systolic")
 #     peaks = detector.detect_peaks()
@@ -228,7 +228,7 @@ def test_eeg_wavelet_detection(sample_signal, monkeypatch):
         # Return a signal where we expect a peak at index 4 after wavelet transformation
         return np.array([0, 0, 0, 0, 5, 0, 0])  # Peak at index 4
 
-    monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
+    monkeypatch.setattr("vitalDSP.utils.find_peaks", mock_find_peaks)
     monkeypatch.setattr("numpy.convolve", mock_convolve)
 
     detector = PeakDetection(sample_signal, method="eeg_wavelet")
@@ -252,11 +252,11 @@ def test_eeg_bandpass_detection(sample_signal, monkeypatch):
         # Mock filter coefficients
         return np.array([1]), np.array([1])
 
-    monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
+    monkeypatch.setattr("vitalDSP.utils.find_peaks", mock_find_peaks)
     monkeypatch.setattr(
         "vitalDSP.filtering.signal_filtering.SignalFiltering.butter", mock_butter
     )
-    monkeypatch.setattr("vitalDSP.utils.common.filtfilt", mock_filtfilt)
+    monkeypatch.setattr("vitalDSP.utils.filtfilt", mock_filtfilt)
 
     detector = PeakDetection(
         sample_signal, method="eeg_bandpass", lowcut=0.5, highcut=50, fs=100
@@ -277,7 +277,7 @@ def test_resp_autocorrelation_detection(sample_signal, monkeypatch):
         # Simulate autocorrelation where we expect a peak at index 4
         return np.array([0, 0, 0, 5, 0, 0, 0])  # Peak at index 4
 
-    monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
+    monkeypatch.setattr("vitalDSP.utils.find_peaks", mock_find_peaks)
     monkeypatch.setattr("numpy.correlate", mock_correlate)
 
     detector = PeakDetection(sample_signal, method="resp_autocorrelation")
@@ -312,7 +312,7 @@ def test_abp_systolic_peak_detection(sample_signal, monkeypatch):
         # Return the original signal after smoothing
         return signal
 
-    monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
+    monkeypatch.setattr("vitalDSP.utils.find_peaks", mock_find_peaks)
     monkeypatch.setattr(
         "vitalDSP.filtering.signal_filtering.SignalFiltering.savgol_filter",
         mock_savgol_filter,
@@ -335,7 +335,7 @@ def test_abp_diastolic_peak_detection(sample_signal, monkeypatch):
         # Return the inverted signal for simplicity
         return -signal
 
-    monkeypatch.setattr("vitalDSP.utils.common.find_peaks", mock_find_peaks)
+    monkeypatch.setattr("vitalDSP.utils.find_peaks", mock_find_peaks)
     monkeypatch.setattr(
         "vitalDSP.filtering.signal_filtering.SignalFiltering.savgol_filter",
         mock_savgol_filter,

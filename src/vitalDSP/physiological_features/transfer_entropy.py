@@ -170,11 +170,11 @@ class TransferEntropy:
         self,
         source: np.ndarray,
         target: np.ndarray,
-        k: int = 1,
-        l: int = 1,
+        k_coef: int = 1,
+        l_coef: int = 1,
         delay: int = 1,
         n_bins: Optional[int] = None,
-        k_neighbors: int = 3
+        k_neighbors: int = 3,
     ):
         """
         Initialize Transfer Entropy analyzer.
@@ -185,9 +185,9 @@ class TransferEntropy:
             Source signal
         target : numpy.ndarray
             Target signal
-        k : int
+        k_coef : int
             Target history
-        l : int
+        l_coef : int
             Source history
         delay : int
             Time delay
@@ -208,14 +208,14 @@ class TransferEntropy:
                 f"Got {len(source)} and {len(target)}."
             )
 
-        if len(source) < max(k, l) * delay + 10:
+        if len(source) < max(k_coef, l_coef) * delay + 10:
             raise ValueError(
                 f"Signals too short ({len(source)} samples) for "
-                f"k={k}, l={l}, delay={delay}."
+                f"k={k_coef}, l={l_coef}, delay={delay}."
             )
 
-        if k < 1 or l < 1:
-            raise ValueError(f"k and l must be >= 1. Got k={k}, l={l}")
+        if k_coef < 1 or l_coef < 1:
+            raise ValueError(f"k and l must be >= 1. Got k={k_coef}, l={l_coef}")
 
         if delay < 1:
             raise ValueError(f"delay must be >= 1. Got {delay}")
@@ -225,17 +225,14 @@ class TransferEntropy:
 
         self.source = source
         self.target = target
-        self.k = k
-        self.l = l
+        self.k = k_coef
+        self.l = l_coef
         self.delay = delay
         self.n_bins = n_bins
         self.k_neighbors = k_neighbors
 
     def _create_embedding(
-        self,
-        signal: np.ndarray,
-        dimension: int,
-        delay: int
+        self, signal: np.ndarray, dimension: int, delay: int
     ) -> np.ndarray:
         """
         Create time-delay embedding (phase space reconstruction).
@@ -291,11 +288,7 @@ class TransferEntropy:
 
         return embedded
 
-    def _estimate_entropy_knn(
-        self,
-        data: np.ndarray,
-        k: int
-    ) -> float:
+    def _estimate_entropy_knn(self, data: np.ndarray, k: int) -> float:
         """
         Estimate entropy using k-nearest neighbors (Kraskov method).
 
@@ -334,8 +327,7 @@ class TransferEntropy:
 
         if n_samples < k + 1:
             warnings.warn(
-                f"Too few samples ({n_samples}) for k={k}. Returning 0.",
-                UserWarning
+                f"Too few samples ({n_samples}) for k={k}. Returning 0.", UserWarning
             )
             return 0.0
 
@@ -357,6 +349,7 @@ class TransferEntropy:
 
         # Volume of d-dimensional unit ball
         from scipy.special import gamma
+
         c_d = (np.pi ** (n_dims / 2)) / gamma(n_dims / 2 + 1)
 
         # Average log distance
@@ -368,10 +361,7 @@ class TransferEntropy:
         return entropy
 
     def _estimate_mutual_information_knn(
-        self,
-        x: np.ndarray,
-        y: np.ndarray,
-        k: int
+        self, x: np.ndarray, y: np.ndarray, k: int
     ) -> float:
         """
         Estimate mutual information using KNN.
@@ -482,8 +472,8 @@ class TransferEntropy:
 
         # Align to same time points
         max_lookback = max(self.k, self.l) * self.delay
-        target_past = target_past[max_lookback - self.k * self.delay:]
-        source_past = source_past[max_lookback - self.l * self.delay:]
+        target_past = target_past[max_lookback - self.k * self.delay :]
+        source_past = source_past[max_lookback - self.l * self.delay :]
 
         # Future target: Y(t)
         target_future = self.target[max_lookback:].reshape(-1, 1)
@@ -508,17 +498,14 @@ class TransferEntropy:
         y_x_past_future = np.hstack([target_past, source_past, target_future])
 
         # Estimate entropies
-        h_y_future_given_y_past = (
-            self._estimate_entropy_knn(y_past_future, self.k_neighbors) -
-            self._estimate_entropy_knn(target_past, self.k_neighbors)
-        )
+        h_y_future_given_y_past = self._estimate_entropy_knn(
+            y_past_future, self.k_neighbors
+        ) - self._estimate_entropy_knn(target_past, self.k_neighbors)
 
-        h_y_future_given_y_x_past = (
-            self._estimate_entropy_knn(y_x_past_future, self.k_neighbors) -
-            self._estimate_entropy_knn(
-                np.hstack([target_past, source_past]),
-                self.k_neighbors
-            )
+        h_y_future_given_y_x_past = self._estimate_entropy_knn(
+            y_x_past_future, self.k_neighbors
+        ) - self._estimate_entropy_knn(
+            np.hstack([target_past, source_past]), self.k_neighbors
         )
 
         # Transfer Entropy
@@ -569,19 +556,18 @@ class TransferEntropy:
 
         # Backward: target → source (swap signals)
         te_backward_analyzer = TransferEntropy(
-            self.target, self.source,
-            k=self.l, l=self.k,  # Swap k and l
+            self.target,
+            self.source,
+            k=self.l,
+            l=self.k,  # Swap k and l
             delay=self.delay,
-            k_neighbors=self.k_neighbors
+            k_neighbors=self.k_neighbors,
         )
         te_backward = te_backward_analyzer.compute_transfer_entropy()
 
         return te_forward, te_backward
 
-    def compute_time_delayed_te(
-        self,
-        max_delay: int = 10
-    ) -> np.ndarray:
+    def compute_time_delayed_te(self, max_delay: int = 10) -> np.ndarray:
         """
         Compute transfer entropy across multiple time delays.
 
@@ -629,10 +615,12 @@ class TransferEntropy:
         for delay_val in range(1, max_delay + 1):
             # Create TE analyzer with this delay
             te_analyzer = TransferEntropy(
-                self.source, self.target,
-                k=self.k, l=self.l,
+                self.source,
+                self.target,
+                k=self.k,
+                l=self.l,
                 delay=delay_val,
-                k_neighbors=self.k_neighbors
+                k_neighbors=self.k_neighbors,
             )
 
             try:
@@ -641,7 +629,7 @@ class TransferEntropy:
             except Exception as e:
                 warnings.warn(
                     f"Failed to compute TE at delay {delay_val}: {str(e)}. Using 0.",
-                    UserWarning
+                    UserWarning,
                 )
                 te_values.append(0.0)
 
@@ -685,10 +673,9 @@ class TransferEntropy:
 
         y_past_future = np.hstack([target_past, target_future])
 
-        h_y_future_given_y_past = (
-            self._estimate_entropy_knn(y_past_future, self.k_neighbors) -
-            self._estimate_entropy_knn(target_past, self.k_neighbors)
-        )
+        h_y_future_given_y_past = self._estimate_entropy_knn(
+            y_past_future, self.k_neighbors
+        ) - self._estimate_entropy_knn(target_past, self.k_neighbors)
 
         # Normalize
         if h_y_future_given_y_past > 0:
@@ -702,9 +689,7 @@ class TransferEntropy:
         return effective_te
 
     def test_significance(
-        self,
-        n_surrogates: int = 100,
-        method: str = 'shuffle'
+        self, n_surrogates: int = 100, method: str = "shuffle"
     ) -> Tuple[float, float]:
         """
         Test statistical significance of transfer entropy.
@@ -756,13 +741,13 @@ class TransferEntropy:
         surrogate_tes = []
 
         for _ in range(n_surrogates):
-            if method == 'shuffle':
+            if method == "shuffle":
                 # Shuffle source signal
                 surrogate_source = np.random.permutation(self.source)
-            elif method == 'phase':
+            elif method == "phase":
                 # Phase randomization (preserves power spectrum)
                 fft = np.fft.fft(self.source)
-                phases = np.random.uniform(0, 2*np.pi, len(fft))
+                phases = np.random.uniform(0, 2 * np.pi, len(fft))
                 fft_randomized = np.abs(fft) * np.exp(1j * phases)
                 surrogate_source = np.real(np.fft.ifft(fft_randomized))
             else:
@@ -770,15 +755,22 @@ class TransferEntropy:
 
             # Compute TE for surrogate
             te_surrogate_analyzer = TransferEntropy(
-                surrogate_source, self.target,
-                k=self.k, l=self.l, delay=self.delay,
-                k_neighbors=self.k_neighbors
+                surrogate_source,
+                self.target,
+                k=self.k,
+                l=self.l,
+                delay=self.delay,
+                k_neighbors=self.k_neighbors,
             )
 
             try:
                 te_surrogate = te_surrogate_analyzer.compute_transfer_entropy()
                 surrogate_tes.append(te_surrogate)
-            except:
+            except Exception as e:
+                warnings.warn(
+                    f"Failed to compute TE for surrogate: {str(e)}. Using 0.",
+                    UserWarning,
+                )
                 continue
 
         # Compute p-value
@@ -786,11 +778,14 @@ class TransferEntropy:
             surrogate_tes = np.array(surrogate_tes)
             p_value = np.mean(surrogate_tes >= te_original)
         else:
-            warnings.warn("All surrogate calculations failed. Cannot compute p-value.", UserWarning)
+            warnings.warn(
+                "All surrogate calculations failed. Cannot compute p-value.",
+                UserWarning,
+            )
             p_value = 1.0
 
         return p_value, te_original
 
 
 # Export main class
-__all__ = ['TransferEntropy']
+__all__ = ["TransferEntropy"]

@@ -2,6 +2,7 @@
 Data service for vitalDSP webapp.
 
 This module provides data management and processing services.
+Now integrated with Phase 3A Enhanced Data Service for heavy data processing.
 """
 
 import pandas as pd
@@ -12,9 +13,18 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Import Enhanced Data Service
+try:
+    from .enhanced_data_service import get_enhanced_data_service, EnhancedDataService
+    ENHANCED_DATA_SERVICE_AVAILABLE = True
+    logger.info("Enhanced Data Service available")
+except ImportError as e:
+    ENHANCED_DATA_SERVICE_AVAILABLE = False
+    logger.warning(f"Enhanced Data Service not available: {e}")
+
 
 class DataService:
-    """Service for managing data operations."""
+    """Service for managing data operations with enhanced service integration."""
 
     def __init__(self):
         self.current_data: Optional[pd.DataFrame] = None
@@ -22,11 +32,46 @@ class DataService:
         self._data_store: Dict[str, Any] = {}
         self._column_mappings: Dict[str, Dict[str, str]] = {}
         self._next_id = 1
+        
+        # Initialize Enhanced Data Service if available
+        if ENHANCED_DATA_SERVICE_AVAILABLE:
+            self.enhanced_service = get_enhanced_data_service()
+            logger.info("DataService initialized with Enhanced Data Service")
+        else:
+            self.enhanced_service = None
+            logger.info("DataService initialized with basic functionality only")
 
     def load_data(self, file_path: str) -> Optional[pd.DataFrame]:
-        """Load data from file path."""
+        """Load data from file path using enhanced service for large files."""
         try:
             file_path = Path(file_path)
+            
+            # Check if file exists first
+            if not file_path.exists():
+                logger.error(f"File not found: {file_path}")
+                return None
+                
+            file_size_mb = file_path.stat().st_size / (1024 * 1024)
+            
+            # Use Enhanced Data Service for files > 10MB
+            if self.enhanced_service and file_size_mb > 10:
+                logger.info(f"Using Enhanced Data Service for large file: {file_size_mb:.1f}MB")
+                try:
+                    # Use enhanced service for large files
+                    result = self.enhanced_service.load_data(str(file_path))
+                    if hasattr(result, 'data'):
+                        df = result.data  # DataSegment
+                    else:
+                        df = result  # DataFrame
+                    
+                    self.current_data = df
+                    logger.info(f"Successfully loaded large file using Enhanced Data Service: {df.shape}")
+                    return df
+                except Exception as e:
+                    logger.warning(f"Enhanced Data Service failed, falling back to basic loading: {e}")
+            
+            # Fallback to basic loading for small files or if enhanced service fails
+            logger.info(f"Using basic data loading for file: {file_size_mb:.1f}MB")
             if file_path.suffix.lower() == ".csv":
                 df = pd.read_csv(file_path)
             elif file_path.suffix.lower() == ".txt":
@@ -45,6 +90,14 @@ class DataService:
         except Exception as e:
             logger.error(f"Error loading data: {e}")
             return None
+
+    def get_enhanced_service(self) -> Optional[EnhancedDataService]:
+        """Get the Enhanced Data Service for advanced operations."""
+        return self.enhanced_service
+
+    def is_enhanced_service_available(self) -> bool:
+        """Check if Enhanced Data Service is available."""
+        return ENHANCED_DATA_SERVICE_AVAILABLE and self.enhanced_service is not None
 
     def process_data(
         self, df: pd.DataFrame, sampling_freq: float, time_unit: str = "seconds"
@@ -75,10 +128,10 @@ class DataService:
                 "time_unit": time_unit,
                 "duration": duration,
                 "signal_length": len(signal_data),
-                "mean": float(np.mean(signal_data)),
-                "std": float(np.std(signal_data)),
-                "min": float(np.min(signal_data)),
-                "max": float(np.max(signal_data)),
+                "mean": float(np.mean(signal_data)) if len(signal_data) > 0 else 0.0,
+                "std": float(np.std(signal_data)) if len(signal_data) > 0 else 0.0,
+                "min": float(np.min(signal_data)) if len(signal_data) > 0 else 0.0,
+                "max": float(np.max(signal_data)) if len(signal_data) > 0 else 0.0,
             }
 
         except Exception as e:
@@ -210,7 +263,9 @@ class DataService:
             single_col = df.columns[0]
             mapping["time"] = single_col
             mapping["signal"] = single_col
-            logger.info(f"Single column detected, mapping both time and signal to: {single_col}")
+            logger.info(
+                f"Single column detected, mapping both time and signal to: {single_col}"
+            )
 
         logger.info(f"Auto-detected column mapping: {mapping}")
         return mapping

@@ -84,12 +84,12 @@ class STFT:
 
         # OPTIMIZATION: Pre-compute window function
         window = np.hanning(self.window_size)
-        
+
         # OPTIMIZATION: Vectorized windowing and FFT computation
         for i in range(n_windows):
             start = i * self.hop_size
             end = start + self.window_size
-            
+
             # OPTIMIZATION: Vectorized windowing
             windowed_signal = self.signal[start:end] * window
 

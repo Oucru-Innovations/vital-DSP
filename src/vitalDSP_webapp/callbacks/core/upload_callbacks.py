@@ -26,7 +26,7 @@ import time
 try:
     from vitalDSP_webapp.services.data.data_service import get_data_service
     from vitalDSP_webapp.utils.data_processor import DataProcessor
-    from vitalDSP.utils.data_loader import DataLoader, load_oucru_csv
+    from vitalDSP.utils.data_processing.data_loader import DataLoader, load_oucru_csv
 except ImportError:
     # Fallback imports for testing
     import sys
@@ -56,10 +56,124 @@ except ImportError:
                 t = np.linspace(0, duration, int(sampling_freq * duration))
                 signal = np.sin(2 * np.pi * 1.2 * t) + 0.5 * np.sin(2 * np.pi * 2.4 * t)
                 signal += 0.1 * np.random.randn(len(signal))
-                return pd.DataFrame({'time': t, 'signal': signal})
+                return pd.DataFrame({"time": t, "signal": signal})
 
 
 logger = logging.getLogger(__name__)
+
+
+def load_data_headers_only(
+    file_path, data_format, sampling_freq=None, data_type="auto"
+):
+    """
+    Load only the headers/columns from a data file without parsing the actual data.
+    This is used to show available columns to the user for selection.
+
+    Args:
+        file_path: Path to the data file
+        data_format: Format of the data file
+        sampling_freq: Sampling frequency (optional)
+        data_type: Type of data (auto, ppg, ecg, etc.)
+
+    Returns:
+        tuple: (available_columns, metadata_dict)
+    """
+    logger.info(f"Loading headers only from: {file_path}")
+
+    try:
+        # Always load as normal CSV first to get headers
+        if data_format in ["oucru_csv", "csv", "auto"] or not data_format:
+            # Load as normal CSV to get column names
+            df_preview = pd.read_csv(file_path, nrows=0)
+            available_columns = list(df_preview.columns)
+
+            # Create basic metadata
+            metadata = {
+                "format": "csv",  # Always treat as CSV for header loading
+                "original_format": data_format,  # Keep track of original format
+                "available_columns": available_columns,
+                "file_path": file_path,
+                "sampling_freq": sampling_freq,
+                "data_type": data_type,
+            }
+
+            logger.info(f"CSV headers loaded: {available_columns}")
+            return available_columns, metadata
+
+        else:
+            # For other formats, use DataLoader to get headers
+            if data_format == "auto" or not data_format:
+                ext = Path(file_path).suffix.lower()
+                if ext in [".csv", ".txt"]:
+                    format_type = "csv"
+                elif ext in [".xlsx", ".xls"]:
+                    format_type = "excel"
+                elif ext == ".h5" or ext == ".hdf5":
+                    format_type = "hdf5"
+                elif ext == ".parquet":
+                    format_type = "parquet"
+                elif ext == ".json":
+                    format_type = "json"
+                elif ext == ".mat":
+                    format_type = "matlab"
+                else:
+                    format_type = "csv"
+            else:
+                format_map = {
+                    "csv": "csv",
+                    "excel": "excel",
+                    "hdf5": "hdf5",
+                    "parquet": "parquet",
+                    "json": "json",
+                    "wfdb": "wfdb",
+                    "edf": "edf",
+                    "matlab": "matlab",
+                }
+                format_type = format_map.get(data_format, "csv")
+
+            # Use DataLoader to get headers without loading full data
+            loader = DataLoader(
+                file_path, format=format_type, sampling_rate=sampling_freq
+            )
+
+            # For most formats, we can read just the headers
+            if format_type in ["csv", "excel", "parquet"]:
+                if format_type == "csv":
+                    df_preview = pd.read_csv(file_path, nrows=0)
+                elif format_type == "excel":
+                    df_preview = pd.read_excel(file_path, nrows=0)
+                elif format_type == "parquet":
+                    df_preview = pd.read_parquet(file_path)
+
+                available_columns = list(df_preview.columns)
+            else:
+                # For other formats, we might need to load a small sample
+                try:
+                    df_sample = loader.load()
+                    if isinstance(df_sample, pd.DataFrame):
+                        available_columns = list(df_sample.columns)
+                    else:
+                        available_columns = ["signal"]  # Fallback
+                except Exception as e:
+                    logger.warning(
+                        f"Could not load sample for format {format_type}: {e}"
+                    )
+                    available_columns = ["signal"]  # Fallback
+
+            metadata = {
+                "format": format_type,
+                "available_columns": available_columns,
+                "file_path": file_path,
+                "sampling_freq": sampling_freq,
+                "data_type": data_type,
+            }
+
+            logger.info(f"Headers loaded for format {format_type}: {available_columns}")
+            return available_columns, metadata
+
+    except Exception as e:
+        logger.error(f"Error loading headers: {str(e)}")
+        raise ValueError(f"Error reading file headers: {str(e)}")
 
 
 def load_data_with_format(
@@ -67,6 +181,8 @@ def load_data_with_format(
     data_format,
     sampling_freq=None,
     signal_type=None,
+    signal_column=None,
+    time_column=None,
     oucru_sampling_rate_column=None,
     oucru_interpolate_time=None,
 ):
@@ -78,6 +194,8 @@ def load_data_with_format(
         data_format: Format type ('auto', 'csv', 'oucru_csv', 'excel', etc.)
         sampling_freq: Sampling frequency (optional)
         signal_type: Signal type for OUCRU format (ppg/ecg)
+        signal_column: User-selected signal column name
+        time_column: User-selected time column name
         oucru_sampling_rate_column: Column name for sampling rates in OUCRU format
         oucru_interpolate_time: Whether to interpolate timestamps in OUCRU format
 
@@ -88,53 +206,189 @@ def load_data_with_format(
 
     # Handle OUCRU CSV format specially
     if data_format == "oucru_csv":
-        # Prepare OUCRU-specific parameters
-        signal_type_hint = signal_type if signal_type and signal_type != "auto" else None
-        interpolate = True if oucru_interpolate_time and True in oucru_interpolate_time else False
+        # Validate user's column selections
+        if not signal_column:
+            raise ValueError("Signal column must be specified for OUCRU CSV format")
 
-        # Load using load_oucru_csv function
+        logger.info(f"Using user-selected signal column: {signal_column}")
+        logger.info(f"Using user-selected time column: {time_column}")
+
+        # Check if the signal column contains array strings (OUCRU format)
+        try:
+            # Read a few rows to check the signal column format
+            df_sample = pd.read_csv(file_path, nrows=3)
+            signal_sample = df_sample[signal_column].iloc[0]
+
+            # Check if it's an array string (starts with [ and ends with ])
+            if (
+                isinstance(signal_sample, str)
+                and signal_sample.strip().startswith("[")
+                and signal_sample.strip().endswith("]")
+            ):
+                logger.info(
+                    f"Detected OUCRU format: signal column contains array strings"
+                )
+                is_oucru_format = True
+            else:
+                logger.info(
+                    f"Detected normal CSV format: signal column contains individual values"
+                )
+                is_oucru_format = False
+
+        except Exception as e:
+            logger.warning(f"Could not detect format from signal column: {e}")
+            is_oucru_format = False
+
+        if is_oucru_format:
+            # Process as OUCRU CSV format
+            logger.info("Processing as OUCRU CSV format")
+            logger.info(
+                f"Signal column '{signal_column}' contains array strings - will expand"
+            )
+        else:
+            # Process as normal CSV format
+            logger.info("Processing as normal CSV format")
+            logger.info(f"Signal column '{signal_column}' contains individual values")
+            # Fall through to normal CSV processing below
+            data_format = "csv"
+
+        # Prepare OUCRU-specific parameters
+        signal_type_hint = (
+            signal_type if signal_type and signal_type != "auto" else None
+        )
+        interpolate = (
+            True if oucru_interpolate_time and True in oucru_interpolate_time else False
+        )
+
+        # Load using load_oucru_csv function with user's column selections
         signal_data, oucru_metadata = load_oucru_csv(
             file_path,
+            time_column=time_column or "timestamp",  # Use user's time column selection
+            signal_column=signal_column,  # Use user's signal column selection
             sampling_rate=sampling_freq,
             signal_type_hint=signal_type_hint,
             sampling_rate_column=oucru_sampling_rate_column,
             interpolate_time=interpolate,
         )
 
+        logger.info(f"OUCRU CSV processing completed:")
+        logger.info(f"  Signal data shape: {signal_data.shape}")
+        logger.info(f"  Signal data type: {type(signal_data)}")
+        logger.info(f"  Metadata keys: {list(oucru_metadata.keys())}")
+        if "timestamps" in oucru_metadata:
+            logger.info(f"  Timestamps type: {type(oucru_metadata['timestamps'])}")
+            if isinstance(oucru_metadata["timestamps"], pd.DataFrame):
+                logger.info(
+                    f"  Timestamps DataFrame shape: {oucru_metadata['timestamps'].shape}"
+                )
+                logger.info(
+                    f"  Timestamps DataFrame columns: {list(oucru_metadata['timestamps'].columns)}"
+                )
+
         # Convert to DataFrame if not already
         if not isinstance(signal_data, pd.DataFrame):
-            # Assume signal_data is the signal array
-            time = np.arange(len(signal_data)) / oucru_metadata.get("sampling_rate", 100)
-            df = pd.DataFrame({"time": time, "signal": signal_data})
+            # signal_data is a numpy array, create DataFrame with timestamps
+            if interpolate and "timestamps" in oucru_metadata:
+                # Use the timestamps DataFrame from metadata if available
+                timestamps_df = oucru_metadata["timestamps"]
+                if isinstance(timestamps_df, pd.DataFrame):
+                    # The timestamps DataFrame already contains the expanded signal data
+                    df = timestamps_df.copy()
+                    logger.info(f"Using timestamps DataFrame from metadata: {df.shape}")
+                    logger.info(f"Timestamps DataFrame columns: {list(df.columns)}")
+                else:
+                    # Fallback: create timestamps
+                    timestamps = np.arange(len(signal_data)) / oucru_metadata.get(
+                        "sampling_rate", sampling_freq
+                    )
+                    df = pd.DataFrame({"time": timestamps, "signal": signal_data})
+            else:
+                # Create simple DataFrame without interpolated timestamps
+                timestamps = np.arange(len(signal_data)) / oucru_metadata.get(
+                    "sampling_rate", sampling_freq
+                )
+                df = pd.DataFrame({"time": timestamps, "signal": signal_data})
         else:
             df = signal_data
 
         # Use metadata from load_oucru_csv
-        metadata = oucru_metadata
+        metadata = oucru_metadata.copy()
+        # Add user's column selections to metadata
+        metadata["detected_signal_column"] = signal_column
+        metadata["detected_time_column"] = time_column
+
+        # Convert any DataFrame objects to JSON-serializable format
+        if "timestamps" in metadata and isinstance(
+            metadata["timestamps"], pd.DataFrame
+        ):
+            # Convert timestamps DataFrame to dict, ensuring timestamps are strings
+            timestamps_df = metadata["timestamps"].copy()
+            for col in timestamps_df.columns:
+                if pd.api.types.is_datetime64_any_dtype(timestamps_df[col]):
+                    timestamps_df[col] = timestamps_df[col].astype(str)
+            metadata["timestamps"] = timestamps_df.to_dict("records")
+        if "row_data" in metadata and isinstance(metadata["row_data"], pd.DataFrame):
+            # Convert row_data DataFrame to dict, ensuring timestamps are strings
+            row_data_df = metadata["row_data"].copy()
+            for col in row_data_df.columns:
+                if pd.api.types.is_datetime64_any_dtype(row_data_df[col]):
+                    row_data_df[col] = row_data_df[col].astype(str)
+            metadata["row_data"] = row_data_df.to_dict("records")
+
+    elif data_format == "csv":
+        # Handle normal CSV format
+        logger.info(f"Processing normal CSV with signal column: {signal_column}")
+
+        # Load the CSV file
+        df = pd.read_csv(file_path)
+
+        # Validate that the selected columns exist
+        if signal_column and signal_column not in df.columns:
+            raise ValueError(
+                f"Signal column '{signal_column}' not found in CSV. Available columns: {list(df.columns)}"
+            )
+
+        if time_column and time_column not in df.columns:
+            raise ValueError(
+                f"Time column '{time_column}' not found in CSV. Available columns: {list(df.columns)}"
+            )
+
+        # Create metadata
+        metadata = {
+            "format": "csv",
+            "file_path": file_path,
+            "sampling_freq": sampling_freq,
+            "data_type": signal_type,
+            "signal_column": signal_column,
+            "time_column": time_column,
+            "n_rows": len(df),
+            "n_columns": len(df.columns),
+            "columns": list(df.columns),
+        }
+
+        logger.info(f"Normal CSV loaded: {df.shape}, columns: {list(df.columns)}")
 
     else:
         # Use DataLoader for other formats
-        loader = DataLoader(file_path, sampling_rate=sampling_freq)
-
-        # Determine format enum
+        # Determine format enum first
         if data_format == "auto" or not data_format:
             # Auto-detect based on file extension
             ext = Path(file_path).suffix.lower()
             if ext in [".csv", ".txt"]:
-                df, metadata = loader.load(format_type="csv")
+                format_type = "csv"
             elif ext in [".xlsx", ".xls"]:
-                df, metadata = loader.load(format_type="excel")
+                format_type = "excel"
             elif ext == ".h5" or ext == ".hdf5":
-                df, metadata = loader.load(format_type="hdf5")
+                format_type = "hdf5"
             elif ext == ".parquet":
-                df, metadata = loader.load(format_type="parquet")
+                format_type = "parquet"
             elif ext == ".json":
-                df, metadata = loader.load(format_type="json")
+                format_type = "json"
             elif ext == ".mat":
-                df, metadata = loader.load(format_type="matlab")
+                format_type = "matlab"
             else:
                 # Try CSV as default
-                df, metadata = loader.load(format_type="csv")
+                format_type = "csv"
         else:
             # Use specified format
             format_map = {
@@ -148,7 +402,25 @@ def load_data_with_format(
                 "matlab": "matlab",
             }
             format_type = format_map.get(data_format, "csv")
-            df, metadata = loader.load(format_type=format_type)
+
+        # Initialize DataLoader with the correct format
+        loader = DataLoader(file_path, format=format_type, sampling_rate=sampling_freq)
+
+        # Load the data
+        df = loader.load()
+
+        # Get metadata from loader
+        metadata = loader.metadata.copy()
+
+        # Convert any DataFrame objects to JSON-serializable format
+        for key, value in metadata.items():
+            if isinstance(value, pd.DataFrame):
+                # Convert DataFrame to dict, ensuring timestamps are strings
+                df_copy = value.copy()
+                for col in df_copy.columns:
+                    if pd.api.types.is_datetime64_any_dtype(df_copy[col]):
+                        df_copy[col] = df_copy[col].astype(str)
+                metadata[key] = df_copy.to_dict("records")
 
     # Add signal type to metadata if provided
     if signal_type and signal_type != "auto":
@@ -180,6 +452,33 @@ def register_upload_callbacks(app):
         if data_format == "oucru_csv":
             return {"display": "block"}
         return {"display": "none"}
+
+    # Callback to set default column values based on data config
+    @app.callback(
+        [
+            Output("time-column", "value"),
+            Output("signal-column", "value"),
+            Output("red-column", "value"),
+            Output("ir-column", "value"),
+            Output("waveform-column", "value"),
+        ],
+        Input("store-data-config", "data"),
+        prevent_initial_call=True,
+    )
+    def set_default_column_values(data_config):
+        """Set default values for column dropdowns based on detected columns"""
+        if not data_config:
+            return no_update, no_update, no_update, no_update, no_update
+
+        # Set default signal column for OUCRU CSV
+        default_signal_column = data_config.get("default_signal_column")
+        if default_signal_column:
+            logger.info(
+                f"Setting default signal column value to: {default_signal_column}"
+            )
+            return no_update, default_signal_column, no_update, no_update, no_update
+
+        return no_update, no_update, no_update, no_update, no_update
 
     @app.callback(
         [
@@ -267,37 +566,132 @@ def register_upload_callbacks(app):
                 decoded = base64.b64decode(content_string)
 
                 # Create temporary file
-                with tempfile.NamedTemporaryFile(delete=False, suffix=Path(filename).suffix) as tmp_file:
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=Path(filename).suffix
+                ) as tmp_file:
                     tmp_file.write(decoded)
                     temp_path = tmp_file.name
 
                 try:
-                    # Use DataLoader to load the file based on format
-                    df, metadata = load_data_with_format(
+                    # Load headers only for file uploads too
+                    available_columns, metadata = load_data_headers_only(
                         temp_path,
                         data_format,
                         sampling_freq,
                         data_type,
-                        oucru_sampling_rate_column,
-                        oucru_interpolate_time,
                     )
-                finally:
-                    # Clean up temp file
+
+                    # Store the temp file path for later processing
+                    metadata["file_path"] = temp_path
+
+                except Exception as e:
+                    # Clean up temp file on error
                     try:
                         os.unlink(temp_path)
                     except:
                         pass
+                    raise e
+
+                # Store headers and metadata for later processing
+                data_service = get_data_service()
+                data_service.current_headers = available_columns
+                data_service.current_metadata = metadata
+
+                # Create column options for dropdowns
+                column_options = [
+                    {"label": col, "value": col} for col in available_columns
+                ]
+
+                # Auto-detect potential signal columns
+                potential_signal_columns = [
+                    "signal",
+                    "ecg",
+                    "ppg",
+                    "rri",
+                    "rr",
+                    "hr",
+                    "waveform",
+                    "pleth",
+                ]
+                detected_signal_column = None
+                for col in potential_signal_columns:
+                    if col in available_columns:
+                        detected_signal_column = col
+                        break
+
+                # Auto-detect potential time columns
+                potential_time_columns = ["timestamp", "time", "ts", "datetime"]
+                detected_time_column = None
+                for col in potential_time_columns:
+                    if col in available_columns:
+                        detected_time_column = col
+                        break
+
+                # Update metadata with detected columns
+                metadata["detected_signal_column"] = detected_signal_column
+                metadata["detected_time_column"] = detected_time_column
+
+                # Create preview message
+                preview_message = f"✅ File uploaded successfully!\n\n"
+                preview_message += f"📁 File: {filename}\n"
+                preview_message += f"📊 Format: {metadata['format']}\n"
+                preview_message += (
+                    f"📋 Available columns: {', '.join(available_columns)}\n"
+                )
+                if detected_signal_column:
+                    preview_message += (
+                        f"🎯 Auto-detected signal column: {detected_signal_column}\n"
+                    )
+                if detected_time_column:
+                    preview_message += (
+                        f"⏰ Auto-detected time column: {detected_time_column}\n"
+                    )
+                preview_message += f"\n💡 Please select your columns below and click 'Process Data' to continue."
+
+                return (
+                    preview_message,
+                    no_update,  # store-uploaded-data.data
+                    metadata,  # store-data-config.data
+                    html.Div(
+                        [
+                            html.H5("📋 Available Columns", className="mb-3"),
+                            html.P(
+                                f"Found {len(available_columns)} columns in the file:",
+                                className="text-muted mb-3",
+                            ),
+                            html.Ul(
+                                [html.Li(col) for col in available_columns],
+                                className="list-unstyled",
+                            ),
+                            html.Hr(),
+                            html.P(
+                                "Please configure your column mapping below and click 'Process Data' to continue.",
+                                className="text-info",
+                            ),
+                        ]
+                    ),
+                    column_options,  # time-column.options
+                    column_options,  # signal-column.options
+                    column_options,  # red-column.options
+                    column_options,  # ir-column.options
+                    column_options,  # waveform-column.options
+                    no_update,  # upload-progress-section.children
+                    {"display": "none"},  # upload-progress-section.style
+                    False,  # btn-load-path.disabled
+                    False,  # btn-load-sample.disabled
+                    no_update,  # file-path-loading.children
+                    {"display": "none"},  # file-path-loading.style
+                    "upload-area",  # upload-data.className
+                )
 
             elif trigger_id == "btn-load-path" and file_path:
-                # Handle load from file path using DataLoader
+                # Handle load from file path - load headers only for column selection
                 try:
-                    df, metadata = load_data_with_format(
+                    available_columns, metadata = load_data_headers_only(
                         file_path,
                         data_format,
                         sampling_freq,
                         data_type,
-                        oucru_sampling_rate_column,
-                        oucru_interpolate_time,
                     )
                 except Exception as e:
                     return (
@@ -317,8 +711,99 @@ def register_upload_callbacks(app):
                         False,
                         no_update,
                         {"display": "none"},
-                        "upload-area",
                     )
+
+                # Store headers and metadata for later processing
+                data_service = get_data_service()
+                data_service.current_headers = available_columns
+                data_service.current_metadata = metadata
+
+                # Create column options for dropdowns
+                column_options = [
+                    {"label": col, "value": col} for col in available_columns
+                ]
+
+                # Auto-detect potential signal columns
+                potential_signal_columns = [
+                    "signal",
+                    "ecg",
+                    "ppg",
+                    "rri",
+                    "rr",
+                    "hr",
+                    "waveform",
+                    "pleth",
+                ]
+                detected_signal_column = None
+                for col in potential_signal_columns:
+                    if col in available_columns:
+                        detected_signal_column = col
+                        break
+
+                # Auto-detect potential time columns
+                potential_time_columns = ["timestamp", "time", "ts", "datetime"]
+                detected_time_column = None
+                for col in potential_time_columns:
+                    if col in available_columns:
+                        detected_time_column = col
+                        break
+
+                # Update metadata with detected columns
+                metadata["detected_signal_column"] = detected_signal_column
+                metadata["detected_time_column"] = detected_time_column
+
+                # Create preview message
+                preview_message = f"✅ File loaded successfully!\n\n"
+                preview_message += f"📁 File: {Path(file_path).name}\n"
+                preview_message += f"📊 Format: {metadata['format']}\n"
+                preview_message += (
+                    f"📋 Available columns: {', '.join(available_columns)}\n"
+                )
+                if detected_signal_column:
+                    preview_message += (
+                        f"🎯 Auto-detected signal column: {detected_signal_column}\n"
+                    )
+                if detected_time_column:
+                    preview_message += (
+                        f"⏰ Auto-detected time column: {detected_time_column}\n"
+                    )
+                preview_message += f"\n💡 Please select your columns below and click 'Process Data' to continue."
+
+                return (
+                    preview_message,
+                    no_update,  # store-uploaded-data.data
+                    metadata,  # store-data-config.data
+                    html.Div(
+                        [
+                            html.H5("📋 Available Columns", className="mb-3"),
+                            html.P(
+                                f"Found {len(available_columns)} columns in the file:",
+                                className="text-muted mb-3",
+                            ),
+                            html.Ul(
+                                [html.Li(col) for col in available_columns],
+                                className="list-unstyled",
+                            ),
+                            html.Hr(),
+                            html.P(
+                                "Please configure your column mapping below and click 'Process Data' to continue.",
+                                className="text-info",
+                            ),
+                        ]
+                    ),
+                    column_options,  # time-column.options
+                    column_options,  # signal-column.options
+                    column_options,  # red-column.options
+                    column_options,  # ir-column.options
+                    column_options,  # waveform-column.options
+                    no_update,  # upload-progress-section.children
+                    {"display": "none"},  # upload-progress-section.style
+                    False,  # btn-load-path.disabled
+                    False,  # btn-load-sample.disabled
+                    no_update,  # file-path-loading.children
+                    {"display": "none"},  # file-path-loading.style
+                    "upload-area",  # upload-data.className
+                )
 
             elif trigger_id == "btn-load-sample":
                 # Handle sample data generation
@@ -326,75 +811,73 @@ def register_upload_callbacks(app):
                 filename = "sample_data.csv"
                 metadata = {"sampling_rate": sampling_freq or 1000}
 
-            # Validate that we have data
-            if df is None:
-                raise ValueError("Failed to load data")
+                # Get column options for dropdowns
+                column_options = [{"label": col, "value": col} for col in df.columns]
 
-            # Get column options for dropdowns
-            column_options = [{"label": col, "value": col} for col in df.columns]
+                # Process the data - merge metadata with config
+                sampling_freq = metadata.get("sampling_rate", sampling_freq)
+                time_unit = time_unit or "seconds"  # Default time unit
 
-            # Process the data - merge metadata with config
-            sampling_freq = metadata.get("sampling_rate", sampling_freq or 100)
-            time_unit = time_unit or "seconds"  # Default time unit
+                # Create data_info from metadata and user config
+                data_info = {
+                    "filename": "sample_data.csv",
+                    "sampling_freq": sampling_freq,
+                    "time_unit": time_unit,
+                    "format": data_format or "auto",
+                    "rows": len(df),
+                    "columns": len(df.columns),
+                    "duration": len(df) / sampling_freq if sampling_freq else None,
+                }
 
-            # Create data_info from metadata and user config
-            data_info = {
-                "filename": filename if trigger_id != "btn-load-sample" else "sample_data.csv",
-                "sampling_freq": sampling_freq,
-                "time_unit": time_unit,
-                "format": data_format or "auto",
-                "rows": len(df),
-                "columns": len(df.columns),
-                "duration": len(df) / sampling_freq if sampling_freq else None,
-            }
+                # Add metadata from loader
+                data_info.update(metadata)
 
-            # Add metadata from loader
-            data_info.update(metadata)
+                # Add signal type to the data info
+                logger.info(f"Signal type from upload: {data_type}")
+                if data_type and data_type != "auto":
+                    data_info["signal_type"] = data_type.upper()
+                    logger.info(f"Set signal_type to: {data_info['signal_type']}")
+                else:
+                    data_info["signal_type"] = metadata.get("signal_type", "AUTO")
+                    logger.info(f"Set signal_type to: {data_info['signal_type']}")
 
-            # Add signal type to the data info
-            logger.info(f"Signal type from upload: {data_type}")
-            if data_type and data_type != "auto":
-                data_info["signal_type"] = data_type.upper()
-                logger.info(f"Set signal_type to: {data_info['signal_type']}")
-            else:
-                data_info["signal_type"] = metadata.get("signal_type", "AUTO")
-                logger.info(f"Set signal_type to: {data_info['signal_type']}")
+                # Store data temporarily (will be processed after column mapping)
+                data_service = get_data_service()
+                data_service.current_data = df
+                data_service.update_config(data_info)
 
-            # Store data temporarily (will be processed after column mapping)
-            data_service = get_data_service()
-            data_service.current_data = df
-            data_service.update_config(data_info)
+                # Generate preview
+                preview = create_data_preview(df, data_info)
 
-            # Generate preview
-            preview = create_data_preview(df, data_info)
+                format_display = (
+                    data_format if data_format != "auto" else "Auto-detected"
+                )
+                status = f"✅ Data loaded successfully [{format_display}]: {data_info.get('filename', filename)} ({len(df)} rows, {len(df.columns)} columns, {sampling_freq} Hz)"
 
-            format_display = data_format if data_format != "auto" else "Auto-detected"
-            status = f"✅ Data loaded successfully [{format_display}]: {data_info.get('filename', filename)} ({len(df)} rows, {len(df.columns)} columns, {sampling_freq} Hz)"
+                # Hide progress bar after completion and re-enable buttons
+                progress_style = {"display": "none"}
+                buttons_disabled = False
+                file_path_loading_style = {"display": "none"}
+                upload_area_class = "upload-area"
 
-            # Hide progress bar after completion and re-enable buttons
-            progress_style = {"display": "none"}
-            buttons_disabled = False
-            file_path_loading_style = {"display": "none"}
-            upload_area_class = "upload-area"
-
-            return (
-                status,
-                df.to_dict("records"),
-                data_info,
-                preview,
-                column_options,
-                column_options,
-                column_options,
-                column_options,
-                column_options,
-                progress_bar,
-                progress_style,
-                buttons_disabled,
-                buttons_disabled,
-                file_path_loading,
-                file_path_loading_style,
-                upload_area_class,
-            )
+                return (
+                    status,
+                    df.to_dict("records"),
+                    data_info,
+                    preview,
+                    column_options,
+                    column_options,
+                    column_options,
+                    column_options,
+                    column_options,
+                    progress_bar,
+                    progress_style,
+                    buttons_disabled,
+                    buttons_disabled,
+                    file_path_loading,
+                    file_path_loading_style,
+                    "upload-area",  # upload-data.className
+                )
 
         except Exception as e:
             logging.error(f"Error in upload: {str(e)}")
@@ -420,7 +903,6 @@ def register_upload_callbacks(app):
                 buttons_disabled,
                 file_path_loading,
                 file_path_loading_style,
-                upload_area_class,
             )
 
     @app.callback(
@@ -653,9 +1135,42 @@ def register_upload_callbacks(app):
         try:
             # Process the data (removed artificial delay)
 
-            df = pd.DataFrame(uploaded_data)
+            # Parse the actual signal data based on user's column selection
+            data_service = get_data_service()
+
+            # Get the stored metadata and headers
+            metadata = data_service.current_metadata
+            if not metadata:
+                raise ValueError("No file metadata found. Please upload a file first.")
+
+            file_path = metadata.get("file_path")
+            if not file_path:
+                raise ValueError("No file path found in metadata.")
+
+            logger.info(f"Processing signal data from: {file_path}")
+            logger.info(f"User selected columns: time={time_col}, signal={signal_col}")
+
+            # Parse the actual signal data using the user's column selection
+            # Determine format based on original format and signal column content
+            original_format = metadata.get("original_format", "csv")
+
+            df, processed_metadata = load_data_with_format(
+                file_path,
+                original_format,  # Use original format (oucru_csv, csv, etc.)
+                metadata.get("sampling_freq"),
+                metadata.get("data_type"),
+                signal_column=signal_col,  # Use user's signal column selection
+                time_column=time_col,  # Use user's time column selection
+                oucru_interpolate_time=[
+                    True
+                ],  # Enable timestamp interpolation for OUCRU CSV
+            )
+
+            logger.info(f"Parsed signal data shape: {df.shape}")
+            logger.info(f"Parsed signal data columns: {list(df.columns)}")
 
             # Update data config with column mapping
+            # Use the user's actual column selections from the frontend UI
             column_mapping = {
                 "time": time_col,
                 "signal": signal_col,
@@ -664,14 +1179,104 @@ def register_upload_callbacks(app):
                 "waveform": waveform_col,
             }
 
+            # Log the user's selections and available columns for debugging
+            logger.info(f"User selected columns: {column_mapping}")
+            logger.info(f"Available columns in processed data: {list(df.columns)}")
+
+            # For OUCRU CSV, we need to ensure the user's selected columns exist in the processed data
+            if original_format == "oucru_csv":
+                logger.info("OUCRU CSV format detected - validating column selections")
+                logger.info(f"Processed OUCRU data columns: {list(df.columns)}")
+                logger.info(f"User selected signal column: {signal_col}")
+                logger.info(f"User selected time column: {time_col}")
+
+                # For OUCRU CSV, the processed data should have standardized column names
+                # Map user selections to the actual processed column names
+                if "signal" in df.columns:
+                    logger.info("Using 'signal' column from processed OUCRU data")
+                    column_mapping["signal"] = "signal"
+                else:
+                    logger.warning("No 'signal' column found in processed OUCRU data")
+
+                if "timestamp" in df.columns:
+                    logger.info("Using 'timestamp' column from processed OUCRU data")
+                    column_mapping["time"] = "timestamp"
+                elif "time" in df.columns:
+                    logger.info("Using 'time' column from processed OUCRU data")
+                    column_mapping["time"] = "time"
+                else:
+                    logger.warning("No time column found in processed OUCRU data")
+
             # Debug: Log the data_config before and after
             logger.info(f"Data config before column mapping: {data_config}")
             data_config["column_mapping"] = column_mapping
             logger.info(f"Data config after column mapping: {data_config}")
 
+            # Log essential signal data info (optimized for performance)
+            logger.info("=== SIGNAL DATA SUMMARY ===")
+            logger.info(f"DataFrame shape: {df.shape}")
+            logger.info(f"DataFrame columns: {list(df.columns)}")
+
+            # Log signal column summary (not full data)
+            signal_col = column_mapping.get("signal")
+            if signal_col and signal_col in df.columns:
+                signal_data = df[signal_col]
+
+                # Check if signal data is numeric before trying to format min/max
+                if pd.api.types.is_numeric_dtype(signal_data):
+                    logger.info(
+                        f"Signal column '{signal_col}': dtype={signal_data.dtype}, range={signal_data.min():.3f} to {signal_data.max():.3f}, count={signal_data.count()}"
+                    )
+                else:
+                    logger.info(
+                        f"Signal column '{signal_col}': dtype={signal_data.dtype}, count={signal_data.count()}, unique_values={signal_data.nunique()}"
+                    )
+
+                # Check for non-numeric values (only log if there are issues)
+                try:
+                    numeric_data = pd.to_numeric(signal_data, errors="coerce")
+                    non_numeric_count = (
+                        numeric_data.isnull().sum() - signal_data.isnull().sum()
+                    )
+                    if non_numeric_count > 0:
+                        logger.warning(
+                            f"Signal column '{signal_col}' contains {non_numeric_count} non-numeric values!"
+                        )
+                except Exception as e:
+                    logger.error(f"Error checking numeric values: {str(e)}")
+            else:
+                logger.error(f"Signal column '{signal_col}' not found in DataFrame!")
+
+            # Log time column summary
+            time_col = column_mapping.get("time")
+            if time_col and time_col in df.columns:
+                time_data = df[time_col]
+                logger.info(
+                    f"Time column '{time_col}': dtype={time_data.dtype}, count={time_data.count()}"
+                )
+            else:
+                logger.error(f"Time column '{time_col}' not found in DataFrame!")
+
+            logger.info("=== END SIGNAL DATA SUMMARY ===")
+
             # Store the final processed data
             data_service = get_data_service()
+            logger.info(
+                f"Storing processed data: shape={df.shape}, columns={list(df.columns)}"
+            )
             data_id = data_service.store_data(df, data_config)
+            logger.info(f"Data stored successfully with ID: {data_id}")
+
+            # Clean up temp file if it exists
+            temp_file_path = metadata.get("file_path")
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.unlink(temp_file_path)
+                    logger.info(f"Cleaned up temp file: {temp_file_path}")
+                except Exception as e:
+                    logger.warning(
+                        f"Could not clean up temp file {temp_file_path}: {str(e)}"
+                    )
 
             # Update status
             status = f"✅ Data processed and stored successfully! Data ID: {data_id}"

@@ -6,7 +6,9 @@ import warnings
 # from scipy.spatial.distance import cdist
 from scipy.spatial import KDTree
 from scipy.spatial import distance as sp_distance
-from ..utils.performance_monitoring import monitor_feature_extraction_operation
+from ..utils.quality_performance.performance_monitoring import (
+    monitor_feature_extraction_operation,
+)
 
 
 class NonlinearFeatures:
@@ -185,7 +187,7 @@ class NonlinearFeatures:
             """
             Lmk = np.zeros((kmax, kmax))
             N = len(signal)
-            
+
             # OPTIMIZATION: Vectorized computation for all k and m values
             for k in range(1, kmax + 1):
                 for m in range(0, k):
@@ -195,14 +197,14 @@ class NonlinearFeatures:
                         # Compute differences vectorized
                         diffs = np.abs(np.diff(signal[indices]))
                         Lm = np.sum(diffs)
-                        
+
                         # Normalize by curve length
                         curve_length = len(indices) - 1
                         if curve_length > 0:
                             Lmk[m, k - 1] = Lm * (N - 1) / (curve_length * k * k)
 
             Lk = np.sum(Lmk, axis=0) / kmax
-            
+
             # OPTIMIZATION: Vectorized log computation
             log_range = np.log(np.arange(1, kmax + 1))
             if np.any(Lk == 0):
@@ -243,30 +245,36 @@ class NonlinearFeatures:
             """
             if max_t <= 1:
                 return 0  # Prevent division errors with too short signals
-            
+
             # OPTIMIZATION: Vectorized phase space creation
             phase_space = np.array([self.signal[i::time_delay] for i in range(dim)]).T
-            
+
             # OPTIMIZATION: Use spatial data structure for nearest neighbor search
             try:
                 from scipy.spatial import cKDTree
+
                 tree = cKDTree(phase_space)
-                
+
                 divergences = []
                 for i in range(len(phase_space) - max_t - 1):
                     # Find nearest neighbor efficiently
-                    distances, indices = tree.query(phase_space[i], k=2)  # k=2 to get nearest neighbor (excluding self)
-                    
+                    distances, indices = tree.query(
+                        phase_space[i], k=2
+                    )  # k=2 to get nearest neighbor (excluding self)
+
                     if len(distances) > 1 and distances[1] > epsilon:
                         # Find the corresponding point after max_t steps
                         neighbor_idx = indices[1]
                         if neighbor_idx + max_t < len(phase_space):
                             d0 = distances[1]
-                            d1 = np.linalg.norm(phase_space[i + max_t] - phase_space[neighbor_idx + max_t])
-                            
+                            d1 = np.linalg.norm(
+                                phase_space[i + max_t]
+                                - phase_space[neighbor_idx + max_t]
+                            )
+
                             if d1 > epsilon:
                                 divergences.append(np.log(d1 / d0))
-                
+
             except ImportError:
                 # Fallback to original implementation if scipy not available
                 divergences = []
@@ -354,11 +362,11 @@ class NonlinearFeatures:
                 # Process segments in batches to reduce overhead
                 batch_size = min(100, n_segments)
                 trends = np.zeros_like(segments)
-                
+
                 for batch_start in range(0, n_segments, batch_size):
                     batch_end = min(batch_start + batch_size, n_segments)
                     batch_segments = segments[batch_start:batch_end]
-                    
+
                     # Vectorized polynomial fitting for batch
                     for i, segment in enumerate(batch_segments):
                         coeffs = np.polyfit(x, segment, order)
@@ -374,9 +382,11 @@ class NonlinearFeatures:
         fluctuation_sizes = np.array(fluctuation_sizes)
         scales = scales[: len(fluctuation_sizes)]
 
-        # Logarithms of scales and fluctuation sizes
-        log_scales = np.log(scales)
-        log_fluctuation_sizes = np.log(fluctuation_sizes)
+        # Logarithms of scales and fluctuation sizes with safety checks
+        log_scales = np.log(np.maximum(scales, 1e-10))  # Avoid log(0)
+        log_fluctuation_sizes = np.log(
+            np.maximum(fluctuation_sizes, 1e-10)
+        )  # Avoid log(0)
 
         # Linear regression to find the scaling exponent (alpha)
         dfa_alpha = np.polyfit(log_scales, log_fluctuation_sizes, 1)[0]
@@ -408,9 +418,12 @@ class NonlinearFeatures:
         var_diff = np.var(diff, ddof=1)
         var_nn = np.var(nn_intervals, ddof=1)
 
-        # Calculate SD1 and SD2
-        sd1 = np.sqrt(var_diff / 2)
-        sd2 = np.sqrt(2 * var_nn - var_diff / 2)
+        # Calculate SD1 and SD2 with safety checks
+        sd1_arg = var_diff / 2
+        sd1 = np.sqrt(np.maximum(sd1_arg, 0))  # Ensure non-negative
+
+        sd2_arg = 2 * var_nn - var_diff / 2
+        sd2 = np.sqrt(np.maximum(sd2_arg, 0))  # Ensure non-negative
 
         return sd1, sd2
 
@@ -442,8 +455,18 @@ class NonlinearFeatures:
                 "laminarity": 0,
             }
 
-        # Normalize the signal to zero mean and unit variance
-        signal = (signal - np.mean(signal)) / np.std(signal)
+        # Normalize the signal to zero mean and unit variance with safety checks
+        signal_mean = np.mean(signal)
+        signal_std = np.std(signal)
+        if signal_std > 0:
+            signal = (signal - signal_mean) / signal_std
+        else:
+            # If signal is constant, return zero recurrence features
+            return {
+                "recurrence_rate": 0,
+                "determinism": 0,
+                "laminarity": 0,
+            }
 
         # Create phase space (embedding dimension = 2)
         phase_space = np.column_stack((signal[:-1], signal[1:]))
@@ -470,9 +493,12 @@ class NonlinearFeatures:
         diffs = phase_space[idx1] - phase_space[idx2]
         distances = np.sqrt(np.sum(diffs**2, axis=1))
 
-        # Compute approximate recurrence rate
+        # Compute approximate recurrence rate with safety check
         recurrences = distances < threshold
-        recurrence_rate = np.sum(recurrences) / sample_size
+        if sample_size > 0:
+            recurrence_rate = np.sum(recurrences) / sample_size
+        else:
+            recurrence_rate = 0
 
         # Approximate determinism and laminarity
         # Sort indices to detect line structures

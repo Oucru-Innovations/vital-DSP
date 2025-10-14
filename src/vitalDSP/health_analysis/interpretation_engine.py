@@ -409,8 +409,16 @@ class InterpretationEngine:
 
         # Check SDNN-RMSSD correlation
         if "sdnn" in hrv_features and "rmssd" in hrv_features:
-            sdnn_value = feature_data["sdnn"].get("value", 0) if isinstance(feature_data["sdnn"], dict) else feature_data["sdnn"]
-            rmssd_value = feature_data["rmssd"].get("value", 0) if isinstance(feature_data["rmssd"], dict) else feature_data["rmssd"]
+            sdnn_value = (
+                feature_data["sdnn"].get("value", 0)
+                if isinstance(feature_data["sdnn"], dict)
+                else feature_data["sdnn"]
+            )
+            rmssd_value = (
+                feature_data["rmssd"].get("value", 0)
+                if isinstance(feature_data["rmssd"], dict)
+                else feature_data["rmssd"]
+            )
             correlation_analysis = self._analyze_sdnn_rmssd_correlation(
                 sdnn_value, rmssd_value, segment_duration
             )
@@ -419,8 +427,16 @@ class InterpretationEngine:
 
         # Check RMSSD-NN50 correlation
         if "rmssd" in hrv_features and "nn50" in hrv_features:
-            rmssd_value = feature_data["rmssd"].get("value", 0) if isinstance(feature_data["rmssd"], dict) else feature_data["rmssd"]
-            nn50_value = feature_data["nn50"].get("value", 0) if isinstance(feature_data["nn50"], dict) else feature_data["nn50"]
+            rmssd_value = (
+                feature_data["rmssd"].get("value", 0)
+                if isinstance(feature_data["rmssd"], dict)
+                else feature_data["rmssd"]
+            )
+            nn50_value = (
+                feature_data["nn50"].get("value", 0)
+                if isinstance(feature_data["nn50"], dict)
+                else feature_data["nn50"]
+            )
             correlation_analysis = self._analyze_rmssd_nn50_correlation(
                 rmssd_value, nn50_value, segment_duration
             )
@@ -429,8 +445,16 @@ class InterpretationEngine:
 
         # Check SDNN-NN50 correlation
         if "sdnn" in hrv_features and "nn50" in hrv_features:
-            sdnn_value = feature_data["sdnn"].get("value", 0) if isinstance(feature_data["sdnn"], dict) else feature_data["sdnn"]
-            nn50_value = feature_data["nn50"].get("value", 0) if isinstance(feature_data["nn50"], dict) else feature_data["nn50"]
+            sdnn_value = (
+                feature_data["sdnn"].get("value", 0)
+                if isinstance(feature_data["sdnn"], dict)
+                else feature_data["sdnn"]
+            )
+            nn50_value = (
+                feature_data["nn50"].get("value", 0)
+                if isinstance(feature_data["nn50"], dict)
+                else feature_data["nn50"]
+            )
             correlation_analysis = self._analyze_sdnn_nn50_correlation(
                 sdnn_value, nn50_value, segment_duration
             )

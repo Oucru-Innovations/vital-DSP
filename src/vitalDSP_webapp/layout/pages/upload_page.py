@@ -21,7 +21,215 @@ def upload_layout():
                 ],
                 className="text-center mb-4",
             ),
-            # Main Content Container
+            # Data Configuration Section - MOVED TO TOP
+            dbc.Card(
+                [
+                    dbc.CardHeader(
+                        [
+                            html.I(className="fas fa-cog me-2 text-info"),
+                            html.Span("Data Configuration", className="fw-bold"),
+                        ],
+                        className="bg-light border-0",
+                    ),
+                    dbc.CardBody(
+                        [
+                            # Row 1: Format, Signal Type, Sampling Frequency
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            html.Label(
+                                                "Data Format",
+                                                className="form-label fw-semibold",
+                                            ),
+                                            dbc.Select(
+                                                id="data-format",
+                                                options=[
+                                                    {
+                                                        "label": "Auto-detect",
+                                                        "value": "auto",
+                                                    },
+                                                    {
+                                                        "label": "Standard CSV/TXT",
+                                                        "value": "csv",
+                                                    },
+                                                    {
+                                                        "label": "OUCRU CSV Format",
+                                                        "value": "oucru_csv",
+                                                    },
+                                                    {
+                                                        "label": "Excel (XLSX)",
+                                                        "value": "excel",
+                                                    },
+                                                    {"label": "HDF5", "value": "hdf5"},
+                                                    {
+                                                        "label": "Parquet",
+                                                        "value": "parquet",
+                                                    },
+                                                    {"label": "JSON", "value": "json"},
+                                                    {"label": "WFDB", "value": "wfdb"},
+                                                    {
+                                                        "label": "EDF/EDF+",
+                                                        "value": "edf",
+                                                    },
+                                                    {
+                                                        "label": "MATLAB (.mat)",
+                                                        "value": "matlab",
+                                                    },
+                                                ],
+                                                value="auto",
+                                                className="border-0 bg-light",
+                                            ),
+                                        ],
+                                        md=4,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            html.Label(
+                                                "Signal Type",
+                                                className="form-label fw-semibold",
+                                            ),
+                                            dbc.Select(
+                                                id="data-type",
+                                                options=[
+                                                    {
+                                                        "label": "Auto-detect",
+                                                        "value": "auto",
+                                                    },
+                                                    {"label": "PPG", "value": "ppg"},
+                                                    {"label": "ECG", "value": "ecg"},
+                                                    {"label": "EEG", "value": "eeg"},
+                                                    {
+                                                        "label": "Respiratory",
+                                                        "value": "resp",
+                                                    },
+                                                    {
+                                                        "label": "Other",
+                                                        "value": "other",
+                                                    },
+                                                ],
+                                                value="ppg",
+                                                className="border-0 bg-light",
+                                            ),
+                                        ],
+                                        md=4,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            html.Label(
+                                                "Sampling Frequency (Hz)",
+                                                className="form-label fw-semibold",
+                                            ),
+                                            dbc.Input(
+                                                id="sampling-freq",
+                                                type="number",
+                                                value=100,
+                                                min=1,
+                                                step=1,
+                                                placeholder="Auto if available",
+                                                className="border-0 bg-light",
+                                            ),
+                                        ],
+                                        md=4,
+                                    ),
+                                ],
+                                className="mb-3",
+                            ),
+                            # Row 2: OUCRU-specific options (conditionally displayed)
+                            html.Div(
+                                id="oucru-config-section",
+                                children=[
+                                    dbc.Row(
+                                        [
+                                            dbc.Col(
+                                                [
+                                                    html.Label(
+                                                        "Sampling Rate Column",
+                                                        className="form-label fw-semibold",
+                                                    ),
+                                                    dbc.Input(
+                                                        id="oucru-sampling-rate-column",
+                                                        type="text",
+                                                        placeholder="e.g., 'sampling_rate' (optional)",
+                                                        className="border-0 bg-light",
+                                                    ),
+                                                    html.Small(
+                                                        "Column containing sampling rates per row",
+                                                        className="text-muted",
+                                                    ),
+                                                ],
+                                                md=6,
+                                            ),
+                                            dbc.Col(
+                                                [
+                                                    html.Label(
+                                                        "Interpolate Timestamps",
+                                                        className="form-label fw-semibold",
+                                                    ),
+                                                    dbc.Checklist(
+                                                        id="oucru-interpolate-time",
+                                                        options=[
+                                                            {
+                                                                "label": " Generate sub-second timestamps",
+                                                                "value": True,
+                                                            }
+                                                        ],
+                                                        value=[True],
+                                                        switch=True,
+                                                    ),
+                                                    html.Small(
+                                                        "Create precise timestamps for each sample within the second",
+                                                        className="text-muted",
+                                                    ),
+                                                ],
+                                                md=6,
+                                            ),
+                                        ],
+                                        className="mb-3",
+                                    ),
+                                ],
+                                style={"display": "none"},  # Hidden by default
+                            ),
+                            # Row 3: Time Unit
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            html.Label(
+                                                "Time Unit",
+                                                className="form-label fw-semibold",
+                                            ),
+                                            dbc.Select(
+                                                id="time-unit",
+                                                options=[
+                                                    {
+                                                        "label": "Seconds",
+                                                        "value": "seconds",
+                                                    },
+                                                    {
+                                                        "label": "Milliseconds",
+                                                        "value": "milliseconds",
+                                                    },
+                                                    {
+                                                        "label": "Minutes",
+                                                        "value": "minutes",
+                                                    },
+                                                ],
+                                                value="seconds",
+                                                className="border-0 bg-light",
+                                            ),
+                                        ],
+                                        md=4,
+                                    ),
+                                ],
+                                className="mb-3",
+                            ),
+                        ]
+                    ),
+                ],
+                className="mb-4 shadow-sm border-0",
+            ),
+            # Main Content Container - File Upload and Quick Actions
             dbc.Row(
                 [
                     # File Upload Section - Left Column
@@ -188,190 +396,6 @@ def upload_layout():
                         className="mb-4",
                     ),
                 ]
-            ),
-            # Configuration Section
-            dbc.Card(
-                [
-                    dbc.CardHeader(
-                        [
-                            html.I(className="fas fa-cog me-2 text-info"),
-                            html.Span("Data Configuration", className="fw-bold"),
-                        ],
-                        className="bg-light border-0",
-                    ),
-                    dbc.CardBody(
-                        [
-                            # Row 1: Format, Signal Type, Sampling Frequency
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        [
-                                            html.Label(
-                                                "Data Format",
-                                                className="form-label fw-semibold",
-                                            ),
-                                            dbc.Select(
-                                                id="data-format",
-                                                options=[
-                                                    {"label": "Auto-detect", "value": "auto"},
-                                                    {"label": "Standard CSV/TXT", "value": "csv"},
-                                                    {"label": "OUCRU CSV Format", "value": "oucru_csv"},
-                                                    {"label": "Excel (XLSX)", "value": "excel"},
-                                                    {"label": "HDF5", "value": "hdf5"},
-                                                    {"label": "Parquet", "value": "parquet"},
-                                                    {"label": "JSON", "value": "json"},
-                                                    {"label": "WFDB", "value": "wfdb"},
-                                                    {"label": "EDF/EDF+", "value": "edf"},
-                                                    {"label": "MATLAB (.mat)", "value": "matlab"},
-                                                ],
-                                                value="auto",
-                                                className="border-0 bg-light",
-                                            ),
-                                        ],
-                                        md=4,
-                                    ),
-                                    dbc.Col(
-                                        [
-                                            html.Label(
-                                                "Signal Type",
-                                                className="form-label fw-semibold",
-                                            ),
-                                            dbc.Select(
-                                                id="data-type",
-                                                options=[
-                                                    {
-                                                        "label": "Auto-detect",
-                                                        "value": "auto",
-                                                    },
-                                                    {"label": "PPG", "value": "ppg"},
-                                                    {"label": "ECG", "value": "ecg"},
-                                                    {"label": "EEG", "value": "eeg"},
-                                                    {"label": "Respiratory", "value": "resp"},
-                                                    {
-                                                        "label": "Other",
-                                                        "value": "other",
-                                                    },
-                                                ],
-                                                value="ppg",
-                                                className="border-0 bg-light",
-                                            ),
-                                        ],
-                                        md=4,
-                                    ),
-                                    dbc.Col(
-                                        [
-                                            html.Label(
-                                                "Sampling Frequency (Hz)",
-                                                className="form-label fw-semibold",
-                                            ),
-                                            dbc.Input(
-                                                id="sampling-freq",
-                                                type="number",
-                                                value=100,
-                                                min=1,
-                                                step=1,
-                                                placeholder="Auto if available",
-                                                className="border-0 bg-light",
-                                            ),
-                                        ],
-                                        md=4,
-                                    ),
-                                ],
-                                className="mb-3",
-                            ),
-                            # Row 2: OUCRU-specific options (conditionally displayed)
-                            html.Div(
-                                id="oucru-config-section",
-                                children=[
-                                    dbc.Row(
-                                        [
-                                            dbc.Col(
-                                                [
-                                                    html.Label(
-                                                        "Sampling Rate Column",
-                                                        className="form-label fw-semibold",
-                                                    ),
-                                                    dbc.Input(
-                                                        id="oucru-sampling-rate-column",
-                                                        type="text",
-                                                        placeholder="e.g., 'sampling_rate' (optional)",
-                                                        className="border-0 bg-light",
-                                                    ),
-                                                    html.Small(
-                                                        "Column containing sampling rates per row",
-                                                        className="text-muted",
-                                                    ),
-                                                ],
-                                                md=6,
-                                            ),
-                                            dbc.Col(
-                                                [
-                                                    html.Label(
-                                                        "Interpolate Timestamps",
-                                                        className="form-label fw-semibold",
-                                                    ),
-                                                    dbc.Checklist(
-                                                        id="oucru-interpolate-time",
-                                                        options=[
-                                                            {
-                                                                "label": " Generate sub-second timestamps",
-                                                                "value": True,
-                                                            }
-                                                        ],
-                                                        value=[True],
-                                                        switch=True,
-                                                    ),
-                                                    html.Small(
-                                                        "Create precise timestamps for each sample within the second",
-                                                        className="text-muted",
-                                                    ),
-                                                ],
-                                                md=6,
-                                            ),
-                                        ],
-                                        className="mb-3",
-                                    ),
-                                ],
-                                style={"display": "none"},  # Hidden by default
-                            ),
-                            # Row 3: Time Unit
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        [
-                                            html.Label(
-                                                "Time Unit",
-                                                className="form-label fw-semibold",
-                                            ),
-                                            dbc.Select(
-                                                id="time-unit",
-                                                options=[
-                                                    {
-                                                        "label": "Seconds",
-                                                        "value": "seconds",
-                                                    },
-                                                    {
-                                                        "label": "Milliseconds",
-                                                        "value": "milliseconds",
-                                                    },
-                                                    {
-                                                        "label": "Minutes",
-                                                        "value": "minutes",
-                                                    },
-                                                ],
-                                                value="seconds",
-                                                className="border-0 bg-light",
-                                            ),
-                                        ],
-                                        md=4,
-                                    ),
-                                ],
-                                className="mb-3",
-                            ),
-                        ]
-                    ),
-                ],
-                className="mb-4 shadow-sm border-0",
             ),
             # Column Mapping Section
             dbc.Card(

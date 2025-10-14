@@ -14,7 +14,9 @@ import io
 import base64
 
 
-def prepare_download_data(data: Union[str, bytes], filename: str, content_type: str) -> Dict[str, str]:
+def prepare_download_data(
+    data: Union[str, bytes], filename: str, content_type: str
+) -> Dict[str, str]:
     """
     Prepare data for download via Dash dcc.Download component.
 
@@ -28,23 +30,22 @@ def prepare_download_data(data: Union[str, bytes], filename: str, content_type: 
     """
     if isinstance(data, bytes):
         # Encode bytes to base64 string
-        data = base64.b64encode(data).decode('utf-8')
+        data = base64.b64encode(data).decode("utf-8")
         return {
-            'content': data,
-            'filename': filename,
-            'base64': True,
-            'type': content_type
+            "content": data,
+            "filename": filename,
+            "base64": True,
+            "type": content_type,
         }
-    return {
-        'content': data,
-        'filename': filename,
-        'type': content_type
-    }
+    return {"content": data, "filename": filename, "type": content_type}
 
 
-def export_filtered_signal_csv(signal: np.ndarray, time: np.ndarray,
-                                sampling_freq: float,
-                                metadata: Optional[Dict[str, Any]] = None) -> str:
+def export_filtered_signal_csv(
+    signal: np.ndarray,
+    time: np.ndarray,
+    sampling_freq: float,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> str:
     """
     Export filtered signal data to CSV format with timestamps.
 
@@ -57,14 +58,11 @@ def export_filtered_signal_csv(signal: np.ndarray, time: np.ndarray,
     Returns:
         str: CSV content as string
     """
-    df = pd.DataFrame({
-        'time': time,
-        'signal': signal
-    })
+    df = pd.DataFrame({"time": time, "signal": signal})
 
     # Add metadata as comments
     csv_buffer = io.StringIO()
-    csv_buffer.write(f"# Filtered Signal Export\n")
+    csv_buffer.write("# Filtered Signal Export\n")
     csv_buffer.write(f"# Export Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     csv_buffer.write(f"# Sampling Frequency: {sampling_freq} Hz\n")
     csv_buffer.write(f"# Duration: {len(signal)/sampling_freq:.2f} seconds\n")
@@ -80,9 +78,12 @@ def export_filtered_signal_csv(signal: np.ndarray, time: np.ndarray,
     return csv_buffer.getvalue()
 
 
-def export_filtered_signal_json(signal: np.ndarray, time: np.ndarray,
-                                 sampling_freq: float,
-                                 metadata: Optional[Dict[str, Any]] = None) -> str:
+def export_filtered_signal_json(
+    signal: np.ndarray,
+    time: np.ndarray,
+    sampling_freq: float,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> str:
     """
     Export filtered signal data to JSON format.
 
@@ -96,24 +97,20 @@ def export_filtered_signal_json(signal: np.ndarray, time: np.ndarray,
         str: JSON content as string
     """
     export_data = {
-        'metadata': {
-            'export_date': datetime.now().isoformat(),
-            'sampling_frequency': sampling_freq,
-            'duration': len(signal) / sampling_freq,
-            'samples': len(signal),
-            **(metadata or {})
+        "metadata": {
+            "export_date": datetime.now().isoformat(),
+            "sampling_frequency": sampling_freq,
+            "duration": len(signal) / sampling_freq,
+            "samples": len(signal),
+            **(metadata or {}),
         },
-        'data': {
-            'time': time.tolist(),
-            'signal': signal.tolist()
-        }
+        "data": {"time": time.tolist(), "signal": signal.tolist()},
     }
 
     return json.dumps(export_data, indent=2)
 
 
-def export_features_csv(features: Dict[str, Any],
-                        signal_type: str = "Unknown") -> str:
+def export_features_csv(features: Dict[str, Any], signal_type: str = "Unknown") -> str:
     """
     Export extracted features to CSV format.
 
@@ -127,7 +124,7 @@ def export_features_csv(features: Dict[str, Any],
     # Flatten nested dictionaries
     flattened = {}
 
-    def flatten_dict(d, parent_key=''):
+    def flatten_dict(d, parent_key=""):
         for k, v in d.items():
             new_key = f"{parent_key}.{k}" if parent_key else k
             if isinstance(v, dict):
@@ -151,7 +148,7 @@ def export_features_csv(features: Dict[str, Any],
 
     # Add metadata header
     csv_buffer = io.StringIO()
-    csv_buffer.write(f"# Feature Extraction Export\n")
+    csv_buffer.write("# Feature Extraction Export\n")
     csv_buffer.write(f"# Export Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     csv_buffer.write(f"# Signal Type: {signal_type}\n")
     csv_buffer.write(f"# Features Count: {len(flattened)}\n")
@@ -162,8 +159,7 @@ def export_features_csv(features: Dict[str, Any],
     return csv_buffer.getvalue()
 
 
-def export_features_json(features: Dict[str, Any],
-                         signal_type: str = "Unknown") -> str:
+def export_features_json(features: Dict[str, Any], signal_type: str = "Unknown") -> str:
     """
     Export extracted features to JSON format.
 
@@ -174,6 +170,7 @@ def export_features_json(features: Dict[str, Any],
     Returns:
         str: JSON content as string
     """
+
     # Convert numpy arrays to lists for JSON serialization
     def convert_to_serializable(obj):
         if isinstance(obj, np.ndarray):
@@ -189,12 +186,12 @@ def export_features_json(features: Dict[str, Any],
         return obj
 
     export_data = {
-        'metadata': {
-            'export_date': datetime.now().isoformat(),
-            'signal_type': signal_type,
-            'features_count': len(features)
+        "metadata": {
+            "export_date": datetime.now().isoformat(),
+            "signal_type": signal_type,
+            "features_count": len(features),
         },
-        'features': convert_to_serializable(features)
+        "features": convert_to_serializable(features),
     }
 
     return json.dumps(export_data, indent=2)
@@ -211,13 +208,13 @@ def export_quality_metrics_csv(quality_results: Dict[str, Any]) -> str:
         str: CSV content as string
     """
     csv_buffer = io.StringIO()
-    csv_buffer.write(f"# Signal Quality Assessment Export\n")
+    csv_buffer.write("# Signal Quality Assessment Export\n")
     csv_buffer.write(f"# Export Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     csv_buffer.write("#\n")
 
     # Overall scores
-    if 'overall_score' in quality_results:
-        overall = quality_results['overall_score']
+    if "overall_score" in quality_results:
+        overall = quality_results["overall_score"]
         csv_buffer.write("# Overall Quality\n")
         csv_buffer.write(f"Score,{overall.get('score', 'N/A')}\n")
         csv_buffer.write(f"Percentage,{overall.get('percentage', 'N/A')}\n")
@@ -227,10 +224,10 @@ def export_quality_metrics_csv(quality_results: Dict[str, Any]) -> str:
     # Individual metrics
     metrics_data = []
     for metric_name, metric_data in quality_results.items():
-        if metric_name == 'overall_score':
+        if metric_name == "overall_score":
             continue
         if isinstance(metric_data, dict):
-            row = {'metric': metric_name}
+            row = {"metric": metric_name}
             for key, value in metric_data.items():
                 if not isinstance(value, (list, dict)):
                     row[key] = value
@@ -253,6 +250,7 @@ def export_quality_metrics_json(quality_results: Dict[str, Any]) -> str:
     Returns:
         str: JSON content as string
     """
+
     # Convert numpy types to native Python types
     def convert_to_serializable(obj):
         if isinstance(obj, np.ndarray):
@@ -268,11 +266,11 @@ def export_quality_metrics_json(quality_results: Dict[str, Any]) -> str:
         return obj
 
     export_data = {
-        'metadata': {
-            'export_date': datetime.now().isoformat(),
-            'export_type': 'signal_quality_assessment'
+        "metadata": {
+            "export_date": datetime.now().isoformat(),
+            "export_type": "signal_quality_assessment",
         },
-        'quality_metrics': convert_to_serializable(quality_results)
+        "quality_metrics": convert_to_serializable(quality_results),
     }
 
     return json.dumps(export_data, indent=2)
@@ -289,13 +287,13 @@ def export_respiratory_analysis_csv(respiratory_data: Dict[str, Any]) -> str:
         str: CSV content as string
     """
     csv_buffer = io.StringIO()
-    csv_buffer.write(f"# Respiratory Analysis Export\n")
+    csv_buffer.write("# Respiratory Analysis Export\n")
     csv_buffer.write(f"# Export Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     csv_buffer.write("#\n")
 
     # Respiratory rate estimates
-    if 'respiratory_rate' in respiratory_data:
-        rr = respiratory_data['respiratory_rate']
+    if "respiratory_rate" in respiratory_data:
+        rr = respiratory_data["respiratory_rate"]
         csv_buffer.write("# Respiratory Rate\n")
         if isinstance(rr, dict):
             for key, value in rr.items():
@@ -308,16 +306,16 @@ def export_respiratory_analysis_csv(respiratory_data: Dict[str, Any]) -> str:
     # Additional metrics
     metrics_rows = []
     for key, value in respiratory_data.items():
-        if key == 'respiratory_rate':
+        if key == "respiratory_rate":
             continue
         if isinstance(value, dict):
-            row = {'metric': key}
+            row = {"metric": key}
             for k, v in value.items():
                 if not isinstance(v, (list, dict)):
                     row[k] = v
             metrics_rows.append(row)
         elif not isinstance(value, (list, dict)):
-            metrics_rows.append({'metric': key, 'value': value})
+            metrics_rows.append({"metric": key, "value": value})
 
     if metrics_rows:
         df = pd.DataFrame(metrics_rows)
@@ -336,6 +334,7 @@ def export_respiratory_analysis_json(respiratory_data: Dict[str, Any]) -> str:
     Returns:
         str: JSON content as string
     """
+
     def convert_to_serializable(obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
@@ -350,18 +349,19 @@ def export_respiratory_analysis_json(respiratory_data: Dict[str, Any]) -> str:
         return obj
 
     export_data = {
-        'metadata': {
-            'export_date': datetime.now().isoformat(),
-            'export_type': 'respiratory_analysis'
+        "metadata": {
+            "export_date": datetime.now().isoformat(),
+            "export_type": "respiratory_analysis",
         },
-        'respiratory_data': convert_to_serializable(respiratory_data)
+        "respiratory_data": convert_to_serializable(respiratory_data),
     }
 
     return json.dumps(export_data, indent=2)
 
 
-def export_transform_results_csv(transform_data: Dict[str, Any],
-                                  transform_type: str = "Unknown") -> str:
+def export_transform_results_csv(
+    transform_data: Dict[str, Any], transform_type: str = "Unknown"
+) -> str:
     """
     Export transform results to CSV format.
 
@@ -373,7 +373,7 @@ def export_transform_results_csv(transform_data: Dict[str, Any],
         str: CSV content as string
     """
     csv_buffer = io.StringIO()
-    csv_buffer.write(f"# Transform Results Export\n")
+    csv_buffer.write("# Transform Results Export\n")
     csv_buffer.write(f"# Export Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     csv_buffer.write(f"# Transform Type: {transform_type}\n")
     csv_buffer.write("#\n")
@@ -395,8 +395,11 @@ def export_transform_results_csv(transform_data: Dict[str, Any],
         for key in list(df_data.keys()):
             if len(df_data[key]) < max_len:
                 # Pad with NaN
-                df_data[key] = np.pad(df_data[key], (0, max_len - len(df_data[key])),
-                                      constant_values=np.nan)
+                df_data[key] = np.pad(
+                    df_data[key],
+                    (0, max_len - len(df_data[key])),
+                    constant_values=np.nan,
+                )
 
         df = pd.DataFrame(df_data)
         df.to_csv(csv_buffer, index=False)
@@ -404,8 +407,9 @@ def export_transform_results_csv(transform_data: Dict[str, Any],
     return csv_buffer.getvalue()
 
 
-def export_transform_results_json(transform_data: Dict[str, Any],
-                                   transform_type: str = "Unknown") -> str:
+def export_transform_results_json(
+    transform_data: Dict[str, Any], transform_type: str = "Unknown"
+) -> str:
     """
     Export transform results to JSON format.
 
@@ -416,6 +420,7 @@ def export_transform_results_json(transform_data: Dict[str, Any],
     Returns:
         str: JSON content as string
     """
+
     def convert_to_serializable(obj):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
@@ -424,7 +429,7 @@ def export_transform_results_json(transform_data: Dict[str, Any],
         elif isinstance(obj, np.floating):
             return float(obj)
         elif isinstance(obj, complex):
-            return {'real': obj.real, 'imag': obj.imag}
+            return {"real": obj.real, "imag": obj.imag}
         elif isinstance(obj, dict):
             return {k: convert_to_serializable(v) for k, v in obj.items()}
         elif isinstance(obj, list):
@@ -432,12 +437,12 @@ def export_transform_results_json(transform_data: Dict[str, Any],
         return obj
 
     export_data = {
-        'metadata': {
-            'export_date': datetime.now().isoformat(),
-            'transform_type': transform_type,
-            'export_type': 'transform_results'
+        "metadata": {
+            "export_date": datetime.now().isoformat(),
+            "transform_type": transform_type,
+            "export_type": "transform_results",
         },
-        'transform_data': convert_to_serializable(transform_data)
+        "transform_data": convert_to_serializable(transform_data),
     }
 
     return json.dumps(export_data, indent=2)

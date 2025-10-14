@@ -2,7 +2,6 @@ import numpy as np
 from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
 from vitalDSP.physiological_features.frequency_domain import FrequencyDomainFeatures
 from vitalDSP.physiological_features.nonlinear import NonlinearFeatures
-from vitalDSP.transforms.beats_transformation import RRTransformation
 import logging as logger
 
 
@@ -68,6 +67,9 @@ class HRVFeatures:
             The sampling frequency in Hz. Default is 1000 Hz.
         """
         if nn_intervals is None:
+            # Lazy import to avoid circular import
+            from vitalDSP.transforms.beats_transformation import RRTransformation
+
             rr_transformation = RRTransformation(
                 signals, fs=fs, signal_type=signal_type, options=options
             )

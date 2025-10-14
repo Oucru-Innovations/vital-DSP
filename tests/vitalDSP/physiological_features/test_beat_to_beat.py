@@ -5,6 +5,7 @@ from vitalDSP.physiological_features.beat_to_beat import BeatToBeatAnalysis
 
 # Filter out deprecation warnings for deprecated functions
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="vitalDSP.physiological_features.beat_to_beat")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="tests.vitalDSP.physiological_features.test_beat_to_beat")
 
 # Test data setup
 SAMPLE_PEAKS = np.array([100, 200, 300, 400, 500, 600, 700, 800, 900, 1000])

@@ -12,7 +12,7 @@ from pathlib import Path
 import tempfile
 import os
 
-from vitalDSP.utils.data_loader import (
+from vitalDSP.utils.data_processing.data_loader import (
     DataLoader,
     DataFormat,
     load_oucru_csv

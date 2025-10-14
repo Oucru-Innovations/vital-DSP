@@ -373,13 +373,18 @@ class TestUploadCallbacksComprehensive:
         self.mock_app.callback = mock_callback
         register_upload_callbacks(self.mock_app)
 
-        # Should register exactly 7 callbacks (added toggle_oucru_config)
-        assert len(captured_callbacks) == 7
+        # Should register exactly 8 callbacks (added toggle_oucru_config and set_default_column_values)
+        assert len(captured_callbacks) == 8
         
         # Check that all expected callback functions exist
         function_names = [func.__name__ for args, kwargs, func in captured_callbacks]
         expected_functions = [
+            'toggle_oucru_config',
+            'set_default_column_values',
             'handle_all_uploads',
+            'update_process_button_state',
+            'auto_detect_columns',
+            'process_data_with_columns',
             'hide_progress_section', 
             'auto_hide_progress_section'
         ]

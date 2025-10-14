@@ -34,6 +34,7 @@ import os
 try:
     import tensorflow as tf
     from tensorflow import keras
+
     TENSORFLOW_AVAILABLE = True
 except ImportError:
     TENSORFLOW_AVAILABLE = False
@@ -41,6 +42,7 @@ except ImportError:
 try:
     import torch
     import torch.nn as nn
+
     PYTORCH_AVAILABLE = True
 except ImportError:
     PYTORCH_AVAILABLE = False
@@ -48,103 +50,103 @@ except ImportError:
 
 # Model registry
 MODEL_REGISTRY = {
-    'ecg_classifier_mitbih': {
-        'description': 'ECG arrhythmia classifier trained on MIT-BIH dataset',
-        'task': 'classification',
-        'signal_type': 'ecg',
-        'input_shape': (187, 1),
-        'n_classes': 5,
-        'classes': ['Normal', 'Supraventricular', 'Ventricular', 'Fusion', 'Unknown'],
-        'architecture': 'cnn1d',
-        'backend': 'tensorflow',
-        'url': None,  # Placeholder - would be actual URL in production
-        'size_mb': 2.5,
-        'accuracy': 0.98,
-        'version': '1.0.0',
-        'reference': 'MIT-BIH Arrhythmia Database'
+    "ecg_classifier_mitbih": {
+        "description": "ECG arrhythmia classifier trained on MIT-BIH dataset",
+        "task": "classification",
+        "signal_type": "ecg",
+        "input_shape": (187, 1),
+        "n_classes": 5,
+        "classes": ["Normal", "Supraventricular", "Ventricular", "Fusion", "Unknown"],
+        "architecture": "cnn1d",
+        "backend": "tensorflow",
+        "url": None,  # Placeholder - would be actual URL in production
+        "size_mb": 2.5,
+        "accuracy": 0.98,
+        "version": "1.0.0",
+        "reference": "MIT-BIH Arrhythmia Database",
     },
-    'ecg_classifier_ptbxl': {
-        'description': 'Multi-label ECG classifier trained on PTB-XL dataset',
-        'task': 'multi_label_classification',
-        'signal_type': 'ecg',
-        'input_shape': (1000, 12),  # 12-lead ECG
-        'n_classes': 71,
-        'architecture': 'resnet1d',
-        'backend': 'tensorflow',
-        'url': None,
-        'size_mb': 15.0,
-        'f1_score': 0.92,
-        'version': '1.0.0',
-        'reference': 'PTB-XL Database'
+    "ecg_classifier_ptbxl": {
+        "description": "Multi-label ECG classifier trained on PTB-XL dataset",
+        "task": "multi_label_classification",
+        "signal_type": "ecg",
+        "input_shape": (1000, 12),  # 12-lead ECG
+        "n_classes": 71,
+        "architecture": "resnet1d",
+        "backend": "tensorflow",
+        "url": None,
+        "size_mb": 15.0,
+        "f1_score": 0.92,
+        "version": "1.0.0",
+        "reference": "PTB-XL Database",
     },
-    'ppg_quality_assessment': {
-        'description': 'PPG signal quality classifier',
-        'task': 'classification',
-        'signal_type': 'ppg',
-        'input_shape': (250, 1),
-        'n_classes': 3,
-        'classes': ['Excellent', 'Acceptable', 'Unacceptable'],
-        'architecture': 'cnn1d',
-        'backend': 'tensorflow',
-        'url': None,
-        'size_mb': 1.8,
-        'accuracy': 0.94,
-        'version': '1.0.0'
+    "ppg_quality_assessment": {
+        "description": "PPG signal quality classifier",
+        "task": "classification",
+        "signal_type": "ppg",
+        "input_shape": (250, 1),
+        "n_classes": 3,
+        "classes": ["Excellent", "Acceptable", "Unacceptable"],
+        "architecture": "cnn1d",
+        "backend": "tensorflow",
+        "url": None,
+        "size_mb": 1.8,
+        "accuracy": 0.94,
+        "version": "1.0.0",
     },
-    'eeg_sleep_stage': {
-        'description': 'EEG sleep stage classifier',
-        'task': 'classification',
-        'signal_type': 'eeg',
-        'input_shape': (3000, 1),  # 30 seconds at 100 Hz
-        'n_classes': 5,
-        'classes': ['Wake', 'N1', 'N2', 'N3', 'REM'],
-        'architecture': 'lstm',
-        'backend': 'tensorflow',
-        'url': None,
-        'size_mb': 5.2,
-        'accuracy': 0.87,
-        'version': '1.0.0',
-        'reference': 'Sleep-EDF Database'
+    "eeg_sleep_stage": {
+        "description": "EEG sleep stage classifier",
+        "task": "classification",
+        "signal_type": "eeg",
+        "input_shape": (3000, 1),  # 30 seconds at 100 Hz
+        "n_classes": 5,
+        "classes": ["Wake", "N1", "N2", "N3", "REM"],
+        "architecture": "lstm",
+        "backend": "tensorflow",
+        "url": None,
+        "size_mb": 5.2,
+        "accuracy": 0.87,
+        "version": "1.0.0",
+        "reference": "Sleep-EDF Database",
     },
-    'heart_rate_estimator': {
-        'description': 'End-to-end heart rate estimator from PPG/ECG',
-        'task': 'regression',
-        'signal_type': 'ppg',
-        'input_shape': (500, 1),
-        'architecture': 'cnn_lstm',
-        'backend': 'tensorflow',
-        'url': None,
-        'size_mb': 3.1,
-        'mae': 2.3,  # MAE in BPM
-        'version': '1.0.0'
+    "heart_rate_estimator": {
+        "description": "End-to-end heart rate estimator from PPG/ECG",
+        "task": "regression",
+        "signal_type": "ppg",
+        "input_shape": (500, 1),
+        "architecture": "cnn_lstm",
+        "backend": "tensorflow",
+        "url": None,
+        "size_mb": 3.1,
+        "mae": 2.3,  # MAE in BPM
+        "version": "1.0.0",
     },
-    'ecg_autoencoder': {
-        'description': 'Autoencoder for ECG anomaly detection and denoising',
-        'task': 'autoencoder',
-        'signal_type': 'ecg',
-        'input_shape': (187, 1),
-        'latent_dim': 32,
-        'architecture': 'convolutional_autoencoder',
-        'backend': 'tensorflow',
-        'url': None,
-        'size_mb': 1.5,
-        'reconstruction_loss': 0.002,
-        'version': '1.0.0'
+    "ecg_autoencoder": {
+        "description": "Autoencoder for ECG anomaly detection and denoising",
+        "task": "autoencoder",
+        "signal_type": "ecg",
+        "input_shape": (187, 1),
+        "latent_dim": 32,
+        "architecture": "convolutional_autoencoder",
+        "backend": "tensorflow",
+        "url": None,
+        "size_mb": 1.5,
+        "reconstruction_loss": 0.002,
+        "version": "1.0.0",
     },
-    'multimodal_transformer': {
-        'description': 'Transformer for multi-lead ECG analysis',
-        'task': 'classification',
-        'signal_type': 'ecg',
-        'input_shape': (1000, 12),
-        'n_classes': 6,
-        'classes': ['NORM', 'MI', 'STTC', 'CD', 'HYP', 'Other'],
-        'architecture': 'transformer',
-        'backend': 'tensorflow',
-        'url': None,
-        'size_mb': 25.0,
-        'accuracy': 0.91,
-        'version': '1.0.0'
-    }
+    "multimodal_transformer": {
+        "description": "Transformer for multi-lead ECG analysis",
+        "task": "classification",
+        "signal_type": "ecg",
+        "input_shape": (1000, 12),
+        "n_classes": 6,
+        "classes": ["NORM", "MI", "STTC", "CD", "HYP", "Other"],
+        "architecture": "transformer",
+        "backend": "tensorflow",
+        "url": None,
+        "size_mb": 25.0,
+        "accuracy": 0.91,
+        "version": "1.0.0",
+    },
 }
 
 
@@ -176,10 +178,7 @@ class PretrainedModel:
     """
 
     def __init__(
-        self,
-        model: Any,
-        metadata: Dict[str, Any],
-        backend: str = 'tensorflow'
+        self, model: Any, metadata: Dict[str, Any], backend: str = "tensorflow"
     ):
         """
         Initialize pre-trained model.
@@ -202,8 +201,8 @@ class PretrainedModel:
         cls,
         model_name: str,
         cache_dir: Optional[str] = None,
-        force_download: bool = False
-    ) -> 'PretrainedModel':
+        force_download: bool = False,
+    ) -> "PretrainedModel":
         """
         Load model from registry.
 
@@ -227,7 +226,7 @@ class PretrainedModel:
             If model not found in registry
         """
         if model_name not in MODEL_REGISTRY:
-            available = ', '.join(MODEL_REGISTRY.keys())
+            available = ", ".join(MODEL_REGISTRY.keys())
             raise ValueError(
                 f"Model '{model_name}' not found in registry. "
                 f"Available models: {available}"
@@ -237,17 +236,17 @@ class PretrainedModel:
 
         # Setup cache directory
         if cache_dir is None:
-            cache_dir = Path.home() / '.vitaldsp' / 'pretrained_models'
+            cache_dir = Path.home() / ".vitaldsp" / "pretrained_models"
         cache_dir = Path(cache_dir)
         cache_dir.mkdir(parents=True, exist_ok=True)
 
         # Model path
         model_path = cache_dir / f"{model_name}_v{metadata['version']}"
-        backend = metadata['backend']
+        backend = metadata["backend"]
 
         # Download or load from cache
         if not model_path.exists() or force_download:
-            if metadata['url'] is None:
+            if metadata["url"] is None:
                 # For demonstration, create a simple model
                 warnings.warn(
                     f"Model '{model_name}' URL not available. "
@@ -255,10 +254,10 @@ class PretrainedModel:
                 )
                 model = cls._create_placeholder_model(metadata)
             else:
-                model = cls._download_model(metadata['url'], model_path, backend)
+                model = cls._download_model(metadata["url"], model_path, backend)
         else:
             # Load from cache
-            if backend == 'tensorflow':
+            if backend == "tensorflow":
                 model = keras.models.load_model(str(model_path))
             else:  # pytorch
                 model = torch.load(str(model_path))
@@ -272,12 +271,12 @@ class PretrainedModel:
 
         In production, this would not be needed as models would be downloaded.
         """
-        backend = metadata['backend']
-        architecture = metadata['architecture']
-        input_shape = metadata['input_shape']
-        task = metadata['task']
+        backend = metadata["backend"]
+        architecture = metadata["architecture"]
+        input_shape = metadata["input_shape"]
+        task = metadata["task"]
 
-        if backend == 'tensorflow':
+        if backend == "tensorflow":
             if not TENSORFLOW_AVAILABLE:
                 raise ImportError("TensorFlow not installed")
 
@@ -285,43 +284,47 @@ class PretrainedModel:
             inputs = keras.Input(shape=input_shape)
             x = inputs
 
-            if 'cnn' in architecture:
-                x = keras.layers.Conv1D(32, 7, padding='same')(x)
+            if "cnn" in architecture:
+                x = keras.layers.Conv1D(32, 7, padding="same")(x)
                 x = keras.layers.BatchNormalization()(x)
-                x = keras.layers.Activation('relu')(x)
+                x = keras.layers.Activation("relu")(x)
                 x = keras.layers.MaxPooling1D(2)(x)
 
-                x = keras.layers.Conv1D(64, 5, padding='same')(x)
+                x = keras.layers.Conv1D(64, 5, padding="same")(x)
                 x = keras.layers.BatchNormalization()(x)
-                x = keras.layers.Activation('relu')(x)
+                x = keras.layers.Activation("relu")(x)
                 x = keras.layers.MaxPooling1D(2)(x)
 
                 x = keras.layers.GlobalAveragePooling1D()(x)
 
-            elif 'lstm' in architecture:
+            elif "lstm" in architecture:
                 x = keras.layers.LSTM(64, return_sequences=True)(x)
                 x = keras.layers.LSTM(32)(x)
 
-            elif 'transformer' in architecture:
+            elif "transformer" in architecture:
                 # Simple transformer-like architecture
                 x = keras.layers.MultiHeadAttention(num_heads=4, key_dim=32)(x, x)
                 x = keras.layers.GlobalAveragePooling1D()(x)
-                x = keras.layers.Dense(128, activation='relu')(x)
+                x = keras.layers.Dense(128, activation="relu")(x)
 
             # Output layer
-            if task == 'classification':
-                n_classes = metadata['n_classes']
-                outputs = keras.layers.Dense(n_classes, activation='softmax')(x)
-            elif task == 'regression':
-                outputs = keras.layers.Dense(1, activation='linear')(x)
-            elif task == 'autoencoder':
+            if task == "classification":
+                n_classes = metadata["n_classes"]
+                outputs = keras.layers.Dense(n_classes, activation="softmax")(x)
+            elif task == "regression":
+                outputs = keras.layers.Dense(1, activation="linear")(x)
+            elif task == "autoencoder":
                 # Decoder part (simplified)
-                x = keras.layers.Dense(128, activation='relu')(x)
+                x = keras.layers.Dense(128, activation="relu")(x)
                 x = keras.layers.Reshape((-1, 1))(x)
                 outputs = keras.layers.UpSampling1D(2)(x)
 
             model = keras.Model(inputs, outputs)
-            model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+            model.compile(
+                optimizer="adam",
+                loss="sparse_categorical_crossentropy",
+                metrics=["accuracy"],
+            )
 
         else:  # pytorch
             raise NotImplementedError("PyTorch placeholder models not yet implemented")
@@ -337,7 +340,7 @@ class PretrainedModel:
             print("Download complete.")
 
             # Load model
-            if backend == 'tensorflow':
+            if backend == "tensorflow":
                 model = keras.models.load_model(str(save_path))
             else:
                 model = torch.load(str(save_path))
@@ -348,10 +351,7 @@ class PretrainedModel:
             raise RuntimeError(f"Failed to download model: {e}")
 
     def predict(
-        self,
-        X: np.ndarray,
-        batch_size: int = 32,
-        return_proba: bool = False
+        self, X: np.ndarray, batch_size: int = 32, return_proba: bool = False
     ) -> np.ndarray:
         """
         Make predictions on new data.
@@ -370,10 +370,10 @@ class PretrainedModel:
         np.ndarray
             Predictions
         """
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             predictions = self.model.predict(X, batch_size=batch_size, verbose=0)
 
-            if self.metadata['task'] == 'classification' and not return_proba:
+            if self.metadata["task"] == "classification" and not return_proba:
                 predictions = np.argmax(predictions, axis=1)
 
         else:  # pytorch
@@ -382,7 +382,7 @@ class PretrainedModel:
                 X_tensor = torch.FloatTensor(X)
                 predictions = self.model(X_tensor).cpu().numpy()
 
-                if self.metadata['task'] == 'classification' and not return_proba:
+                if self.metadata["task"] == "classification" and not return_proba:
                     predictions = np.argmax(predictions, axis=1)
 
         return predictions
@@ -397,7 +397,7 @@ class PretrainedModel:
         batch_size: int = 32,
         learning_rate: float = 1e-4,
         freeze_layers: Optional[int] = None,
-        verbose: int = 1
+        verbose: int = 1,
     ) -> Dict[str, List[float]]:
         """
         Fine-tune model on new data.
@@ -428,7 +428,7 @@ class PretrainedModel:
         dict
             Training history
         """
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             # Freeze layers if requested
             if freeze_layers is not None:
                 for i, layer in enumerate(self.model.layers):
@@ -438,40 +438,43 @@ class PretrainedModel:
             # Compile with lower learning rate
             optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
 
-            if self.metadata['task'] == 'classification':
-                loss = 'sparse_categorical_crossentropy'
-                metrics = ['accuracy']
+            if self.metadata["task"] == "classification":
+                loss = "sparse_categorical_crossentropy"
+                metrics = ["accuracy"]
             else:
-                loss = 'mse'
-                metrics = ['mae']
+                loss = "mse"
+                metrics = ["mae"]
 
             self.model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
             # Callbacks
             callbacks = [
                 keras.callbacks.EarlyStopping(
-                    monitor='val_loss' if X_val is not None else 'loss',
+                    monitor="val_loss" if X_val is not None else "loss",
                     patience=5,
-                    restore_best_weights=True
+                    restore_best_weights=True,
                 ),
                 keras.callbacks.ReduceLROnPlateau(
-                    monitor='val_loss' if X_val is not None else 'loss',
+                    monitor="val_loss" if X_val is not None else "loss",
                     factor=0.5,
                     patience=3,
-                    min_lr=1e-7
-                )
+                    min_lr=1e-7,
+                ),
             ]
 
             # Train
-            validation_data = (X_val, y_val) if X_val is not None and y_val is not None else None
+            validation_data = (
+                (X_val, y_val) if X_val is not None and y_val is not None else None
+            )
 
             history = self.model.fit(
-                X_train, y_train,
+                X_train,
+                y_train,
                 validation_data=validation_data,
                 epochs=epochs,
                 batch_size=batch_size,
                 callbacks=callbacks,
-                verbose=verbose
+                verbose=verbose,
             )
 
             return history.history
@@ -480,10 +483,7 @@ class PretrainedModel:
             raise NotImplementedError("PyTorch fine-tuning not yet implemented")
 
     def evaluate(
-        self,
-        X_test: np.ndarray,
-        y_test: np.ndarray,
-        batch_size: int = 32
+        self, X_test: np.ndarray, y_test: np.ndarray, batch_size: int = 32
     ) -> Dict[str, float]:
         """
         Evaluate model on test data.
@@ -502,8 +502,10 @@ class PretrainedModel:
         dict
             Evaluation metrics
         """
-        if self.backend == 'tensorflow':
-            results = self.model.evaluate(X_test, y_test, batch_size=batch_size, verbose=0)
+        if self.backend == "tensorflow":
+            results = self.model.evaluate(
+                X_test, y_test, batch_size=batch_size, verbose=0
+            )
 
             metrics = {}
             for name, value in zip(self.model.metrics_names, results):
@@ -526,18 +528,18 @@ class PretrainedModel:
         filepath = Path(filepath)
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             self.model.save(str(filepath))
         else:
             torch.save(self.model, str(filepath))
 
         # Save metadata
         metadata_path = filepath.parent / f"{filepath.stem}_metadata.json"
-        with open(metadata_path, 'w') as f:
+        with open(metadata_path, "w") as f:
             json.dump(self.metadata, f, indent=2)
 
     @classmethod
-    def load(cls, filepath: str) -> 'PretrainedModel':
+    def load(cls, filepath: str) -> "PretrainedModel":
         """
         Load model from file.
 
@@ -556,15 +558,15 @@ class PretrainedModel:
         # Load metadata
         metadata_path = filepath.parent / f"{filepath.stem}_metadata.json"
         if metadata_path.exists():
-            with open(metadata_path, 'r') as f:
+            with open(metadata_path, "r") as f:
                 metadata = json.load(f)
         else:
             metadata = {}
 
-        backend = metadata.get('backend', 'tensorflow')
+        backend = metadata.get("backend", "tensorflow")
 
         # Load model
-        if backend == 'tensorflow':
+        if backend == "tensorflow":
             model = keras.models.load_model(str(filepath))
         else:
             model = torch.load(str(filepath))
@@ -592,16 +594,13 @@ class PretrainedModel:
 
     def get_layer_names(self) -> List[str]:
         """Get list of layer names in the model."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             return [layer.name for layer in self.model.layers]
         else:
             return [name for name, _ in self.model.named_modules()]
 
     def get_features(
-        self,
-        X: np.ndarray,
-        layer_name: Optional[str] = None,
-        batch_size: int = 32
+        self, X: np.ndarray, layer_name: Optional[str] = None, batch_size: int = 32
     ) -> np.ndarray:
         """
         Extract features from intermediate layer.
@@ -620,15 +619,14 @@ class PretrainedModel:
         np.ndarray
             Extracted features
         """
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             if layer_name is None:
                 # Use second-to-last layer (before output)
                 layer_name = self.model.layers[-2].name
 
             # Create feature extractor
             feature_model = keras.Model(
-                inputs=self.model.input,
-                outputs=self.model.get_layer(layer_name).output
+                inputs=self.model.input, outputs=self.model.get_layer(layer_name).output
             )
 
             features = feature_model.predict(X, batch_size=batch_size, verbose=0)
@@ -676,7 +674,7 @@ class ModelHub:
             Directory for caching models
         """
         if cache_dir is None:
-            cache_dir = Path.home() / '.vitaldsp' / 'pretrained_models'
+            cache_dir = Path.home() / ".vitaldsp" / "pretrained_models"
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -684,7 +682,7 @@ class ModelHub:
         self,
         signal_type: Optional[str] = None,
         task: Optional[str] = None,
-        architecture: Optional[str] = None
+        architecture: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         List available models with optional filtering.
@@ -707,22 +705,20 @@ class ModelHub:
 
         for name, metadata in MODEL_REGISTRY.items():
             # Apply filters
-            if signal_type and metadata.get('signal_type') != signal_type:
+            if signal_type and metadata.get("signal_type") != signal_type:
                 continue
-            if task and metadata.get('task') != task:
+            if task and metadata.get("task") != task:
                 continue
-            if architecture and metadata.get('architecture') != architecture:
+            if architecture and metadata.get("architecture") != architecture:
                 continue
 
-            model_info = {'name': name, **metadata}
+            model_info = {"name": name, **metadata}
             models.append(model_info)
 
         return models
 
     def get_model(
-        self,
-        model_name: str,
-        force_download: bool = False
+        self, model_name: str, force_download: bool = False
     ) -> PretrainedModel:
         """
         Get pre-trained model.
@@ -740,9 +736,7 @@ class ModelHub:
             Loaded model
         """
         return PretrainedModel.from_registry(
-            model_name,
-            cache_dir=str(self.cache_dir),
-            force_download=force_download
+            model_name, cache_dir=str(self.cache_dir), force_download=force_download
         )
 
     def clear_cache(self, model_name: Optional[str] = None):
@@ -779,9 +773,7 @@ class ModelHub:
         return total_size / (1024 * 1024)  # Convert to MB
 
     def compare_models(
-        self,
-        model_names: List[str],
-        metric: str = 'accuracy'
+        self, model_names: List[str], metric: str = "accuracy"
     ) -> Dict[str, float]:
         """
         Compare models by a specific metric.
@@ -811,9 +803,7 @@ class ModelHub:
 
 # Convenience function
 def load_pretrained_model(
-    model_name: str,
-    cache_dir: Optional[str] = None,
-    force_download: bool = False
+    model_name: str, cache_dir: Optional[str] = None, force_download: bool = False
 ) -> PretrainedModel:
     """
     Quick function to load a pre-trained model.
@@ -846,7 +836,5 @@ def load_pretrained_model(
     >>> print(f"Predicted class: {prediction[0]}")
     """
     return PretrainedModel.from_registry(
-        model_name,
-        cache_dir=cache_dir,
-        force_download=force_download
+        model_name, cache_dir=cache_dir, force_download=force_download
     )

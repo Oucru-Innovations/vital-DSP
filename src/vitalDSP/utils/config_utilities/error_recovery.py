@@ -9,27 +9,24 @@ to ensure robust signal processing operations even when primary methods fail.
 import numpy as np
 import warnings
 from typing import Union, Callable, Optional, Tuple
-from .validation import SignalValidator
+from ..data_processing.validation import SignalValidator
 
 
 class ErrorRecovery:
     """
     Error recovery mechanisms for vitalDSP functions.
-    
+
     This class provides static methods for implementing fallback strategies
     and graceful degradation when primary signal processing methods fail.
     """
-    
+
     @staticmethod
     def with_fallback_methods(
-        primary_method: Callable,
-        fallback_methods: list,
-        *args,
-        **kwargs
+        primary_method: Callable, fallback_methods: list, *args, **kwargs
     ) -> any:
         """
         Execute primary method with automatic fallback to alternative methods.
-        
+
         Parameters
         ----------
         primary_method : callable
@@ -40,23 +37,23 @@ class ErrorRecovery:
             Arguments to pass to methods
         **kwargs : dict
             Keyword arguments to pass to methods
-            
+
         Returns
         -------
         any
             Result from first successful method
-            
+
         Raises
         ------
         RuntimeError
             If all methods fail
         """
         methods_to_try = [primary_method] + fallback_methods
-        
+
         for i, method in enumerate(methods_to_try):
             try:
                 result = method(*args, **kwargs)
-                
+
                 # Validate result
                 if result is not None:
                     # Check if result is valid (not all NaN)
@@ -75,30 +72,29 @@ class ErrorRecovery:
                         is_valid = not np.all(np.isnan(result))
                     elif isinstance(result, (int, float)):
                         is_valid = not np.isnan(result)
-                    
+
                     if is_valid:
                         if i > 0:  # Used fallback method
-                            warnings.warn(f"Primary method failed, used fallback method {i}")
+                            warnings.warn(
+                                f"Primary method failed, used fallback method {i}"
+                            )
                         return result
-                    
+
             except Exception as e:
                 if i == len(methods_to_try) - 1:  # Last method
                     raise RuntimeError(f"All methods failed. Last error: {e}")
                 warnings.warn(f"Method {i} failed: {e}. Trying next method.")
                 continue
-        
+
         raise RuntimeError("All methods failed")
-    
+
     @staticmethod
     def respiratory_rate_with_fallback(
-        signal: np.ndarray,
-        fs: float,
-        method: str = "counting",
-        **kwargs
+        signal: np.ndarray, fs: float, method: str = "counting", **kwargs
     ) -> float:
         """
         Compute respiratory rate with automatic fallback methods.
-        
+
         Parameters
         ----------
         signal : np.ndarray
@@ -109,42 +105,48 @@ class ErrorRecovery:
             Primary method to use (default: "counting")
         **kwargs : dict
             Additional parameters for methods
-            
+
         Returns
         -------
         float
             Estimated respiratory rate
         """
-        from ..respiratory_analysis.respiratory_analysis import RespiratoryAnalysis
-        
+        from vitalDSP.respiratory_analysis.respiratory_analysis import (
+            RespiratoryAnalysis,
+        )
+
         # Define fallback order based on robustness
-        fallback_order = ["counting", "peaks", "zero_crossing", "time_domain", "frequency_domain", "fft_based"]
-        
+        fallback_order = [
+            "counting",
+            "peaks",
+            "zero_crossing",
+            "time_domain",
+            "frequency_domain",
+            "fft_based",
+        ]
+
         # Remove primary method from fallback list
         if method in fallback_order:
             fallback_order.remove(method)
-        
+
         ra = RespiratoryAnalysis(signal, fs)
-        
+
         def try_method(method_name):
             return ra.compute_respiratory_rate(method=method_name, **kwargs)
-        
+
         fallback_methods = [lambda: try_method(m) for m in fallback_order]
-        
+
         return ErrorRecovery.with_fallback_methods(
-            lambda: try_method(method),
-            fallback_methods
+            lambda: try_method(method), fallback_methods
         )
-    
+
     @staticmethod
     def filtering_with_fallback(
-        signal: np.ndarray,
-        filter_type: str = "butterworth",
-        **kwargs
+        signal: np.ndarray, filter_type: str = "butterworth", **kwargs
     ) -> np.ndarray:
         """
         Apply filtering with automatic fallback to simpler methods.
-        
+
         Parameters
         ----------
         signal : np.ndarray
@@ -153,22 +155,28 @@ class ErrorRecovery:
             Primary filter type (default: "butterworth")
         **kwargs : dict
             Filter parameters
-            
+
         Returns
         -------
         np.ndarray
             Filtered signal
         """
-        from ..filtering.signal_filtering import SignalFiltering
-        
+        from vitalDSP.filtering.signal_filtering import SignalFiltering
+
         # Define fallback order (from complex to simple)
-        fallback_order = ["butterworth", "chebyshev", "elliptic", "moving_average", "gaussian"]
-        
+        fallback_order = [
+            "butterworth",
+            "chebyshev",
+            "elliptic",
+            "moving_average",
+            "gaussian",
+        ]
+
         if filter_type in fallback_order:
             fallback_order.remove(filter_type)
-        
+
         sf = SignalFiltering(signal)
-        
+
         def try_filter(filter_name):
             if filter_name == "butterworth":
                 return sf.butterworth(**kwargs)
@@ -177,26 +185,23 @@ class ErrorRecovery:
             elif filter_name == "elliptic":
                 return sf.elliptic(**kwargs)
             elif filter_name == "moving_average":
-                return sf.moving_average(kwargs.get('window_size', 5))
+                return sf.moving_average(kwargs.get("window_size", 5))
             elif filter_name == "gaussian":
-                return sf.gaussian(kwargs.get('sigma', 1.0))
-        
+                return sf.gaussian(kwargs.get("sigma", 1.0))
+
         fallback_methods = [lambda: try_filter(f) for f in fallback_order]
-        
+
         return ErrorRecovery.with_fallback_methods(
-            lambda: try_filter(filter_type),
-            fallback_methods
+            lambda: try_filter(filter_type), fallback_methods
         )
-    
+
     @staticmethod
     def feature_extraction_with_fallback(
-        signal: np.ndarray,
-        feature_type: str = "time_domain",
-        **kwargs
+        signal: np.ndarray, feature_type: str = "time_domain", **kwargs
     ) -> dict:
         """
         Extract features with automatic fallback to simpler methods.
-        
+
         Parameters
         ----------
         signal : np.ndarray
@@ -205,76 +210,74 @@ class ErrorRecovery:
             Primary feature type (default: "time_domain")
         **kwargs : dict
             Feature extraction parameters
-            
+
         Returns
         -------
         dict
             Extracted features
         """
-        from ..physiological_features.time_domain import TimeDomainFeatures
-        from ..physiological_features.frequency_domain import FrequencyDomainFeatures
-        
+        from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
+        from vitalDSP.physiological_features.frequency_domain import (
+            FrequencyDomainFeatures,
+        )
+
         # Define fallback order
         fallback_order = ["time_domain", "frequency_domain", "basic_stats"]
-        
+
         if feature_type in fallback_order:
             fallback_order.remove(feature_type)
-        
+
         def try_time_domain():
             tdf = TimeDomainFeatures(signal)
             return {
-                'sdnn': tdf.compute_sdnn(),
-                'rmssd': tdf.compute_rmssd(),
-                'mean_nn': tdf.compute_mean_nn(),
-                'median_nn': tdf.compute_median_nn()
+                "sdnn": tdf.compute_sdnn(),
+                "rmssd": tdf.compute_rmssd(),
+                "mean_nn": tdf.compute_mean_nn(),
+                "median_nn": tdf.compute_median_nn(),
             }
-        
+
         def try_frequency_domain():
-            fdf = FrequencyDomainFeatures(signal, kwargs.get('fs', 1.0))
+            fdf = FrequencyDomainFeatures(signal, kwargs.get("fs", 1.0))
             return {
-                'lf': fdf.compute_lf(),
-                'hf': fdf.compute_hf(),
-                'lf_hf_ratio': fdf.compute_lf_hf_ratio()
+                "lf": fdf.compute_lf(),
+                "hf": fdf.compute_hf(),
+                "lf_hf_ratio": fdf.compute_lf_hf_ratio(),
             }
-        
+
         def try_basic_stats():
             return {
-                'mean': np.mean(signal),
-                'std': np.std(signal),
-                'min': np.min(signal),
-                'max': np.max(signal),
-                'range': np.max(signal) - np.min(signal)
+                "mean": np.mean(signal),
+                "std": np.std(signal),
+                "min": np.min(signal),
+                "max": np.max(signal),
+                "range": np.max(signal) - np.min(signal),
             }
-        
+
         method_map = {
             "time_domain": try_time_domain,
             "frequency_domain": try_frequency_domain,
-            "basic_stats": try_basic_stats
+            "basic_stats": try_basic_stats,
         }
-        
+
         fallback_methods = [method_map[f] for f in fallback_order if f in method_map]
-        
+
         # If feature_type is invalid, use fallback methods directly
         if feature_type not in method_map:
             return ErrorRecovery.with_fallback_methods(
-                None,  # No primary method
-                fallback_methods
+                None, fallback_methods  # No primary method
             )
-        
+
         return ErrorRecovery.with_fallback_methods(
-            method_map[feature_type],
-            fallback_methods
+            method_map[feature_type], fallback_methods
         )
-    
+
     @staticmethod
     def transform_with_fallback(
-        signal: np.ndarray,
-        transform_type: str = "fft",
-        **kwargs
+        signal: np.ndarray, transform_type: str = "fft", **kwargs
     ) -> np.ndarray:
         """
         Apply transformation with automatic fallback methods.
-        
+
         Parameters
         ----------
         signal : np.ndarray
@@ -283,60 +286,58 @@ class ErrorRecovery:
             Primary transform type (default: "fft")
         **kwargs : dict
             Transform parameters
-            
+
         Returns
         -------
         np.ndarray
             Transformed signal
         """
-        from ..transforms.fourier_transform import FourierTransform
-        from ..transforms.wavelet_transform import WaveletTransform
-        
+        from vitalDSP.transforms.fourier_transform import FourierTransform
+        from vitalDSP.transforms.wavelet_transform import WaveletTransform
+
         # Define fallback order
         fallback_order = ["fft", "dwt", "hilbert", "identity"]
-        
+
         if transform_type in fallback_order:
             fallback_order.remove(transform_type)
-        
+
         def try_fft():
             ft = FourierTransform(signal)
             return ft.compute_dft()
-        
+
         def try_dwt():
             wt = WaveletTransform(signal)
-            return wt.perform_wavelet_transform(kwargs.get('level', 1))
-        
+            return wt.perform_wavelet_transform(kwargs.get("level", 1))
+
         def try_hilbert():
-            from ..transforms.hilbert_transform import HilbertTransform
+            from vitalDSP.transforms.hilbert_transform import HilbertTransform
+
             ht = HilbertTransform(signal)
             return ht.compute_hilbert()
-        
+
         def try_identity():
             return signal.copy()
-        
+
         method_map = {
             "fft": try_fft,
             "dwt": try_dwt,
             "hilbert": try_hilbert,
-            "identity": try_identity
+            "identity": try_identity,
         }
-        
+
         fallback_methods = [method_map[f] for f in fallback_order if f in method_map]
-        
+
         return ErrorRecovery.with_fallback_methods(
-            method_map[transform_type],
-            fallback_methods
+            method_map[transform_type], fallback_methods
         )
-    
+
     @staticmethod
     def quality_assessment_with_fallback(
-        signal: np.ndarray,
-        assessment_type: str = "snr",
-        **kwargs
+        signal: np.ndarray, assessment_type: str = "snr", **kwargs
     ) -> float:
         """
         Perform quality assessment with automatic fallback methods.
-        
+
         Parameters
         ----------
         signal : np.ndarray
@@ -345,96 +346,102 @@ class ErrorRecovery:
             Primary assessment type (default: "snr")
         **kwargs : dict
             Assessment parameters
-            
+
         Returns
         -------
         float
             Quality metric value
         """
-        from ..signal_quality_assessment.signal_quality import SignalQuality
-        
+        from vitalDSP.signal_quality_assessment.signal_quality import SignalQuality
+
         # Define fallback order
         fallback_order = ["snr", "psnr", "mse", "variance"]
-        
+
         if assessment_type in fallback_order:
             fallback_order.remove(assessment_type)
-        
+
         def try_snr():
             sq = SignalQuality(signal, signal)  # Assuming no reference
             return sq.snr()
-        
+
         def try_psnr():
             sq = SignalQuality(signal, signal)
             return sq.psnr()
-        
+
         def try_mse():
             sq = SignalQuality(signal, signal)
             return sq.mse()
-        
+
         def try_variance():
             return np.var(signal)
-        
+
         method_map = {
             "snr": try_snr,
             "psnr": try_psnr,
             "mse": try_mse,
-            "variance": try_variance
+            "variance": try_variance,
         }
-        
+
         fallback_methods = [method_map[f] for f in fallback_order if f in method_map]
-        
+
         return ErrorRecovery.with_fallback_methods(
-            method_map[assessment_type],
-            fallback_methods
+            method_map[assessment_type], fallback_methods
         )
 
 
 def robust_signal_processing(func):
     """
     Decorator for automatic error recovery in signal processing functions.
-    
+
     This decorator wraps signal processing functions with automatic
     error recovery and fallback mechanisms.
-    
+
     Parameters
     ----------
     func : callable
         Function to wrap with error recovery
-        
+
     Returns
     -------
     callable
         Wrapped function with error recovery
     """
+
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
         except Exception as e:
             warnings.warn(f"Primary method failed: {e}. Attempting recovery.")
-            
+
             # Try to recover by simplifying parameters
             try:
                 # Reduce complexity of parameters
                 simplified_kwargs = kwargs.copy()
-                
+
                 # Reduce filter order if present
-                if 'order' in simplified_kwargs and simplified_kwargs['order'] > 2:
-                    simplified_kwargs['order'] = 2
-                
+                if "order" in simplified_kwargs and simplified_kwargs["order"] > 2:
+                    simplified_kwargs["order"] = 2
+
                 # Reduce window size if present
-                if 'window_size' in simplified_kwargs and simplified_kwargs['window_size'] > 10:
-                    simplified_kwargs['window_size'] = 10
-                
+                if (
+                    "window_size" in simplified_kwargs
+                    and simplified_kwargs["window_size"] > 10
+                ):
+                    simplified_kwargs["window_size"] = 10
+
                 # Reduce iterations if present
-                if 'iterations' in simplified_kwargs and simplified_kwargs['iterations'] > 1:
-                    simplified_kwargs['iterations'] = 1
-                
+                if (
+                    "iterations" in simplified_kwargs
+                    and simplified_kwargs["iterations"] > 1
+                ):
+                    simplified_kwargs["iterations"] = 1
+
                 return func(*args, **simplified_kwargs)
-                
+
             except Exception as e2:
                 warnings.warn(f"Recovery attempt failed: {e2}")
                 raise e  # Re-raise original exception
-    
+
     return wrapper
 
 
@@ -444,11 +451,17 @@ def safe_respiratory_rate(signal: np.ndarray, fs: float, **kwargs) -> float:
     return ErrorRecovery.respiratory_rate_with_fallback(signal, fs, **kwargs)
 
 
-def safe_filtering(signal: np.ndarray, filter_type: str = "butterworth", **kwargs) -> np.ndarray:
+def safe_filtering(
+    signal: np.ndarray, filter_type: str = "butterworth", **kwargs
+) -> np.ndarray:
     """Safely apply filtering with automatic fallback."""
     return ErrorRecovery.filtering_with_fallback(signal, filter_type, **kwargs)
 
 
-def safe_feature_extraction(signal: np.ndarray, feature_type: str = "time_domain", **kwargs) -> dict:
+def safe_feature_extraction(
+    signal: np.ndarray, feature_type: str = "time_domain", **kwargs
+) -> dict:
     """Safely extract features with automatic fallback."""
-    return ErrorRecovery.feature_extraction_with_fallback(signal, feature_type, **kwargs)
+    return ErrorRecovery.feature_extraction_with_fallback(
+        signal, feature_type, **kwargs
+    )

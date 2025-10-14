@@ -44,6 +44,36 @@ def format_large_number(value, precision=3, use_scientific=False):
 logger = logging.getLogger(__name__)
 
 
+def configure_plot_with_pan_zoom(fig, title="", height=400):
+    """
+    Configure plotly figure with pan/zoom tools and consistent styling.
+
+    Args:
+        fig: Plotly figure object
+        title: Plot title
+        height: Plot height in pixels
+
+    Returns:
+        Configured plotly figure
+    """
+    fig.update_layout(
+        title=title,
+        height=height,
+        showlegend=True,
+        template="plotly_white",
+        # Enable pan and zoom - use simpler configuration
+        dragmode="pan",  # Default to pan mode
+        # Show the modebar with all tools
+        modebar=dict(
+            orientation="v",  # Vertical orientation
+            bgcolor="rgba(255,255,255,0.8)",  # Semi-transparent background
+            color="rgba(0,0,0,0.5)",  # Dark icons
+            activecolor="rgba(0,0,0,0.8)",  # Darker when active
+        ),
+    )
+    return fig
+
+
 def register_frequency_filtering_callbacks(app):
     """Register all frequency domain analysis and filtering callbacks."""
 
@@ -213,6 +243,13 @@ def register_frequency_filtering_callbacks(app):
             from vitalDSP_webapp.services.data.data_service import get_data_service
 
             logger.info("Data service imported successfully")
+            
+            # Check if Enhanced Data Service is available for heavy data processing
+            data_service = get_data_service()
+            if data_service.is_enhanced_service_available():
+                logger.info("Enhanced Data Service is available for heavy data processing")
+            else:
+                logger.info("Using basic data service functionality")
 
             # Add vitalDSP to path if needed
             import sys
@@ -246,6 +283,26 @@ def register_frequency_filtering_callbacks(app):
             df = data_service.get_data(data_id)
             column_mapping = data_service.get_column_mapping(data_id)
             data_info = data_service.get_data_info(data_id)
+            
+            # Enhanced data processing for heavy datasets
+            if df is not None and not df.empty:
+                data_size_mb = df.memory_usage(deep=True).sum() / (1024 * 1024)
+                num_samples = len(df)
+                
+                logger.info(f"Data size: {data_size_mb:.2f} MB, Samples: {num_samples}")
+                
+                # Use Enhanced Data Service for heavy data processing
+                if data_service.is_enhanced_service_available() and (data_size_mb > 5 or num_samples > 100000):
+                    logger.info(f"Using Enhanced Data Service for heavy frequency analysis: {data_size_mb:.2f}MB, {num_samples} samples")
+                    
+                    # Get enhanced service for optimized processing
+                    enhanced_service = data_service.get_enhanced_service()
+                    if enhanced_service:
+                        logger.info("Enhanced Data Service is ready for optimized frequency analysis")
+                        # The enhanced service will automatically handle chunked processing
+                        # and memory optimization during frequency domain analysis
+                else:
+                    logger.info("Using standard processing for lightweight frequency analysis")
 
             logger.info("=== DATA LOADING DEBUG ===")
             logger.info(f"Data ID: {data_id}")
@@ -342,8 +399,12 @@ def register_frequency_filtering_callbacks(app):
             logger.info(
                 f"Signal data range: {np.min(selected_signal):.3f} to {np.max(selected_signal):.3f}"
             )
-            logger.info(f"Signal data sample values: {selected_signal[:5]}")
-            logger.info(f"Time data sample values: {time_data[:5]}")
+            logger.info(
+                f"Signal data summary: dtype={selected_signal.dtype}, count={len(selected_signal)}"
+            )
+            logger.info(
+                f"Time data summary: dtype={time_data.dtype}, count={len(time_data)}"
+            )
             logger.info(
                 f"Signal data statistics - Mean: {np.mean(selected_signal):.3f}, Std: {np.std(selected_signal):.3f}"
             )
@@ -643,8 +704,12 @@ def register_frequency_filtering_callbacks(app):
             logger.info(
                 f"Final time range: {time_data[0]:.3f}s to {time_data[-1]:.3f}s"
             )
-            logger.info(f"Signal data sample values: {selected_signal[:10]}")
-            logger.info(f"Time data sample values: {time_data[:10]}")
+            logger.info(
+                f"Signal data summary: dtype={selected_signal.dtype}, count={len(selected_signal)}"
+            )
+            logger.info(
+                f"Time data summary: dtype={time_data.dtype}, count={len(time_data)}"
+            )
 
             # Normalize selected signal for better analysis
             if np.std(selected_signal) > 0:
@@ -951,6 +1016,15 @@ def register_frequency_filtering_callbacks(app):
                 xaxis_title="Time (seconds)",
                 yaxis_title="Amplitude",
                 showlegend=True,
+                template="plotly_white",
+                # Enable pan and zoom
+                dragmode="pan",
+                modebar=dict(
+                    orientation="v",
+                    bgcolor="rgba(255,255,255,0.8)",
+                    color="rgba(0,0,0,0.5)",
+                    activecolor="rgba(0,0,0,0.8)",
+                ),
             )
 
             # Create filter response plot
@@ -973,6 +1047,15 @@ def register_frequency_filtering_callbacks(app):
                 xaxis_title="Frequency (Hz)",
                 yaxis_title="Magnitude (dB)",
                 showlegend=True,
+                template="plotly_white",
+                # Enable pan and zoom
+                dragmode="pan",
+                modebar=dict(
+                    orientation="v",
+                    bgcolor="rgba(255,255,255,0.8)",
+                    color="rgba(0,0,0,0.5)",
+                    activecolor="rgba(0,0,0,0.8)",
+                ),
             )
 
             # Create stats
@@ -1235,6 +1318,21 @@ def create_fft_plot(
         showlegend=True,
         hovermode="closest",
         margin=dict(l=80, r=50, t=80, b=80),  # Add margins to prevent overlap
+        template="plotly_white",
+        # Add pan/zoom tools
+        dragmode="pan",
+        modebar=dict(
+            add=[
+                "pan2d",
+                "zoom2d",
+                "select2d",
+                "lasso2d",
+                "zoomIn2d",
+                "zoomOut2d",
+                "autoScale2d",
+                "resetScale2d",
+            ]
+        ),
     )
 
     # Update axes labels with better positioning
@@ -1384,6 +1482,21 @@ def create_stft_plot(
         showlegend=True,
         hovermode="closest",
         margin=dict(l=80, r=50, t=80, b=80),  # Add margins to prevent overlap
+        template="plotly_white",
+        # Add pan/zoom tools
+        dragmode="pan",
+        modebar=dict(
+            add=[
+                "pan2d",
+                "zoom2d",
+                "select2d",
+                "lasso2d",
+                "zoomIn2d",
+                "zoomOut2d",
+                "autoScale2d",
+                "resetScale2d",
+            ]
+        ),
     )
 
     # Update axes labels with better positioning
@@ -1748,6 +1861,21 @@ def create_wavelet_plot(
             showlegend=True,
             hovermode="closest",
             margin=dict(l=80, r=50, t=80, b=80),  # Add margins to prevent overlap
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         # Update axes labels with better positioning
@@ -2153,6 +2281,21 @@ def perform_psd_analysis(
         showlegend=True,
         hovermode="closest",
         margin=dict(l=80, r=50, t=80, b=80),  # Add margins to prevent overlap
+        template="plotly_white",
+        # Add pan/zoom tools
+        dragmode="pan",
+        modebar=dict(
+            add=[
+                "pan2d",
+                "zoom2d",
+                "select2d",
+                "lasso2d",
+                "zoomIn2d",
+                "zoomOut2d",
+                "autoScale2d",
+                "resetScale2d",
+            ]
+        ),
     )
 
     # Update axes labels with better positioning

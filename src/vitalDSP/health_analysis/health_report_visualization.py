@@ -11,7 +11,7 @@ from matplotlib.patches import Rectangle
 from scipy.stats import pearsonr
 from collections import Counter
 from scipy.interpolate import make_interp_spline
-from vitalDSP.utils.common import find_peaks
+from vitalDSP.utils.config_utilities.common import find_peaks
 import logging
 import threading
 
@@ -387,24 +387,27 @@ class HealthReportVisualizer:
                 psd_smooth = spline(freqs_smooth)
             except Exception as interp_error:
                 # Fallback to linear interpolation if spline fails
-                self.logger.warning(f"Using linear interpolation fallback: {interp_error}")
+                self.logger.warning(
+                    f"Using linear interpolation fallback: {interp_error}"
+                )
                 psd_smooth = np.interp(freqs_smooth, freqs, psd)
 
             # Create the plot
             plt.figure(figsize=(10, 6))
 
-            # Plot the smoothed PSD curve
+            # Plot the smoothed PSD curve with safety check for log10
+            psd_smooth_safe = np.maximum(psd_smooth, 1e-10)  # Avoid log(0)
             plt.plot(
                 freqs_smooth,
-                10 * np.log10(psd_smooth),
+                10 * np.log10(psd_smooth_safe),
                 color="blue",
                 label="Spectral Density (dB)",
                 linewidth=2,
             )
 
             # Confidence interval shading (using an arbitrary ±10% range for illustration)
-            lower_bound = 10 * np.log10(psd_smooth * 0.9)
-            upper_bound = 10 * np.log10(psd_smooth * 1.1)
+            lower_bound = 10 * np.log10(psd_smooth_safe * 0.9)
+            upper_bound = 10 * np.log10(psd_smooth_safe * 1.1)
             plt.fill_between(
                 freqs_smooth,
                 lower_bound,
@@ -425,12 +428,13 @@ class HealthReportVisualizer:
                         label=f"ROI: {min_freq}-{max_freq} Hz",
                     )
 
-            # Detect peaks in the PSD and highlight them
+            # Detect peaks in the PSD and highlight them with safety check
             if peak_threshold:
-                peaks, _ = find_peaks(10 * np.log10(psd), height=peak_threshold)
+                psd_safe = np.maximum(psd, 1e-10)  # Avoid log(0)
+                peaks, _ = find_peaks(10 * np.log10(psd_safe), height=peak_threshold)
                 plt.scatter(
                     freqs[peaks],
-                    10 * np.log10(psd[peaks]),
+                    10 * np.log10(psd_safe[peaks]),
                     color="red",
                     zorder=5,
                     s=80,
@@ -447,8 +451,8 @@ class HealthReportVisualizer:
                 label=f"Dominant Frequency: {dominant_freq:.2f} Hz",
             )
 
-            # Plot trend line
-            z = np.polyfit(freqs_smooth, 10 * np.log10(psd_smooth), 1)
+            # Plot trend line with safety check
+            z = np.polyfit(freqs_smooth, 10 * np.log10(psd_smooth_safe), 1)
             p = np.poly1d(z)
             plt.plot(
                 freqs_smooth,
@@ -482,7 +486,9 @@ class HealthReportVisualizer:
             os.makedirs(output_dir, exist_ok=True)
 
             # Save with error handling
-            plt.savefig(filepath, bbox_inches="tight", dpi=150)  # Lower DPI for compatibility
+            plt.savefig(
+                filepath, bbox_inches="tight", dpi=150
+            )  # Lower DPI for compatibility
             plt.close()
 
             # Verify file was created successfully
@@ -542,11 +548,12 @@ class HealthReportVisualizer:
             # Start plotting
             plt.figure(figsize=(10, 6))
 
-            # Plot the spectrogram with a perceptual color map (plasma, magma, or inferno for better intensity contrast)
+            # Plot the spectrogram with safety check for log10
+            Sxx_safe = np.maximum(Sxx, 1e-10)  # Avoid log(0)
             plt.pcolormesh(
                 times_minutes,
                 frequencies_cpm,
-                10 * np.log10(Sxx),
+                10 * np.log10(Sxx_safe),
                 shading="gouraud",
                 cmap="magma",
             )
@@ -555,12 +562,13 @@ class HealthReportVisualizer:
             plt.xlabel("Time (Minutes)", fontsize=12)
             plt.colorbar(label="Power (dB)")
 
-            # Highlight areas above a threshold with contour
+            # Highlight areas above a threshold with contour using safe values
+            threshold_safe = max(threshold, 1e-10)  # Avoid log(0)
             plt.contour(
                 times_minutes,
                 frequencies_cpm,
-                10 * np.log10(Sxx),
-                levels=[10 * np.log10(threshold)],
+                10 * np.log10(Sxx_safe),
+                levels=[10 * np.log10(threshold_safe)],
                 colors="white",
                 linewidths=1,
             )

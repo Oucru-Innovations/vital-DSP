@@ -81,17 +81,17 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
 
     def __init__(
         self,
-        signal_type: str = 'ecg',
+        signal_type: str = "ecg",
         sampling_rate: float = 250.0,
         domains: Optional[List[str]] = None,
         normalize: bool = True,
         feature_selection: Optional[str] = None,
         n_features: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         self.signal_type = signal_type.lower()
         self.sampling_rate = sampling_rate
-        self.domains = domains or ['time', 'frequency', 'nonlinear']
+        self.domains = domains or ["time", "frequency", "nonlinear"]
         self.normalize = normalize
         self.feature_selection = feature_selection
         self.n_features = n_features
@@ -103,7 +103,9 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
         self.selector_ = None
         self.feature_importances_ = {}
 
-    def fit(self, X: Union[np.ndarray, List[np.ndarray]], y: Optional[np.ndarray] = None):
+    def fit(
+        self, X: Union[np.ndarray, List[np.ndarray]], y: Optional[np.ndarray] = None
+    ):
         """
         Fit the feature extractor.
 
@@ -129,11 +131,11 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
 
         # Initialize feature selector
         if self.feature_selection and self.n_features:
-            if self.feature_selection == 'kbest':
+            if self.feature_selection == "kbest":
                 self.selector_ = SelectKBest(f_classif, k=self.n_features)
-            elif self.feature_selection == 'mutual_info':
+            elif self.feature_selection == "mutual_info":
                 self.selector_ = SelectKBest(mutual_info_classif, k=self.n_features)
-            elif self.feature_selection == 'pca':
+            elif self.feature_selection == "pca":
                 self.selector_ = PCA(n_components=self.n_features)
 
             if self.selector_ and y is not None:
@@ -189,27 +191,27 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
             features = {}
 
             # Time domain features
-            if 'time' in self.domains:
+            if "time" in self.domains:
                 time_features = self._extract_time_domain(signal)
                 features.update(time_features)
 
             # Frequency domain features
-            if 'frequency' in self.domains:
+            if "frequency" in self.domains:
                 freq_features = self._extract_frequency_domain(signal)
                 features.update(freq_features)
 
             # Nonlinear features
-            if 'nonlinear' in self.domains:
+            if "nonlinear" in self.domains:
                 nonlinear_features = self._extract_nonlinear_features(signal)
                 features.update(nonlinear_features)
 
             # Morphological features
-            if 'morphology' in self.domains:
+            if "morphology" in self.domains:
                 morph_features = self._extract_morphological_features(signal)
                 features.update(morph_features)
 
             # Time-frequency features
-            if 'time_frequency' in self.domains:
+            if "time_frequency" in self.domains:
                 tf_features = self._extract_time_frequency_features(signal)
                 features.update(tf_features)
 
@@ -228,55 +230,74 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
 
         try:
             # Basic statistics
-            features['mean'] = np.mean(signal)
-            features['std'] = np.std(signal)
-            features['var'] = np.var(signal)
-            features['min'] = np.min(signal)
-            features['max'] = np.max(signal)
-            features['range'] = features['max'] - features['min']
-            features['median'] = np.median(signal)
+            features["mean"] = np.mean(signal)
+            features["std"] = np.std(signal)
+            features["var"] = np.var(signal)
+            features["min"] = np.min(signal)
+            features["max"] = np.max(signal)
+            features["range"] = features["max"] - features["min"]
+            features["median"] = np.median(signal)
 
             # Percentiles
-            features['q25'] = np.percentile(signal, 25)
-            features['q75'] = np.percentile(signal, 75)
-            features['iqr'] = features['q75'] - features['q25']
+            features["q25"] = np.percentile(signal, 25)
+            features["q75"] = np.percentile(signal, 75)
+            features["iqr"] = features["q75"] - features["q25"]
 
             # Higher order moments
-            features['skewness'] = self._skewness(signal)
-            features['kurtosis'] = self._kurtosis(signal)
+            features["skewness"] = self._skewness(signal)
+            features["kurtosis"] = self._kurtosis(signal)
 
             # Signal energy and power
-            features['energy'] = np.sum(signal**2)
-            features['power'] = np.mean(signal**2)
-            features['rms'] = np.sqrt(features['power'])
+            features["energy"] = np.sum(signal**2)
+            features["power"] = np.mean(signal**2)
+            features["rms"] = np.sqrt(features["power"])
 
             # Zero crossings
-            features['zero_crossings'] = np.sum(np.diff(np.sign(signal)) != 0)
+            features["zero_crossings"] = np.sum(np.diff(np.sign(signal)) != 0)
 
             # Mean absolute deviation
-            features['mad'] = np.mean(np.abs(signal - features['mean']))
+            features["mad"] = np.mean(np.abs(signal - features["mean"]))
 
             # Coefficient of variation
-            if features['mean'] != 0:
-                features['cv'] = features['std'] / abs(features['mean'])
+            if features["mean"] != 0:
+                features["cv"] = features["std"] / abs(features["mean"])
             else:
-                features['cv'] = 0
+                features["cv"] = 0
 
             # Peak-to-peak amplitude
-            features['ptp'] = np.ptp(signal)
+            features["ptp"] = np.ptp(signal)
 
             # Signal changes
             diff_signal = np.diff(signal)
-            features['mean_diff'] = np.mean(np.abs(diff_signal))
-            features['std_diff'] = np.std(diff_signal)
+            features["mean_diff"] = np.mean(np.abs(diff_signal))
+            features["std_diff"] = np.std(diff_signal)
 
         except Exception as e:
             warnings.warn(f"Error extracting time domain features: {e}")
             # Return zeros for failed features
-            for key in ['mean', 'std', 'var', 'min', 'max', 'range', 'median',
-                       'q25', 'q75', 'iqr', 'skewness', 'kurtosis', 'energy',
-                       'power', 'rms', 'zero_crossings', 'mad', 'cv', 'ptp',
-                       'mean_diff', 'std_diff']:
+            for key in [
+                "mean",
+                "std",
+                "var",
+                "min",
+                "max",
+                "range",
+                "median",
+                "q25",
+                "q75",
+                "iqr",
+                "skewness",
+                "kurtosis",
+                "energy",
+                "power",
+                "rms",
+                "zero_crossings",
+                "mad",
+                "cv",
+                "ptp",
+                "mean_diff",
+                "std_diff",
+            ]:
                 features.setdefault(key, 0.0)
 
         return features
@@ -288,49 +309,62 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
         try:
             # Compute FFT
             fft_vals = np.fft.rfft(signal)
-            fft_freq = np.fft.rfftfreq(len(signal), 1.0/self.sampling_rate)
-            psd = np.abs(fft_vals)**2
+            fft_freq = np.fft.rfftfreq(len(signal), 1.0 / self.sampling_rate)
+            psd = np.abs(fft_vals) ** 2
 
             # Total power
-            features['total_power'] = np.sum(psd)
+            features["total_power"] = np.sum(psd)
 
             # Frequency bands (ECG/PPG specific)
-            if self.signal_type in ['ecg', 'ppg']:
+            if self.signal_type in ["ecg", "ppg"]:
                 # HRV frequency bands
                 vlf_band = (fft_freq >= 0.003) & (fft_freq < 0.04)
                 lf_band = (fft_freq >= 0.04) & (fft_freq < 0.15)
                 hf_band = (fft_freq >= 0.15) & (fft_freq < 0.4)
 
-                features['vlf_power'] = np.sum(psd[vlf_band])
-                features['lf_power'] = np.sum(psd[lf_band])
-                features['hf_power'] = np.sum(psd[hf_band])
+                features["vlf_power"] = np.sum(psd[vlf_band])
+                features["lf_power"] = np.sum(psd[lf_band])
+                features["hf_power"] = np.sum(psd[hf_band])
 
                 # LF/HF ratio
-                if features['hf_power'] > 0:
-                    features['lf_hf_ratio'] = features['lf_power'] / features['hf_power']
+                if features["hf_power"] > 0:
+                    features["lf_hf_ratio"] = (
+                        features["lf_power"] / features["hf_power"]
+                    )
                 else:
-                    features['lf_hf_ratio'] = 0
+                    features["lf_hf_ratio"] = 0
 
                 # Normalized powers
-                total_power = features['vlf_power'] + features['lf_power'] + features['hf_power']
+                total_power = (
+                    features["vlf_power"] + features["lf_power"] + features["hf_power"]
+                )
                 if total_power > 0:
-                    features['lf_norm'] = features['lf_power'] / total_power
-                    features['hf_norm'] = features['hf_power'] / total_power
+                    features["lf_norm"] = features["lf_power"] / total_power
+                    features["hf_norm"] = features["hf_power"] / total_power
                 else:
-                    features['lf_norm'] = 0
-                    features['hf_norm'] = 0
+                    features["lf_norm"] = 0
+                    features["hf_norm"] = 0
 
             # Spectral statistics
-            features['spectral_mean'] = np.sum(fft_freq * psd) / np.sum(psd) if np.sum(psd) > 0 else 0
-            features['spectral_std'] = np.sqrt(np.sum((fft_freq - features['spectral_mean'])**2 * psd) / np.sum(psd)) if np.sum(psd) > 0 else 0
+            features["spectral_mean"] = (
+                np.sum(fft_freq * psd) / np.sum(psd) if np.sum(psd) > 0 else 0
+            )
+            features["spectral_std"] = (
+                np.sqrt(
+                    np.sum((fft_freq - features["spectral_mean"]) ** 2 * psd)
+                    / np.sum(psd)
+                )
+                if np.sum(psd) > 0
+                else 0
+            )
 
             # Spectral entropy
             psd_norm = psd / np.sum(psd) if np.sum(psd) > 0 else psd
             psd_norm = psd_norm[psd_norm > 0]
-            features['spectral_entropy'] = -np.sum(psd_norm * np.log2(psd_norm))
+            features["spectral_entropy"] = -np.sum(psd_norm * np.log2(psd_norm))
 
             # Peak frequency
-            features['peak_frequency'] = fft_freq[np.argmax(psd)]
+            features["peak_frequency"] = fft_freq[np.argmax(psd)]
 
             # Bandwidth
             cumsum_psd = np.cumsum(psd)
@@ -338,18 +372,32 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
             if total > 0:
                 f_low = fft_freq[np.argmax(cumsum_psd >= 0.05 * total)]
                 f_high = fft_freq[np.argmax(cumsum_psd >= 0.95 * total)]
-                features['bandwidth'] = f_high - f_low
+                features["bandwidth"] = f_high - f_low
             else:
-                features['bandwidth'] = 0
+                features["bandwidth"] = 0
 
         except Exception as e:
             warnings.warn(f"Error extracting frequency domain features: {e}")
             # Return zeros for failed features
-            keys = ['total_power', 'spectral_mean', 'spectral_std',
-                   'spectral_entropy', 'peak_frequency', 'bandwidth']
-            if self.signal_type in ['ecg', 'ppg']:
-                keys.extend(['vlf_power', 'lf_power', 'hf_power', 'lf_hf_ratio',
-                           'lf_norm', 'hf_norm'])
+            keys = [
+                "total_power",
+                "spectral_mean",
+                "spectral_std",
+                "spectral_entropy",
+                "peak_frequency",
+                "bandwidth",
+            ]
+            if self.signal_type in ["ecg", "ppg"]:
+                keys.extend(
+                    [
+                        "vlf_power",
+                        "lf_power",
+                        "hf_power",
+                        "lf_hf_ratio",
+                        "lf_norm",
+                        "hf_norm",
+                    ]
+                )
             for key in keys:
                 features.setdefault(key, 0.0)
 
@@ -361,27 +409,37 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
 
         try:
             # Sample Entropy (simplified)
-            features['sample_entropy'] = self._sample_entropy(signal, m=2, r=0.2*np.std(signal))
+            features["sample_entropy"] = self._sample_entropy(
+                signal, m=2, r=0.2 * np.std(signal)
+            )
 
             # Approximate Entropy
-            features['approximate_entropy'] = self._approximate_entropy(signal, m=2, r=0.2*np.std(signal))
+            features["approximate_entropy"] = self._approximate_entropy(
+                signal, m=2, r=0.2 * np.std(signal)
+            )
 
             # Detrended Fluctuation Analysis (simplified)
-            features['dfa_alpha'] = self._dfa(signal)
+            features["dfa_alpha"] = self._dfa(signal)
 
             # Hurst exponent
-            features['hurst_exponent'] = self._hurst_exponent(signal)
+            features["hurst_exponent"] = self._hurst_exponent(signal)
 
             # Lyapunov exponent (simplified)
-            features['lyapunov'] = self._lyapunov_exponent(signal)
+            features["lyapunov"] = self._lyapunov_exponent(signal)
 
             # Correlation dimension
-            features['correlation_dim'] = self._correlation_dimension(signal)
+            features["correlation_dim"] = self._correlation_dimension(signal)
 
         except Exception as e:
             warnings.warn(f"Error extracting nonlinear features: {e}")
-            for key in ['sample_entropy', 'approximate_entropy', 'dfa_alpha',
-                       'hurst_exponent', 'lyapunov', 'correlation_dim']:
+            for key in [
+                "sample_entropy",
+                "approximate_entropy",
+                "dfa_alpha",
+                "hurst_exponent",
+                "lyapunov",
+                "correlation_dim",
+            ]:
                 features.setdefault(key, 0.0)
 
         return features
@@ -393,42 +451,53 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
         try:
             # Find peaks
             from scipy.signal import find_peaks
-            peaks, properties = find_peaks(signal, distance=int(0.5*self.sampling_rate))
 
-            features['n_peaks'] = len(peaks)
+            peaks, properties = find_peaks(
+                signal, distance=int(0.5 * self.sampling_rate)
+            )
+
+            features["n_peaks"] = len(peaks)
 
             if len(peaks) > 0:
                 # Peak statistics
                 peak_amplitudes = signal[peaks]
-                features['mean_peak_amplitude'] = np.mean(peak_amplitudes)
-                features['std_peak_amplitude'] = np.std(peak_amplitudes)
+                features["mean_peak_amplitude"] = np.mean(peak_amplitudes)
+                features["std_peak_amplitude"] = np.std(peak_amplitudes)
 
                 # Inter-peak intervals
                 if len(peaks) > 1:
                     ipi = np.diff(peaks) / self.sampling_rate
-                    features['mean_ipi'] = np.mean(ipi)
-                    features['std_ipi'] = np.std(ipi)
-                    features['rmssd_ipi'] = np.sqrt(np.mean(np.diff(ipi)**2))
+                    features["mean_ipi"] = np.mean(ipi)
+                    features["std_ipi"] = np.std(ipi)
+                    features["rmssd_ipi"] = np.sqrt(np.mean(np.diff(ipi) ** 2))
                 else:
-                    features['mean_ipi'] = 0
-                    features['std_ipi'] = 0
-                    features['rmssd_ipi'] = 0
+                    features["mean_ipi"] = 0
+                    features["std_ipi"] = 0
+                    features["rmssd_ipi"] = 0
             else:
-                features['mean_peak_amplitude'] = 0
-                features['std_peak_amplitude'] = 0
-                features['mean_ipi'] = 0
-                features['std_ipi'] = 0
-                features['rmssd_ipi'] = 0
+                features["mean_peak_amplitude"] = 0
+                features["std_peak_amplitude"] = 0
+                features["mean_ipi"] = 0
+                features["std_ipi"] = 0
+                features["rmssd_ipi"] = 0
 
             # Signal slope features
             slopes = np.diff(signal)
-            features['mean_slope'] = np.mean(np.abs(slopes))
-            features['max_slope'] = np.max(np.abs(slopes))
+            features["mean_slope"] = np.mean(np.abs(slopes))
+            features["max_slope"] = np.max(np.abs(slopes))
 
         except Exception as e:
             warnings.warn(f"Error extracting morphological features: {e}")
-            for key in ['n_peaks', 'mean_peak_amplitude', 'std_peak_amplitude',
-                       'mean_ipi', 'std_ipi', 'rmssd_ipi', 'mean_slope', 'max_slope']:
+            for key in [
+                "n_peaks",
+                "mean_peak_amplitude",
+                "std_peak_amplitude",
+                "mean_ipi",
+                "std_ipi",
+                "rmssd_ipi",
+                "mean_slope",
+                "max_slope",
+            ]:
                 features.setdefault(key, 0.0)
 
         return features
@@ -446,19 +515,24 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
 
             # Spectrogram statistics
             spectrogram = np.abs(Zxx)
-            features['stft_mean'] = np.mean(spectrogram)
-            features['stft_std'] = np.std(spectrogram)
-            features['stft_max'] = np.max(spectrogram)
+            features["stft_mean"] = np.mean(spectrogram)
+            features["stft_std"] = np.std(spectrogram)
+            features["stft_max"] = np.max(spectrogram)
 
             # Spectral flux (change over time)
-            spec_flux = np.sqrt(np.sum(np.diff(spectrogram, axis=1)**2, axis=0))
-            features['spectral_flux_mean'] = np.mean(spec_flux)
-            features['spectral_flux_std'] = np.std(spec_flux)
+            spec_flux = np.sqrt(np.sum(np.diff(spectrogram, axis=1) ** 2, axis=0))
+            features["spectral_flux_mean"] = np.mean(spec_flux)
+            features["spectral_flux_std"] = np.std(spec_flux)
 
         except Exception as e:
             warnings.warn(f"Error extracting time-frequency features: {e}")
-            for key in ['stft_mean', 'stft_std', 'stft_max',
-                       'spectral_flux_mean', 'spectral_flux_std']:
+            for key in [
+                "stft_mean",
+                "stft_std",
+                "stft_max",
+                "spectral_flux_mean",
+                "spectral_flux_std",
+            ]:
                 features.setdefault(key, 0.0)
 
         return features
@@ -475,7 +549,7 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
         std = np.std(x)
         if std == 0:
             return 0
-        return np.sum((x - mean)**3) / (n * std**3)
+        return np.sum((x - mean) ** 3) / (n * std**3)
 
     @staticmethod
     def _kurtosis(x):
@@ -487,11 +561,12 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
         std = np.std(x)
         if std == 0:
             return 0
-        return np.sum((x - mean)**4) / (n * std**4) - 3
+        return np.sum((x - mean) ** 4) / (n * std**4) - 3
 
     @staticmethod
     def _sample_entropy(signal, m, r):
         """Simplified Sample Entropy calculation."""
+
         def _maxdist(xmi, xmj):
             return max([abs(ua - va) for ua, va in zip(xmi, xmj)])
 
@@ -503,8 +578,8 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
         A = 0
 
         # Create templates
-        xm = np.array([signal[i:i+m] for i in range(n - m)])
-        xm1 = np.array([signal[i:i+m+1] for i in range(n - m)])
+        xm = np.array([signal[i : i + m] for i in range(n - m)])
+        xm1 = np.array([signal[i : i + m + 1] for i in range(n - m)])
 
         for i in range(len(xm)):
             template_m = xm[i]
@@ -533,6 +608,7 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
     @staticmethod
     def _approximate_entropy(signal, m, r):
         """Simplified Approximate Entropy calculation."""
+
         def _maxdist(xmi, xmj):
             return max([abs(ua - va) for ua, va in zip(xmi, xmj)])
 
@@ -541,11 +617,13 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
             return 0
 
         def _phi(m):
-            xm = np.array([signal[i:i+m] for i in range(n - m + 1)])
+            xm = np.array([signal[i : i + m] for i in range(n - m + 1)])
             C = []
             for i in range(len(xm)):
                 template = xm[i]
-                count = sum([1 for j in range(len(xm)) if _maxdist(template, xm[j]) <= r])
+                count = sum(
+                    [1 for j in range(len(xm)) if _maxdist(template, xm[j]) <= r]
+                )
                 C.append(count / (n - m + 1))
             return np.sum(np.log(C)) / (n - m + 1)
 
@@ -569,14 +647,16 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
                 break
 
             n_boxes = n // box_size
-            boxes = y[:n_boxes * box_size].reshape(n_boxes, box_size)
+            boxes = y[: n_boxes * box_size].reshape(n_boxes, box_size)
 
             # Detrend each box
             trends = np.array([np.polyfit(range(box_size), box, 1) for box in boxes])
-            trend_lines = np.array([np.polyval(trend, range(box_size)) for trend in trends])
+            trend_lines = np.array(
+                [np.polyval(trend, range(box_size)) for trend in trends]
+            )
 
             # Calculate fluctuation
-            F = np.sqrt(np.mean((boxes - trend_lines)**2))
+            F = np.sqrt(np.mean((boxes - trend_lines) ** 2))
 
             scales.append(box_size)
             fluct.append(F)
@@ -595,7 +675,7 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
         if n < 20:
             return 0.5
 
-        lags = range(2, min(n//2, 100))
+        lags = range(2, min(n // 2, 100))
         tau = []
 
         for lag in lags:
@@ -617,7 +697,7 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
             return 0.5
 
         # Fit line
-        coeffs = np.polyfit(np.log(list(lags)[:len(tau)]), np.log(tau), 1)
+        coeffs = np.polyfit(np.log(list(lags)[: len(tau)]), np.log(tau), 1)
         return coeffs[0]
 
     @staticmethod
@@ -628,7 +708,7 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
             return 0
 
         # Create delayed embedding
-        embedded = np.array([signal[i:i+2] for i in range(0, n-delay-1, delay)])
+        embedded = np.array([signal[i : i + 2] for i in range(0, n - delay - 1, delay)])
 
         if len(embedded) < 2:
             return 0
@@ -636,7 +716,7 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
         # Calculate average divergence
         divergences = []
         for i in range(len(embedded) - 1):
-            d0 = np.linalg.norm(embedded[i] - embedded[i+1])
+            d0 = np.linalg.norm(embedded[i] - embedded[i + 1])
             if d0 > 0:
                 divergences.append(np.log(d0))
 
@@ -657,6 +737,7 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
 
         # Calculate pairwise distances
         from scipy.spatial.distance import pdist, squareform
+
         distances = squareform(pdist(embedded))
 
         if max_dist is None:
@@ -719,10 +800,7 @@ class FeatureEngineering:
     """
 
     def __init__(
-        self,
-        interaction_terms: bool = False,
-        polynomial_degree: int = 1,
-        **kwargs
+        self, interaction_terms: bool = False, polynomial_degree: int = 1, **kwargs
     ):
         self.interaction_terms = interaction_terms
         self.polynomial_degree = polynomial_degree
@@ -739,6 +817,7 @@ class FeatureEngineering:
         # Add polynomial features
         if self.polynomial_degree > 1:
             from sklearn.preprocessing import PolynomialFeatures
+
             poly = PolynomialFeatures(degree=self.polynomial_degree, include_bias=False)
             X_transformed = poly.fit_transform(X_transformed)
 
@@ -748,7 +827,7 @@ class FeatureEngineering:
             n_features = X.shape[1]
             interactions = []
             for i in range(n_features):
-                for j in range(i+1, n_features):
+                for j in range(i + 1, n_features):
                     interactions.append(X[:, i] * X[:, j])
 
             if interactions:
@@ -757,7 +836,9 @@ class FeatureEngineering:
 
         return X_transformed
 
-    def fit_transform(self, X: np.ndarray, y: Optional[np.ndarray] = None) -> np.ndarray:
+    def fit_transform(
+        self, X: np.ndarray, y: Optional[np.ndarray] = None
+    ) -> np.ndarray:
         """Fit and transform features."""
         return self.fit(X, y).transform(X)
 
@@ -765,10 +846,10 @@ class FeatureEngineering:
 # Convenience function
 def extract_features(
     signals: Union[np.ndarray, List[np.ndarray]],
-    signal_type: str = 'ecg',
+    signal_type: str = "ecg",
     sampling_rate: float = 250.0,
     domains: Optional[List[str]] = None,
-    return_dataframe: bool = False
+    return_dataframe: bool = False,
 ) -> Union[np.ndarray, pd.DataFrame]:
     """
     Quick feature extraction from physiological signals.
@@ -797,9 +878,7 @@ def extract_features(
     >>> print(f"Shape: {features.shape}")
     """
     extractor = FeatureExtractor(
-        signal_type=signal_type,
-        sampling_rate=sampling_rate,
-        domains=domains
+        signal_type=signal_type, sampling_rate=sampling_rate, domains=domains
     )
 
     features = extractor.fit_transform(signals)

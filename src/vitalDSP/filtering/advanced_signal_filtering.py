@@ -1,7 +1,7 @@
 import numpy as np
-from vitalDSP.utils.loss_functions import LossFunctions
-from vitalDSP.utils.convolutional_kernels import ConvolutionKernels
-from vitalDSP.utils.attention_weights import AttentionWeights
+from vitalDSP.utils.signal_processing.loss_functions import LossFunctions
+from vitalDSP.utils.signal_processing.convolutional_kernels import ConvolutionKernels
+from vitalDSP.utils.signal_processing.attention_weights import AttentionWeights
 
 
 class AdvancedSignalFiltering:

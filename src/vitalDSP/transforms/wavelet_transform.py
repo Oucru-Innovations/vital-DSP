@@ -1,5 +1,5 @@
 import numpy as np
-from vitalDSP.utils.mother_wavelets import Wavelet
+from vitalDSP.utils.signal_processing.mother_wavelets import Wavelet
 from scipy.signal import convolve
 
 
@@ -87,17 +87,17 @@ class WaveletTransform:
         # OPTIMIZATION: Use vectorized convolution instead of loops
         try:
             from scipy.signal import convolve
-            
+
             # OPTIMIZATION: Vectorized convolution for O(n log n) complexity
-            approximation = convolve(padded_data, self.low_pass[::-1], mode='valid')
-            detail = convolve(padded_data, self.high_pass[::-1], mode='valid')
-            
+            approximation = convolve(padded_data, self.low_pass[::-1], mode="valid")
+            detail = convolve(padded_data, self.high_pass[::-1], mode="valid")
+
             # Ensure output length matches expected length
             if len(approximation) > output_length:
                 approximation = approximation[:output_length]
             if len(detail) > output_length:
                 detail = detail[:output_length]
-                
+
         except ImportError:
             # Fallback to original implementation if scipy not available
             approximation = np.zeros(output_length)

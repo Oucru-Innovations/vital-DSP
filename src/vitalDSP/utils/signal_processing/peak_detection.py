@@ -1,6 +1,6 @@
 import numpy as np
-from vitalDSP.utils.common import find_peaks, filtfilt, argrelextrema
-from vitalDSP.utils.scaler import StandardScaler
+from vitalDSP.utils.config_utilities.common import find_peaks, filtfilt, argrelextrema
+from vitalDSP.utils.signal_processing.scaler import StandardScaler
 from vitalDSP.filtering.signal_filtering import SignalFiltering
 
 

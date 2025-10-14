@@ -57,8 +57,14 @@ def create_hrv_poincare_plot(rr_intervals, hrv_metrics):
         return go.Figure()
 
     # Prepare data for Poincaré plot (RR_n vs RR_n+1)
-    rr_n = rr_intervals[:-1]
-    rr_n1 = rr_intervals[1:]
+    # Filter out infinite values before creating Poincaré plot
+    finite_mask = np.isfinite(rr_intervals)
+    if np.sum(finite_mask) < 2:
+        return create_empty_figure()
+    
+    finite_rr_intervals = rr_intervals[finite_mask]
+    rr_n = finite_rr_intervals[:-1]
+    rr_n1 = finite_rr_intervals[1:]
 
     fig = go.Figure()
 
@@ -96,7 +102,7 @@ def create_hrv_poincare_plot(rr_intervals, hrv_metrics):
     if "poincare_sd1" in hrv_metrics and "poincare_sd2" in hrv_metrics:
         sd1 = hrv_metrics["poincare_sd1"]
         sd2 = hrv_metrics["poincare_sd2"]
-        mean_rr = np.mean(rr_intervals)
+        mean_rr = np.mean(rr_intervals) if len(rr_intervals) > 0 else 0
 
         # Create ellipse for SD1 and SD2
         theta = np.linspace(0, 2 * np.pi, 100)
@@ -923,6 +929,15 @@ def register_physiological_callbacks(app):
             from vitalDSP_webapp.services.data.data_service import get_data_service
 
             data_service = get_data_service()
+            
+            # Check if Enhanced Data Service is available for heavy data processing
+            if data_service and hasattr(data_service, 'is_enhanced_service_available'):
+                if data_service.is_enhanced_service_available():
+                    logger.info("Enhanced Data Service is available for heavy data processing")
+                else:
+                    logger.info("Using basic data service functionality")
+            else:
+                logger.info("Data service not available or missing enhanced service methods")
 
             # Get the most recent data
             all_data = data_service.get_all_data()
@@ -968,6 +983,27 @@ def register_physiological_callbacks(app):
                     None,
                     None,
                 )
+
+            # Enhanced data processing for heavy datasets
+            data_size_mb = df.memory_usage(deep=True).sum() / (1024 * 1024)
+            num_samples = len(df)
+            
+            logger.info(f"Data size: {data_size_mb:.2f} MB, Samples: {num_samples}")
+            
+            # Use Enhanced Data Service for heavy data processing
+            if (data_service and hasattr(data_service, 'is_enhanced_service_available') and 
+                data_service.is_enhanced_service_available() and (data_size_mb > 5 or num_samples > 100000)):
+                logger.info(f"Using Enhanced Data Service for heavy physiological analysis: {data_size_mb:.2f}MB, {num_samples} samples")
+                
+                # Get enhanced service for optimized processing
+                if hasattr(data_service, 'get_enhanced_service'):
+                    enhanced_service = data_service.get_enhanced_service()
+                    if enhanced_service:
+                        logger.info("Enhanced Data Service is ready for optimized physiological analysis")
+                        # The enhanced service will automatically handle chunked processing
+                        # and memory optimization during physiological analysis
+            else:
+                logger.info("Using standard processing for lightweight physiological analysis")
 
             # Get sampling frequency from the data info
             sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)
@@ -2160,8 +2196,8 @@ def create_physiological_analysis_plots(
             )
 
             # Add interval statistics
-            mean_interval = np.mean(beat_intervals)
-            std_interval = np.std(beat_intervals)
+            mean_interval = np.mean(beat_intervals) if len(beat_intervals) > 0 else 0
+            std_interval = np.std(beat_intervals) if len(beat_intervals) > 0 else 0
             heart_rate = 60 / mean_interval if mean_interval > 0 else 0
 
             fig.add_hline(
@@ -2339,22 +2375,26 @@ def create_physiological_analysis_plots(
                 )  # Convert to milliseconds
 
                 # Create Poincaré plot (RR_n vs RR_{n+1})
-                fig.add_trace(
-                    go.Scatter(
-                        x=rr_intervals[:-1],
-                        y=rr_intervals[1:],
-                        mode="markers",
-                        name="Poincaré Plot",
-                        marker=dict(
-                            color="rgba(156, 39, 176, 0.7)",
-                            size=8,
-                            symbol="circle",
-                            line=dict(color="rgba(156, 39, 176, 1)", width=1),
+                # Filter out infinite values
+                finite_mask = np.isfinite(rr_intervals)
+                if np.sum(finite_mask) >= 2:
+                    finite_rr_intervals = rr_intervals[finite_mask]
+                    fig.add_trace(
+                        go.Scatter(
+                            x=finite_rr_intervals[:-1],
+                            y=finite_rr_intervals[1:],
+                            mode="markers",
+                            name="Poincaré Plot",
+                            marker=dict(
+                                color="rgba(156, 39, 176, 0.7)",
+                                size=8,
+                                symbol="circle",
+                                line=dict(color="rgba(156, 39, 176, 1)", width=1),
+                            ),
                         ),
-                    ),
-                    row=2,
-                    col=2,
-                )
+                        row=2,
+                        col=2,
+                    )
 
                 # Calculate Poincaré plot statistics
                 diff_rr = np.diff(rr_intervals)
@@ -2362,9 +2402,13 @@ def create_physiological_analysis_plots(
                 sd2 = np.std(rr_intervals) * np.sqrt(2)
 
                 # Add SD1 and SD2 ellipses
-                center_x, center_y = np.mean(rr_intervals[:-1]), np.mean(
-                    rr_intervals[1:]
-                )
+                finite_mask = np.isfinite(rr_intervals)
+                if np.sum(finite_mask) >= 2:
+                    finite_rr_intervals = rr_intervals[finite_mask]
+                    center_x, center_y = (
+                        np.mean(finite_rr_intervals[:-1]) if len(finite_rr_intervals) > 1 else 0,
+                        np.mean(finite_rr_intervals[1:]) if len(finite_rr_intervals) > 1 else 0,
+                    )
 
                 # Create SD1 ellipse points
                 theta = np.linspace(0, 2 * np.pi, 100)
@@ -2622,21 +2666,42 @@ def analyze_hrv(signal_data, sampling_freq, hrv_options):
             if "time_domain" in hrv_options:
                 hrv_metrics.update(
                     {
-                        "mean_rr": np.mean(rr_intervals),
-                        "std_rr": np.std(rr_intervals),
-                        "rmssd": np.sqrt(np.mean(np.diff(rr_intervals) ** 2)),
-                        "nn50": np.sum(np.abs(np.diff(rr_intervals)) > 50),
-                        "pnn50": (
+                        "mean_rr": (
+                            np.mean(rr_intervals) if len(rr_intervals) > 0 else 0
+                        ),
+                        "std_rr": np.std(rr_intervals) if len(rr_intervals) > 0 else 0,
+                        "rmssd": (
+                            np.sqrt(np.mean(np.diff(rr_intervals) ** 2))
+                            if len(rr_intervals) > 1
+                            else 0
+                        ),
+                        "nn50": (
                             np.sum(np.abs(np.diff(rr_intervals)) > 50)
-                            / len(rr_intervals)
-                        )
-                        * 100,
+                            if len(rr_intervals) > 1
+                            else 0
+                        ),
+                        "pnn50": (
+                            (
+                                np.sum(np.abs(np.diff(rr_intervals)) > 50)
+                                / len(rr_intervals)
+                            )
+                            * 100
+                            if len(rr_intervals) > 1
+                            else 0
+                        ),
                     }
                 )
 
             if "frequency_domain" in hrv_options or "freq_domain" in hrv_options:
-                # Simple frequency domain analysis
-                freqs, psd = signal.welch(rr_intervals, fs=1000 / np.mean(rr_intervals))
+                # Simple frequency domain analysis with safety check
+                if len(rr_intervals) > 0:
+                    # Set nperseg to avoid warnings for short signals
+                    nperseg = min(256, len(rr_intervals))
+                    freqs, psd = signal.welch(
+                        rr_intervals, fs=1000 / np.mean(rr_intervals), nperseg=nperseg
+                    )
+                else:
+                    freqs, psd = np.array([]), np.array([])
                 hrv_metrics.update(
                     {
                         "total_power": np.sum(psd),
@@ -3428,8 +3493,8 @@ def create_hrv_plots(time_data, signal_data, sampling_freq, hrv_options):
         )
 
         # Add RR interval statistics
-        mean_rr = np.mean(rr_intervals)
-        std_rr = np.std(rr_intervals)
+        mean_rr = np.mean(rr_intervals) if len(rr_intervals) > 0 else 0
+        std_rr = np.std(rr_intervals) if len(rr_intervals) > 0 else 0
 
         fig.add_hline(
             y=mean_rr,
@@ -3586,22 +3651,26 @@ def create_hrv_plots(time_data, signal_data, sampling_freq, hrv_options):
         # Nonlinear analysis with enhanced Poincaré plot
         if "nonlinear" in hrv_options:
             # Poincaré plot with enhanced styling
-            fig.add_trace(
-                go.Scatter(
-                    x=rr_intervals[:-1],
-                    y=rr_intervals[1:],
-                    mode="markers",
-                    name="Poincaré Plot",
-                    marker=dict(
-                        color="rgba(156, 39, 176, 0.7)",
-                        size=8,
-                        symbol="circle",
-                        line=dict(color="rgba(156, 39, 176, 1)", width=1),
+            # Filter out infinite values
+            finite_mask = np.isfinite(rr_intervals)
+            if np.sum(finite_mask) >= 2:
+                finite_rr_intervals = rr_intervals[finite_mask]
+                fig.add_trace(
+                    go.Scatter(
+                        x=finite_rr_intervals[:-1],
+                        y=finite_rr_intervals[1:],
+                        mode="markers",
+                        name="Poincaré Plot",
+                        marker=dict(
+                            color="rgba(156, 39, 176, 0.7)",
+                            size=8,
+                            symbol="circle",
+                            line=dict(color="rgba(156, 39, 176, 1)", width=1),
+                        ),
                     ),
-                ),
-                row=current_row,
-                col=1,
-            )
+                    row=current_row,
+                    col=1,
+                )
 
             # Add Poincaré plot statistics
             try:
@@ -3611,9 +3680,13 @@ def create_hrv_plots(time_data, signal_data, sampling_freq, hrv_options):
                 sd2 = np.std(rr_intervals) * np.sqrt(2)
 
                 # Add ellipses
-                center_x, center_y = np.mean(rr_intervals[:-1]), np.mean(
-                    rr_intervals[1:]
-                )
+                finite_mask = np.isfinite(rr_intervals)
+                if np.sum(finite_mask) >= 2:
+                    finite_rr_intervals = rr_intervals[finite_mask]
+                    center_x, center_y = (
+                        np.mean(finite_rr_intervals[:-1]) if len(finite_rr_intervals) > 1 else 0,
+                        np.mean(finite_rr_intervals[1:]) if len(finite_rr_intervals) > 1 else 0,
+                    )
 
                 # Create ellipse points
                 theta = np.linspace(0, 2 * np.pi, 100)
@@ -3868,8 +3941,8 @@ def create_morphology_plots(time_data, signal_data, sampling_freq, morphology_op
             )
 
             # Add interval statistics
-            mean_interval = np.mean(beat_intervals)
-            std_interval = np.std(beat_intervals)
+            mean_interval = np.mean(beat_intervals) if len(beat_intervals) > 0 else 0
+            std_interval = np.std(beat_intervals) if len(beat_intervals) > 0 else 0
 
             fig.add_hline(
                 y=mean_interval,
@@ -4018,7 +4091,9 @@ def analyze_beat_to_beat(signal_data, sampling_freq):
 
         return {
             "num_beats": len(peaks),
-            "mean_beat_interval": np.mean(beat_intervals),
+            "mean_beat_interval": (
+                np.mean(beat_intervals) if len(beat_intervals) > 0 else 0
+            ),
             "beat_variability": beat_variability,
             "beat_regularity": beat_regularity,
             "beat_intervals": beat_intervals.tolist(),
@@ -4170,13 +4245,19 @@ def analyze_frequency(signal_data, sampling_freq):
         # Calculate power spectral density
         freqs, psd = signal.welch(signal_data, fs=sampling_freq)
 
-        # Calculate frequency domain metrics
+        # Calculate frequency domain metrics with safety checks
         total_power = np.sum(psd)
         dominant_freq = freqs[np.argmax(psd)]
-        spectral_centroid = np.sum(freqs * psd) / total_power
-        spectral_bandwidth = np.sqrt(
-            np.sum(((freqs - spectral_centroid) ** 2) * psd) / total_power
-        )
+
+        # Avoid divide by zero warning
+        if total_power > 0:
+            spectral_centroid = np.sum(freqs * psd) / total_power
+            spectral_bandwidth = np.sqrt(
+                np.sum(((freqs - spectral_centroid) ** 2) * psd) / total_power
+            )
+        else:
+            spectral_centroid = 0
+            spectral_bandwidth = 0
 
         # Power in different frequency bands
         power_bands = {

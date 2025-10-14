@@ -28,33 +28,41 @@ class TestDataServiceComprehensive:
         assert service1 is service2
         assert isinstance(service1, DataService)
 
-    def test_load_data_from_csv_with_separator(self):
+    @patch('pandas.read_csv')
+    @patch('pathlib.Path.exists')
+    @patch('pathlib.Path.stat')
+    def test_load_data_from_csv_with_separator(self, mock_stat, mock_exists, mock_read_csv):
         """Test loading CSV data with different separators"""
         csv_content = "time;signal\n0;0.1\n1;0.2\n2;0.3"
-        
-        with patch('pandas.read_csv') as mock_read_csv:
-            mock_df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
-            mock_read_csv.return_value = mock_df
-            
-            result = self.data_service.load_data("test.csv")
-        
+
+        mock_df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        mock_read_csv.return_value = mock_df
+        mock_exists.return_value = True
+        mock_stat.return_value.st_size = 1024  # 1KB file
+
+        result = self.data_service.load_data("test.csv")
+
         assert result is mock_df
         mock_read_csv.assert_called_once()
         # The load_data method may not use sep parameter for CSV files
 
-    def test_load_data_from_txt_file(self):
+    @patch('pandas.read_csv')
+    @patch('pathlib.Path.exists')
+    @patch('pathlib.Path.stat')
+    def test_load_data_from_txt_file(self, mock_stat, mock_exists, mock_read_csv):
         """Test loading TXT data file"""
-        with patch('pandas.read_csv') as mock_read_csv:
-            mock_df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
-            mock_read_csv.return_value = mock_df
-            
-            result = self.data_service.load_data("test.txt")
-            
-            assert result is mock_df
-            mock_read_csv.assert_called_once()
-            args, kwargs = mock_read_csv.call_args
-            assert 'sep' in kwargs
-            assert kwargs['sep'] == '\t'  # Tab separator for txt files
+        mock_df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+        mock_read_csv.return_value = mock_df
+        mock_exists.return_value = True
+        mock_stat.return_value.st_size = 1024  # 1KB file
+
+        result = self.data_service.load_data("test.txt")
+
+        assert result is mock_df
+        mock_read_csv.assert_called_once()
+        args, kwargs = mock_read_csv.call_args
+        assert 'sep' in kwargs
+        assert kwargs['sep'] == '\t'  # Tab separator for txt files
 
     def test_load_data_from_nonexistent_file(self):
         """Test loading data from nonexistent file"""

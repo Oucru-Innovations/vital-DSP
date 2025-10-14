@@ -6,7 +6,7 @@ from vitalDSP.respiratory_analysis.estimate_rr import (
     frequency_domain_rr,
 )
 import plotly.graph_objects as go
-from vitalDSP.utils.common import find_peaks
+from vitalDSP.utils.config_utilities.common import find_peaks
 from plotly.subplots import make_subplots
 
 # Add Frequency-Domain RR estimation (Welch method)

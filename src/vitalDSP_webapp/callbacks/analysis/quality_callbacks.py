@@ -113,6 +113,15 @@ def register_quality_callbacks(app):
             from vitalDSP_webapp.services.data.data_service import get_data_service
 
             data_service = get_data_service()
+            
+            # Check if Enhanced Data Service is available for heavy data processing
+            if data_service and hasattr(data_service, 'is_enhanced_service_available'):
+                if data_service.is_enhanced_service_available():
+                    logger.info("Enhanced Data Service is available for heavy data processing")
+                else:
+                    logger.info("Using basic data service functionality")
+            else:
+                logger.info("Data service not available or missing enhanced service methods")
 
             if data_service is None:
                 logger.error("Data service not available")
@@ -158,7 +167,7 @@ def register_quality_callbacks(app):
             # Get the most recent data entry
             latest_data_id = list(all_data.keys())[-1]
             latest_data = all_data[latest_data_id]
-            
+
             # Get column mapping
             column_mapping = data_service.get_column_mapping(latest_data_id)
             if column_mapping is None:
@@ -174,13 +183,15 @@ def register_quality_callbacks(app):
                 )
 
             # Extract signal data and sampling frequency
-            signal_data = latest_data.get('data')
+            signal_data = latest_data.get("data")
             if signal_data is None:
                 # If no 'data' field, assume the latest_data itself is the signal data
                 signal_data = latest_data
-            
+
             # Check if signal data is actually a valid array or DataFrame
-            if not isinstance(signal_data, (np.ndarray, list)) and not hasattr(signal_data, 'values'):
+            if not isinstance(signal_data, (np.ndarray, list)) and not hasattr(
+                signal_data, "values"
+            ):
                 return (
                     create_empty_figure(),
                     create_empty_figure(),
@@ -191,12 +202,34 @@ def register_quality_callbacks(app):
                     None,
                     None,
                 )
-            
+
             # Convert DataFrame to numpy array if needed
-            if hasattr(signal_data, 'values'):
+            if hasattr(signal_data, "values"):
                 signal_data = signal_data.values
+
+            sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)
             
-            sampling_freq = latest_data.get('info', {}).get('sampling_freq', 1000)
+            # Enhanced data processing for heavy datasets
+            if signal_data is not None and len(signal_data) > 0:
+                data_size_mb = signal_data.nbytes / (1024 * 1024) if hasattr(signal_data, 'nbytes') else len(signal_data) * 8 / (1024 * 1024)
+                num_samples = len(signal_data)
+                
+                logger.info(f"Signal data size: {data_size_mb:.2f} MB, Samples: {num_samples}")
+                
+                # Use Enhanced Data Service for heavy data processing
+                if (data_service and hasattr(data_service, 'is_enhanced_service_available') and 
+                    data_service.is_enhanced_service_available() and (data_size_mb > 5 or num_samples > 100000)):
+                    logger.info(f"Using Enhanced Data Service for heavy quality assessment: {data_size_mb:.2f}MB, {num_samples} samples")
+                    
+                    # Get enhanced service for optimized processing
+                    if hasattr(data_service, 'get_enhanced_service'):
+                        enhanced_service = data_service.get_enhanced_service()
+                        if enhanced_service:
+                            logger.info("Enhanced Data Service is ready for optimized quality assessment")
+                            # The enhanced service will automatically handle chunked processing
+                            # and memory optimization during quality assessment
+                else:
+                    logger.info("Using standard processing for lightweight quality assessment")
 
             # Extract time segment if specified
             if start_time is not None and end_time is not None:
@@ -215,12 +248,16 @@ def register_quality_callbacks(app):
             )
 
             # Create visualizations
-            main_plot = create_quality_main_plot(signal_data, quality_results, sampling_freq)
+            main_plot = create_quality_main_plot(
+                signal_data, quality_results, sampling_freq
+            )
             metrics_plot = create_quality_metrics_plot(quality_results)
 
             # Create results displays
             assessment_results = create_assessment_results_display(quality_results)
-            issues_recommendations = create_issues_recommendations_display(quality_results)
+            issues_recommendations = create_issues_recommendations_display(
+                quality_results
+            )
             detailed_analysis = create_detailed_analysis_display(quality_results)
             score_dashboard = create_score_dashboard(quality_results)
 
@@ -257,12 +294,15 @@ def _import_vitaldsp_modules():
         global kurtosis_artifact_detection
 
         from vitalDSP.signal_quality_assessment.signal_quality import SignalQuality
-        from vitalDSP.signal_quality_assessment.signal_quality_index import SignalQualityIndex
+        from vitalDSP.signal_quality_assessment.signal_quality_index import (
+            SignalQualityIndex,
+        )
         from vitalDSP.signal_quality_assessment.artifact_detection_removal import (
             z_score_artifact_detection,
             adaptive_threshold_artifact_detection,
             kurtosis_artifact_detection,
         )
+
         logger.info("Successfully imported vitalDSP quality assessment modules")
     except ImportError as e:
         logger.error(f"Error importing vitalDSP modules: {e}")
@@ -314,32 +354,42 @@ def assess_signal_quality_vitaldsp(
             nyq = sampling_freq / 2
             if nyq > 10:  # Only if we have sufficient frequency range
                 cutoff = min(10, nyq * 0.8)  # 10 Hz or 80% of Nyquist
-                b, a = butter(4, cutoff / nyq, btype='high')
+                b, a = butter(4, cutoff / nyq, btype="high")
                 noise_estimate = filtfilt(b, a, signal_data)
 
                 # Low-pass filter to get signal
                 cutoff_low = max(0.5, cutoff / 20)  # Low cutoff
-                b_low, a_low = butter(4, cutoff_low / nyq, btype='low')
+                b_low, a_low = butter(4, cutoff_low / nyq, btype="low")
                 signal_estimate = filtfilt(b_low, a_low, signal_data)
 
                 sq = SignalQuality(signal_estimate, signal_data)
                 snr_db = sq.snr()
             else:
                 # Fallback: use signal power vs std
-                signal_power = np.mean(signal_data ** 2)
+                signal_power = np.mean(signal_data**2)
                 noise_power = np.std(signal_data) ** 2
-                snr_db = 10 * np.log10(signal_power / noise_power) if noise_power > 0 else float('inf')
+                snr_db = (
+                    10 * np.log10(signal_power / noise_power)
+                    if noise_power > 0
+                    else float("inf")
+                )
 
             quality_results["snr"] = {
                 "snr_db": float(snr_db),
-                "quality": "excellent" if snr_db > 20 else "good" if snr_db > snr_threshold else "poor",
+                "quality": (
+                    "excellent"
+                    if snr_db > 20
+                    else "good" if snr_db > snr_threshold else "poor"
+                ),
                 "threshold": snr_threshold,
             }
 
         # Artifact Detection (multiple methods)
         if "artifacts" in quality_metrics or not quality_metrics:
             # Use vitalDSP's multiple artifact detection methods
-            artifacts_zscore = z_score_artifact_detection(signal_data, z_threshold=artifact_threshold)
+            artifacts_zscore = z_score_artifact_detection(
+                signal_data, z_threshold=artifact_threshold
+            )
 
             # Adaptive threshold (better for non-stationary signals)
             artifacts_adaptive = adaptive_threshold_artifact_detection(
@@ -355,7 +405,9 @@ def assess_signal_quality_vitaldsp(
 
             # Combine results (union of all detected artifacts)
             all_artifacts = np.unique(
-                np.concatenate([artifacts_zscore, artifacts_adaptive, artifacts_kurtosis])
+                np.concatenate(
+                    [artifacts_zscore, artifacts_adaptive, artifacts_kurtosis]
+                )
             )
 
             artifact_percentage = 100 * len(all_artifacts) / len(signal_data)
@@ -378,7 +430,10 @@ def assess_signal_quality_vitaldsp(
         # Baseline Wander SQI (temporal analysis)
         if "baseline_wander" in quality_metrics or not quality_metrics:
             baseline_sqi_values, bl_normal, bl_abnormal = sqi.baseline_wander_sqi(
-                window_size, step_size, threshold=0.7, moving_avg_window=int(2 * sampling_freq)
+                window_size,
+                step_size,
+                threshold=0.7,
+                moving_avg_window=int(2 * sampling_freq),
             )
 
             quality_results["baseline_wander"] = {
@@ -387,8 +442,16 @@ def assess_signal_quality_vitaldsp(
                 "sqi_values": [float(x) for x in baseline_sqi_values],
                 "normal_segments": bl_normal,
                 "abnormal_segments": bl_abnormal,
-                "abnormal_percentage": 100 * len(bl_abnormal) / (len(bl_normal) + len(bl_abnormal)) if (len(bl_normal) + len(bl_abnormal)) > 0 else 0,
-                "quality": "excellent" if np.mean(baseline_sqi_values) > 0.8 else "good" if np.mean(baseline_sqi_values) > 0.6 else "poor",
+                "abnormal_percentage": (
+                    100 * len(bl_abnormal) / (len(bl_normal) + len(bl_abnormal))
+                    if (len(bl_normal) + len(bl_abnormal)) > 0
+                    else 0
+                ),
+                "quality": (
+                    "excellent"
+                    if np.mean(baseline_sqi_values) > 0.8
+                    else "good" if np.mean(baseline_sqi_values) > 0.6 else "poor"
+                ),
             }
 
         # Amplitude Variability SQI
@@ -403,7 +466,11 @@ def assess_signal_quality_vitaldsp(
                 "normal_segments": amp_normal,
                 "abnormal_segments": amp_abnormal,
                 "range": float(np.max(signal_data) - np.min(signal_data)),
-                "quality": "excellent" if np.mean(amp_sqi_values) > 0.8 else "good" if np.mean(amp_sqi_values) > 0.6 else "poor",
+                "quality": (
+                    "excellent"
+                    if np.mean(amp_sqi_values) > 0.8
+                    else "good" if np.mean(amp_sqi_values) > 0.6 else "poor"
+                ),
             }
 
         # Signal Entropy SQI
@@ -417,7 +484,11 @@ def assess_signal_quality_vitaldsp(
                 "sqi_values": [float(x) for x in entropy_sqi_values],
                 "normal_segments": ent_normal,
                 "abnormal_segments": ent_abnormal,
-                "quality": "excellent" if np.mean(entropy_sqi_values) > 0.7 else "good" if np.mean(entropy_sqi_values) > 0.5 else "poor",
+                "quality": (
+                    "excellent"
+                    if np.mean(entropy_sqi_values) > 0.7
+                    else "good" if np.mean(entropy_sqi_values) > 0.5 else "poor"
+                ),
             }
 
         # Zero Crossing SQI (signal stability)
@@ -431,7 +502,11 @@ def assess_signal_quality_vitaldsp(
                 "sqi_values": [float(x) for x in zc_sqi_values],
                 "normal_segments": zc_normal,
                 "abnormal_segments": zc_abnormal,
-                "quality": "excellent" if np.mean(zc_sqi_values) > 0.8 else "good" if np.mean(zc_sqi_values) > 0.6 else "poor",
+                "quality": (
+                    "excellent"
+                    if np.mean(zc_sqi_values) > 0.8
+                    else "good" if np.mean(zc_sqi_values) > 0.6 else "poor"
+                ),
             }
 
         # Energy SQI
@@ -445,7 +520,11 @@ def assess_signal_quality_vitaldsp(
                 "sqi_values": [float(x) for x in energy_sqi_values],
                 "normal_segments": en_normal,
                 "abnormal_segments": en_abnormal,
-                "quality": "excellent" if np.mean(energy_sqi_values) > 0.8 else "good" if np.mean(energy_sqi_values) > 0.6 else "poor",
+                "quality": (
+                    "excellent"
+                    if np.mean(energy_sqi_values) > 0.8
+                    else "good" if np.mean(energy_sqi_values) > 0.6 else "poor"
+                ),
             }
 
         # Signal Continuity (NaN/Inf detection)
@@ -460,7 +539,9 @@ def assess_signal_quality_vitaldsp(
                 "has_inf": bool(has_inf),
                 "nan_count": int(nan_count),
                 "inf_count": int(inf_count),
-                "continuity_percentage": float(100 * (1 - (nan_count + inf_count) / len(signal_data))),
+                "continuity_percentage": float(
+                    100 * (1 - (nan_count + inf_count) / len(signal_data))
+                ),
                 "quality": "poor" if (has_nan or has_inf) else "excellent",
             }
 
@@ -497,10 +578,13 @@ def assess_signal_quality_vitaldsp(
             "score": float(overall_score),
             "percentage": float(overall_score * 100),
             "quality": (
-                "excellent" if overall_score > 0.8
-                else "good" if overall_score > 0.6
-                else "fair" if overall_score > 0.4
-                else "poor"
+                "excellent"
+                if overall_score > 0.8
+                else (
+                    "good"
+                    if overall_score > 0.6
+                    else "fair" if overall_score > 0.4 else "poor"
+                )
             ),
             "component_scores": {
                 "mean_sqi": float(mean_sqi),
@@ -553,7 +637,10 @@ def create_quality_main_plot(signal_data, quality_results, sampling_freq):
         )
 
         # Mark artifacts if available
-        if "artifacts" in quality_results and "artifact_locations" in quality_results["artifacts"]:
+        if (
+            "artifacts" in quality_results
+            and "artifact_locations" in quality_results["artifacts"]
+        ):
             artifact_indices = quality_results["artifacts"]["artifact_locations"]
             if artifact_indices:
                 fig.add_trace(
@@ -569,7 +656,10 @@ def create_quality_main_plot(signal_data, quality_results, sampling_freq):
                 )
 
         # Plot SQI values over time if available
-        if "baseline_wander" in quality_results and "sqi_values" in quality_results["baseline_wander"]:
+        if (
+            "baseline_wander" in quality_results
+            and "sqi_values" in quality_results["baseline_wander"]
+        ):
             sqi_values = quality_results["baseline_wander"]["sqi_values"]
             window_size = int(10 * sampling_freq)
             step_size = int(5 * sampling_freq)
@@ -625,7 +715,9 @@ def create_quality_metrics_plot(quality_results):
             metric_names.append("Stability")
 
         if "artifacts" in quality_results:
-            artifact_score = max(0, 1.0 - quality_results["artifacts"]["artifact_percentage"] / 100.0)
+            artifact_score = max(
+                0, 1.0 - quality_results["artifacts"]["artifact_percentage"] / 100.0
+            )
             metrics_data.append(artifact_score)
             metric_names.append("Artifact-free")
 
@@ -670,10 +762,13 @@ def create_assessment_results_display(quality_results):
 
         overall = quality_results["overall_score"]
         quality_class = (
-            "success" if overall["quality"] == "excellent"
-            else "info" if overall["quality"] == "good"
-            else "warning" if overall["quality"] == "fair"
-            else "danger"
+            "success"
+            if overall["quality"] == "excellent"
+            else (
+                "info"
+                if overall["quality"] == "good"
+                else "warning" if overall["quality"] == "fair" else "danger"
+            )
         )
 
         return dbc.Card(
@@ -682,8 +777,13 @@ def create_assessment_results_display(quality_results):
                     html.H4("Overall Quality Assessment", className="card-title"),
                     dbc.Alert(
                         [
-                            html.H5(f"Quality: {overall['quality'].upper()}", className="alert-heading"),
-                            html.P(f"Score: {overall['score']:.3f} ({overall['percentage']:.1f}%)"),
+                            html.H5(
+                                f"Quality: {overall['quality'].upper()}",
+                                className="alert-heading",
+                            ),
+                            html.P(
+                                f"Score: {overall['score']:.3f} ({overall['percentage']:.1f}%)"
+                            ),
                         ],
                         color=quality_class,
                     ),
@@ -716,8 +816,13 @@ def create_issues_recommendations_display(quality_results):
                 )
 
         if "continuity" in quality_results:
-            if quality_results["continuity"]["has_nan"] or quality_results["continuity"]["has_inf"]:
-                issues.append("Signal contains NaN or Inf values. Data integrity check needed.")
+            if (
+                quality_results["continuity"]["has_nan"]
+                or quality_results["continuity"]["has_inf"]
+            ):
+                issues.append(
+                    "Signal contains NaN or Inf values. Data integrity check needed."
+                )
 
         if not issues:
             return dbc.Alert("No significant quality issues detected.", color="success")
@@ -748,10 +853,26 @@ def create_detailed_analysis_display(quality_results):
 
         if "artifacts" in quality_results:
             details.append(html.H5("Artifact Detection"))
-            details.append(html.P(f"Total artifacts: {quality_results['artifacts']['artifact_count']} ({quality_results['artifacts']['artifact_percentage']:.2f}%)"))
-            details.append(html.P(f"Z-score method: {quality_results['artifacts']['zscore_count']} artifacts"))
-            details.append(html.P(f"Adaptive method: {quality_results['artifacts']['adaptive_count']} artifacts"))
-            details.append(html.P(f"Kurtosis method: {quality_results['artifacts']['kurtosis_count']} artifacts"))
+            details.append(
+                html.P(
+                    f"Total artifacts: {quality_results['artifacts']['artifact_count']} ({quality_results['artifacts']['artifact_percentage']:.2f}%)"
+                )
+            )
+            details.append(
+                html.P(
+                    f"Z-score method: {quality_results['artifacts']['zscore_count']} artifacts"
+                )
+            )
+            details.append(
+                html.P(
+                    f"Adaptive method: {quality_results['artifacts']['adaptive_count']} artifacts"
+                )
+            )
+            details.append(
+                html.P(
+                    f"Kurtosis method: {quality_results['artifacts']['kurtosis_count']} artifacts"
+                )
+            )
 
         return dbc.Card(
             dbc.CardBody(details),
@@ -779,10 +900,17 @@ def create_score_dashboard(quality_results):
                         value=overall["percentage"],
                         label=f"{overall['percentage']:.1f}%",
                         color=(
-                            "success" if overall["quality"] == "excellent"
-                            else "info" if overall["quality"] == "good"
-                            else "warning" if overall["quality"] == "fair"
-                            else "danger"
+                            "success"
+                            if overall["quality"] == "excellent"
+                            else (
+                                "info"
+                                if overall["quality"] == "good"
+                                else (
+                                    "warning"
+                                    if overall["quality"] == "fair"
+                                    else "danger"
+                                )
+                            )
                         ),
                         className="mb-3",
                         style={"height": "30px"},

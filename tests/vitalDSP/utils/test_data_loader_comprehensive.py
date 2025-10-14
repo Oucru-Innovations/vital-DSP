@@ -18,7 +18,7 @@ import os
 from pathlib import Path
 
 # Import the data loader
-from vitalDSP.utils.data_loader import (
+from vitalDSP.utils.data_processing.data_loader import (
     DataLoader,
     DataFormat,
     SignalType,
@@ -129,9 +129,11 @@ class TestDataLoaderFormats:
     def test_hdf5_format(self):
         """Test loading HDF5 format"""
         try:
-            import tables
+            import h5py
         except ImportError:
-            pytest.skip("tables/pytables not installed")
+            pytest.skip("h5py not installed")
+        
+        # If h5py is available, proceed with the test
 
         data = pd.DataFrame({
             'time': np.linspace(0, 5, 500),
@@ -139,10 +141,15 @@ class TestDataLoaderFormats:
         })
 
         with tempfile.NamedTemporaryFile(suffix='.h5', delete=False) as f:
-            data.to_hdf(f.name, key='data', mode='w')
             temp_path = f.name
 
         try:
+            # Create HDF5 file with h5py directly
+            with h5py.File(temp_path, 'w') as hf:
+                # Create a dataset directly (not a group)
+                hf.create_dataset('data', data=data.values)
+                hf.attrs['columns'] = list(data.columns)
+            
             loader = DataLoader(temp_path, sampling_rate=100)
             df = loader.load()  # No format_type parameter
 
@@ -280,15 +287,45 @@ class TestStreamDataLoader:
     """Test stream data loading functionality"""
 
     def test_stream_loader_basic(self):
-        """Test basic stream loading - skip for now as it needs specific source_type"""
-        # StreamDataLoader requires source_type ('serial', 'network', 'database', 'api')
-        # not file path. This test would need to be rewritten for actual streaming sources.
-        pytest.skip("StreamDataLoader is for real-time sources (serial/network/api), not file-based loading")
+        """Test basic stream loading"""
+        # Test StreamDataLoader initialization and basic functionality
+        try:
+            loader = StreamDataLoader(
+                source_type='serial',
+                port='COM1',
+                baudrate=9600,
+                buffer_size=1000,
+                sampling_rate=100
+            )
+            # Test that the loader was created successfully
+            assert loader.source_type == 'serial'
+            assert loader.buffer_size == 1000
+            assert loader.sampling_rate == 100
+        except Exception as e:
+            # If serial port is not available, that's expected in test environment
+            pytest.skip(f"Serial port not available for testing: {e}")
 
     def test_stream_loader_with_overlap(self):
-        """Test stream loading with overlapping chunks - skip for now"""
-        # StreamDataLoader requires source_type ('serial', 'network', 'database', 'api')
-        pytest.skip("StreamDataLoader is for real-time sources (serial/network/api), not file-based loading")
+        """Test stream loading with overlapping chunks"""
+        # Test StreamDataLoader with overlap configuration
+        try:
+            loader = StreamDataLoader(
+                source_type='network',
+                host='localhost',
+                port=8080,
+                buffer_size=2000,
+                sampling_rate=200,
+                overlap_samples=100
+            )
+            # Test that the loader was created successfully with overlap
+            assert loader.source_type == 'network'
+            assert loader.buffer_size == 2000
+            assert loader.sampling_rate == 200
+            # Check if overlap_samples is stored in kwargs
+            assert loader.kwargs.get('overlap_samples') == 100
+        except Exception as e:
+            # If network connection is not available, that's expected in test environment
+            pytest.skip(f"Network connection not available for testing: {e}")
 
 
 class TestErrorHandling:

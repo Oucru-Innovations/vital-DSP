@@ -15,18 +15,10 @@ Date: 2025
 """
 
 # Feature Extraction
-from .feature_extractor import (
-    FeatureExtractor,
-    FeatureEngineering,
-    extract_features
-)
+from .feature_extractor import FeatureExtractor, FeatureEngineering, extract_features
 
 # Deep Learning Models
-from .deep_models import (
-    BaseDeepModel,
-    CNN1D,
-    LSTMModel
-)
+from .deep_models import BaseDeepModel, CNN1D, LSTMModel
 
 from .transformer_model import TransformerModel
 
@@ -38,7 +30,7 @@ from .autoencoder import (
     VariationalAutoencoder,
     DenoisingAutoencoder,
     detect_anomalies,
-    denoise_signal
+    denoise_signal,
 )
 
 from .explainability import (
@@ -47,14 +39,14 @@ from .explainability import (
     LIMEExplainer,
     GradCAM1D,
     AttentionVisualizer,
-    explain_prediction
+    explain_prediction,
 )
 
 from .pretrained_models import (
     PretrainedModel,
     ModelHub,
     load_pretrained_model,
-    MODEL_REGISTRY
+    MODEL_REGISTRY,
 )
 
 from .transfer_learning import (
@@ -62,7 +54,7 @@ from .transfer_learning import (
     FeatureExtractor,
     FineTuner,
     DomainAdapter,
-    quick_transfer
+    quick_transfer,
 )
 
 # Future imports (to be implemented)
@@ -71,47 +63,41 @@ from .transfer_learning import (
 
 __all__ = [
     # Feature Extraction
-    'FeatureExtractor',
-    'FeatureEngineering',
-    'extract_features',
-
+    "FeatureExtractor",
+    "FeatureEngineering",
+    "extract_features",
     # Deep Models
-    'BaseDeepModel',
-    'CNN1D',
-    'LSTMModel',
-    'TransformerModel',
-
+    "BaseDeepModel",
+    "CNN1D",
+    "LSTMModel",
+    "TransformerModel",
     # Autoencoders
-    'BaseAutoencoder',
-    'StandardAutoencoder',
-    'ConvolutionalAutoencoder',
-    'LSTMAutoencoder',
-    'VariationalAutoencoder',
-    'DenoisingAutoencoder',
-    'detect_anomalies',
-    'denoise_signal',
-
+    "BaseAutoencoder",
+    "StandardAutoencoder",
+    "ConvolutionalAutoencoder",
+    "LSTMAutoencoder",
+    "VariationalAutoencoder",
+    "DenoisingAutoencoder",
+    "detect_anomalies",
+    "denoise_signal",
     # Explainability
-    'BaseExplainer',
-    'SHAPExplainer',
-    'LIMEExplainer',
-    'GradCAM1D',
-    'AttentionVisualizer',
-    'explain_prediction',
-
+    "BaseExplainer",
+    "SHAPExplainer",
+    "LIMEExplainer",
+    "GradCAM1D",
+    "AttentionVisualizer",
+    "explain_prediction",
     # Pre-trained Models
-    'PretrainedModel',
-    'ModelHub',
-    'load_pretrained_model',
-    'MODEL_REGISTRY',
-
+    "PretrainedModel",
+    "ModelHub",
+    "load_pretrained_model",
+    "MODEL_REGISTRY",
     # Transfer Learning
-    'TransferLearningStrategy',
-    'FeatureExtractor',
-    'FineTuner',
-    'DomainAdapter',
-    'quick_transfer',
-
+    "TransferLearningStrategy",
+    "FeatureExtractor",
+    "FineTuner",
+    "DomainAdapter",
+    "quick_transfer",
     # Future exports (commented until implemented)
     # 'SignalAugmentation',
     # 'ModelEvaluator',
@@ -119,4 +105,4 @@ __all__ = [
     # 'TrainingPipeline',
 ]
 
-__version__ = '1.0.0'
+__version__ = "1.0.0"

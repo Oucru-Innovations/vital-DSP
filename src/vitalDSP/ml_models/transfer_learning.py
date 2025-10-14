@@ -31,6 +31,7 @@ try:
     import tensorflow as tf
     from tensorflow import keras
     from tensorflow.keras import layers
+
     TENSORFLOW_AVAILABLE = True
 except ImportError:
     TENSORFLOW_AVAILABLE = False
@@ -40,6 +41,7 @@ try:
     import torch.nn as nn
     import torch.optim as optim
     from torch.utils.data import DataLoader, TensorDataset
+
     PYTORCH_AVAILABLE = True
 except ImportError:
     PYTORCH_AVAILABLE = False
@@ -69,11 +71,7 @@ class TransferLearningStrategy:
     >>> extractor.fit(X_train, y_train, n_classes=3, epochs=20)
     """
 
-    def __init__(
-        self,
-        base_model: Any,
-        backend: str = 'tensorflow'
-    ):
+    def __init__(self, base_model: Any, backend: str = "tensorflow"):
         """
         Initialize transfer learning strategy.
 
@@ -147,10 +145,7 @@ class FeatureExtractor(TransferLearningStrategy):
     """
 
     def __init__(
-        self,
-        base_model: Any,
-        freeze_base: bool = True,
-        backend: str = 'tensorflow'
+        self, base_model: Any, freeze_base: bool = True, backend: str = "tensorflow"
     ):
         """
         Initialize feature extractor.
@@ -172,7 +167,7 @@ class FeatureExtractor(TransferLearningStrategy):
 
     def freeze_layers(self, n_layers: Optional[int] = None):
         """Freeze base model layers."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             if n_layers is None:
                 # Freeze all base model layers
                 self.base_model.trainable = False
@@ -192,7 +187,7 @@ class FeatureExtractor(TransferLearningStrategy):
 
     def unfreeze_layers(self, n_layers: Optional[int] = None):
         """Unfreeze base model layers."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             if n_layers is None:
                 self.base_model.trainable = True
             else:
@@ -216,13 +211,13 @@ class FeatureExtractor(TransferLearningStrategy):
         y_train: np.ndarray,
         n_classes: Optional[int] = None,
         n_outputs: int = 1,
-        task: str = 'classification',
+        task: str = "classification",
         X_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
         epochs: int = 50,
         batch_size: int = 32,
         learning_rate: float = 1e-3,
-        verbose: int = 1
+        verbose: int = 1,
     ) -> Dict[str, List[float]]:
         """
         Fit feature extractor to new task.
@@ -257,29 +252,33 @@ class FeatureExtractor(TransferLearningStrategy):
         dict
             Training history
         """
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             # Build model with new head
             inputs = keras.Input(shape=X_train.shape[1:])
             x = self.base_model(inputs)
 
             # Ensure we have a flattened feature vector
             if len(x.shape) > 2:
-                x = layers.GlobalAveragePooling1D()(x) if len(x.shape) == 3 else layers.Flatten()(x)
+                x = (
+                    layers.GlobalAveragePooling1D()(x)
+                    if len(x.shape) == 3
+                    else layers.Flatten()(x)
+                )
 
             # Add new head
-            x = layers.Dense(128, activation='relu')(x)
+            x = layers.Dense(128, activation="relu")(x)
             x = layers.Dropout(0.3)(x)
 
-            if task == 'classification':
+            if task == "classification":
                 if n_classes is None:
                     n_classes = len(np.unique(y_train))
-                outputs = layers.Dense(n_classes, activation='softmax')(x)
-                loss = 'sparse_categorical_crossentropy'
-                metrics = ['accuracy']
+                outputs = layers.Dense(n_classes, activation="softmax")(x)
+                loss = "sparse_categorical_crossentropy"
+                metrics = ["accuracy"]
             else:  # regression
-                outputs = layers.Dense(n_outputs, activation='linear')(x)
-                loss = 'mse'
-                metrics = ['mae']
+                outputs = layers.Dense(n_outputs, activation="linear")(x)
+                loss = "mse"
+                metrics = ["mae"]
 
             self.model = keras.Model(inputs, outputs)
 
@@ -287,34 +286,37 @@ class FeatureExtractor(TransferLearningStrategy):
             self.model.compile(
                 optimizer=keras.optimizers.Adam(learning_rate),
                 loss=loss,
-                metrics=metrics
+                metrics=metrics,
             )
 
             # Callbacks
             callbacks = [
                 keras.callbacks.EarlyStopping(
-                    monitor='val_loss' if X_val is not None else 'loss',
+                    monitor="val_loss" if X_val is not None else "loss",
                     patience=10,
-                    restore_best_weights=True
+                    restore_best_weights=True,
                 ),
                 keras.callbacks.ReduceLROnPlateau(
-                    monitor='val_loss' if X_val is not None else 'loss',
+                    monitor="val_loss" if X_val is not None else "loss",
                     factor=0.5,
                     patience=5,
-                    min_lr=1e-7
-                )
+                    min_lr=1e-7,
+                ),
             ]
 
             # Train
-            validation_data = (X_val, y_val) if X_val is not None and y_val is not None else None
+            validation_data = (
+                (X_val, y_val) if X_val is not None and y_val is not None else None
+            )
 
             history = self.model.fit(
-                X_train, y_train,
+                X_train,
+                y_train,
                 validation_data=validation_data,
                 epochs=epochs,
                 batch_size=batch_size,
                 callbacks=callbacks,
-                verbose=verbose
+                verbose=verbose,
             )
 
             self.history = history.history
@@ -328,7 +330,7 @@ class FeatureExtractor(TransferLearningStrategy):
         if self.model is None:
             raise ValueError("Model not fitted. Call fit() first.")
 
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             return self.model.predict(X, batch_size=batch_size, verbose=0)
         else:
             raise NotImplementedError("PyTorch backend not yet implemented")
@@ -367,8 +369,8 @@ class FineTuner(TransferLearningStrategy):
     def __init__(
         self,
         base_model: Any,
-        strategy: str = 'all_at_once',
-        backend: str = 'tensorflow'
+        strategy: str = "all_at_once",
+        backend: str = "tensorflow",
     ):
         """
         Initialize fine-tuner.
@@ -390,26 +392,26 @@ class FineTuner(TransferLearningStrategy):
 
     def freeze_layers(self, n_layers: Optional[int] = None):
         """Freeze layers."""
-        if self.backend == 'tensorflow':
-            if hasattr(self.base_model, 'trainable'):
+        if self.backend == "tensorflow":
+            if hasattr(self.base_model, "trainable"):
                 if n_layers is None:
                     self.base_model.trainable = False
                 else:
                     for i, layer in enumerate(self.base_model.layers):
-                        layer.trainable = (i >= n_layers)
+                        layer.trainable = i >= n_layers
         else:
             raise NotImplementedError("PyTorch backend not yet implemented")
 
     def unfreeze_layers(self, n_layers: Optional[int] = None):
         """Unfreeze layers."""
-        if self.backend == 'tensorflow':
-            if hasattr(self.base_model, 'trainable'):
+        if self.backend == "tensorflow":
+            if hasattr(self.base_model, "trainable"):
                 if n_layers is None:
                     self.base_model.trainable = True
                 else:
                     total = len(self.base_model.layers)
                     for i, layer in enumerate(self.base_model.layers):
-                        layer.trainable = (i >= total - n_layers)
+                        layer.trainable = i >= total - n_layers
         else:
             raise NotImplementedError("PyTorch backend not yet implemented")
 
@@ -418,7 +420,7 @@ class FineTuner(TransferLearningStrategy):
         X_train: np.ndarray,
         y_train: np.ndarray,
         n_classes: Optional[int] = None,
-        task: str = 'classification',
+        task: str = "classification",
         X_val: Optional[np.ndarray] = None,
         y_val: Optional[np.ndarray] = None,
         epochs: int = 50,
@@ -426,7 +428,7 @@ class FineTuner(TransferLearningStrategy):
         base_learning_rate: float = 1e-5,
         head_learning_rate: float = 1e-3,
         progressive_epochs: Optional[List[int]] = None,
-        verbose: int = 1
+        verbose: int = 1,
     ) -> Dict[str, List[float]]:
         """
         Fine-tune model on new task.
@@ -463,7 +465,7 @@ class FineTuner(TransferLearningStrategy):
         dict
             Training history
         """
-        if self.backend != 'tensorflow':
+        if self.backend != "tensorflow":
             raise NotImplementedError("Only TensorFlow backend currently supported")
 
         # Build model with new head
@@ -472,49 +474,77 @@ class FineTuner(TransferLearningStrategy):
 
         # Ensure flattened features
         if len(x.shape) > 2:
-            x = layers.GlobalAveragePooling1D()(x) if len(x.shape) == 3 else layers.Flatten()(x)
+            x = (
+                layers.GlobalAveragePooling1D()(x)
+                if len(x.shape) == 3
+                else layers.Flatten()(x)
+            )
 
         # New head
-        x = layers.Dense(256, activation='relu', name='ft_dense1')(x)
-        x = layers.BatchNormalization(name='ft_bn1')(x)
-        x = layers.Dropout(0.4, name='ft_dropout1')(x)
-        x = layers.Dense(128, activation='relu', name='ft_dense2')(x)
-        x = layers.Dropout(0.3, name='ft_dropout2')(x)
+        x = layers.Dense(256, activation="relu", name="ft_dense1")(x)
+        x = layers.BatchNormalization(name="ft_bn1")(x)
+        x = layers.Dropout(0.4, name="ft_dropout1")(x)
+        x = layers.Dense(128, activation="relu", name="ft_dense2")(x)
+        x = layers.Dropout(0.3, name="ft_dropout2")(x)
 
-        if task == 'classification':
+        if task == "classification":
             if n_classes is None:
                 n_classes = len(np.unique(y_train))
-            outputs = layers.Dense(n_classes, activation='softmax', name='ft_output')(x)
-            loss = 'sparse_categorical_crossentropy'
-            metrics = ['accuracy']
+            outputs = layers.Dense(n_classes, activation="softmax", name="ft_output")(x)
+            loss = "sparse_categorical_crossentropy"
+            metrics = ["accuracy"]
         else:
-            outputs = layers.Dense(1, activation='linear', name='ft_output')(x)
-            loss = 'mse'
-            metrics = ['mae']
+            outputs = layers.Dense(1, activation="linear", name="ft_output")(x)
+            loss = "mse"
+            metrics = ["mae"]
 
         self.model = keras.Model(inputs, outputs)
 
         # Strategy-specific training
-        if self.strategy == 'all_at_once':
+        if self.strategy == "all_at_once":
             return self._fit_all_at_once(
-                X_train, y_train, X_val, y_val,
-                loss, metrics, epochs, batch_size,
-                base_learning_rate, head_learning_rate, verbose
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                loss,
+                metrics,
+                epochs,
+                batch_size,
+                base_learning_rate,
+                head_learning_rate,
+                verbose,
             )
 
-        elif self.strategy == 'progressive':
+        elif self.strategy == "progressive":
             return self._fit_progressive(
-                X_train, y_train, X_val, y_val,
-                loss, metrics, epochs, batch_size,
-                base_learning_rate, head_learning_rate,
-                progressive_epochs, verbose
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                loss,
+                metrics,
+                epochs,
+                batch_size,
+                base_learning_rate,
+                head_learning_rate,
+                progressive_epochs,
+                verbose,
             )
 
-        elif self.strategy == 'discriminative':
+        elif self.strategy == "discriminative":
             return self._fit_discriminative(
-                X_train, y_train, X_val, y_val,
-                loss, metrics, epochs, batch_size,
-                base_learning_rate, head_learning_rate, verbose
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                loss,
+                metrics,
+                epochs,
+                batch_size,
+                base_learning_rate,
+                head_learning_rate,
+                verbose,
             )
 
         else:
@@ -522,71 +552,88 @@ class FineTuner(TransferLearningStrategy):
 
     def _fit_all_at_once(
         self,
-        X_train, y_train, X_val, y_val,
-        loss, metrics, epochs, batch_size,
-        base_lr, head_lr, verbose
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        loss,
+        metrics,
+        epochs,
+        batch_size,
+        base_lr,
+        head_lr,
+        verbose,
     ):
         """Fit with all layers unfrozen at once."""
         # First train only the head
         self.freeze_layers()
         self.model.compile(
-            optimizer=keras.optimizers.Adam(head_lr),
-            loss=loss,
-            metrics=metrics
+            optimizer=keras.optimizers.Adam(head_lr), loss=loss, metrics=metrics
         )
 
         history_head = self.model.fit(
-            X_train, y_train,
+            X_train,
+            y_train,
             validation_data=(X_val, y_val) if X_val is not None else None,
             epochs=min(10, epochs // 3),
             batch_size=batch_size,
-            verbose=verbose
+            verbose=verbose,
         )
 
         # Then unfreeze all and fine-tune
         self.unfreeze_layers()
         self.model.compile(
-            optimizer=keras.optimizers.Adam(base_lr),
-            loss=loss,
-            metrics=metrics
+            optimizer=keras.optimizers.Adam(base_lr), loss=loss, metrics=metrics
         )
 
         callbacks = [
             keras.callbacks.EarlyStopping(
-                monitor='val_loss' if X_val is not None else 'loss',
+                monitor="val_loss" if X_val is not None else "loss",
                 patience=15,
-                restore_best_weights=True
+                restore_best_weights=True,
             ),
             keras.callbacks.ReduceLROnPlateau(
-                monitor='val_loss' if X_val is not None else 'loss',
+                monitor="val_loss" if X_val is not None else "loss",
                 factor=0.5,
                 patience=7,
-                min_lr=1e-8
-            )
+                min_lr=1e-8,
+            ),
         ]
 
         history_finetune = self.model.fit(
-            X_train, y_train,
+            X_train,
+            y_train,
             validation_data=(X_val, y_val) if X_val is not None else None,
             epochs=epochs,
             batch_size=batch_size,
             callbacks=callbacks,
-            verbose=verbose
+            verbose=verbose,
         )
 
         # Combine histories
         combined_history = {}
         for key in history_head.history:
-            combined_history[key] = history_head.history[key] + history_finetune.history[key]
+            combined_history[key] = (
+                history_head.history[key] + history_finetune.history[key]
+            )
 
         self.history = combined_history
         return self.history
 
     def _fit_progressive(
         self,
-        X_train, y_train, X_val, y_val,
-        loss, metrics, epochs, batch_size,
-        base_lr, head_lr, progressive_epochs, verbose
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        loss,
+        metrics,
+        epochs,
+        batch_size,
+        base_lr,
+        head_lr,
+        progressive_epochs,
+        verbose,
     ):
         """Fit with progressive layer unfreezing."""
         if progressive_epochs is None:
@@ -596,15 +643,13 @@ class FineTuner(TransferLearningStrategy):
         # Stage 1: Train head only
         self.freeze_layers()
         self.model.compile(
-            optimizer=keras.optimizers.Adam(head_lr),
-            loss=loss,
-            metrics=metrics
+            optimizer=keras.optimizers.Adam(head_lr), loss=loss, metrics=metrics
         )
 
-        history = {'loss': [], 'val_loss': []}
-        if 'accuracy' in metrics:
-            history['accuracy'] = []
-            history['val_accuracy'] = []
+        history = {"loss": [], "val_loss": []}
+        if "accuracy" in metrics:
+            history["accuracy"] = []
+            history["val_accuracy"] = []
 
         current_epoch = 0
         n_layers = len(self.base_model.layers)
@@ -614,26 +659,27 @@ class FineTuner(TransferLearningStrategy):
 
             if stage > 0:
                 # Progressively unfreeze layers
-                n_to_unfreeze = min(n_layers // len(progressive_epochs) * stage, n_layers)
+                n_to_unfreeze = min(
+                    n_layers // len(progressive_epochs) * stage, n_layers
+                )
                 self.unfreeze_layers(n_to_unfreeze)
 
                 # Reduce learning rate for base
                 lr = base_lr * (0.5 ** (stage - 1))
                 self.model.compile(
-                    optimizer=keras.optimizers.Adam(lr),
-                    loss=loss,
-                    metrics=metrics
+                    optimizer=keras.optimizers.Adam(lr), loss=loss, metrics=metrics
                 )
 
             if verbose:
                 print(f"\nStage {stage + 1}: Training for {stage_epochs} epochs")
 
             h = self.model.fit(
-                X_train, y_train,
+                X_train,
+                y_train,
                 validation_data=(X_val, y_val) if X_val is not None else None,
                 epochs=stage_epochs,
                 batch_size=batch_size,
-                verbose=verbose
+                verbose=verbose,
             )
 
             # Accumulate history
@@ -647,9 +693,17 @@ class FineTuner(TransferLearningStrategy):
 
     def _fit_discriminative(
         self,
-        X_train, y_train, X_val, y_val,
-        loss, metrics, epochs, batch_size,
-        base_lr, head_lr, verbose
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        loss,
+        metrics,
+        epochs,
+        batch_size,
+        base_lr,
+        head_lr,
+        verbose,
     ):
         """Fit with discriminative learning rates."""
         # Unfreeze all layers
@@ -660,32 +714,31 @@ class FineTuner(TransferLearningStrategy):
         # with per-layer learning rates
 
         self.model.compile(
-            optimizer=keras.optimizers.Adam(base_lr),
-            loss=loss,
-            metrics=metrics
+            optimizer=keras.optimizers.Adam(base_lr), loss=loss, metrics=metrics
         )
 
         callbacks = [
             keras.callbacks.EarlyStopping(
-                monitor='val_loss' if X_val is not None else 'loss',
+                monitor="val_loss" if X_val is not None else "loss",
                 patience=15,
-                restore_best_weights=True
+                restore_best_weights=True,
             ),
             keras.callbacks.ReduceLROnPlateau(
-                monitor='val_loss' if X_val is not None else 'loss',
+                monitor="val_loss" if X_val is not None else "loss",
                 factor=0.5,
                 patience=7,
-                min_lr=1e-8
-            )
+                min_lr=1e-8,
+            ),
         ]
 
         history = self.model.fit(
-            X_train, y_train,
+            X_train,
+            y_train,
             validation_data=(X_val, y_val) if X_val is not None else None,
             epochs=epochs,
             batch_size=batch_size,
             callbacks=callbacks,
-            verbose=verbose
+            verbose=verbose,
         )
 
         self.history = history.history
@@ -731,10 +784,7 @@ class DomainAdapter:
     """
 
     def __init__(
-        self,
-        base_model: Any,
-        method: str = 'mmd',
-        backend: str = 'tensorflow'
+        self, base_model: Any, method: str = "mmd", backend: str = "tensorflow"
     ):
         """
         Initialize domain adapter.
@@ -764,7 +814,7 @@ class DomainAdapter:
         batch_size: int = 32,
         learning_rate: float = 1e-4,
         lambda_da: float = 0.1,
-        verbose: int = 1
+        verbose: int = 1,
     ) -> Dict[str, List[float]]:
         """
         Fit domain adaptation model.
@@ -797,24 +847,40 @@ class DomainAdapter:
         dict
             Training history
         """
-        if self.backend != 'tensorflow':
+        if self.backend != "tensorflow":
             raise NotImplementedError("Only TensorFlow backend currently supported")
 
         if n_classes is None:
             n_classes = len(np.unique(y_source))
 
-        if self.method == 'mmd':
+        if self.method == "mmd":
             return self._fit_mmd(
-                X_source, y_source, X_target, y_target,
-                n_classes, epochs, batch_size, learning_rate, lambda_da, verbose
+                X_source,
+                y_source,
+                X_target,
+                y_target,
+                n_classes,
+                epochs,
+                batch_size,
+                learning_rate,
+                lambda_da,
+                verbose,
             )
         else:
             raise NotImplementedError(f"Method '{self.method}' not yet implemented")
 
     def _fit_mmd(
         self,
-        X_source, y_source, X_target, y_target,
-        n_classes, epochs, batch_size, learning_rate, lambda_da, verbose
+        X_source,
+        y_source,
+        X_target,
+        y_target,
+        n_classes,
+        epochs,
+        batch_size,
+        learning_rate,
+        lambda_da,
+        verbose,
     ):
         """Fit using Maximum Mean Discrepancy."""
         # Build model
@@ -824,7 +890,7 @@ class DomainAdapter:
         if len(features.shape) > 2:
             features = layers.GlobalAveragePooling1D()(features)
 
-        classifier = layers.Dense(n_classes, activation='softmax')(features)
+        classifier = layers.Dense(n_classes, activation="softmax")(features)
 
         self.model = keras.Model(inputs, [classifier, features])
 
@@ -856,7 +922,7 @@ class DomainAdapter:
             return class_loss, mmd_loss, total_loss
 
         # Training loop
-        history = {'class_loss': [], 'mmd_loss': [], 'total_loss': []}
+        history = {"class_loss": [], "mmd_loss": [], "total_loss": []}
 
         n_batches = len(X_source) // batch_size
 
@@ -871,15 +937,21 @@ class DomainAdapter:
 
             for batch in range(n_batches):
                 # Get batch data
-                batch_idx_src = indices_src[batch * batch_size:(batch + 1) * batch_size]
-                batch_idx_tgt = indices_tgt[batch * batch_size:(batch + 1) * batch_size]
+                batch_idx_src = indices_src[
+                    batch * batch_size : (batch + 1) * batch_size
+                ]
+                batch_idx_tgt = indices_tgt[
+                    batch * batch_size : (batch + 1) * batch_size
+                ]
 
                 x_src_batch = X_source[batch_idx_src]
                 y_src_batch = y_source[batch_idx_src]
                 x_tgt_batch = X_target[batch_idx_tgt]
 
                 # Train step
-                c_loss, m_loss, t_loss = train_step(x_src_batch, y_src_batch, x_tgt_batch)
+                c_loss, m_loss, t_loss = train_step(
+                    x_src_batch, y_src_batch, x_tgt_batch
+                )
 
                 epoch_class_loss += c_loss.numpy()
                 epoch_mmd_loss += m_loss.numpy()
@@ -890,9 +962,9 @@ class DomainAdapter:
             epoch_mmd_loss /= n_batches
             epoch_total_loss /= n_batches
 
-            history['class_loss'].append(epoch_class_loss)
-            history['mmd_loss'].append(epoch_mmd_loss)
-            history['total_loss'].append(epoch_total_loss)
+            history["class_loss"].append(epoch_class_loss)
+            history["mmd_loss"].append(epoch_mmd_loss)
+            history["total_loss"].append(epoch_total_loss)
 
             if verbose and (epoch + 1) % 10 == 0:
                 print(
@@ -905,15 +977,18 @@ class DomainAdapter:
         return history
 
     @staticmethod
-    def _compute_mmd(features_source: tf.Tensor, features_target: tf.Tensor) -> tf.Tensor:
+    def _compute_mmd(
+        features_source: tf.Tensor, features_target: tf.Tensor
+    ) -> tf.Tensor:
         """Compute Maximum Mean Discrepancy between source and target features."""
+
         # Gaussian kernel
         def gaussian_kernel(x, y, sigma=1.0):
             x = tf.expand_dims(x, 1)  # (n, 1, d)
             y = tf.expand_dims(y, 0)  # (1, m, d)
             diff = x - y  # (n, m, d)
-            dist_sq = tf.reduce_sum(diff ** 2, axis=2)  # (n, m)
-            return tf.exp(-dist_sq / (2 * sigma ** 2))
+            dist_sq = tf.reduce_sum(diff**2, axis=2)  # (n, m)
+            return tf.exp(-dist_sq / (2 * sigma**2))
 
         # MMD computation
         K_ss = gaussian_kernel(features_source, features_source)
@@ -923,9 +998,11 @@ class DomainAdapter:
         m = tf.cast(tf.shape(features_source)[0], tf.float32)
         n = tf.cast(tf.shape(features_target)[0], tf.float32)
 
-        mmd = (tf.reduce_sum(K_ss) / (m * m) +
-               tf.reduce_sum(K_tt) / (n * n) -
-               2 * tf.reduce_sum(K_st) / (m * n))
+        mmd = (
+            tf.reduce_sum(K_ss) / (m * m)
+            + tf.reduce_sum(K_tt) / (n * n)
+            - 2 * tf.reduce_sum(K_st) / (m * n)
+        )
 
         return mmd
 
@@ -943,10 +1020,10 @@ def quick_transfer(
     base_model: Any,
     X_train: np.ndarray,
     y_train: np.ndarray,
-    strategy: str = 'feature_extraction',
+    strategy: str = "feature_extraction",
     n_classes: Optional[int] = None,
     epochs: int = 30,
-    **kwargs
+    **kwargs,
 ) -> Union[FeatureExtractor, FineTuner]:
     """
     Quick transfer learning with sensible defaults.
@@ -987,11 +1064,11 @@ def quick_transfer(
     >>> y = np.random.randint(0, 3, 200)
     >>> model = quick_transfer(base.model, X, y, strategy='feature_extraction', epochs=20)
     """
-    if strategy == 'feature_extraction':
+    if strategy == "feature_extraction":
         model = FeatureExtractor(base_model, freeze_base=True)
         model.fit(X_train, y_train, n_classes=n_classes, epochs=epochs, **kwargs)
-    elif strategy == 'fine_tuning':
-        model = FineTuner(base_model, strategy='all_at_once')
+    elif strategy == "fine_tuning":
+        model = FineTuner(base_model, strategy="all_at_once")
         model.fit(X_train, y_train, n_classes=n_classes, epochs=epochs, **kwargs)
     else:
         raise ValueError(f"Unknown strategy: {strategy}")

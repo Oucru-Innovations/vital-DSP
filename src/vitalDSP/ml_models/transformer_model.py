@@ -32,6 +32,7 @@ try:
     import tensorflow as tf
     from tensorflow import keras
     from tensorflow.keras import layers
+
     TF_AVAILABLE = True
 except ImportError:
     TF_AVAILABLE = False
@@ -41,6 +42,7 @@ try:
     import torch.nn as nn
     import torch.nn.functional as F
     import math
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
@@ -61,7 +63,9 @@ class PositionalEncoding(layers.Layer if TF_AVAILABLE else object):
     def build(self, input_shape):
         # Create positional encoding matrix
         position = np.arange(self.max_len)[:, np.newaxis]
-        div_term = np.exp(np.arange(0, self.d_model, 2) * -(np.log(10000.0) / self.d_model))
+        div_term = np.exp(
+            np.arange(0, self.d_model, 2) * -(np.log(10000.0) / self.d_model)
+        )
 
         pe = np.zeros((self.max_len, self.d_model))
         pe[:, 0::2] = np.sin(position * div_term)
@@ -134,7 +138,7 @@ class MultiHeadSelfAttention(layers.Layer if TF_AVAILABLE else object):
 
         # Apply mask if provided
         if mask is not None:
-            scaled_attention_logits += (mask * -1e9)
+            scaled_attention_logits += mask * -1e9
 
         # Softmax
         attention_weights = tf.nn.softmax(scaled_attention_logits, axis=-1)
@@ -168,11 +172,13 @@ class TransformerEncoderLayer(layers.Layer if TF_AVAILABLE else object):
         super().__init__(**kwargs)
 
         self.mha = MultiHeadSelfAttention(d_model, n_heads, dropout_rate)
-        self.ffn = keras.Sequential([
-            layers.Dense(d_ff, activation='relu'),
-            layers.Dropout(dropout_rate),
-            layers.Dense(d_model)
-        ])
+        self.ffn = keras.Sequential(
+            [
+                layers.Dense(d_ff, activation="relu"),
+                layers.Dropout(dropout_rate),
+                layers.Dense(d_model),
+            ]
+        )
 
         self.layernorm1 = layers.LayerNormalization(epsilon=1e-6)
         self.layernorm2 = layers.LayerNormalization(epsilon=1e-6)
@@ -263,9 +269,9 @@ class TransformerModel:
         d_ff: int = 512,
         dropout_rate: float = 0.1,
         max_len: int = 5000,
-        task: str = 'classification',
-        backend: str = 'tensorflow',
-        **kwargs
+        task: str = "classification",
+        backend: str = "tensorflow",
+        **kwargs,
     ):
         self.input_shape = input_shape
         self.n_classes = n_classes
@@ -281,16 +287,18 @@ class TransformerModel:
         self.model = None
         self.history = None
 
-        if self.backend == 'tensorflow' and not TF_AVAILABLE:
-            raise ImportError("TensorFlow not available. Install with: pip install tensorflow")
-        elif self.backend == 'pytorch' and not TORCH_AVAILABLE:
+        if self.backend == "tensorflow" and not TF_AVAILABLE:
+            raise ImportError(
+                "TensorFlow not available. Install with: pip install tensorflow"
+            )
+        elif self.backend == "pytorch" and not TORCH_AVAILABLE:
             raise ImportError("PyTorch not available. Install with: pip install torch")
 
     def build_model(self):
         """Build the Transformer model architecture."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             self._build_tensorflow_model()
-        elif self.backend == 'pytorch':
+        elif self.backend == "pytorch":
             self._build_pytorch_model()
 
         return self.model
@@ -314,28 +322,28 @@ class TransformerModel:
                 self.n_heads,
                 self.d_ff,
                 self.dropout_rate,
-                name=f'transformer_layer_{i+1}'
+                name=f"transformer_layer_{i+1}",
             )(x)
 
         # Global pooling
         x = layers.GlobalAveragePooling1D()(x)
 
         # Dense layers
-        x = layers.Dense(256, activation='relu')(x)
+        x = layers.Dense(256, activation="relu")(x)
         x = layers.Dropout(self.dropout_rate)(x)
-        x = layers.Dense(128, activation='relu')(x)
+        x = layers.Dense(128, activation="relu")(x)
         x = layers.Dropout(self.dropout_rate)(x)
 
         # Output layer
-        if self.task == 'classification':
+        if self.task == "classification":
             if self.n_classes == 2:
-                outputs = layers.Dense(1, activation='sigmoid')(x)
+                outputs = layers.Dense(1, activation="sigmoid")(x)
             else:
-                outputs = layers.Dense(self.n_classes, activation='softmax')(x)
+                outputs = layers.Dense(self.n_classes, activation="softmax")(x)
         else:  # regression
-            outputs = layers.Dense(1, activation='linear')(x)
+            outputs = layers.Dense(1, activation="linear")(x)
 
-        self.model = keras.Model(inputs=inputs, outputs=outputs, name='Transformer')
+        self.model = keras.Model(inputs=inputs, outputs=outputs, name="Transformer")
 
     def _build_pytorch_model(self):
         """Build PyTorch Transformer model."""
@@ -348,22 +356,34 @@ class TransformerModel:
 
                 pe = torch.zeros(max_len, d_model)
                 position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-                div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+                div_term = torch.exp(
+                    torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model)
+                )
 
                 pe[:, 0::2] = torch.sin(position * div_term)
                 pe[:, 1::2] = torch.cos(position * div_term)
 
                 pe = pe.unsqueeze(0)
-                self.register_buffer('pe', pe)
+                self.register_buffer("pe", pe)
 
             def forward(self, x):
-                return x + self.pe[:, :x.size(1), :]
+                return x + self.pe[:, : x.size(1), :]
 
         class TransformerModelPyTorch(nn.Module):
             """PyTorch Transformer model."""
 
-            def __init__(self, input_dim, d_model, n_heads, n_layers, d_ff,
-                        n_classes, dropout_rate, max_len, task):
+            def __init__(
+                self,
+                input_dim,
+                d_model,
+                n_heads,
+                n_layers,
+                d_ff,
+                n_classes,
+                dropout_rate,
+                max_len,
+                task,
+            ):
                 super().__init__()
 
                 self.task = task
@@ -376,9 +396,11 @@ class TransformerModel:
                     nhead=n_heads,
                     dim_feedforward=d_ff,
                     dropout=dropout_rate,
-                    batch_first=True
+                    batch_first=True,
                 )
-                self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
+                self.transformer = nn.TransformerEncoder(
+                    encoder_layer, num_layers=n_layers
+                )
 
                 # Classification/Regression head
                 self.fc1 = nn.Linear(d_model, 256)
@@ -386,7 +408,7 @@ class TransformerModel:
                 self.fc2 = nn.Linear(256, 128)
                 self.dropout2 = nn.Dropout(dropout_rate)
 
-                if task == 'classification':
+                if task == "classification":
                     self.output = nn.Linear(128, n_classes if n_classes > 2 else 1)
                 else:
                     self.output = nn.Linear(128, 1)
@@ -411,7 +433,7 @@ class TransformerModel:
                 x = self.dropout2(x)
                 x = self.output(x)
 
-                if self.task == 'classification':
+                if self.task == "classification":
                     if x.shape[-1] == 1:
                         x = torch.sigmoid(x)
                     else:
@@ -422,8 +444,15 @@ class TransformerModel:
         input_dim = self.input_shape[-1] if len(self.input_shape) > 1 else 1
 
         self.model = TransformerModelPyTorch(
-            input_dim, self.d_model, self.n_heads, self.n_layers,
-            self.d_ff, self.n_classes, self.dropout_rate, self.max_len, self.task
+            input_dim,
+            self.d_model,
+            self.n_heads,
+            self.n_layers,
+            self.d_ff,
+            self.n_classes,
+            self.dropout_rate,
+            self.max_len,
+            self.task,
         )
 
     def train(
@@ -436,7 +465,7 @@ class TransformerModel:
         batch_size: int = 32,
         learning_rate: float = 0.0001,
         warmup_epochs: int = 10,
-        **kwargs
+        **kwargs,
     ):
         """
         Train the Transformer model.
@@ -465,20 +494,42 @@ class TransformerModel:
         history : dict
             Training history
         """
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             return self._train_tensorflow(
-                X_train, y_train, X_val, y_val,
-                epochs, batch_size, learning_rate, warmup_epochs, **kwargs
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                epochs,
+                batch_size,
+                learning_rate,
+                warmup_epochs,
+                **kwargs,
             )
-        elif self.backend == 'pytorch':
+        elif self.backend == "pytorch":
             return self._train_pytorch(
-                X_train, y_train, X_val, y_val,
-                epochs, batch_size, learning_rate, warmup_epochs, **kwargs
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                epochs,
+                batch_size,
+                learning_rate,
+                warmup_epochs,
+                **kwargs,
             )
 
     def _train_tensorflow(
-        self, X_train, y_train, X_val, y_val,
-        epochs, batch_size, learning_rate, warmup_epochs, **kwargs
+        self,
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        epochs,
+        batch_size,
+        learning_rate,
+        warmup_epochs,
+        **kwargs,
     ):
         """Train TensorFlow Transformer model."""
 
@@ -492,60 +543,77 @@ class TransformerModel:
             def __call__(self, step):
                 step = tf.cast(step, tf.float32)
                 arg1 = tf.math.rsqrt(step)
-                arg2 = step * (self.warmup_steps ** -1.5)
+                arg2 = step * (self.warmup_steps**-1.5)
                 return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
 
         # Optimizer with warmup
-        lr_schedule = WarmUpSchedule(self.d_model, warmup_steps=warmup_epochs * (len(X_train) // batch_size))
-        optimizer = keras.optimizers.Adam(lr_schedule, beta_1=0.9, beta_2=0.98, epsilon=1e-9)
+        lr_schedule = WarmUpSchedule(
+            self.d_model, warmup_steps=warmup_epochs * (len(X_train) // batch_size)
+        )
+        optimizer = keras.optimizers.Adam(
+            lr_schedule, beta_1=0.9, beta_2=0.98, epsilon=1e-9
+        )
 
         # Loss and metrics
-        if self.task == 'classification':
+        if self.task == "classification":
             if self.n_classes == 2:
-                loss = 'binary_crossentropy'
-                metrics = ['accuracy', keras.metrics.AUC(name='auc')]
+                loss = "binary_crossentropy"
+                metrics = ["accuracy", keras.metrics.AUC(name="auc")]
             else:
-                loss = 'sparse_categorical_crossentropy' if y_train.ndim == 1 else 'categorical_crossentropy'
-                metrics = ['accuracy']
+                loss = (
+                    "sparse_categorical_crossentropy"
+                    if y_train.ndim == 1
+                    else "categorical_crossentropy"
+                )
+                metrics = ["accuracy"]
         else:
-            loss = 'mse'
-            metrics = ['mae']
+            loss = "mse"
+            metrics = ["mae"]
 
         self.model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
 
         # Callbacks
         callback_list = [
             keras.callbacks.EarlyStopping(
-                monitor='val_loss' if X_val is not None else 'loss',
+                monitor="val_loss" if X_val is not None else "loss",
                 patience=20,
-                restore_best_weights=True
+                restore_best_weights=True,
             ),
             keras.callbacks.ReduceLROnPlateau(
-                monitor='val_loss' if X_val is not None else 'loss',
+                monitor="val_loss" if X_val is not None else "loss",
                 factor=0.5,
                 patience=10,
-                min_lr=1e-7
-            )
+                min_lr=1e-7,
+            ),
         ]
 
         # Train
         validation_data = (X_val, y_val) if X_val is not None else None
 
         history = self.model.fit(
-            X_train, y_train,
+            X_train,
+            y_train,
             validation_data=validation_data,
             epochs=epochs,
             batch_size=batch_size,
             callbacks=callback_list,
-            verbose=kwargs.get('verbose', 1)
+            verbose=kwargs.get("verbose", 1),
         )
 
         self.history = history.history
         return self.history
 
     def _train_pytorch(
-        self, X_train, y_train, X_val, y_val,
-        epochs, batch_size, learning_rate, warmup_epochs, **kwargs
+        self,
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        epochs,
+        batch_size,
+        learning_rate,
+        warmup_epochs,
+        **kwargs,
     ):
         """Train PyTorch Transformer model."""
         # Similar to other PyTorch training methods
@@ -566,9 +634,9 @@ class TransformerModel:
         predictions : ndarray
             Model predictions
         """
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             return self.model.predict(X)
-        elif self.backend == 'pytorch':
+        elif self.backend == "pytorch":
             self.model.eval()
             with torch.no_grad():
                 X_tensor = torch.FloatTensor(X)
@@ -593,33 +661,38 @@ class TransformerModel:
         attention_weights : ndarray
             Attention weight matrices
         """
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             # Create model that outputs attention weights
             attention_model = keras.Model(
                 inputs=self.model.input,
-                outputs=self.model.get_layer(f'transformer_layer_{layer_idx+1}').output
+                outputs=self.model.get_layer(f"transformer_layer_{layer_idx+1}").output,
             )
             # Note: Full implementation would require modifying the model to return attention weights
             warnings.warn("Attention weight extraction requires model modification")
             return None
         else:
-            warnings.warn("Attention weight extraction not implemented for PyTorch backend")
+            warnings.warn(
+                "Attention weight extraction not implemented for PyTorch backend"
+            )
             return None
 
     def save(self, filepath: str):
         """Save model to disk."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             self.model.save(filepath)
-        elif self.backend == 'pytorch':
+        elif self.backend == "pytorch":
             torch.save(self.model.state_dict(), filepath)
 
     def load(self, filepath: str):
         """Load model from disk."""
-        if self.backend == 'tensorflow':
-            self.model = keras.models.load_model(filepath, custom_objects={
-                'PositionalEncoding': PositionalEncoding,
-                'MultiHeadSelfAttention': MultiHeadSelfAttention,
-                'TransformerEncoderLayer': TransformerEncoderLayer
-            })
-        elif self.backend == 'pytorch':
+        if self.backend == "tensorflow":
+            self.model = keras.models.load_model(
+                filepath,
+                custom_objects={
+                    "PositionalEncoding": PositionalEncoding,
+                    "MultiHeadSelfAttention": MultiHeadSelfAttention,
+                    "TransformerEncoderLayer": TransformerEncoderLayer,
+                },
+            )
+        elif self.backend == "pytorch":
             self.model.load_state_dict(torch.load(filepath))

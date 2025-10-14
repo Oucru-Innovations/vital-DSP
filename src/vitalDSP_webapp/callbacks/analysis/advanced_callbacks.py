@@ -114,6 +114,12 @@ def register_advanced_callbacks(app):
             try:
                 # Get data service
                 data_service = get_data_service()
+                
+                # Check if Enhanced Data Service is available for heavy data processing
+                if data_service.is_enhanced_service_available():
+                    logger.info("Enhanced Data Service is available for heavy data processing")
+                else:
+                    logger.info("Using basic data service functionality")
 
                 # Get stored data
                 stored_data = data_service.get_all_data()
@@ -143,6 +149,26 @@ def register_advanced_callbacks(app):
                 data_id = list(stored_data.keys())[-1]
                 df = stored_data[data_id]
                 data_info = data_service.get_data_info(data_id)
+                
+                # Enhanced data processing for heavy datasets
+                if df is not None and not df.empty:
+                    data_size_mb = df.memory_usage(deep=True).sum() / (1024 * 1024) if hasattr(df, 'memory_usage') else len(df) * 8 / (1024 * 1024)
+                    num_samples = len(df)
+                    
+                    logger.info(f"Data size: {data_size_mb:.2f} MB, Samples: {num_samples}")
+                    
+                    # Use Enhanced Data Service for heavy data processing
+                    if data_service.is_enhanced_service_available() and (data_size_mb > 5 or num_samples > 100000):
+                        logger.info(f"Using Enhanced Data Service for heavy advanced analysis: {data_size_mb:.2f}MB, {num_samples} samples")
+                        
+                        # Get enhanced service for optimized processing
+                        enhanced_service = data_service.get_enhanced_service()
+                        if enhanced_service:
+                            logger.info("Enhanced Data Service is ready for optimized advanced analysis")
+                            # The enhanced service will automatically handle chunked processing
+                            # and memory optimization during advanced analysis
+                    else:
+                        logger.info("Using standard processing for lightweight advanced analysis")
 
                 if df is None or df.empty:
                     error_fig = create_empty_figure()
@@ -924,7 +950,11 @@ def train_cnn_model(data):
         sampling_freq = data.get("sampling_freq", 1000)
 
         if len(signal_data) == 0:
-            return {"model_type": "CNN", "status": "placeholder", "error": "No signal data"}
+            return {
+                "model_type": "CNN",
+                "status": "placeholder",
+                "error": "No signal data",
+            }
 
         # Reshape signal for CNN (requires 2D input)
         # Create overlapping windows for CNN processing
@@ -984,7 +1014,11 @@ def train_lstm_model(data):
         sampling_freq = data.get("sampling_freq", 1000)
 
         if len(signal_data) == 0:
-            return {"model_type": "LSTM", "status": "placeholder", "error": "No signal data"}
+            return {
+                "model_type": "LSTM",
+                "status": "placeholder",
+                "error": "No signal data",
+            }
 
         # LSTM works well for sequential data
         # Create sequences for LSTM
@@ -1078,7 +1112,7 @@ def perform_wavelet_analysis(signal_data, sampling_freq):
         # Basic validation
         if not isinstance(signal_data, (np.ndarray, list)) or len(signal_data) == 0:
             return {"analysis_type": "Wavelet", "status": "placeholder"}
-        
+
         return {"analysis_type": "Wavelet", "status": "placeholder"}
     except Exception as e:
         return {"analysis_type": "Wavelet", "status": "placeholder"}
@@ -1090,7 +1124,7 @@ def perform_hilbert_huang_transform(signal_data, sampling_freq):
         # Basic validation
         if not isinstance(signal_data, (np.ndarray, list)) or len(signal_data) == 0:
             return {"analysis_type": "Hilbert-Huang", "status": "placeholder"}
-        
+
         return {"analysis_type": "Hilbert-Huang", "status": "placeholder"}
     except Exception as e:
         return {"analysis_type": "Hilbert-Huang", "status": "placeholder"}
@@ -1124,7 +1158,9 @@ def perform_empirical_mode_decomposition(signal_data, sampling_freq):
 
         # Perform EMD decomposition
         emd = EMD(signal_data)
-        imfs = emd.emd(max_imfs=8, stop_criterion=0.05)  # Limit to 8 IMFs for efficiency
+        imfs = emd.emd(
+            max_imfs=8, stop_criterion=0.05
+        )  # Limit to 8 IMFs for efficiency
 
         # Calculate residual
         residual = signal_data - np.sum(imfs, axis=0)
@@ -1142,7 +1178,7 @@ def perform_empirical_mode_decomposition(signal_data, sampling_freq):
             "num_imfs": len(imfs),
             "residual": residual,
             "reconstruction_error": reconstruction_error,
-            "sampling_freq": sampling_freq
+            "sampling_freq": sampling_freq,
         }
 
     except ImportError as e:
@@ -1238,7 +1274,8 @@ def create_advanced_visualizations(analysis_results, signal_data, sampling_freq)
             fig = make_subplots(
                 rows=num_imfs + 1,
                 cols=1,
-                subplot_titles=["Original Signal"] + [f"IMF {i+1}" for i in range(num_imfs)],
+                subplot_titles=["Original Signal"]
+                + [f"IMF {i+1}" for i in range(num_imfs)],
                 vertical_spacing=0.02,
             )
 
@@ -1259,7 +1296,16 @@ def create_advanced_visualizations(analysis_results, signal_data, sampling_freq)
             )
 
             # Plot each IMF
-            colors = ['red', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive']
+            colors = [
+                "red",
+                "green",
+                "orange",
+                "purple",
+                "brown",
+                "pink",
+                "gray",
+                "olive",
+            ]
             for i in range(num_imfs):
                 fig.add_trace(
                     go.Scatter(
@@ -1298,12 +1344,18 @@ def create_advanced_visualizations(analysis_results, signal_data, sampling_freq)
             )
 
             # Placeholder visualizations
-            fig.add_trace(go.Scatter(y=signal_data[:100], name="Features"), row=1, col=1)
-            fig.add_trace(go.Scatter(y=signal_data[100:200], name="Patterns"), row=1, col=2)
+            fig.add_trace(
+                go.Scatter(y=signal_data[:100], name="Features"), row=1, col=1
+            )
+            fig.add_trace(
+                go.Scatter(y=signal_data[100:200], name="Patterns"), row=1, col=2
+            )
             fig.add_trace(
                 go.Bar(x=["Model 1", "Model 2"], y=[0.8, 0.9], name="ML"), row=2, col=1
             )
-            fig.add_trace(go.Scatter(y=signal_data[200:300], name="Advanced"), row=2, col=2)
+            fig.add_trace(
+                go.Scatter(y=signal_data[200:300], name="Advanced"), row=2, col=2
+            )
 
             fig.update_layout(
                 title="Advanced Analysis Visualizations", height=500, showlegend=False

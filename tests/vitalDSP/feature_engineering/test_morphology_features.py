@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from scipy.stats import linregress
-from vitalDSP.utils.peak_detection import PeakDetection
+from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
 from vitalDSP.preprocess.preprocess_operations import (
     PreprocessConfig,
     preprocess_signal,
@@ -196,7 +196,7 @@ def test_compute_amplitude_variability_single_peak_ecg(feature_extractor):
 # Handle PPG feature extraction nan case with mock error
 def test_extract_features_nan_case_ppg(feature_extractor, preprocess_config, mocker):
     mocker.patch(
-        "vitalDSP.utils.peak_detection.PeakDetection.detect_peaks",
+        "vitalDSP.utils.signal_processing.peak_detection.PeakDetection.detect_peaks",
         side_effect=Exception("Mock error"),
     )
     features = feature_extractor.extract_features(

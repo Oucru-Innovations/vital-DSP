@@ -54,14 +54,24 @@ def time_domain_layout():
                                                             dbc.ButtonGroup(
                                                                 [
                                                                     dbc.Button(
-                                                                        [html.I(className="fas fa-file-csv me-2"), "Export CSV"],
+                                                                        [
+                                                                            html.I(
+                                                                                className="fas fa-file-csv me-2"
+                                                                            ),
+                                                                            "Export CSV",
+                                                                        ],
                                                                         id="btn-export-time-domain-csv",
                                                                         color="success",
                                                                         outline=True,
                                                                         size="lg",
                                                                     ),
                                                                     dbc.Button(
-                                                                        [html.I(className="fas fa-file-code me-2"), "Export JSON"],
+                                                                        [
+                                                                            html.I(
+                                                                                className="fas fa-file-code me-2"
+                                                                            ),
+                                                                            "Export JSON",
+                                                                        ],
                                                                         id="btn-export-time-domain-json",
                                                                         color="info",
                                                                         outline=True,
@@ -1674,14 +1684,24 @@ def filtering_layout():
                                             dbc.ButtonGroup(
                                                 [
                                                     dbc.Button(
-                                                        [html.I(className="fas fa-file-csv me-1"), "CSV"],
+                                                        [
+                                                            html.I(
+                                                                className="fas fa-file-csv me-1"
+                                                            ),
+                                                            "CSV",
+                                                        ],
                                                         id="btn-export-filtered-csv",
                                                         color="success",
                                                         outline=True,
                                                         size="sm",
                                                     ),
                                                     dbc.Button(
-                                                        [html.I(className="fas fa-file-code me-1"), "JSON"],
+                                                        [
+                                                            html.I(
+                                                                className="fas fa-file-code me-1"
+                                                            ),
+                                                            "JSON",
+                                                        ],
                                                         id="btn-export-filtered-json",
                                                         color="info",
                                                         outline=True,
@@ -2812,14 +2832,24 @@ def physiological_layout():
                                                             dbc.ButtonGroup(
                                                                 [
                                                                     dbc.Button(
-                                                                        [html.I(className="fas fa-file-csv me-2"), "Export CSV"],
+                                                                        [
+                                                                            html.I(
+                                                                                className="fas fa-file-csv me-2"
+                                                                            ),
+                                                                            "Export CSV",
+                                                                        ],
                                                                         id="btn-export-physio-csv",
                                                                         color="success",
                                                                         outline=True,
                                                                         size="lg",
                                                                     ),
                                                                     dbc.Button(
-                                                                        [html.I(className="fas fa-file-code me-2"), "Export JSON"],
+                                                                        [
+                                                                            html.I(
+                                                                                className="fas fa-file-code me-2"
+                                                                            ),
+                                                                            "Export JSON",
+                                                                        ],
                                                                         id="btn-export-physio-json",
                                                                         color="info",
                                                                         outline=True,

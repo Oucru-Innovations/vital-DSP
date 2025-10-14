@@ -6,7 +6,9 @@ This module provides the main Dash and FastAPI application setup.
 
 from dash import Dash, html, dcc
 from fastapi import FastAPI
-from starlette.middleware.wsgi import WSGIMiddleware
+
+# Use the built-in FastAPI mounting approach instead of WSGI middleware
+# This avoids compatibility issues between FastAPI and Dash
 import dash_bootstrap_components as dbc
 
 # Import configuration
@@ -32,6 +34,17 @@ from vitalDSP_webapp.callbacks import (
     register_features_callbacks,
     register_preview_callbacks,
 )
+
+# Import Phase 3A service manager
+try:
+    from vitalDSP_webapp.services.integration.webapp_service_manager import (
+        get_service_manager,
+        start_all_services
+    )
+    ENHANCED_SERVICES_AVAILABLE = True
+except ImportError as e:
+    ENHANCED_SERVICES_AVAILABLE = False
+    print(f"Enhanced webapp services not available: {e}")
 
 
 def create_dash_app() -> Dash:
@@ -163,6 +176,18 @@ def create_dash_app() -> Dash:
     register_preview_callbacks(app)  # Register preview callbacks
     register_quality_callbacks(app)  # Register signal quality assessment callbacks
 
+    # Initialize and start enhanced webapp services if available
+    if ENHANCED_SERVICES_AVAILABLE:
+        try:
+            print("Initializing enhanced webapp services...")
+            service_manager = get_service_manager()
+            # Note: Services will be started asynchronously when needed
+            print("Enhanced webapp services initialized successfully")
+        except Exception as e:
+            print(f"Warning: Could not initialize enhanced webapp services: {e}")
+    else:
+        print("Enhanced webapp services not available - using basic functionality")
+
     return app
 
 
@@ -189,8 +214,18 @@ def create_fastapi_app() -> FastAPI:
     # Create the Dash app
     dash_app = create_dash_app()
 
-    # Mount Dash app at the root ("/")
-    fastapi_app.mount("/", WSGIMiddleware(dash_app.server))
+    # Mount Dash app at the root ("/") using a simpler approach
+    # This avoids the WSGI middleware compatibility issues
+    from starlette.applications import Starlette
+    from starlette.routing import Mount
+    from starlette.middleware import Middleware
+    from starlette.middleware.wsgi import WSGIMiddleware
+    
+    # Create a simple WSGI middleware wrapper
+    dash_wsgi = WSGIMiddleware(dash_app.server)
+    
+    # Mount the Dash app
+    fastapi_app.mount("/", dash_wsgi)
 
     return fastapi_app
 

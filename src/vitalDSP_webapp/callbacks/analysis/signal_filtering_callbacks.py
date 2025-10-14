@@ -17,6 +17,54 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def safe_log_range(logger, data, name="data", precision=4):
+    """
+    Safely log min/max range of data, handling empty arrays.
+
+    Args:
+        logger: Logger instance
+        data: Array-like data
+        name: Name for logging (default: "data")
+        precision: Decimal precision for formatting (default: 4)
+    """
+    if len(data) > 0:
+        logger.info(
+            f"{name} range: {np.min(data):.{precision}f} to {np.max(data):.{precision}f}"
+        )
+    else:
+        logger.warning(f"{name} is empty - cannot compute range")
+
+
+def configure_plot_with_pan_zoom(fig, title="", height=400):
+    """
+    Configure plotly figure with pan/zoom tools and consistent styling.
+
+    Args:
+        fig: Plotly figure object
+        title: Plot title
+        height: Plot height in pixels
+
+    Returns:
+        Configured plotly figure
+    """
+    fig.update_layout(
+        title=title,
+        height=height,
+        showlegend=True,
+        template="plotly_white",
+        # Enable pan and zoom - use simpler configuration
+        dragmode="pan",  # Default to pan mode
+        # Show the modebar with all tools
+        modebar=dict(
+            orientation="v",  # Vertical orientation
+            bgcolor="rgba(255,255,255,0.8)",  # Semi-transparent background
+            color="rgba(0,0,0,0.5)",  # Dark icons
+            activecolor="rgba(0,0,0,0.8)",  # Darker when active
+        ),
+    )
+    return fig
+
+
 def register_signal_filtering_callbacks(app):
     """Register all signal filtering callbacks."""
 
@@ -319,6 +367,12 @@ def register_signal_filtering_callbacks(app):
             from vitalDSP_webapp.services.data.data_service import get_data_service
 
             data_service = get_data_service()
+            
+            # Check if Enhanced Data Service is available for heavy data processing
+            if data_service.is_enhanced_service_available():
+                logger.info("Enhanced Data Service is available for heavy data processing")
+            else:
+                logger.info("Using basic data service functionality")
 
             # Get all stored data and find the latest
             all_data = data_service.get_all_data()
@@ -344,6 +398,29 @@ def register_signal_filtering_callbacks(app):
             latest_data = all_data[latest_data_id]
             logger.info(f"Latest data ID: {latest_data_id}")
             logger.info(f"Latest data content: {latest_data}")
+            
+            # Get the actual data for enhanced processing check
+            df = data_service.get_data(latest_data_id)
+            
+            # Enhanced data processing for heavy datasets
+            if df is not None and not df.empty:
+                data_size_mb = df.memory_usage(deep=True).sum() / (1024 * 1024)
+                num_samples = len(df)
+                
+                logger.info(f"Data size: {data_size_mb:.2f} MB, Samples: {num_samples}")
+                
+                # Use Enhanced Data Service for heavy data processing
+                if data_service.is_enhanced_service_available() and (data_size_mb > 5 or num_samples > 100000):
+                    logger.info(f"Using Enhanced Data Service for heavy signal filtering: {data_size_mb:.2f}MB, {num_samples} samples")
+                    
+                    # Get enhanced service for optimized processing
+                    enhanced_service = data_service.get_enhanced_service()
+                    if enhanced_service:
+                        logger.info("Enhanced Data Service is ready for optimized signal filtering")
+                        # The enhanced service will automatically handle chunked processing
+                        # and memory optimization during signal filtering operations
+                else:
+                    logger.info("Using standard processing for lightweight signal filtering")
 
             # Log the callback parameters
             logger.info("=== CALLBACK PARAMETERS ===")
@@ -507,7 +584,7 @@ def register_signal_filtering_callbacks(app):
                 logger.error(f"Error processing signal column data: {e}")
                 logger.info(f"Signal column data type: {df[signal_column].dtype}")
                 logger.info(
-                    f"Signal column data sample: {df[signal_column].head(5).tolist()}"
+                    f"Signal column data range: {df[signal_column].min():.3f} to {df[signal_column].max():.3f}"
                 )
                 return (
                     create_empty_figure(),
@@ -550,7 +627,6 @@ def register_signal_filtering_callbacks(app):
                         logger.info(
                             "Time data converted to seconds from first timestamp"
                         )
-                        logger.info(f"Converted time data sample: {time_data[:5]}")
                         logger.info(
                             f"Converted time data range: {np.min(time_data):.4f} to {np.max(time_data):.4f}"
                         )
@@ -566,15 +642,16 @@ def register_signal_filtering_callbacks(app):
                     logger.info(
                         f"Full time data range: {np.min(time_data):.4f} to {np.max(time_data):.4f}"
                     )
-                    logger.info(f"Time column data sample: {time_data[:10]}")
                     logger.info(f"Time column data type: {type(time_data[0])}")
                     logger.info(
-                        f"Time column data info: min={np.min(time_data):.4f}, max={np.max(time_data):.4f}, mean={np.mean(time_data):.4f}"
+                        f"Time column data range: min={np.min(time_data):.4f}, max={np.max(time_data):.4f}, mean={np.mean(time_data):.4f}"
                     )
                 except Exception as e:
                     logger.error(f"Error processing time column data: {e}")
                     logger.info(f"Time column data type: {type(time_data[0])}")
-                    logger.info(f"Time column data sample: {time_data[:5].tolist()}")
+                    logger.info(
+                        f"Time column data range: {np.min(time_data):.4f} to {np.max(time_data):.4f}"
+                    )
                     # Fall back to index-based time axis
                     time_column = None
                     logger.info(
@@ -768,30 +845,31 @@ def register_signal_filtering_callbacks(app):
                 )
 
             logger.info(f"Signal data shape: {signal_data.shape}")
-            logger.info(
-                f"Signal data range: {np.min(signal_data):.4f} to {np.max(signal_data):.4f}"
-            )
-            logger.info(
-                f"Signal data sample: {signal_data[:5] if len(signal_data) >= 5 else signal_data}"
-            )
+            safe_log_range(logger, signal_data, "Signal data")
+            if len(signal_data) > 0:
+                logger.info(
+                    f"Signal data sample: {signal_data[:5] if len(signal_data) >= 5 else signal_data}"
+                )
+            else:
+                logger.warning("Signal data is empty - cannot compute range or sample")
 
             logger.info("Final data extraction:")
             logger.info(f"  Start index: {start_idx}")
             logger.info(f"  End index: {end_idx}")
             logger.info(f"  Signal data shape: {signal_data.shape}")
             logger.info(f"  Time axis shape: {time_axis.shape}")
-            logger.info(
-                f"  Signal data range: {np.min(signal_data):.4f} to {np.max(signal_data):.4f}"
-            )
-            logger.info(
-                f"  Time axis range: {np.min(time_axis):.4f} to {np.max(time_axis):.4f}"
-            )
-            logger.info(
-                f"  Signal data sample: {signal_data[:5] if len(signal_data) >= 5 else signal_data}"
-            )
-            logger.info(
-                f"  Time axis sample: {time_axis[:5] if len(time_axis) >= 5 else time_axis}"
-            )
+
+            safe_log_range(logger, signal_data, "  Signal data")
+            safe_log_range(logger, time_axis, "  Time axis")
+
+            if len(signal_data) > 0:
+                logger.info(
+                    f"  Signal data sample: {signal_data[:5] if len(signal_data) >= 5 else signal_data}"
+                )
+            if len(time_axis) > 0:
+                logger.info(
+                    f"  Time axis sample: {time_axis[:5] if len(time_axis) >= 5 else time_axis}"
+                )
 
             # Check if we have valid data
             if len(signal_data) == 0:
@@ -884,27 +962,72 @@ def register_signal_filtering_callbacks(app):
 
             # Only apply complex filtering if we have enough data points
             if len(signal_data) >= 50:
-                if filter_type == "traditional":
-                    # Apply traditional filter
-                    logger.info(
-                        f"Applying traditional filter: {filter_family} {filter_response}"
-                    )
-                    # Set default values for filter parameters
-                    filter_family = filter_family or "butter"
-                    filter_response = filter_response or "low"
-                    low_freq = low_freq or 10
-                    high_freq = high_freq or 50
-                    filter_order = filter_order or 4
+                # Check if we should use optimized processing pipeline for heavy data
+                data_size_mb = len(signal_data) * 8 / (1024 * 1024)  # Rough estimate in MB
+                use_optimized_pipeline = data_size_mb > 5 or len(signal_data) > 100000  # Use for >5MB or >100k samples
+                
+                if use_optimized_pipeline:
+                    logger.info(f"Using optimized processing pipeline for heavy data: {data_size_mb:.1f}MB, {len(signal_data)} samples")
+                    try:
+                        # Use optimized processing pipeline for heavy data
+                        processing_options = {
+                            "filter_type": filter_type,
+                            "filter_family": filter_family,
+                            "filter_response": filter_response,
+                            "low_freq": low_freq,
+                            "high_freq": high_freq,
+                            "filter_order": filter_order,
+                            "advanced_method": advanced_method,
+                            "noise_level": noise_level,
+                            "iterations": iterations,
+                            "learning_rate": learning_rate,
+                            "artifact_type": artifact_type,
+                            "artifact_strength": artifact_strength,
+                            "neural_type": neural_type,
+                            "neural_complexity": neural_complexity,
+                            "ensemble_method": ensemble_method,
+                            "ensemble_n_filters": ensemble_n_filters,
+                            "detrend_option": detrend_option
+                        }
+                        
+                        filtered_data, pipeline_results = apply_optimized_processing_pipeline(
+                            signal_data,
+                            sampling_freq,
+                            signal_type or "ECG",
+                            processing_options
+                        )
+                        
+                        logger.info(f"Optimized processing pipeline completed successfully")
+                        logger.info(f"Pipeline results: {list(pipeline_results.keys()) if isinstance(pipeline_results, dict) else 'Not a dict'}")
+                        
+                    except Exception as e:
+                        logger.warning(f"Optimized processing pipeline failed: {e}")
+                        logger.info("Falling back to individual filter methods")
+                        use_optimized_pipeline = False
+                
+                if not use_optimized_pipeline:
+                    # Use individual filter methods for smaller data or if optimized pipeline fails
+                    if filter_type == "traditional":
+                        # Apply traditional filter
+                        logger.info(
+                            f"Applying traditional filter: {filter_family} {filter_response}"
+                        )
+                        # Set default values for filter parameters
+                        filter_family = filter_family or "butter"
+                        filter_response = filter_response or "low"
+                        low_freq = low_freq or 10
+                        high_freq = high_freq or 50
+                        filter_order = filter_order or 4
 
-                    filtered_data = apply_traditional_filter(
-                        signal_data,
-                        sampling_freq,
-                        filter_family,
-                        filter_response,
-                        low_freq,
-                        high_freq,
-                        filter_order,
-                    )
+                        filtered_data = apply_traditional_filter(
+                            signal_data,
+                            sampling_freq,
+                            filter_family,
+                            filter_response,
+                            low_freq,
+                            high_freq,
+                            filter_order,
+                        )
 
                     # Apply additional traditional filters if parameters are provided
                     # Note: These would need to be added to the callback inputs
@@ -1356,6 +1479,15 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
             yaxis_title="Amplitude",
             height=400,
             showlegend=True,
+            template="plotly_white",
+            # Enable pan and zoom
+            dragmode="pan",
+            modebar=dict(
+                orientation="v",
+                bgcolor="rgba(255,255,255,0.8)",
+                color="rgba(0,0,0,0.5)",
+                activecolor="rgba(0,0,0,0.8)",
+            ),
         )
 
         logger.info("Original signal plot with critical points created successfully")
@@ -1544,6 +1676,15 @@ def create_filtered_signal_plot(time_axis, filtered_data, sampling_freq, signal_
             yaxis_title="Amplitude",
             height=400,
             showlegend=True,
+            template="plotly_white",
+            # Enable pan and zoom
+            dragmode="pan",
+            modebar=dict(
+                orientation="v",
+                bgcolor="rgba(255,255,255,0.8)",
+                color="rgba(0,0,0,0.5)",
+                activecolor="rgba(0,0,0,0.8)",
+            ),
         )
 
         logger.info("Filtered signal plot with critical points created successfully")
@@ -1953,6 +2094,15 @@ def create_filter_comparison_plot(
             yaxis_title="Amplitude",
             height=400,
             showlegend=True,
+            template="plotly_white",
+            # Enable pan and zoom
+            dragmode="pan",
+            modebar=dict(
+                orientation="v",
+                bgcolor="rgba(255,255,255,0.8)",
+                color="rgba(0,0,0,0.5)",
+                activecolor="rgba(0,0,0,0.8)",
+            ),
         )
 
         logger.info("Comparison plot with critical points created successfully")
@@ -2438,6 +2588,73 @@ def apply_advanced_filter(
         logger.error(f"Error applying advanced filter: {e}")
         # Return original signal if advanced filtering fails
         return signal_data
+
+
+def apply_optimized_processing_pipeline(
+    signal_data, 
+    sampling_freq, 
+    signal_type="ECG", 
+    processing_options=None
+):
+    """
+    Apply optimized processing pipeline for heavy data using Phase 3A infrastructure.
+    
+    This function uses the OptimizedStandardProcessingPipeline from vitalDSP
+    for comprehensive signal processing with heavy data optimization.
+    """
+    try:
+        logger.info(f"Applying optimized processing pipeline for {signal_type} signal")
+        
+        # Import Phase 3A optimized processing pipeline
+        from vitalDSP.utils.core_infrastructure.optimized_processing_pipeline import OptimizedStandardProcessingPipeline
+        from vitalDSP.utils.config_utilities.dynamic_config import DynamicConfigManager
+        
+        # Initialize configuration manager
+        config_manager = DynamicConfigManager()
+        
+        # Create optimized processing pipeline
+        pipeline = OptimizedStandardProcessingPipeline(config_manager)
+        
+        # Set processing options
+        processing_options = processing_options or {}
+        
+        # Process signal using optimized pipeline
+        results = pipeline.process_signal(
+            signal=signal_data,
+            fs=sampling_freq,
+            signal_type=signal_type,
+            metadata=processing_options
+        )
+        
+        logger.info(f"Optimized processing pipeline completed successfully")
+        logger.info(f"Processing results keys: {list(results.keys()) if isinstance(results, dict) else 'Not a dict'}")
+        
+        # Extract filtered signal from results
+        if isinstance(results, dict):
+            # Try to get filtered signal from various possible keys
+            filtered_signal = None
+            for key in ['filtered_signal', 'processed_signal', 'signal', 'data']:
+                if key in results:
+                    filtered_signal = results[key]
+                    break
+            
+            if filtered_signal is None:
+                # If no filtered signal found, return original
+                logger.warning("No filtered signal found in processing results, returning original")
+                return signal_data, results
+            
+            return filtered_signal, results
+        else:
+            # If results is not a dict, assume it's the filtered signal
+            return results, {"processed_signal": results}
+            
+    except ImportError as e:
+        logger.warning(f"Optimized processing pipeline not available: {e}")
+        logger.info("Falling back to basic filtering")
+        return signal_data, {"error": "Optimized pipeline not available"}
+    except Exception as e:
+        logger.error(f"Error in optimized processing pipeline: {e}")
+        return signal_data, {"error": str(e)}
 
 
 def apply_neural_filter(signal_data, neural_type, neural_complexity):
@@ -4847,6 +5064,14 @@ def create_filter_quality_plots(
             template="plotly_white",
             font=dict(size=11),
             margin=dict(l=60, r=60, t=100, b=60),
+            # Enable pan and zoom
+            dragmode="pan",
+            modebar=dict(
+                orientation="v",
+                bgcolor="rgba(255,255,255,0.8)",
+                color="rgba(0,0,0,0.5)",
+                activecolor="rgba(0,0,0,0.8)",
+            ),
             legend=dict(
                 orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
             ),

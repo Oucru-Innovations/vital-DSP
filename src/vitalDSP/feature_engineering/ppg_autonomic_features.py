@@ -1,7 +1,7 @@
 import numpy as np
 
 # from scipy.signal import find_peaks
-from vitalDSP.utils.peak_detection import PeakDetection
+from ..utils.signal_processing.peak_detection import PeakDetection
 
 
 class PPGAutonomicFeatures:

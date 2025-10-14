@@ -62,33 +62,33 @@ def register_filtering_export_callbacks(app):
             raise PreventUpdate
 
         try:
-            signal = np.array(filtered_data.get('signal', []))
-            time = np.array(filtered_data.get('time', []))
+            signal = np.array(filtered_data.get("signal", []))
+            time = np.array(filtered_data.get("time", []))
 
             if len(signal) == 0:
                 raise PreventUpdate
 
             # If no time array, generate one
             if len(time) == 0:
-                fs = sampling_freq or filtered_data.get('sampling_freq', 100)
+                fs = sampling_freq or filtered_data.get("sampling_freq", 100)
                 time = np.arange(len(signal)) / fs
 
             metadata = {
-                'filter_type': filtered_data.get('filter_type', 'Unknown'),
-                'filter_params': filtered_data.get('filter_params', {}),
-                'signal_type': filtered_data.get('signal_type', 'Unknown'),
+                "filter_type": filtered_data.get("filter_type", "Unknown"),
+                "filter_params": filtered_data.get("filter_params", {}),
+                "signal_type": filtered_data.get("signal_type", "Unknown"),
             }
 
             csv_content = export_filtered_signal_csv(
                 signal=signal,
                 time=time,
                 sampling_freq=sampling_freq or 100,
-                metadata=metadata
+                metadata=metadata,
             )
 
             return {
-                'content': csv_content,
-                'filename': f'filtered_signal_{filtered_data.get("filter_type", "unknown")}.csv'
+                "content": csv_content,
+                "filename": f'filtered_signal_{filtered_data.get("filter_type", "unknown")}.csv',
             }
 
         except Exception as e:
@@ -110,33 +110,33 @@ def register_filtering_export_callbacks(app):
             raise PreventUpdate
 
         try:
-            signal = np.array(filtered_data.get('signal', []))
-            time = np.array(filtered_data.get('time', []))
+            signal = np.array(filtered_data.get("signal", []))
+            time = np.array(filtered_data.get("time", []))
 
             if len(signal) == 0:
                 raise PreventUpdate
 
             # If no time array, generate one
             if len(time) == 0:
-                fs = sampling_freq or filtered_data.get('sampling_freq', 100)
+                fs = sampling_freq or filtered_data.get("sampling_freq", 100)
                 time = np.arange(len(signal)) / fs
 
             metadata = {
-                'filter_type': filtered_data.get('filter_type', 'Unknown'),
-                'filter_params': filtered_data.get('filter_params', {}),
-                'signal_type': filtered_data.get('signal_type', 'Unknown'),
+                "filter_type": filtered_data.get("filter_type", "Unknown"),
+                "filter_params": filtered_data.get("filter_params", {}),
+                "signal_type": filtered_data.get("signal_type", "Unknown"),
             }
 
             json_content = export_filtered_signal_json(
                 signal=signal,
                 time=time,
                 sampling_freq=sampling_freq or 100,
-                metadata=metadata
+                metadata=metadata,
             )
 
             return {
-                'content': json_content,
-                'filename': f'filtered_signal_{filtered_data.get("filter_type", "unknown")}.json'
+                "content": json_content,
+                "filename": f'filtered_signal_{filtered_data.get("filter_type", "unknown")}.json',
             }
 
         except Exception as e:
@@ -161,10 +161,7 @@ def register_time_domain_export_callbacks(app):
         try:
             csv_content = export_time_domain_analysis_csv(features_data)
 
-            return {
-                'content': csv_content,
-                'filename': 'time_domain_features.csv'
-            }
+            return {"content": csv_content, "filename": "time_domain_features.csv"}
 
         except Exception as e:
             logger.error(f"Error exporting time domain features to CSV: {e}")
@@ -184,10 +181,7 @@ def register_time_domain_export_callbacks(app):
         try:
             json_content = export_time_domain_analysis_json(features_data)
 
-            return {
-                'content': json_content,
-                'filename': 'time_domain_features.json'
-            }
+            return {"content": json_content, "filename": "time_domain_features.json"}
 
         except Exception as e:
             logger.error(f"Error exporting time domain features to JSON: {e}")
@@ -211,10 +205,7 @@ def register_frequency_domain_export_callbacks(app):
         try:
             csv_content = export_frequency_domain_analysis_csv(features_data)
 
-            return {
-                'content': csv_content,
-                'filename': 'frequency_domain_features.csv'
-            }
+            return {"content": csv_content, "filename": "frequency_domain_features.csv"}
 
         except Exception as e:
             logger.error(f"Error exporting frequency domain features to CSV: {e}")
@@ -235,8 +226,8 @@ def register_frequency_domain_export_callbacks(app):
             json_content = export_frequency_domain_analysis_json(features_data)
 
             return {
-                'content': json_content,
-                'filename': 'frequency_domain_features.json'
+                "content": json_content,
+                "filename": "frequency_domain_features.json",
             }
 
         except Exception as e:
@@ -259,12 +250,12 @@ def register_physiological_export_callbacks(app):
             raise PreventUpdate
 
         try:
-            signal_type = features_data.get('signal_type', 'Physiological')
+            signal_type = features_data.get("signal_type", "Physiological")
             csv_content = export_features_csv(features_data, signal_type=signal_type)
 
             return {
-                'content': csv_content,
-                'filename': f'physiological_features_{signal_type.lower()}.csv'
+                "content": csv_content,
+                "filename": f"physiological_features_{signal_type.lower()}.csv",
             }
 
         except Exception as e:
@@ -283,12 +274,12 @@ def register_physiological_export_callbacks(app):
             raise PreventUpdate
 
         try:
-            signal_type = features_data.get('signal_type', 'Physiological')
+            signal_type = features_data.get("signal_type", "Physiological")
             json_content = export_features_json(features_data, signal_type=signal_type)
 
             return {
-                'content': json_content,
-                'filename': f'physiological_features_{signal_type.lower()}.json'
+                "content": json_content,
+                "filename": f"physiological_features_{signal_type.lower()}.json",
             }
 
         except Exception as e:
@@ -313,10 +304,7 @@ def register_quality_export_callbacks(app):
         try:
             csv_content = export_quality_metrics_csv(quality_data)
 
-            return {
-                'content': csv_content,
-                'filename': 'signal_quality_metrics.csv'
-            }
+            return {"content": csv_content, "filename": "signal_quality_metrics.csv"}
 
         except Exception as e:
             logger.error(f"Error exporting quality metrics to CSV: {e}")
@@ -336,10 +324,7 @@ def register_quality_export_callbacks(app):
         try:
             json_content = export_quality_metrics_json(quality_data)
 
-            return {
-                'content': json_content,
-                'filename': 'signal_quality_metrics.json'
-            }
+            return {"content": json_content, "filename": "signal_quality_metrics.json"}
 
         except Exception as e:
             logger.error(f"Error exporting quality metrics to JSON: {e}")
@@ -363,10 +348,7 @@ def register_respiratory_export_callbacks(app):
         try:
             csv_content = export_respiratory_analysis_csv(respiratory_data)
 
-            return {
-                'content': csv_content,
-                'filename': 'respiratory_analysis.csv'
-            }
+            return {"content": csv_content, "filename": "respiratory_analysis.csv"}
 
         except Exception as e:
             logger.error(f"Error exporting respiratory analysis to CSV: {e}")
@@ -386,10 +368,7 @@ def register_respiratory_export_callbacks(app):
         try:
             json_content = export_respiratory_analysis_json(respiratory_data)
 
-            return {
-                'content': json_content,
-                'filename': 'respiratory_analysis.json'
-            }
+            return {"content": json_content, "filename": "respiratory_analysis.json"}
 
         except Exception as e:
             logger.error(f"Error exporting respiratory analysis to JSON: {e}")
@@ -415,13 +394,12 @@ def register_transforms_export_callbacks(app):
 
         try:
             csv_content = export_transform_results_csv(
-                transform_data,
-                transform_type=transform_type or "Unknown"
+                transform_data, transform_type=transform_type or "Unknown"
             )
 
             return {
-                'content': csv_content,
-                'filename': f'transform_{transform_type or "results"}.csv'
+                "content": csv_content,
+                "filename": f'transform_{transform_type or "results"}.csv',
             }
 
         except Exception as e:
@@ -444,13 +422,12 @@ def register_transforms_export_callbacks(app):
 
         try:
             json_content = export_transform_results_json(
-                transform_data,
-                transform_type=transform_type or "Unknown"
+                transform_data, transform_type=transform_type or "Unknown"
             )
 
             return {
-                'content': json_content,
-                'filename': f'transform_{transform_type or "results"}.json'
+                "content": json_content,
+                "filename": f'transform_{transform_type or "results"}.json',
             }
 
         except Exception as e:

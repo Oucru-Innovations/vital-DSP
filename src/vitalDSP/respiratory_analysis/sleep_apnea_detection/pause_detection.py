@@ -1,4 +1,4 @@
-from vitalDSP.utils.common import find_peaks
+from vitalDSP.utils.config_utilities.common import find_peaks
 from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 
 

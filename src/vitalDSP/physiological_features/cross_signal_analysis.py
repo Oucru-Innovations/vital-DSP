@@ -1,5 +1,9 @@
 import numpy as np
-from vitalDSP.utils.common import pearsonr, coherence, grangercausalitytests
+from vitalDSP.utils.config_utilities.common import (
+    pearsonr,
+    coherence,
+    grangercausalitytests,
+)
 
 
 class CrossSignalAnalysis:

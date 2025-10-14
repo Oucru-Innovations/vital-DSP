@@ -1,5 +1,5 @@
 import numpy as np
-from vitalDSP.utils.peak_detection import PeakDetection
+from ..utils.signal_processing.peak_detection import PeakDetection
 from vitalDSP.physiological_features.waveform import WaveformMorphology
 
 

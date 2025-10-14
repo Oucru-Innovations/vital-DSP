@@ -5,6 +5,11 @@ A comprehensive library for processing and analyzing physiological signals
 including ECG, PPG, and other vital signs data.
 """
 
+# Configure warnings before importing modules
+from .utils.warning_config import configure_warnings, suppress_test_warnings
+configure_warnings()
+suppress_test_warnings()
+
 # Version information
 __version__ = "1.0.0"
 __author__ = "vitalDSP Team"

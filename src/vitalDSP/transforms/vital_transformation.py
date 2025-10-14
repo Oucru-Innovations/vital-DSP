@@ -371,9 +371,17 @@ class VitalTransformation:
         normalization_range = options.get("normalization_range", (0, 1))
         min_val = np.min(self.signal)
         max_val = np.max(self.signal)
-        self.signal = (self.signal - min_val) / (max_val - min_val) * (
-            normalization_range[1] - normalization_range[0]
-        ) + normalization_range[0]
+
+        # Avoid divide by zero warning
+        if max_val - min_val > 0:
+            self.signal = (self.signal - min_val) / (max_val - min_val) * (
+                normalization_range[1] - normalization_range[0]
+            ) + normalization_range[0]
+        else:
+            # If signal is constant, set to middle of range
+            self.signal = np.full_like(
+                self.signal, (normalization_range[0] + normalization_range[1]) / 2
+            )
 
     def apply_smoothing(self, options=None):
         """

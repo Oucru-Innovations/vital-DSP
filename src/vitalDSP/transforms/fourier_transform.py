@@ -1,5 +1,5 @@
 import numpy as np
-from ..utils.validation import SignalValidator
+from ..utils.data_processing.validation import SignalValidator
 
 
 class FourierTransform:
@@ -41,7 +41,14 @@ class FourierTransform:
         >>> print(ft.signal)
         """
         # Validate signal - require min_length=2, don't allow empty signals
-        SignalValidator.validate_signal(signal, min_length=2, allow_empty=False, allow_nan=True, allow_inf=True, signal_name="signal")
+        SignalValidator.validate_signal(
+            signal,
+            min_length=2,
+            allow_empty=False,
+            allow_nan=True,
+            allow_inf=True,
+            signal_name="signal",
+        )
         self.signal = signal
 
     def compute_dft(self):

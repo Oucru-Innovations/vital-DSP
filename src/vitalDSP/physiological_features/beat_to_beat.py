@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.signal import resample
-from vitalDSP.utils.common import deprecated
+from vitalDSP.utils.config_utilities.common import deprecated
 
 
 class BeatToBeatAnalysis:

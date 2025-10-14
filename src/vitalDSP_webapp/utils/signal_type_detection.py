@@ -108,21 +108,29 @@ class SignalTypeDetector:
             # Calculate frequency range where power > 10% of peak
             threshold = 0.1 * peak_power
             significant_freqs = freqs[fft_no_dc > threshold]
-            freq_range = (np.min(significant_freqs), np.max(significant_freqs)) if len(significant_freqs) > 0 else (0, 0)
+            freq_range = (
+                (np.min(significant_freqs), np.max(significant_freqs))
+                if len(significant_freqs) > 0
+                else (0, 0)
+            )
 
             # Estimate SNR (signal power vs high-frequency noise)
             signal_band = fft_result[freqs < dominant_freq * 3]
             noise_band = fft_result[freqs > dominant_freq * 3]
-            snr = np.mean(signal_band) / (np.mean(noise_band) + 1e-10) if len(noise_band) > 0 else 0
+            snr = (
+                np.mean(signal_band) / (np.mean(noise_band) + 1e-10)
+                if len(noise_band) > 0
+                else 0
+            )
 
             self._features = {
-                'mean': mean_val,
-                'std': std_val,
-                'range': range_val,
-                'dominant_freq': dominant_freq,
-                'peak_power': peak_power,
-                'freq_range': freq_range,
-                'snr': snr
+                "mean": mean_val,
+                "std": std_val,
+                "range": range_val,
+                "dominant_freq": dominant_freq,
+                "peak_power": peak_power,
+                "freq_range": freq_range,
+                "snr": snr,
             }
 
             return self._features
@@ -160,11 +168,11 @@ class SignalTypeDetector:
             features = self.get_signal_features()
 
             if not features:
-                return 'unknown'
+                return "unknown"
 
-            dominant_freq = features['dominant_freq']
-            range_val = features['range']
-            std_val = features['std']
+            dominant_freq = features["dominant_freq"]
+            range_val = features["range"]
+            std_val = features["std"]
 
             # Cardiac signals: 0.8-2.0 Hz (48-120 BPM)
             # Respiratory signals: 0.1-0.5 Hz (6-30 BPM)
@@ -183,19 +191,19 @@ class SignalTypeDetector:
                 hf_ratio = high_freq_power / (total_power + 1e-10)
 
                 if hf_ratio > 0.1:  # ECG has sharper features
-                    return 'ecg'
+                    return "ecg"
                 else:  # PPG has smoother waveform
-                    return 'ppg'
+                    return "ppg"
 
             elif 0.1 <= dominant_freq <= 0.8:
                 # Respiratory frequency range
-                return 'respiratory'
+                return "respiratory"
             else:
-                return 'unknown'
+                return "unknown"
 
         except Exception as e:
             logger.error(f"Error detecting signal type: {e}")
-            return 'unknown'
+            return "unknown"
 
     def detect_respiratory_type(self):
         """
@@ -220,11 +228,11 @@ class SignalTypeDetector:
             features = self.get_signal_features()
 
             if not features:
-                return 'ppg'  # Default fallback
+                return "ppg"  # Default fallback
 
-            std_val = features['std']
-            range_val = features['range']
-            dominant_freq = features['dominant_freq']
+            std_val = features["std"]
+            range_val = features["range"]
+            dominant_freq = features["dominant_freq"]
 
             # Respiratory signals typically have dominant frequency around 0.2-0.5 Hz (12-30 BPM)
             # PPG respiratory component is usually lower amplitude and smoother
@@ -232,20 +240,20 @@ class SignalTypeDetector:
 
             if 0.1 < dominant_freq < 0.8 and range_val < 2 * std_val:
                 # Low amplitude, smooth -> PPG-derived
-                return 'ppg'
+                return "ppg"
             elif 0.1 < dominant_freq < 1.0 and range_val > 3 * std_val:
                 # High amplitude, variable -> Direct respiratory
-                return 'respiratory'
+                return "respiratory"
             elif dominant_freq > 0.5:
                 # Higher frequency content -> ECG-derived
-                return 'ecg'
+                return "ecg"
             else:
                 # Default to PPG for most ambiguous cases
-                return 'ppg'
+                return "ppg"
 
         except Exception as e:
             logger.warning(f"Respiratory signal type detection failed: {e}")
-            return 'ppg'  # Default fallback
+            return "ppg"  # Default fallback
 
 
 def detect_signal_type(signal_data, sampling_freq=1000):

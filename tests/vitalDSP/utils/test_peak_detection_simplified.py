@@ -16,7 +16,7 @@ SAMPLE_FREQ = 100
 
 # Try to import the module under test
 try:
-    from vitalDSP.utils.peak_detection import PeakDetection
+    from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
     PEAK_DETECTION_AVAILABLE = True
 except ImportError as e:
     PEAK_DETECTION_AVAILABLE = False

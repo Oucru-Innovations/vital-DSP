@@ -1,7 +1,8 @@
 import numpy as np
-from vitalDSP.utils.peak_detection import PeakDetection
+from ..utils.signal_processing.peak_detection import PeakDetection
 from vitalDSP.preprocess.preprocess_operations import estimate_baseline
 from scipy.stats import skew, linregress
+from scipy import integrate
 import logging as logger
 from scipy.signal import savgol_filter
 from vitalDSP.transforms.vital_transformation import VitalTransformation
@@ -1437,11 +1438,11 @@ class WaveformMorphology:
             # Always check that start < end for valid intervals
             if start < end:
                 if mode == "peak":
-                    volume = np.trapz(
+                    volume = integrate.trapezoid(
                         self.waveform[start : end + 1]
                     )  # Integrate over interval
                 elif mode == "trough":
-                    volume = np.trapz(
+                    volume = integrate.trapezoid(
                         self.waveform[min(start, end) : max(start, end) + 1]
                     )
                 else:
@@ -1500,7 +1501,17 @@ class WaveformMorphology:
             # Compute skewness for the complex segment if valid intervals are found
             if end > start:
                 complex_segment = self.waveform[start : end + 1]
-                skewness_values.append(skew(complex_segment))
+                # Suppress scipy warnings for edge cases
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=RuntimeWarning)
+                    try:
+                        skewness_val = skew(complex_segment)
+                        if np.isfinite(skewness_val):
+                            skewness_values.append(skewness_val)
+                    except (ValueError, RuntimeWarning):
+                        # Skip invalid skewness calculations
+                        continue
 
         # Return empty array if no valid skewness values were computed
         if len(skewness_values) == 0:

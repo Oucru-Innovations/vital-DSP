@@ -114,7 +114,7 @@ class TimeDomainFeatures:
             return 0.0
         if len(self.nn_intervals) == 1:
             return 0.0  # No differences possible with single interval
-        
+
         nn50 = self.compute_nn50()
         return 100.0 * nn50 / len(self.nn_intervals)
 
@@ -193,7 +193,7 @@ class TimeDomainFeatures:
             return 0.0
         if len(self.nn_intervals) == 1:
             return 0.0  # No differences possible with single interval
-            
+
         diff_nn_intervals = np.abs(np.diff(self.nn_intervals))
         nn20 = np.sum(diff_nn_intervals > 20)
         return 100.0 * nn20 / len(self.nn_intervals)
@@ -214,11 +214,11 @@ class TimeDomainFeatures:
         # Input validation to prevent division by zero
         if len(self.nn_intervals) == 0:
             return 0.0
-            
+
         mean_nn = self.compute_mean_nn()
         if mean_nn == 0:
             return 0.0  # Avoid division by zero
-            
+
         sdnn = self.compute_sdnn()
         return sdnn / mean_nn
 

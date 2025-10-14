@@ -26,6 +26,7 @@ from scipy.ndimage import gaussian_filter1d
 # Optional dependencies
 try:
     import shap
+
     SHAP_AVAILABLE = True
 except ImportError:
     SHAP_AVAILABLE = False
@@ -33,6 +34,7 @@ except ImportError:
 try:
     import lime
     from lime import lime_tabular
+
     LIME_AVAILABLE = True
 except ImportError:
     LIME_AVAILABLE = False
@@ -40,6 +42,7 @@ except ImportError:
 try:
     import tensorflow as tf
     from tensorflow import keras
+
     TENSORFLOW_AVAILABLE = True
 except ImportError:
     TENSORFLOW_AVAILABLE = False
@@ -47,12 +50,14 @@ except ImportError:
 try:
     import torch
     import torch.nn as nn
+
     PYTORCH_AVAILABLE = True
 except ImportError:
     PYTORCH_AVAILABLE = False
 
 try:
     import matplotlib.pyplot as plt
+
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
@@ -69,7 +74,7 @@ class BaseExplainer:
         self,
         model: Any,
         feature_names: Optional[List[str]] = None,
-        class_names: Optional[List[str]] = None
+        class_names: Optional[List[str]] = None,
     ):
         """
         Initialize base explainer.
@@ -163,9 +168,9 @@ class SHAPExplainer(BaseExplainer):
     def __init__(
         self,
         model: Any,
-        explainer_type: str = 'kernel',
+        explainer_type: str = "kernel",
         feature_names: Optional[List[str]] = None,
-        class_names: Optional[List[str]] = None
+        class_names: Optional[List[str]] = None,
     ):
         """
         Initialize SHAP explainer.
@@ -191,11 +196,11 @@ class SHAPExplainer(BaseExplainer):
 
     def _create_explainer(self, background_data: Optional[np.ndarray] = None):
         """Create SHAP explainer based on type."""
-        if self.explainer_type == 'tree':
+        if self.explainer_type == "tree":
             # For tree-based models (RandomForest, XGBoost, LightGBM)
             self.explainer = shap.TreeExplainer(self.model)
 
-        elif self.explainer_type == 'deep':
+        elif self.explainer_type == "deep":
             # For deep learning models
             if not TENSORFLOW_AVAILABLE and not PYTORCH_AVAILABLE:
                 raise ImportError("TensorFlow or PyTorch required for DeepExplainer")
@@ -205,22 +210,22 @@ class SHAPExplainer(BaseExplainer):
 
             self.explainer = shap.DeepExplainer(self.model, background_data)
 
-        elif self.explainer_type == 'kernel':
+        elif self.explainer_type == "kernel":
             # Model-agnostic explainer
             if background_data is None:
                 raise ValueError("background_data required for KernelExplainer")
 
             # Create prediction function
-            if hasattr(self.model, 'predict_proba'):
+            if hasattr(self.model, "predict_proba"):
                 predict_fn = self.model.predict_proba
-            elif hasattr(self.model, 'predict'):
+            elif hasattr(self.model, "predict"):
                 predict_fn = self.model.predict
             else:
                 raise ValueError("Model must have predict or predict_proba method")
 
             self.explainer = shap.KernelExplainer(predict_fn, background_data)
 
-        elif self.explainer_type == 'linear':
+        elif self.explainer_type == "linear":
             # For linear models
             self.explainer = shap.LinearExplainer(self.model, background_data)
 
@@ -231,7 +236,7 @@ class SHAPExplainer(BaseExplainer):
         self,
         X: np.ndarray,
         background_data: Optional[np.ndarray] = None,
-        nsamples: int = 100
+        nsamples: int = 100,
     ) -> Dict[str, Any]:
         """
         Generate SHAP explanations.
@@ -258,33 +263,33 @@ class SHAPExplainer(BaseExplainer):
             self._create_explainer(background_data)
 
         # Compute SHAP values
-        if self.explainer_type == 'kernel':
+        if self.explainer_type == "kernel":
             shap_values = self.explainer.shap_values(X, nsamples=nsamples)
         else:
             shap_values = self.explainer.shap_values(X)
 
         # Get base values
-        if hasattr(self.explainer, 'expected_value'):
+        if hasattr(self.explainer, "expected_value"):
             base_values = self.explainer.expected_value
         else:
             base_values = None
 
         explanation = {
-            'shap_values': shap_values,
-            'base_values': base_values,
-            'data': X,
-            'feature_names': self.feature_names
+            "shap_values": shap_values,
+            "base_values": base_values,
+            "data": X,
+            "feature_names": self.feature_names,
         }
 
-        self.explanations['last'] = explanation
+        self.explanations["last"] = explanation
         return explanation
 
     def plot_summary(
         self,
         explanation: Optional[Dict[str, Any]] = None,
-        plot_type: str = 'dot',
+        plot_type: str = "dot",
         max_display: int = 20,
-        show: bool = True
+        show: bool = True,
     ):
         """
         Create SHAP summary plot.
@@ -301,12 +306,12 @@ class SHAPExplainer(BaseExplainer):
             Whether to show the plot
         """
         if explanation is None:
-            explanation = self.explanations.get('last')
+            explanation = self.explanations.get("last")
             if explanation is None:
                 raise ValueError("No explanation available. Run explain() first.")
 
-        shap_values = explanation['shap_values']
-        data = explanation['data']
+        shap_values = explanation["shap_values"]
+        data = explanation["data"]
 
         # Create summary plot
         shap.summary_plot(
@@ -315,7 +320,7 @@ class SHAPExplainer(BaseExplainer):
             feature_names=self.feature_names,
             plot_type=plot_type,
             max_display=max_display,
-            show=show
+            show=show,
         )
 
     def plot_waterfall(
@@ -323,7 +328,7 @@ class SHAPExplainer(BaseExplainer):
         explanation: Optional[Dict[str, Any]] = None,
         instance_idx: int = 0,
         max_display: int = 20,
-        show: bool = True
+        show: bool = True,
     ):
         """
         Create SHAP waterfall plot for a single prediction.
@@ -340,13 +345,13 @@ class SHAPExplainer(BaseExplainer):
             Whether to show the plot
         """
         if explanation is None:
-            explanation = self.explanations.get('last')
+            explanation = self.explanations.get("last")
             if explanation is None:
                 raise ValueError("No explanation available. Run explain() first.")
 
-        shap_values = explanation['shap_values']
-        base_values = explanation['base_values']
-        data = explanation['data']
+        shap_values = explanation["shap_values"]
+        base_values = explanation["base_values"]
+        data = explanation["data"]
 
         # Handle multi-class case
         if isinstance(shap_values, list):
@@ -359,7 +364,7 @@ class SHAPExplainer(BaseExplainer):
             values=shap_values[instance_idx],
             base_values=base_values,
             data=data[instance_idx],
-            feature_names=self.feature_names
+            feature_names=self.feature_names,
         )
         shap.plots.waterfall(shap_exp, max_display=max_display, show=show)
 
@@ -367,7 +372,7 @@ class SHAPExplainer(BaseExplainer):
         self,
         explanation: Optional[Dict[str, Any]] = None,
         instance_idx: int = 0,
-        matplotlib: bool = True
+        matplotlib: bool = True,
     ):
         """
         Create SHAP force plot.
@@ -382,13 +387,13 @@ class SHAPExplainer(BaseExplainer):
             Whether to use matplotlib backend
         """
         if explanation is None:
-            explanation = self.explanations.get('last')
+            explanation = self.explanations.get("last")
             if explanation is None:
                 raise ValueError("No explanation available. Run explain() first.")
 
-        shap_values = explanation['shap_values']
-        base_values = explanation['base_values']
-        data = explanation['data']
+        shap_values = explanation["shap_values"]
+        base_values = explanation["base_values"]
+        data = explanation["data"]
 
         # Handle multi-class case
         if isinstance(shap_values, list):
@@ -402,15 +407,15 @@ class SHAPExplainer(BaseExplainer):
             shap_values[instance_idx],
             data[instance_idx],
             feature_names=self.feature_names,
-            matplotlib=matplotlib
+            matplotlib=matplotlib,
         )
 
     def plot_dependence(
         self,
         feature_idx: Union[int, str],
         explanation: Optional[Dict[str, Any]] = None,
-        interaction_idx: Union[int, str, None] = 'auto',
-        show: bool = True
+        interaction_idx: Union[int, str, None] = "auto",
+        show: bool = True,
     ):
         """
         Create SHAP dependence plot showing feature interaction.
@@ -427,12 +432,12 @@ class SHAPExplainer(BaseExplainer):
             Whether to show the plot
         """
         if explanation is None:
-            explanation = self.explanations.get('last')
+            explanation = self.explanations.get("last")
             if explanation is None:
                 raise ValueError("No explanation available. Run explain() first.")
 
-        shap_values = explanation['shap_values']
-        data = explanation['data']
+        shap_values = explanation["shap_values"]
+        data = explanation["data"]
 
         # Handle multi-class case
         if isinstance(shap_values, list):
@@ -444,7 +449,7 @@ class SHAPExplainer(BaseExplainer):
             data,
             feature_names=self.feature_names,
             interaction_index=interaction_idx,
-            show=show
+            show=show,
         )
 
 
@@ -485,10 +490,10 @@ class LIMEExplainer(BaseExplainer):
         self,
         model: Any,
         training_data: np.ndarray,
-        mode: str = 'classification',
+        mode: str = "classification",
         feature_names: Optional[List[str]] = None,
         class_names: Optional[List[str]] = None,
-        discretize_continuous: bool = False
+        discretize_continuous: bool = False,
     ):
         """
         Initialize LIME explainer.
@@ -523,7 +528,7 @@ class LIMEExplainer(BaseExplainer):
             mode=self.mode,
             feature_names=feature_names,
             class_names=class_names,
-            discretize_continuous=discretize_continuous
+            discretize_continuous=discretize_continuous,
         )
 
     def explain(
@@ -531,7 +536,7 @@ class LIMEExplainer(BaseExplainer):
         instance: np.ndarray,
         num_features: int = 10,
         num_samples: int = 5000,
-        labels: Optional[Tuple[int, ...]] = None
+        labels: Optional[Tuple[int, ...]] = None,
     ) -> Any:
         """
         Explain a single prediction.
@@ -553,8 +558,8 @@ class LIMEExplainer(BaseExplainer):
             LIME explanation object
         """
         # Get prediction function
-        if self.mode == 'classification':
-            if hasattr(self.model, 'predict_proba'):
+        if self.mode == "classification":
+            if hasattr(self.model, "predict_proba"):
                 predict_fn = self.model.predict_proba
             else:
                 raise ValueError("Model must have predict_proba for classification")
@@ -567,7 +572,7 @@ class LIMEExplainer(BaseExplainer):
             predict_fn,
             num_features=num_features,
             num_samples=num_samples,
-            labels=labels
+            labels=labels,
         )
 
         return explanation
@@ -576,7 +581,7 @@ class LIMEExplainer(BaseExplainer):
         self,
         explanation: Any,
         label: Optional[int] = None,
-        figsize: Tuple[int, int] = (10, 6)
+        figsize: Tuple[int, int] = (10, 6),
     ):
         """
         Plot LIME explanation.
@@ -596,7 +601,7 @@ class LIMEExplainer(BaseExplainer):
             return
 
         # Use LIME's built-in visualization
-        if self.mode == 'classification' and label is not None:
+        if self.mode == "classification" and label is not None:
             fig = explanation.as_pyplot_figure(label=label)
         else:
             fig = explanation.as_pyplot_figure()
@@ -633,10 +638,7 @@ class GradCAM1D:
     """
 
     def __init__(
-        self,
-        model: Any,
-        layer_name: Optional[str] = None,
-        backend: str = 'tensorflow'
+        self, model: Any, layer_name: Optional[str] = None, backend: str = "tensorflow"
     ):
         """
         Initialize GradCAM.
@@ -654,11 +656,11 @@ class GradCAM1D:
         self.layer_name = layer_name
         self.backend = backend.lower()
 
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             if not TENSORFLOW_AVAILABLE:
                 raise ImportError("TensorFlow not installed")
             self._setup_tensorflow()
-        elif self.backend == 'pytorch':
+        elif self.backend == "pytorch":
             if not PYTORCH_AVAILABLE:
                 raise ImportError("PyTorch not installed")
             self._setup_pytorch()
@@ -680,10 +682,7 @@ class GradCAM1D:
         # Create gradient model
         self.grad_model = keras.Model(
             inputs=self.model.input,
-            outputs=[
-                self.model.get_layer(self.layer_name).output,
-                self.model.output
-            ]
+            outputs=[self.model.get_layer(self.layer_name).output, self.model.output],
         )
 
     def _setup_pytorch(self):
@@ -714,9 +713,7 @@ class GradCAM1D:
         target_layer.register_backward_hook(backward_hook)
 
     def compute_heatmap(
-        self,
-        signal: np.ndarray,
-        class_idx: Optional[int] = None
+        self, signal: np.ndarray, class_idx: Optional[int] = None
     ) -> np.ndarray:
         """
         Compute GradCAM heatmap.
@@ -736,15 +733,13 @@ class GradCAM1D:
         if signal.ndim == 2:
             signal = signal[np.newaxis, :]
 
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             return self._compute_heatmap_tensorflow(signal, class_idx)
         else:
             return self._compute_heatmap_pytorch(signal, class_idx)
 
     def _compute_heatmap_tensorflow(
-        self,
-        signal: np.ndarray,
-        class_idx: Optional[int] = None
+        self, signal: np.ndarray, class_idx: Optional[int] = None
     ) -> np.ndarray:
         """Compute heatmap using TensorFlow."""
         with tf.GradientTape() as tape:
@@ -772,20 +767,19 @@ class GradCAM1D:
         # Resize to input length
         original_length = signal.shape[1]
         heatmap = tf.image.resize(
-            heatmap[..., tf.newaxis, tf.newaxis],
-            (original_length, 1)
+            heatmap[..., tf.newaxis, tf.newaxis], (original_length, 1)
         )
         heatmap = tf.squeeze(heatmap).numpy()
 
         return heatmap
 
     def _compute_heatmap_pytorch(
-        self,
-        signal: np.ndarray,
-        class_idx: Optional[int] = None
+        self, signal: np.ndarray, class_idx: Optional[int] = None
     ) -> np.ndarray:
         """Compute heatmap using PyTorch."""
-        signal_tensor = torch.FloatTensor(signal).permute(0, 2, 1)  # (batch, channels, length)
+        signal_tensor = torch.FloatTensor(signal).permute(
+            0, 2, 1
+        )  # (batch, channels, length)
         signal_tensor.requires_grad = True
 
         # Forward pass
@@ -818,9 +812,7 @@ class GradCAM1D:
         # Resize to input length
         original_length = signal.shape[1]
         heatmap = torch.nn.functional.interpolate(
-            heatmap.unsqueeze(0).unsqueeze(0),
-            size=original_length,
-            mode='linear'
+            heatmap.unsqueeze(0).unsqueeze(0), size=original_length, mode="linear"
         )
         heatmap = heatmap.squeeze().numpy()
 
@@ -831,8 +823,8 @@ class GradCAM1D:
         signal: np.ndarray,
         heatmap: np.ndarray,
         alpha: float = 0.4,
-        colormap: str = 'jet',
-        figsize: Tuple[int, int] = (15, 5)
+        colormap: str = "jet",
+        figsize: Tuple[int, int] = (15, 5),
     ):
         """
         Plot signal with GradCAM heatmap overlay.
@@ -861,7 +853,7 @@ class GradCAM1D:
 
         # Plot signal
         time = np.arange(len(signal))
-        ax.plot(time, signal, 'k-', linewidth=1, label='Signal')
+        ax.plot(time, signal, "k-", linewidth=1, label="Signal")
 
         # Create colored overlay
         cmap = plt.cm.get_cmap(colormap)
@@ -869,15 +861,11 @@ class GradCAM1D:
 
         # Plot heatmap as background
         for i in range(len(time) - 1):
-            ax.axvspan(
-                time[i], time[i + 1],
-                alpha=alpha * heatmap[i],
-                color=colors[i]
-            )
+            ax.axvspan(time[i], time[i + 1], alpha=alpha * heatmap[i], color=colors[i])
 
-        ax.set_xlabel('Time')
-        ax.set_ylabel('Amplitude')
-        ax.set_title('GradCAM Visualization')
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Amplitude")
+        ax.set_title("GradCAM Visualization")
         ax.legend()
         ax.grid(True, alpha=0.3)
 
@@ -915,7 +903,7 @@ class AttentionVisualizer:
         attention_weights: np.ndarray,
         head_idx: int = 0,
         figsize: Tuple[int, int] = (10, 10),
-        title: Optional[str] = None
+        title: Optional[str] = None,
     ):
         """
         Plot attention map for a specific head.
@@ -937,22 +925,20 @@ class AttentionVisualizer:
             attn = attention_weights[head_idx]
 
         fig, ax = plt.subplots(figsize=figsize)
-        im = ax.imshow(attn, cmap='viridis', aspect='auto')
+        im = ax.imshow(attn, cmap="viridis", aspect="auto")
 
-        ax.set_xlabel('Key Position')
-        ax.set_ylabel('Query Position')
+        ax.set_xlabel("Key Position")
+        ax.set_ylabel("Query Position")
         if title is None:
-            title = f'Attention Map (Head {head_idx})'
+            title = f"Attention Map (Head {head_idx})"
         ax.set_title(title)
 
-        plt.colorbar(im, ax=ax, label='Attention Weight')
+        plt.colorbar(im, ax=ax, label="Attention Weight")
         plt.tight_layout()
         plt.show()
 
     def plot_attention_rollout(
-        self,
-        attention_weights: np.ndarray,
-        figsize: Tuple[int, int] = (12, 6)
+        self, attention_weights: np.ndarray, figsize: Tuple[int, int] = (12, 6)
     ):
         """
         Plot attention rollout (average across heads and layers).
@@ -977,18 +963,18 @@ class AttentionVisualizer:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize)
 
         # Plot attention matrix
-        im1 = ax1.imshow(attn_rollout, cmap='viridis', aspect='auto')
-        ax1.set_xlabel('Key Position')
-        ax1.set_ylabel('Query Position')
-        ax1.set_title('Attention Rollout')
-        plt.colorbar(im1, ax=ax1, label='Attention')
+        im1 = ax1.imshow(attn_rollout, cmap="viridis", aspect="auto")
+        ax1.set_xlabel("Key Position")
+        ax1.set_ylabel("Query Position")
+        ax1.set_title("Attention Rollout")
+        plt.colorbar(im1, ax=ax1, label="Attention")
 
         # Plot attention flow
         ax2.plot(attention_flow, linewidth=2)
         ax2.fill_between(range(seq_len), attention_flow, alpha=0.3)
-        ax2.set_xlabel('Position')
-        ax2.set_ylabel('Total Attention')
-        ax2.set_title('Attention Flow')
+        ax2.set_xlabel("Position")
+        ax2.set_ylabel("Total Attention")
+        ax2.set_title("Attention Flow")
         ax2.grid(True, alpha=0.3)
 
         plt.tight_layout()
@@ -998,7 +984,7 @@ class AttentionVisualizer:
         self,
         attention_weights: np.ndarray,
         query_idx: int = 0,
-        figsize: Tuple[int, int] = (15, 4)
+        figsize: Tuple[int, int] = (15, 4),
     ):
         """
         Compare attention patterns across different heads.
@@ -1023,13 +1009,13 @@ class AttentionVisualizer:
             attn = attention_weights[head_idx, query_idx, :]
             ax.plot(attn, linewidth=2)
             ax.fill_between(range(seq_len), attn, alpha=0.3)
-            ax.set_title(f'Head {head_idx}')
-            ax.set_xlabel('Key Position')
+            ax.set_title(f"Head {head_idx}")
+            ax.set_xlabel("Key Position")
             if head_idx == 0:
-                ax.set_ylabel('Attention Weight')
+                ax.set_ylabel("Attention Weight")
             ax.grid(True, alpha=0.3)
 
-        plt.suptitle(f'Attention Patterns for Query Position {query_idx}')
+        plt.suptitle(f"Attention Patterns for Query Position {query_idx}")
         plt.tight_layout()
         plt.show()
 
@@ -1038,11 +1024,11 @@ class AttentionVisualizer:
 def explain_prediction(
     model: Any,
     X: np.ndarray,
-    method: str = 'shap',
+    method: str = "shap",
     background_data: Optional[np.ndarray] = None,
     feature_names: Optional[List[str]] = None,
     class_names: Optional[List[str]] = None,
-    **kwargs
+    **kwargs,
 ) -> Dict[str, Any]:
     """
     Quick explanation of model predictions.
@@ -1091,16 +1077,13 @@ def explain_prediction(
     """
     method = method.lower()
 
-    if method == 'shap':
+    if method == "shap":
         explainer = SHAPExplainer(
-            model,
-            feature_names=feature_names,
-            class_names=class_names,
-            **kwargs
+            model, feature_names=feature_names, class_names=class_names, **kwargs
         )
         return explainer.explain(X, background_data=background_data)
 
-    elif method == 'lime':
+    elif method == "lime":
         if background_data is None:
             raise ValueError("background_data (training data) required for LIME")
 
@@ -1109,7 +1092,7 @@ def explain_prediction(
             training_data=background_data,
             feature_names=feature_names,
             class_names=class_names,
-            **kwargs
+            **kwargs,
         )
 
         # LIME explains one instance at a time
@@ -1122,7 +1105,7 @@ def explain_prediction(
             for instance in X:
                 exp = explainer.explain(instance)
                 explanations.append(exp)
-            return {'explanations': explanations}
+            return {"explanations": explanations}
 
     else:
         raise ValueError(f"Unknown method: {method}")

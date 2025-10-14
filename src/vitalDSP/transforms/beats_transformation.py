@@ -8,7 +8,7 @@ from vitalDSP.preprocess.preprocess_operations import (
     PreprocessConfig,
     preprocess_signal,
 )
-from vitalDSP.utils.interpolations import (
+from vitalDSP.utils.signal_processing.interpolations import (
     linear_interpolation,
     spline_interpolation,
     mean_imputation,

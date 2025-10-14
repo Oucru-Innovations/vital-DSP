@@ -51,6 +51,58 @@ def format_large_number(value, precision=3, use_scientific=False):
 logger = logging.getLogger(__name__)
 
 
+def configure_plot_with_pan_zoom(fig, title="", height=400):
+    """
+    Configure plotly figure with pan/zoom tools and consistent styling.
+
+    Args:
+        fig: Plotly figure object
+        title: Plot title
+        height: Plot height in pixels
+
+    Returns:
+        Configured plotly figure
+    """
+    fig.update_layout(
+        title=title,
+        height=height,
+        showlegend=True,
+        template="plotly_white",
+        # Add pan/zoom tools
+        xaxis=dict(
+            rangeslider=dict(visible=False),
+            rangeselector=dict(
+                buttons=list(
+                    [
+                        dict(count=1, label="1m", step="minute", stepmode="backward"),
+                        dict(count=5, label="5m", step="minute", stepmode="backward"),
+                        dict(count=15, label="15m", step="minute", stepmode="backward"),
+                        dict(count=1, label="1h", step="hour", stepmode="backward"),
+                        dict(step="all"),
+                    ]
+                )
+            ),
+            type="linear",
+        ),
+        # Enable pan and zoom
+        dragmode="pan",  # Default to pan mode
+        # Add toolbar with pan/zoom options
+        modebar=dict(
+            add=[
+                "pan2d",
+                "zoom2d",
+                "select2d",
+                "lasso2d",
+                "zoomIn2d",
+                "zoomOut2d",
+                "autoScale2d",
+                "resetScale2d",
+            ]
+        ),
+    )
+    return fig
+
+
 def create_empty_figure():
     """Create an empty figure for error cases."""
     fig = go.Figure()
@@ -766,6 +818,21 @@ def create_signal_comparison_plot(
                 showlegend=True,
                 title="Signal Comparison: Raw vs Filtered with Critical Points",
                 title_x=0.5,
+                template="plotly_white",
+                # Add pan/zoom tools
+                dragmode="pan",
+                modebar=dict(
+                    add=[
+                        "pan2d",
+                        "zoom2d",
+                        "select2d",
+                        "lasso2d",
+                        "zoomIn2d",
+                        "zoomOut2d",
+                        "autoScale2d",
+                        "resetScale2d",
+                    ]
+                ),
             )
 
             # Update axes
@@ -1009,6 +1076,21 @@ def create_time_domain_plot(
             yaxis_title="Amplitude",
             showlegend=True,
             height=400,
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig
@@ -1069,7 +1151,25 @@ def create_peak_analysis_plot(signal_data, time_axis, peaks, sampling_freq):
         fig.update_xaxes(title_text="Time (seconds)", row=2, col=1)
         fig.update_yaxes(title_text="Interval (seconds)", row=2, col=1)
 
-        fig.update_layout(height=400, showlegend=True)
+        fig.update_layout(
+            height=400,
+            showlegend=True,
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
+        )
         return fig
 
     except Exception as e:
@@ -1305,6 +1405,20 @@ def create_main_signal_plot(
             template="plotly_white",
             margin=dict(l=40, r=40, t=60, b=40),
             hovermode="closest",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig
@@ -1510,6 +1624,20 @@ def create_filtered_signal_plot(
             margin=dict(l=40, r=40, t=60, b=40),
             showlegend=True,
             hovermode="closest",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig
@@ -1911,8 +2039,8 @@ def generate_analysis_results(
                 from scipy.signal import find_peaks
 
                 # Use adaptive threshold for peak detection
-                mean_val = np.mean(signal_data)
-                std_val = np.std(signal_data)
+                mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
+                std_val = np.std(signal_data) if len(signal_data) > 0 else 0
                 threshold = mean_val + 2 * std_val
 
                 # Find peaks with minimum distance constraint
@@ -1929,7 +2057,9 @@ def generate_analysis_results(
                 if len(peaks) > 1:
                     # Calculate RR intervals
                     rr_intervals = np.diff(time_axis[peaks])
-                    heart_rate = 60 / np.mean(rr_intervals)
+                    heart_rate = (
+                        60 / np.mean(rr_intervals) if len(rr_intervals) > 0 else 0
+                    )
 
                     results.append(html.Hr())
                     results.append(html.H6("❤️ Heart Rate Analysis", className="mb-2"))
@@ -1977,7 +2107,11 @@ def generate_analysis_results(
                                                     className="fw-bold",
                                                 ),
                                                 html.Td(
-                                                    f"{np.mean(rr_intervals):.3f}",
+                                                    (
+                                                        f"{np.mean(rr_intervals):.3f}"
+                                                        if len(rr_intervals) > 0
+                                                        else "0.000"
+                                                    ),
                                                     className="text-end",
                                                 ),
                                                 html.Td(
@@ -2055,8 +2189,8 @@ def generate_analysis_results(
         if "quality" in analysis_options:
             try:
                 # Calculate SNR (more accurate method)
-                signal_mean = np.mean(signal_data)
-                signal_var = np.var(signal_data)
+                signal_mean = np.mean(signal_data) if len(signal_data) > 0 else 0
+                signal_var = np.var(signal_data) if len(signal_data) > 0 else 0
 
                 # Log signal statistics for debugging
                 logger.info(
@@ -2094,8 +2228,8 @@ def generate_analysis_results(
                 artifact_percentage = (artifact_count / len(signal_data)) * 100
 
                 # Signal stability (coefficient of variation)
-                signal_mean = np.mean(signal_data)
-                signal_std = np.std(signal_data)
+                signal_mean = np.mean(signal_data) if len(signal_data) > 0 else 0
+                signal_std = np.std(signal_data) if len(signal_data) > 0 else 0
 
                 # More robust stability calculation
                 if abs(signal_mean) > 1e-6:  # Avoid division by very small numbers
@@ -2288,8 +2422,8 @@ def create_peak_analysis_table(
         # Detect peaks with advanced parameters
         from scipy.signal import find_peaks
 
-        mean_val = np.mean(signal_data)
-        std_val = np.std(signal_data)
+        mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
+        std_val = np.std(signal_data) if len(signal_data) > 0 else 0
         threshold = mean_val + 2 * std_val
         min_distance = int(sampling_freq * 0.1)  # Minimum 0.1 seconds between peaks
 
@@ -2317,9 +2451,11 @@ def create_peak_analysis_table(
         heart_rates = 60 / rr_intervals
 
         # HRV metrics
-        mean_rr = np.mean(rr_intervals)
-        sdnn = np.std(rr_intervals)
-        rmssd = np.sqrt(np.mean(np.diff(rr_intervals) ** 2))
+        mean_rr = np.mean(rr_intervals) if len(rr_intervals) > 0 else 0
+        sdnn = np.std(rr_intervals) if len(rr_intervals) > 0 else 0
+        rmssd = (
+            np.sqrt(np.mean(np.diff(rr_intervals) ** 2)) if len(rr_intervals) > 1 else 0
+        )
 
         # pNN50 calculation
         nn_intervals = rr_intervals
@@ -2366,7 +2502,11 @@ def create_peak_analysis_table(
                                         dbc.CardBody(
                                             [
                                                 html.H4(
-                                                    f"{np.mean(heart_rates):.1f}",
+                                                    (
+                                                        f"{np.mean(heart_rates):.1f}"
+                                                        if len(heart_rates) > 0
+                                                        else "0.0"
+                                                    ),
                                                     className="text-center text-success mb-0",
                                                 ),
                                                 html.Small(
@@ -2538,7 +2678,11 @@ def create_peak_analysis_table(
                                     [
                                         html.Td("Peak Amplitude", className="fw-bold"),
                                         html.Td(
-                                            f"{np.mean(peak_amplitudes):.3f}",
+                                            (
+                                                f"{np.mean(peak_amplitudes):.3f}"
+                                                if len(peak_amplitudes) > 0
+                                                else "0.000"
+                                            ),
                                             className="text-end",
                                         ),
                                         html.Td(
@@ -2559,7 +2703,11 @@ def create_peak_analysis_table(
                                     [
                                         html.Td("Peak Prominence", className="fw-bold"),
                                         html.Td(
-                                            f"{np.mean(peak_prominences):.3f}",
+                                            (
+                                                f"{np.mean(peak_prominences):.3f}"
+                                                if len(peak_prominences) > 0
+                                                else "0.000"
+                                            ),
                                             className="text-end",
                                         ),
                                         html.Td(
@@ -2580,7 +2728,11 @@ def create_peak_analysis_table(
                                     [
                                         html.Td("Peak Width", className="fw-bold"),
                                         html.Td(
-                                            f"{np.mean(peak_widths):.3f}",
+                                            (
+                                                f"{np.mean(peak_widths):.3f}"
+                                                if len(peak_widths) > 0
+                                                else "0.000"
+                                            ),
                                             className="text-end",
                                         ),
                                         html.Td(
@@ -4465,17 +4617,57 @@ def generate_time_domain_stats(
 
         # Basic statistics
         results.append(html.H5("Signal Statistics"))
-        results.append(html.P(f"Duration: {time_axis[-1]:.2f} seconds"))
+        results.append(
+            html.P(
+                f"Duration: {time_axis[-1]:.2f} seconds"
+                if len(time_axis) > 0
+                else "Duration: 0.00 seconds"
+            )
+        )
         results.append(html.P(f"Sampling Frequency: {sampling_freq} Hz"))
         results.append(html.P(f"Signal Length: {len(signal_data)} samples"))
-        results.append(html.P(f"Mean Amplitude: {np.mean(signal_data):.4f}"))
-        results.append(html.P(f"Std Amplitude: {np.std(signal_data):.4f}"))
-        results.append(html.P(f"Min Amplitude: {np.min(signal_data):.4f}"))
-        results.append(html.P(f"Max Amplitude: {np.max(signal_data):.4f}"))
         results.append(
-            html.P(f"Peak-to-Peak: {np.max(signal_data) - np.min(signal_data):.4f}")
+            html.P(
+                f"Mean Amplitude: {np.mean(signal_data):.4f}"
+                if len(signal_data) > 0
+                else "Mean Amplitude: 0.0000"
+            )
         )
-        results.append(html.P(f"RMS: {np.sqrt(np.mean(signal_data**2)):.4f}"))
+        results.append(
+            html.P(
+                f"Std Amplitude: {np.std(signal_data):.4f}"
+                if len(signal_data) > 0
+                else "Std Amplitude: 0.0000"
+            )
+        )
+        results.append(
+            html.P(
+                f"Min Amplitude: {np.min(signal_data):.4f}"
+                if len(signal_data) > 0
+                else "Min Amplitude: 0.0000"
+            )
+        )
+        results.append(
+            html.P(
+                f"Max Amplitude: {np.max(signal_data):.4f}"
+                if len(signal_data) > 0
+                else "Max Amplitude: 0.0000"
+            )
+        )
+        results.append(
+            html.P(
+                f"Peak-to-Peak: {np.max(signal_data) - np.min(signal_data):.4f}"
+                if len(signal_data) > 0
+                else "Peak-to-Peak: 0.0000"
+            )
+        )
+        results.append(
+            html.P(
+                f"RMS: {np.sqrt(np.mean(signal_data**2)):.4f}"
+                if len(signal_data) > 0
+                else "RMS: 0.0000"
+            )
+        )
 
         # Peak analysis
         if peaks is not None and len(peaks) > 0:
@@ -4568,12 +4760,21 @@ def apply_filter(
 
         # Apply appropriate filter using vitalDSP
         if filter_family == "butter" or filter_family == "butterworth":
-            return sf.butterworth(cutoff, fs=sampling_freq, order=filter_order, btype=filter_type)
+            return sf.butterworth(
+                cutoff, fs=sampling_freq, order=filter_order, btype=filter_type
+            )
         elif filter_family == "cheby1" or filter_family == "chebyshev1":
-            return sf.chebyshev(cutoff, fs=sampling_freq, order=filter_order, btype=filter_type, ripple=0.5)
+            return sf.chebyshev(
+                cutoff,
+                fs=sampling_freq,
+                order=filter_order,
+                btype=filter_type,
+                ripple=0.5,
+            )
         elif filter_family == "cheby2" or filter_family == "chebyshev2":
             # Note: vitalDSP uses chebyshev for Type I. For Type II, fallback to scipy
             from scipy import signal as sp_signal
+
             nyquist = sampling_freq / 2
             if isinstance(cutoff, list):
                 cutoff_norm = [c / nyquist for c in cutoff]
@@ -4582,11 +4783,18 @@ def apply_filter(
             b, a = sp_signal.cheby2(filter_order, 40, cutoff_norm, btype=filter_type)
             return sp_signal.filtfilt(b, a, signal_data)
         elif filter_family == "ellip" or filter_family == "elliptic":
-            return sf.elliptic(cutoff, fs=sampling_freq, order=filter_order, btype=filter_type,
-                              ripple=0.5, stopband_attenuation=40)
+            return sf.elliptic(
+                cutoff,
+                fs=sampling_freq,
+                order=filter_order,
+                btype=filter_type,
+                ripple=0.5,
+                stopband_attenuation=40,
+            )
         elif filter_family == "bessel":
             # Bessel filter - fallback to scipy (not in vitalDSP SignalFiltering)
             from scipy import signal as sp_signal
+
             nyquist = sampling_freq / 2
             if isinstance(cutoff, list):
                 cutoff_norm = [c / nyquist for c in cutoff]
@@ -4596,14 +4804,21 @@ def apply_filter(
             return sp_signal.filtfilt(b, a, signal_data)
         else:
             # Default to Butterworth
-            logger.warning(f"Unknown filter family '{filter_family}', defaulting to Butterworth")
-            return sf.butterworth(cutoff, fs=sampling_freq, order=filter_order, btype=filter_type)
+            logger.warning(
+                f"Unknown filter family '{filter_family}', defaulting to Butterworth"
+            )
+            return sf.butterworth(
+                cutoff, fs=sampling_freq, order=filter_order, btype=filter_type
+            )
 
     except Exception as e:
-        logger.error(f"Error applying vitalDSP filter: {e}. Falling back to scipy implementation.")
+        logger.error(
+            f"Error applying vitalDSP filter: {e}. Falling back to scipy implementation."
+        )
         # Fallback to scipy if vitalDSP fails
         try:
             from scipy import signal as sp_signal
+
             nyquist = sampling_freq / 2
             low_freq_norm = low_freq / nyquist
             high_freq_norm = high_freq / nyquist
@@ -4635,8 +4850,8 @@ def detect_peaks(signal_data, sampling_freq):
     """Detect peaks in the signal."""
     try:
         # Calculate adaptive threshold
-        mean_val = np.mean(signal_data)
-        std_val = np.std(signal_data)
+        mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
+        std_val = np.std(signal_data) if len(signal_data) > 0 else 0
         threshold = mean_val + 2 * std_val
 
         # Find peaks with minimum distance constraint
@@ -4740,6 +4955,12 @@ def register_vitaldsp_callbacks(app):
 
             data_service = get_data_service()
             logger.info("Data service retrieved successfully")
+            
+            # Check if Enhanced Data Service is available for heavy data processing
+            if data_service.is_enhanced_service_available():
+                logger.info("Enhanced Data Service is available for heavy data processing")
+            else:
+                logger.info("Using basic data service functionality")
 
             # Get the most recent data
             logger.info("Retrieving all data from service...")
@@ -4796,8 +5017,52 @@ def register_vitaldsp_callbacks(app):
             logger.info(
                 f"Data frame columns: {list(df.columns) if df is not None else 'None'}"
             )
-            logger.info(f"Data frame info: {df.info() if df is not None else 'None'}")
-            logger.info(f"Data frame head: {df.head() if df is not None else 'None'}")
+            
+            # Enhanced data processing for heavy datasets
+            if df is not None and not df.empty:
+                data_size_mb = df.memory_usage(deep=True).sum() / (1024 * 1024)
+                num_samples = len(df)
+                
+                logger.info(f"Data size: {data_size_mb:.2f} MB, Samples: {num_samples}")
+                
+                # Use Enhanced Data Service for heavy data processing
+                if data_service.is_enhanced_service_available() and (data_size_mb > 5 or num_samples > 100000):
+                    logger.info(f"Using Enhanced Data Service for heavy data processing: {data_size_mb:.2f}MB, {num_samples} samples")
+                    
+                    # Get enhanced service for optimized processing
+                    enhanced_service = data_service.get_enhanced_service()
+                    if enhanced_service:
+                        logger.info("Enhanced Data Service is ready for optimized processing")
+                        # The enhanced service will automatically handle chunked processing
+                        # and memory optimization during analysis
+                else:
+                    logger.info("Using standard processing for lightweight data")
+
+            # Log essential signal data summary (optimized for performance)
+            if df is not None:
+                signal_col = column_mapping.get("signal")
+                if signal_col and signal_col in df.columns:
+                    signal_data = df[signal_col]
+                    logger.info(
+                        f"Analysis signal data: dtype={signal_data.dtype}, range={signal_data.min():.3f} to {signal_data.max():.3f}, count={signal_data.count()}"
+                    )
+
+                    # Check for non-numeric values (only log if there are issues)
+                    try:
+                        numeric_data = pd.to_numeric(signal_data, errors="coerce")
+                        non_numeric_count = (
+                            numeric_data.isnull().sum() - signal_data.isnull().sum()
+                        )
+                        if non_numeric_count > 0:
+                            logger.warning(
+                                f"Signal column '{signal_col}' contains {non_numeric_count} non-numeric values!"
+                            )
+                    except Exception as e:
+                        logger.error(f"Error checking numeric values: {str(e)}")
+                else:
+                    logger.error(
+                        f"Signal column '{signal_col}' not found in DataFrame!"
+                    )
 
             if df is None or df.empty:
                 logger.warning("Data frame is empty")
@@ -4894,7 +5159,6 @@ def register_vitaldsp_callbacks(app):
             windowed_data = df.iloc[start_sample:end_sample].copy()
             logger.info(f"Windowed data shape: {windowed_data.shape}")
             logger.info(f"Windowed data columns: {list(windowed_data.columns)}")
-            logger.info(f"Windowed data head: {windowed_data.head()}")
 
             # Create time axis - use actual time values, not just windowed data length
             time_axis = np.linspace(start_time, end_time, len(windowed_data))
@@ -5534,6 +5798,21 @@ def create_fft_plot(
             yaxis_title="Magnitude",
             showlegend=True,
             plot_bgcolor="white",
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig
@@ -5582,6 +5861,21 @@ def create_stft_plot(
             yaxis_title="Frequency (Hz)",
             showlegend=True,
             plot_bgcolor="white",
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig
@@ -5655,6 +5949,21 @@ def create_wavelet_plot(
             height=300 * (levels + 1),
             showlegend=True,
             plot_bgcolor="white",
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig
@@ -5734,6 +6043,21 @@ def create_enhanced_psd_plot(
             yaxis_title=y_label,
             showlegend=True,
             plot_bgcolor="white",
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig
@@ -5814,6 +6138,21 @@ def create_enhanced_spectrogram_plot(
             yaxis_title="Frequency (Hz)",
             showlegend=True,
             plot_bgcolor="white",
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig

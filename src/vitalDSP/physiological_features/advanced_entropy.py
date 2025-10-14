@@ -164,7 +164,7 @@ class MultiScaleEntropy:
         max_scale: int = 20,
         m: int = 2,
         r: float = 0.15,
-        fuzzy: bool = False
+        fuzzy: bool = False,
     ):
         """
         Initialize Multi-Scale Entropy analyzer.
@@ -187,7 +187,9 @@ class MultiScaleEntropy:
             signal = np.array(signal)
 
         if len(signal) < 10:
-            raise ValueError(f"Signal too short ({len(signal)} samples). Minimum: 10 samples.")
+            raise ValueError(
+                f"Signal too short ({len(signal)} samples). Minimum: 10 samples."
+            )
 
         if max_scale < 1:
             raise ValueError(f"max_scale must be >= 1, got {max_scale}")
@@ -212,7 +214,7 @@ class MultiScaleEntropy:
                 f"Signal length ({len(signal)}) is less than recommended "
                 f"({min_recommended_length} for scale {max_scale}). "
                 f"Consider reducing max_scale or using CMSE/RCMSE for better stability.",
-                UserWarning
+                UserWarning,
             )
 
     def _coarse_grain(self, scale: int, start_index: int = 0) -> np.ndarray:
@@ -331,7 +333,7 @@ class MultiScaleEntropy:
             warnings.warn(
                 f"Signal too short ({N} samples) for SampEn with m={self.m}. "
                 f"Returning 0.",
-                UserWarning
+                UserWarning,
             )
             return 0.0
 
@@ -343,10 +345,9 @@ class MultiScaleEntropy:
             Uses KD-tree for efficient nearest neighbor search.
             """
             # Create templates (delay vectors)
-            templates = np.array([
-                coarse_signal[i:i + m_current]
-                for i in range(N - m_current + 1)
-            ])
+            templates = np.array(
+                [coarse_signal[i : i + m_current] for i in range(N - m_current + 1)]
+            )
 
             if len(templates) < 2:
                 return 0
@@ -372,7 +373,7 @@ class MultiScaleEntropy:
             return total_matches
 
         # Count matches for length m and m+1
-        B = _count_matches(self.m)      # Matches of length m
+        B = _count_matches(self.m)  # Matches of length m
         A = _count_matches(self.m + 1)  # Matches of length m+1
 
         # Calculate SampEn
@@ -380,9 +381,9 @@ class MultiScaleEntropy:
             # No matches found - signal is very irregular
             # Return maximum entropy (conventional choice)
             warnings.warn(
-                f"No template matches found. Signal may be too short or too irregular. "
-                f"Returning 0.",
-                UserWarning
+                "No template matches found. Signal may be too short or too irregular. "
+                "Returning 0.",
+                UserWarning,
             )
             return 0.0
 
@@ -438,7 +439,7 @@ class MultiScaleEntropy:
         N = len(coarse_signal)
 
         if N < self.m + 2:
-            warnings.warn(f"Signal too short for FuzzyEn. Returning 0.", UserWarning)
+            warnings.warn("Signal too short for FuzzyEn. Returning 0.", UserWarning)
             return 0.0
 
         # Gradient parameter for fuzzy function
@@ -447,10 +448,9 @@ class MultiScaleEntropy:
         def _phi(m_current: int) -> float:
             """Compute phi function for fuzzy entropy."""
             # Create templates
-            templates = np.array([
-                coarse_signal[i:i + m_current]
-                for i in range(N - m_current + 1)
-            ])
+            templates = np.array(
+                [coarse_signal[i : i + m_current] for i in range(N - m_current + 1)]
+            )
 
             if len(templates) < 2:
                 return 0.0
@@ -552,7 +552,7 @@ class MultiScaleEntropy:
                 warnings.warn(
                     f"Failed to compute entropy at scale {scale}: {str(e)}. "
                     f"Using 0.",
-                    UserWarning
+                    UserWarning,
                 )
                 mse_values.append(0.0)
 
@@ -650,8 +650,7 @@ class MultiScaleEntropy:
                 cmse_value = np.mean(scale_entropies)
             else:
                 warnings.warn(
-                    f"No valid entropy values at scale {scale}. Using 0.",
-                    UserWarning
+                    f"No valid entropy values at scale {scale}. Using 0.", UserWarning
                 )
                 cmse_value = 0.0
 
@@ -713,7 +712,7 @@ class MultiScaleEntropy:
             if n_windows < self.m + 2:
                 warnings.warn(
                     f"Signal too short for RCMSE at scale {scale}. Using 0.",
-                    UserWarning
+                    UserWarning,
                 )
                 rcmse_values.append(0.0)
                 continue
@@ -721,7 +720,7 @@ class MultiScaleEntropy:
             # Create overlapping coarse-grained series
             coarse_signals = []
             for start_idx in range(n_windows):
-                window = self.signal[start_idx:start_idx + scale]
+                window = self.signal[start_idx : start_idx + scale]
                 coarse_value = np.mean(window)
                 coarse_signals.append(coarse_value)
 
@@ -733,13 +732,15 @@ class MultiScaleEntropy:
             except Exception as e:
                 warnings.warn(
                     f"Failed to compute RCMSE at scale {scale}: {str(e)}. Using 0.",
-                    UserWarning
+                    UserWarning,
                 )
                 rcmse_values.append(0.0)
 
         return np.array(rcmse_values)
 
-    def get_complexity_index(self, entropy_values: np.ndarray, scale_range: Optional[Tuple[int, int]] = None) -> float:
+    def get_complexity_index(
+        self, entropy_values: np.ndarray, scale_range: Optional[Tuple[int, int]] = None
+    ) -> float:
         """
         Calculate Complexity Index (CI) as area under the MSE curve.
 
@@ -801,7 +802,10 @@ class MultiScaleEntropy:
         entropy_subset = entropy_values[start_idx:end_idx]
 
         if len(entropy_subset) < 2:
-            warnings.warn("Not enough entropy values for complexity index. Returning 0.", UserWarning)
+            warnings.warn(
+                "Not enough entropy values for complexity index. Returning 0.",
+                UserWarning,
+            )
             return 0.0
 
         # Trapezoidal integration
@@ -811,4 +815,4 @@ class MultiScaleEntropy:
 
 
 # Export main class
-__all__ = ['MultiScaleEntropy']
+__all__ = ["MultiScaleEntropy"]

@@ -77,6 +77,9 @@ def mean_imputation(intervals):
     -------
     >>> mean_imputation(np.array([0.8, np.nan, 0.82, np.nan, 0.85]))
     """
+    # Avoid "mean of empty slice" warning
+    if len(intervals) == 0 or np.all(np.isnan(intervals)):
+        return intervals  # Return as-is if no valid data
     mean_value = np.nanmean(intervals)
     return np.where(np.isnan(intervals), mean_value, intervals)
 
@@ -99,6 +102,9 @@ def median_imputation(intervals):
     -------
     >>> median_imputation(np.array([0.8, np.nan, 0.82, np.nan, 0.85]))
     """
+    # Avoid "All-NaN slice encountered" warning
+    if len(intervals) == 0 or np.all(np.isnan(intervals)):
+        return intervals  # Return as-is if no valid data
     median_value = np.nanmedian(intervals)
     return np.where(np.isnan(intervals), median_value, intervals)
 

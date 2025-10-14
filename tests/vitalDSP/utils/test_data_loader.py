@@ -17,7 +17,7 @@ from pathlib import Path
 import tempfile
 import json
 
-from vitalDSP.utils.data_loader import (
+from vitalDSP.utils.data_processing.data_loader import (
     DataLoader,
     DataFormat,
     SignalType,

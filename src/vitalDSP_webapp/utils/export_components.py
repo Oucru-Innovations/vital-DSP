@@ -91,7 +91,9 @@ def create_export_card(page_id: str, title: str = "Export Results") -> dbc.Card:
                                 [
                                     dbc.Button(
                                         [
-                                            html.I(className="fas fa-file-csv fa-2x mb-2"),
+                                            html.I(
+                                                className="fas fa-file-csv fa-2x mb-2"
+                                            ),
                                             html.Br(),
                                             "Export CSV",
                                         ],
@@ -111,7 +113,9 @@ def create_export_card(page_id: str, title: str = "Export Results") -> dbc.Card:
                                 [
                                     dbc.Button(
                                         [
-                                            html.I(className="fas fa-file-code fa-2x mb-2"),
+                                            html.I(
+                                                className="fas fa-file-code fa-2x mb-2"
+                                            ),
                                             html.Br(),
                                             "Export JSON",
                                         ],
@@ -224,7 +228,9 @@ def create_dropdown_export_menu(page_id: str) -> dbc.DropdownMenu:
     )
 
 
-def create_export_section_with_preview(page_id: str, title: str = "Export & Download") -> dbc.Card:
+def create_export_section_with_preview(
+    page_id: str, title: str = "Export & Download"
+) -> dbc.Card:
     """
     Create an export section with preview and download options.
 
@@ -253,7 +259,10 @@ def create_export_section_with_preview(page_id: str, title: str = "Export & Down
                                     html.Div(
                                         id=f"{page_id}-export-preview",
                                         className="border rounded p-3 mb-3",
-                                        style={"max-height": "200px", "overflow-y": "auto"},
+                                        style={
+                                            "max-height": "200px",
+                                            "overflow-y": "auto",
+                                        },
                                     ),
                                 ],
                                 md=12,
@@ -264,12 +273,20 @@ def create_export_section_with_preview(page_id: str, title: str = "Export & Down
                         [
                             dbc.Col(
                                 [
-                                    html.Label("Export Format:", className="fw-semibold mb-2"),
+                                    html.Label(
+                                        "Export Format:", className="fw-semibold mb-2"
+                                    ),
                                     dbc.RadioItems(
                                         id=f"{page_id}-export-format",
                                         options=[
-                                            {"label": " CSV (Spreadsheet)", "value": "csv"},
-                                            {"label": " JSON (Structured Data)", "value": "json"},
+                                            {
+                                                "label": " CSV (Spreadsheet)",
+                                                "value": "csv",
+                                            },
+                                            {
+                                                "label": " JSON (Structured Data)",
+                                                "value": "json",
+                                            },
                                         ],
                                         value="csv",
                                         inline=True,

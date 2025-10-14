@@ -57,7 +57,7 @@ Version: 1.0
 
 import numpy as np
 from collections import Counter
-from itertools import permutations
+from itertools import permutations, product
 from typing import List, Dict, Tuple, Optional
 import warnings
 
@@ -172,7 +172,7 @@ class SymbolicDynamics:
         signal: np.ndarray,
         n_symbols: int = 4,
         word_length: int = 3,
-        method: str = '0V'
+        method: str = "0V",
     ):
         """
         Initialize Symbolic Dynamics analyzer.
@@ -204,7 +204,7 @@ class SymbolicDynamics:
         if word_length < 2 or word_length > 10:
             raise ValueError(f"word_length must be 2-10, got {word_length}")
 
-        valid_methods = ['0V', 'quantile', 'SAX', 'threshold']
+        valid_methods = ["0V", "quantile", "SAX", "threshold"]
         if method not in valid_methods:
             raise ValueError(f"method must be one of {valid_methods}, got {method}")
 
@@ -250,13 +250,13 @@ class SymbolicDynamics:
         >>> letters = ''.join([chr(65+s) for s in symbols])  # A, B, C, D...
         >>> print(f"Symbolic sequence: {letters[:50]}...")
         """
-        if self.method == '0V':
+        if self.method == "0V":
             symbols = self._symbolize_0v()
-        elif self.method == 'quantile':
+        elif self.method == "quantile":
             symbols = self._symbolize_quantile()
-        elif self.method == 'SAX':
+        elif self.method == "SAX":
             symbols = self._symbolize_sax()
-        elif self.method == 'threshold':
+        elif self.method == "threshold":
             symbols = self._symbolize_threshold()
 
         self.symbols = symbols
@@ -280,7 +280,7 @@ class SymbolicDynamics:
         symbols = []
 
         for i in range(len(self.signal) - 2):
-            a, b, c = self.signal[i:i+3]
+            a, b, c = self.signal[i : i + 3]
 
             # Calculate differences
             diff_ab = abs(a - b)
@@ -338,6 +338,7 @@ class SymbolicDynamics:
 
         # Calculate Gaussian quantile breakpoints
         from scipy import stats
+
         quantiles = np.linspace(0, 1, self.n_symbols + 1)[1:-1]
         thresholds = stats.norm.ppf(quantiles)
 
@@ -348,7 +349,9 @@ class SymbolicDynamics:
 
     def _symbolize_threshold(self) -> np.ndarray:
         """Simple threshold-based symbolization."""
-        thresholds = np.linspace(np.min(self.signal), np.max(self.signal), self.n_symbols + 1)[1:-1]
+        thresholds = np.linspace(
+            np.min(self.signal), np.max(self.signal), self.n_symbols + 1
+        )[1:-1]
         symbols = np.digitize(self.signal, thresholds)
         return symbols
 
@@ -401,7 +404,9 @@ class SymbolicDynamics:
         total_symbols = len(self.symbols)
 
         # Calculate probabilities
-        probabilities = np.array([count / total_symbols for count in symbol_counts.values()])
+        probabilities = np.array(
+            [count / total_symbols for count in symbol_counts.values()]
+        )
 
         # Shannon entropy: -Σ p*log2(p)
         # Handle log(0) by removing zero probabilities
@@ -439,7 +444,7 @@ class SymbolicDynamics:
         # Extract words
         words = []
         for i in range(len(self.symbols) - self.word_length + 1):
-            word = tuple(self.symbols[i:i + self.word_length])
+            word = tuple(self.symbols[i : i + self.word_length])
             words.append(word)
 
         # Count word frequencies
@@ -448,7 +453,7 @@ class SymbolicDynamics:
 
         # Convert to probabilities
         word_dist = {
-            ''.join(str(s) for s in word): count / total_words
+            "".join(str(s) for s in word): count / total_words
             for word, count in word_counts.items()
         }
 
@@ -491,8 +496,8 @@ class SymbolicDynamics:
 
         # Generate all possible words
         all_possible_words = set()
-        for perm in itertools.product(range(self.n_symbols), repeat=self.word_length):
-            word = ''.join(str(s) for s in perm)
+        for perm in product(range(self.n_symbols), repeat=self.word_length):
+            word = "".join(str(s) for s in perm)
             all_possible_words.add(word)
 
         # Find forbidden words
@@ -583,7 +588,9 @@ class SymbolicDynamics:
         total_symbols = len(self.symbols)
 
         # Calculate probabilities
-        probabilities = np.array([count / total_symbols for count in symbol_counts.values()])
+        probabilities = np.array(
+            [count / total_symbols for count in symbol_counts.values()]
+        )
 
         # Handle special cases
         if alpha == 1.0:
@@ -599,7 +606,7 @@ class SymbolicDynamics:
             return -np.log2(np.max(probabilities))
 
         # General Renyi entropy
-        renyi = (1 / (1 - alpha)) * np.log2(np.sum(probabilities ** alpha))
+        renyi = (1 / (1 - alpha)) * np.log2(np.sum(probabilities**alpha))
 
         return renyi
 
@@ -657,7 +664,7 @@ class SymbolicDynamics:
 
         for i in range(n - order + 1):
             # Get window
-            window = signal[i:i + order]
+            window = signal[i : i + order]
 
             # Determine permutation (argsort gives ranking)
             perm = tuple(np.argsort(window))
@@ -668,7 +675,9 @@ class SymbolicDynamics:
         total_patterns = len(patterns)
 
         # Calculate probabilities
-        probabilities = np.array([count / total_patterns for count in pattern_counts.values()])
+        probabilities = np.array(
+            [count / total_patterns for count in pattern_counts.values()]
+        )
 
         # Shannon entropy of permutations
         perm_entropy = -np.sum(probabilities * np.log2(probabilities + 1e-10))
@@ -680,9 +689,5 @@ class SymbolicDynamics:
         return normalized_pe
 
 
-# Make sure itertools is imported for forbidden words
-import itertools
-
-
 # Export main class
-__all__ = ['SymbolicDynamics']
+__all__ = ["SymbolicDynamics"]

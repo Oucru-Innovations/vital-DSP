@@ -22,11 +22,11 @@ from vitalDSP.advanced_computation.kalman_filter import KalmanFilter
 from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
 from vitalDSP.physiological_features.nonlinear import NonlinearFeatures
 from vitalDSP.filtering.signal_filtering import SignalFiltering
-from vitalDSP.respiratory_analysis.respiratory_analysis import RespiratoryAnalysis
+from vitalDSP.respiratory_analysis import RespiratoryAnalysis
 from vitalDSP.transforms.fourier_transform import FourierTransform
 from vitalDSP.signal_quality_assessment.signal_quality_index import SignalQualityIndex
-from vitalDSP.utils.validation import SignalValidator
-from vitalDSP.utils.error_recovery import ErrorRecovery
+from vitalDSP.utils.data_processing.validation import SignalValidator
+from vitalDSP.utils.config_utilities.error_recovery import ErrorRecovery
 
 
 class TestEdgeCases:

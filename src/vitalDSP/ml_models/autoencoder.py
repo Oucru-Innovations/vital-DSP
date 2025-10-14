@@ -27,6 +27,7 @@ try:
     import tensorflow as tf
     from tensorflow import keras
     from tensorflow.keras import layers, Model
+
     TENSORFLOW_AVAILABLE = True
 except ImportError:
     TENSORFLOW_AVAILABLE = False
@@ -36,6 +37,7 @@ try:
     import torch.nn as nn
     import torch.nn.functional as F
     from torch.utils.data import DataLoader, TensorDataset
+
     PYTORCH_AVAILABLE = True
 except ImportError:
     PYTORCH_AVAILABLE = False
@@ -52,8 +54,8 @@ class BaseAutoencoder:
         self,
         input_shape: Tuple[int, ...],
         latent_dim: int = 32,
-        backend: str = 'tensorflow',
-        random_state: Optional[int] = None
+        backend: str = "tensorflow",
+        random_state: Optional[int] = None,
     ):
         """
         Initialize base autoencoder.
@@ -82,16 +84,20 @@ class BaseAutoencoder:
         # Set random seeds
         if random_state is not None:
             np.random.seed(random_state)
-            if self.backend == 'tensorflow' and TENSORFLOW_AVAILABLE:
+            if self.backend == "tensorflow" and TENSORFLOW_AVAILABLE:
                 tf.random.set_seed(random_state)
-            elif self.backend == 'pytorch' and PYTORCH_AVAILABLE:
+            elif self.backend == "pytorch" and PYTORCH_AVAILABLE:
                 torch.manual_seed(random_state)
 
         # Validate backend
-        if self.backend == 'tensorflow' and not TENSORFLOW_AVAILABLE:
-            raise ImportError("TensorFlow is not installed. Install with: pip install tensorflow")
-        elif self.backend == 'pytorch' and not PYTORCH_AVAILABLE:
-            raise ImportError("PyTorch is not installed. Install with: pip install torch")
+        if self.backend == "tensorflow" and not TENSORFLOW_AVAILABLE:
+            raise ImportError(
+                "TensorFlow is not installed. Install with: pip install tensorflow"
+            )
+        elif self.backend == "pytorch" and not PYTORCH_AVAILABLE:
+            raise ImportError(
+                "PyTorch is not installed. Install with: pip install torch"
+            )
 
     def encode(self, X: np.ndarray) -> np.ndarray:
         """
@@ -110,7 +116,7 @@ class BaseAutoencoder:
         if self.encoder is None:
             raise ValueError("Model not built. Call fit() first.")
 
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             return self.encoder.predict(X, verbose=0)
         else:  # pytorch
             self.encoder.eval()
@@ -136,7 +142,7 @@ class BaseAutoencoder:
         if self.decoder is None:
             raise ValueError("Model not built. Call fit() first.")
 
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             return self.decoder.predict(latent, verbose=0)
         else:  # pytorch
             self.decoder.eval()
@@ -146,9 +152,7 @@ class BaseAutoencoder:
                 return reconstructed.cpu().numpy()
 
     def compute_reconstruction_error(
-        self,
-        X: np.ndarray,
-        metric: str = 'mse'
+        self, X: np.ndarray, metric: str = "mse"
     ) -> np.ndarray:
         """
         Compute reconstruction error for anomaly detection.
@@ -166,7 +170,7 @@ class BaseAutoencoder:
             Reconstruction errors of shape (n_samples,)
         """
         # Get reconstructions
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             X_reconstructed = self.model.predict(X, verbose=0)
         else:  # pytorch
             self.model.eval()
@@ -175,12 +179,14 @@ class BaseAutoencoder:
                 X_reconstructed = self.model(X_tensor).cpu().numpy()
 
         # Compute error
-        if metric == 'mse':
+        if metric == "mse":
             errors = np.mean((X - X_reconstructed) ** 2, axis=tuple(range(1, X.ndim)))
-        elif metric == 'mae':
+        elif metric == "mae":
             errors = np.mean(np.abs(X - X_reconstructed), axis=tuple(range(1, X.ndim)))
-        elif metric == 'rmse':
-            errors = np.sqrt(np.mean((X - X_reconstructed) ** 2, axis=tuple(range(1, X.ndim))))
+        elif metric == "rmse":
+            errors = np.sqrt(
+                np.mean((X - X_reconstructed) ** 2, axis=tuple(range(1, X.ndim)))
+            )
         else:
             raise ValueError(f"Unknown metric: {metric}")
 
@@ -191,7 +197,7 @@ class BaseAutoencoder:
         X: np.ndarray,
         threshold: Optional[float] = None,
         contamination: float = 0.1,
-        metric: str = 'mse'
+        metric: str = "mse",
     ) -> Tuple[np.ndarray, np.ndarray, float]:
         """
         Detect anomalies using reconstruction error.
@@ -233,26 +239,29 @@ class BaseAutoencoder:
         filepath = Path(filepath)
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             self.model.save(str(filepath))
         else:  # pytorch
-            torch.save({
-                'model_state_dict': self.model.state_dict(),
-                'encoder_state_dict': self.encoder.state_dict(),
-                'decoder_state_dict': self.decoder.state_dict(),
-                'input_shape': self.input_shape,
-                'latent_dim': self.latent_dim
-            }, str(filepath))
+            torch.save(
+                {
+                    "model_state_dict": self.model.state_dict(),
+                    "encoder_state_dict": self.encoder.state_dict(),
+                    "decoder_state_dict": self.decoder.state_dict(),
+                    "input_shape": self.input_shape,
+                    "latent_dim": self.latent_dim,
+                },
+                str(filepath),
+            )
 
     def load(self, filepath: str):
         """Load model from file."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             self.model = keras.models.load_model(filepath)
         else:  # pytorch
             checkpoint = torch.load(filepath)
-            self.model.load_state_dict(checkpoint['model_state_dict'])
-            self.encoder.load_state_dict(checkpoint['encoder_state_dict'])
-            self.decoder.load_state_dict(checkpoint['decoder_state_dict'])
+            self.model.load_state_dict(checkpoint["model_state_dict"])
+            self.encoder.load_state_dict(checkpoint["encoder_state_dict"])
+            self.decoder.load_state_dict(checkpoint["decoder_state_dict"])
 
 
 class StandardAutoencoder(BaseAutoencoder):
@@ -296,12 +305,12 @@ class StandardAutoencoder(BaseAutoencoder):
         input_shape: Tuple[int, ...],
         latent_dim: int = 32,
         hidden_dims: List[int] = [256, 128, 64],
-        activation: str = 'relu',
-        output_activation: str = 'linear',
+        activation: str = "relu",
+        output_activation: str = "linear",
         use_batch_norm: bool = True,
         dropout_rate: float = 0.2,
-        backend: str = 'tensorflow',
-        random_state: Optional[int] = None
+        backend: str = "tensorflow",
+        random_state: Optional[int] = None,
     ):
         """
         Initialize standard autoencoder.
@@ -351,8 +360,8 @@ class StandardAutoencoder(BaseAutoencoder):
             x = layers.Activation(self.activation)(x)
             x = layers.Dropout(self.dropout_rate)(x)
 
-        latent = layers.Dense(self.latent_dim, name='latent')(x)
-        self.encoder = Model(encoder_input, latent, name='encoder')
+        latent = layers.Dense(self.latent_dim, name="latent")(x)
+        self.encoder = Model(encoder_input, latent, name="encoder")
 
         # Decoder
         decoder_input = keras.Input(shape=(self.latent_dim,))
@@ -369,19 +378,26 @@ class StandardAutoencoder(BaseAutoencoder):
         output_dim = np.prod(self.input_shape)
         x = layers.Dense(output_dim, activation=self.output_activation)(x)
         decoder_output = layers.Reshape(self.input_shape)(x)
-        self.decoder = Model(decoder_input, decoder_output, name='decoder')
+        self.decoder = Model(decoder_input, decoder_output, name="decoder")
 
         # Full autoencoder
         self.model = Model(
-            encoder_input,
-            self.decoder(self.encoder(encoder_input)),
-            name='autoencoder'
+            encoder_input, self.decoder(self.encoder(encoder_input)), name="autoencoder"
         )
 
     def _build_pytorch_model(self):
         """Build PyTorch model."""
+
         class Encoder(nn.Module):
-            def __init__(self, input_dim, hidden_dims, latent_dim, activation, use_batch_norm, dropout_rate):
+            def __init__(
+                self,
+                input_dim,
+                hidden_dims,
+                latent_dim,
+                activation,
+                use_batch_norm,
+                dropout_rate,
+            ):
                 super().__init__()
                 self.input_dim = input_dim
                 layers_list = []
@@ -391,9 +407,9 @@ class StandardAutoencoder(BaseAutoencoder):
                     layers_list.append(nn.Linear(prev_dim, dim))
                     if use_batch_norm:
                         layers_list.append(nn.BatchNorm1d(dim))
-                    if activation == 'relu':
+                    if activation == "relu":
                         layers_list.append(nn.ReLU())
-                    elif activation == 'tanh':
+                    elif activation == "tanh":
                         layers_list.append(nn.Tanh())
                     layers_list.append(nn.Dropout(dropout_rate))
                     prev_dim = dim
@@ -406,7 +422,16 @@ class StandardAutoencoder(BaseAutoencoder):
                 return self.network(x)
 
         class Decoder(nn.Module):
-            def __init__(self, latent_dim, hidden_dims, output_shape, activation, output_activation, use_batch_norm, dropout_rate):
+            def __init__(
+                self,
+                latent_dim,
+                hidden_dims,
+                output_shape,
+                activation,
+                output_activation,
+                use_batch_norm,
+                dropout_rate,
+            ):
                 super().__init__()
                 self.output_shape = output_shape
                 layers_list = []
@@ -416,18 +441,18 @@ class StandardAutoencoder(BaseAutoencoder):
                     layers_list.append(nn.Linear(prev_dim, dim))
                     if use_batch_norm:
                         layers_list.append(nn.BatchNorm1d(dim))
-                    if activation == 'relu':
+                    if activation == "relu":
                         layers_list.append(nn.ReLU())
-                    elif activation == 'tanh':
+                    elif activation == "tanh":
                         layers_list.append(nn.Tanh())
                     layers_list.append(nn.Dropout(dropout_rate))
                     prev_dim = dim
 
                 output_dim = np.prod(output_shape)
                 layers_list.append(nn.Linear(prev_dim, output_dim))
-                if output_activation == 'sigmoid':
+                if output_activation == "sigmoid":
                     layers_list.append(nn.Sigmoid())
-                elif output_activation == 'tanh':
+                elif output_activation == "tanh":
                     layers_list.append(nn.Tanh())
 
                 self.network = nn.Sequential(*layers_list)
@@ -449,18 +474,27 @@ class StandardAutoencoder(BaseAutoencoder):
 
         input_dim = np.prod(self.input_shape)
         self.encoder = Encoder(
-            input_dim, self.hidden_dims, self.latent_dim,
-            self.activation, self.use_batch_norm, self.dropout_rate
+            input_dim,
+            self.hidden_dims,
+            self.latent_dim,
+            self.activation,
+            self.use_batch_norm,
+            self.dropout_rate,
         )
         self.decoder = Decoder(
-            self.latent_dim, self.hidden_dims, self.input_shape,
-            self.activation, self.output_activation, self.use_batch_norm, self.dropout_rate
+            self.latent_dim,
+            self.hidden_dims,
+            self.input_shape,
+            self.activation,
+            self.output_activation,
+            self.use_batch_norm,
+            self.dropout_rate,
         )
         self.model = Autoencoder(self.encoder, self.decoder)
 
     def _build_model(self):
         """Build model based on backend."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             self._build_tensorflow_model()
         else:
             self._build_pytorch_model()
@@ -474,7 +508,7 @@ class StandardAutoencoder(BaseAutoencoder):
         validation_split: float = 0.2,
         validation_data: Optional[Tuple[np.ndarray, np.ndarray]] = None,
         callbacks: Optional[List] = None,
-        verbose: int = 1
+        verbose: int = 1,
     ):
         """
         Train the autoencoder.
@@ -502,39 +536,35 @@ class StandardAutoencoder(BaseAutoencoder):
         -------
         self
         """
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             # Compile model
-            self.model.compile(
-                optimizer='adam',
-                loss='mse',
-                metrics=['mae']
-            )
+            self.model.compile(optimizer="adam", loss="mse", metrics=["mae"])
 
             # Default callbacks
             if callbacks is None:
                 callbacks = [
                     keras.callbacks.EarlyStopping(
-                        monitor='val_loss',
-                        patience=10,
-                        restore_best_weights=True
+                        monitor="val_loss", patience=10, restore_best_weights=True
                     ),
                     keras.callbacks.ReduceLROnPlateau(
-                        monitor='val_loss',
-                        factor=0.5,
-                        patience=5,
-                        min_lr=1e-6
-                    )
+                        monitor="val_loss", factor=0.5, patience=5, min_lr=1e-6
+                    ),
                 ]
 
             # Train
             self.history = self.model.fit(
-                X, X,  # Input and target are the same
+                X,
+                X,  # Input and target are the same
                 epochs=epochs,
                 batch_size=batch_size,
                 validation_split=validation_split if validation_data is None else 0,
-                validation_data=(validation_data[0], validation_data[0]) if validation_data is not None else None,
+                validation_data=(
+                    (validation_data[0], validation_data[0])
+                    if validation_data is not None
+                    else None
+                ),
                 callbacks=callbacks,
-                verbose=verbose
+                verbose=verbose,
             )
 
         else:  # pytorch
@@ -549,15 +579,21 @@ class StandardAutoencoder(BaseAutoencoder):
                 split_idx = int(len(X) * (1 - validation_split))
                 X_train, X_val = X[:split_idx], X[split_idx:]
 
-            train_dataset = TensorDataset(torch.FloatTensor(X_train), torch.FloatTensor(X_train))
-            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+            train_dataset = TensorDataset(
+                torch.FloatTensor(X_train), torch.FloatTensor(X_train)
+            )
+            train_loader = DataLoader(
+                train_dataset, batch_size=batch_size, shuffle=True
+            )
 
-            val_dataset = TensorDataset(torch.FloatTensor(X_val), torch.FloatTensor(X_val))
+            val_dataset = TensorDataset(
+                torch.FloatTensor(X_val), torch.FloatTensor(X_val)
+            )
             val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
             # Training loop
-            history = {'loss': [], 'val_loss': []}
-            best_val_loss = float('inf')
+            history = {"loss": [], "val_loss": []}
+            best_val_loss = float("inf")
             patience_counter = 0
 
             for epoch in range(epochs):
@@ -573,7 +609,7 @@ class StandardAutoencoder(BaseAutoencoder):
                     train_loss += loss.item()
 
                 train_loss /= len(train_loader)
-                history['loss'].append(train_loss)
+                history["loss"].append(train_loss)
 
                 # Validation
                 self.model.eval()
@@ -585,7 +621,7 @@ class StandardAutoencoder(BaseAutoencoder):
                         val_loss += loss.item()
 
                 val_loss /= len(val_loader)
-                history['val_loss'].append(val_loss)
+                history["val_loss"].append(val_loss)
 
                 # Early stopping
                 if val_loss < best_val_loss:
@@ -601,7 +637,9 @@ class StandardAutoencoder(BaseAutoencoder):
                         break
 
                 if verbose and (epoch + 1) % 10 == 0:
-                    print(f"Epoch {epoch+1}/{epochs} - loss: {train_loss:.4f} - val_loss: {val_loss:.4f}")
+                    print(
+                        f"Epoch {epoch+1}/{epochs} - loss: {train_loss:.4f} - val_loss: {val_loss:.4f}"
+                    )
 
             self.history = history
 
@@ -647,11 +685,11 @@ class ConvolutionalAutoencoder(BaseAutoencoder):
         n_filters: List[int] = [32, 64, 128],
         kernel_sizes: Union[int, List[int]] = 7,
         pool_sizes: Union[int, List[int]] = 2,
-        activation: str = 'relu',
+        activation: str = "relu",
         use_batch_norm: bool = True,
         dropout_rate: float = 0.2,
-        backend: str = 'tensorflow',
-        random_state: Optional[int] = None
+        backend: str = "tensorflow",
+        random_state: Optional[int] = None,
     ):
         """
         Initialize convolutional autoencoder.
@@ -682,8 +720,14 @@ class ConvolutionalAutoencoder(BaseAutoencoder):
         super().__init__(input_shape, latent_dim, backend, random_state)
 
         self.n_filters = n_filters
-        self.kernel_sizes = [kernel_sizes] * len(n_filters) if isinstance(kernel_sizes, int) else kernel_sizes
-        self.pool_sizes = [pool_sizes] * len(n_filters) if isinstance(pool_sizes, int) else pool_sizes
+        self.kernel_sizes = (
+            [kernel_sizes] * len(n_filters)
+            if isinstance(kernel_sizes, int)
+            else kernel_sizes
+        )
+        self.pool_sizes = (
+            [pool_sizes] * len(n_filters) if isinstance(pool_sizes, int) else pool_sizes
+        )
         self.activation = activation
         self.use_batch_norm = use_batch_norm
         self.dropout_rate = dropout_rate
@@ -704,29 +748,29 @@ class ConvolutionalAutoencoder(BaseAutoencoder):
             self.n_filters, self.kernel_sizes, self.pool_sizes
         ):
             encoder_shapes.append(x.shape[1:])
-            x = layers.Conv1D(n_filter, kernel_size, padding='same')(x)
+            x = layers.Conv1D(n_filter, kernel_size, padding="same")(x)
             if self.use_batch_norm:
                 x = layers.BatchNormalization()(x)
             x = layers.Activation(self.activation)(x)
-            x = layers.MaxPooling1D(pool_size, padding='same')(x)
+            x = layers.MaxPooling1D(pool_size, padding="same")(x)
             x = layers.Dropout(self.dropout_rate)(x)
 
         # Latent space
         shape_before_flatten = x.shape[1:]
         x = layers.Flatten()(x)
-        latent = layers.Dense(self.latent_dim, name='latent')(x)
-        self.encoder = Model(encoder_input, latent, name='encoder')
+        latent = layers.Dense(self.latent_dim, name="latent")(x)
+        self.encoder = Model(encoder_input, latent, name="encoder")
 
         # Decoder
         decoder_input = keras.Input(shape=(self.latent_dim,))
         x = layers.Dense(np.prod(shape_before_flatten))(decoder_input)
         x = layers.Reshape(shape_before_flatten)(x)
 
-        for i, (n_filter, kernel_size, pool_size) in enumerate(reversed(list(zip(
-            self.n_filters, self.kernel_sizes, self.pool_sizes
-        )))):
+        for i, (n_filter, kernel_size, pool_size) in enumerate(
+            reversed(list(zip(self.n_filters, self.kernel_sizes, self.pool_sizes)))
+        ):
             x = layers.UpSampling1D(pool_size)(x)
-            x = layers.Conv1D(n_filter, kernel_size, padding='same')(x)
+            x = layers.Conv1D(n_filter, kernel_size, padding="same")(x)
             if self.use_batch_norm:
                 x = layers.BatchNormalization()(x)
             x = layers.Activation(self.activation)(x)
@@ -734,26 +778,28 @@ class ConvolutionalAutoencoder(BaseAutoencoder):
 
         # Output layer
         decoder_output = layers.Conv1D(
-            self.input_shape[-1], 3, padding='same', activation='linear'
+            self.input_shape[-1], 3, padding="same", activation="linear"
         )(x)
-        self.decoder = Model(decoder_input, decoder_output, name='decoder')
+        self.decoder = Model(decoder_input, decoder_output, name="decoder")
 
         # Full autoencoder
         self.model = Model(
             encoder_input,
             self.decoder(self.encoder(encoder_input)),
-            name='conv_autoencoder'
+            name="conv_autoencoder",
         )
 
     def _build_pytorch_model(self):
         """Build PyTorch model."""
         # Similar to TensorFlow implementation
         # Implementation omitted for brevity - follows same pattern as StandardAutoencoder
-        raise NotImplementedError("PyTorch backend for ConvolutionalAutoencoder not yet implemented")
+        raise NotImplementedError(
+            "PyTorch backend for ConvolutionalAutoencoder not yet implemented"
+        )
 
     def _build_model(self):
         """Build model based on backend."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             self._build_tensorflow_model()
         else:
             self._build_pytorch_model()
@@ -804,8 +850,8 @@ class LSTMAutoencoder(BaseAutoencoder):
         lstm_units: List[int] = [64, 32],
         use_bidirectional: bool = False,
         dropout_rate: float = 0.2,
-        backend: str = 'tensorflow',
-        random_state: Optional[int] = None
+        backend: str = "tensorflow",
+        random_state: Optional[int] = None,
     ):
         """
         Initialize LSTM autoencoder.
@@ -843,47 +889,51 @@ class LSTMAutoencoder(BaseAutoencoder):
         x = encoder_input
 
         for i, units in enumerate(self.lstm_units):
-            return_sequences = (i < len(self.lstm_units) - 1)
+            return_sequences = i < len(self.lstm_units) - 1
 
-            lstm_layer = layers.LSTM(units, return_sequences=return_sequences, dropout=self.dropout_rate)
+            lstm_layer = layers.LSTM(
+                units, return_sequences=return_sequences, dropout=self.dropout_rate
+            )
             if self.use_bidirectional:
                 x = layers.Bidirectional(lstm_layer)(x)
             else:
                 x = lstm_layer(x)
 
-        latent = layers.Dense(self.latent_dim, name='latent')(x)
-        self.encoder = Model(encoder_input, latent, name='encoder')
+        latent = layers.Dense(self.latent_dim, name="latent")(x)
+        self.encoder = Model(encoder_input, latent, name="encoder")
 
         # Decoder
         decoder_input = keras.Input(shape=(self.latent_dim,))
         x = layers.RepeatVector(self.input_shape[0])(decoder_input)
 
         for i, units in enumerate(reversed(self.lstm_units)):
-            lstm_layer = layers.LSTM(units, return_sequences=True, dropout=self.dropout_rate)
+            lstm_layer = layers.LSTM(
+                units, return_sequences=True, dropout=self.dropout_rate
+            )
             if self.use_bidirectional:
                 x = layers.Bidirectional(lstm_layer)(x)
             else:
                 x = lstm_layer(x)
 
-        decoder_output = layers.TimeDistributed(
-            layers.Dense(self.input_shape[-1])
-        )(x)
-        self.decoder = Model(decoder_input, decoder_output, name='decoder')
+        decoder_output = layers.TimeDistributed(layers.Dense(self.input_shape[-1]))(x)
+        self.decoder = Model(decoder_input, decoder_output, name="decoder")
 
         # Full autoencoder
         self.model = Model(
             encoder_input,
             self.decoder(self.encoder(encoder_input)),
-            name='lstm_autoencoder'
+            name="lstm_autoencoder",
         )
 
     def _build_pytorch_model(self):
         """Build PyTorch model."""
-        raise NotImplementedError("PyTorch backend for LSTMAutoencoder not yet implemented")
+        raise NotImplementedError(
+            "PyTorch backend for LSTMAutoencoder not yet implemented"
+        )
 
     def _build_model(self):
         """Build model based on backend."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             self._build_tensorflow_model()
         else:
             self._build_pytorch_model()
@@ -895,47 +945,43 @@ class LSTMAutoencoder(BaseAutoencoder):
             X = X[..., np.newaxis]
 
         # Use parent's fit method from BaseAutoencoder through StandardAutoencoder
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             # Compile model
-            self.model.compile(
-                optimizer='adam',
-                loss='mse',
-                metrics=['mae']
-            )
+            self.model.compile(optimizer="adam", loss="mse", metrics=["mae"])
 
             # Get training parameters
-            epochs = kwargs.get('epochs', 100)
-            batch_size = kwargs.get('batch_size', 32)
-            validation_split = kwargs.get('validation_split', 0.2)
-            validation_data = kwargs.get('validation_data', None)
-            verbose = kwargs.get('verbose', 1)
-            callbacks = kwargs.get('callbacks', None)
+            epochs = kwargs.get("epochs", 100)
+            batch_size = kwargs.get("batch_size", 32)
+            validation_split = kwargs.get("validation_split", 0.2)
+            validation_data = kwargs.get("validation_data", None)
+            verbose = kwargs.get("verbose", 1)
+            callbacks = kwargs.get("callbacks", None)
 
             # Default callbacks
             if callbacks is None:
                 callbacks = [
                     keras.callbacks.EarlyStopping(
-                        monitor='val_loss',
-                        patience=10,
-                        restore_best_weights=True
+                        monitor="val_loss", patience=10, restore_best_weights=True
                     ),
                     keras.callbacks.ReduceLROnPlateau(
-                        monitor='val_loss',
-                        factor=0.5,
-                        patience=5,
-                        min_lr=1e-6
-                    )
+                        monitor="val_loss", factor=0.5, patience=5, min_lr=1e-6
+                    ),
                 ]
 
             # Train
             self.history = self.model.fit(
-                X, X,
+                X,
+                X,
                 epochs=epochs,
                 batch_size=batch_size,
                 validation_split=validation_split if validation_data is None else 0,
-                validation_data=(validation_data[0], validation_data[0]) if validation_data is not None else None,
+                validation_data=(
+                    (validation_data[0], validation_data[0])
+                    if validation_data is not None
+                    else None
+                ),
                 callbacks=callbacks,
-                verbose=verbose
+                verbose=verbose,
             )
 
         return self
@@ -983,12 +1029,12 @@ class VariationalAutoencoder(BaseAutoencoder):
         input_shape: Tuple[int, ...],
         latent_dim: int = 32,
         hidden_dims: List[int] = [256, 128, 64],
-        activation: str = 'relu',
+        activation: str = "relu",
         beta: float = 1.0,
         use_batch_norm: bool = True,
         dropout_rate: float = 0.2,
-        backend: str = 'tensorflow',
-        random_state: Optional[int] = None
+        backend: str = "tensorflow",
+        random_state: Optional[int] = None,
     ):
         """
         Initialize VAE.
@@ -1039,8 +1085,8 @@ class VariationalAutoencoder(BaseAutoencoder):
             x = layers.Dropout(self.dropout_rate)(x)
 
         # Latent distribution parameters
-        z_mean = layers.Dense(self.latent_dim, name='z_mean')(x)
-        z_log_var = layers.Dense(self.latent_dim, name='z_log_var')(x)
+        z_mean = layers.Dense(self.latent_dim, name="z_mean")(x)
+        z_log_var = layers.Dense(self.latent_dim, name="z_log_var")(x)
 
         # Sampling layer
         def sampling(args):
@@ -1050,9 +1096,9 @@ class VariationalAutoencoder(BaseAutoencoder):
             epsilon = tf.random.normal(shape=(batch, dim))
             return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
-        z = layers.Lambda(sampling, name='z')([z_mean, z_log_var])
+        z = layers.Lambda(sampling, name="z")([z_mean, z_log_var])
 
-        self.encoder = Model(encoder_input, [z_mean, z_log_var, z], name='encoder')
+        self.encoder = Model(encoder_input, [z_mean, z_log_var, z], name="encoder")
 
         # Decoder
         decoder_input = keras.Input(shape=(self.latent_dim,))
@@ -1066,41 +1112,40 @@ class VariationalAutoencoder(BaseAutoencoder):
             x = layers.Dropout(self.dropout_rate)(x)
 
         output_dim = np.prod(self.input_shape)
-        x = layers.Dense(output_dim, activation='linear')(x)
+        x = layers.Dense(output_dim, activation="linear")(x)
         decoder_output = layers.Reshape(self.input_shape)(x)
-        self.decoder = Model(decoder_input, decoder_output, name='decoder')
+        self.decoder = Model(decoder_input, decoder_output, name="decoder")
 
         # Full VAE
         outputs = self.decoder(self.encoder(encoder_input)[2])
-        self.model = Model(encoder_input, outputs, name='vae')
+        self.model = Model(encoder_input, outputs, name="vae")
 
         # Custom loss
         reconstruction_loss = tf.reduce_mean(
             tf.reduce_sum(
                 tf.square(encoder_input - outputs),
-                axis=list(range(1, len(self.input_shape) + 1))
+                axis=list(range(1, len(self.input_shape) + 1)),
             )
         )
 
         kl_loss = -0.5 * tf.reduce_mean(
-            tf.reduce_sum(
-                1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var),
-                axis=1
-            )
+            tf.reduce_sum(1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var), axis=1)
         )
 
         vae_loss = reconstruction_loss + self.beta * kl_loss
         self.model.add_loss(vae_loss)
-        self.model.add_metric(reconstruction_loss, name='reconstruction_loss')
-        self.model.add_metric(kl_loss, name='kl_loss')
+        self.model.add_metric(reconstruction_loss, name="reconstruction_loss")
+        self.model.add_metric(kl_loss, name="kl_loss")
 
     def _build_pytorch_model(self):
         """Build PyTorch model."""
-        raise NotImplementedError("PyTorch backend for VariationalAutoencoder not yet implemented")
+        raise NotImplementedError(
+            "PyTorch backend for VariationalAutoencoder not yet implemented"
+        )
 
     def _build_model(self):
         """Build model based on backend."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             self._build_tensorflow_model()
         else:
             self._build_pytorch_model()
@@ -1121,7 +1166,7 @@ class VariationalAutoencoder(BaseAutoencoder):
         np.ndarray or tuple
             Latent representations
         """
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             z_mean, z_log_var, z = self.encoder.predict(X, verbose=0)
             if return_distribution:
                 return z_mean, z_log_var, z
@@ -1131,43 +1176,43 @@ class VariationalAutoencoder(BaseAutoencoder):
 
     def fit(self, X: np.ndarray, **kwargs):
         """Train the VAE. See StandardAutoencoder.fit() for parameters."""
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             # Compile model
-            self.model.compile(optimizer='adam')
+            self.model.compile(optimizer="adam")
 
             # Get training parameters
-            epochs = kwargs.get('epochs', 100)
-            batch_size = kwargs.get('batch_size', 32)
-            validation_split = kwargs.get('validation_split', 0.2)
-            validation_data = kwargs.get('validation_data', None)
-            verbose = kwargs.get('verbose', 1)
-            callbacks = kwargs.get('callbacks', None)
+            epochs = kwargs.get("epochs", 100)
+            batch_size = kwargs.get("batch_size", 32)
+            validation_split = kwargs.get("validation_split", 0.2)
+            validation_data = kwargs.get("validation_data", None)
+            verbose = kwargs.get("verbose", 1)
+            callbacks = kwargs.get("callbacks", None)
 
             # Default callbacks
             if callbacks is None:
                 callbacks = [
                     keras.callbacks.EarlyStopping(
-                        monitor='val_loss',
-                        patience=15,
-                        restore_best_weights=True
+                        monitor="val_loss", patience=15, restore_best_weights=True
                     ),
                     keras.callbacks.ReduceLROnPlateau(
-                        monitor='val_loss',
-                        factor=0.5,
-                        patience=7,
-                        min_lr=1e-6
-                    )
+                        monitor="val_loss", factor=0.5, patience=7, min_lr=1e-6
+                    ),
                 ]
 
             # Train
             self.history = self.model.fit(
-                X, X,
+                X,
+                X,
                 epochs=epochs,
                 batch_size=batch_size,
                 validation_split=validation_split if validation_data is None else 0,
-                validation_data=(validation_data[0], validation_data[0]) if validation_data is not None else None,
+                validation_data=(
+                    (validation_data[0], validation_data[0])
+                    if validation_data is not None
+                    else None
+                ),
                 callbacks=callbacks,
-                verbose=verbose
+                verbose=verbose,
             )
 
         return self
@@ -1209,9 +1254,9 @@ class DenoisingAutoencoder(StandardAutoencoder):
         input_shape: Tuple[int, ...],
         latent_dim: int = 32,
         hidden_dims: List[int] = [256, 128, 64],
-        noise_type: str = 'gaussian',
+        noise_type: str = "gaussian",
         noise_level: float = 0.1,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize denoising autoencoder.
@@ -1238,13 +1283,13 @@ class DenoisingAutoencoder(StandardAutoencoder):
 
     def _add_noise(self, X: np.ndarray) -> np.ndarray:
         """Add noise to signals."""
-        if self.noise_type == 'gaussian':
+        if self.noise_type == "gaussian":
             noise = np.random.normal(0, self.noise_level, X.shape)
             return X + noise
-        elif self.noise_type == 'uniform':
+        elif self.noise_type == "uniform":
             noise = np.random.uniform(-self.noise_level, self.noise_level, X.shape)
             return X + noise
-        elif self.noise_type == 'salt_pepper':
+        elif self.noise_type == "salt_pepper":
             noisy = X.copy()
             # Salt
             salt_mask = np.random.random(X.shape) < self.noise_level / 2
@@ -1274,21 +1319,17 @@ class DenoisingAutoencoder(StandardAutoencoder):
         # Add noise to inputs
         X_noisy = self._add_noise(X)
 
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             # Compile model
-            self.model.compile(
-                optimizer='adam',
-                loss='mse',
-                metrics=['mae']
-            )
+            self.model.compile(optimizer="adam", loss="mse", metrics=["mae"])
 
             # Get training parameters
-            epochs = kwargs.get('epochs', 100)
-            batch_size = kwargs.get('batch_size', 32)
-            validation_split = kwargs.get('validation_split', 0.2)
-            validation_data = kwargs.get('validation_data', None)
-            verbose = kwargs.get('verbose', 1)
-            callbacks = kwargs.get('callbacks', None)
+            epochs = kwargs.get("epochs", 100)
+            batch_size = kwargs.get("batch_size", 32)
+            validation_split = kwargs.get("validation_split", 0.2)
+            validation_data = kwargs.get("validation_data", None)
+            verbose = kwargs.get("verbose", 1)
+            callbacks = kwargs.get("callbacks", None)
 
             # Prepare validation data
             if validation_data is not None:
@@ -1299,27 +1340,23 @@ class DenoisingAutoencoder(StandardAutoencoder):
             if callbacks is None:
                 callbacks = [
                     keras.callbacks.EarlyStopping(
-                        monitor='val_loss',
-                        patience=10,
-                        restore_best_weights=True
+                        monitor="val_loss", patience=10, restore_best_weights=True
                     ),
                     keras.callbacks.ReduceLROnPlateau(
-                        monitor='val_loss',
-                        factor=0.5,
-                        patience=5,
-                        min_lr=1e-6
-                    )
+                        monitor="val_loss", factor=0.5, patience=5, min_lr=1e-6
+                    ),
                 ]
 
             # Train with noisy inputs and clean targets
             self.history = self.model.fit(
-                X_noisy, X,  # Noisy input, clean target
+                X_noisy,
+                X,  # Noisy input, clean target
                 epochs=epochs,
                 batch_size=batch_size,
                 validation_split=validation_split if validation_data is None else 0,
                 validation_data=validation_data,
                 callbacks=callbacks,
-                verbose=verbose
+                verbose=verbose,
             )
 
         return self
@@ -1338,7 +1375,7 @@ class DenoisingAutoencoder(StandardAutoencoder):
         np.ndarray
             Denoised signals
         """
-        if self.backend == 'tensorflow':
+        if self.backend == "tensorflow":
             return self.model.predict(X, verbose=0)
         else:
             self.model.eval()
@@ -1351,9 +1388,9 @@ class DenoisingAutoencoder(StandardAutoencoder):
 # Convenience functions
 def detect_anomalies(
     X: np.ndarray,
-    autoencoder_type: str = 'standard',
+    autoencoder_type: str = "standard",
     contamination: float = 0.1,
-    **autoencoder_kwargs
+    **autoencoder_kwargs,
 ) -> Tuple[np.ndarray, np.ndarray, float]:
     """
     Quick anomaly detection using autoencoders.
@@ -1398,13 +1435,13 @@ def detect_anomalies(
     >>> print(f"Detected {anomalies.sum()} anomalies")
     """
     # Select autoencoder class
-    if autoencoder_type == 'standard':
+    if autoencoder_type == "standard":
         ae_class = StandardAutoencoder
-    elif autoencoder_type == 'conv':
+    elif autoencoder_type == "conv":
         ae_class = ConvolutionalAutoencoder
-    elif autoencoder_type == 'lstm':
+    elif autoencoder_type == "lstm":
         ae_class = LSTMAutoencoder
-    elif autoencoder_type == 'vae':
+    elif autoencoder_type == "vae":
         ae_class = VariationalAutoencoder
     else:
         raise ValueError(f"Unknown autoencoder type: {autoencoder_type}")
@@ -1430,9 +1467,9 @@ def detect_anomalies(
 def denoise_signal(
     X_noisy: np.ndarray,
     X_clean: Optional[np.ndarray] = None,
-    noise_type: str = 'gaussian',
+    noise_type: str = "gaussian",
     noise_level: float = 0.1,
-    **autoencoder_kwargs
+    **autoencoder_kwargs,
 ) -> np.ndarray:
     """
     Denoise signals using denoising autoencoder.
@@ -1482,7 +1519,7 @@ def denoise_signal(
         input_shape=input_shape,
         noise_type=noise_type,
         noise_level=noise_level,
-        **autoencoder_kwargs
+        **autoencoder_kwargs,
     )
 
     # Train
