@@ -54,12 +54,6 @@ def register_health_report_callbacks(app):
             try:
                 # Get data service
                 data_service = get_data_service()
-                
-                # Check if Enhanced Data Service is available for heavy data processing
-                if data_service.is_enhanced_service_available():
-                    logger.info("Enhanced Data Service is available for heavy data processing")
-                else:
-                    logger.info("Using basic data service functionality")
 
                 # Get stored data
                 stored_data = data_service.get_all_data()
@@ -78,26 +72,6 @@ def register_health_report_callbacks(app):
                 data_id = list(stored_data.keys())[-1]
                 df = stored_data[data_id]
                 data_info = data_service.get_data_info(data_id)
-                
-                # Enhanced data processing for heavy datasets
-                if df is not None and not df.empty:
-                    data_size_mb = df.memory_usage(deep=True).sum() / (1024 * 1024) if hasattr(df, 'memory_usage') else len(df) * 8 / (1024 * 1024)
-                    num_samples = len(df)
-                    
-                    logger.info(f"Data size: {data_size_mb:.2f} MB, Samples: {num_samples}")
-                    
-                    # Use Enhanced Data Service for heavy data processing
-                    if data_service.is_enhanced_service_available() and (data_size_mb > 5 or num_samples > 100000):
-                        logger.info(f"Using Enhanced Data Service for heavy health report generation: {data_size_mb:.2f}MB, {num_samples} samples")
-                        
-                        # Get enhanced service for optimized processing
-                        enhanced_service = data_service.get_enhanced_service()
-                        if enhanced_service:
-                            logger.info("Enhanced Data Service is ready for optimized health report generation")
-                            # The enhanced service will automatically handle chunked processing
-                            # and memory optimization during health report generation
-                    else:
-                        logger.info("Using standard processing for lightweight health report generation")
 
                 if df is None or df.empty:
                     error_content = html.Div(

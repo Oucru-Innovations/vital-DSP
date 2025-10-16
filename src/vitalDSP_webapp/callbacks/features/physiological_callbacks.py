@@ -929,15 +929,6 @@ def register_physiological_callbacks(app):
             from vitalDSP_webapp.services.data.data_service import get_data_service
 
             data_service = get_data_service()
-            
-            # Check if Enhanced Data Service is available for heavy data processing
-            if data_service and hasattr(data_service, 'is_enhanced_service_available'):
-                if data_service.is_enhanced_service_available():
-                    logger.info("Enhanced Data Service is available for heavy data processing")
-                else:
-                    logger.info("Using basic data service functionality")
-            else:
-                logger.info("Data service not available or missing enhanced service methods")
 
             # Get the most recent data
             all_data = data_service.get_all_data()
@@ -983,27 +974,6 @@ def register_physiological_callbacks(app):
                     None,
                     None,
                 )
-
-            # Enhanced data processing for heavy datasets
-            data_size_mb = df.memory_usage(deep=True).sum() / (1024 * 1024)
-            num_samples = len(df)
-            
-            logger.info(f"Data size: {data_size_mb:.2f} MB, Samples: {num_samples}")
-            
-            # Use Enhanced Data Service for heavy data processing
-            if (data_service and hasattr(data_service, 'is_enhanced_service_available') and 
-                data_service.is_enhanced_service_available() and (data_size_mb > 5 or num_samples > 100000)):
-                logger.info(f"Using Enhanced Data Service for heavy physiological analysis: {data_size_mb:.2f}MB, {num_samples} samples")
-                
-                # Get enhanced service for optimized processing
-                if hasattr(data_service, 'get_enhanced_service'):
-                    enhanced_service = data_service.get_enhanced_service()
-                    if enhanced_service:
-                        logger.info("Enhanced Data Service is ready for optimized physiological analysis")
-                        # The enhanced service will automatically handle chunked processing
-                        # and memory optimization during physiological analysis
-            else:
-                logger.info("Using standard processing for lightweight physiological analysis")
 
             # Get sampling frequency from the data info
             sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)

@@ -6588,6 +6588,11 @@ def settings_layout():
                                                                         value="light",
                                                                         className="mb-3",
                                                                     ),
+                                                                    # Debug info
+                                                                    html.Div(
+                                                                        id="theme-debug",
+                                                                        style={"font-size": "12px", "color": "gray", "margin-top": "10px"},
+                                                                    ),
                                                                     html.Label(
                                                                         "Time Zone",
                                                                         className="form-label",

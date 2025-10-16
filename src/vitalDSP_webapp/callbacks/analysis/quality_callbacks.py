@@ -113,15 +113,6 @@ def register_quality_callbacks(app):
             from vitalDSP_webapp.services.data.data_service import get_data_service
 
             data_service = get_data_service()
-            
-            # Check if Enhanced Data Service is available for heavy data processing
-            if data_service and hasattr(data_service, 'is_enhanced_service_available'):
-                if data_service.is_enhanced_service_available():
-                    logger.info("Enhanced Data Service is available for heavy data processing")
-                else:
-                    logger.info("Using basic data service functionality")
-            else:
-                logger.info("Data service not available or missing enhanced service methods")
 
             if data_service is None:
                 logger.error("Data service not available")
@@ -208,28 +199,6 @@ def register_quality_callbacks(app):
                 signal_data = signal_data.values
 
             sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)
-            
-            # Enhanced data processing for heavy datasets
-            if signal_data is not None and len(signal_data) > 0:
-                data_size_mb = signal_data.nbytes / (1024 * 1024) if hasattr(signal_data, 'nbytes') else len(signal_data) * 8 / (1024 * 1024)
-                num_samples = len(signal_data)
-                
-                logger.info(f"Signal data size: {data_size_mb:.2f} MB, Samples: {num_samples}")
-                
-                # Use Enhanced Data Service for heavy data processing
-                if (data_service and hasattr(data_service, 'is_enhanced_service_available') and 
-                    data_service.is_enhanced_service_available() and (data_size_mb > 5 or num_samples > 100000)):
-                    logger.info(f"Using Enhanced Data Service for heavy quality assessment: {data_size_mb:.2f}MB, {num_samples} samples")
-                    
-                    # Get enhanced service for optimized processing
-                    if hasattr(data_service, 'get_enhanced_service'):
-                        enhanced_service = data_service.get_enhanced_service()
-                        if enhanced_service:
-                            logger.info("Enhanced Data Service is ready for optimized quality assessment")
-                            # The enhanced service will automatically handle chunked processing
-                            # and memory optimization during quality assessment
-                else:
-                    logger.info("Using standard processing for lightweight quality assessment")
 
             # Extract time segment if specified
             if start_time is not None and end_time is not None:

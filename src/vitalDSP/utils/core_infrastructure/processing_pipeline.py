@@ -676,10 +676,56 @@ class StandardProcessingPipeline:
         fs = context["fs"]
         signal_type = context["signal_type"]
 
-        # Process through all paths in parallel
-        parallel_results = self.parallel_pipeline.process_all_paths(
-            signal, fs, signal_type
-        )
+        # Process through multiple paths (raw, filtered, preprocessed, full)
+        paths = {}
+
+        # Path 1: Raw data (no processing)
+        paths["raw"] = {
+            "data": signal.copy(),
+            "quality": self._assess_path_quality(signal, fs, signal_type),
+            "distortion": {"severity": 0.0, "type": "none"},
+            "processing_applied": "none",
+        }
+
+        # Path 2: Filtered data (basic bandpass filtering)
+        filtered_signal = self._apply_filtering(signal, fs, signal_type)
+        paths["filtered"] = {
+            "data": filtered_signal,
+            "quality": self._assess_path_quality(filtered_signal, fs, signal_type),
+            "distortion": self._compare_signals(signal, filtered_signal),
+            "processing_applied": "bandpass_filter",
+        }
+
+        # Path 3: Preprocessed data (filtering + artifact removal)
+        preprocessed_signal = self._apply_preprocessing(signal, fs, signal_type)
+        paths["preprocessed"] = {
+            "data": preprocessed_signal,
+            "quality": self._assess_path_quality(preprocessed_signal, fs, signal_type),
+            "distortion": self._compare_signals(signal, preprocessed_signal),
+            "processing_applied": "filter_and_artifact_removal",
+        }
+
+        # Path 4: Full processing (all methods combined)
+        full_signal, full_features = self._extract_simple_features(preprocessed_signal, fs, signal_type)
+        paths["full"] = {
+            "data": full_signal,
+            "quality": self._assess_path_quality(full_signal, fs, signal_type),
+            "distortion": self._compare_signals(signal, full_signal),
+            "processing_applied": "full_pipeline",
+            "features": full_features,
+        }
+
+        # Compare all paths and select best
+        best_path = self._select_best_path(paths)
+
+        parallel_results = {
+            "paths": paths,
+            "comparison": {
+                "best_path": best_path,
+                "total_paths": len(paths),
+                "all_paths": list(paths.keys()),
+            },
+        }
 
         # Add processing recommendations
         parallel_results["processing_recommendations"] = self._analyze_processing_paths(
@@ -1435,6 +1481,162 @@ class StandardProcessingPipeline:
             ].get("best_path", "raw")
 
         return recommendations
+
+    def _apply_filtering(self, signal: np.ndarray, fs: float, signal_type: str) -> np.ndarray:
+        """Apply basic bandpass filtering to signal."""
+        try:
+            from scipy.signal import butter, filtfilt
+
+            # Get filter parameters based on signal type
+            if signal_type.lower() == "ecg":
+                lowcut, highcut = 0.5, 40.0
+            elif signal_type.lower() == "ppg":
+                lowcut, highcut = 0.5, 8.0
+            elif signal_type.lower() == "eeg":
+                lowcut, highcut = 0.5, 50.0
+            else:
+                lowcut, highcut = 0.5, 40.0
+
+            # Design and apply bandpass filter
+            nyquist = fs / 2
+            low = lowcut / nyquist
+            high = highcut / nyquist
+
+            # Ensure filter frequencies are valid
+            if low >= 1.0 or high >= 1.0 or low <= 0 or high <= 0:
+                logger.warning(f"Invalid filter frequencies, returning original signal")
+                return signal.copy()
+
+            b, a = butter(4, [low, high], btype='band')
+            filtered = filtfilt(b, a, signal)
+
+            return filtered
+        except Exception as e:
+            logger.warning(f"Filtering failed: {e}, returning original signal")
+            return signal.copy()
+
+    def _apply_preprocessing(self, signal: np.ndarray, fs: float, signal_type: str) -> np.ndarray:
+        """Apply preprocessing (filtering + basic artifact removal)."""
+        # First apply filtering
+        filtered = self._apply_filtering(signal, fs, signal_type)
+
+        # Simple artifact removal: clip outliers at 5 standard deviations
+        mean = np.mean(filtered)
+        std = np.std(filtered)
+        threshold = 5 * std
+
+        preprocessed = np.clip(filtered, mean - threshold, mean + threshold)
+
+        return preprocessed
+
+    def _extract_simple_features(
+        self, signal: np.ndarray, fs: float, signal_type: str
+    ) -> Tuple[np.ndarray, Dict[str, Any]]:
+        """Extract simple features from preprocessed signal."""
+        # Calculate basic features
+        features = {
+            "mean": float(np.mean(signal)),
+            "std": float(np.std(signal)),
+            "min": float(np.min(signal)),
+            "max": float(np.max(signal)),
+            "range": float(np.ptp(signal)),
+            "energy": float(np.sum(signal ** 2)),
+        }
+
+        return signal, features
+
+    def _assess_path_quality(
+        self, signal: np.ndarray, fs: float, signal_type: str
+    ) -> Dict[str, float]:
+        """Assess quality of a processing path."""
+        try:
+            # Use quality screener to assess signal quality
+            screening_results = self.quality_screener.screen_signal(signal)
+
+            if screening_results:
+                # Get first result (overall quality)
+                result = screening_results[0]
+                return {
+                    "quality_score": result.quality_metrics.overall_quality,
+                    "snr": result.quality_metrics.snr,
+                    "passed_screening": result.passed_screening,
+                }
+            else:
+                # Fallback: basic SNR estimation
+                signal_power = np.var(signal)
+                noise_estimate = np.var(np.diff(signal)) / 2
+                snr = 10 * np.log10(signal_power / max(noise_estimate, 1e-10))
+
+                return {
+                    "quality_score": min(snr / 30, 1.0),  # Normalize to 0-1
+                    "snr": snr,
+                    "passed_screening": snr > 10,
+                }
+        except Exception as e:
+            logger.warning(f"Quality assessment failed: {e}")
+            return {
+                "quality_score": 0.5,
+                "snr": 0.0,
+                "passed_screening": True,
+            }
+
+    def _compare_signals(self, original: np.ndarray, processed: np.ndarray) -> Dict[str, Any]:
+        """Compare original and processed signals to detect distortion."""
+        try:
+            # Calculate correlation
+            correlation = np.corrcoef(original, processed)[0, 1]
+
+            # Calculate RMSE (normalized)
+            rmse = np.sqrt(np.mean((original - processed) ** 2))
+            normalized_rmse = rmse / (np.std(original) + 1e-10)
+
+            # Calculate distortion severity (0 = no distortion, 1 = high distortion)
+            distortion_severity = max(0, min(1, (1 - correlation) + normalized_rmse / 2))
+
+            # Classify distortion type
+            if distortion_severity < 0.1:
+                distortion_type = "minimal"
+            elif distortion_severity < 0.3:
+                distortion_type = "low"
+            elif distortion_severity < 0.5:
+                distortion_type = "moderate"
+            else:
+                distortion_type = "high"
+
+            return {
+                "severity": distortion_severity,
+                "type": distortion_type,
+                "correlation": correlation,
+                "rmse": rmse,
+                "normalized_rmse": normalized_rmse,
+            }
+        except Exception as e:
+            logger.warning(f"Signal comparison failed: {e}")
+            return {
+                "severity": 0.5,
+                "type": "unknown",
+                "correlation": 0.0,
+                "rmse": 0.0,
+                "normalized_rmse": 0.0,
+            }
+
+    def _select_best_path(self, paths: Dict[str, Any]) -> str:
+        """Select best processing path based on quality and distortion."""
+        best_path = "raw"
+        best_score = -1.0
+
+        for path_name, path_data in paths.items():
+            quality_score = path_data["quality"].get("quality_score", 0.0)
+            distortion_severity = path_data["distortion"].get("severity", 1.0)
+
+            # Net score: quality improvement minus distortion cost
+            net_score = quality_score - distortion_severity
+
+            if net_score > best_score:
+                best_score = net_score
+                best_path = path_name
+
+        return best_path
 
     def _generate_final_results(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Generate final processing results."""

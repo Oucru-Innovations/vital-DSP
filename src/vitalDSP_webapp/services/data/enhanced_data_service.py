@@ -61,11 +61,20 @@ logger = logging.getLogger(__name__)
 
 class LoadingStrategy(Enum):
     """Loading strategy selection based on file size and webapp requirements."""
-    
+
     STANDARD = "standard"        # < 50MB: Standard loading
     CHUNKED = "chunked"         # 50MB-500MB: Chunked loading with cache
     MEMORY_MAPPED = "memory_mapped"  # > 500MB: Memory-mapped access
     PROGRESSIVE = "progressive" # Any size: Progressive background loading
+
+
+class FileSizeWarning(Enum):
+    """File size warning levels for user feedback."""
+
+    NONE = "none"           # < 50MB: No warning
+    INFO = "info"           # 50-200MB: Informational
+    WARNING = "warning"     # 200MB-1GB: Warning
+    CRITICAL = "critical"   # > 1GB: Critical (may take long time)
 
 
 @dataclass
@@ -94,9 +103,36 @@ class DataSegment:
 
 
 @dataclass
+class FileAnalysis:
+    """File analysis results for user warnings and time estimation."""
+
+    file_path: str
+    file_size_bytes: int
+    file_size_mb: float
+    warning_level: FileSizeWarning
+    recommended_strategy: LoadingStrategy
+    estimated_load_time_seconds: float
+    warning_message: str
+    recommendations: List[str]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "file_path": self.file_path,
+            "file_size_bytes": self.file_size_bytes,
+            "file_size_mb": self.file_size_mb,
+            "warning_level": self.warning_level.value,
+            "recommended_strategy": self.recommended_strategy.value,
+            "estimated_load_time_seconds": self.estimated_load_time_seconds,
+            "warning_message": self.warning_message,
+            "recommendations": self.recommendations
+        }
+
+
+@dataclass
 class LoadingProgress:
     """Enhanced progress information for webapp UI."""
-    
+
     task_id: str
     progress_percent: float
     bytes_processed: int
@@ -110,7 +146,7 @@ class LoadingProgress:
     status: str  # 'loading', 'processing', 'completed', 'error'
     message: str
     data_preview: Optional[Dict[str, Any]] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return asdict(self)
@@ -823,8 +859,8 @@ class ProgressiveDataLoader:
         return request_id
     
     def request_data_preview(
-        self, 
-        file_path: str, 
+        self,
+        file_path: str,
         callback: Callable[[pd.DataFrame], None],
         preview_size: int = 1000,
         task_id: Optional[str] = None

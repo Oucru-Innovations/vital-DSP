@@ -63,15 +63,6 @@ def register_features_callbacks(app):
             from vitalDSP_webapp.services.data.data_service import get_data_service
 
             data_service = get_data_service()
-            
-            # Check if Enhanced Data Service is available for heavy data processing
-            if data_service and hasattr(data_service, 'is_enhanced_service_available'):
-                if data_service.is_enhanced_service_available():
-                    logger.info("Enhanced Data Service is available for heavy data processing")
-                else:
-                    logger.info("Using basic data service functionality")
-            else:
-                logger.info("Data service not available or missing enhanced service methods")
 
             if data_service is None:
                 logger.error("Data service is None")
@@ -129,27 +120,6 @@ def register_features_callbacks(app):
             if df is None or df.empty:
                 logger.warning("Data frame is empty")
                 return "Data is empty or corrupted.", create_empty_figure(), None, None
-
-            # Enhanced data processing for heavy datasets
-            data_size_mb = df.memory_usage(deep=True).sum() / (1024 * 1024)
-            num_samples = len(df)
-            
-            logger.info(f"Data size: {data_size_mb:.2f} MB, Samples: {num_samples}")
-            
-            # Use Enhanced Data Service for heavy data processing
-            if (data_service and hasattr(data_service, 'is_enhanced_service_available') and 
-                data_service.is_enhanced_service_available() and (data_size_mb > 5 or num_samples > 100000)):
-                logger.info(f"Using Enhanced Data Service for heavy feature engineering: {data_size_mb:.2f}MB, {num_samples} samples")
-                
-                # Get enhanced service for optimized processing
-                if hasattr(data_service, 'get_enhanced_service'):
-                    enhanced_service = data_service.get_enhanced_service()
-                    if enhanced_service:
-                        logger.info("Enhanced Data Service is ready for optimized feature engineering")
-                        # The enhanced service will automatically handle chunked processing
-                        # and memory optimization during feature engineering
-            else:
-                logger.info("Using standard processing for lightweight feature engineering")
 
             # Get sampling frequency from the data info
             sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)

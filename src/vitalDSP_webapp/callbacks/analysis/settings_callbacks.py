@@ -117,7 +117,7 @@ def register_settings_callbacks(app):
         try:
             # Handle save button click
             if button_id == "settings-save-btn" and save_clicks:
-                return handle_save_settings(
+                status, settings_data, config = handle_save_settings(
                     theme,
                     timezone,
                     page_size,
@@ -141,18 +141,22 @@ def register_settings_callbacks(app):
                     session_timeout,
                     security_options,
                 )
+                return status, settings_data, config
 
             # Handle reset button click
             elif button_id == "settings-reset-btn" and reset_clicks:
-                return handle_reset_settings()
+                status, settings_data, config = handle_reset_settings()
+                return status, settings_data, config
 
             # Handle export button click
             elif button_id == "settings-export-btn" and export_clicks:
-                return handle_export_settings()
+                status, settings_data, config = handle_export_settings()
+                return status, settings_data, config
 
             # Handle import button click
             elif button_id == "settings-import-btn" and import_clicks:
-                return handle_import_settings()
+                status, settings_data, config = handle_import_settings()
+                return status, settings_data, config
 
             # Default: show current status
             return create_settings_status_display(), {}, {}

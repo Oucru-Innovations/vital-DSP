@@ -28,8 +28,12 @@ from dataclasses import dataclass
 from enum import Enum
 import time
 import warnings
+import logging
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import multiprocessing as mp
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Import existing quality assessment modules
 from vitalDSP.signal_quality_assessment.signal_quality_index import SignalQualityIndex
@@ -313,33 +317,41 @@ class QualityScreener:
         segments: List[Dict[str, Any]],
         progress_callback: Optional[Callable[[ProgressInfo], None]] = None,
     ) -> List[ScreeningResult]:
-        """Screen segments in parallel."""
+        """Screen segments in parallel using ThreadPoolExecutor for better compatibility."""
         results = []
 
-        with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
-            # Submit all segments for processing
-            future_to_segment = {
-                executor.submit(self._screen_single_segment, segment): segment
-                for segment in segments
-            }
+        try:
+            # Use ThreadPoolExecutor instead of ProcessPoolExecutor for better compatibility
+            # with unpicklable objects (SignalQualityIndex instances)
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                # Submit all segments for processing
+                future_to_segment = {
+                    executor.submit(self._screen_single_segment, segment): segment
+                    for segment in segments
+                }
 
-            # Collect results as they complete
-            for i, future in enumerate(future_to_segment):
-                if progress_callback:
-                    progress_info = ProgressInfo(
-                        bytes_processed=i * self.segment_size * 8,
-                        total_bytes=len(segments) * self.segment_size * 8,
-                        chunks_processed=i,
-                        total_chunks=len(segments),
-                        elapsed_time=0.0,
-                        estimated_remaining=0.0,
-                        current_chunk_size=self.segment_size,
-                        loading_strategy="parallel_quality_screening",
-                    )
-                    progress_callback(progress_info)
+                # Collect results as they complete
+                for i, future in enumerate(future_to_segment):
+                    if progress_callback:
+                        progress_info = ProgressInfo(
+                            bytes_processed=i * self.segment_size * 8,
+                            total_bytes=len(segments) * self.segment_size * 8,
+                            chunks_processed=i,
+                            total_chunks=len(segments),
+                            elapsed_time=0.0,
+                            estimated_remaining=0.0,
+                            current_chunk_size=self.segment_size,
+                            loading_strategy="parallel_quality_screening",
+                        )
+                        progress_callback(progress_info)
 
-                result = future.result()
-                results.append(result)
+                    result = future.result()
+                    results.append(result)
+
+        except Exception as e:
+            # If parallel processing fails, fall back to sequential processing
+            logger.warning(f"Parallel screening failed ({e}), falling back to sequential processing")
+            results = self._screen_segments_sequential(segments, progress_callback)
 
         # Sort results by segment start index
         results.sort(key=lambda x: x.start_idx)

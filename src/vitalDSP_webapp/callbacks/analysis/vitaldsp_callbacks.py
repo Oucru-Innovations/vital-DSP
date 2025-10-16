@@ -19,6 +19,7 @@ import logging
 from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
     apply_traditional_filter,
 )
+from vitalDSP_webapp.callbacks.core.theme_callbacks import apply_plot_theme
 
 
 # Helper function for formatting large numbers
@@ -103,7 +104,7 @@ def configure_plot_with_pan_zoom(fig, title="", height=400):
     return fig
 
 
-def create_empty_figure():
+def create_empty_figure(theme="light"):
     """Create an empty figure for error cases."""
     fig = go.Figure()
     fig.add_annotation(
@@ -118,7 +119,7 @@ def create_empty_figure():
     fig.update_layout(
         xaxis=dict(visible=False), yaxis=dict(visible=False), plot_bgcolor="white"
     )
-    return fig
+    return apply_plot_theme(fig, theme)
 
 
 def create_signal_source_table(
@@ -371,7 +372,7 @@ def higuchi_fractal_dimension(signal, k_max=10):
 
 
 def create_signal_comparison_plot(
-    original_signal, filtered_signal, time_axis, sampling_freq, signal_type="PPG"
+    original_signal, filtered_signal, time_axis, sampling_freq, signal_type="PPG", theme="light"
 ):
     """Create side-by-side comparison of raw vs filtered signals with critical points."""
     try:
@@ -861,11 +862,11 @@ def create_signal_comparison_plot(
                 title_x=0.5,
             )
 
-        return fig
+        return apply_plot_theme(fig, theme)
 
     except Exception as e:
         logger.error(f"Error creating signal comparison plot: {e}")
-        return create_empty_figure()
+        return create_empty_figure(theme)
 
 
 def create_time_domain_plot(
@@ -875,6 +876,7 @@ def create_time_domain_plot(
     peaks=None,
     filtered_signal=None,
     signal_type="PPG",
+    theme="light",
 ):
     # Note: peaks parameter is kept for backward compatibility but not used
     # Critical points are now detected using vitalDSP waveform analysis
@@ -1093,10 +1095,10 @@ def create_time_domain_plot(
             ),
         )
 
-        return fig
+        return apply_plot_theme(fig, theme)
     except Exception as e:
         logger.error(f"Error creating time domain plot: {e}")
-        return create_empty_figure()
+        return create_empty_figure(theme)
 
 
 def create_peak_analysis_plot(signal_data, time_axis, peaks, sampling_freq):
@@ -4892,6 +4894,7 @@ def register_vitaldsp_callbacks(app):
             Input("btn-nudge-p1", "n_clicks"),
             Input("btn-nudge-p10", "n_clicks"),
             Input("url", "pathname"),
+            Input("body", "data-theme"),  # Add theme input
         ],
         [
             State("signal-source-select", "value"),
@@ -4909,6 +4912,7 @@ def register_vitaldsp_callbacks(app):
         nudge_p1,
         nudge_p10,
         pathname,
+        current_theme,  # Add theme parameter
         signal_source,
         analysis_options,
         signal_type,
@@ -4933,8 +4937,8 @@ def register_vitaldsp_callbacks(app):
         if pathname != "/time-domain":
             logger.info("Not on time domain page, returning empty figures")
             return (
-                create_empty_figure(),
-                create_empty_figure(),
+                create_empty_figure(current_theme),
+                create_empty_figure(current_theme),
                 "Navigate to Time Domain Analysis page",
                 "Navigate to Time Domain Analysis page",
                 "Navigate to Time Domain Analysis page",
@@ -4955,12 +4959,6 @@ def register_vitaldsp_callbacks(app):
 
             data_service = get_data_service()
             logger.info("Data service retrieved successfully")
-            
-            # Check if Enhanced Data Service is available for heavy data processing
-            if data_service.is_enhanced_service_available():
-                logger.info("Enhanced Data Service is available for heavy data processing")
-            else:
-                logger.info("Using basic data service functionality")
 
             # Get the most recent data
             logger.info("Retrieving all data from service...")
@@ -4972,8 +4970,8 @@ def register_vitaldsp_callbacks(app):
             if not all_data:
                 logger.warning("No data found in service")
                 return (
-                    create_empty_figure(),
-                    create_empty_figure(),
+                    create_empty_figure(current_theme),
+                    create_empty_figure(current_theme),
                     "No data available. Please upload and process data first.",
                     "No data available. Please upload and process data first.",
                     "No data available. Please upload and process data first.",
@@ -4999,8 +4997,8 @@ def register_vitaldsp_callbacks(app):
                     "Data has not been processed yet - no column mapping found"
                 )
                 return (
-                    create_empty_figure(),
-                    create_empty_figure(),
+                    create_empty_figure(current_theme),
+                    create_empty_figure(current_theme),
                     "Please process your data on the Upload page first (configure column mapping)",
                     "Please process your data on the Upload page first (configure column mapping)",
                     "Please process your data on the Upload page first (configure column mapping)",
@@ -5017,26 +5015,6 @@ def register_vitaldsp_callbacks(app):
             logger.info(
                 f"Data frame columns: {list(df.columns) if df is not None else 'None'}"
             )
-            
-            # Enhanced data processing for heavy datasets
-            if df is not None and not df.empty:
-                data_size_mb = df.memory_usage(deep=True).sum() / (1024 * 1024)
-                num_samples = len(df)
-                
-                logger.info(f"Data size: {data_size_mb:.2f} MB, Samples: {num_samples}")
-                
-                # Use Enhanced Data Service for heavy data processing
-                if data_service.is_enhanced_service_available() and (data_size_mb > 5 or num_samples > 100000):
-                    logger.info(f"Using Enhanced Data Service for heavy data processing: {data_size_mb:.2f}MB, {num_samples} samples")
-                    
-                    # Get enhanced service for optimized processing
-                    enhanced_service = data_service.get_enhanced_service()
-                    if enhanced_service:
-                        logger.info("Enhanced Data Service is ready for optimized processing")
-                        # The enhanced service will automatically handle chunked processing
-                        # and memory optimization during analysis
-                else:
-                    logger.info("Using standard processing for lightweight data")
 
             # Log essential signal data summary (optimized for performance)
             if df is not None:
@@ -5067,8 +5045,8 @@ def register_vitaldsp_callbacks(app):
             if df is None or df.empty:
                 logger.warning("Data frame is empty")
                 return (
-                    create_empty_figure(),
-                    create_empty_figure(),
+                    create_empty_figure(current_theme),
+                    create_empty_figure(current_theme),
                     "Data is empty or corrupted.",
                     "Data is empty or corrupted.",
                     "Data is empty or corrupted.",
@@ -5210,8 +5188,8 @@ def register_vitaldsp_callbacks(app):
                 if not signal_column:
                     logger.error("No suitable signal column found")
                     return (
-                        create_empty_figure(),
-                        create_empty_figure(),
+                        create_empty_figure(current_theme),
+                        create_empty_figure(current_theme),
                         "No suitable signal column found in data.",
                         "No suitable signal column found in data.",
                         "No suitable signal column found in data.",
@@ -5235,8 +5213,8 @@ def register_vitaldsp_callbacks(app):
             if len(signal_data) == 0:
                 logger.error("Signal data is empty after windowing")
                 return (
-                    create_empty_figure(),
-                    create_empty_figure(),
+                    create_empty_figure(current_theme),
+                    create_empty_figure(current_theme),
                     "Signal data is empty after windowing.",
                     "Signal data is empty after windowing.",
                     "Signal data is empty after windowing.",
@@ -5491,6 +5469,7 @@ def register_vitaldsp_callbacks(app):
                 None,  # Peaks are now detected in the plot function using vitalDSP
                 None,  # No additional filtered signal overlay
                 signal_type,  # Pass the signal type from user selection
+                current_theme,  # Pass the current theme
             )
             logger.info("Main signal plot created successfully")
 
@@ -5510,6 +5489,7 @@ def register_vitaldsp_callbacks(app):
                     time_axis,
                     sampling_freq,
                     signal_type,  # Pass the signal type from user selection
+                    current_theme,  # Pass the current theme
                 )
             else:
                 # If using original signal, show raw signal only
@@ -5519,6 +5499,7 @@ def register_vitaldsp_callbacks(app):
                     time_axis,
                     sampling_freq,
                     signal_type,  # Pass the signal type from user selection
+                    current_theme,  # Pass the current theme
                 )
             logger.info("Signal comparison plot created successfully")
 
@@ -5634,8 +5615,8 @@ def register_vitaldsp_callbacks(app):
             traceback.print_exc()
             error_msg = f"Error in analysis: {str(e)}"
             return (
-                create_empty_figure(),
-                create_empty_figure(),
+                create_empty_figure(current_theme),
+                create_empty_figure(current_theme),
                 error_msg,
                 error_msg,
                 error_msg,

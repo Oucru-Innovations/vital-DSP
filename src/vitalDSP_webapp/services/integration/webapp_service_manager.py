@@ -30,7 +30,6 @@ from typing import Dict, List, Any, Optional, Union, Callable
 from dataclasses import dataclass
 from enum import Enum
 import json
-import pandas as pd
 
 # Add vitalDSP to path for imports
 from pathlib import Path
@@ -47,7 +46,7 @@ try:
         LoadingProgress,
         DataSegment
     )
-    from ..async_services.task_queue import (
+    from ..async.task_queue import (
         WebappTaskQueue,
         TaskProcessor,
         get_task_queue,
@@ -57,7 +56,7 @@ try:
         TaskStatus,
         TaskPriority
     )
-    from ..async_services.websocket_manager import (
+    from ..async.websocket_manager import (
         WebSocketManager,
         get_websocket_manager,
         start_websocket_manager,
@@ -65,10 +64,10 @@ try:
         MessageType,
         WebSocketMessage
     )
-    ENHANCED_SERVICES_AVAILABLE = True
+    PHASE3A_COMPONENTS_AVAILABLE = True
 except ImportError as e:
-    logging.warning(f"Enhanced webapp services not available: {e}")
-    ENHANCED_SERVICES_AVAILABLE = False
+    logging.warning(f"Phase 3A components not available: {e}")
+    PHASE3A_COMPONENTS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -133,8 +132,8 @@ class WebappServiceManager:
     
     def _initialize_services(self) -> None:
         """Initialize all webapp services."""
-        if not ENHANCED_SERVICES_AVAILABLE:
-            logger.warning("Enhanced webapp service components not available - using mock services")
+        if not PHASE3A_COMPONENTS_AVAILABLE:
+            logger.warning("Webapp service components not available - using mock services")
             return
         
         try:
@@ -616,4 +615,4 @@ if __name__ == "__main__":
     print("  - Performance monitoring and health checks")
     print("  - Service orchestration and coordination")
     print("\nAvailability:")
-    print(f"  - Enhanced webapp services available: {ENHANCED_SERVICES_AVAILABLE}")
+    print(f"  - Webapp service components available: {PHASE3A_COMPONENTS_AVAILABLE}")

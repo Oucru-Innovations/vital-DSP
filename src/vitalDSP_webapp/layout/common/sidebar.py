@@ -106,6 +106,22 @@ def Sidebar():
                         ],
                         className="mb-2",
                     ),
+                    # Theme toggle section
+                    html.H6("Theme", className="mt-4 mb-2 text-muted"),
+                    html.Div(
+                        [
+                            html.Button(
+                                id="theme-toggle",
+                                className="btn btn-outline-light btn-sm w-100",
+                                children=[
+                                    html.I(id="theme-icon", className="fas fa-sun me-2"),
+                                    html.Span(id="theme-text", children="Light")
+                                ],
+                                style={"font-size": "0.9rem"}
+                            ),
+                        ],
+                        className="mb-2",
+                    ),
                 ],
             ),
             # Icon-only navigation menu (collapsed view)
@@ -186,6 +202,21 @@ def Sidebar():
                                 href="/settings",
                                 className="nav-icon text-white",
                                 title="Settings",
+                            ),
+                        ],
+                        className="mb-3",
+                    ),
+                    # Theme toggle (collapsed view)
+                    html.Div(
+                        [
+                            html.Button(
+                                id="theme-toggle-collapsed",
+                                className="btn btn-outline-light btn-sm",
+                                children=[
+                                    html.I(id="theme-icon-collapsed", className="fas fa-sun")
+                                ],
+                                title="Toggle Theme",
+                                style={"width": "40px", "height": "40px", "padding": "0"}
                             ),
                         ],
                         className="mb-3",

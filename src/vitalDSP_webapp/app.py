@@ -34,17 +34,9 @@ from vitalDSP_webapp.callbacks import (
     register_features_callbacks,
     register_preview_callbacks,
 )
-
-# Import Phase 3A service manager
-try:
-    from vitalDSP_webapp.services.integration.webapp_service_manager import (
-        get_service_manager,
-        start_all_services
-    )
-    ENHANCED_SERVICES_AVAILABLE = True
-except ImportError as e:
-    ENHANCED_SERVICES_AVAILABLE = False
-    print(f"Enhanced webapp services not available: {e}")
+from vitalDSP_webapp.callbacks.core.theme_callbacks import (
+    register_theme_callbacks,
+)
 
 
 def create_dash_app() -> Dash:
@@ -66,6 +58,17 @@ def create_dash_app() -> Dash:
         suppress_callback_exceptions=True,
     )
     app.title = app_config.APP_NAME
+    
+    # Get initial theme from settings
+    initial_theme = "light"  # default
+    try:
+        from vitalDSP_webapp.services.settings_service import SettingsService
+        service = SettingsService()
+        settings = service.get_general_settings()
+        if settings and hasattr(settings, 'theme'):
+            initial_theme = settings.theme
+    except Exception as e:
+        print(f"Warning: Could not load theme from settings: {e}")
 
     # Set the layout of the app, including header, sidebar, and footer
     app.layout = html.Div(
@@ -75,9 +78,14 @@ def create_dash_app() -> Dash:
             dcc.Store(id="store_file_path"),
             dcc.Store(id="store_total_rows"),
             dcc.Store(id="store_window"),
-            dcc.Store(id="store_theme", data=app_config.THEME),
+            dcc.Store(id="store_theme", data=initial_theme),
             dcc.Store(id="store_processed_data"),
             dcc.Store(id="store_analysis_results"),
+                # Theme-related stores
+                dcc.Store(id="plot-theme-config", data={}),
+                dcc.Store(id="theme-status", data="light"),
+                # Debug elements
+                html.Div(id="theme-debug", style={"display": "none"}),
             # Global stores that persist across page changes
             dcc.Store(id="store-uploaded-data", storage_type="memory"),
             dcc.Store(id="store-data-config", storage_type="memory"),
@@ -165,6 +173,7 @@ def create_dash_app() -> Dash:
     register_sidebar_callbacks(app)
     register_page_routing_callbacks(app)
     register_upload_callbacks(app)
+    register_theme_callbacks(app)  # Register theme switching callbacks
     register_vitaldsp_callbacks(app)  # Register vitalDSP analysis callbacks
     register_frequency_filtering_callbacks(
         app
@@ -175,18 +184,6 @@ def create_dash_app() -> Dash:
     register_features_callbacks(app)  # Register feature engineering callbacks
     register_preview_callbacks(app)  # Register preview callbacks
     register_quality_callbacks(app)  # Register signal quality assessment callbacks
-
-    # Initialize and start enhanced webapp services if available
-    if ENHANCED_SERVICES_AVAILABLE:
-        try:
-            print("Initializing enhanced webapp services...")
-            service_manager = get_service_manager()
-            # Note: Services will be started asynchronously when needed
-            print("Enhanced webapp services initialized successfully")
-        except Exception as e:
-            print(f"Warning: Could not initialize enhanced webapp services: {e}")
-    else:
-        print("Enhanced webapp services not available - using basic functionality")
 
     return app
 

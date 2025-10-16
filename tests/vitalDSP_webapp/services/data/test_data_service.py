@@ -41,15 +41,11 @@ class TestDataService:
         assert self.data_service._next_id == 1
 
     @patch('pandas.read_csv')
-    @patch('pathlib.Path.exists')
-    @patch('pathlib.Path.stat')
-    def test_load_data_csv(self, mock_stat, mock_exists, mock_read_csv):
+    def test_load_data_csv(self, mock_read_csv):
         """Test loading CSV data"""
-        # Setup mocks
+        # Setup mock
         mock_df = pd.DataFrame({'time': [1, 2, 3], 'signal': [0.1, 0.2, 0.3]})
         mock_read_csv.return_value = mock_df
-        mock_exists.return_value = True
-        mock_stat.return_value.st_size = 1024  # 1KB file
         
         result = self.data_service.load_data("test.csv")
         
@@ -59,15 +55,11 @@ class TestDataService:
         mock_read_csv.assert_called_once()
 
     @patch('pandas.read_csv')
-    @patch('pathlib.Path.exists')
-    @patch('pathlib.Path.stat')
-    def test_load_data_txt(self, mock_stat, mock_exists, mock_read_csv):
+    def test_load_data_txt(self, mock_read_csv):
         """Test loading TXT data"""
         # Setup mock
         mock_df = pd.DataFrame({'time': [1, 2, 3], 'signal': [0.1, 0.2, 0.3]})
         mock_read_csv.return_value = mock_df
-        mock_exists.return_value = True
-        mock_stat.return_value.st_size = 1024  # 1KB file
         
         result = self.data_service.load_data("test.txt")
         
