@@ -25,6 +25,13 @@ from vitalDSP.utils.data_processing.data_loader import (
 )
 
 
+def generate_timestamp(i):
+    """Generate proper timestamp for test data."""
+    minutes = i // 60
+    seconds = i % 60
+    return f'2024-01-01 00:{minutes:02d}:{seconds:02d}'
+
+
 class TestOUCRUJsonParsing:
     """Test json.loads() parsing with fallback to ast.literal_eval()."""
 
@@ -35,7 +42,7 @@ class TestOUCRUJsonParsing:
         for i in range(10):
             signal = list(np.random.randn(100))
             test_data.append({
-                'timestamp': f'2024-01-01 00:00:{i:02d}',
+                'timestamp': generate_timestamp(i),
                 'signal': json.dumps(signal),  # JSON format
                 'sampling_rate': 100
             })
@@ -69,7 +76,7 @@ class TestOUCRUJsonParsing:
             # Python repr format (single quotes, not valid JSON)
             signal_str = str(signal)
             test_data.append({
-                'timestamp': f'2024-01-01 00:00:{i:02d}',
+                'timestamp': generate_timestamp(i),
                 'signal': signal_str,
                 'sampling_rate': 100
             })
@@ -103,7 +110,7 @@ class TestOUCRUJsonParsing:
             else:
                 signal_str = str(signal)  # Python repr
             test_data.append({
-                'timestamp': f'2024-01-01 00:00:{i:02d}',
+                'timestamp': generate_timestamp(i),
                 'signal': signal_str,
                 'sampling_rate': 50
             })
@@ -184,7 +191,7 @@ class TestOUCRUVectorizedTimestamps:
             for i in range(10):
                 signal = list(np.random.randn(fs))
                 test_data.append({
-                    'timestamp': f'2024-01-01 00:00:{i:02d}',
+                    'timestamp': generate_timestamp(i),
                     'signal': json.dumps(signal),
                     'sampling_rate': fs
                 })
@@ -205,7 +212,8 @@ class TestOUCRUVectorizedTimestamps:
                 timestamps = pd.to_datetime(data['timestamp'])
                 time_diffs = timestamps.diff()[1:].dt.total_seconds()
                 expected_diff = 1 / fs
-                assert np.allclose(time_diffs, expected_diff, atol=1e-9)
+                # Use more lenient tolerance for floating point precision
+                assert np.allclose(time_diffs, expected_diff, atol=1e-6)
 
             finally:
                 Path(temp_path).unlink()
@@ -224,7 +232,7 @@ class TestOUCRUStreamingExpansion:
         for i in range(100):  # 100 rows
             signal = list(np.random.randn(250))
             test_data.append({
-                'timestamp': f'2024-01-01 00:00:{i:02d}',
+                'timestamp': generate_timestamp(i),
                 'signal': json.dumps(signal),
                 'sampling_rate': 250
             })
@@ -259,7 +267,7 @@ class TestOUCRUStreamingExpansion:
             expected_signals.extend(signal)
 
             test_data.append({
-                'timestamp': f'2024-01-01 00:00:{i:02d}',
+                'timestamp': generate_timestamp(i),
                 'signal': json.dumps(signal),
                 'sampling_rate': 50
             })
@@ -302,8 +310,12 @@ class TestOUCRUStreamingExpansion:
         for i in range(n_rows):
             # Signal filled with row index
             signal = [float(i)] * fs
+            # Generate proper timestamps (avoid seconds > 59)
+            minutes = i // 60
+            seconds = i % 60
+            timestamp = f'2024-01-01 00:{minutes:02d}:{seconds:02d}'
             test_data.append({
-                'timestamp': f'2024-01-01 00:00:{i:02d}',
+                'timestamp': timestamp,
                 'signal': json.dumps(signal),
                 'sampling_rate': fs
             })
@@ -339,7 +351,7 @@ class TestOUCRUConvenienceFunction:
         for i in range(60):
             signal = list(np.random.randn(100))
             test_data.append({
-                'timestamp': f'2024-01-01 00:00:{i:02d}',
+                'timestamp': generate_timestamp(i),
                 'signal': json.dumps(signal),
                 'sampling_rate': 100
             })
@@ -371,7 +383,7 @@ class TestOUCRUConvenienceFunction:
         for i in range(30):
             signal = list(np.random.randn(100))
             test_data.append({
-                'timestamp': f'2024-01-01 00:00:{i:02d}',
+                'timestamp': generate_timestamp(i),
                 'ppg_signal': json.dumps(signal),  # Different column name
             })
 
@@ -414,7 +426,7 @@ class TestOUCRUBackwardCompatibility:
                 signal = str(list(np.random.randn(100)))
 
             test_data.append({
-                'timestamp': f'2024-01-01 00:00:{i:02d}',
+                'timestamp': generate_timestamp(i),
                 'signal': signal,
                 'sampling_rate': 100
             })

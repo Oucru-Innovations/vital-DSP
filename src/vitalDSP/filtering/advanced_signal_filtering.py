@@ -1,3 +1,42 @@
+"""
+Advanced Signal Filtering Module for Physiological Signal Processing
+
+This module implements advanced filtering techniques for physiological signals including
+Kalman filtering, optimization-based filtering, gradient descent filtering, ensemble
+filtering, convolution-based filtering, and attention-based filtering. These methods
+are designed for complex scenarios such as real-time filtering, adaptive filtering,
+and filtering in noisy environments.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Kalman filtering for real-time signal estimation
+- Optimization-based filtering with custom loss functions
+- Gradient descent adaptive filtering
+- Ensemble filtering combining multiple methods
+- Convolution-based filtering with custom kernels
+- Attention-based dynamic filtering
+
+Examples:
+--------
+Basic Kalman filtering:
+    >>> import numpy as np
+    >>> from vitalDSP.filtering.advanced_signal_filtering import AdvancedSignalFiltering
+    >>> signal = np.random.randn(1000) + np.sin(np.linspace(0, 10, 1000))
+    >>> af = AdvancedSignalFiltering(signal)
+    >>> filtered = af.kalman_filter(R=0.1, Q=0.01)
+
+Optimization-based filtering:
+    >>> target = np.sin(np.linspace(0, 10, 1000))
+    >>> filtered = af.optimization_based_filtering(target, loss_type="mse", iterations=50)
+
+Ensemble filtering:
+    >>> filters = ['kalman', 'optimization', 'gradient_descent']
+    >>> ensemble_result = af.ensemble_filtering(filters, method="mean", num_iterations=5)
+"""
+
 import numpy as np
 from vitalDSP.utils.signal_processing.loss_functions import LossFunctions
 from vitalDSP.utils.signal_processing.convolutional_kernels import ConvolutionKernels

@@ -1,21 +1,46 @@
 """
-Autoencoder Models for Physiological Signal Analysis
+Autoencoder Models Module for Physiological Signal Processing
 
-This module implements various autoencoder architectures for:
-- Unsupervised anomaly detection
-- Signal denoising
-- Dimensionality reduction
-- Feature learning
+This module provides comprehensive autoencoder architectures for physiological
+signal analysis including ECG, PPG, EEG, and other vital signs. It implements
+various autoencoder types for unsupervised anomaly detection, signal denoising,
+dimensionality reduction, and feature learning.
 
-Supported Models:
-1. Standard Autoencoder
-2. Variational Autoencoder (VAE)
-3. Denoising Autoencoder
-4. Convolutional Autoencoder
-5. LSTM Autoencoder
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
 
-Author: vitalDSP
-License: MIT
+Key Features:
+- Standard Autoencoder for basic reconstruction
+- Variational Autoencoder (VAE) for probabilistic modeling
+- Denoising Autoencoder for noise reduction
+- Convolutional Autoencoder for spatial feature learning
+- LSTM Autoencoder for temporal sequence modeling
+- Comprehensive training and evaluation utilities
+- Model saving and loading capabilities
+
+Examples:
+--------
+Basic autoencoder for anomaly detection:
+    >>> import numpy as np
+    >>> from vitalDSP.ml_models.autoencoder import StandardAutoencoder
+    >>> signal_data = np.random.randn(1000, 100)  # 1000 samples, 100 features
+    >>> autoencoder = StandardAutoencoder(input_dim=100, encoding_dim=32)
+    >>> autoencoder.compile(optimizer='adam', loss='mse')
+    >>> autoencoder.fit(signal_data, signal_data, epochs=10)
+
+Variational autoencoder:
+    >>> from vitalDSP.ml_models.autoencoder import VariationalAutoencoder
+    >>> vae = VariationalAutoencoder(input_dim=100, latent_dim=16)
+    >>> vae.compile(optimizer='adam', loss='mse')
+    >>> vae.fit(signal_data, signal_data, epochs=10)
+
+Denoising autoencoder:
+    >>> from vitalDSP.ml_models.autoencoder import DenoisingAutoencoder
+    >>> noisy_data = signal_data + np.random.normal(0, 0.1, signal_data.shape)
+    >>> dae = DenoisingAutoencoder(input_dim=100, encoding_dim=32)
+    >>> dae.compile(optimizer='adam', loss='mse')
+    >>> dae.fit(noisy_data, signal_data, epochs=10)
 """
 
 import numpy as np

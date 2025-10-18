@@ -1,3 +1,32 @@
+"""
+Physiological Features Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- SciPy integration for advanced signal processing
+- Performance optimization
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.physiological_features.nonlinear import Nonlinear
+    >>> signal = np.random.randn(1000)
+    >>> processor = Nonlinear(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
+
 import numpy as np
 import pandas as pd
 import os
@@ -6,7 +35,7 @@ import warnings
 # from scipy.spatial.distance import cdist
 from scipy.spatial import KDTree
 from scipy.spatial import distance as sp_distance
-from ..utils.quality_performance.performance_monitoring import (
+from vitalDSP.utils.quality_performance.performance_monitoring import (
     monitor_feature_extraction_operation,
 )
 

@@ -75,11 +75,29 @@ class TestSettingsUtilsBasic:
         
     def test_get_setting_value_with_default(self):
         """Test getting setting value with default"""
+        # Clean up any existing test key
+        try:
+            settings = load_user_settings()
+            if 'test_key' in settings:
+                del settings['test_key']
+                save_user_settings(settings)
+        except:
+            pass
+        
         value = get_setting_value('test_key', 'default_value')
         assert value == 'default_value'
         
     def test_get_setting_value_with_none_default(self):
         """Test getting setting value with None default"""
+        # Clean up any existing test key
+        try:
+            settings = load_user_settings()
+            if 'test_key' in settings:
+                del settings['test_key']
+                save_user_settings(settings)
+        except:
+            pass
+        
         value = get_setting_value('test_key', None)
         assert value is None
         

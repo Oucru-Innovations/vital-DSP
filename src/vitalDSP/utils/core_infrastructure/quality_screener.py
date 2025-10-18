@@ -6,18 +6,27 @@ preprocessing of large physiological datasets:
 
 Stage 1: Quick SNR Check - Fast signal-to-noise ratio estimation
 Stage 2: Statistical Screen - Statistical anomaly detection
-Stage 3: Signal-Specific Screen - Domain-specific quality metrics
+Stage 3: Signal-Specific Screen - Domain-specific quality metrics using
+         comprehensive SignalQualityIndex methods from signal_quality_assessment
 
 Features:
 - Multi-stage screening with configurable thresholds
-- Integration with existing quality assessment modules
-- Batch processing for large datasets
+- Deep integration with SignalQualityIndex for 14+ SQI metrics
+- Signal-type-specific quality assessment (ECG, PPG, EEG, generic)
+- Batch processing for large datasets with parallel support
 - Quality-aware processing recommendations
-- Performance benchmarking and optimization
+- Configuration-driven threshold management
+
+SignalQualityIndex Integration:
+- ECG: amplitude_variability, baseline_wander, zero_crossing, HRV
+- PPG: ppg_signal_quality, baseline_wander, waveform_similarity
+- EEG: eeg_band_power, signal_entropy, skewness, kurtosis
+- Generic: energy, amplitude_variability, baseline_wander
 
 Author: vitalDSP Team
 Date: 2025-10-12
 Phase: 1 - Core Infrastructure (Week 2)
+Updated: 2025-10-17 (Phase 4 - Enhanced SQI Integration)
 """
 
 import numpy as np
@@ -189,13 +198,44 @@ class QualityScreener:
     def _configure_thresholds(self, **kwargs) -> Dict[str, Any]:
         """Configure quality thresholds based on signal type."""
         base_thresholds = {
+            # Stage 1: SNR thresholds
             "snr_min_db": 10.0,
+
+            # Stage 2: Statistical thresholds
             "artifact_max_ratio": 0.3,
+            "outlier_std_factor": 3.0,  # Standard deviations for outlier detection
+            "outlier_max_ratio": 0.1,  # Maximum ratio of outliers allowed
+            "constant_max_ratio": 0.5,  # Maximum ratio of constant values allowed
+            "jump_std_factor": 3.0,  # Standard deviations for jump detection
+            "jump_max_ratio": 0.15,  # Maximum ratio of jumps allowed
+
+            # Stage 3: Signal-specific SQI thresholds
             "baseline_max_drift": 0.5,
             "peak_detection_min_rate": 0.7,
-            "frequency_score_min": 0.5,  # More lenient threshold
+            "frequency_score_min": 0.5,
             "temporal_consistency_min": 0.5,
             "overall_quality_min": 0.4,
+
+            # SignalQualityIndex method thresholds (0-1 normalized scores)
+            "amplitude_variability_min": 0.5,
+            "baseline_wander_min": 0.5,
+            "zero_crossing_min": 0.5,
+            "waveform_similarity_min": 0.5,
+            "signal_entropy_min": 0.5,
+            "skewness_min": 0.5,
+            "kurtosis_min": 0.5,
+            "peak_to_peak_min": 0.5,
+            "energy_min": 0.5,
+            "hrv_min": 0.5,
+            "ppg_quality_min": 0.5,
+            "eeg_band_power_min": 0.5,
+            "respiratory_quality_min": 0.5,
+
+            # Peak detection parameters (for legacy methods)
+            "ecg_min_peak_distance_factor": 0.4,  # 0.4 seconds = 150 BPM max
+            "ppg_min_peak_distance_factor": 0.5,  # 0.5 seconds = 120 BPM max
+            "ecg_expected_heart_rate_bpm": 72,  # Expected average heart rate for ECG
+            "ppg_expected_pulse_rate_bpm": 60,  # Expected average pulse rate for PPG
         }
 
         # Signal-specific adjustments
@@ -205,6 +245,10 @@ class QualityScreener:
                     "snr_min_db": 15.0,
                     "artifact_max_ratio": 0.2,
                     "peak_detection_min_rate": 0.8,
+                    "amplitude_variability_min": 0.6,
+                    "baseline_wander_min": 0.6,
+                    "zero_crossing_min": 0.6,
+                    "hrv_min": 0.5,
                 }
             )
         elif self.signal_type == "ppg":
@@ -213,6 +257,9 @@ class QualityScreener:
                     "snr_min_db": 12.0,
                     "artifact_max_ratio": 0.25,
                     "baseline_max_drift": 0.3,
+                    "ppg_quality_min": 0.6,
+                    "baseline_wander_min": 0.6,
+                    "waveform_similarity_min": 0.5,
                 }
             )
         elif self.signal_type == "eeg":
@@ -221,6 +268,10 @@ class QualityScreener:
                     "snr_min_db": 8.0,
                     "artifact_max_ratio": 0.4,
                     "baseline_max_drift": 0.6,
+                    "eeg_band_power_min": 0.5,
+                    "signal_entropy_min": 0.5,
+                    "skewness_min": 0.4,
+                    "kurtosis_min": 0.4,
                 }
             )
 
@@ -452,33 +503,32 @@ class QualityScreener:
             }
 
     def _stage2_statistical_screen(self, signal: np.ndarray) -> Dict[str, Any]:
-        """Stage 2: Statistical Screen."""
+        """Stage 2: Statistical Screen using configurable thresholds."""
         try:
             # Check for statistical anomalies
             mean_val = np.mean(signal)
             std_val = np.std(signal)
 
-            # Check for outliers (beyond 3 standard deviations)
-            outliers = np.abs(signal - mean_val) > 3 * std_val
+            # Check for outliers using configurable std_factor
+            outlier_threshold = self.thresholds["outlier_std_factor"] * std_val
+            outliers = np.abs(signal - mean_val) > outlier_threshold
             outlier_ratio = np.sum(outliers) / len(signal)
 
             # Check for constant values (potential sensor failure)
             unique_values = len(np.unique(signal))
             constant_ratio = 1.0 - (unique_values / len(signal))
 
-            # Check for sudden jumps (potential artifacts)
+            # Check for sudden jumps (potential artifacts) using configurable std_factor
             signal_diff = np.abs(np.diff(signal))
-            jump_threshold = 3 * np.std(signal_diff)
+            jump_threshold = self.thresholds["jump_std_factor"] * np.std(signal_diff)
             jumps = signal_diff > jump_threshold
             jump_ratio = np.sum(jumps) / len(signal_diff)
 
-            # Pass if all ratios are below thresholds
+            # Pass if all ratios are below configurable thresholds
             passed = bool(
-                (
-                    outlier_ratio < 0.1
-                    and constant_ratio < 0.5
-                    and jump_ratio < 0.15  # More lenient threshold for jumps
-                )
+                outlier_ratio < self.thresholds["outlier_max_ratio"]
+                and constant_ratio < self.thresholds["constant_max_ratio"]
+                and jump_ratio < self.thresholds["jump_max_ratio"]
             )
 
             return {
@@ -500,8 +550,16 @@ class QualityScreener:
             }
 
     def _stage3_signal_specific_screen(self, signal: np.ndarray) -> Dict[str, Any]:
-        """Stage 3: Signal-Specific Screen."""
+        """
+        Stage 3: Signal-Specific Screen using SignalQualityIndex methods.
+
+        Applies signal-type-specific quality metrics from vitalDSP's
+        signal_quality_assessment module based on configuration.
+        """
         try:
+            # Initialize warnings list
+            warnings_list = []
+            
             # Create quality index for this signal
             if self.quality_index is None:
                 self.quality_index = SignalQualityIndex(signal)
@@ -509,50 +567,265 @@ class QualityScreener:
                 # Update with new signal
                 self.quality_index.signal = signal
 
-            quality_score = self.quality_index.snr_sqi(window_size=50, step_size=25)
+            # Calculate window and step sizes from configuration
+            window_size = min(int(self.segment_duration * self.sampling_rate / 4), len(signal) // 2)
+            step_size = int(window_size * (1 - self.overlap_ratio))
 
-            # Detect artifacts (commented out due to import issues)
-            # artifacts = self.artifact_detector.detect_artifacts(signal)
-            # artifact_ratio = len(artifacts) / len(signal)
+            # Ensure minimum sizes
+            window_size = max(window_size, 50)
+            step_size = max(step_size, 25)
+
+            # Collect SQI metrics based on signal type
+            sqi_scores = {}
+            passed_checks = []
+
+            # Common metrics for all signal types
+            # SNR SQI
+            snr_sqi_result = self.quality_index.snr_sqi(
+                window_size=window_size,
+                step_size=step_size,
+                threshold=self.thresholds["snr_min_db"],
+                threshold_type='above'
+            )
+            sqi_scores['snr_sqi'] = self._extract_sqi_score(snr_sqi_result)
+
+            # Baseline wander SQI
+            baseline_wander_result = self.quality_index.baseline_wander_sqi(
+                window_size=window_size,
+                step_size=step_size,
+                threshold=self.thresholds["baseline_wander_min"],
+                threshold_type='above'
+            )
+            sqi_scores['baseline_wander'] = self._extract_sqi_score(baseline_wander_result)
+            passed_checks.append(sqi_scores['baseline_wander'] >= self.thresholds["baseline_wander_min"])
+
+            # Amplitude variability SQI
+            amp_var_result = self.quality_index.amplitude_variability_sqi(
+                window_size=window_size,
+                step_size=step_size,
+                threshold=self.thresholds["amplitude_variability_min"],
+                threshold_type='above'
+            )
+            sqi_scores['amplitude_variability'] = self._extract_sqi_score(amp_var_result)
+            passed_checks.append(sqi_scores['amplitude_variability'] >= self.thresholds["amplitude_variability_min"])
+
+            # Signal-specific metrics
+            if self.signal_type == "ecg":
+                # ECG-specific SQI methods
+                zero_cross_result = self.quality_index.zero_crossing_sqi(
+                    window_size=window_size,
+                    step_size=step_size,
+                    threshold=self.thresholds["zero_crossing_min"],
+                    threshold_type='above'
+                )
+                sqi_scores['zero_crossing'] = self._extract_sqi_score(zero_cross_result)
+                passed_checks.append(sqi_scores['zero_crossing'] >= self.thresholds["zero_crossing_min"])
+
+                # Heart rate variability SQI (only for ECG signals with RR intervals)
+                try:
+                    # Extract RR intervals from ECG signal
+                    from vitalDSP.physiological_features.waveform import WaveformMorphology
+                    
+                    # Create waveform morphology object for peak detection
+                    wm = WaveformMorphology(
+                        waveform=segment_data,
+                        fs=self.sampling_rate,
+                        signal_type="ECG"
+                    )
+                    
+                    # Get R-peaks
+                    r_peaks = wm.r_peaks
+                    
+                    if len(r_peaks) > 1:
+                        # Calculate RR intervals in milliseconds
+                        rr_intervals = np.diff(r_peaks) * 1000 / self.sampling_rate
+                        
+                        # Filter out unrealistic RR intervals (300-2000 ms)
+                        valid_rr = rr_intervals[(rr_intervals >= 300) & (rr_intervals <= 2000)]
+                        
+                        if len(valid_rr) > 2:  # Need at least 3 intervals for HRV
+                            # Calculate HRV SQI
+                            hrv_result = self.quality_index.heart_rate_variability_sqi(
+                                rr_intervals=valid_rr,
+                                window_size=window_size,
+                                step_size=step_size,
+                                threshold=self.thresholds["hrv_min"],
+                                threshold_type='above'
+                            )
+                            sqi_scores['hrv'] = self._extract_sqi_score(hrv_result)
+                            passed_checks.append(sqi_scores['hrv'] >= self.thresholds["hrv_min"])
+                        else:
+                            warnings_list.append("Insufficient valid RR intervals for HRV analysis")
+                            sqi_scores['hrv'] = 0.3  # Low score for insufficient data
+                            passed_checks.append(False)
+                    else:
+                        warnings_list.append("No R-peaks detected for HRV analysis")
+                        sqi_scores['hrv'] = 0.3  # Low score for no peaks
+                        passed_checks.append(False)
+                        
+                except Exception as e:
+                    warnings_list.append(f"HRV calculation failed: {str(e)}")
+                    sqi_scores['hrv'] = 0.3  # Low score for failed calculation
+                    passed_checks.append(False)
+
+            elif self.signal_type == "ppg":
+                # PPG-specific SQI method
+                ppg_quality_result = self.quality_index.ppg_signal_quality_sqi(
+                    window_size=window_size,
+                    step_size=step_size,
+                    threshold=self.thresholds["ppg_quality_min"],
+                    threshold_type='above'
+                )
+                sqi_scores['ppg_quality'] = self._extract_sqi_score(ppg_quality_result)
+                passed_checks.append(sqi_scores['ppg_quality'] >= self.thresholds["ppg_quality_min"])
+
+                # Waveform similarity SQI
+                waveform_sim_result = self.quality_index.waveform_similarity_sqi(
+                    window_size=window_size,
+                    step_size=step_size,
+                    threshold=self.thresholds["waveform_similarity_min"],
+                    threshold_type='above'
+                )
+                sqi_scores['waveform_similarity'] = self._extract_sqi_score(waveform_sim_result)
+                passed_checks.append(sqi_scores['waveform_similarity'] >= self.thresholds["waveform_similarity_min"])
+
+                # Heart rate variability SQI for PPG signals (using systolic peaks)
+                try:
+                    # Extract RR intervals from PPG signal using systolic peaks
+                    from vitalDSP.physiological_features.waveform import WaveformMorphology
+                    
+                    # Create waveform morphology object for peak detection
+                    wm = WaveformMorphology(
+                        waveform=segment_data,
+                        fs=self.sampling_rate,
+                        signal_type="PPG"
+                    )
+                    
+                    # Get systolic peaks (equivalent to R-peaks for PPG)
+                    systolic_peaks = wm.systolic_peaks
+                    
+                    if len(systolic_peaks) > 1:
+                        # Calculate RR intervals in milliseconds
+                        rr_intervals = np.diff(systolic_peaks) * 1000 / self.sampling_rate
+                        
+                        # Filter out unrealistic RR intervals (300-2000 ms)
+                        valid_rr = rr_intervals[(rr_intervals >= 300) & (rr_intervals <= 2000)]
+                        
+                        if len(valid_rr) > 2:  # Need at least 3 intervals for HRV
+                            # Calculate HRV SQI
+                            hrv_result = self.quality_index.heart_rate_variability_sqi(
+                                rr_intervals=valid_rr,
+                                window_size=window_size,
+                                step_size=step_size,
+                                threshold=self.thresholds["hrv_min"],
+                                threshold_type='above'
+                            )
+                            sqi_scores['hrv'] = self._extract_sqi_score(hrv_result)
+                            passed_checks.append(sqi_scores['hrv'] >= self.thresholds["hrv_min"])
+                        else:
+                            warnings_list.append("Insufficient valid RR intervals for PPG HRV analysis")
+                            sqi_scores['hrv'] = 0.3  # Low score for insufficient data
+                            passed_checks.append(False)
+                    else:
+                        warnings_list.append("No systolic peaks detected for PPG HRV analysis")
+                        sqi_scores['hrv'] = 0.3  # Low score for no peaks
+                        passed_checks.append(False)
+                        
+                except Exception as e:
+                    warnings_list.append(f"PPG HRV calculation failed: {str(e)}")
+                    sqi_scores['hrv'] = 0.3  # Low score for failed calculation
+                    passed_checks.append(False)
+
+            elif self.signal_type == "eeg":
+                # EEG-specific SQI methods
+                eeg_band_result = self.quality_index.eeg_band_power_sqi(
+                    window_size=window_size,
+                    step_size=step_size,
+                    threshold=self.thresholds["eeg_band_power_min"],
+                    threshold_type='above'
+                )
+                sqi_scores['eeg_band_power'] = self._extract_sqi_score(eeg_band_result)
+                passed_checks.append(sqi_scores['eeg_band_power'] >= self.thresholds["eeg_band_power_min"])
+
+                # Signal entropy SQI
+                entropy_result = self.quality_index.signal_entropy_sqi(
+                    window_size=window_size,
+                    step_size=step_size,
+                    threshold=self.thresholds["signal_entropy_min"],
+                    threshold_type='above'
+                )
+                sqi_scores['signal_entropy'] = self._extract_sqi_score(entropy_result)
+                passed_checks.append(sqi_scores['signal_entropy'] >= self.thresholds["signal_entropy_min"])
+
+                # Skewness and kurtosis SQI
+                skewness_result = self.quality_index.skewness_sqi(
+                    window_size=window_size,
+                    step_size=step_size,
+                    threshold=self.thresholds["skewness_min"],
+                    threshold_type='above'
+                )
+                sqi_scores['skewness'] = self._extract_sqi_score(skewness_result)
+                passed_checks.append(sqi_scores['skewness'] >= self.thresholds["skewness_min"])
+
+                kurtosis_result = self.quality_index.kurtosis_sqi(
+                    window_size=window_size,
+                    step_size=step_size,
+                    threshold=self.thresholds["kurtosis_min"],
+                    threshold_type='above'
+                )
+                sqi_scores['kurtosis'] = self._extract_sqi_score(kurtosis_result)
+                passed_checks.append(sqi_scores['kurtosis'] >= self.thresholds["kurtosis_min"])
+
+            else:
+                # Generic signal - use common metrics only
+                energy_result = self.quality_index.energy_sqi(
+                    window_size=window_size,
+                    step_size=step_size,
+                    threshold=self.thresholds["energy_min"],
+                    threshold_type='above'
+                )
+                sqi_scores['energy'] = self._extract_sqi_score(energy_result)
+                passed_checks.append(sqi_scores['energy'] >= self.thresholds["energy_min"])
+
+            # Legacy metrics (for backward compatibility)
             artifact_ratio = 0.0  # Placeholder
-
-            # Calculate baseline drift
             baseline_drift = self._calculate_baseline_drift(signal)
-
-            # Calculate peak detection rate (signal-specific)
             peak_rate = self._calculate_peak_detection_rate(signal)
-
-            # Calculate frequency domain score
             freq_score = self._calculate_frequency_score(signal)
-
-            # Calculate temporal consistency
             temporal_score = self._calculate_temporal_consistency(signal)
 
-            # Pass if all metrics meet thresholds
-            passed = bool(
-                (
-                    artifact_ratio <= self.thresholds["artifact_max_ratio"]
-                    and baseline_drift <= self.thresholds["baseline_max_drift"]
-                    and peak_rate >= self.thresholds["peak_detection_min_rate"]
-                    and freq_score >= self.thresholds["frequency_score_min"]
-                    and temporal_score >= self.thresholds["temporal_consistency_min"]
-                )
-            )
+            # Add legacy checks
+            passed_checks.extend([
+                baseline_drift <= self.thresholds["baseline_max_drift"],
+                peak_rate >= self.thresholds["peak_detection_min_rate"],
+                freq_score >= self.thresholds["frequency_score_min"],
+                temporal_score >= self.thresholds["temporal_consistency_min"]
+            ])
+
+            # Overall pass decision: all checks must pass
+            passed = bool(all(passed_checks))
+
+            # Calculate overall quality score from SQI metrics
+            overall_sqi_score = np.mean(list(sqi_scores.values())) if sqi_scores else 0.0
 
             return {
                 "passed": passed,
-                "quality_score": quality_score,
+                "quality_score": overall_sqi_score,
+                "sqi_scores": sqi_scores,
                 "artifact_ratio": artifact_ratio,
                 "baseline_drift": baseline_drift,
                 "peak_detection_rate": peak_rate,
                 "frequency_score": freq_score,
                 "temporal_consistency": temporal_score,
+                "warnings": warnings_list
             }
 
         except Exception as e:
+            logger.warning(f"Stage 3 screening failed: {e}")
             return {
                 "passed": False,
                 "quality_score": 0.0,
+                "sqi_scores": {},
                 "artifact_ratio": 1.0,
                 "baseline_drift": float("inf"),
                 "peak_detection_rate": 0.0,
@@ -560,6 +833,20 @@ class QualityScreener:
                 "temporal_consistency": 0.0,
                 "error": str(e),
             }
+
+    def _extract_sqi_score(self, sqi_result) -> float:
+        """
+        Extract normalized score from SignalQualityIndex result.
+
+        SignalQualityIndex methods return tuple of (scores_array, indices_array).
+        We extract the mean of the scores array as a single quality score.
+        """
+        if isinstance(sqi_result, tuple) and len(sqi_result) > 0:
+            scores_array = sqi_result[0]
+            if isinstance(scores_array, np.ndarray) and len(scores_array) > 0:
+                # Return mean score, normalized to 0-1 range
+                return float(np.mean(scores_array))
+        return 0.0
 
     def _calculate_baseline_drift(self, signal: np.ndarray) -> float:
         """Calculate baseline drift magnitude."""
@@ -583,33 +870,39 @@ class QualityScreener:
             return self._detect_generic_peaks(signal)
 
     def _detect_ecg_peaks(self, signal: np.ndarray) -> float:
-        """Detect ECG R-peaks."""
+        """Detect ECG R-peaks using configurable parameters."""
         # Simple peak detection based on local maxima
         from scipy.signal import find_peaks
 
-        # Find peaks with minimum distance based on expected heart rate
-        min_distance = int(0.4 * self.sampling_rate)  # 150 BPM max
+        # Find peaks with configurable minimum distance
+        min_distance = int(
+            self.thresholds["ecg_min_peak_distance_factor"] * self.sampling_rate
+        )
         peaks, _ = find_peaks(signal, distance=min_distance, height=np.mean(signal))
 
-        # Expected number of peaks based on duration and typical heart rate
+        # Expected number of peaks based on duration and configurable heart rate
         duration = len(signal) / self.sampling_rate
-        expected_peaks = duration * 1.2  # 72 BPM average
+        expected_heart_rate_hz = self.thresholds["ecg_expected_heart_rate_bpm"] / 60.0
+        expected_peaks = duration * expected_heart_rate_hz
 
         if expected_peaks > 0:
             return min(len(peaks) / expected_peaks, 1.0)
         return 0.0
 
     def _detect_ppg_peaks(self, signal: np.ndarray) -> float:
-        """Detect PPG pulse peaks."""
+        """Detect PPG pulse peaks using configurable parameters."""
         from scipy.signal import find_peaks
 
-        # Find peaks with minimum distance based on expected pulse rate
-        min_distance = int(0.5 * self.sampling_rate)  # 120 BPM max
+        # Find peaks with configurable minimum distance
+        min_distance = int(
+            self.thresholds["ppg_min_peak_distance_factor"] * self.sampling_rate
+        )
         peaks, _ = find_peaks(signal, distance=min_distance, height=np.mean(signal))
 
-        # Expected number of peaks based on duration and typical pulse rate
+        # Expected number of peaks based on duration and configurable pulse rate
         duration = len(signal) / self.sampling_rate
-        expected_peaks = duration * 1.0  # 60 BPM average
+        expected_pulse_rate_hz = self.thresholds["ppg_expected_pulse_rate_bpm"] / 60.0
+        expected_peaks = duration * expected_pulse_rate_hz
 
         if expected_peaks > 0:
             return min(len(peaks) / expected_peaks, 1.0)
@@ -798,6 +1091,52 @@ class QualityScreener:
             "total_time": 0.0,
             "avg_time_per_segment": 0.0,
         }
+
+
+# Configuration dataclass for compatibility
+@dataclass
+class QualityScreeningConfig:
+    """
+    Configuration for quality screening (compatibility wrapper).
+
+    This provides a dataclass interface that maps to QualityScreener constructor parameters.
+    """
+    segment_duration: float = 10.0
+    overlap: float = 0.5  # Mapped to overlap_ratio
+    snr_threshold: float = 10.0  # Mapped to snr_min_db
+    max_workers: int = 2
+    min_quality_score: float = 0.7  # Mapped to overall_quality_min
+    conservative: bool = True
+
+
+class SignalQualityScreener(QualityScreener):
+    """
+    Compatibility wrapper for QualityScreener that accepts QualityScreeningConfig.
+
+    This allows using the documented API from Phase 4 documentation while
+    maintaining compatibility with the existing QualityScreener implementation.
+    """
+
+    def __init__(self, config: Optional[QualityScreeningConfig] = None, **kwargs):
+        """
+        Initialize SignalQualityScreener with config.
+
+        Args:
+            config: QualityScreeningConfig object (optional)
+            **kwargs: Additional parameters passed to QualityScreener
+        """
+        if config is None:
+            config = QualityScreeningConfig()
+
+        # Map config parameters to QualityScreener parameters
+        super().__init__(
+            segment_duration=config.segment_duration,
+            overlap_ratio=config.overlap,
+            max_workers=config.max_workers,
+            snr_min_db=config.snr_threshold,
+            overall_quality_min=config.min_quality_score,
+            **kwargs
+        )
 
 
 # Example usage and tests

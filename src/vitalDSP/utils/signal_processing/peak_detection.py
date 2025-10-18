@@ -1,3 +1,44 @@
+"""
+Peak Detection Module for Physiological Signal Processing
+
+This module provides comprehensive peak detection capabilities for various
+physiological signals including ECG, PPG, EEG, respiratory, and arterial blood
+pressure (ABP) signals. It implements multiple detection algorithms optimized
+for different signal types and characteristics.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Multiple peak detection algorithms
+- Signal-specific optimizations (ECG R-peaks, PPG systolic peaks)
+- Advanced filtering and preprocessing integration
+- Scalable threshold-based detection
+- Derivative-based detection methods
+- Wavelet and bandpass filtering for EEG
+
+Examples:
+--------
+Basic peak detection:
+    >>> import numpy as np
+    >>> from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
+    >>> signal = np.sin(np.linspace(0, 10, 1000)) + np.random.normal(0, 0.1, 1000)
+    >>> detector = PeakDetection(signal, method="threshold", height=0.5)
+    >>> peaks = detector.detect_peaks()
+    >>> print(f"Detected {len(peaks)} peaks")
+
+ECG R-peak detection:
+    >>> ecg_detector = PeakDetection(ecg_signal, method="ecg_r_peak")
+    >>> r_peaks = ecg_detector.detect_peaks()
+    >>> print(f"R-peaks: {len(r_peaks)}")
+
+PPG systolic peak detection:
+    >>> ppg_detector = PeakDetection(ppg_signal, method="ppg_systolic_peaks")
+    >>> systolic_peaks = ppg_detector.detect_peaks()
+    >>> print(f"Systolic peaks: {len(systolic_peaks)}")
+"""
+
 import numpy as np
 from vitalDSP.utils.config_utilities.common import find_peaks, filtfilt, argrelextrema
 from vitalDSP.utils.signal_processing.scaler import StandardScaler

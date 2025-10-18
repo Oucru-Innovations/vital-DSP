@@ -1,6 +1,49 @@
+"""
+Anomaly Detection Module for Physiological Signal Processing
+
+This module provides comprehensive anomaly detection capabilities for physiological
+signals including ECG, PPG, EEG, and other vital signs. It implements multiple
+detection methods including statistical approaches, machine learning techniques,
+and frequency-domain analysis for identifying unusual patterns and artifacts.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Statistical anomaly detection (Z-score, IQR)
+- Moving average and rolling window methods
+- Local Outlier Factor (LOF) for density-based detection
+- Fourier-based frequency domain analysis
+- Real-time streaming anomaly detection
+- Performance monitoring and optimization
+
+Examples:
+--------
+Basic Z-score anomaly detection:
+    >>> import numpy as np
+    >>> from vitalDSP.advanced_computation.anomaly_detection import AnomalyDetection
+    >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
+    >>> anomaly_detector = AnomalyDetection(signal)
+    >>> anomalies = anomaly_detector.detect_anomalies(method="z_score", threshold=2.0)
+    >>> print(f"Detected {len(anomalies)} anomalies")
+
+Moving average detection:
+    >>> anomalies_ma = anomaly_detector.detect_anomalies(method="moving_average", window_size=5, threshold=0.5)
+    >>> print(f"Moving average anomalies: {len(anomalies_ma)}")
+
+LOF-based detection:
+    >>> anomalies_lof = anomaly_detector.detect_anomalies(method="lof", n_neighbors=20)
+    >>> print(f"LOF anomalies: {len(anomalies_lof)}")
+
+FFT-based detection:
+    >>> anomalies_fft = anomaly_detector.detect_anomalies(method="fft", threshold=0.1)
+    >>> print(f"FFT anomalies: {len(anomalies_fft)}")
+"""
+
 import numpy as np
 import warnings
-from ..utils.quality_performance.performance_monitoring import (
+from vitalDSP.utils.quality_performance.performance_monitoring import (
     monitor_analysis_operation,
 )
 

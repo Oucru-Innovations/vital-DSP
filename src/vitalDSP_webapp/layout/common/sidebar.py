@@ -89,6 +89,23 @@ def Sidebar():
                         ],
                         className="mb-2",
                     ),
+                    # Pipeline section
+                    html.H6("Pipeline", className="mt-4 mb-2 text-muted"),
+                    html.Div(
+                        [
+                            html.A(
+                                [html.I(className="fas fa-project-diagram"), " Processing Pipeline"],
+                                href="/pipeline",
+                                className="nav-link text-white",
+                            ),
+                            html.A(
+                                [html.I(className="fas fa-tasks"), " Background Tasks"],
+                                href="/tasks",
+                                className="nav-link text-white",
+                            ),
+                        ],
+                        className="mb-2",
+                    ),
                     # Other sections
                     html.H6("Other", className="mt-4 mb-2 text-muted"),
                     html.Div(
@@ -185,6 +202,24 @@ def Sidebar():
                                 className="nav-icon text-white",
                                 title="Advanced Features",
                             ),
+                        ],
+                        className="mb-3",
+                    ),
+                    # Pipeline section
+                    html.Div(
+                        [
+                            html.A(
+                                html.I(className="fas fa-project-diagram"),
+                                href="/pipeline",
+                                className="nav-icon text-white",
+                                title="Processing Pipeline",
+                            ),
+                            html.A(
+                                html.I(className="fas fa-tasks"),
+                                href="/tasks",
+                                className="nav-icon text-white",
+                                title="Background Tasks",
+                            )
                         ],
                         className="mb-3",
                     ),

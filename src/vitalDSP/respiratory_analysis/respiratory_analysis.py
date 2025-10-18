@@ -1,3 +1,44 @@
+"""
+Respiratory Analysis Module for Physiological Signal Processing
+
+This module provides comprehensive respiratory analysis capabilities for physiological
+signals including PPG, ECG, and other vital signs. It implements multiple methods
+for respiratory rate estimation including time-domain counting, frequency-domain
+analysis, and advanced signal processing techniques.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Multiple respiratory rate estimation methods
+- Time-domain peak counting and interval analysis
+- Frequency-domain FFT-based analysis
+- Advanced preprocessing and filtering options
+- Noise reduction and artifact handling
+- Comprehensive respiratory pattern analysis
+
+Examples:
+--------
+Basic respiratory rate estimation:
+    >>> import numpy as np
+    >>> from vitalDSP.respiratory_analysis.respiratory_analysis import RespiratoryAnalysis
+    >>> ppg_signal = np.random.randn(2000)  # Simulated PPG signal
+    >>> resp_analysis = RespiratoryAnalysis(ppg_signal, fs=128)
+    >>> rr_result = resp_analysis.compute_respiratory_rate(method="counting")
+    >>> print(f"Respiratory rate: {rr_result['respiratory_rate']:.2f} breaths/min")
+
+FFT-based analysis:
+    >>> rr_fft = resp_analysis.compute_respiratory_rate(method="fft_based")
+    >>> print(f"FFT-based RR: {rr_fft['respiratory_rate']:.2f} breaths/min")
+
+With preprocessing:
+    >>> from vitalDSP.preprocess.preprocess_operations import PreprocessConfig
+    >>> config = PreprocessConfig(filter_type="bandpass", lowcut=0.1, highcut=2.0)
+    >>> rr_preprocessed = resp_analysis.compute_respiratory_rate(method="counting", preprocess_config=config)
+    >>> print(f"Preprocessed RR: {rr_preprocessed['respiratory_rate']:.2f} breaths/min")
+"""
+
 import numpy as np
 import warnings
 from scipy.signal import find_peaks

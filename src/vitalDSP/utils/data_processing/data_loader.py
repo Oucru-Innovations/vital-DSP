@@ -371,6 +371,10 @@ class DataLoader:
             ValueError: If format is invalid or sampling rate cannot be determined
         """
         try:
+            # Use default time_column if not provided
+            if time_column is None:
+                time_column = "timestamp"
+                
             # OPTIMIZATION: Determine if we should use streaming for large files
             file_size_mb = self.file_path.stat().st_size / (1024 * 1024)
             use_streaming = file_size_mb > 100 or chunk_size is not None
@@ -616,7 +620,7 @@ class DataLoader:
     def _load_oucru_csv_streaming(
         self,
         columns: Optional[List[str]] = None,
-        time_column: str = "timestamp",
+        time_column: Optional[str] = None,
         signal_column: str = "signal",
         sampling_rate_column: Optional[str] = "sampling_rate",
         delimiter: str = ",",
@@ -644,6 +648,10 @@ class DataLoader:
             DataFrame with expanded signal data
         """
         try:
+            # Use default time_column if not provided
+            if time_column is None:
+                time_column = "timestamp"
+                
             # Auto-determine chunk size based on file size
             if chunk_size is None:
                 file_size_mb = self.file_path.stat().st_size / (1024 * 1024)

@@ -1,3 +1,48 @@
+"""
+Empirical Mode Decomposition (EMD) Module for Physiological Signal Processing
+
+This module provides comprehensive Empirical Mode Decomposition capabilities for
+physiological signals including ECG, PPG, EEG, and other vital signs. EMD is
+particularly effective for analyzing non-linear and non-stationary signals by
+decomposing them into Intrinsic Mode Functions (IMFs).
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Empirical Mode Decomposition (EMD) implementation
+- Intrinsic Mode Functions (IMFs) extraction
+- Non-linear and non-stationary signal analysis
+- Customizable stop criteria and IMF limits
+- Signal decomposition and reconstruction
+- Advanced signal analysis capabilities
+
+Examples:
+--------
+Basic EMD decomposition:
+    >>> import numpy as np
+    >>> from vitalDSP.advanced_computation.emd import EMD
+    >>> signal = np.sin(np.linspace(0, 10, 100)) + 0.5 * np.random.normal(size=100)
+    >>> emd = EMD(signal)
+    >>> imfs = emd.emd()
+    >>> print(f"Number of IMFs: {len(imfs)}")
+
+Limited IMF decomposition:
+    >>> emd_limited = EMD(signal)
+    >>> imfs_limited = emd_limited.emd(max_imfs=3)
+    >>> print(f"Limited IMFs: {len(imfs_limited)}")
+
+Custom stop criterion:
+    >>> emd_custom = EMD(signal)
+    >>> imfs_custom = emd_custom.emd(stop_criterion=0.01)
+    >>> print(f"Custom stop criterion IMFs: {len(imfs_custom)}")
+
+Signal reconstruction:
+    >>> reconstructed = np.sum(imfs, axis=0)
+    >>> print(f"Reconstruction error: {np.mean((signal - reconstructed)**2):.6f}")
+"""
+
 import numpy as np
 import warnings
 

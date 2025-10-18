@@ -1,10 +1,51 @@
+"""
+Signal Filtering Module for Physiological Signal Processing
+
+This module provides comprehensive signal filtering capabilities for physiological
+signals including ECG, PPG, EEG, and other vital signs. It implements various
+filtering techniques including bandpass, lowpass, highpass, and notch filters
+with multiple filter types and adaptive parameter optimization.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Multiple filter types (Butterworth, Chebyshev, Elliptic, Bessel)
+- Bandpass, lowpass, highpass, and notch filtering
+- Adaptive parameter optimization
+- Signal validation and error handling
+- Real-time filtering capabilities
+- Comprehensive filter design options
+
+Examples:
+--------
+Basic bandpass filtering:
+    >>> import numpy as np
+    >>> from vitalDSP.filtering.signal_filtering import SignalFiltering, BandpassFilter
+    >>> signal = np.random.randn(1000) + np.sin(np.linspace(0, 10, 1000))
+    >>> filter_obj = SignalFiltering(signal, fs=250)
+    >>> filtered = filter_obj.bandpass_filter(low=0.5, high=40)
+    >>> print(f"Filtered signal shape: {filtered.shape}")
+
+Advanced filtering with different types:
+    >>> bp_filter = BandpassFilter(band_type="butter", fs=250)
+    >>> butter_filtered = bp_filter.filter(signal, lowcut=0.5, highcut=40)
+    >>> cheby_filter = BandpassFilter(band_type="cheby1", fs=250)
+    >>> cheby_filtered = cheby_filter.filter(signal, lowcut=0.5, highcut=40)
+
+Notch filtering for power line interference:
+    >>> notch_filtered = filter_obj.notch_filter(freq=50, quality_factor=30)
+    >>> print(f"Notch filtered signal shape: {notch_filtered.shape}")
+"""
+
 import numpy as np
 
 # from scipy.signal import lfilter
 from scipy import signal
 import warnings
-from ..utils.data_processing.validation import SignalValidator
-from ..utils.config_utilities.adaptive_parameters import optimize_filtering_parameters
+from vitalDSP.utils.data_processing.validation import SignalValidator
+from vitalDSP.utils.config_utilities.adaptive_parameters import optimize_filtering_parameters
 
 warnings.filterwarnings("ignore")
 

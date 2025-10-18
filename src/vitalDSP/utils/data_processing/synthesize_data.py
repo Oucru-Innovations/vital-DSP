@@ -1,3 +1,32 @@
+"""
+Utility Functions Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- SciPy integration for advanced signal processing
+- Interactive visualization capabilities
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.data_processing.synthesize_data import SynthesizeData
+    >>> signal = np.random.randn(1000)
+    >>> processor = SynthesizeData(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
+
 import numpy as np
 from scipy.interpolate import interp1d
 
@@ -8,8 +37,8 @@ import matplotlib.pyplot as plt
 # from scipy.integrate import odeint
 from scipy.integrate import solve_ivp
 
-# from vitalDSP.utils.peak_detection import PeakDetection
-# from vitalDSP.utils.common import ecg_detect_peaks
+# from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
+# from vitalDSP.utils.config_utilities.common import ecg_detect_peaks
 
 
 def generate_sinusoidal(frequency, sampling_rate, duration, amplitude=1.0, phase=0.0):

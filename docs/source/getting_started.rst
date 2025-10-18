@@ -74,7 +74,7 @@ Here's a quick example demonstrating VitalDSP's capabilities for physiological s
 
    import numpy as np
    import vitalDSP
-   from vitalDSP.utils.synthesize_data import generate_ecg_signal, generate_synthetic_ppg
+   from vitalDSP.utils.data_processing.synthesize_data import generate_ecg_signal, generate_synthetic_ppg
    from vitalDSP.filtering.signal_filtering import SignalFiltering
    from vitalDSP.physiological_features.waveform import WaveformMorphology
    from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
@@ -368,7 +368,7 @@ Generate synthetic physiological signals for testing and development:
 
    import numpy as np
    import vitalDSP
-   from vitalDSP.utils.synthesize_data import generate_ecg_signal, generate_synthetic_ppg
+   from vitalDSP.utils.data_processing.synthesize_data import generate_ecg_signal, generate_synthetic_ppg
 
    # Generate synthetic signals
    fs = 128  # Sampling frequency

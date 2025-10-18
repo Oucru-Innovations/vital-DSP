@@ -1,20 +1,44 @@
 """
-vitalDSP Deep Learning Models Module
+Deep Learning Models Module for Physiological Signal Processing
 
-State-of-the-art deep learning architectures for physiological signal analysis.
-
-This module provides:
-- 1D CNN for signal classification
-- LSTM for sequence modeling
-- Transformer for long-range dependencies
-- Autoencoder for anomaly detection
-- Pre-trained models and transfer learning
-- Model training utilities
-
-Requires: tensorflow/keras or pytorch
+This module provides state-of-the-art deep learning architectures for physiological
+signal analysis including ECG, PPG, EEG, and other vital signs. It implements
+comprehensive neural network models with support for both TensorFlow and PyTorch
+frameworks, enabling advanced signal classification, anomaly detection, and
+sequence modeling.
 
 Author: vitalDSP Team
-Date: 2025
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- 1D CNN for signal classification and feature extraction
+- LSTM networks for sequence modeling and temporal dependencies
+- Transformer architectures for long-range dependencies
+- Autoencoder models for anomaly detection and denoising
+- Pre-trained models and transfer learning capabilities
+- Model training utilities and callbacks
+- Cross-framework compatibility (TensorFlow/PyTorch)
+
+Examples:
+--------
+Basic CNN model for ECG classification:
+    >>> import numpy as np
+    >>> from vitalDSP.ml_models.deep_models import CNN1D
+    >>> model = CNN1D(input_shape=(1000, 1), num_classes=5)
+    >>> model.compile(optimizer='adam', loss='categorical_crossentropy')
+    >>> # Train with your data
+    >>> # model.fit(X_train, y_train, epochs=10)
+
+LSTM for sequence modeling:
+    >>> from vitalDSP.ml_models.deep_models import LSTMNetwork
+    >>> lstm_model = LSTMNetwork(sequence_length=100, features=1, num_classes=3)
+    >>> lstm_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy')
+
+Autoencoder for anomaly detection:
+    >>> from vitalDSP.ml_models.deep_models import AutoencoderModel
+    >>> autoencoder = AutoencoderModel(input_dim=1000, encoding_dim=32)
+    >>> autoencoder.compile(optimizer='adam', loss='mse')
 """
 
 import numpy as np

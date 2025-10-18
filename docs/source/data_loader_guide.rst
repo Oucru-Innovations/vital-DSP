@@ -29,7 +29,7 @@ Basic Usage
 
 .. code-block:: python
 
-    from vitalDSP.utils.data_loader import DataLoader
+    from vitalDSP.utils.data_processing.data_loader import DataLoader
 
     # Load a CSV file
     loader = DataLoader('ecg_data.csv')
@@ -45,7 +45,7 @@ For quick loading, use the convenience functions:
 
 .. code-block:: python
 
-    from vitalDSP.utils.data_loader import load_signal, load_multi_channel
+    from vitalDSP.utils.data_processing.data_loader import load_signal, load_multi_channel
 
     # Quick signal loading
     data = load_signal('ecg_data.csv', sampling_rate=250)
@@ -98,7 +98,7 @@ OUCRU's special CSV format where each row represents 1 second of data with signa
 
 .. code-block:: python
 
-    from vitalDSP.utils.data_loader import load_oucru_csv, DataLoader, DataFormat
+    from vitalDSP.utils.data_processing.data_loader import load_oucru_csv, DataLoader, DataFormat
 
     # Method 1: Using convenience function (recommended)
     signal, metadata = load_oucru_csv(
@@ -558,7 +558,7 @@ Specify physiological signal types:
 
 .. code-block:: python
 
-    from vitalDSP.utils.data_loader import SignalType
+    from vitalDSP.utils.data_processing.data_loader import SignalType
 
     # Using string
     loader = DataLoader('ecg.csv', signal_type='ecg')
@@ -583,7 +583,7 @@ For real-time data acquisition:
 
 .. code-block:: python
 
-    from vitalDSP.utils.data_loader import StreamDataLoader
+    from vitalDSP.utils.data_processing.data_loader import StreamDataLoader
 
     # Serial port streaming
     loader = StreamDataLoader(
@@ -649,9 +649,9 @@ Example 1: ECG Analysis Workflow
 
 .. code-block:: python
 
-    from vitalDSP.utils.data_loader import DataLoader
+    from vitalDSP.utils.data_processing.data_loader import DataLoader
     from vitalDSP.preprocess.preprocess_operations import preprocess_signal
-    from vitalDSP.utils.peak_detection import PeakDetection
+    from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
 
     # Load ECG data
     loader = DataLoader('ecg_recording.csv', signal_type='ecg')
@@ -679,7 +679,7 @@ Example 2: Multi-Channel PPG Processing
 
 .. code-block:: python
 
-    from vitalDSP.utils.data_loader import load_multi_channel
+    from vitalDSP.utils.data_processing.data_loader import load_multi_channel
 
     # Load multi-channel PPG data
     channels = load_multi_channel(
@@ -699,7 +699,7 @@ Example 3: EDF File Analysis
 
 .. code-block:: python
 
-    from vitalDSP.utils.data_loader import DataLoader
+    from vitalDSP.utils.data_processing.data_loader import DataLoader
 
     # Load EDF file
     loader = DataLoader('sleep_study.edf')
@@ -726,7 +726,7 @@ Example 4: PhysioNet Database
 
 .. code-block:: python
 
-    from vitalDSP.utils.data_loader import DataLoader
+    from vitalDSP.utils.data_processing.data_loader import DataLoader
 
     # Load PhysioNet WFDB record
     loader = DataLoader('physionet/mitdb/100.dat')
@@ -749,7 +749,7 @@ Example 5: Batch Processing
 .. code-block:: python
 
     from pathlib import Path
-    from vitalDSP.utils.data_loader import DataLoader
+    from vitalDSP.utils.data_processing.data_loader import DataLoader
 
     # Process multiple files
     data_dir = Path('signal_data')
@@ -781,7 +781,7 @@ Example 6: Format Conversion
 
 .. code-block:: python
 
-    from vitalDSP.utils.data_loader import DataLoader
+    from vitalDSP.utils.data_processing.data_loader import DataLoader
 
     # Load from one format
     loader = DataLoader('data.mat')
@@ -807,7 +807,7 @@ Example 7: Real-time Data Acquisition
 
 .. code-block:: python
 
-    from vitalDSP.utils.data_loader import StreamDataLoader
+    from vitalDSP.utils.data_processing.data_loader import StreamDataLoader
     import numpy as np
 
     # Setup streaming
@@ -850,7 +850,7 @@ Proper error handling for robust applications:
 
 .. code-block:: python
 
-    from vitalDSP.utils.data_loader import DataLoader
+    from vitalDSP.utils.data_processing.data_loader import DataLoader
     import warnings
 
     try:
@@ -1009,10 +1009,10 @@ API Reference
 
 For detailed API documentation, see:
 
-* :class:`vitalDSP.utils.data_loader.DataLoader`
-* :class:`vitalDSP.utils.data_loader.StreamDataLoader`
-* :class:`vitalDSP.utils.data_loader.DataFormat`
-* :class:`vitalDSP.utils.data_loader.SignalType`
+* :class:`vitalDSP.utils.data_processing.data_loader.DataLoader`
+* :class:`vitalDSP.utils.data_processing.data_loader.StreamDataLoader`
+* :class:`vitalDSP.utils.data_processing.data_loader.DataFormat`
+* :class:`vitalDSP.utils.data_processing.data_loader.SignalType`
 
 See Also
 --------

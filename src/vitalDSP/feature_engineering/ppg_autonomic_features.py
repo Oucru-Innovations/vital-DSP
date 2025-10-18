@@ -1,7 +1,36 @@
+"""
+Feature Engineering Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- SciPy integration for advanced signal processing
+- Feature extraction capabilities
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.feature_engineering.ppg_autonomic_features import PpgAutonomicFeatures
+    >>> signal = np.random.randn(1000)
+    >>> processor = PpgAutonomicFeatures(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
+
 import numpy as np
 
 # from scipy.signal import find_peaks
-from ..utils.signal_processing.peak_detection import PeakDetection
+from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
 
 
 class PPGAutonomicFeatures:

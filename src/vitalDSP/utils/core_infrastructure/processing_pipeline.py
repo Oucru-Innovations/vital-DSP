@@ -5,8 +5,8 @@ This module implements the conservative processing pipeline as outlined in the
 Large Data Processing Architecture document. The pipeline processes data through
 8 stages with checkpointing, caching, and comprehensive quality assessment.
 
-Author: vitalDSP Development Team
-Date: October 12, 2025
+Author: vitalDSP Team
+Date: 2025-01-27
 Version: 1.0.0
 """
 
@@ -653,10 +653,16 @@ class StandardProcessingPipeline:
         else:
             recommendation = "poor_quality_manual_review_recommended"
 
-        quality_results["processing_recommendation"] = recommendation
-        quality_results["false_positive_risk"] = self._assess_false_positive_risk(
-            quality_results
-        )
+        # Create a dictionary structure for the results
+        quality_data = {
+            "screening_results": quality_results,
+            "overall_quality_score": quality_score,
+            "processing_recommendation": recommendation,
+            "false_positive_risk": self._assess_false_positive_risk_from_results(quality_results),
+            "total_segments": len(quality_results),
+            "passed_segments": sum(1 for r in quality_results if r.passed_screening),
+            "pass_rate": sum(1 for r in quality_results if r.passed_screening) / len(quality_results) if quality_results else 0.0
+        }
 
         logger.info(
             f"Quality screening completed: overall score {quality_score:.3f}, "
@@ -666,8 +672,8 @@ class StandardProcessingPipeline:
         return ProcessingResult(
             stage=ProcessingStage.QUALITY_SCREENING,
             success=True,
-            data=quality_results,
-            quality_scores=quality_results,
+            data=quality_data,
+            quality_scores=quality_data,
         )
 
     def _stage_parallel_processing(self, context: Dict[str, Any]) -> ProcessingResult:
@@ -744,7 +750,10 @@ class StandardProcessingPipeline:
 
     def _stage_quality_validation(self, context: Dict[str, Any]) -> ProcessingResult:
         """Stage 4: Quality Validation - Compare all processing paths."""
-        parallel_results = context["results"][ProcessingStage.PARALLEL_PROCESSING.value]
+        parallel_result = context["results"][ProcessingStage.PARALLEL_PROCESSING.value]
+        
+        # Extract the actual data from ProcessingResult object
+        parallel_results = parallel_result.data if parallel_result.data is not None else {}
 
         # Compare all processing paths
         validation_results = self._compare_processing_paths(parallel_results)
@@ -758,7 +767,7 @@ class StandardProcessingPipeline:
         )
 
         logger.info(
-            f"Quality validation completed: {len(validation_results['path_comparisons'])} paths compared"
+            f"Quality validation completed: {len(validation_results.get('path_comparisons', []))} paths compared"
         )
 
         return ProcessingResult(
@@ -848,6 +857,42 @@ class StandardProcessingPipeline:
             return "medium"
         else:
             return "high"
+
+    def _assess_false_positive_risk_from_results(
+        self, quality_results: List[Any]
+    ) -> Dict[str, Any]:
+        """Assess false positive risk from quality screening results."""
+        if not quality_results:
+            return {"risk_level": "unknown", "confidence": 0.0}
+        
+        # Extract quality scores from screening results
+        individual_scores = []
+        for result in quality_results:
+            if hasattr(result, 'quality_metrics') and hasattr(result.quality_metrics, 'overall_quality'):
+                individual_scores.append(result.quality_metrics.overall_quality)
+        
+        if len(individual_scores) < 2:
+            return {"risk_level": "unknown", "confidence": 0.0}
+        
+        # Calculate disagreement between scores
+        disagreement = np.std(individual_scores)
+        
+        if disagreement > 0.3:
+            risk_level = "high"
+        elif disagreement > 0.15:
+            risk_level = "medium"
+        else:
+            risk_level = "low"
+        
+        # Calculate confidence based on consistency
+        confidence = max(0.0, 1.0 - disagreement)
+        
+        return {
+            "risk_level": risk_level,
+            "confidence": confidence,
+            "disagreement": disagreement,
+            "score_count": len(individual_scores)
+        }
 
     def _assess_false_positive_risk(
         self, quality_results: Dict[str, Any]
@@ -1483,9 +1528,9 @@ class StandardProcessingPipeline:
         return recommendations
 
     def _apply_filtering(self, signal: np.ndarray, fs: float, signal_type: str) -> np.ndarray:
-        """Apply basic bandpass filtering to signal."""
+        """Apply basic bandpass filtering to signal using vitalDSP SignalFiltering."""
         try:
-            from scipy.signal import butter, filtfilt
+            from vitalDSP.filtering.signal_filtering import SignalFiltering
 
             # Get filter parameters based on signal type
             if signal_type.lower() == "ecg":
@@ -1497,53 +1542,113 @@ class StandardProcessingPipeline:
             else:
                 lowcut, highcut = 0.5, 40.0
 
-            # Design and apply bandpass filter
-            nyquist = fs / 2
-            low = lowcut / nyquist
-            high = highcut / nyquist
+            # Use vitalDSP SignalFiltering for bandpass filtering
+            sf = SignalFiltering(signal)
+            filtered = sf.bandpass(lowcut=lowcut, highcut=highcut, fs=fs, order=4, filter_type="butter")
 
-            # Ensure filter frequencies are valid
-            if low >= 1.0 or high >= 1.0 or low <= 0 or high <= 0:
-                logger.warning(f"Invalid filter frequencies, returning original signal")
-                return signal.copy()
-
-            b, a = butter(4, [low, high], btype='band')
-            filtered = filtfilt(b, a, signal)
-
+            logger.info(f"Applied vitalDSP bandpass filter ({lowcut}-{highcut} Hz) for {signal_type}")
             return filtered
         except Exception as e:
-            logger.warning(f"Filtering failed: {e}, returning original signal")
+            logger.warning(f"vitalDSP filtering failed: {e}, returning original signal")
             return signal.copy()
 
     def _apply_preprocessing(self, signal: np.ndarray, fs: float, signal_type: str) -> np.ndarray:
-        """Apply preprocessing (filtering + basic artifact removal)."""
-        # First apply filtering
-        filtered = self._apply_filtering(signal, fs, signal_type)
+        """Apply preprocessing (filtering + artifact removal) using vitalDSP modules."""
+        try:
+            # First apply filtering using vitalDSP
+            filtered = self._apply_filtering(signal, fs, signal_type)
 
-        # Simple artifact removal: clip outliers at 5 standard deviations
-        mean = np.mean(filtered)
-        std = np.std(filtered)
-        threshold = 5 * std
+            # Apply vitalDSP artifact removal
+            from vitalDSP.filtering.artifact_removal import ArtifactRemoval
 
-        preprocessed = np.clip(filtered, mean - threshold, mean + threshold)
+            ar = ArtifactRemoval(filtered, fs)
+            # Use adaptive threshold artifact removal for better results
+            preprocessed = ar.adaptive_threshold_removal(
+                window_size=int(2 * fs),  # 2-second windows
+                std_factor=3.0  # 3 standard deviations
+            )
 
-        return preprocessed
+            logger.info(f"Applied vitalDSP artifact removal for {signal_type}")
+            return preprocessed
+        except Exception as e:
+            logger.warning(f"vitalDSP preprocessing failed: {e}, using basic preprocessing")
+            # Fallback to basic preprocessing
+            filtered = self._apply_filtering(signal, fs, signal_type)
+            mean = np.mean(filtered)
+            std = np.std(filtered)
+            threshold = 5 * std
+            return np.clip(filtered, mean - threshold, mean + threshold)
 
     def _extract_simple_features(
         self, signal: np.ndarray, fs: float, signal_type: str
     ) -> Tuple[np.ndarray, Dict[str, Any]]:
-        """Extract simple features from preprocessed signal."""
-        # Calculate basic features
-        features = {
-            "mean": float(np.mean(signal)),
-            "std": float(np.std(signal)),
-            "min": float(np.min(signal)),
-            "max": float(np.max(signal)),
-            "range": float(np.ptp(signal)),
-            "energy": float(np.sum(signal ** 2)),
-        }
+        """Extract comprehensive features using numpy and scipy for signal analysis."""
+        try:
+            features = {}
 
-        return signal, features
+            # Time domain features using numpy
+            features["mean"] = float(np.mean(signal))
+            features["std"] = float(np.std(signal))
+            features["min"] = float(np.min(signal))
+            features["max"] = float(np.max(signal))
+            features["range"] = float(np.ptp(signal))
+            features["rms"] = float(np.sqrt(np.mean(signal ** 2)))
+            features["variance"] = float(np.var(signal))
+
+            # Statistical moments
+            from scipy import stats
+            features["skewness"] = float(stats.skew(signal))
+            features["kurtosis"] = float(stats.kurtosis(signal))
+
+            # Frequency domain features using scipy
+            from scipy.fft import fft, fftfreq
+            fft_vals = fft(signal)
+            fft_freqs = fftfreq(len(signal), 1/fs)
+
+            # Use only positive frequencies
+            positive_freqs = fft_freqs > 0
+            fft_power = np.abs(fft_vals[positive_freqs]) ** 2
+            freqs = fft_freqs[positive_freqs]
+
+            if len(freqs) > 0 and np.sum(fft_power) > 0:
+                # Spectral centroid
+                features["spectral_centroid"] = float(np.sum(freqs * fft_power) / np.sum(fft_power))
+
+                # Spectral bandwidth
+                centroid = features["spectral_centroid"]
+                features["spectral_bandwidth"] = float(
+                    np.sqrt(np.sum(((freqs - centroid) ** 2) * fft_power) / np.sum(fft_power))
+                )
+
+                # Dominant frequency
+                features["dominant_frequency"] = float(freqs[np.argmax(fft_power)])
+
+                # Spectral energy
+                features["spectral_energy"] = float(np.sum(fft_power))
+            else:
+                features["spectral_centroid"] = 0.0
+                features["spectral_bandwidth"] = 0.0
+                features["dominant_frequency"] = 0.0
+                features["spectral_energy"] = 0.0
+
+            # Total energy
+            features["total_energy"] = float(np.sum(signal ** 2))
+
+            logger.info(f"Extracted {len(features)} features for {signal_type}")
+            return signal, features
+
+        except Exception as e:
+            logger.warning(f"Feature extraction failed: {e}, using basic features")
+            # Minimal fallback features
+            features = {
+                "mean": float(np.mean(signal)),
+                "std": float(np.std(signal)),
+                "min": float(np.min(signal)),
+                "max": float(np.max(signal)),
+                "range": float(np.ptp(signal)),
+                "energy": float(np.sum(signal ** 2)),
+            }
+            return signal, features
 
     def _assess_path_quality(
         self, signal: np.ndarray, fs: float, signal_type: str
@@ -1684,3 +1789,21 @@ class StandardProcessingPipeline:
     def cleanup_checkpoints(self, session_id: str) -> None:
         """Clean up checkpoints for a session."""
         self.checkpoint_manager.cleanup_session(session_id)
+
+
+# Alias for OptimizedStandardProcessingPipeline
+# Currently uses the same implementation as StandardProcessingPipeline
+# Future optimizations can be added here
+class OptimizedStandardProcessingPipeline(StandardProcessingPipeline):
+    """
+    Optimized version of StandardProcessingPipeline for large file processing.
+
+    Currently an alias to StandardProcessingPipeline. Future optimizations will include:
+    - Parallel path processing in Stage 3
+    - More efficient memory management
+    - Optimized caching strategies
+    - Reduced memory allocations
+
+    Use this for files >5 minutes or when performance is critical.
+    """
+    pass

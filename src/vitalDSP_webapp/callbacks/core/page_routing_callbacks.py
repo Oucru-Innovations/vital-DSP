@@ -23,6 +23,8 @@ from vitalDSP_webapp.layout.pages.analysis_pages import (
     health_report_layout,
     settings_layout,
 )
+from vitalDSP_webapp.layout.pages.pipeline_page import pipeline_layout
+from vitalDSP_webapp.layout.pages.tasks_page import tasks_layout
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +87,12 @@ def display_page(pathname: str) -> html.Div:
         elif pathname == "/settings":
             logger.info("Returning settings layout")
             return settings_layout()
+        elif pathname == "/pipeline":
+            logger.info("Returning pipeline layout")
+            return pipeline_layout()
+        elif pathname == "/tasks":
+            logger.info("Returning tasks layout")
+            return tasks_layout()
         else:
             logger.info("Returning default welcome page")
             return _get_welcome_layout()

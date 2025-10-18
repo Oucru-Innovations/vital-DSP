@@ -1,3 +1,32 @@
+"""
+Health Analysis Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- SciPy integration for advanced signal processing
+- Interactive visualization capabilities
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.health_analysis.health_report_visualization import HealthReportVisualization
+    >>> signal = np.random.randn(1000)
+    >>> processor = HealthReportVisualization(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
+
 import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns

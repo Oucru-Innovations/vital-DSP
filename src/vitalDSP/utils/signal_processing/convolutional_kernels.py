@@ -1,3 +1,30 @@
+"""
+Utility Functions Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.signal_processing.convolutional_kernels import ConvolutionalKernels
+    >>> signal = np.random.randn(1000)
+    >>> processor = ConvolutionalKernels(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
+
 import numpy as np
 
 

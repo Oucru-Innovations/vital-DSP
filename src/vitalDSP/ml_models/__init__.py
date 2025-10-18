@@ -1,17 +1,41 @@
 """
-vitalDSP Machine Learning and Deep Learning Module
+Machine Learning Models Module for Physiological Signal Processing
 
-Comprehensive ML/DL integration for physiological signal analysis.
-
-This module provides:
-- Feature extraction for ML pipelines
-- Deep learning models (CNN, LSTM, Transformer, Autoencoder)
-- Pre-trained models and transfer learning
-- Explainable AI (SHAP/LIME)
-- Training utilities and pipelines
+This module provides comprehensive machine learning and deep learning capabilities
+for physiological signal analysis including ECG, PPG, EEG, and other vital signs.
+It implements state-of-the-art models for classification, regression, anomaly
+detection, and feature extraction.
 
 Author: vitalDSP Team
-Date: 2025
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Deep learning models (CNN, LSTM, Transformer, Autoencoder)
+- Pre-trained models and transfer learning
+- Feature extraction for ML pipelines
+- Explainable AI (SHAP/LIME) integration
+- Model training utilities and pipelines
+- Comprehensive evaluation metrics
+- Model optimization and hyperparameter tuning
+- Cross-validation and model selection
+
+Examples:
+--------
+Basic CNN model:
+    >>> from vitalDSP.ml_models import CNN1D
+    >>> model = CNN1D(input_shape=(1000, 1), num_classes=5)
+    >>> model.compile(optimizer='adam', loss='categorical_crossentropy')
+
+Autoencoder for anomaly detection:
+    >>> from vitalDSP.ml_models import StandardAutoencoder
+    >>> autoencoder = StandardAutoencoder(input_dim=100, encoding_dim=32)
+    >>> autoencoder.compile(optimizer='adam', loss='mse')
+
+Feature extraction:
+    >>> from vitalDSP.ml_models import FeatureExtractor
+    >>> extractor = FeatureExtractor()
+    >>> features = extractor.extract_features(signal_data)
 """
 
 # Feature Extraction

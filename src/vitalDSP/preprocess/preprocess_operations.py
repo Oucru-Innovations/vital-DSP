@@ -1,3 +1,57 @@
+"""
+Preprocessing Operations Module for Physiological Signal Processing
+
+This module provides comprehensive preprocessing capabilities for physiological
+signals including ECG, PPG, EEG, and other vital signs. It implements various
+filtering techniques, noise reduction methods, and signal conditioning operations
+to prepare signals for analysis.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Multiple filtering types (bandpass, Butterworth, Chebyshev, elliptic)
+- Advanced noise reduction methods (wavelet, Savitzky-Golay, median, Gaussian)
+- Signal-specific preprocessing configurations
+- Respiratory signal optimization
+- Comprehensive parameter configuration
+- Integration with signal filtering modules
+
+Examples:
+--------
+Basic ECG preprocessing:
+    >>> import numpy as np
+    >>> from vitalDSP.preprocess.preprocess_operations import PreprocessConfig, preprocess_signal
+    >>> config = PreprocessConfig(
+    ...     filter_type="bandpass",
+    ...     lowcut=0.5,
+    ...     highcut=40.0,
+    ...     noise_reduction_method="wavelet"
+    ... )
+    >>> processed_signal = preprocess_signal(ecg_signal, fs=250, config=config)
+
+PPG preprocessing with Savitzky-Golay:
+    >>> ppg_config = PreprocessConfig(
+    ...     filter_type="bandpass",
+    ...     lowcut=0.5,
+    ...     highcut=8.0,
+    ...     noise_reduction_method="savgol",
+    ...     window_length=21,
+    ...     polyorder=3
+    ... )
+    >>> processed_ppg = preprocess_signal(ppg_signal, fs=128, config=ppg_config)
+
+Respiratory signal preprocessing:
+    >>> resp_config = PreprocessConfig(
+    ...     filter_type="bandpass",
+    ...     lowcut=0.1,
+    ...     highcut=2.0,
+    ...     respiratory_mode=True
+    ... )
+    >>> processed_resp = preprocess_signal(resp_signal, fs=64, config=resp_config)
+"""
+
 from vitalDSP.preprocess.noise_reduction import (
     wavelet_denoising,
     savgol_denoising,

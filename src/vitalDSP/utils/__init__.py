@@ -1,28 +1,40 @@
 """
-vitalDSP Utilities Module
+Utilities Module for Physiological Signal Processing
 
-Provides utility functions for signal processing organized into logical modules:
+This module provides comprehensive utility functions for physiological signal processing including configuration, data processing, and core infrastructure.
 
-- core_infrastructure: Core infrastructure components for large-scale processing
-- data_processing: Data loading, validation, and synthesis utilities
-- signal_processing: Signal processing, transforms, and features
-- quality_performance: Quality assessment and performance monitoring
-- config_utilities: Configuration management and common utilities
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Configuration management
+- Data processing utilities
+- Core infrastructure
+- Signal processing utilities
+- Quality and performance monitoring
+- Warning configuration
+
+Examples:
+--------
+Basic utilities:
+    >>> from vitalDSP.utils import configure_warnings
+    >>> configure_warnings()
 """
 
 # Import from submodules for backward compatibility
 from .signal_processing import (
     PeakDetection,
-    # linear_interpolation,
-    # spline_interpolation,
-    mean_imputation,
-    # z_score_normalization,
-    # min_max_normalization,
     StandardScaler,
     Wavelet,
     ConvolutionKernels,
     LossFunctions,
     AttentionWeights,
+    z_score_normalization,
+    min_max_normalization,
+    linear_interpolation,
+    spline_interpolation,
+    mean_imputation,
 )
 
 from .data_processing import (
@@ -63,18 +75,6 @@ from .core_infrastructure import (
 )
 
 from .quality_performance import PerformanceMonitor
-
-# Legacy imports for backward compatibility
-from .signal_processing.normalization import (
-    z_score_normalization,
-    min_max_normalization,
-)
-from .signal_processing.interpolations import (
-    linear_interpolation,
-    spline_interpolation,
-    mean_imputation,
-)
-from .signal_processing.scaler import StandardScaler
 
 __all__ = [
     # Signal Processing

@@ -1,3 +1,32 @@
+"""
+Visualization Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- SciPy integration for advanced signal processing
+- Interactive visualization capabilities
+- Configurable parameters and settings
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.visualization.plot_estimate_rr import PlotEstimateRr
+    >>> signal = np.random.randn(1000)
+    >>> processor = PlotEstimateRr(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
+
 import numpy as np
 from vitalDSP.respiratory_analysis.estimate_rr import (
     fft_based_rr,

@@ -1,22 +1,25 @@
 """
 Core Infrastructure Module
 
-This module contains the core infrastructure components for large-scale
-physiological signal processing, including data loaders, parallel processing,
-quality screening, processing pipeline, memory management, and error recovery.
+This module provides core infrastructure components for large-scale physiological signal processing.
 
-Phase 1 Components:
-- data_loaders: Advanced data loading with chunking and memory mapping
-- optimized_data_loaders: Optimized versions with dynamic configuration
-- parallel_pipeline: Parallel processing pipeline
-- optimized_parallel_pipeline: Optimized parallel processing
-- quality_screener: 3-stage quality screening system
-- optimized_quality_screener: Optimized quality screening
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
 
-Phase 2 Components:
-- processing_pipeline: Standard 8-stage processing pipeline with checkpointing
-- memory_manager: Intelligent memory management and data type optimization
-- error_recovery: Robust error handling and recovery system
+Key Features:
+- Processing pipelines
+- Memory management
+- Data loaders
+- Quality screening
+- Error recovery
+- Parallel processing
+
+Examples:
+--------
+Core pipeline:
+    >>> from vitalDSP.utils.core_infrastructure import ProcessingPipeline
+    >>> pipeline = ProcessingPipeline()
 """
 
 # Import main classes for easy access

@@ -257,7 +257,7 @@ Utils Module
 Peak Detection
 ==============
 
-.. automodule:: vitalDSP.utils.peak_detection
+.. automodule:: vitalDSP.utils.signal_processing.peak_detection
    :members:
    :undoc-members:
    :show-inheritance:
@@ -265,7 +265,7 @@ Peak Detection
 Data Synthesis
 ==============
 
-.. automodule:: vitalDSP.utils.synthesize_data
+.. automodule:: vitalDSP.utils.data_processing.synthesize_data
    :members:
    :undoc-members:
    :show-inheritance:
@@ -273,7 +273,7 @@ Data Synthesis
 Standard Scaler
 ===============
 
-.. automodule:: vitalDSP.utils.scaler
+.. automodule:: vitalDSP.utils.signal_processing.scaler
    :members:
    :undoc-members:
    :show-inheritance:
@@ -281,7 +281,7 @@ Standard Scaler
 Normalization
 =============
 
-.. automodule:: vitalDSP.utils.normalization
+.. automodule:: vitalDSP.utils.signal_processing.normalization
    :members:
    :undoc-members:
    :show-inheritance:
@@ -289,7 +289,7 @@ Normalization
 Interpolations
 ==============
 
-.. automodule:: vitalDSP.utils.interpolations
+.. automodule:: vitalDSP.utils.signal_processing.interpolations
    :members:
    :undoc-members:
    :show-inheritance:
@@ -429,7 +429,7 @@ Utility Functions
 Common Utilities
 ================
 
-.. automodule:: vitalDSP.utils.common
+.. automodule:: vitalDSP.utils.config_utilities.common
    :members:
    :undoc-members:
    :show-inheritance:

@@ -1776,32 +1776,81 @@ def create_success_status(message: str) -> html.Div:
 
 
 def create_data_preview(df: pd.DataFrame, data_info: dict) -> html.Div:
-    """Create a data preview section."""
+    """Create a data preview section with pagination for large datasets."""
+    # Determine if we need pagination based on data size
+    total_rows = df.shape[0]
+    total_cols = df.shape[1]
+    
+    # For large datasets, use pagination
+    if total_rows > 1000:
+        # Use first 100 rows for preview with pagination
+        preview_data = df.head(100).to_dict("records")
+        page_size = 25
+        page_action = "native"
+        virtualization = True
+        show_pagination_info = True
+    else:
+        # For smaller datasets, show all data
+        preview_data = df.to_dict("records")
+        page_size = 10
+        page_action = "native"
+        virtualization = False
+        show_pagination_info = False
+    
     return html.Div(
         [
             html.H4("Data Preview", className="mb-3"),
             html.Div(
                 [
-                    html.P(f"Shape: {df.shape[0]} rows × {df.shape[1]} columns"),
+                    html.P(f"Shape: {total_rows:,} rows × {total_cols} columns"),
                     html.P(
                         f"Sampling Frequency: {data_info.get('sampling_freq', 'N/A')} Hz"
                     ),
                     html.P(f"Duration: {data_info.get('duration', 'N/A')} seconds"),
+                    html.P(
+                        f"Memory Usage: {df.memory_usage(deep=True).sum() / 1024**2:.2f} MB",
+                        className="text-muted small"
+                    ),
                 ],
                 className="mb-3",
             ),
             html.Div(
                 [
-                    html.H6("First 5 rows:"),
+                    html.H6("Data Table:"),
+                    html.P(
+                        f"Showing {min(100, total_rows)} of {total_rows:,} rows" if show_pagination_info else "",
+                        className="text-muted small mb-2"
+                    ),
                     dash_table.DataTable(
-                        data=df.head().to_dict("records"),
+                        id="data-preview-table",
+                        data=preview_data,
                         columns=[{"name": i, "id": i} for i in df.columns],
                         style_table={"overflowX": "auto"},
-                        style_cell={"textAlign": "left"},
+                        style_cell={
+                            "textAlign": "left",
+                            "fontSize": "12px",
+                            "fontFamily": "monospace"
+                        },
                         style_header={
                             "backgroundColor": "rgb(230, 230, 230)",
                             "fontWeight": "bold",
                         },
+                        style_data={
+                            "whiteSpace": "normal",
+                            "height": "auto",
+                        },
+                        # Pagination settings
+                        page_size=page_size,
+                        page_action=page_action,
+                        virtualization=virtualization,
+                        # Sorting and filtering
+                        sort_action="native",
+                        filter_action="native",
+                        # Performance optimizations
+                        fixed_rows={"headers": True},
+                        # Export options
+                        export_format="csv",
+                        export_headers="display",
                     ),
                 ]
             ),
