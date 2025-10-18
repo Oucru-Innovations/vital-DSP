@@ -19,6 +19,7 @@ import logging
 from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
     apply_traditional_filter,
 )
+from vitalDSP_webapp.callbacks.core.theme_callbacks import apply_plot_theme
 
 
 # Helper function for formatting large numbers
@@ -51,7 +52,59 @@ def format_large_number(value, precision=3, use_scientific=False):
 logger = logging.getLogger(__name__)
 
 
-def create_empty_figure():
+def configure_plot_with_pan_zoom(fig, title="", height=400):
+    """
+    Configure plotly figure with pan/zoom tools and consistent styling.
+
+    Args:
+        fig: Plotly figure object
+        title: Plot title
+        height: Plot height in pixels
+
+    Returns:
+        Configured plotly figure
+    """
+    fig.update_layout(
+        title=title,
+        height=height,
+        showlegend=True,
+        template="plotly_white",
+        # Add pan/zoom tools
+        xaxis=dict(
+            rangeslider=dict(visible=False),
+            rangeselector=dict(
+                buttons=list(
+                    [
+                        dict(count=1, label="1m", step="minute", stepmode="backward"),
+                        dict(count=5, label="5m", step="minute", stepmode="backward"),
+                        dict(count=15, label="15m", step="minute", stepmode="backward"),
+                        dict(count=1, label="1h", step="hour", stepmode="backward"),
+                        dict(step="all"),
+                    ]
+                )
+            ),
+            type="linear",
+        ),
+        # Enable pan and zoom
+        dragmode="pan",  # Default to pan mode
+        # Add toolbar with pan/zoom options
+        modebar=dict(
+            add=[
+                "pan2d",
+                "zoom2d",
+                "select2d",
+                "lasso2d",
+                "zoomIn2d",
+                "zoomOut2d",
+                "autoScale2d",
+                "resetScale2d",
+            ]
+        ),
+    )
+    return fig
+
+
+def create_empty_figure(theme="light"):
     """Create an empty figure for error cases."""
     fig = go.Figure()
     fig.add_annotation(
@@ -66,7 +119,7 @@ def create_empty_figure():
     fig.update_layout(
         xaxis=dict(visible=False), yaxis=dict(visible=False), plot_bgcolor="white"
     )
-    return fig
+    return apply_plot_theme(fig, theme)
 
 
 def create_signal_source_table(
@@ -294,37 +347,32 @@ def create_signal_source_table(
         )
 
 
-def higuchi_fractal_dimension(signal, k_max=8):
-    """Calculate Higuchi fractal dimension."""
+def higuchi_fractal_dimension(signal, k_max=10):
+    """
+    Calculate Higuchi fractal dimension using vitalDSP implementation.
+
+    This function now uses the validated vitalDSP NonlinearFeatures class,
+    which provides the mathematically correct implementation of Higuchi's method.
+
+    Args:
+        signal: Signal array
+        k_max: Maximum k value for Higuchi calculation (default: 10)
+
+    Returns:
+        float: Fractal dimension value (typically 1.0-2.0 for physiological signals)
+    """
     try:
-        N = len(signal)
-        L = []
-        x = []
+        from vitalDSP.physiological_features.nonlinear import NonlinearFeatures
 
-        for k in range(1, k_max + 1):
-            Lk = 0
-            for m in range(k):
-                Lmk = 0
-                for i in range(1, int((N - m) / k)):
-                    Lmk += abs(signal[m + i * k] - signal[m + (i - 1) * k])
-                Lmk = Lmk * (N - 1) / (k**2 * int((N - m) / k))
-                Lk += Lmk
-            Lk /= k
-            L.append(Lk)
-            x.append([np.log(1.0 / k), 1])
-
-        # Linear fit to get slope
-        x = np.array(x)
-        L = np.log(L)
-        slope = np.polyfit(x[:, 0], L, 1)[0]
-        return slope
+        nonlinear = NonlinearFeatures(signal)
+        return nonlinear.compute_fractal_dimension(kmax=k_max)
     except Exception as e:
         logger.error(f"Error calculating Higuchi fractal dimension: {e}")
-        return 0
+        return 0.0
 
 
 def create_signal_comparison_plot(
-    original_signal, filtered_signal, time_axis, sampling_freq, signal_type="PPG"
+    original_signal, filtered_signal, time_axis, sampling_freq, signal_type="PPG", theme="light"
 ):
     """Create side-by-side comparison of raw vs filtered signals with critical points."""
     try:
@@ -771,6 +819,21 @@ def create_signal_comparison_plot(
                 showlegend=True,
                 title="Signal Comparison: Raw vs Filtered with Critical Points",
                 title_x=0.5,
+                template="plotly_white",
+                # Add pan/zoom tools
+                dragmode="pan",
+                modebar=dict(
+                    add=[
+                        "pan2d",
+                        "zoom2d",
+                        "select2d",
+                        "lasso2d",
+                        "zoomIn2d",
+                        "zoomOut2d",
+                        "autoScale2d",
+                        "resetScale2d",
+                    ]
+                ),
             )
 
             # Update axes
@@ -799,11 +862,11 @@ def create_signal_comparison_plot(
                 title_x=0.5,
             )
 
-        return fig
+        return apply_plot_theme(fig, theme)
 
     except Exception as e:
         logger.error(f"Error creating signal comparison plot: {e}")
-        return create_empty_figure()
+        return create_empty_figure(theme)
 
 
 def create_time_domain_plot(
@@ -813,6 +876,7 @@ def create_time_domain_plot(
     peaks=None,
     filtered_signal=None,
     signal_type="PPG",
+    theme="light",
 ):
     # Note: peaks parameter is kept for backward compatibility but not used
     # Critical points are now detected using vitalDSP waveform analysis
@@ -1014,12 +1078,27 @@ def create_time_domain_plot(
             yaxis_title="Amplitude",
             showlegend=True,
             height=400,
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
-        return fig
+        return apply_plot_theme(fig, theme)
     except Exception as e:
         logger.error(f"Error creating time domain plot: {e}")
-        return create_empty_figure()
+        return create_empty_figure(theme)
 
 
 def create_peak_analysis_plot(signal_data, time_axis, peaks, sampling_freq):
@@ -1074,7 +1153,25 @@ def create_peak_analysis_plot(signal_data, time_axis, peaks, sampling_freq):
         fig.update_xaxes(title_text="Time (seconds)", row=2, col=1)
         fig.update_yaxes(title_text="Interval (seconds)", row=2, col=1)
 
-        fig.update_layout(height=400, showlegend=True)
+        fig.update_layout(
+            height=400,
+            showlegend=True,
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
+        )
         return fig
 
     except Exception as e:
@@ -1310,6 +1407,20 @@ def create_main_signal_plot(
             template="plotly_white",
             margin=dict(l=40, r=40, t=60, b=40),
             hovermode="closest",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig
@@ -1515,6 +1626,20 @@ def create_filtered_signal_plot(
             margin=dict(l=40, r=40, t=60, b=40),
             showlegend=True,
             hovermode="closest",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig
@@ -1916,8 +2041,8 @@ def generate_analysis_results(
                 from scipy.signal import find_peaks
 
                 # Use adaptive threshold for peak detection
-                mean_val = np.mean(signal_data)
-                std_val = np.std(signal_data)
+                mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
+                std_val = np.std(signal_data) if len(signal_data) > 0 else 0
                 threshold = mean_val + 2 * std_val
 
                 # Find peaks with minimum distance constraint
@@ -1934,7 +2059,9 @@ def generate_analysis_results(
                 if len(peaks) > 1:
                     # Calculate RR intervals
                     rr_intervals = np.diff(time_axis[peaks])
-                    heart_rate = 60 / np.mean(rr_intervals)
+                    heart_rate = (
+                        60 / np.mean(rr_intervals) if len(rr_intervals) > 0 else 0
+                    )
 
                     results.append(html.Hr())
                     results.append(html.H6("❤️ Heart Rate Analysis", className="mb-2"))
@@ -1982,7 +2109,11 @@ def generate_analysis_results(
                                                     className="fw-bold",
                                                 ),
                                                 html.Td(
-                                                    f"{np.mean(rr_intervals):.3f}",
+                                                    (
+                                                        f"{np.mean(rr_intervals):.3f}"
+                                                        if len(rr_intervals) > 0
+                                                        else "0.000"
+                                                    ),
                                                     className="text-end",
                                                 ),
                                                 html.Td(
@@ -2060,8 +2191,8 @@ def generate_analysis_results(
         if "quality" in analysis_options:
             try:
                 # Calculate SNR (more accurate method)
-                signal_mean = np.mean(signal_data)
-                signal_var = np.var(signal_data)
+                signal_mean = np.mean(signal_data) if len(signal_data) > 0 else 0
+                signal_var = np.var(signal_data) if len(signal_data) > 0 else 0
 
                 # Log signal statistics for debugging
                 logger.info(
@@ -2099,8 +2230,8 @@ def generate_analysis_results(
                 artifact_percentage = (artifact_count / len(signal_data)) * 100
 
                 # Signal stability (coefficient of variation)
-                signal_mean = np.mean(signal_data)
-                signal_std = np.std(signal_data)
+                signal_mean = np.mean(signal_data) if len(signal_data) > 0 else 0
+                signal_std = np.std(signal_data) if len(signal_data) > 0 else 0
 
                 # More robust stability calculation
                 if abs(signal_mean) > 1e-6:  # Avoid division by very small numbers
@@ -2293,8 +2424,8 @@ def create_peak_analysis_table(
         # Detect peaks with advanced parameters
         from scipy.signal import find_peaks
 
-        mean_val = np.mean(signal_data)
-        std_val = np.std(signal_data)
+        mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
+        std_val = np.std(signal_data) if len(signal_data) > 0 else 0
         threshold = mean_val + 2 * std_val
         min_distance = int(sampling_freq * 0.1)  # Minimum 0.1 seconds between peaks
 
@@ -2322,9 +2453,11 @@ def create_peak_analysis_table(
         heart_rates = 60 / rr_intervals
 
         # HRV metrics
-        mean_rr = np.mean(rr_intervals)
-        sdnn = np.std(rr_intervals)
-        rmssd = np.sqrt(np.mean(np.diff(rr_intervals) ** 2))
+        mean_rr = np.mean(rr_intervals) if len(rr_intervals) > 0 else 0
+        sdnn = np.std(rr_intervals) if len(rr_intervals) > 0 else 0
+        rmssd = (
+            np.sqrt(np.mean(np.diff(rr_intervals) ** 2)) if len(rr_intervals) > 1 else 0
+        )
 
         # pNN50 calculation
         nn_intervals = rr_intervals
@@ -2371,7 +2504,11 @@ def create_peak_analysis_table(
                                         dbc.CardBody(
                                             [
                                                 html.H4(
-                                                    f"{np.mean(heart_rates):.1f}",
+                                                    (
+                                                        f"{np.mean(heart_rates):.1f}"
+                                                        if len(heart_rates) > 0
+                                                        else "0.0"
+                                                    ),
                                                     className="text-center text-success mb-0",
                                                 ),
                                                 html.Small(
@@ -2543,7 +2680,11 @@ def create_peak_analysis_table(
                                     [
                                         html.Td("Peak Amplitude", className="fw-bold"),
                                         html.Td(
-                                            f"{np.mean(peak_amplitudes):.3f}",
+                                            (
+                                                f"{np.mean(peak_amplitudes):.3f}"
+                                                if len(peak_amplitudes) > 0
+                                                else "0.000"
+                                            ),
                                             className="text-end",
                                         ),
                                         html.Td(
@@ -2564,7 +2705,11 @@ def create_peak_analysis_table(
                                     [
                                         html.Td("Peak Prominence", className="fw-bold"),
                                         html.Td(
-                                            f"{np.mean(peak_prominences):.3f}",
+                                            (
+                                                f"{np.mean(peak_prominences):.3f}"
+                                                if len(peak_prominences) > 0
+                                                else "0.000"
+                                            ),
                                             className="text-end",
                                         ),
                                         html.Td(
@@ -2585,7 +2730,11 @@ def create_peak_analysis_table(
                                     [
                                         html.Td("Peak Width", className="fw-bold"),
                                         html.Td(
-                                            f"{np.mean(peak_widths):.3f}",
+                                            (
+                                                f"{np.mean(peak_widths):.3f}"
+                                                if len(peak_widths) > 0
+                                                else "0.000"
+                                            ),
                                             className="text-end",
                                         ),
                                         html.Td(
@@ -4470,17 +4619,57 @@ def generate_time_domain_stats(
 
         # Basic statistics
         results.append(html.H5("Signal Statistics"))
-        results.append(html.P(f"Duration: {time_axis[-1]:.2f} seconds"))
+        results.append(
+            html.P(
+                f"Duration: {time_axis[-1]:.2f} seconds"
+                if len(time_axis) > 0
+                else "Duration: 0.00 seconds"
+            )
+        )
         results.append(html.P(f"Sampling Frequency: {sampling_freq} Hz"))
         results.append(html.P(f"Signal Length: {len(signal_data)} samples"))
-        results.append(html.P(f"Mean Amplitude: {np.mean(signal_data):.4f}"))
-        results.append(html.P(f"Std Amplitude: {np.std(signal_data):.4f}"))
-        results.append(html.P(f"Min Amplitude: {np.min(signal_data):.4f}"))
-        results.append(html.P(f"Max Amplitude: {np.max(signal_data):.4f}"))
         results.append(
-            html.P(f"Peak-to-Peak: {np.max(signal_data) - np.min(signal_data):.4f}")
+            html.P(
+                f"Mean Amplitude: {np.mean(signal_data):.4f}"
+                if len(signal_data) > 0
+                else "Mean Amplitude: 0.0000"
+            )
         )
-        results.append(html.P(f"RMS: {np.sqrt(np.mean(signal_data**2)):.4f}"))
+        results.append(
+            html.P(
+                f"Std Amplitude: {np.std(signal_data):.4f}"
+                if len(signal_data) > 0
+                else "Std Amplitude: 0.0000"
+            )
+        )
+        results.append(
+            html.P(
+                f"Min Amplitude: {np.min(signal_data):.4f}"
+                if len(signal_data) > 0
+                else "Min Amplitude: 0.0000"
+            )
+        )
+        results.append(
+            html.P(
+                f"Max Amplitude: {np.max(signal_data):.4f}"
+                if len(signal_data) > 0
+                else "Max Amplitude: 0.0000"
+            )
+        )
+        results.append(
+            html.P(
+                f"Peak-to-Peak: {np.max(signal_data) - np.min(signal_data):.4f}"
+                if len(signal_data) > 0
+                else "Peak-to-Peak: 0.0000"
+            )
+        )
+        results.append(
+            html.P(
+                f"RMS: {np.sqrt(np.mean(signal_data**2)):.4f}"
+                if len(signal_data) > 0
+                else "RMS: 0.0000"
+            )
+        )
 
         # Peak analysis
         if peaks is not None and len(peaks) > 0:
@@ -4529,65 +4718,142 @@ def apply_filter(
     high_freq,
     filter_order,
 ):
-    """Apply filter to the signal."""
+    """
+    Apply filter to the signal using vitalDSP SignalFiltering class.
+
+    This function now uses the validated vitalDSP SignalFiltering implementation
+    for improved error handling, parameter validation, and consistency.
+
+    Args:
+        signal_data: Signal array
+        sampling_freq: Sampling frequency in Hz
+        filter_family: Filter type (butter, cheby1, cheby2, ellip, bessel)
+        filter_response: Filter response (bandpass, lowpass, highpass, bandstop)
+        low_freq: Low cutoff frequency in Hz
+        high_freq: High cutoff frequency in Hz
+        filter_order: Filter order
+
+    Returns:
+        np.ndarray: Filtered signal
+    """
     try:
-        # Normalize cutoff frequencies
-        nyquist = sampling_freq / 2
-        low_freq_norm = low_freq / nyquist
-        high_freq_norm = high_freq / nyquist
+        from vitalDSP.filtering.signal_filtering import SignalFiltering
 
-        # Ensure cutoff frequencies are within valid range
-        low_freq_norm = max(0.001, min(low_freq_norm, 0.999))
-        high_freq_norm = max(0.001, min(high_freq_norm, 0.999))
+        # Create SignalFiltering instance
+        sf = SignalFiltering(signal_data)
 
-        # Determine filter type based on response
+        # Determine cutoff and filter type
         if filter_response == "bandpass":
-            btype = "band"
-            cutoff = [low_freq_norm, high_freq_norm]
-        elif filter_response == "bandstop":
-            btype = "bandstop"
-            cutoff = [low_freq_norm, high_freq_norm]
+            cutoff = [low_freq, high_freq]
+            filter_type = "band"
         elif filter_response == "lowpass":
-            btype = "low"
-            cutoff = high_freq_norm
+            cutoff = high_freq
+            filter_type = "low"
         elif filter_response == "highpass":
-            btype = "high"
-            cutoff = low_freq_norm
+            cutoff = low_freq
+            filter_type = "high"
+        elif filter_response == "bandstop":
+            cutoff = [low_freq, high_freq]
+            filter_type = "bandstop"
         else:
             # Default to bandpass
-            btype = "band"
-            cutoff = [low_freq_norm, high_freq_norm]
+            cutoff = [low_freq, high_freq]
+            filter_type = "band"
 
-        # Apply filter based on family
-        if filter_family == "butter":
-            b, a = signal.butter(filter_order, cutoff, btype=btype)
-        elif filter_family == "cheby1":
-            b, a = signal.cheby1(filter_order, 1, cutoff, btype=btype)
-        elif filter_family == "cheby2":
-            b, a = signal.cheby2(filter_order, 40, cutoff, btype=btype)
-        elif filter_family == "ellip":
-            b, a = signal.ellip(filter_order, 1, 40, cutoff, btype=btype)
+        # Apply appropriate filter using vitalDSP
+        if filter_family == "butter" or filter_family == "butterworth":
+            return sf.butterworth(
+                cutoff, fs=sampling_freq, order=filter_order, btype=filter_type
+            )
+        elif filter_family == "cheby1" or filter_family == "chebyshev1":
+            return sf.chebyshev(
+                cutoff,
+                fs=sampling_freq,
+                order=filter_order,
+                btype=filter_type,
+                ripple=0.5,
+            )
+        elif filter_family == "cheby2" or filter_family == "chebyshev2":
+            # Note: vitalDSP uses chebyshev for Type I. For Type II, fallback to scipy
+            from scipy import signal as sp_signal
+
+            nyquist = sampling_freq / 2
+            if isinstance(cutoff, list):
+                cutoff_norm = [c / nyquist for c in cutoff]
+            else:
+                cutoff_norm = cutoff / nyquist
+            b, a = sp_signal.cheby2(filter_order, 40, cutoff_norm, btype=filter_type)
+            return sp_signal.filtfilt(b, a, signal_data)
+        elif filter_family == "ellip" or filter_family == "elliptic":
+            return sf.elliptic(
+                cutoff,
+                fs=sampling_freq,
+                order=filter_order,
+                btype=filter_type,
+                ripple=0.5,
+                stopband_attenuation=40,
+            )
         elif filter_family == "bessel":
-            b, a = signal.bessel(filter_order, cutoff, btype=btype)
+            # Bessel filter - fallback to scipy (not in vitalDSP SignalFiltering)
+            from scipy import signal as sp_signal
+
+            nyquist = sampling_freq / 2
+            if isinstance(cutoff, list):
+                cutoff_norm = [c / nyquist for c in cutoff]
+            else:
+                cutoff_norm = cutoff / nyquist
+            b, a = sp_signal.bessel(filter_order, cutoff_norm, btype=filter_type)
+            return sp_signal.filtfilt(b, a, signal_data)
         else:
             # Default to Butterworth
-            b, a = signal.butter(filter_order, cutoff, btype=btype)
-
-        # Apply filter
-        filtered_signal = signal.filtfilt(b, a, signal_data)
-        return filtered_signal
+            logger.warning(
+                f"Unknown filter family '{filter_family}', defaulting to Butterworth"
+            )
+            return sf.butterworth(
+                cutoff, fs=sampling_freq, order=filter_order, btype=filter_type
+            )
 
     except Exception as e:
-        logger.error(f"Error applying filter: {e}")
-        return signal_data
+        logger.error(
+            f"Error applying vitalDSP filter: {e}. Falling back to scipy implementation."
+        )
+        # Fallback to scipy if vitalDSP fails
+        try:
+            from scipy import signal as sp_signal
+
+            nyquist = sampling_freq / 2
+            low_freq_norm = low_freq / nyquist
+            high_freq_norm = high_freq / nyquist
+
+            if filter_response == "bandpass":
+                btype = "band"
+                cutoff = [low_freq_norm, high_freq_norm]
+            elif filter_response == "lowpass":
+                btype = "low"
+                cutoff = high_freq_norm
+            elif filter_response == "highpass":
+                btype = "high"
+                cutoff = low_freq_norm
+            elif filter_response == "bandstop":
+                btype = "bandstop"
+                cutoff = [low_freq_norm, high_freq_norm]
+            else:
+                btype = "band"
+                cutoff = [low_freq_norm, high_freq_norm]
+
+            b, a = sp_signal.butter(filter_order, cutoff, btype=btype)
+            return sp_signal.filtfilt(b, a, signal_data)
+        except Exception as fallback_error:
+            logger.error(f"Scipy fallback also failed: {fallback_error}")
+            return signal_data
 
 
 def detect_peaks(signal_data, sampling_freq):
     """Detect peaks in the signal."""
     try:
         # Calculate adaptive threshold
-        mean_val = np.mean(signal_data)
-        std_val = np.std(signal_data)
+        mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
+        std_val = np.std(signal_data) if len(signal_data) > 0 else 0
         threshold = mean_val + 2 * std_val
 
         # Find peaks with minimum distance constraint
@@ -4628,6 +4894,7 @@ def register_vitaldsp_callbacks(app):
             Input("btn-nudge-p1", "n_clicks"),
             Input("btn-nudge-p10", "n_clicks"),
             Input("url", "pathname"),
+            Input("body", "data-theme"),  # Add theme input
         ],
         [
             State("signal-source-select", "value"),
@@ -4645,6 +4912,7 @@ def register_vitaldsp_callbacks(app):
         nudge_p1,
         nudge_p10,
         pathname,
+        current_theme,  # Add theme parameter
         signal_source,
         analysis_options,
         signal_type,
@@ -4669,8 +4937,8 @@ def register_vitaldsp_callbacks(app):
         if pathname != "/time-domain":
             logger.info("Not on time domain page, returning empty figures")
             return (
-                create_empty_figure(),
-                create_empty_figure(),
+                create_empty_figure(current_theme),
+                create_empty_figure(current_theme),
                 "Navigate to Time Domain Analysis page",
                 "Navigate to Time Domain Analysis page",
                 "Navigate to Time Domain Analysis page",
@@ -4702,8 +4970,8 @@ def register_vitaldsp_callbacks(app):
             if not all_data:
                 logger.warning("No data found in service")
                 return (
-                    create_empty_figure(),
-                    create_empty_figure(),
+                    create_empty_figure(current_theme),
+                    create_empty_figure(current_theme),
                     "No data available. Please upload and process data first.",
                     "No data available. Please upload and process data first.",
                     "No data available. Please upload and process data first.",
@@ -4729,8 +4997,8 @@ def register_vitaldsp_callbacks(app):
                     "Data has not been processed yet - no column mapping found"
                 )
                 return (
-                    create_empty_figure(),
-                    create_empty_figure(),
+                    create_empty_figure(current_theme),
+                    create_empty_figure(current_theme),
                     "Please process your data on the Upload page first (configure column mapping)",
                     "Please process your data on the Upload page first (configure column mapping)",
                     "Please process your data on the Upload page first (configure column mapping)",
@@ -4747,14 +5015,38 @@ def register_vitaldsp_callbacks(app):
             logger.info(
                 f"Data frame columns: {list(df.columns) if df is not None else 'None'}"
             )
-            logger.info(f"Data frame info: {df.info() if df is not None else 'None'}")
-            logger.info(f"Data frame head: {df.head() if df is not None else 'None'}")
+
+            # Log essential signal data summary (optimized for performance)
+            if df is not None:
+                signal_col = column_mapping.get("signal")
+                if signal_col and signal_col in df.columns:
+                    signal_data = df[signal_col]
+                    logger.info(
+                        f"Analysis signal data: dtype={signal_data.dtype}, range={signal_data.min():.3f} to {signal_data.max():.3f}, count={signal_data.count()}"
+                    )
+
+                    # Check for non-numeric values (only log if there are issues)
+                    try:
+                        numeric_data = pd.to_numeric(signal_data, errors="coerce")
+                        non_numeric_count = (
+                            numeric_data.isnull().sum() - signal_data.isnull().sum()
+                        )
+                        if non_numeric_count > 0:
+                            logger.warning(
+                                f"Signal column '{signal_col}' contains {non_numeric_count} non-numeric values!"
+                            )
+                    except Exception as e:
+                        logger.error(f"Error checking numeric values: {str(e)}")
+                else:
+                    logger.error(
+                        f"Signal column '{signal_col}' not found in DataFrame!"
+                    )
 
             if df is None or df.empty:
                 logger.warning("Data frame is empty")
                 return (
-                    create_empty_figure(),
-                    create_empty_figure(),
+                    create_empty_figure(current_theme),
+                    create_empty_figure(current_theme),
                     "Data is empty or corrupted.",
                     "Data is empty or corrupted.",
                     "Data is empty or corrupted.",
@@ -4845,7 +5137,6 @@ def register_vitaldsp_callbacks(app):
             windowed_data = df.iloc[start_sample:end_sample].copy()
             logger.info(f"Windowed data shape: {windowed_data.shape}")
             logger.info(f"Windowed data columns: {list(windowed_data.columns)}")
-            logger.info(f"Windowed data head: {windowed_data.head()}")
 
             # Create time axis - use actual time values, not just windowed data length
             time_axis = np.linspace(start_time, end_time, len(windowed_data))
@@ -4897,8 +5188,8 @@ def register_vitaldsp_callbacks(app):
                 if not signal_column:
                     logger.error("No suitable signal column found")
                     return (
-                        create_empty_figure(),
-                        create_empty_figure(),
+                        create_empty_figure(current_theme),
+                        create_empty_figure(current_theme),
                         "No suitable signal column found in data.",
                         "No suitable signal column found in data.",
                         "No suitable signal column found in data.",
@@ -4922,8 +5213,8 @@ def register_vitaldsp_callbacks(app):
             if len(signal_data) == 0:
                 logger.error("Signal data is empty after windowing")
                 return (
-                    create_empty_figure(),
-                    create_empty_figure(),
+                    create_empty_figure(current_theme),
+                    create_empty_figure(current_theme),
                     "Signal data is empty after windowing.",
                     "Signal data is empty after windowing.",
                     "Signal data is empty after windowing.",
@@ -5178,6 +5469,7 @@ def register_vitaldsp_callbacks(app):
                 None,  # Peaks are now detected in the plot function using vitalDSP
                 None,  # No additional filtered signal overlay
                 signal_type,  # Pass the signal type from user selection
+                current_theme,  # Pass the current theme
             )
             logger.info("Main signal plot created successfully")
 
@@ -5197,6 +5489,7 @@ def register_vitaldsp_callbacks(app):
                     time_axis,
                     sampling_freq,
                     signal_type,  # Pass the signal type from user selection
+                    current_theme,  # Pass the current theme
                 )
             else:
                 # If using original signal, show raw signal only
@@ -5206,6 +5499,7 @@ def register_vitaldsp_callbacks(app):
                     time_axis,
                     sampling_freq,
                     signal_type,  # Pass the signal type from user selection
+                    current_theme,  # Pass the current theme
                 )
             logger.info("Signal comparison plot created successfully")
 
@@ -5321,8 +5615,8 @@ def register_vitaldsp_callbacks(app):
             traceback.print_exc()
             error_msg = f"Error in analysis: {str(e)}"
             return (
-                create_empty_figure(),
-                create_empty_figure(),
+                create_empty_figure(current_theme),
+                create_empty_figure(current_theme),
                 error_msg,
                 error_msg,
                 error_msg,
@@ -5485,6 +5779,21 @@ def create_fft_plot(
             yaxis_title="Magnitude",
             showlegend=True,
             plot_bgcolor="white",
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig
@@ -5533,6 +5842,21 @@ def create_stft_plot(
             yaxis_title="Frequency (Hz)",
             showlegend=True,
             plot_bgcolor="white",
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig
@@ -5606,6 +5930,21 @@ def create_wavelet_plot(
             height=300 * (levels + 1),
             showlegend=True,
             plot_bgcolor="white",
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig
@@ -5685,6 +6024,21 @@ def create_enhanced_psd_plot(
             yaxis_title=y_label,
             showlegend=True,
             plot_bgcolor="white",
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig
@@ -5765,6 +6119,21 @@ def create_enhanced_spectrogram_plot(
             yaxis_title="Frequency (Hz)",
             showlegend=True,
             plot_bgcolor="white",
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         return fig

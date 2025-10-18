@@ -1,3 +1,29 @@
+"""
+Signal Quality Assessment Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.signal_quality_assessment.adaptive_snr_estimation import AdaptiveSnrEstimation
+    >>> signal = np.random.randn(1000)
+    >>> processor = AdaptiveSnrEstimation(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
+
 import numpy as np
 
 

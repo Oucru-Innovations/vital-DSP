@@ -1,3 +1,47 @@
+"""
+Frequency Domain Features Module for Physiological Signal Processing
+
+This module provides comprehensive frequency-domain feature extraction capabilities
+for physiological signals including ECG, PPG, and other vital signs. It implements
+Heart Rate Variability (HRV) analysis in the frequency domain with power spectral
+density computation and autonomic nervous system assessment.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Power Spectral Density (PSD) computation
+- Low-Frequency (LF) and High-Frequency (HF) power analysis
+- LF/HF ratio for autonomic balance assessment
+- Ultra-Low-Frequency (ULF) and Very-Low-Frequency (VLF) analysis
+- Normalized frequency domain metrics (LFnu, HFnu)
+- Total power computation across frequency bands
+- Comprehensive HRV frequency domain analysis
+
+Examples:
+--------
+Basic frequency domain analysis:
+    >>> import numpy as np
+    >>> from vitalDSP.physiological_features.frequency_domain import FrequencyDomainFeatures
+    >>> nn_intervals = [800, 810, 790, 805, 795, 820, 780, 815, 800, 810]
+    >>> fdf = FrequencyDomainFeatures(nn_intervals, fs=4)
+    >>> psd_result = fdf.compute_psd()
+    >>> print(f"LF: {psd_result['lf']:.2f}, HF: {psd_result['hf']:.2f}")
+
+Autonomic balance assessment:
+    >>> lf_hf_ratio = fdf.compute_lf_hf_ratio()
+    >>> lfnu = fdf.compute_lfnu()
+    >>> hfnu = fdf.compute_hfnu()
+    >>> print(f"LF/HF ratio: {lf_hf_ratio:.2f}, LFnu: {lfnu:.2f}, HFnu: {hfnu:.2f}")
+
+Comprehensive frequency analysis:
+    >>> total_power = fdf.compute_total_power()
+    >>> ulf = fdf.compute_ulf()
+    >>> vlf = fdf.compute_vlf()
+    >>> print(f"Total power: {total_power:.2f}, ULF: {ulf:.2f}, VLF: {vlf:.2f}")
+"""
+
 import numpy as np
 from scipy.signal import welch
 

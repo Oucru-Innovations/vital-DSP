@@ -51,12 +51,12 @@ else
 endif
 
 test:
-	$(PYTHONPATH_SET) pytest $(TEST_DIR) -v
+	$(PYTHONPATH_SET) python -m pytest $(TEST_DIR) -v
 
 # $(PYTHONPATH_SET) pytest --cov=$(SRC_DIR) --cov-config=.coveragerc --cov-report=html:$(COV_DIR)
 # Run tests with coverage using .coveragerc
 coverage:	
-	pytest --cov=$(SRC_DIR) --cov-config=.coveragerc --cov-report=term-missing --cov-report=html:$(COV_DIR) 
+	python -m pytest --cov=$(SRC_DIR) --cov-config=.coveragerc --cov-report=term-missing --cov-report=html:$(COV_DIR) 
 
 # Lint the code using flake8 with custom config
 # Note: F401 (unused imports) is ignored in .flake8 config

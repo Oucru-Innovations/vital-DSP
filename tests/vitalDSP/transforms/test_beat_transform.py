@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from vitalDSP.transforms.beats_transformation import RRTransformation
-from vitalDSP.utils.common import find_peaks
+from vitalDSP.utils.config_utilities.common import find_peaks
 
 
 # Mock the find_peaks function if needed to simulate peak detection (comment this out if using actual peak detection)

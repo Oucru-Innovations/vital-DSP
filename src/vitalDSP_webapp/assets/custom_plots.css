@@ -1,8 +1,45 @@
-/* Custom CSS for enhanced vitalDSP plots */
+/* Custom CSS for enhanced vitalDSP plots with theme support */
 
-/* Ensure plot containers are properly sized */
+/* Theme-aware plot styling */
 .js-plotly-plot {
     overflow: visible !important;
+    background-color: var(--plot-background);
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+}
+
+/* Plot container wrapper */
+.plot-container-wrapper {
+    overflow: visible !important;
+    padding: 20px !important;
+    margin: 0 !important;
+    background-color: var(--plot-background);
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+}
+
+/* Card body overflow fix */
+.card-body {
+    overflow: visible !important;
+    padding: 1rem !important;
+    background-color: var(--card-background);
+    transition: var(--transition);
+}
+
+/* Theme-specific plot styling */
+[data-theme="dark"] .js-plotly-plot,
+[data-theme="auto"] .js-plotly-plot {
+    background-color: var(--plot-background);
+}
+
+[data-theme="dark"] .plot-container-wrapper,
+[data-theme="auto"] .plot-container-wrapper {
+    background-color: var(--plot-background);
+}
+
+[data-theme="dark"] .card-body,
+[data-theme="auto"] .card-body {
+    background-color: var(--card-background);
 }
 
 /* Plot container wrapper */

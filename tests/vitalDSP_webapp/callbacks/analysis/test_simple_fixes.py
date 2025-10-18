@@ -64,33 +64,28 @@ def test_morphological_features_fix():
     signal_data = np.random.randn(1000)
     sampling_freq = 1000
     
-    try:
-        # Test basic morphological feature calculations
-        amplitude_range = np.max(signal_data) - np.min(signal_data)
-        amplitude_mean = np.mean(np.abs(signal_data))
-        zero_crossings = np.sum(np.diff(np.sign(signal_data)) != 0)
-        signal_energy = np.sum(signal_data ** 2)
-        
-        # Validate results
-        assert isinstance(amplitude_range, (int, float))
-        assert isinstance(amplitude_mean, (int, float))
-        assert isinstance(zero_crossings, (int, float))
-        assert isinstance(signal_energy, (int, float))
-        
-        assert np.isfinite(amplitude_range)
-        assert np.isfinite(amplitude_mean)
-        assert np.isfinite(zero_crossings)
-        assert np.isfinite(signal_energy)
-        
-        # Check reasonable ranges
-        assert amplitude_range >= 0
-        assert amplitude_mean >= 0
-        assert zero_crossings >= 0
-        assert signal_energy >= 0
-        
-    except Exception as e:
-        # If calculations fail, that's acceptable
-        pytest.skip(f"Morphological feature calculations failed: {e}")
+    # Test basic morphological feature calculations
+    amplitude_range = np.max(signal_data) - np.min(signal_data)
+    amplitude_mean = np.mean(np.abs(signal_data))
+    zero_crossings = np.sum(np.diff(np.sign(signal_data)) != 0)
+    signal_energy = np.sum(signal_data ** 2)
+    
+    # Validate results
+    assert isinstance(amplitude_range, (int, float, np.number))
+    assert isinstance(amplitude_mean, (int, float, np.number))
+    assert isinstance(zero_crossings, (int, float, np.number))
+    assert isinstance(signal_energy, (int, float, np.number))
+    
+    assert np.isfinite(amplitude_range)
+    assert np.isfinite(amplitude_mean)
+    assert np.isfinite(zero_crossings)
+    assert np.isfinite(signal_energy)
+    
+    # Check reasonable ranges
+    assert amplitude_range >= 0
+    assert amplitude_mean >= 0
+    assert zero_crossings >= 0
+    assert signal_energy >= 0
 
 
 def test_basic_assertions():

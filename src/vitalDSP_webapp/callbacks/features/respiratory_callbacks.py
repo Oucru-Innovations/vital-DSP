@@ -51,7 +51,9 @@ def detect_respiratory_signal_type(signal_data, sampling_freq):
         fft_magnitude = np.abs(fft_result[positive_mask])
 
         # Check for constant or near-constant signals
-        if np.std(signal_data) < 1e-10:  # Very small standard deviation indicates constant signal
+        if (
+            np.std(signal_data) < 1e-10
+        ):  # Very small standard deviation indicates constant signal
             return "unknown"
 
         # Find dominant frequency

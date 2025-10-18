@@ -63,7 +63,7 @@ Learn the fundamentals of signal processing with VitalDSP.
 .. code-block:: python
 
    # Generate sample ECG signal
-   from vitalDSP.utils.synthesize_data import generate_ecg_signal
+   from vitalDSP.utils.data_processing.synthesize_data import generate_ecg_signal
    
    # Parameters
    fs = 1000  # Sampling frequency (Hz)
@@ -270,7 +270,7 @@ Learn to analyze respiratory signals and estimate respiratory rate.
    from vitalDSP.respiratory_analysis.respiratory_analysis import RespiratoryAnalysis
    
    # Generate sample respiratory signal
-   from vitalDSP.utils.synthesize_data import generate_respiratory_signal
+   from vitalDSP.utils.data_processing.synthesize_data import generate_respiratory_signal
    
    # Parameters
    fs = 100  # Sampling frequency (Hz)

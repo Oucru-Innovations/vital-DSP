@@ -1,3 +1,39 @@
+"""
+Health Report Generator Module for Physiological Signal Analysis
+
+This module provides comprehensive health report generation capabilities for
+physiological signal analysis including ECG, PPG, EEG, and other vital signs.
+It implements automated report creation with visualization, interpretation,
+and multi-threaded processing for efficient large-scale analysis.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Automated health report generation
+- Multi-threaded visualization processing
+- Comprehensive feature analysis and interpretation
+- HTML report templates and rendering
+- Performance monitoring and optimization
+- Parallel processing for large datasets
+
+Examples:
+--------
+Basic health report generation:
+    >>> from vitalDSP.health_analysis.health_report_generator import HealthReportGenerator
+    >>> generator = HealthReportGenerator()
+    >>> features = {'hrv_sdnn': 45.2, 'hrv_rmssd': 32.1, 'respiratory_rate': 16.5}
+    >>> report = generator.generate_report(features, output_dir='./reports')
+    >>> print(f"Report generated: {report['status']}")
+
+Multi-threaded processing:
+    >>> config = {'max_workers': 4, 'use_multiprocessing': True}
+    >>> generator = HealthReportGenerator(config)
+    >>> large_features = {f'feature_{i}': np.random.randn(1000) for i in range(10)}
+    >>> report = generator.generate_report(large_features, output_dir='./reports')
+"""
+
 from vitalDSP.health_analysis.interpretation_engine import InterpretationEngine
 from vitalDSP.health_analysis.health_report_visualization import HealthReportVisualizer
 from vitalDSP.health_analysis.html_template import (

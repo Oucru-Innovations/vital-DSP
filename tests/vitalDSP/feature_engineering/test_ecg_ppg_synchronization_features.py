@@ -200,24 +200,24 @@ def test_invalid_sampling_frequencies(valid_ecg_signal, valid_ppg_signal):
 
 # Test detect_r_peaks (line 73-80)
 def test_detect_r_peaks_no_peaks(ecg_ppg_synchronization, mocker):
-    mocker.patch('vitalDSP.utils.peak_detection.PeakDetection.detect_peaks', return_value=[])
+    mocker.patch('vitalDSP.utils.signal_processing.peak_detection.PeakDetection.detect_peaks', return_value=[])
     with pytest.raises(ValueError, match="ECG signal is too short to detect peaks."):
         ecg_ppg_synchronization.detect_r_peaks()
 
 # Test detect_r_peaks_runtime_error
 def test_detect_r_peaks_runtime_error(ecg_ppg_synchronization, mocker):
-    mocker.patch('vitalDSP.utils.peak_detection.PeakDetection.detect_peaks', side_effect=Exception("Test Error"))
+    mocker.patch('vitalDSP.utils.signal_processing.peak_detection.PeakDetection.detect_peaks', side_effect=Exception("Test Error"))
     with pytest.raises(ValueError, match="ECG signal is too short to detect peaks."):
         ecg_ppg_synchronization.detect_r_peaks()
 
 # Test detect_systolic_peaks (line 102-108)
 def test_detect_systolic_peaks_no_peaks(ecg_ppg_synchronization, mocker):
-    mocker.patch('vitalDSP.utils.peak_detection.PeakDetection.detect_peaks', return_value=[])
+    mocker.patch('vitalDSP.utils.signal_processing.peak_detection.PeakDetection.detect_peaks', return_value=[])
     with pytest.raises(ValueError, match="No systolic peaks detected in the PPG signal."):
         ecg_ppg_synchronization.detect_systolic_peaks()
 
 def test_detect_systolic_peaks_runtime_error(ecg_ppg_synchronization, mocker):
-    mocker.patch('vitalDSP.utils.peak_detection.PeakDetection.detect_peaks', side_effect=Exception("Test Error"))
+    mocker.patch('vitalDSP.utils.signal_processing.peak_detection.PeakDetection.detect_peaks', side_effect=Exception("Test Error"))
     with pytest.raises(RuntimeError, match="Error detecting systolic peaks: Test Error"):
         ecg_ppg_synchronization.detect_systolic_peaks()
 

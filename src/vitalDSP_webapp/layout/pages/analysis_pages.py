@@ -51,12 +51,33 @@ def time_domain_layout():
                                                     ),
                                                     dbc.Col(
                                                         [
-                                                            dbc.Button(
-                                                                "📊 Export Results",
-                                                                id="btn-export-results",
-                                                                color="success",
-                                                                outline=True,
-                                                                size="lg",
+                                                            dbc.ButtonGroup(
+                                                                [
+                                                                    dbc.Button(
+                                                                        [
+                                                                            html.I(
+                                                                                className="fas fa-file-csv me-2"
+                                                                            ),
+                                                                            "Export CSV",
+                                                                        ],
+                                                                        id="btn-export-time-domain-csv",
+                                                                        color="success",
+                                                                        outline=True,
+                                                                        size="lg",
+                                                                    ),
+                                                                    dbc.Button(
+                                                                        [
+                                                                            html.I(
+                                                                                className="fas fa-file-code me-2"
+                                                                            ),
+                                                                            "Export JSON",
+                                                                        ],
+                                                                        id="btn-export-time-domain-json",
+                                                                        color="info",
+                                                                        outline=True,
+                                                                        size="lg",
+                                                                    ),
+                                                                ],
                                                                 className="w-100",
                                                             )
                                                         ],
@@ -449,6 +470,10 @@ def time_domain_layout():
             dcc.Store(id="store-time-domain-data"),
             dcc.Store(id="store-filtered-data"),
             dcc.Store(id="store-analysis-results"),
+            dcc.Store(id="store-time-domain-features"),  # For export
+            # Download components for export
+            dcc.Download(id="download-time-domain-csv"),
+            dcc.Download(id="download-time-domain-json"),
         ]
     )
 
@@ -1650,6 +1675,44 @@ def filtering_layout():
                                         ],
                                         md=2,
                                     ),
+                                    # Export Buttons
+                                    dbc.Col(
+                                        [
+                                            html.Label(
+                                                "Export:", className="form-label mb-1"
+                                            ),
+                                            dbc.ButtonGroup(
+                                                [
+                                                    dbc.Button(
+                                                        [
+                                                            html.I(
+                                                                className="fas fa-file-csv me-1"
+                                                            ),
+                                                            "CSV",
+                                                        ],
+                                                        id="btn-export-filtered-csv",
+                                                        color="success",
+                                                        outline=True,
+                                                        size="sm",
+                                                    ),
+                                                    dbc.Button(
+                                                        [
+                                                            html.I(
+                                                                className="fas fa-file-code me-1"
+                                                            ),
+                                                            "JSON",
+                                                        ],
+                                                        id="btn-export-filtered-json",
+                                                        color="info",
+                                                        outline=True,
+                                                        size="sm",
+                                                    ),
+                                                ],
+                                                size="sm",
+                                            ),
+                                        ],
+                                        md=2,
+                                    ),
                                     # Signal Type Selection
                                     dbc.Col(
                                         [
@@ -2714,6 +2777,10 @@ def filtering_layout():
             dcc.Store(id="store-filtering-data"),
             dcc.Store(id="store-filter-comparison"),
             dcc.Store(id="store-filter-quality-metrics"),
+            dcc.Store(id="store-filtered-signal"),  # For export
+            # Download components for export
+            dcc.Download(id="download-filtered-csv"),
+            dcc.Download(id="download-filtered-json"),
         ]
     )
 
@@ -2762,12 +2829,33 @@ def physiological_layout():
                                                     ),
                                                     dbc.Col(
                                                         [
-                                                            dbc.Button(
-                                                                "📊 Export Results",
-                                                                id="physio-btn-export-results",
-                                                                color="success",
-                                                                outline=True,
-                                                                size="lg",
+                                                            dbc.ButtonGroup(
+                                                                [
+                                                                    dbc.Button(
+                                                                        [
+                                                                            html.I(
+                                                                                className="fas fa-file-csv me-2"
+                                                                            ),
+                                                                            "Export CSV",
+                                                                        ],
+                                                                        id="btn-export-physio-csv",
+                                                                        color="success",
+                                                                        outline=True,
+                                                                        size="lg",
+                                                                    ),
+                                                                    dbc.Button(
+                                                                        [
+                                                                            html.I(
+                                                                                className="fas fa-file-code me-2"
+                                                                            ),
+                                                                            "Export JSON",
+                                                                        ],
+                                                                        id="btn-export-physio-json",
+                                                                        color="info",
+                                                                        outline=True,
+                                                                        size="lg",
+                                                                    ),
+                                                                ],
                                                                 className="w-100",
                                                             )
                                                         ],
@@ -3550,6 +3638,9 @@ def physiological_layout():
             dcc.Store(id="store-physio-data"),
             dcc.Store(id="store-physio-features"),
             dcc.Store(id="store-physio-analysis"),
+            # Download components for export
+            dcc.Download(id="download-physio-csv"),
+            dcc.Download(id="download-physio-json"),
         ]
     )
 
@@ -6496,6 +6587,11 @@ def settings_layout():
                                                                         ],
                                                                         value="light",
                                                                         className="mb-3",
+                                                                    ),
+                                                                    # Debug info
+                                                                    html.Div(
+                                                                        id="theme-debug",
+                                                                        style={"font-size": "12px", "color": "gray", "margin-top": "10px"},
                                                                     ),
                                                                     html.Label(
                                                                         "Time Zone",

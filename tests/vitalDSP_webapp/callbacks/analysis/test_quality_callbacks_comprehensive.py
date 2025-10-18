@@ -179,7 +179,7 @@ class TestQualityAssessmentCallback:
             advanced_options=None
         )
 
-        # Should return error message
+        # Should return data service not available message
         assert isinstance(result, tuple)
         assert len(result) == 8
         assert "Data service not available" in result[2]
@@ -241,6 +241,7 @@ class TestQualityAssessmentCallback:
         # Setup mocks
         mock_data_service = Mock()
         mock_data_service.get_all_data.return_value = {"data_1": sample_dataframe}
+        mock_data_service.has_data.return_value = True
         mock_get_data_service.return_value = mock_data_service
 
         # Register callbacks and capture them
@@ -281,7 +282,7 @@ class TestQualityAssessmentCallback:
             advanced_options=None
         )
 
-        # Should return instructions message
+        # Should return message to click button since button not clicked
         assert isinstance(result, tuple)
         assert len(result) == 8
         assert "Click" in result[2] and "Assess Signal Quality" in result[2]

@@ -235,6 +235,148 @@ Nonlinear dynamics and complexity measures for physiological signal analysis.
    :exclude-members: __dict__, __weakref__, __module__, __annotations__
    :noindex:
 
+Advanced Nonlinear Features
+============================
+
+State-of-the-art nonlinear dynamics and information-theoretic methods for advanced physiological signal analysis.
+
+Multi-Scale Entropy Analysis
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Multi-scale entropy (MSE) analysis quantifies signal complexity across multiple temporal scales, providing insights into physiological regulation and system health.
+
+**Key Features:**
+    * Standard MSE, Composite MSE (CMSE), and Refined Composite MSE (RCMSE)
+    * KD-tree accelerated sample entropy calculation (O(N log N))
+    * Complexity Index for single-value assessment
+    * Fuzzy entropy option for noisy signals
+
+**Clinical Applications:**
+    * Cardiac arrhythmia detection and classification
+    * Aging assessment and cardiovascular health evaluation
+    * Autonomic nervous system function assessment
+    * Disease progression monitoring (heart failure, diabetes)
+
+**Usage Example:**
+
+.. code-block:: python
+
+    from vitalDSP.physiological_features.advanced_entropy import MultiScaleEntropy
+
+    # Analyze RR interval complexity
+    mse = MultiScaleEntropy(rr_intervals, max_scale=20, m=2, r=0.15)
+    entropy_curve = mse.compute_rcmse()
+    complexity_index = mse.get_complexity_index(entropy_curve, scale_range=(1, 15))
+
+    # Interpret results
+    if complexity_index > 30:
+        print("Healthy complexity profile")
+    elif complexity_index > 15:
+        print("Reduced complexity - monitoring recommended")
+    else:
+        print("Severely reduced complexity - clinical attention needed")
+
+.. automodule:: vitalDSP.physiological_features.advanced_entropy
+   :members:
+   :undoc-members:
+   :private-members:
+   :exclude-members: __dict__, __weakref__, __module__, __annotations__
+   :noindex:
+
+Symbolic Dynamics Analysis
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Symbolic dynamics transforms continuous physiological signals into discrete symbol sequences for pattern analysis and complexity quantification.
+
+**Key Features:**
+    * Multiple symbolization methods: 0V (HRV-specific), Quantile, SAX, Threshold
+    * Shannon entropy, Renyi entropy, Permutation entropy
+    * Word distribution and forbidden words analysis
+    * Transition matrix computation for Markov analysis
+
+**Clinical Applications:**
+    * Heart rate variability pattern classification
+    * Autonomic regulation assessment
+    * Arrhythmia detection (atrial fibrillation screening)
+    * Sleep stage classification from EEG
+
+**Usage Example:**
+
+.. code-block:: python
+
+    from vitalDSP.physiological_features.symbolic_dynamics import SymbolicDynamics
+
+    # HRV symbolic analysis with 0V method
+    sd = SymbolicDynamics(rr_intervals, n_symbols=4, word_length=3, method='0V')
+
+    # Compute multiple metrics
+    shannon = sd.compute_shannon_entropy()
+    forbidden = sd.detect_forbidden_words()
+    perm_ent = sd.compute_permutation_entropy(order=3)
+
+    print(f"Shannon Entropy: {shannon['normalized_entropy']:.3f}")
+    print(f"Forbidden Words: {forbidden['forbidden_percentage']:.1f}%")
+    print(f"Interpretation: {forbidden['interpretation']}")
+
+.. automodule:: vitalDSP.physiological_features.symbolic_dynamics
+   :members:
+   :undoc-members:
+   :private-members:
+   :exclude-members: __dict__, __weakref__, __module__, __annotations__
+   :noindex:
+
+Transfer Entropy Analysis
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Transfer entropy quantifies directional information flow between coupled physiological signals, revealing causal relationships and coupling dynamics.
+
+**Key Features:**
+    * KNN-based transfer entropy estimation (Kraskov-Stögbauer-Grassberger method)
+    * Bidirectional coupling analysis
+    * Time-delayed TE for temporal dynamics assessment
+    * Statistical significance testing with surrogate data
+
+**Clinical Applications:**
+    * Cardio-respiratory coupling analysis
+    * Brain-heart interaction assessment
+    * Autonomic nervous system evaluation
+    * Multi-organ system dynamics monitoring
+
+**Usage Example:**
+
+.. code-block:: python
+
+    from vitalDSP.physiological_features.transfer_entropy import TransferEntropy
+
+    # Analyze respiration → heart rate coupling
+    te = TransferEntropy(respiration, heart_rate, k=2, l=2, delay=1, k_neighbors=3)
+
+    # Bidirectional analysis
+    bidirectional = te.compute_bidirectional_te()
+    print(f"Respiration → HR: {bidirectional['te_forward']:.3f}")
+    print(f"HR → Respiration: {bidirectional['te_backward']:.3f}")
+    print(f"Coupling type: {bidirectional['interpretation']}")
+
+    # Statistical significance
+    significance = te.test_significance(n_surrogates=1000)
+    print(f"p-value: {significance['p_value']:.4f} {significance['significance']}")
+
+    # Find optimal coupling delay
+    delayed = te.compute_time_delayed_te(max_delay=10)
+    print(f"Optimal delay: {delayed['optimal_delay']} seconds")
+
+.. automodule:: vitalDSP.physiological_features.transfer_entropy
+   :members:
+   :undoc-members:
+   :private-members:
+   :exclude-members: __dict__, __weakref__, __module__, __annotations__
+   :noindex:
+
+Advanced Features Guide
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+For comprehensive documentation including detailed mathematical formulations, code explanations, clinical validation results, and performance optimization guidelines, see the `Advanced Features Guide <../../ADVANCED_FEATURES_GUIDE.md>`_.
+
 Morphological Analysis
 ======================
 

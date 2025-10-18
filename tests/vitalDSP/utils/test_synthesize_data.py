@@ -1,7 +1,7 @@
 import pytest
 from unittest import mock
 import numpy as np
-from vitalDSP.utils.synthesize_data import (
+from vitalDSP.utils.data_processing.synthesize_data import (
     generate_sinusoidal,
     generate_square_wave,
     generate_noisy_signal,

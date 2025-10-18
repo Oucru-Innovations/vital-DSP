@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from unittest.mock import Mock, patch, MagicMock
 from scipy import signal as scipy_signal
+from scipy import integrate
 import plotly.graph_objects as go
 from dash import html
 import sys
@@ -183,7 +184,7 @@ class TestECGAnalysis:
                 
                 # Calculate morphology features
                 amplitude = np.max(window) - np.min(window)
-                area = np.trapz(np.abs(window))
+                area = integrate.trapezoid(np.abs(window))
                 duration = len(window) / sampling_freq
                 
                 # Validate morphology features
@@ -456,15 +457,15 @@ class TestCrossSignalAnalysis:
             # Calculate frequency domain features
             # VLF power (0.003-0.04 Hz)
             vlf_mask = (freqs >= 0.003) & (freqs < 0.04)
-            vlf_power = np.trapz(psd[vlf_mask], freqs[vlf_mask]) if np.any(vlf_mask) else 0
+            vlf_power = integrate.trapezoid(psd[vlf_mask], freqs[vlf_mask]) if np.any(vlf_mask) else 0
             
             # LF power (0.04-0.15 Hz)
             lf_mask = (freqs >= 0.04) & (freqs < 0.15)
-            lf_power = np.trapz(psd[lf_mask], freqs[lf_mask]) if np.any(lf_mask) else 0
+            lf_power = integrate.trapezoid(psd[lf_mask], freqs[lf_mask]) if np.any(lf_mask) else 0
             
             # HF power (0.15-0.4 Hz)
             hf_mask = (freqs >= 0.15) & (freqs < 0.4)
-            hf_power = np.trapz(psd[hf_mask], freqs[hf_mask]) if np.any(hf_mask) else 0
+            hf_power = integrate.trapezoid(psd[hf_mask], freqs[hf_mask]) if np.any(hf_mask) else 0
             
             # Total power
             total_power = vlf_power + lf_power + hf_power
@@ -582,10 +583,10 @@ class TestAdvancedPhysiologicalFeatures:
                 if len(fluctuations) < 2:
                     return 0
                 
-                # Calculate alpha (slope of log-log plot)
+                # Calculate alpha (slope of log-log plot) with safety checks
                 segment_sizes = segment_sizes[:len(fluctuations)]
-                log_sizes = np.log(segment_sizes)
-                log_fluctuations = np.log(fluctuations)
+                log_sizes = np.log(np.maximum(segment_sizes, 1e-10))  # Avoid log(0)
+                log_fluctuations = np.log(np.maximum(fluctuations, 1e-10))  # Avoid log(0)
                 
                 # Linear regression
                 coeffs = np.polyfit(log_sizes, log_fluctuations, 1)
@@ -638,15 +639,15 @@ class TestAdvancedPhysiologicalFeatures:
             # Calculate frequency domain features
             # VLF power (0.003-0.04 Hz)
             vlf_mask = (freqs >= 0.003) & (freqs < 0.04)
-            vlf_power = np.trapz(psd[vlf_mask], freqs[vlf_mask]) if np.any(vlf_mask) else 0
+            vlf_power = integrate.trapezoid(psd[vlf_mask], freqs[vlf_mask]) if np.any(vlf_mask) else 0
             
             # LF power (0.04-0.15 Hz)
             lf_mask = (freqs >= 0.04) & (freqs < 0.15)
-            lf_power = np.trapz(psd[lf_mask], freqs[lf_mask]) if np.any(lf_mask) else 0
+            lf_power = integrate.trapezoid(psd[lf_mask], freqs[lf_mask]) if np.any(lf_mask) else 0
             
             # HF power (0.15-0.4 Hz)
             hf_mask = (freqs >= 0.15) & (freqs < 0.4)
-            hf_power = np.trapz(psd[hf_mask], freqs[hf_mask]) if np.any(hf_mask) else 0
+            hf_power = integrate.trapezoid(psd[hf_mask], freqs[hf_mask]) if np.any(hf_mask) else 0
             
             # Total power
             total_power = vlf_power + lf_power + hf_power

@@ -17,6 +17,54 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def safe_log_range(logger, data, name="data", precision=4):
+    """
+    Safely log min/max range of data, handling empty arrays.
+
+    Args:
+        logger: Logger instance
+        data: Array-like data
+        name: Name for logging (default: "data")
+        precision: Decimal precision for formatting (default: 4)
+    """
+    if len(data) > 0:
+        logger.info(
+            f"{name} range: {np.min(data):.{precision}f} to {np.max(data):.{precision}f}"
+        )
+    else:
+        logger.warning(f"{name} is empty - cannot compute range")
+
+
+def configure_plot_with_pan_zoom(fig, title="", height=400):
+    """
+    Configure plotly figure with pan/zoom tools and consistent styling.
+
+    Args:
+        fig: Plotly figure object
+        title: Plot title
+        height: Plot height in pixels
+
+    Returns:
+        Configured plotly figure
+    """
+    fig.update_layout(
+        title=title,
+        height=height,
+        showlegend=True,
+        template="plotly_white",
+        # Enable pan and zoom - use simpler configuration
+        dragmode="pan",  # Default to pan mode
+        # Show the modebar with all tools
+        modebar=dict(
+            orientation="v",  # Vertical orientation
+            bgcolor="rgba(255,255,255,0.8)",  # Semi-transparent background
+            color="rgba(0,0,0,0.5)",  # Dark icons
+            activecolor="rgba(0,0,0,0.8)",  # Darker when active
+        ),
+    )
+    return fig
+
+
 def register_signal_filtering_callbacks(app):
     """Register all signal filtering callbacks."""
 
@@ -507,7 +555,7 @@ def register_signal_filtering_callbacks(app):
                 logger.error(f"Error processing signal column data: {e}")
                 logger.info(f"Signal column data type: {df[signal_column].dtype}")
                 logger.info(
-                    f"Signal column data sample: {df[signal_column].head(5).tolist()}"
+                    f"Signal column data range: {df[signal_column].min():.3f} to {df[signal_column].max():.3f}"
                 )
                 return (
                     create_empty_figure(),
@@ -550,7 +598,6 @@ def register_signal_filtering_callbacks(app):
                         logger.info(
                             "Time data converted to seconds from first timestamp"
                         )
-                        logger.info(f"Converted time data sample: {time_data[:5]}")
                         logger.info(
                             f"Converted time data range: {np.min(time_data):.4f} to {np.max(time_data):.4f}"
                         )
@@ -566,15 +613,16 @@ def register_signal_filtering_callbacks(app):
                     logger.info(
                         f"Full time data range: {np.min(time_data):.4f} to {np.max(time_data):.4f}"
                     )
-                    logger.info(f"Time column data sample: {time_data[:10]}")
                     logger.info(f"Time column data type: {type(time_data[0])}")
                     logger.info(
-                        f"Time column data info: min={np.min(time_data):.4f}, max={np.max(time_data):.4f}, mean={np.mean(time_data):.4f}"
+                        f"Time column data range: min={np.min(time_data):.4f}, max={np.max(time_data):.4f}, mean={np.mean(time_data):.4f}"
                     )
                 except Exception as e:
                     logger.error(f"Error processing time column data: {e}")
                     logger.info(f"Time column data type: {type(time_data[0])}")
-                    logger.info(f"Time column data sample: {time_data[:5].tolist()}")
+                    logger.info(
+                        f"Time column data range: {np.min(time_data):.4f} to {np.max(time_data):.4f}"
+                    )
                     # Fall back to index-based time axis
                     time_column = None
                     logger.info(
@@ -768,30 +816,31 @@ def register_signal_filtering_callbacks(app):
                 )
 
             logger.info(f"Signal data shape: {signal_data.shape}")
-            logger.info(
-                f"Signal data range: {np.min(signal_data):.4f} to {np.max(signal_data):.4f}"
-            )
-            logger.info(
-                f"Signal data sample: {signal_data[:5] if len(signal_data) >= 5 else signal_data}"
-            )
+            safe_log_range(logger, signal_data, "Signal data")
+            if len(signal_data) > 0:
+                logger.info(
+                    f"Signal data sample: {signal_data[:5] if len(signal_data) >= 5 else signal_data}"
+                )
+            else:
+                logger.warning("Signal data is empty - cannot compute range or sample")
 
             logger.info("Final data extraction:")
             logger.info(f"  Start index: {start_idx}")
             logger.info(f"  End index: {end_idx}")
             logger.info(f"  Signal data shape: {signal_data.shape}")
             logger.info(f"  Time axis shape: {time_axis.shape}")
-            logger.info(
-                f"  Signal data range: {np.min(signal_data):.4f} to {np.max(signal_data):.4f}"
-            )
-            logger.info(
-                f"  Time axis range: {np.min(time_axis):.4f} to {np.max(time_axis):.4f}"
-            )
-            logger.info(
-                f"  Signal data sample: {signal_data[:5] if len(signal_data) >= 5 else signal_data}"
-            )
-            logger.info(
-                f"  Time axis sample: {time_axis[:5] if len(time_axis) >= 5 else time_axis}"
-            )
+
+            safe_log_range(logger, signal_data, "  Signal data")
+            safe_log_range(logger, time_axis, "  Time axis")
+
+            if len(signal_data) > 0:
+                logger.info(
+                    f"  Signal data sample: {signal_data[:5] if len(signal_data) >= 5 else signal_data}"
+                )
+            if len(time_axis) > 0:
+                logger.info(
+                    f"  Time axis sample: {time_axis[:5] if len(time_axis) >= 5 else time_axis}"
+                )
 
             # Check if we have valid data
             if len(signal_data) == 0:
@@ -1356,6 +1405,15 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
             yaxis_title="Amplitude",
             height=400,
             showlegend=True,
+            template="plotly_white",
+            # Enable pan and zoom
+            dragmode="pan",
+            modebar=dict(
+                orientation="v",
+                bgcolor="rgba(255,255,255,0.8)",
+                color="rgba(0,0,0,0.5)",
+                activecolor="rgba(0,0,0,0.8)",
+            ),
         )
 
         logger.info("Original signal plot with critical points created successfully")
@@ -1544,6 +1602,15 @@ def create_filtered_signal_plot(time_axis, filtered_data, sampling_freq, signal_
             yaxis_title="Amplitude",
             height=400,
             showlegend=True,
+            template="plotly_white",
+            # Enable pan and zoom
+            dragmode="pan",
+            modebar=dict(
+                orientation="v",
+                bgcolor="rgba(255,255,255,0.8)",
+                color="rgba(0,0,0,0.5)",
+                activecolor="rgba(0,0,0,0.8)",
+            ),
         )
 
         logger.info("Filtered signal plot with critical points created successfully")
@@ -1953,6 +2020,15 @@ def create_filter_comparison_plot(
             yaxis_title="Amplitude",
             height=400,
             showlegend=True,
+            template="plotly_white",
+            # Enable pan and zoom
+            dragmode="pan",
+            modebar=dict(
+                orientation="v",
+                bgcolor="rgba(255,255,255,0.8)",
+                color="rgba(0,0,0,0.5)",
+                activecolor="rgba(0,0,0,0.8)",
+            ),
         )
 
         logger.info("Comparison plot with critical points created successfully")
@@ -4847,6 +4923,14 @@ def create_filter_quality_plots(
             template="plotly_white",
             font=dict(size=11),
             margin=dict(l=60, r=60, t=100, b=60),
+            # Enable pan and zoom
+            dragmode="pan",
+            modebar=dict(
+                orientation="v",
+                bgcolor="rgba(255,255,255,0.8)",
+                color="rgba(0,0,0,0.5)",
+                activecolor="rgba(0,0,0,0.8)",
+            ),
             legend=dict(
                 orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
             ),

@@ -1,3 +1,30 @@
+"""
+Signal Transforms Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.transforms.wavelet_fft_fusion import WaveletFftFusion
+    >>> signal = np.random.randn(1000)
+    >>> processor = WaveletFftFusion(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
+
 import numpy as np
 from vitalDSP.transforms.wavelet_transform import WaveletTransform
 

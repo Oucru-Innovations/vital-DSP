@@ -1,3 +1,47 @@
+"""
+Respiratory Analysis Module for Physiological Signal Processing
+
+This module provides comprehensive respiratory analysis capabilities for physiological
+signals including PPG, ECG, and other vital signs. It implements multiple methods
+for respiratory rate estimation including time-domain counting, frequency-domain
+analysis, and advanced signal processing techniques.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Multiple respiratory rate estimation methods
+- Time-domain peak counting and interval analysis
+- Frequency-domain FFT-based analysis
+- Advanced preprocessing and filtering options
+- Noise reduction and artifact handling
+- Comprehensive respiratory pattern analysis
+
+Examples:
+--------
+Basic respiratory rate estimation:
+    >>> import numpy as np
+    >>> from vitalDSP.respiratory_analysis.respiratory_analysis import RespiratoryAnalysis
+    >>> ppg_signal = np.random.randn(2000)  # Simulated PPG signal
+    >>> resp_analysis = RespiratoryAnalysis(ppg_signal, fs=128)
+    >>> rr_result = resp_analysis.compute_respiratory_rate(method="counting")
+    >>> print(f"Respiratory rate: {rr_result['respiratory_rate']:.2f} breaths/min")
+
+FFT-based analysis:
+    >>> rr_fft = resp_analysis.compute_respiratory_rate(method="fft_based")
+    >>> print(f"FFT-based RR: {rr_fft['respiratory_rate']:.2f} breaths/min")
+
+With preprocessing:
+    >>> from vitalDSP.preprocess.preprocess_operations import PreprocessConfig
+    >>> config = PreprocessConfig(filter_type="bandpass", lowcut=0.1, highcut=2.0)
+    >>> rr_preprocessed = resp_analysis.compute_respiratory_rate(method="counting", preprocess_config=config)
+    >>> print(f"Preprocessed RR: {rr_preprocessed['respiratory_rate']:.2f} breaths/min")
+"""
+
+import numpy as np
+import warnings
+from scipy.signal import find_peaks
 from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 from vitalDSP.respiratory_analysis.estimate_rr.peak_detection_rr import (
     peak_detection_rr,
@@ -8,9 +52,7 @@ from vitalDSP.respiratory_analysis.estimate_rr.frequency_domain_rr import (
 )
 from vitalDSP.preprocess.preprocess_operations import PreprocessConfig
 from vitalDSP.respiratory_analysis.estimate_rr.time_domain_rr import time_domain_rr
-from scipy.signal import find_peaks
 from scipy.interpolate import interp1d
-import numpy as np
 
 
 class RespiratoryAnalysis:
@@ -66,6 +108,10 @@ class RespiratoryAnalysis:
         fs : int, optional
             The sampling frequency of the signal in Hz. Default is 1000 Hz.
         """
+        # Validate sampling frequency
+        if fs <= 0:
+            raise ValueError("Sampling frequency must be positive")
+
         self.signal = signal
         self.fs = fs
 
@@ -109,6 +155,17 @@ class RespiratoryAnalysis:
         """
         if preprocess_config is None:
             preprocess_config = PreprocessConfig()
+
+        # Validate signal
+        if len(self.signal) == 0:
+            raise ValueError("Signal cannot be empty")
+
+        if len(self.signal) < 10:
+            import warnings
+
+            warnings.warn(
+                f"Signal length ({len(self.signal)}) is very short for reliable respiratory analysis. Results may be inaccurate."
+            )
 
         # Preprocess the signal
         preprocessed_signal = preprocess_signal(
@@ -213,13 +270,49 @@ class RespiratoryAnalysis:
         np.ndarray
             The intervals between breaths in seconds.
         """
+        # Input validation
+        if len(preprocessed_signal) == 0:
+            return np.array([])
+        if self.fs <= 0:
+            raise ValueError("Sampling frequency must be positive")
+
+        # Validate duration parameters
+        if min_breath_duration <= 0 or max_breath_duration <= 0:
+            raise ValueError("Breath durations must be positive")
+        if min_breath_duration >= max_breath_duration:
+            raise ValueError("Minimum breath duration must be less than maximum")
+
         min_distance = int(min_breath_duration * self.fs)
-        peaks, _ = find_peaks(preprocessed_signal, distance=min_distance)
+
+        # Ensure minimum distance is reasonable
+        if min_distance >= len(preprocessed_signal) // 2:
+            warnings.warn("Minimum breath duration too large for signal length")
+            return np.array([])
+
+        try:
+            peaks, _ = find_peaks(preprocessed_signal, distance=min_distance)
+        except Exception as e:
+            warnings.warn(f"Peak detection failed: {e}")
+            return np.array([])
+
+        # Check if we have enough peaks
+        if len(peaks) < 2:
+            warnings.warn("Insufficient peaks found for breath interval calculation")
+            return np.array([])
+
         breath_intervals = np.diff(peaks) / self.fs
-        return breath_intervals[
+        valid_intervals = breath_intervals[
             (breath_intervals > min_breath_duration)
             & (breath_intervals < max_breath_duration)
         ]
+
+        # Additional validation: check for reasonable intervals
+        if len(valid_intervals) == 0:
+            warnings.warn(
+                "No valid breath intervals found within specified duration range"
+            )
+
+        return valid_intervals
 
     def _detect_breaths_by_zero_crossing(
         self, preprocessed_signal, min_breath_duration, max_breath_duration
