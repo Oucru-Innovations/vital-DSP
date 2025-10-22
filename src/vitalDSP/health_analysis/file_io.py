@@ -23,7 +23,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import yaml
 import os
 

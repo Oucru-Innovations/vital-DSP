@@ -26,7 +26,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import numpy as np
 import plotly.graph_objs as go
 from vitalDSP.transforms.stft import STFT

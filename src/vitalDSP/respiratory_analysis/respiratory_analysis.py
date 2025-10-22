@@ -199,40 +199,28 @@ class RespiratoryAnalysis:
             respiratory_rate = time_domain_rr(
                 preprocessed_signal,
                 sampling_rate=self.fs,
-                preprocess=preprocess_config.repreprocess,
-                filter_type=preprocess_config.filter_type,
-                lowcut=preprocess_config.lowcut,
-                highcut=preprocess_config.highcut,
+                preprocess=None,  # Signal already preprocessed, don't preprocess again
             )
             return respiratory_rate
         elif method == "frequency_domain":
             respiratory_rate = frequency_domain_rr(
                 preprocessed_signal,
                 sampling_rate=self.fs,
-                preprocess=preprocess_config.repreprocess,
-                filter_type=preprocess_config.filter_type,
-                lowcut=preprocess_config.lowcut,
-                highcut=preprocess_config.highcut,
+                preprocess=None,  # Signal already preprocessed, don't preprocess again
             )
             return respiratory_rate
         elif method == "fft_based":
             respiratory_rate = fft_based_rr(
                 preprocessed_signal,
                 sampling_rate=self.fs,
-                preprocess=preprocess_config.repreprocess,
-                filter_type=preprocess_config.filter_type,
-                lowcut=preprocess_config.lowcut,
-                highcut=preprocess_config.highcut,
+                preprocess=None,  # Signal already preprocessed, don't preprocess again
             )
             return respiratory_rate
         elif method == "counting":
             respiratory_rate = peak_detection_rr(
                 preprocessed_signal,
                 sampling_rate=self.fs,
-                preprocess=preprocess_config.repreprocess,
-                filter_type=preprocess_config.filter_type,
-                lowcut=preprocess_config.lowcut,
-                highcut=preprocess_config.highcut,
+                preprocess=None,  # Signal already preprocessed, don't preprocess again
             )
             return respiratory_rate
         else:
@@ -389,3 +377,171 @@ class RespiratoryAnalysis:
             & (intervals < mean_interval + threshold / 1000)
         ]
         return valid_intervals
+
+    def compute_respiratory_rate_ensemble(self, preprocess_config=None, methods=None):
+        """
+        Compute respiratory rate using multiple methods and return consensus estimate.
+
+        This method runs multiple RR estimation algorithms in parallel and combines
+        their results using median consensus, providing a more robust estimate than
+        any single method. It also returns quality metrics including standard deviation
+        and confidence scores.
+
+        Parameters
+        ----------
+        preprocess_config : PreprocessConfig, optional
+            Configuration for signal preprocessing. If None, uses default configuration.
+        methods : list of str, optional
+            List of methods to use for ensemble estimation.
+            Default: ['counting', 'fft_based', 'frequency_domain', 'time_domain']
+            Available methods:
+            - 'counting': Peak detection with interval analysis (peak_detection_rr)
+            - 'fft_based': Fast Fourier Transform based estimation
+            - 'frequency_domain': Welch PSD based estimation
+            - 'time_domain': Autocorrelation based estimation
+            - 'peaks': Peak detection (old method, uses _detect_breaths_by_peaks)
+            - 'zero_crossing': Zero-crossing detection
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - 'respiratory_rate': float, consensus RR estimate (median of valid methods)
+            - 'individual_estimates': dict, per-method estimates (method_name: rr_value)
+            - 'std': float, standard deviation across methods (measure of agreement)
+            - 'confidence': float, confidence score (0-1 scale, higher = more agreement)
+            - 'n_methods': int, number of methods that returned valid estimates
+            - 'quality': str, quality rating ('high', 'medium', 'low')
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from vitalDSP.respiratory_analysis.respiratory_analysis import RespiratoryAnalysis
+        >>> signal = np.sin(2 * np.pi * 0.25 * np.arange(0, 60, 1/128))  # 15 BPM signal
+        >>> resp = RespiratoryAnalysis(signal, fs=128)
+        >>> result = resp.compute_respiratory_rate_ensemble()
+        >>> print(f"RR: {result['respiratory_rate']:.1f} BPM")
+        >>> print(f"Confidence: {result['confidence']:.2f}")
+        >>> print(f"Individual estimates: {result['individual_estimates']}")
+
+        >>> # Use specific methods only
+        >>> result = resp.compute_respiratory_rate_ensemble(methods=['fft_based', 'frequency_domain'])
+
+        Notes
+        -----
+        The ensemble approach provides several advantages:
+        1. More robust to method-specific failures
+        2. Automatic outlier rejection (methods with implausible results)
+        3. Quality/confidence metrics for result interpretation
+        4. Better performance on noisy or challenging signals
+
+        Confidence scoring:
+        - confidence > 0.8: High agreement (std < 1 BPM) - Very reliable
+        - confidence 0.5-0.8: Medium agreement (std 1-3 BPM) - Reliable
+        - confidence < 0.5: Low agreement (std > 3 BPM) - Use with caution
+
+        If fewer than 2 methods return valid estimates, confidence is automatically
+        set to 0.3 (low) as consensus requires multiple opinions.
+
+        References
+        ----------
+        .. [1] Charlton, P.H., et al. (2018). Breathing rate estimation from the
+               electrocardiogram and photoplethysmogram: A review. IEEE Reviews in
+               Biomedical Engineering, 11, 2-20.
+        """
+        if methods is None:
+            methods = ["counting", "fft_based", "frequency_domain", "time_domain"]
+
+        estimates = {}
+        valid_estimates = []
+
+        for method in methods:
+            try:
+                result = self.compute_respiratory_rate(
+                    method=method, preprocess_config=preprocess_config
+                )
+
+                # Handle different return types (float vs dict)
+                if isinstance(result, dict):
+                    rr = result.get("respiratory_rate", 0)
+                else:
+                    rr = result
+
+                # Only accept physiologically plausible estimates (6-40 BPM)
+                if 6 <= rr <= 40:
+                    estimates[method] = float(rr)
+                    valid_estimates.append(rr)
+                else:
+                    estimates[method] = None
+                    warnings.warn(
+                        f"Method '{method}' returned implausible RR ({rr:.1f} BPM), "
+                        f"excluded from ensemble"
+                    )
+            except Exception as e:
+                estimates[method] = None
+                warnings.warn(f"Method '{method}' failed with error: {e}")
+
+        # Handle case with insufficient valid estimates
+        if len(valid_estimates) == 0:
+            return {
+                "respiratory_rate": 0.0,
+                "individual_estimates": estimates,
+                "std": 0.0,
+                "confidence": 0.0,
+                "n_methods": 0,
+                "quality": "failed",
+            }
+
+        if len(valid_estimates) == 1:
+            return {
+                "respiratory_rate": float(valid_estimates[0]),
+                "individual_estimates": estimates,
+                "std": 0.0,
+                "confidence": 0.3,  # Low confidence with single method
+                "n_methods": 1,
+                "quality": "low",
+            }
+
+        # Use median for consensus (robust to outliers)
+        consensus_rr = np.median(valid_estimates)
+        std = np.std(valid_estimates)
+        mean_rr = np.mean(valid_estimates)
+
+        # Confidence based on agreement between methods
+        # High confidence if std < 2 BPM, low confidence if std > 5 BPM
+        if std < 1:
+            confidence = 1.0
+        elif std < 2:
+            confidence = 0.9
+        elif std < 3:
+            confidence = 0.7
+        elif std < 5:
+            confidence = 0.5
+        else:
+            confidence = max(0, 0.5 - (std - 5) / 10)
+
+        # Adjust confidence based on number of methods
+        # More methods → higher confidence
+        if len(valid_estimates) >= 4:
+            confidence = min(1.0, confidence * 1.1)
+        elif len(valid_estimates) == 2:
+            confidence = confidence * 0.9
+
+        # Determine quality rating
+        if confidence >= 0.8 and len(valid_estimates) >= 3:
+            quality = "high"
+        elif confidence >= 0.5 or len(valid_estimates) >= 2:
+            quality = "medium"
+        else:
+            quality = "low"
+
+        return {
+            "respiratory_rate": float(consensus_rr),
+            "mean_rate": float(mean_rr),
+            "individual_estimates": estimates,
+            "std": float(std),
+            "confidence": float(confidence),
+            "n_methods": len(valid_estimates),
+            "quality": quality,
+            "method": "ensemble_median",
+        }

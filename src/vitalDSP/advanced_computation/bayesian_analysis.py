@@ -26,7 +26,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import numpy as np
 from scipy.optimize import minimize
 from scipy.special import erf

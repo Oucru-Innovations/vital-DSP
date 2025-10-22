@@ -25,7 +25,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 from vitalDSP.utils.config_utilities.common import find_peaks
 from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 

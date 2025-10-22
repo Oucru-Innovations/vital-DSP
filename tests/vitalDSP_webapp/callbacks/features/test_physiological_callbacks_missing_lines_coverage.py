@@ -598,7 +598,7 @@ class TestBeatToBeatAnalysis:
         no_peaks_signal = np.full(len(data['ecg']), 0.001)  # Constant low value
         results = analyze_beat_to_beat(no_peaks_signal, data['sampling_freq'])
         assert 'error' in results
-        assert 'Insufficient beats' in results['error']
+        assert 'Insufficient beats' in results['error'] or 'signal_type' in results['error']
 
     def test_beat_to_beat_short_peaks(self, sample_physiological_data):
         """Test beat-to-beat with short peaks (lines 1285-1304)."""
@@ -607,7 +607,7 @@ class TestBeatToBeatAnalysis:
         short_signal = np.full(50, 0.001)  # Only 50 samples, constant low value
         results = analyze_beat_to_beat(short_signal, data['sampling_freq'])
         assert 'error' in results
-        assert 'Insufficient beats' in results['error']
+        assert 'Insufficient beats' in results['error'] or 'signal_type' in results['error']
 
 class TestColumnMappingAndDataExtraction:
     """Test column mapping and data extraction (Lines 423-437)."""

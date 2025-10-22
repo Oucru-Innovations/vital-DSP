@@ -45,14 +45,16 @@ def register_quality_callbacks(app):
         ],
         [
             Input("quality-analyze-btn", "n_clicks"),
-            Input("url", "pathname"),
-            Input("quality-time-range-slider", "value"),
+            # Input("url", "pathname"),  # REMOVED - was running full analysis on EVERY page load!
+            # Input("quality-time-range-slider", "value"),  # REMOVED - was causing constant updates!
             Input("quality-btn-nudge-m10", "n_clicks"),
             Input("quality-btn-nudge-m1", "n_clicks"),
             Input("quality-btn-nudge-p1", "n_clicks"),
             Input("quality-btn-nudge-p10", "n_clicks"),
         ],
         [
+            State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
+            State("quality-time-range-slider", "value"),  # MOVED to State - prevents callback loop!
             State("quality-start-time", "value"),
             State("quality-end-time", "value"),
             State("quality-signal-type", "value"),
@@ -64,12 +66,13 @@ def register_quality_callbacks(app):
     )
     def quality_assessment_callback(
         n_clicks,
-        pathname,
-        slider_value,
+        # pathname, slider_value moved to State below
         nudge_m10,
         nudge_m1,
         nudge_p1,
         nudge_p10,
+        pathname,  # State parameter
+        slider_value,  # State parameter
         start_time,
         end_time,
         signal_type,
@@ -97,9 +100,9 @@ def register_quality_callbacks(app):
 
         # Check if data is available
         try:
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
 
             if data_service is None or not data_service.has_data():
                 logger.error("No data available")

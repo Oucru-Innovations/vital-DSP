@@ -26,7 +26,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import plotly.graph_objs as go
 from vitalDSP.filtering.artifact_removal import ArtifactRemoval
 import numpy as np

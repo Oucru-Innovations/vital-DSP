@@ -26,7 +26,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 from scipy.signal import coherence
 from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 from vitalDSP.respiratory_analysis.respiratory_analysis import PreprocessConfig

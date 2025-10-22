@@ -26,7 +26,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import numpy as np
 from scipy.fftpack import dct, idct
 

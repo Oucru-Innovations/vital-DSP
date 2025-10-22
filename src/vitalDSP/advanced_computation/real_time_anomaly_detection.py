@@ -25,7 +25,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import numpy as np
 from collections import deque
 from vitalDSP.transforms.wavelet_transform import (

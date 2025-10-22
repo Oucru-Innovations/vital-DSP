@@ -26,7 +26,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import plotly.graph_objs as go
 from vitalDSP.filtering.signal_filtering import (
     SignalFiltering,

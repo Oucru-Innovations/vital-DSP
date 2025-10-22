@@ -81,7 +81,39 @@ class WaveletTransform:
 
         # Retrieve the wavelet filters (low_pass, high_pass) from the Wavelet class
         wavelet_class = Wavelet()
-        wavelet_method = getattr(wavelet_class, wavelet_name, None)
+
+        # Handle common wavelet naming conventions
+        wavelet_mapping = {
+            "haar": lambda: wavelet_class.haar(),
+            "db1": lambda: wavelet_class.db(order=1),
+            "db2": lambda: wavelet_class.db(order=2),
+            "db3": lambda: wavelet_class.db(order=3),
+            "db4": lambda: wavelet_class.db(order=4),
+            "db5": lambda: wavelet_class.db(order=5),
+            "db6": lambda: wavelet_class.db(order=6),
+            "db7": lambda: wavelet_class.db(order=7),
+            "db8": lambda: wavelet_class.db(order=8),
+            "sym1": lambda: wavelet_class.sym(order=1),
+            "sym2": lambda: wavelet_class.sym(order=2),
+            "sym3": lambda: wavelet_class.sym(order=3),
+            "sym4": lambda: wavelet_class.sym(order=4),
+            "sym5": lambda: wavelet_class.sym(order=5),
+            "sym6": lambda: wavelet_class.sym(order=6),
+            "sym7": lambda: wavelet_class.sym(order=7),
+            "sym8": lambda: wavelet_class.sym(order=8),
+            "coif1": lambda: wavelet_class.coif(order=1),
+            "coif2": lambda: wavelet_class.coif(order=2),
+            "coif3": lambda: wavelet_class.coif(order=3),
+            "coif4": lambda: wavelet_class.coif(order=4),
+            "coif5": lambda: wavelet_class.coif(order=5),
+        }
+
+        # Get the wavelet method
+        if wavelet_name in wavelet_mapping:
+            wavelet_method = wavelet_mapping[wavelet_name]
+        else:
+            # Try direct method lookup as fallback
+            wavelet_method = getattr(wavelet_class, wavelet_name, None)
 
         if wavelet_method is None:
             raise ValueError(f"Wavelet '{wavelet_name}' not found in Wavelet class.")

@@ -59,7 +59,7 @@ from .real_time_anomaly_detection import RealTimeAnomalyDetection
 
 __all__ = [
     "AnomalyDetection",
-    "BayesianOptimization", 
+    "BayesianOptimization",
     "EMD",
     "KalmanFilter",
     "NeuralNetworkFiltering",

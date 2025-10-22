@@ -75,7 +75,7 @@ from .pretrained_models import (
 
 from .transfer_learning import (
     TransferLearningStrategy,
-    FeatureExtractor,
+    TransferFeatureExtractor,
     FineTuner,
     DomainAdapter,
     quick_transfer,
@@ -118,7 +118,7 @@ __all__ = [
     "MODEL_REGISTRY",
     # Transfer Learning
     "TransferLearningStrategy",
-    "FeatureExtractor",
+    "TransferFeatureExtractor",
     "FineTuner",
     "DomainAdapter",
     "quick_transfer",

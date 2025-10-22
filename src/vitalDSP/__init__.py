@@ -56,6 +56,7 @@ Signal quality assessment:
 
 # Configure warnings before importing modules
 from .utils.warning_config import configure_warnings, suppress_test_warnings
+
 configure_warnings()
 suppress_test_warnings()
 

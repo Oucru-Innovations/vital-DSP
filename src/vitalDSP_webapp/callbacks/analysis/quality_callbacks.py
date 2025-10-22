@@ -45,14 +45,15 @@ def register_quality_callbacks(app):
         ],
         [
             Input("quality-analyze-btn", "n_clicks"),
-            Input("url", "pathname"),
-            Input("quality-time-range-slider", "value"),
+            # Input("url", "pathname"),  # REMOVED - was running full analysis on EVERY page load!
             Input("quality-btn-nudge-m10", "n_clicks"),
             Input("quality-btn-nudge-m1", "n_clicks"),
             Input("quality-btn-nudge-p1", "n_clicks"),
             Input("quality-btn-nudge-p10", "n_clicks"),
         ],
         [
+            State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
+            State("quality-time-range-slider", "value"),
             State("quality-start-time", "value"),
             State("quality-end-time", "value"),
             State("quality-signal-type", "value"),
@@ -65,11 +66,11 @@ def register_quality_callbacks(app):
     def quality_assessment_callback(
         n_clicks,
         pathname,
-        slider_value,
         nudge_m10,
         nudge_m1,
         nudge_p1,
         nudge_p10,
+        slider_value,
         start_time,
         end_time,
         signal_type,
@@ -110,9 +111,9 @@ def register_quality_callbacks(app):
 
         # Check if data is available
         try:
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
 
             if data_service is None:
                 logger.error("Data service not available")
@@ -313,28 +314,126 @@ def assess_signal_quality_vitaldsp(
         # Initialize SignalQualityIndex for temporal analysis
         sqi = SignalQualityIndex(signal_data)
 
-        # SNR Assessment (if we have filtered signal, use SignalQuality)
+        # SNR Assessment - Enhanced with vitalDSP advanced methods
         if "snr" in quality_metrics or not quality_metrics:
-            # For standalone SNR without processed signal, use signal power vs noise estimation
-            # Estimate noise as high-frequency content
-            from scipy.signal import butter, filtfilt
+            try:
+                from vitalDSP.signal_quality_assessment.snr_computation import (
+                    snr_power_ratio,
+                    snr_peak_to_peak,
+                    snr_mean_square,
+                )
 
-            # High-pass filter to extract noise
-            nyq = sampling_freq / 2
-            if nyq > 10:  # Only if we have sufficient frequency range
-                cutoff = min(10, nyq * 0.8)  # 10 Hz or 80% of Nyquist
-                b, a = butter(4, cutoff / nyq, btype="high")
-                noise_estimate = filtfilt(b, a, signal_data)
+                # For standalone SNR without processed signal, use signal power vs noise estimation
+                # Estimate noise as high-frequency content using vitalDSP
+                from vitalDSP.filtering.signal_filtering import SignalFiltering
 
-                # Low-pass filter to get signal
-                cutoff_low = max(0.5, cutoff / 20)  # Low cutoff
-                b_low, a_low = butter(4, cutoff_low / nyq, btype="low")
-                signal_estimate = filtfilt(b_low, a_low, signal_data)
+                # High-pass filter to extract noise
+                nyq = sampling_freq / 2
+                if nyq > 10:  # Only if we have sufficient frequency range
+                    cutoff = min(10, nyq * 0.8)  # 10 Hz or 80% of Nyquist
 
-                sq = SignalQuality(signal_estimate, signal_data)
-                snr_db = sq.snr()
-            else:
-                # Fallback: use signal power vs std
+                    # Use vitalDSP for filtering
+                    sf_high = SignalFiltering(signal_data)
+                    noise_estimate = sf_high.highpass(
+                        cutoff=cutoff, fs=sampling_freq, order=4
+                    )
+
+                    # Low-pass filter to get signal
+                    cutoff_low = max(0.5, cutoff / 20)  # Low cutoff
+                    sf_low = SignalFiltering(signal_data)
+                    signal_estimate = sf_low.lowpass(
+                        cutoff=cutoff_low, fs=sampling_freq, order=4
+                    )
+
+                    # Calculate SNR using multiple methods
+                    snr_db_power = snr_power_ratio(signal_estimate, noise_estimate)
+                    snr_db_peak = snr_peak_to_peak(signal_estimate, noise_estimate)
+                    snr_db_mean_sq = snr_mean_square(signal_estimate, noise_estimate)
+
+                    # Use SignalQuality for additional validation
+                    sq = SignalQuality(signal_estimate, signal_data)
+                    snr_db_sq = sq.snr()
+
+                    # Average the SNR estimates for robustness
+                    snr_db = float(
+                        np.mean([snr_db_power, snr_db_peak, snr_db_mean_sq, snr_db_sq])
+                    )
+
+                    quality_results["snr"] = {
+                        "snr_db": snr_db,
+                        "snr_power_ratio": float(snr_db_power),
+                        "snr_peak_to_peak": float(snr_db_peak),
+                        "snr_mean_square": float(snr_db_mean_sq),
+                        "snr_signal_quality": float(snr_db_sq),
+                        "quality": (
+                            "excellent"
+                            if snr_db > 20
+                            else "good" if snr_db > snr_threshold else "poor"
+                        ),
+                        "threshold": snr_threshold,
+                        "method": "vitalDSP_advanced_multi_method",
+                    }
+                else:
+                    # Fallback: use signal power vs std
+                    signal_power = np.mean(signal_data**2)
+                    noise_power = np.std(signal_data) ** 2
+                    snr_db = (
+                        10 * np.log10(signal_power / noise_power)
+                        if noise_power > 0
+                        else float("inf")
+                    )
+
+                    quality_results["snr"] = {
+                        "snr_db": float(snr_db),
+                        "quality": (
+                            "excellent"
+                            if snr_db > 20
+                            else "good" if snr_db > snr_threshold else "poor"
+                        ),
+                        "threshold": snr_threshold,
+                        "method": "fallback_simple",
+                    }
+
+            except ImportError:
+                logger.warning(
+                    "vitalDSP snr_computation not available, using fallback method"
+                )
+                # Fallback to scipy method
+                from scipy.signal import butter, filtfilt
+
+                nyq = sampling_freq / 2
+                if nyq > 10:
+                    cutoff = min(10, nyq * 0.8)
+                    b, a = butter(4, cutoff / nyq, btype="high")
+                    noise_estimate = filtfilt(b, a, signal_data)
+
+                    cutoff_low = max(0.5, cutoff / 20)
+                    b_low, a_low = butter(4, cutoff_low / nyq, btype="low")
+                    signal_estimate = filtfilt(b_low, a_low, signal_data)
+
+                    sq = SignalQuality(signal_estimate, signal_data)
+                    snr_db = sq.snr()
+                else:
+                    signal_power = np.mean(signal_data**2)
+                    noise_power = np.std(signal_data) ** 2
+                    snr_db = (
+                        10 * np.log10(signal_power / noise_power)
+                        if noise_power > 0
+                        else float("inf")
+                    )
+
+                quality_results["snr"] = {
+                    "snr_db": float(snr_db),
+                    "quality": (
+                        "excellent"
+                        if snr_db > 20
+                        else "good" if snr_db > snr_threshold else "poor"
+                    ),
+                    "threshold": snr_threshold,
+                    "method": "scipy_fallback",
+                }
+            except Exception as e:
+                logger.warning(f"SNR calculation failed: {e}, using simple fallback")
                 signal_power = np.mean(signal_data**2)
                 noise_power = np.std(signal_data) ** 2
                 snr_db = (
@@ -343,15 +442,16 @@ def assess_signal_quality_vitaldsp(
                     else float("inf")
                 )
 
-            quality_results["snr"] = {
-                "snr_db": float(snr_db),
-                "quality": (
-                    "excellent"
-                    if snr_db > 20
-                    else "good" if snr_db > snr_threshold else "poor"
-                ),
-                "threshold": snr_threshold,
-            }
+                quality_results["snr"] = {
+                    "snr_db": float(snr_db),
+                    "quality": (
+                        "excellent"
+                        if snr_db > 20
+                        else "good" if snr_db > snr_threshold else "poor"
+                    ),
+                    "threshold": snr_threshold,
+                    "method": "error_fallback",
+                }
 
         # Artifact Detection (multiple methods)
         if "artifacts" in quality_metrics or not quality_metrics:

@@ -21,4 +21,3 @@ Basic visualization:
     >>> from vitalDSP.visualization import TimeDomainVisualizer
     >>> visualizer = TimeDomainVisualizer(signal)
 """
-

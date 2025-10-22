@@ -8,6 +8,7 @@ Author: vitalDSP Development Team
 Date: October 12, 2025
 Version: 1.0.0
 """
+
 """
 Utility Functions Module for Physiological Signal Processing
 
@@ -35,7 +36,6 @@ Basic usage:
     >>> result = processor.process()
     >>> print(f'Processing result: {result}')
 """
-
 
 
 import os

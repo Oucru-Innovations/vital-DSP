@@ -4025,9 +4025,9 @@ def respiratory_layout():
                                                             dbc.Input(
                                                                 id="resp-high-cut",
                                                                 type="number",
-                                                                value=0.8,
+                                                                value=0.5,
                                                                 min=0.1,
-                                                                max=2.0,
+                                                                max=0.5,
                                                                 step=0.01,
                                                                 className="mb-2",
                                                             ),
@@ -6591,7 +6591,11 @@ def settings_layout():
                                                                     # Debug info
                                                                     html.Div(
                                                                         id="theme-debug",
-                                                                        style={"font-size": "12px", "color": "gray", "margin-top": "10px"},
+                                                                        style={
+                                                                            "font-size": "12px",
+                                                                            "color": "gray",
+                                                                            "margin-top": "10px",
+                                                                        },
                                                                     ),
                                                                     html.Label(
                                                                         "Time Zone",

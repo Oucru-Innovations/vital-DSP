@@ -4,6 +4,10 @@ Upload page layout for vitalDSP webapp.
 
 from dash import html, dcc
 import dash_bootstrap_components as dbc
+from vitalDSP_webapp.layout.common.progress_components import (
+    create_progress_interval,
+    create_progress_store,
+)
 
 
 def upload_layout():
@@ -586,6 +590,27 @@ def upload_layout():
                     "upload_progress": 0,
                     "processing_progress": 0,
                 },
+            ),
+            # Progress tracking components for real-time updates
+            create_progress_store(
+                store_id="upload-progress-store",
+                initial_data={
+                    "task_id": None,
+                    "progress_percent": 0,
+                    "bytes_processed": 0,
+                    "total_bytes": 0,
+                    "chunks_processed": 0,
+                    "total_chunks": 0,
+                    "elapsed_time": 0,
+                    "estimated_remaining": 0,
+                    "status": "idle",
+                    "message": "Ready to upload",
+                },
+            ),
+            create_progress_interval(
+                interval_id="upload-progress-interval",
+                interval_ms=500,  # Update every 500ms
+                disabled=True,  # Start disabled, enable during upload
             ),
         ],
         className="container-fluid px-4 py-3",

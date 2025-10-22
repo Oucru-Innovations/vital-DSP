@@ -34,7 +34,11 @@ def Header():
                     html.H1(
                         "vitalDSP",
                         className="mb-0",
-                        style={"fontSize": "24px", "fontWeight": "bold", "color": "white"},
+                        style={
+                            "fontSize": "24px",
+                            "fontWeight": "bold",
+                            "color": "white",
+                        },
                     ),
                     html.Span(
                         "Digital Signal Processing for Vital Signs",
@@ -43,7 +47,6 @@ def Header():
                     ),
                 ]
             ),
-            
             # Right side - System status
             html.Div(
                 [
@@ -53,29 +56,26 @@ def Header():
                         children="Memory: Loading...",
                         color="success",
                         className="me-2",
-                        style={"font-size": "0.8rem"}
+                        style={"font-size": "0.8rem"},
                     ),
-                    
                     # Active tasks indicator
                     dbc.Badge(
                         id="active-tasks-badge",
                         children="Tasks: 0",
                         color="info",
                         className="me-2",
-                        style={"font-size": "0.8rem"}
+                        style={"font-size": "0.8rem"},
                     ),
-                    
                     # System status
                     dbc.Badge(
                         id="system-status-badge",
                         children="System: Ready",
                         color="success",
-                        style={"font-size": "0.8rem"}
+                        style={"font-size": "0.8rem"},
                     ),
                 ],
-                style={"display": "flex", "alignItems": "center"}
+                style={"display": "flex", "alignItems": "center"},
             ),
-            
             # Hidden stores for system monitoring
             dcc.Store(id="memory-usage-store", data={}),
             dcc.Store(id="system-status-store", data={}),
@@ -83,7 +83,7 @@ def Header():
                 id="header-monitor-interval",
                 interval=5000,  # Update every 5 seconds
                 n_intervals=0,
-                disabled=False
+                disabled=False,
             ),
         ],
     )

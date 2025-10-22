@@ -372,7 +372,12 @@ def higuchi_fractal_dimension(signal, k_max=10):
 
 
 def create_signal_comparison_plot(
-    original_signal, filtered_signal, time_axis, sampling_freq, signal_type="PPG", theme="light"
+    original_signal,
+    filtered_signal,
+    time_axis,
+    sampling_freq,
+    signal_type="PPG",
+    theme="light",
 ):
     """Create side-by-side comparison of raw vs filtered signals with critical points."""
     try:
@@ -1377,13 +1382,28 @@ def create_main_signal_plot(
         # Add basic peak detection if enabled (fallback)
         elif "peaks" in analysis_options:
             try:
-                from scipy.signal import find_peaks
+                # Use vitalDSP for ECG/PPG peak detection, scipy for others
+                if signal_type and signal_type.lower() in ["ecg", "ppg"]:
+                    from vitalDSP.physiological_features.waveform import (
+                        WaveformMorphology,
+                    )
 
-                peaks, _ = find_peaks(
-                    signal_values,
-                    height=0.5 * np.max(signal_values),
-                    distance=int(0.5 * sampling_freq),
-                )
+                    wm = WaveformMorphology(
+                        signal_values, fs=sampling_freq, signal_type=signal_type.upper()
+                    )
+                    if signal_type.lower() == "ecg":
+                        peaks = wm.r_peaks
+                    elif signal_type.lower() == "ppg":
+                        peaks = wm.systolic_peaks
+                else:
+                    # Use scipy for other signal types
+                    from scipy.signal import find_peaks
+
+                    peaks, _ = find_peaks(
+                        signal_values,
+                        height=0.5 * np.max(signal_values),
+                        distance=int(0.5 * sampling_freq),
+                    )
                 if len(peaks) > 0:
                     fig.add_trace(
                         go.Scatter(
@@ -1654,6 +1674,7 @@ def generate_analysis_results(
     sampling_freq,
     analysis_options,
     signal_source_info,
+    signal_type=None,
     filter_info=None,
 ):
     """Generate analysis results and insights for the selected signal."""
@@ -2038,23 +2059,39 @@ def generate_analysis_results(
         # Peak detection and heart rate analysis
         if "peaks" in analysis_options:
             try:
-                from scipy.signal import find_peaks
+                # Use vitalDSP for ECG/PPG peak detection, scipy for others
+                if signal_type and signal_type.lower() in ["ecg", "ppg"]:
+                    from vitalDSP.physiological_features.waveform import (
+                        WaveformMorphology,
+                    )
 
-                # Use adaptive threshold for peak detection
-                mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
-                std_val = np.std(signal_data) if len(signal_data) > 0 else 0
-                threshold = mean_val + 2 * std_val
+                    wm = WaveformMorphology(
+                        signal_data, fs=sampling_freq, signal_type=signal_type.upper()
+                    )
+                    if signal_type.lower() == "ecg":
+                        peaks = wm.r_peaks
+                    elif signal_type.lower() == "ppg":
+                        peaks = wm.systolic_peaks
+                    properties = {}  # vitalDSP doesn't return properties
+                else:
+                    # Use scipy for other signal types
+                    from scipy.signal import find_peaks
 
-                # Find peaks with minimum distance constraint
-                min_distance = int(
-                    sampling_freq * 0.1
-                )  # Minimum 0.1 seconds between peaks
-                peaks, properties = find_peaks(
-                    signal_data,
-                    height=threshold,
-                    distance=min_distance,
-                    prominence=0.1 * std_val,
-                )
+                    # Use adaptive threshold for peak detection
+                    mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
+                    std_val = np.std(signal_data) if len(signal_data) > 0 else 0
+                    threshold = mean_val + 2 * std_val
+
+                    # Find peaks with minimum distance constraint
+                    min_distance = int(
+                        sampling_freq * 0.1
+                    )  # Minimum 0.1 seconds between peaks
+                    peaks, properties = find_peaks(
+                        signal_data,
+                        height=threshold,
+                        distance=min_distance,
+                        prominence=0.1 * std_val,
+                    )
 
                 if len(peaks) > 1:
                     # Calculate RR intervals
@@ -2404,7 +2441,7 @@ def generate_analysis_results(
 
 
 def create_peak_analysis_table(
-    selected_signal, time_axis, sampling_freq, analysis_options, signal_source_info
+    selected_signal, time_axis, sampling_freq, analysis_options, signal_source_info, signal_type=None
 ):
     """Create comprehensive peak analysis table for the selected signal."""
     try:
@@ -2422,20 +2459,34 @@ def create_peak_analysis_table(
             )
 
         # Detect peaks with advanced parameters
-        from scipy.signal import find_peaks
+        # Use vitalDSP for ECG/PPG peak detection, scipy for others
+        if signal_type and signal_type.lower() in ["ecg", "ppg"]:
+            from vitalDSP.physiological_features.waveform import WaveformMorphology
 
-        mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
-        std_val = np.std(signal_data) if len(signal_data) > 0 else 0
-        threshold = mean_val + 2 * std_val
-        min_distance = int(sampling_freq * 0.1)  # Minimum 0.1 seconds between peaks
+            wm = WaveformMorphology(
+                signal_data, fs=sampling_freq, signal_type=signal_type.upper()
+            )
+            if signal_type.lower() == "ecg":
+                peaks = wm.r_peaks
+            elif signal_type.lower() == "ppg":
+                peaks = wm.systolic_peaks
+            properties = {}  # vitalDSP doesn't return properties
+        else:
+            # Use scipy for other signal types
+            from scipy.signal import find_peaks
 
-        peaks, properties = find_peaks(
-            signal_data,
-            height=threshold,
-            distance=min_distance,
-            prominence=0.1 * std_val,
-            width=0.01 * sampling_freq,
-        )
+            mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
+            std_val = np.std(signal_data) if len(signal_data) > 0 else 0
+            threshold = mean_val + 2 * std_val
+            min_distance = int(sampling_freq * 0.1)  # Minimum 0.1 seconds between peaks
+
+            peaks, properties = find_peaks(
+                signal_data,
+                height=threshold,
+                distance=min_distance,
+                prominence=0.1 * std_val,
+                width=0.01 * sampling_freq,
+            )
 
         if len(peaks) < 2:
             return html.Div(
@@ -2768,7 +2819,7 @@ def create_peak_analysis_table(
 
 
 def create_signal_quality_table(
-    selected_signal, time_axis, sampling_freq, analysis_options, signal_source_info
+    selected_signal, time_axis, sampling_freq, analysis_options, signal_source_info, signal_type=None
 ):
     """Create comprehensive signal quality assessment table for the selected signal."""
     try:
@@ -2882,17 +2933,33 @@ def create_signal_quality_table(
             high_freq_percentage = 0
 
         # Peak detection quality
-        from scipy.signal import find_peaks
+        # Use vitalDSP for ECG/PPG peak detection, scipy for others
+        if signal_type and signal_type.lower() in ["ecg", "ppg"]:
+            from vitalDSP.physiological_features.waveform import WaveformMorphology
 
-        try:
-            peaks, properties = find_peaks(
-                signal_data, prominence=0.1 * np.std(signal_data)
-            )
-            # peak_quality = len(peaks) / (
-            #     len(signal_data) / sampling_freq
-            # )  # peaks per second
-        except Exception:
-            pass
+            try:
+                wm = WaveformMorphology(
+                    signal_data, fs=sampling_freq, signal_type=signal_type.upper()
+                )
+                if signal_type.lower() == "ecg":
+                    peaks = wm.r_peaks
+                elif signal_type.lower() == "ppg":
+                    peaks = wm.systolic_peaks
+                properties = {}  # vitalDSP doesn't return properties
+            except Exception:
+                peaks = []
+                properties = {}
+        else:
+            # Use scipy for other signal types
+            from scipy.signal import find_peaks
+
+            try:
+                peaks, properties = find_peaks(
+                    signal_data, prominence=0.1 * np.std(signal_data)
+                )
+            except Exception:
+                peaks = []
+                properties = {}
 
         # Signal continuity (gaps detection)
         signal_diff_norm = np.abs(np.diff(signal_data)) / (
@@ -3361,7 +3428,7 @@ def create_signal_quality_table(
 
 
 def create_filtering_results_table(
-    raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping
+    raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping, signal_type=None
 ):
     """Create comprehensive filtering results table."""
     try:
@@ -3485,33 +3552,66 @@ def create_filtering_results_table(
         snr_improvement = filtered_snr - raw_snr
 
         # Peak preservation analysis
-        from scipy.signal import find_peaks
+        # Use vitalDSP for ECG/PPG peak detection, scipy for others
+        if signal_type and signal_type.lower() in ["ecg", "ppg"]:
+            from vitalDSP.physiological_features.waveform import WaveformMorphology
 
-        try:
-            # Detect peaks in both signals
-            raw_peaks, _ = find_peaks(raw_signal, prominence=0.1 * np.std(raw_signal))
-            filtered_peaks, _ = find_peaks(
-                filtered_data, prominence=0.1 * np.std(filtered_data)
-            )
+            try:
+                # Detect peaks in both signals using vitalDSP
+                wm_raw = WaveformMorphology(
+                    raw_signal, fs=sampling_freq, signal_type=signal_type.upper()
+                )
+                wm_filtered = WaveformMorphology(
+                    filtered_data, fs=sampling_freq, signal_type=signal_type.upper()
+                )
 
-            peak_preservation = (
-                len(filtered_peaks) / len(raw_peaks) * 100 if len(raw_peaks) > 0 else 0
-            )
+                if signal_type.lower() == "ecg":
+                    raw_peaks = wm_raw.r_peaks
+                    filtered_peaks = wm_filtered.r_peaks
+                elif signal_type.lower() == "ppg":
+                    raw_peaks = wm_raw.systolic_peaks
+                    filtered_peaks = wm_filtered.systolic_peaks
 
-            # Peak amplitude preservation
-            if len(raw_peaks) > 0 and len(filtered_peaks) > 0:
-                raw_peak_amps = raw_signal[raw_peaks]
-                filtered_peak_amps = filtered_data[filtered_peaks]
-                amplitude_preservation = (
-                    np.mean(filtered_peak_amps) / np.mean(raw_peak_amps) * 100
-                    if np.mean(raw_peak_amps) > 0
+                peak_preservation = (
+                    len(filtered_peaks) / len(raw_peaks) * 100
+                    if len(raw_peaks) > 0
                     else 0
                 )
-            else:
+            except Exception:
+                peak_preservation = 0
+        else:
+            # Use scipy for other signal types
+            from scipy.signal import find_peaks
+
+            try:
+                # Detect peaks in both signals
+                raw_peaks, _ = find_peaks(
+                    raw_signal, prominence=0.1 * np.std(raw_signal)
+                )
+                filtered_peaks, _ = find_peaks(
+                    filtered_data, prominence=0.1 * np.std(filtered_data)
+                )
+
+                peak_preservation = (
+                    len(filtered_peaks) / len(raw_peaks) * 100
+                    if len(raw_peaks) > 0
+                    else 0
+                )
+
+                # Peak amplitude preservation
+                if len(raw_peaks) > 0 and len(filtered_peaks) > 0:
+                    raw_peak_amps = raw_signal[raw_peaks]
+                    filtered_peak_amps = filtered_data[filtered_peaks]
+                    amplitude_preservation = (
+                        np.mean(filtered_peak_amps) / np.mean(raw_peak_amps) * 100
+                        if np.mean(raw_peak_amps) > 0
+                        else 0
+                    )
+                else:
+                    amplitude_preservation = 0
+            except Exception:
+                peak_preservation = 0
                 amplitude_preservation = 0
-        except Exception:
-            peak_preservation = 0
-            amplitude_preservation = 0
 
         # Phase distortion analysis
         raw_phase = np.angle(np.fft.fft(raw_signal))
@@ -3986,7 +4086,7 @@ def create_filtering_results_table(
 
 
 def create_additional_metrics_table(
-    selected_signal, time_axis, sampling_freq, analysis_options, signal_source_info
+    selected_signal, time_axis, sampling_freq, analysis_options, signal_source_info, signal_type=None
 ):
     """Create comprehensive additional metrics table for the selected signal."""
     try:
@@ -4886,17 +4986,23 @@ def register_vitaldsp_callbacks(app):
         ],
         [
             Input("btn-update-analysis", "n_clicks"),
-            Input("time-range-slider", "value"),
-            Input("start-time", "value"),
-            Input("end-time", "value"),
+            # Input("time-range-slider", "value"),  # REMOVED - was causing constant updates!
+            # Input("start-time", "value"),  # REMOVED - was causing callback loop with slider sync!
+            # Input("end-time", "value"),  # REMOVED - was causing callback loop with slider sync!
             Input("btn-nudge-m10", "n_clicks"),
             Input("btn-nudge-m1", "n_clicks"),
             Input("btn-nudge-p1", "n_clicks"),
             Input("btn-nudge-p10", "n_clicks"),
-            Input("url", "pathname"),
+            # Input("url", "pathname"),  # REMOVED - was running full analysis on EVERY page load!
             Input("body", "data-theme"),  # Add theme input
         ],
         [
+            State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
+            State(
+                "time-range-slider", "value"
+            ),  # MOVED to State - only read when triggered
+            State("start-time", "value"),  # MOVED to State - prevents callback loop!
+            State("end-time", "value"),  # MOVED to State - prevents callback loop!
             State("signal-source-select", "value"),
             State("analysis-options", "value"),
             State("signal-type-select", "value"),
@@ -4904,15 +5010,16 @@ def register_vitaldsp_callbacks(app):
     )
     def analyze_time_domain(
         n_clicks,
-        slider_value,
-        start_time,
-        end_time,
+        # start_time, end_time moved to State below
         nudge_m10,
         nudge_m1,
         nudge_p1,
         nudge_p10,
-        pathname,
-        current_theme,  # Add theme parameter
+        current_theme,  # Theme input parameter
+        pathname,  # State parameter
+        slider_value,  # State parameter
+        start_time,  # State parameter (moved from Input)
+        end_time,  # State parameter (moved from Input)
         signal_source,
         analysis_options,
         signal_type,
@@ -4955,9 +5062,9 @@ def register_vitaldsp_callbacks(app):
         try:
             # Get data from the data service
             logger.info("Attempting to get data service...")
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
             logger.info("Data service retrieved successfully")
 
             # Get the most recent data
@@ -5545,6 +5652,7 @@ def register_vitaldsp_callbacks(app):
                 sampling_freq,
                 analysis_options or ["peaks", "hr", "quality"],
                 signal_source_info,
+                signal_type,
                 filter_info,
             )
 
@@ -5555,6 +5663,7 @@ def register_vitaldsp_callbacks(app):
                 sampling_freq,
                 analysis_options or ["peaks", "hr", "quality"],
                 signal_source_info,
+                signal_type,
             )
             quality_table = create_signal_quality_table(
                 selected_signal,
@@ -5562,6 +5671,7 @@ def register_vitaldsp_callbacks(app):
                 sampling_freq,
                 analysis_options or ["peaks", "hr", "quality"],
                 signal_source_info,
+                signal_type,
             )
 
             # Create signal source information table
@@ -5582,6 +5692,7 @@ def register_vitaldsp_callbacks(app):
                 sampling_freq,
                 analysis_options or ["peaks", "hr", "quality"],
                 signal_source_info,
+                signal_type,
             )
 
             logger.info("Time domain analysis completed successfully")
@@ -5633,6 +5744,7 @@ def register_vitaldsp_callbacks(app):
             Output("time-range-slider", "value"),
         ],
         [Input("url", "pathname")],
+        prevent_initial_call=True,  # Prevent triggering on page load
     )
     def update_time_slider_range(pathname):
         """Update time slider range based on available data."""
@@ -5640,9 +5752,9 @@ def register_vitaldsp_callbacks(app):
             return no_update, no_update, no_update
 
         try:
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
             all_data = data_service.get_all_data()
 
             if not all_data:
@@ -6216,10 +6328,11 @@ def generate_frequency_analysis_results(
 
 
 def create_frequency_peak_analysis_table(
-    signal_data, sampling_freq, analysis_type, analysis_options
+    signal_data, sampling_freq, analysis_type, analysis_options, signal_type="unknown"
 ):
     """Create frequency peak analysis table."""
     try:
+
         if "peak_detection" not in analysis_options:
             return html.Div([html.P("Peak detection not selected")])
 
@@ -6234,11 +6347,25 @@ def create_frequency_peak_analysis_table(
             fft_magnitude_pos = np.abs(fft_result[positive_freq_mask])
 
             # Find peaks
-            from scipy.signal import find_peaks
+            # Use vitalDSP for ECG/PPG peak detection, scipy for others
+            if signal_type and signal_type.lower() in ["ecg", "ppg"]:
+                from vitalDSP.physiological_features.waveform import WaveformMorphology
 
-            peaks, properties = find_peaks(
-                fft_magnitude_pos, height=np.max(fft_magnitude_pos) * 0.1
-            )
+                wm = WaveformMorphology(
+                    fft_magnitude_pos, fs=sampling_freq, signal_type=signal_type.upper()
+                )
+                if signal_type.lower() == "ecg":
+                    peaks = wm.r_peaks
+                elif signal_type.lower() == "ppg":
+                    peaks = wm.systolic_peaks
+                properties = {}
+            else:
+                # Use scipy for other signal types
+                from scipy.signal import find_peaks
+
+                peaks, properties = find_peaks(
+                    fft_magnitude_pos, height=np.max(fft_magnitude_pos) * 0.1
+                )
 
             if len(peaks) > 0:
                 # Create table
@@ -6391,11 +6518,25 @@ def create_frequency_harmonics_table(
 
         if len(fft_magnitude_pos) > 0:
             # Find fundamental frequency (highest peak)
-            from scipy.signal import find_peaks
+            # Use vitalDSP for ECG/PPG peak detection, scipy for others
+            if signal_type and signal_type.lower() in ["ecg", "ppg"]:  # noqa: F821
+                from vitalDSP.physiological_features.waveform import WaveformMorphology
 
-            peaks, properties = find_peaks(
-                fft_magnitude_pos, height=np.max(fft_magnitude_pos) * 0.1
-            )
+                wm = WaveformMorphology(
+                    fft_magnitude_pos, fs=sampling_freq, signal_type=signal_type.upper()  # noqa: F821
+                )
+                if signal_type.lower() == "ecg":  # noqa: F821
+                    peaks = wm.r_peaks
+                elif signal_type.lower() == "ppg":  # noqa: F821
+                    peaks = wm.systolic_peaks
+                properties = {}
+            else:
+                # Use scipy for other signal types
+                from scipy.signal import find_peaks
+
+                peaks, properties = find_peaks(
+                    fft_magnitude_pos, height=np.max(fft_magnitude_pos) * 0.1
+                )
 
             if len(peaks) > 0:
                 fundamental_freq = fft_freq_pos[peaks[0]]

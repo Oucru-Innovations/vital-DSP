@@ -20,4 +20,3 @@ Basic preprocessing:
     >>> config = PreprocessConfig(filter_type='bandpass')
     >>> processed = preprocess_signal(signal, fs=250, config=config)
 """
-

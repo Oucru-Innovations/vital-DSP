@@ -25,7 +25,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 # src/vitalDSP/utils/performance_monitoring.py
 """
 Performance monitoring utilities for vitalDSP functions.

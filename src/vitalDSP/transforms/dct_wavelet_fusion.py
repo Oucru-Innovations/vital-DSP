@@ -24,7 +24,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 from vitalDSP.transforms.discrete_cosine_transform import DiscreteCosineTransform
 from vitalDSP.transforms.wavelet_transform import WaveletTransform
 import numpy as np

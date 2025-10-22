@@ -21,6 +21,7 @@ Use Cases:
 Author: vitalDSP
 License: MIT
 """
+
 """
 Machine Learning Models Module for Physiological Signal Processing
 
@@ -48,7 +49,6 @@ Basic usage:
     >>> result = processor.process()
     >>> print(f'Processing result: {result}')
 """
-
 
 
 import numpy as np
@@ -84,7 +84,7 @@ class TransferLearningStrategy:
 
     Examples
     --------
-    >>> from vitalDSP.ml_models.transfer_learning import FeatureExtractor
+    >>> from vitalDSP.ml_models.transfer_learning import TransferFeatureExtractor
     >>> from vitalDSP.ml_models.pretrained_models import load_pretrained_model
     >>> import numpy as np
     >>>
@@ -92,7 +92,7 @@ class TransferLearningStrategy:
     >>> base_model = load_pretrained_model('ecg_classifier_mitbih')
     >>>
     >>> # Create feature extractor
-    >>> extractor = FeatureExtractor(base_model.model, freeze_base=True)
+    >>> extractor = TransferFeatureExtractor(base_model.model, freeze_base=True)
     >>>
     >>> # Train on new task
     >>> X_train = np.random.randn(100, 187, 1)
@@ -139,7 +139,7 @@ class TransferLearningStrategy:
         raise NotImplementedError("Subclasses must implement unfreeze_layers()")
 
 
-class FeatureExtractor(TransferLearningStrategy):
+class TransferFeatureExtractor(TransferLearningStrategy):
     """
     Feature extraction transfer learning.
 
@@ -153,7 +153,7 @@ class FeatureExtractor(TransferLearningStrategy):
 
     Examples
     --------
-    >>> from vitalDSP.ml_models.transfer_learning import FeatureExtractor
+    >>> from vitalDSP.ml_models.transfer_learning import TransferFeatureExtractor
     >>> import numpy as np
     >>> import tensorflow as tf
     >>>
@@ -165,7 +165,7 @@ class FeatureExtractor(TransferLearningStrategy):
     ... ])
     >>>
     >>> # Create feature extractor
-    >>> extractor = FeatureExtractor(base, freeze_base=True)
+    >>> extractor = TransferFeatureExtractor(base, freeze_base=True)
     >>>
     >>> # Fit to new task
     >>> X = np.random.randn(100, 187, 1)
@@ -1006,10 +1006,11 @@ class DomainAdapter:
         return history
 
     @staticmethod
-    def _compute_mmd(
-        features_source: tf.Tensor, features_target: tf.Tensor
-    ) -> tf.Tensor:
+    def _compute_mmd(features_source, features_target):
         """Compute Maximum Mean Discrepancy between source and target features."""
+
+        if not TENSORFLOW_AVAILABLE:
+            raise ImportError("TensorFlow is required for MMD computation")
 
         # Gaussian kernel
         def gaussian_kernel(x, y, sigma=1.0):
@@ -1053,7 +1054,7 @@ def quick_transfer(
     n_classes: Optional[int] = None,
     epochs: int = 30,
     **kwargs,
-) -> Union[FeatureExtractor, FineTuner]:
+) -> Union[TransferFeatureExtractor, FineTuner]:
     """
     Quick transfer learning with sensible defaults.
 
@@ -1076,7 +1077,7 @@ def quick_transfer(
 
     Returns
     -------
-    FeatureExtractor or FineTuner
+    TransferFeatureExtractor or FineTuner
         Trained transfer learning model
 
     Examples
@@ -1094,7 +1095,7 @@ def quick_transfer(
     >>> model = quick_transfer(base.model, X, y, strategy='feature_extraction', epochs=20)
     """
     if strategy == "feature_extraction":
-        model = FeatureExtractor(base_model, freeze_base=True)
+        model = TransferFeatureExtractor(base_model, freeze_base=True)
         model.fit(X_train, y_train, n_classes=n_classes, epochs=epochs, **kwargs)
     elif strategy == "fine_tuning":
         model = FineTuner(base_model, strategy="all_at_once")

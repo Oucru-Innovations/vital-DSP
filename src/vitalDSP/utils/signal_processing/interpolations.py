@@ -24,7 +24,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import numpy as np
 import pandas as pd
 from scipy.interpolate import UnivariateSpline

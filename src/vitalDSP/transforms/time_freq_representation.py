@@ -24,7 +24,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 from vitalDSP.transforms.stft import STFT
 from vitalDSP.transforms.wavelet_transform import WaveletTransform
 

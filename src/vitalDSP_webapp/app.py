@@ -64,14 +64,15 @@ def create_dash_app() -> Dash:
         suppress_callback_exceptions=True,
     )
     app.title = app_config.APP_NAME
-    
+
     # Get initial theme from settings
     initial_theme = "light"  # default
     try:
         from vitalDSP_webapp.services.settings_service import SettingsService
+
         service = SettingsService()
         settings = service.get_general_settings()
-        if settings and hasattr(settings, 'theme'):
+        if settings and hasattr(settings, "theme"):
             initial_theme = settings.theme
     except Exception as e:
         print(f"Warning: Could not load theme from settings: {e}")
@@ -87,11 +88,11 @@ def create_dash_app() -> Dash:
             dcc.Store(id="store_theme", data=initial_theme),
             dcc.Store(id="store_processed_data"),
             dcc.Store(id="store_analysis_results"),
-                # Theme-related stores
-                dcc.Store(id="plot-theme-config", data={}),
-                dcc.Store(id="theme-status", data="light"),
-                # Debug elements
-                html.Div(id="theme-debug", style={"display": "none"}),
+            # Theme-related stores
+            dcc.Store(id="plot-theme-config", data={}),
+            dcc.Store(id="theme-status", data="light"),
+            # Debug elements
+            html.Div(id="theme-debug", style={"display": "none"}),
             # Global stores that persist across page changes
             dcc.Store(id="store-uploaded-data", storage_type="memory"),
             dcc.Store(id="store-data-config", storage_type="memory"),
@@ -229,10 +230,10 @@ def create_fastapi_app() -> FastAPI:
     from starlette.routing import Mount
     from starlette.middleware import Middleware
     from starlette.middleware.wsgi import WSGIMiddleware
-    
+
     # Create a simple WSGI middleware wrapper
     dash_wsgi = WSGIMiddleware(dash_app.server)
-    
+
     # Mount the Dash app
     fastapi_app.mount("/", dash_wsgi)
 

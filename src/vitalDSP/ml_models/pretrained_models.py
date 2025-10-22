@@ -20,6 +20,7 @@ Available Models:
 Author: vitalDSP
 License: MIT
 """
+
 """
 Machine Learning Models Module for Physiological Signal Processing
 
@@ -47,7 +48,6 @@ Basic usage:
     >>> result = processor.process()
     >>> print(f'Processing result: {result}')
 """
-
 
 
 import numpy as np

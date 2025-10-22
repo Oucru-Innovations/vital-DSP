@@ -40,7 +40,7 @@ from .file_io import FileIO
 
 __all__ = [
     "HealthReportGenerator",
-    "HealthReportVisualizer", 
+    "HealthReportVisualizer",
     "InterpretationEngine",
     "render_report",
     "FileIO",

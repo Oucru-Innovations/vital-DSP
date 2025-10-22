@@ -26,7 +26,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import numpy as np
 from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
 from vitalDSP.preprocess.preprocess_operations import estimate_baseline
@@ -1532,6 +1531,7 @@ class WaveformMorphology:
                 complex_segment = self.waveform[start : end + 1]
                 # Suppress scipy warnings for edge cases
                 import warnings
+
                 with warnings.catch_warnings():
                     warnings.filterwarnings("ignore", category=RuntimeWarning)
                     try:

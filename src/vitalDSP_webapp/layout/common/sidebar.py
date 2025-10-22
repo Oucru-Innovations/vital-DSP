@@ -94,7 +94,10 @@ def Sidebar():
                     html.Div(
                         [
                             html.A(
-                                [html.I(className="fas fa-project-diagram"), " Processing Pipeline"],
+                                [
+                                    html.I(className="fas fa-project-diagram"),
+                                    " Processing Pipeline",
+                                ],
                                 href="/pipeline",
                                 className="nav-link text-white",
                             ),
@@ -131,10 +134,12 @@ def Sidebar():
                                 id="theme-toggle",
                                 className="btn btn-outline-light btn-sm w-100",
                                 children=[
-                                    html.I(id="theme-icon", className="fas fa-sun me-2"),
-                                    html.Span(id="theme-text", children="Light")
+                                    html.I(
+                                        id="theme-icon", className="fas fa-sun me-2"
+                                    ),
+                                    html.Span(id="theme-text", children="Light"),
                                 ],
-                                style={"font-size": "0.9rem"}
+                                style={"font-size": "0.9rem"},
                             ),
                         ],
                         className="mb-2",
@@ -219,7 +224,7 @@ def Sidebar():
                                 href="/tasks",
                                 className="nav-icon text-white",
                                 title="Background Tasks",
-                            )
+                            ),
                         ],
                         className="mb-3",
                     ),
@@ -248,10 +253,17 @@ def Sidebar():
                                 id="theme-toggle-collapsed",
                                 className="btn btn-outline-light btn-sm",
                                 children=[
-                                    html.I(id="theme-icon-collapsed", className="fas fa-sun")
+                                    html.I(
+                                        id="theme-icon-collapsed",
+                                        className="fas fa-sun",
+                                    )
                                 ],
                                 title="Toggle Theme",
-                                style={"width": "40px", "height": "40px", "padding": "0"}
+                                style={
+                                    "width": "40px",
+                                    "height": "40px",
+                                    "padding": "0",
+                                },
                             ),
                         ],
                         className="mb-3",

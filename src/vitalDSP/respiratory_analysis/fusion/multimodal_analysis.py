@@ -24,7 +24,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import numpy as np
 from vitalDSP.respiratory_analysis.estimate_rr.peak_detection_rr import (
     peak_detection_rr,

@@ -26,7 +26,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import numpy as np
 from scipy.stats import pearsonr
 from scipy.stats import zscore, iqr, kurtosis, skew

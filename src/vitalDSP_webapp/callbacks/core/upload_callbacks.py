@@ -24,10 +24,21 @@ from typing import Dict, Any, Optional, Tuple
 import time
 
 try:
+    # Use BOTH old and enhanced data services during transition
     from vitalDSP_webapp.services.data.data_service import get_data_service
+    from vitalDSP_webapp.services.data.enhanced_data_service import (
+        get_enhanced_data_service,
+        EnhancedDataService,
+    )
     from vitalDSP_webapp.utils.data_processor import DataProcessor
+    from vitalDSP_webapp.utils.plot_utils import limit_plot_data, check_plot_data_size
     from vitalDSP.utils.data_processing.data_loader import DataLoader, load_oucru_csv
-except ImportError:
+    from vitalDSP_webapp.services.progress_tracker import get_progress_tracker
+
+    ENHANCED_SERVICE_AVAILABLE = True
+except ImportError as e:
+    # Logger not yet defined, will log later
+    ENHANCED_SERVICE_AVAILABLE = False
     # Fallback imports for testing
     import sys
 
@@ -37,12 +48,14 @@ except ImportError:
     if src_path not in sys.path:
         sys.path.insert(0, src_path)
     try:
-        from vitalDSP_webapp.services.data.data_service import get_data_service
+        from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
         from vitalDSP_webapp.utils.data_processor import DataProcessor
     except ImportError:
         # For testing, create mock versions
-        def get_data_service():
+        def get_enhanced_data_service():
             return None
+
+        ENHANCED_SERVICE_AVAILABLE = False
 
         class DataProcessor:
             @staticmethod
@@ -51,12 +64,26 @@ except ImportError:
 
             @staticmethod
             def generate_sample_ppg_data(sampling_freq):
-                # Generate sample PPG data for testing
+                # Generate sample PPG data for testing using vitalDSP
                 duration = 10  # seconds
-                t = np.linspace(0, duration, int(sampling_freq * duration))
-                signal = np.sin(2 * np.pi * 1.2 * t) + 0.5 * np.sin(2 * np.pi * 2.4 * t)
-                signal += 0.1 * np.random.randn(len(signal))
-                return pd.DataFrame({"time": t, "signal": signal})
+                try:
+                    from vitalDSP.utils.data_processing.synthesize_data import (
+                        generate_synthetic_ppg,
+                    )
+
+                    signal_data = generate_synthetic_ppg(
+                        duration=duration, fs=sampling_freq
+                    )
+                    t = np.linspace(0, duration, len(signal_data))
+                    return pd.DataFrame({"time": t, "signal": signal_data})
+                except ImportError:
+                    # Fallback to numpy implementation if vitalDSP not available
+                    t = np.linspace(0, duration, int(sampling_freq * duration))
+                    signal = np.sin(2 * np.pi * 1.2 * t) + 0.5 * np.sin(
+                        2 * np.pi * 2.4 * t
+                    )
+                    signal += 0.1 * np.random.randn(len(signal))
+                    return pd.DataFrame({"time": t, "signal": signal})
 
 
 logger = logging.getLogger(__name__)
@@ -588,12 +615,12 @@ def register_upload_callbacks(app):
                     # Clean up temp file on error
                     try:
                         os.unlink(temp_path)
-                    except:
+                    except Exception:
                         pass
                     raise e
 
                 # Store headers and metadata for later processing
-                data_service = get_data_service()
+                data_service = get_enhanced_data_service()
                 data_service.current_headers = available_columns
                 data_service.current_metadata = metadata
 
@@ -632,7 +659,7 @@ def register_upload_callbacks(app):
                 metadata["detected_time_column"] = detected_time_column
 
                 # Create preview message
-                preview_message = f"✅ File uploaded successfully!\n\n"
+                preview_message = "✅ File uploaded successfully!\n\n"
                 preview_message += f"📁 File: {filename}\n"
                 preview_message += f"📊 Format: {metadata['format']}\n"
                 preview_message += (
@@ -646,7 +673,7 @@ def register_upload_callbacks(app):
                     preview_message += (
                         f"⏰ Auto-detected time column: {detected_time_column}\n"
                     )
-                preview_message += f"\n💡 Please select your columns below and click 'Process Data' to continue."
+                preview_message += "\n💡 Please select your columns below and click 'Process Data' to continue."
 
                 return (
                     preview_message,
@@ -714,7 +741,7 @@ def register_upload_callbacks(app):
                     )
 
                 # Store headers and metadata for later processing
-                data_service = get_data_service()
+                data_service = get_enhanced_data_service()
                 data_service.current_headers = available_columns
                 data_service.current_metadata = metadata
 
@@ -753,7 +780,7 @@ def register_upload_callbacks(app):
                 metadata["detected_time_column"] = detected_time_column
 
                 # Create preview message
-                preview_message = f"✅ File loaded successfully!\n\n"
+                preview_message = "✅ File loaded successfully!\n\n"
                 preview_message += f"📁 File: {Path(file_path).name}\n"
                 preview_message += f"📊 Format: {metadata['format']}\n"
                 preview_message += (
@@ -767,7 +794,7 @@ def register_upload_callbacks(app):
                     preview_message += (
                         f"⏰ Auto-detected time column: {detected_time_column}\n"
                     )
-                preview_message += f"\n💡 Please select your columns below and click 'Process Data' to continue."
+                preview_message += "\n💡 Please select your columns below and click 'Process Data' to continue."
 
                 return (
                     preview_message,
@@ -842,7 +869,7 @@ def register_upload_callbacks(app):
                     logger.info(f"Set signal_type to: {data_info['signal_type']}")
 
                 # Store data temporarily (will be processed after column mapping)
-                data_service = get_data_service()
+                data_service = get_enhanced_data_service()
                 data_service.current_data = df
                 data_service.update_config(data_info)
 
@@ -949,7 +976,7 @@ def register_upload_callbacks(app):
             # Process the auto-detection
 
             df = pd.DataFrame(uploaded_data)
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
             column_mapping = data_service._auto_detect_columns(df)
 
             # Re-enable button and restore original content
@@ -1021,6 +1048,19 @@ def register_upload_callbacks(app):
         """Process data with selected column mapping"""
         if not n_clicks:
             raise PreventUpdate
+
+        # Initialize progress tracking
+        tracker = get_progress_tracker()
+        task_id = tracker.start_task(
+            operation_name="Data Processing",
+            total_steps=3,
+            metadata={
+                "bytes_processed": 0,
+                "total_bytes": 0,
+                "chunks_processed": 0,
+                "total_chunks": 3,  # 3 stages: validate, process, store
+            },
+        )
 
         # Show processing progress and disable process button
         progress_style = {"display": "block", "animation": "slideInDown 0.5s ease-out"}
@@ -1136,7 +1176,8 @@ def register_upload_callbacks(app):
             # Process the data (removed artificial delay)
 
             # Parse the actual signal data based on user's column selection
-            data_service = get_data_service()
+            # Now using enhanced data service with compatibility layer
+            data_service = get_enhanced_data_service()
 
             # Get the stored metadata and headers
             metadata = data_service.current_metadata
@@ -1149,6 +1190,25 @@ def register_upload_callbacks(app):
 
             logger.info(f"Processing signal data from: {file_path}")
             logger.info(f"User selected columns: time={time_col}, signal={signal_col}")
+
+            # Check file size to determine loading strategy
+            file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+            file_size_bytes = int(file_size_mb * 1024 * 1024)
+            logger.info(f"File size: {file_size_mb:.2f} MB")
+
+            # Update progress: Step 1 - Validation complete
+            tracker.update_progress(
+                task_id=task_id,
+                progress_percentage=33.3,
+                current_step="Loading signal data",
+                step_number=1,
+                metadata={
+                    "bytes_processed": 0,
+                    "total_bytes": file_size_bytes,
+                    "chunks_processed": 1,
+                    "total_chunks": 3,
+                },
+            )
 
             # Parse the actual signal data using the user's column selection
             # Determine format based on original format and signal column content
@@ -1166,8 +1226,29 @@ def register_upload_callbacks(app):
                 ],  # Enable timestamp interpolation for OUCRU CSV
             )
 
+            # Log file size and memory usage warning for large files
+            if file_size_mb > 50:
+                logger.warning(
+                    f"Large file ({file_size_mb:.1f}MB) loaded into memory. "
+                    "Consider using EnhancedDataService with memory mapping for better performance."
+                )
+
             logger.info(f"Parsed signal data shape: {df.shape}")
             logger.info(f"Parsed signal data columns: {list(df.columns)}")
+
+            # Update progress: Step 2 - Data loaded
+            tracker.update_progress(
+                task_id=task_id,
+                progress_percentage=66.6,
+                current_step="Processing signal data",
+                step_number=2,
+                metadata={
+                    "bytes_processed": file_size_bytes,
+                    "total_bytes": file_size_bytes,
+                    "chunks_processed": 2,
+                    "total_chunks": 3,
+                },
+            )
 
             # Update data config with column mapping
             # Use the user's actual column selections from the frontend UI
@@ -1260,12 +1341,24 @@ def register_upload_callbacks(app):
             logger.info("=== END SIGNAL DATA SUMMARY ===")
 
             # Store the final processed data
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
             logger.info(
                 f"Storing processed data: shape={df.shape}, columns={list(df.columns)}"
             )
             data_id = data_service.store_data(df, data_config)
             logger.info(f"Data stored successfully with ID: {data_id}")
+
+            # Update progress: Step 3 - Complete!
+            tracker.complete_task(
+                task_id=task_id,
+                metadata={
+                    "bytes_processed": file_size_bytes,
+                    "total_bytes": file_size_bytes,
+                    "chunks_processed": 3,
+                    "total_chunks": 3,
+                    "data_id": data_id,
+                },
+            )
 
             # Clean up temp file if it exists
             temp_file_path = metadata.get("file_path")
@@ -1780,7 +1873,7 @@ def create_data_preview(df: pd.DataFrame, data_info: dict) -> html.Div:
     # Determine if we need pagination based on data size
     total_rows = df.shape[0]
     total_cols = df.shape[1]
-    
+
     # For large datasets, use pagination
     if total_rows > 1000:
         # Use first 100 rows for preview with pagination
@@ -1796,7 +1889,7 @@ def create_data_preview(df: pd.DataFrame, data_info: dict) -> html.Div:
         page_action = "native"
         virtualization = False
         show_pagination_info = False
-    
+
     return html.Div(
         [
             html.H4("Data Preview", className="mb-3"),
@@ -1809,7 +1902,7 @@ def create_data_preview(df: pd.DataFrame, data_info: dict) -> html.Div:
                     html.P(f"Duration: {data_info.get('duration', 'N/A')} seconds"),
                     html.P(
                         f"Memory Usage: {df.memory_usage(deep=True).sum() / 1024**2:.2f} MB",
-                        className="text-muted small"
+                        className="text-muted small",
                     ),
                 ],
                 className="mb-3",
@@ -1818,8 +1911,12 @@ def create_data_preview(df: pd.DataFrame, data_info: dict) -> html.Div:
                 [
                     html.H6("Data Table:"),
                     html.P(
-                        f"Showing {min(100, total_rows)} of {total_rows:,} rows" if show_pagination_info else "",
-                        className="text-muted small mb-2"
+                        (
+                            f"Showing {min(100, total_rows)} of {total_rows:,} rows"
+                            if show_pagination_info
+                            else ""
+                        ),
+                        className="text-muted small mb-2",
                     ),
                     dash_table.DataTable(
                         id="data-preview-table",
@@ -1829,7 +1926,7 @@ def create_data_preview(df: pd.DataFrame, data_info: dict) -> html.Div:
                         style_cell={
                             "textAlign": "left",
                             "fontSize": "12px",
-                            "fontFamily": "monospace"
+                            "fontFamily": "monospace",
                         },
                         style_header={
                             "backgroundColor": "rgb(230, 230, 230)",
@@ -1856,3 +1953,55 @@ def create_data_preview(df: pd.DataFrame, data_info: dict) -> html.Div:
             ),
         ]
     )
+
+    # Progress tracking callback - updates upload progress in real-time
+    @app.callback(
+        [
+            Output("upload-progress-store", "data"),
+            Output("upload-progress-interval", "disabled"),
+        ],
+        [Input("upload-progress-interval", "n_intervals")],
+        [State("upload-progress-store", "data")],
+    )
+    def update_upload_progress(n_intervals, current_progress):
+        """
+        Update upload progress from progress tracker.
+
+        This callback is triggered by the interval component and polls the
+        progress tracker for updates.
+        """
+        if n_intervals is None or n_intervals == 0:
+            raise PreventUpdate
+
+        try:
+            # Get progress tracker
+            tracker = get_progress_tracker()
+
+            # Get active tasks
+            active_tasks = tracker.get_all_active_tasks()
+
+            # Find upload task (most recent task)
+            if active_tasks:
+                latest_task = active_tasks[-1]
+
+                # Convert to LoadingProgress format
+                progress_data = tracker.to_loading_progress(
+                    latest_task.task_id, loading_strategy="standard"
+                )
+
+                if progress_data:
+                    # Check if task is completed
+                    if progress_data["status"] in ["completed", "failed", "cancelled"]:
+                        # Disable interval
+                        return progress_data, True
+                    else:
+                        # Keep interval running
+                        return progress_data, False
+
+            # No active tasks - disable interval
+            return current_progress, True
+
+        except Exception as e:
+            logger.error(f"Error updating progress: {str(e)}")
+            # Disable interval on error
+            return current_progress, True

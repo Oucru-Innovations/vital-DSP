@@ -52,6 +52,7 @@ Author: Claude (Sonnet 4.5)
 Date: October 10, 2025
 Version: 1.0
 """
+
 """
 Physiological Features Module for Physiological Signal Processing
 
@@ -79,7 +80,6 @@ Basic usage:
     >>> result = processor.process()
     >>> print(f'Processing result: {result}')
 """
-
 
 
 import numpy as np

@@ -24,7 +24,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.mixture import GaussianMixture
 from sklearn.tree import DecisionTreeClassifier

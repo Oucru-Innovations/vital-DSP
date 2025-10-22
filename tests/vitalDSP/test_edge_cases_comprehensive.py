@@ -300,8 +300,8 @@ class TestEdgeCases:
     
     def test_error_recovery_mechanisms(self):
         """Test error recovery mechanisms."""
-        # Test respiratory rate fallback
-        signal = np.random.randn(100)
+        # Test respiratory rate fallback with longer signal
+        signal = np.random.randn(2000)  # Increased from 100 to 2000 samples for FFT-based methods
         
         # Should work with fallback
         rate = ErrorRecovery.respiratory_rate_with_fallback(signal, fs=100, method="invalid_method")

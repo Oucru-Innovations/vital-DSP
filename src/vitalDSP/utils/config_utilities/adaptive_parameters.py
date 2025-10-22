@@ -25,7 +25,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 # src/vitalDSP/utils/adaptive_parameters.py
 """
 Adaptive parameter adjustment utilities for vitalDSP functions.

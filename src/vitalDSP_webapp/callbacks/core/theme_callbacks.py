@@ -5,6 +5,7 @@ import json
 
 logger = logging.getLogger(__name__)
 
+
 def apply_plot_theme(fig, theme):
     """Applies a theme to a Plotly figure."""
     if theme == "dark":
@@ -25,7 +26,7 @@ def apply_plot_theme(fig, theme):
             xaxis=dict(gridcolor="#e0e0e0"),
             yaxis=dict(gridcolor="#e0e0e0"),
         )
-    else: # auto or default
+    else:  # auto or default
         fig.update_layout(
             template="plotly_white",
             plot_bgcolor="#ffffff",
@@ -36,18 +37,21 @@ def apply_plot_theme(fig, theme):
         )
     return fig
 
+
 def get_theme_from_settings():
     """Get theme from settings service."""
     try:
         from vitalDSP_webapp.services.settings_service import SettingsService
+
         service = SettingsService()
         settings = service.get_general_settings()
-        theme = settings.theme if settings and hasattr(settings, 'theme') else "light"
+        theme = settings.theme if settings and hasattr(settings, "theme") else "light"
         logger.info(f"Loaded theme from settings: {theme}")
         return theme
     except Exception as e:
         logger.error(f"Error loading theme from settings: {e}")
         return "light"
+
 
 def register_theme_callbacks(app):
     """Register all theme switching callbacks."""
@@ -78,35 +82,42 @@ def register_theme_callbacks(app):
         if not ctx.triggered:
             # Initial load - get theme from settings
             settings_theme = get_theme_from_settings()
-            theme = settings_theme if settings_theme else (current_theme if current_theme else "light")
+            theme = (
+                settings_theme
+                if settings_theme
+                else (current_theme if current_theme else "light")
+            )
             logger.info(f"Initial theme load: {theme}")
         else:
             trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-            
+
             if trigger_id in ["theme-toggle", "theme-toggle-collapsed"]:
                 # Theme toggle button clicked
                 current_theme = current_theme if current_theme else "light"
                 theme = "dark" if current_theme == "light" else "light"
                 logger.info(f"Theme toggled from {current_theme} to {theme}")
-                
+
                 # Save theme to settings
                 try:
-                    from vitalDSP_webapp.services.settings_service import SettingsService
+                    from vitalDSP_webapp.services.settings_service import (
+                        SettingsService,
+                    )
+
                     service = SettingsService()
                     service.update_general_settings(theme=theme)
                     logger.info(f"Theme saved to settings: {theme}")
                 except Exception as e:
                     logger.error(f"Error saving theme to settings: {e}")
-            
+
             elif trigger_id == "url":
                 # Page navigation - maintain current theme
                 theme = current_theme if current_theme else "light"
                 logger.info(f"Page navigation, maintaining theme: {theme}")
-            
+
             else:
                 # Default fallback
                 theme = current_theme if current_theme else "light"
-        
+
         # Update button states
         if theme == "dark":
             icon_class = "fas fa-moon me-2"
@@ -114,7 +125,7 @@ def register_theme_callbacks(app):
         else:
             icon_class = "fas fa-sun me-2"
             text = "Light"
-        
+
         return theme, theme, icon_class, text, icon_class.replace(" me-2", "")
 
     # Settings save callback (only when on settings page)
@@ -138,7 +149,7 @@ def register_theme_callbacks(app):
         """Handle theme changes when settings are saved."""
         if save_clicks and theme_value:
             logger.info(f"Theme saved from settings: {theme_value}")
-            
+
             # Update button states
             if theme_value == "dark":
                 icon_class = "fas fa-moon me-2"
@@ -146,8 +157,14 @@ def register_theme_callbacks(app):
             else:
                 icon_class = "fas fa-sun me-2"
                 text = "Light"
-            
-            return theme_value, theme_value, icon_class, text, icon_class.replace(" me-2", "")
+
+            return (
+                theme_value,
+                theme_value,
+                icon_class,
+                text,
+                icon_class.replace(" me-2", ""),
+            )
         return no_update, no_update, no_update, no_update, no_update
 
     # Client-side callback for immediate theme change

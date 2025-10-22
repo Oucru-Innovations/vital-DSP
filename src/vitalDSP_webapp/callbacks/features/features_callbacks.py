@@ -60,9 +60,9 @@ def register_features_callbacks(app):
 
         # Check if data is available first
         try:
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
 
             if data_service is None:
                 logger.error("Data service is None")

@@ -45,7 +45,9 @@ import numpy as np
 from scipy import signal
 import warnings
 from vitalDSP.utils.data_processing.validation import SignalValidator
-from vitalDSP.utils.config_utilities.adaptive_parameters import optimize_filtering_parameters
+from vitalDSP.utils.config_utilities.adaptive_parameters import (
+    optimize_filtering_parameters,
+)
 
 warnings.filterwarnings("ignore")
 

@@ -25,7 +25,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import numpy as np
 from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
 from vitalDSP.physiological_features.frequency_domain import FrequencyDomainFeatures

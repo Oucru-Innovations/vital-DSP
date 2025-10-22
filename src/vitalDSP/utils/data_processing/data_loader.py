@@ -374,14 +374,16 @@ class DataLoader:
             # Use default time_column if not provided
             if time_column is None:
                 time_column = "timestamp"
-                
+
             # OPTIMIZATION: Determine if we should use streaming for large files
             file_size_mb = self.file_path.stat().st_size / (1024 * 1024)
             use_streaming = file_size_mb > 100 or chunk_size is not None
 
             if use_streaming:
                 # Use streaming row-by-row expansion for large files
-                logger.info(f"Large OUCRU file detected ({file_size_mb:.1f} MB). Using streaming expansion.")
+                logger.info(
+                    f"Large OUCRU file detected ({file_size_mb:.1f} MB). Using streaming expansion."
+                )
                 return self._load_oucru_csv_streaming(
                     columns=columns,
                     time_column=time_column,
@@ -461,7 +463,9 @@ class DataLoader:
                             except (ValueError, json.JSONDecodeError):
                                 # Fallback to ast.literal_eval for non-JSON array strings
                                 try:
-                                    signal_array = np.array(ast.literal_eval(signal_str))
+                                    signal_array = np.array(
+                                        ast.literal_eval(signal_str)
+                                    )
                                 except (ValueError, SyntaxError):
                                     # If that fails, try to handle numpy float representations
                                     # Replace np.float64() calls with just the numeric value
@@ -564,7 +568,9 @@ class DataLoader:
                 total_samples = n_rows * n_samples_per_row
 
                 # Create base timestamp in seconds (convert timestamps to numeric)
-                base_timestamps_sec = timestamps.astype('int64') / 1e9  # Convert to seconds
+                base_timestamps_sec = (
+                    timestamps.astype("int64") / 1e9
+                )  # Convert to seconds
 
                 # Create offset array: [0, 1/fs, 2/fs, ..., (n_samples_per_row-1)/fs] repeated for each row
                 sample_offsets = np.tile(time_deltas_per_row, n_rows)
@@ -573,10 +579,12 @@ class DataLoader:
                 row_indices = np.repeat(np.arange(n_rows), n_samples_per_row)
 
                 # Combine: base_timestamps[row_idx] + offset for each sample
-                timestamp_seconds = base_timestamps_sec.iloc[row_indices].values + sample_offsets
+                timestamp_seconds = (
+                    base_timestamps_sec.iloc[row_indices].values + sample_offsets
+                )
 
                 # Convert back to datetime
-                sample_timestamps = pd.to_datetime(timestamp_seconds, unit='s')
+                sample_timestamps = pd.to_datetime(timestamp_seconds, unit="s")
 
                 # Create expanded DataFrame
                 expanded_data = pd.DataFrame(
@@ -651,18 +659,18 @@ class DataLoader:
             # Use default time_column if not provided
             if time_column is None:
                 time_column = "timestamp"
-                
+
             # Auto-determine chunk size based on file size
             if chunk_size is None:
                 file_size_mb = self.file_path.stat().st_size / (1024 * 1024)
                 if file_size_mb < 200:
                     chunk_size = 10000  # 10k rows for 100-200MB files
                 elif file_size_mb < 500:
-                    chunk_size = 5000   # 5k rows for 200-500MB files
+                    chunk_size = 5000  # 5k rows for 200-500MB files
                 elif file_size_mb < 1000:
-                    chunk_size = 2000   # 2k rows for 500MB-1GB files
+                    chunk_size = 2000  # 2k rows for 500MB-1GB files
                 else:
-                    chunk_size = 1000   # 1k rows for >1GB files
+                    chunk_size = 1000  # 1k rows for >1GB files
 
             logger.info(f"Using chunk size: {chunk_size} rows for streaming expansion")
 
@@ -698,7 +706,10 @@ class DataLoader:
                         )
 
                     # Extract or validate sampling rate from first chunk
-                    if sampling_rate_column and sampling_rate_column in data_chunk.columns:
+                    if (
+                        sampling_rate_column
+                        and sampling_rate_column in data_chunk.columns
+                    ):
                         fs_values = data_chunk[sampling_rate_column].unique()
                         if len(fs_values) > 1:
                             warnings.warn(
@@ -723,13 +734,17 @@ class DataLoader:
                     # Parse signal array (using optimized json.loads)
                     try:
                         if isinstance(signal_str, str):
-                            if signal_str.strip().startswith("[") and signal_str.strip().endswith("]"):
+                            if signal_str.strip().startswith(
+                                "["
+                            ) and signal_str.strip().endswith("]"):
                                 # OPTIMIZATION: Try json.loads first
                                 try:
                                     signal_array = np.array(json.loads(signal_str))
                                 except (ValueError, json.JSONDecodeError):
                                     # Fallback to ast.literal_eval
-                                    signal_array = np.array(ast.literal_eval(signal_str))
+                                    signal_array = np.array(
+                                        ast.literal_eval(signal_str)
+                                    )
                             else:
                                 signal_array = np.array([float(signal_str)])
                         elif isinstance(signal_str, (list, np.ndarray)):
@@ -737,9 +752,13 @@ class DataLoader:
                         elif isinstance(signal_str, (int, float)):
                             signal_array = np.array([float(signal_str)])
                         else:
-                            raise ValueError(f"Unexpected signal type at row {idx}: {type(signal_str)}")
+                            raise ValueError(
+                                f"Unexpected signal type at row {idx}: {type(signal_str)}"
+                            )
                     except Exception as e:
-                        raise ValueError(f"Failed to parse signal array at row {idx}: {signal_str}. Error: {str(e)}")
+                        raise ValueError(
+                            f"Failed to parse signal array at row {idx}: {signal_str}. Error: {str(e)}"
+                        )
 
                     # Validate/infer sampling rate from first row
                     if n_samples_per_row is None:
@@ -747,10 +766,14 @@ class DataLoader:
                         if fs is None:
                             fs = n_samples_per_row
                             import sys
+
                             if "pytest" not in sys.modules:
-                                warnings.warn(f"Sampling rate inferred from array length: {fs} Hz")
+                                warnings.warn(
+                                    f"Sampling rate inferred from array length: {fs} Hz"
+                                )
                         elif fs != n_samples_per_row:
                             import sys
+
                             if "pytest" not in sys.modules:
                                 warnings.warn(
                                     f"Array length ({n_samples_per_row}) does not match "
@@ -778,16 +801,22 @@ class DataLoader:
 
                 # Parse and store timestamps for this chunk
                 chunk_ts_series = pd.Series(chunk_timestamps)
-                parsed_chunk_ts = self._parse_timestamps_with_conversion(chunk_ts_series)
+                parsed_chunk_ts = self._parse_timestamps_with_conversion(
+                    chunk_ts_series
+                )
                 if parsed_chunk_ts is not None:
                     all_timestamps.append(parsed_chunk_ts)
 
                 total_rows_processed += len(data_chunk)
-                logger.info(f"Processed chunk {chunk_idx + 1}: {total_rows_processed} rows")
+                logger.info(
+                    f"Processed chunk {chunk_idx + 1}: {total_rows_processed} rows"
+                )
 
             # Concatenate all chunks
             signal_data = np.concatenate(all_signal_data)
-            timestamps = pd.concat(all_timestamps, ignore_index=True) if all_timestamps else None
+            timestamps = (
+                pd.concat(all_timestamps, ignore_index=True) if all_timestamps else None
+            )
 
             # Generate interpolated timestamps using vectorized method
             if interpolate_time and timestamps is not None:
@@ -796,25 +825,25 @@ class DataLoader:
                 n_rows = len(timestamps)
 
                 # Convert timestamps to seconds
-                base_timestamps_sec = timestamps.astype('int64') / 1e9
+                base_timestamps_sec = timestamps.astype("int64") / 1e9
 
                 # Create vectorized arrays
                 sample_offsets = np.tile(time_deltas_per_row, n_rows)
                 row_indices = np.repeat(np.arange(n_rows), n_samples_per_row)
-                timestamp_seconds = base_timestamps_sec.iloc[row_indices].values + sample_offsets
+                timestamp_seconds = (
+                    base_timestamps_sec.iloc[row_indices].values + sample_offsets
+                )
 
                 # Convert back to datetime
-                sample_timestamps = pd.to_datetime(timestamp_seconds, unit='s')
+                sample_timestamps = pd.to_datetime(timestamp_seconds, unit="s")
 
-                expanded_data = pd.DataFrame({
-                    "timestamp": sample_timestamps,
-                    "signal": signal_data
-                })
+                expanded_data = pd.DataFrame(
+                    {"timestamp": sample_timestamps, "signal": signal_data}
+                )
             else:
-                expanded_data = pd.DataFrame({
-                    "sample_index": np.arange(len(signal_data)),
-                    "signal": signal_data
-                })
+                expanded_data = pd.DataFrame(
+                    {"sample_index": np.arange(len(signal_data)), "signal": signal_data}
+                )
                 if timestamps is not None:
                     row_timestamps = np.repeat(timestamps.values, n_samples_per_row)
                     expanded_data["row_timestamp"] = row_timestamps

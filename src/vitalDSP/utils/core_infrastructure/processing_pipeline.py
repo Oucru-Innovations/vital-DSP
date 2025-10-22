@@ -642,7 +642,11 @@ class StandardProcessingPipeline:
         quality_results = self.quality_screener.screen_signal(signal)
 
         # Add quality-based processing recommendations
-        quality_score = quality_results[0].quality_metrics.overall_quality if quality_results else 0.5
+        quality_score = (
+            quality_results[0].quality_metrics.overall_quality
+            if quality_results
+            else 0.5
+        )
 
         if quality_score > 0.8:
             recommendation = "excellent_quality_safe_for_all_analyses"
@@ -658,10 +662,17 @@ class StandardProcessingPipeline:
             "screening_results": quality_results,
             "overall_quality_score": quality_score,
             "processing_recommendation": recommendation,
-            "false_positive_risk": self._assess_false_positive_risk_from_results(quality_results),
+            "false_positive_risk": self._assess_false_positive_risk_from_results(
+                quality_results
+            ),
             "total_segments": len(quality_results),
             "passed_segments": sum(1 for r in quality_results if r.passed_screening),
-            "pass_rate": sum(1 for r in quality_results if r.passed_screening) / len(quality_results) if quality_results else 0.0
+            "pass_rate": (
+                sum(1 for r in quality_results if r.passed_screening)
+                / len(quality_results)
+                if quality_results
+                else 0.0
+            ),
         }
 
         logger.info(
@@ -712,7 +723,9 @@ class StandardProcessingPipeline:
         }
 
         # Path 4: Full processing (all methods combined)
-        full_signal, full_features = self._extract_simple_features(preprocessed_signal, fs, signal_type)
+        full_signal, full_features = self._extract_simple_features(
+            preprocessed_signal, fs, signal_type
+        )
         paths["full"] = {
             "data": full_signal,
             "quality": self._assess_path_quality(full_signal, fs, signal_type),
@@ -751,9 +764,11 @@ class StandardProcessingPipeline:
     def _stage_quality_validation(self, context: Dict[str, Any]) -> ProcessingResult:
         """Stage 4: Quality Validation - Compare all processing paths."""
         parallel_result = context["results"][ProcessingStage.PARALLEL_PROCESSING.value]
-        
+
         # Extract the actual data from ProcessingResult object
-        parallel_results = parallel_result.data if parallel_result.data is not None else {}
+        parallel_results = (
+            parallel_result.data if parallel_result.data is not None else {}
+        )
 
         # Compare all processing paths
         validation_results = self._compare_processing_paths(parallel_results)
@@ -800,8 +815,20 @@ class StandardProcessingPipeline:
 
     def _stage_feature_extraction(self, context: Dict[str, Any]) -> ProcessingResult:
         """Stage 6: Feature Extraction - Per-segment and global features."""
-        segmentation_results = context["results"][ProcessingStage.SEGMENTATION.value]
-        parallel_results = context["results"][ProcessingStage.PARALLEL_PROCESSING.value]
+        segmentation_result = context["results"][ProcessingStage.SEGMENTATION.value]
+        parallel_result = context["results"][ProcessingStage.PARALLEL_PROCESSING.value]
+
+        # Extract the data from ProcessingResult objects
+        segmentation_results = (
+            segmentation_result.data
+            if hasattr(segmentation_result, "data")
+            else segmentation_result
+        )
+        parallel_results = (
+            parallel_result.data
+            if hasattr(parallel_result, "data")
+            else parallel_result
+        )
 
         # Extract features for all segments and processing paths
         feature_results = self._extract_comprehensive_features(
@@ -864,34 +891,36 @@ class StandardProcessingPipeline:
         """Assess false positive risk from quality screening results."""
         if not quality_results:
             return {"risk_level": "unknown", "confidence": 0.0}
-        
+
         # Extract quality scores from screening results
         individual_scores = []
         for result in quality_results:
-            if hasattr(result, 'quality_metrics') and hasattr(result.quality_metrics, 'overall_quality'):
+            if hasattr(result, "quality_metrics") and hasattr(
+                result.quality_metrics, "overall_quality"
+            ):
                 individual_scores.append(result.quality_metrics.overall_quality)
-        
+
         if len(individual_scores) < 2:
             return {"risk_level": "unknown", "confidence": 0.0}
-        
+
         # Calculate disagreement between scores
         disagreement = np.std(individual_scores)
-        
+
         if disagreement > 0.3:
             risk_level = "high"
         elif disagreement > 0.15:
             risk_level = "medium"
         else:
             risk_level = "low"
-        
+
         # Calculate confidence based on consistency
         confidence = max(0.0, 1.0 - disagreement)
-        
+
         return {
             "risk_level": risk_level,
             "confidence": confidence,
             "disagreement": disagreement,
-            "score_count": len(individual_scores)
+            "score_count": len(individual_scores),
         }
 
     def _assess_false_positive_risk(
@@ -1527,7 +1556,9 @@ class StandardProcessingPipeline:
 
         return recommendations
 
-    def _apply_filtering(self, signal: np.ndarray, fs: float, signal_type: str) -> np.ndarray:
+    def _apply_filtering(
+        self, signal: np.ndarray, fs: float, signal_type: str
+    ) -> np.ndarray:
         """Apply basic bandpass filtering to signal using vitalDSP SignalFiltering."""
         try:
             from vitalDSP.filtering.signal_filtering import SignalFiltering
@@ -1544,15 +1575,21 @@ class StandardProcessingPipeline:
 
             # Use vitalDSP SignalFiltering for bandpass filtering
             sf = SignalFiltering(signal)
-            filtered = sf.bandpass(lowcut=lowcut, highcut=highcut, fs=fs, order=4, filter_type="butter")
+            filtered = sf.bandpass(
+                lowcut=lowcut, highcut=highcut, fs=fs, order=4, filter_type="butter"
+            )
 
-            logger.info(f"Applied vitalDSP bandpass filter ({lowcut}-{highcut} Hz) for {signal_type}")
+            logger.info(
+                f"Applied vitalDSP bandpass filter ({lowcut}-{highcut} Hz) for {signal_type}"
+            )
             return filtered
         except Exception as e:
             logger.warning(f"vitalDSP filtering failed: {e}, returning original signal")
             return signal.copy()
 
-    def _apply_preprocessing(self, signal: np.ndarray, fs: float, signal_type: str) -> np.ndarray:
+    def _apply_preprocessing(
+        self, signal: np.ndarray, fs: float, signal_type: str
+    ) -> np.ndarray:
         """Apply preprocessing (filtering + artifact removal) using vitalDSP modules."""
         try:
             # First apply filtering using vitalDSP
@@ -1565,13 +1602,15 @@ class StandardProcessingPipeline:
             # Use adaptive threshold artifact removal for better results
             preprocessed = ar.adaptive_threshold_removal(
                 window_size=int(2 * fs),  # 2-second windows
-                std_factor=3.0  # 3 standard deviations
+                std_factor=3.0,  # 3 standard deviations
             )
 
             logger.info(f"Applied vitalDSP artifact removal for {signal_type}")
             return preprocessed
         except Exception as e:
-            logger.warning(f"vitalDSP preprocessing failed: {e}, using basic preprocessing")
+            logger.warning(
+                f"vitalDSP preprocessing failed: {e}, using basic preprocessing"
+            )
             # Fallback to basic preprocessing
             filtered = self._apply_filtering(signal, fs, signal_type)
             mean = np.mean(filtered)
@@ -1592,18 +1631,20 @@ class StandardProcessingPipeline:
             features["min"] = float(np.min(signal))
             features["max"] = float(np.max(signal))
             features["range"] = float(np.ptp(signal))
-            features["rms"] = float(np.sqrt(np.mean(signal ** 2)))
+            features["rms"] = float(np.sqrt(np.mean(signal**2)))
             features["variance"] = float(np.var(signal))
 
             # Statistical moments
             from scipy import stats
+
             features["skewness"] = float(stats.skew(signal))
             features["kurtosis"] = float(stats.kurtosis(signal))
 
             # Frequency domain features using scipy
             from scipy.fft import fft, fftfreq
+
             fft_vals = fft(signal)
-            fft_freqs = fftfreq(len(signal), 1/fs)
+            fft_freqs = fftfreq(len(signal), 1 / fs)
 
             # Use only positive frequencies
             positive_freqs = fft_freqs > 0
@@ -1612,12 +1653,17 @@ class StandardProcessingPipeline:
 
             if len(freqs) > 0 and np.sum(fft_power) > 0:
                 # Spectral centroid
-                features["spectral_centroid"] = float(np.sum(freqs * fft_power) / np.sum(fft_power))
+                features["spectral_centroid"] = float(
+                    np.sum(freqs * fft_power) / np.sum(fft_power)
+                )
 
                 # Spectral bandwidth
                 centroid = features["spectral_centroid"]
                 features["spectral_bandwidth"] = float(
-                    np.sqrt(np.sum(((freqs - centroid) ** 2) * fft_power) / np.sum(fft_power))
+                    np.sqrt(
+                        np.sum(((freqs - centroid) ** 2) * fft_power)
+                        / np.sum(fft_power)
+                    )
                 )
 
                 # Dominant frequency
@@ -1632,7 +1678,7 @@ class StandardProcessingPipeline:
                 features["spectral_energy"] = 0.0
 
             # Total energy
-            features["total_energy"] = float(np.sum(signal ** 2))
+            features["total_energy"] = float(np.sum(signal**2))
 
             logger.info(f"Extracted {len(features)} features for {signal_type}")
             return signal, features
@@ -1646,7 +1692,7 @@ class StandardProcessingPipeline:
                 "min": float(np.min(signal)),
                 "max": float(np.max(signal)),
                 "range": float(np.ptp(signal)),
-                "energy": float(np.sum(signal ** 2)),
+                "energy": float(np.sum(signal**2)),
             }
             return signal, features
 
@@ -1685,7 +1731,9 @@ class StandardProcessingPipeline:
                 "passed_screening": True,
             }
 
-    def _compare_signals(self, original: np.ndarray, processed: np.ndarray) -> Dict[str, Any]:
+    def _compare_signals(
+        self, original: np.ndarray, processed: np.ndarray
+    ) -> Dict[str, Any]:
         """Compare original and processed signals to detect distortion."""
         try:
             # Calculate correlation
@@ -1696,7 +1744,9 @@ class StandardProcessingPipeline:
             normalized_rmse = rmse / (np.std(original) + 1e-10)
 
             # Calculate distortion severity (0 = no distortion, 1 = high distortion)
-            distortion_severity = max(0, min(1, (1 - correlation) + normalized_rmse / 2))
+            distortion_severity = max(
+                0, min(1, (1 - correlation) + normalized_rmse / 2)
+            )
 
             # Classify distortion type
             if distortion_severity < 0.1:
@@ -1806,4 +1856,5 @@ class OptimizedStandardProcessingPipeline(StandardProcessingPipeline):
 
     Use this for files >5 minutes or when performance is critical.
     """
+
     pass

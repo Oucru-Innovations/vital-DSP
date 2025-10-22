@@ -25,7 +25,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 # src/vitalDSP/utils/validation.py
 """
 Comprehensive input validation utilities for vitalDSP functions.

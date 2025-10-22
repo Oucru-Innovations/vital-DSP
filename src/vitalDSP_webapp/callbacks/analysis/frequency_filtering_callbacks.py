@@ -89,9 +89,9 @@ def register_frequency_filtering_callbacks(app):
             raise PreventUpdate
 
         try:
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
             if not data_service:
                 logger.warning("Data service not available")
                 return ["original"]
@@ -134,15 +134,16 @@ def register_frequency_filtering_callbacks(app):
             Output("store-time-freq-data", "data"),
         ],
         [
-            Input("url", "pathname"),
+            # Input("url", "pathname"),  # REMOVED - was running full analysis on EVERY page load!
             Input("freq-btn-update-analysis", "n_clicks"),
-            Input("freq-time-range-slider", "value"),
             Input("freq-btn-nudge-m10", "n_clicks"),
             Input("freq-btn-nudge-m1", "n_clicks"),
             Input("freq-btn-nudge-p1", "n_clicks"),
             Input("freq-btn-nudge-p10", "n_clicks"),
         ],
         [
+            State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
+            State("freq-time-range-slider", "value"),
             State("freq-start-time", "value"),
             State("freq-end-time", "value"),
             State(
@@ -174,13 +175,13 @@ def register_frequency_filtering_callbacks(app):
         ],
     )
     def frequency_domain_callback(
-        pathname,
         n_clicks,
-        slider_value,
         nudge_m10,
         nudge_m1,
         nudge_p1,
         nudge_p10,
+        pathname,  # MOVED to correct position - this is a State parameter
+        slider_value,
         start_time,
         end_time,
         signal_source,  # Added signal source parameter
@@ -240,7 +241,7 @@ def register_frequency_filtering_callbacks(app):
         try:
             # Get data from the data service
             logger.info("Attempting to import data service...")
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 
             logger.info("Data service imported successfully")
 
@@ -255,7 +256,7 @@ def register_frequency_filtering_callbacks(app):
                 logger.info(f"Added vitalDSP path: {vitaldsp_path}")
             logger.info(f"Current sys.path: {sys.path[:3]}")
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
             data_store = data_service.get_all_data()
 
             if not data_store:
@@ -1115,7 +1116,9 @@ def register_frequency_filtering_callbacks(app):
 
     # Time slider range update callback
     @app.callback(
-        Output("freq-time-range-slider", "max"), [Input("store-uploaded-data", "data")]
+        Output("freq-time-range-slider", "max"),
+        [Input("store-uploaded-data", "data")],
+        prevent_initial_call=True,
     )
     def update_freq_time_slider_range(data_store):
         """Update time slider range based on uploaded data."""
@@ -1495,7 +1498,7 @@ def create_wavelet_plot(
     logger.info(f"Creating wavelet plot with type: {wavelet_type}, levels: {levels}")
 
     try:
-        import pywt
+        from vitalDSP.transforms.wavelet_transform import WaveletTransform
 
         # Validate input parameters
         if levels <= 0:
@@ -1533,15 +1536,8 @@ def create_wavelet_plot(
             return fig
 
         # Validate wavelet type
-        valid_wavelets = pywt.wavelist()
-        if wavelet_type not in valid_wavelets:
-            logger.warning(
-                f"Invalid wavelet type: {wavelet_type}. Available: {valid_wavelets[:10]}..."
-            )
-            # Use a default wavelet
-            default_wavelet = "db4" if "db4" in valid_wavelets else "haar"
-            logger.info(f"Using default wavelet: {default_wavelet}")
-            wavelet_type = default_wavelet
+        wt = WaveletTransform(selected_signal, wavelet_name=wavelet_type)
+        # Note: vitalDSP WaveletTransform handles validation internally
 
         # Validate signal data
         if np.any(np.isnan(selected_signal)) or np.any(np.isinf(selected_signal)):
@@ -1583,7 +1579,11 @@ def create_wavelet_plot(
             f"Performing wavelet decomposition with {wavelet_type} wavelet, {levels} levels"
         )
         try:
-            coeffs = pywt.wavedec(selected_signal, wavelet_type, level=levels)
+            coefficients = wt.perform_wavelet_transform()
+            # Convert to list format for compatibility
+            coeffs = (
+                [coefficients] if isinstance(coefficients, np.ndarray) else coefficients
+            )
             logger.info(
                 f"Wavelet decomposition completed. Number of coefficients: {len(coeffs)}"
             )
@@ -2551,10 +2551,15 @@ def perform_wavelet_analysis(
 
     # For wavelet analysis, we'll create a simplified PSD from the approximation coefficients
     try:
-        import pywt
+        from vitalDSP.transforms.wavelet_transform import WaveletTransform
 
-        # Perform wavelet decomposition
-        coeffs = pywt.wavedec(selected_signal, wavelet_type, level=levels)
+        # Perform wavelet decomposition using vitalDSP
+        wt = WaveletTransform(selected_signal, wavelet_name=wavelet_type)
+        coefficients = wt.perform_wavelet_transform()
+        # Convert to list format for compatibility
+        coeffs = (
+            [coefficients] if isinstance(coefficients, np.ndarray) else coefficients
+        )
 
         # Validate coefficients
         if not coeffs or len(coeffs) == 0:

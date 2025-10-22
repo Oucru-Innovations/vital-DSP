@@ -24,7 +24,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import numpy as np
 from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
 

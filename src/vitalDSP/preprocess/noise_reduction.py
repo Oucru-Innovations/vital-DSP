@@ -23,7 +23,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import numpy as np
 from vitalDSP.transforms.wavelet_transform import WaveletTransform
 from vitalDSP.filtering.signal_filtering import SignalFiltering

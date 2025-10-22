@@ -23,7 +23,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 
 
