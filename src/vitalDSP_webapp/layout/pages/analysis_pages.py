@@ -165,93 +165,112 @@ def time_domain_layout():
                                             ),
                                             # Time Window Controls
                                             html.H6("Time Window", className="mb-3"),
+                                            # Modern Time Range Controls
                                             dbc.Row(
                                                 [
                                                     dbc.Col(
                                                         [
                                                             html.Label(
-                                                                "Start Time (s)",
-                                                                className="form-label",
+                                                                "Start Position (%)",
+                                                                className="form-label fw-bold",
                                                             ),
-                                                            dbc.Input(
-                                                                id="start-time",
-                                                                type="number",
-                                                                value=0,
+                                                            html.Small(
+                                                                "Position in data (0% = start, 100% = end)",
+                                                                className="text-muted",
+                                                            ),
+                                                            dcc.Slider(
+                                                                id="start-position-slider",
                                                                 min=0,
-                                                                step=0.1,
-                                                                placeholder="0",
+                                                                max=100,
+                                                                step=1,
+                                                                value=0,
+                                                                marks={
+                                                                    0: "0%",
+                                                                    25: "25%",
+                                                                    50: "50%",
+                                                                    75: "75%",
+                                                                    100: "100%",
+                                                                },
+                                                                tooltip={"placement": "bottom", "always_visible": True},
+                                                                className="mb-3",
                                                             ),
                                                         ],
-                                                        md=6,
+                                                        md=8,
                                                     ),
                                                     dbc.Col(
                                                         [
                                                             html.Label(
-                                                                "End Time (s)",
-                                                                className="form-label",
+                                                                "Duration",
+                                                                className="form-label fw-bold",
                                                             ),
-                                                            dbc.Input(
-                                                                id="end-time",
-                                                                type="number",
-                                                                value=10,
-                                                                min=0,
-                                                                step=0.1,
-                                                                placeholder="10",
+                                                            html.Small(
+                                                                "Analysis window size",
+                                                                className="text-muted",
+                                                            ),
+                                                            dbc.Select(
+                                                                id="duration-select",
+                                                                options=[
+                                                                    {"label": "30 seconds", "value": 30},
+                                                                    {"label": "1 minute", "value": 60},
+                                                                    {"label": "2 minutes", "value": 120},
+                                                                    {"label": "5 minutes", "value": 300},
+                                                                ],
+                                                                value=60,  # Default to 1 minute
+                                                                className="mb-3",
                                                             ),
                                                         ],
-                                                        md=6,
+                                                        md=4,
                                                     ),
                                                 ],
                                                 className="mb-3",
                                             ),
-                                            # Quick Window Navigation
+                                            # Quick Navigation Buttons
                                             html.Div(
                                                 [
-                                                    dbc.Button(
-                                                        "⏪ -10s",
-                                                        id="btn-nudge-m10",
-                                                        color="secondary",
-                                                        size="sm",
-                                                        className="me-1",
+                                                    html.Label(
+                                                        "Quick Navigation",
+                                                        className="form-label fw-bold mb-2",
                                                     ),
-                                                    dbc.Button(
-                                                        "⏪ -1s",
-                                                        id="btn-nudge-m1",
-                                                        color="secondary",
-                                                        size="sm",
-                                                        className="me-1",
-                                                    ),
-                                                    dbc.Button(
-                                                        "+1s ⏩",
-                                                        id="btn-nudge-p1",
-                                                        color="secondary",
-                                                        size="sm",
-                                                        className="me-1",
-                                                    ),
-                                                    dbc.Button(
-                                                        "+10s ⏩",
-                                                        id="btn-nudge-p10",
-                                                        color="secondary",
-                                                        size="sm",
+                                                    dbc.ButtonGroup(
+                                                        [
+                                                            dbc.Button(
+                                                                "⏪ -10%",
+                                                                id="btn-nudge-m10",
+                                                                color="secondary",
+                                                                size="sm",
+                                                                className="me-1",
+                                                            ),
+                                                            dbc.Button(
+                                                                "⏪ -5%",
+                                                                id="btn-nudge-m5",
+                                                                color="secondary",
+                                                                size="sm",
+                                                                className="me-1",
+                                                            ),
+                                                            dbc.Button(
+                                                                "Center",
+                                                                id="btn-center",
+                                                                color="info",
+                                                                size="sm",
+                                                                className="me-1",
+                                                            ),
+                                                            dbc.Button(
+                                                                "+5% ⏩",
+                                                                id="btn-nudge-p5",
+                                                                color="secondary",
+                                                                size="sm",
+                                                                className="me-1",
+                                                            ),
+                                                            dbc.Button(
+                                                                "+10% ⏩",
+                                                                id="btn-nudge-p10",
+                                                                color="secondary",
+                                                                size="sm",
+                                                            ),
+                                                        ],
+                                                        className="mb-3",
                                                     ),
                                                 ],
-                                                className="mb-3",
-                                            ),
-                                            # Range Slider for Time Window
-                                            html.Label(
-                                                "Time Range Slider",
-                                                className="form-label",
-                                            ),
-                                            dcc.RangeSlider(
-                                                id="time-range-slider",
-                                                min=0,
-                                                max=100,
-                                                step=0.1,
-                                                value=[0, 10],
-                                                allowCross=False,
-                                                pushable=1,
-                                                updatemode="mouseup",
-                                                className="mb-4",
                                             ),
                                             # Signal Source Selection
                                             html.H6("Signal Source", className="mb-3"),
@@ -1560,65 +1579,52 @@ def filtering_layout():
                                         ],
                                         md=2,
                                     ),
-                                    # Time Window Controls - Compact
+                                    # Modern Time Range Controls
                                     dbc.Col(
                                         [
                                             html.Label(
-                                                "Time Range (s):",
+                                                "Start Position (%)",
                                                 className="form-label mb-1",
                                             ),
-                                            dbc.Row(
-                                                [
-                                                    dbc.Col(
-                                                        [
-                                                            dbc.Input(
-                                                                id="filter-start-time",
-                                                                type="number",
-                                                                value=0,
-                                                                min=0,
-                                                                step=0.1,
-                                                                size="sm",
-                                                                placeholder="Start",
-                                                            )
-                                                        ],
-                                                        width=6,
-                                                    ),
-                                                    dbc.Col(
-                                                        [
-                                                            dbc.Input(
-                                                                id="filter-end-time",
-                                                                type="number",
-                                                                value=10,
-                                                                min=0,
-                                                                step=0.1,
-                                                                size="sm",
-                                                                placeholder="End",
-                                                            )
-                                                        ],
-                                                        width=6,
-                                                    ),
-                                                ]
-                                            ),
-                                            # Time Range Slider
-                                            html.Label(
-                                                "Time Range Slider:",
-                                                className="form-label mb-1 mt-2",
-                                            ),
-                                            dcc.RangeSlider(
-                                                id="filter-time-range-slider",
+                                            dcc.Slider(
+                                                id="start-position-slider",
                                                 min=0,
                                                 max=100,
-                                                step=0.1,
-                                                value=[0, 10],
-                                                marks={},
-                                                tooltip={
-                                                    "placement": "bottom",
-                                                    "always_visible": True,
+                                                step=1,
+                                                value=0,
+                                                marks={
+                                                    0: "0%",
+                                                    25: "25%",
+                                                    50: "50%",
+                                                    75: "75%",
+                                                    100: "100%",
                                                 },
-                                                className="mt-1",
+                                                tooltip={"placement": "bottom", "always_visible": True},
+                                                className="mb-2",
                                             ),
                                         ],
                                         md=3,
+                                    ),
+                                    # Duration Selection
+                                    dbc.Col(
+                                        [
+                                            html.Label(
+                                                "Duration",
+                                                className="form-label mb-1",
+                                            ),
+                                            dbc.Select(
+                                                id="duration-select",
+                                                options=[
+                                                    {"label": "30s", "value": 30},
+                                                    {"label": "1min", "value": 60},
+                                                    {"label": "2min", "value": 120},
+                                                    {"label": "5min", "value": 300},
+                                                ],
+                                                value=60,  # Default to 1 minute
+                                                size="sm",
+                                            ),
+                                        ],
+                                        md=2,
                                     ),
                                     # Quick Navigation
                                     dbc.Col(
@@ -1630,26 +1636,22 @@ def filtering_layout():
                                             dbc.ButtonGroup(
                                                 [
                                                     dbc.Button(
-                                                        "←10s",
-                                                        id="filter-btn-nudge-m10",
+                                                        "-10%",
+                                                        id="btn-nudge-m10",
                                                         color="secondary",
                                                         size="sm",
+                                                        className="me-1",
                                                     ),
                                                     dbc.Button(
-                                                        "←1s",
-                                                        id="filter-btn-nudge-m1",
-                                                        color="secondary",
+                                                        "Center",
+                                                        id="btn-center",
+                                                        color="info",
                                                         size="sm",
+                                                        className="me-1",
                                                     ),
                                                     dbc.Button(
-                                                        "+1s",
-                                                        id="filter-btn-nudge-p1",
-                                                        color="secondary",
-                                                        size="sm",
-                                                    ),
-                                                    dbc.Button(
-                                                        "+10s",
-                                                        id="filter-btn-nudge-p10",
+                                                        "+10%",
+                                                        id="btn-nudge-p10",
                                                         color="secondary",
                                                         size="sm",
                                                     ),

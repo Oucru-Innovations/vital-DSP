@@ -286,18 +286,15 @@ def register_signal_filtering_callbacks(app):
         [
             Input("url", "pathname"),
             Input("filter-btn-apply", "n_clicks"),
-            # Input("filter-time-range-slider", "value"),  # REMOVED - was causing constant updates!
-            Input("filter-btn-nudge-m10", "n_clicks"),
-            Input("filter-btn-nudge-m1", "n_clicks"),
-            Input("filter-btn-nudge-p1", "n_clicks"),
-            Input("filter-btn-nudge-p10", "n_clicks"),
+            Input("btn-nudge-m10", "n_clicks"),
+            Input("btn-nudge-m5", "n_clicks"),
+            Input("btn-center", "n_clicks"),
+            Input("btn-nudge-p5", "n_clicks"),
+            Input("btn-nudge-p10", "n_clicks"),
         ],
         [
-            State(
-                "filter-time-range-slider", "value"
-            ),  # MOVED to State - only read when triggered
-            State("filter-start-time", "value"),
-            State("filter-end-time", "value"),
+            State("start-position-slider", "value"),
+            State("duration-select", "value"),
             State("filter-type-select", "value"),
             State("filter-family-advanced", "value"),
             State("filter-response-advanced", "value"),
@@ -322,14 +319,13 @@ def register_signal_filtering_callbacks(app):
     def advanced_filtering_callback(
         pathname,
         n_clicks,
-        # slider_value moved to State parameters below
         nudge_m10,
-        nudge_m1,
-        nudge_p1,
+        nudge_m5,
+        center_click,
+        nudge_p5,
         nudge_p10,
-        slider_value,  # Now a State parameter
-        start_time_state,
-        end_time_state,
+        start_position,
+        duration,
         filter_type,
         filter_family,
         filter_response,
@@ -353,13 +349,14 @@ def register_signal_filtering_callbacks(app):
 
         ctx = callback_context
 
-        if not ctx.triggered:
-            raise PreventUpdate
-
-        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
         logger.info("=== ADVANCED FILTERING CALLBACK TRIGGERED ===")
-        logger.info(f"Trigger ID: {trigger_id}")
         logger.info(f"Pathname: {pathname}")
+        
+        if ctx.triggered:
+            trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+            logger.info(f"Trigger ID: {trigger_id}")
+        else:
+            logger.info("No trigger context available")
 
         # Only run this when we're on the filtering page
         if pathname != "/filtering":
@@ -373,9 +370,18 @@ def register_signal_filtering_callbacks(app):
                 None,
             )
 
-        # If this is the first time loading the page (no button clicks), show a message
-        if not ctx.triggered or ctx.triggered[0]["prop_id"].split(".")[0] == "url":
-            logger.info("First time loading filtering page, attempting to load data")
+        # Allow callback to run for Apply Filter button and nudge buttons
+        if ctx.triggered:
+            trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+            logger.info(f"Trigger ID: {trigger_id}")
+            
+            # Only prevent update for non-relevant triggers
+            if trigger_id not in ["filter-btn-apply", "btn-nudge-m10", "btn-nudge-m5", "btn-center", "btn-nudge-p5", "btn-nudge-p10"]:
+                logger.info(f"Trigger {trigger_id} not relevant for filtering, preventing update")
+                raise PreventUpdate
+        else:
+            # Allow callback to run even without trigger context (for initial load)
+            logger.info("No trigger context, allowing callback to run")
 
         try:
             # Get data from the data service
@@ -454,28 +460,58 @@ def register_signal_filtering_callbacks(app):
             data_info = data_service.get_data_info(latest_data_id)
             column_mapping = data_service.get_column_mapping(latest_data_id)
 
-            # Log time range interpretation (after we have data_info)
-            # Use slider value if available, otherwise fall back to state values
-            effective_start_time = slider_value[0] if slider_value else start_time_state
-            effective_end_time = slider_value[1] if slider_value else end_time_state
-
-            if effective_start_time is not None and effective_end_time is not None:
-                logger.info("=== TIME RANGE INTERPRETATION ===")
-                logger.info(
-                    f"User selected time range: {effective_start_time} to {effective_end_time} seconds"
-                )
-                logger.info(
-                    f"Data duration: {data_info.get('duration', 'unknown')} seconds"
-                )
-                logger.info(
-                    f"Data sampling frequency: {data_info.get('sampling_freq', 'unknown')} Hz"
-                )
-                logger.info(
-                    f"Total data points: {data_info.get('signal_length', 'unknown')}"
-                )
-                logger.info(
-                    f"Expected points for time range: {(effective_end_time - effective_start_time) * data_info.get('sampling_freq', 100)}"
-                )
+            # Calculate time range from start position and duration
+            if start_position is None:
+                start_position = 0
+            if duration is None:
+                duration = 60  # Default to 1 minute
+            
+            # Get data duration to calculate actual time range
+            data_duration = data_info.get('duration', 0)
+            if data_duration == 0:
+                # Calculate duration from sampling frequency and data length
+                sampling_freq = data_info.get('sampling_frequency', 1000)
+                data_duration = len(df) / sampling_freq
+            
+            # Calculate start time based on percentage
+            start_time = (start_position / 100.0) * data_duration
+            
+            # Calculate end time based on duration
+            end_time = start_time + duration
+            
+            # Ensure end time doesn't exceed data duration
+            if end_time > data_duration:
+                end_time = data_duration
+                start_time = max(0, end_time - duration)
+            
+            # Handle nudge button adjustments
+            ctx = callback_context
+            if ctx.triggered:
+                trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+                
+                if trigger_id == "btn-nudge-m10":
+                    start_position = max(0, start_position - 10)
+                elif trigger_id == "btn-nudge-m5":
+                    start_position = max(0, start_position - 5)
+                elif trigger_id == "btn-center":
+                    start_position = 50  # Center at 50%
+                elif trigger_id == "btn-nudge-p5":
+                    start_position = min(100, start_position + 5)
+                elif trigger_id == "btn-nudge-p10":
+                    start_position = min(100, start_position + 10)
+                
+                # Recalculate time range with adjusted position
+                start_time = (start_position / 100.0) * data_duration
+                end_time = start_time + duration
+                
+                # Ensure end time doesn't exceed data duration
+                if end_time > data_duration:
+                    end_time = data_duration
+                    start_time = max(0, end_time - duration)
+                
+                logger.info(f"Nudge button triggered: {trigger_id}")
+                logger.info(f"Adjusted start position: {start_position}%")
+                logger.info(f"Adjusted time range: {start_time:.2f} to {end_time:.2f} seconds")
 
             logger.info("Data service method results:")
             logger.info(f"  get_data returned: {type(df)}")
@@ -649,12 +685,12 @@ def register_signal_filtering_callbacks(app):
                     )
 
                 # Find indices for the selected time range
-                if effective_start_time is not None and effective_end_time is not None:
+                if start_time is not None and end_time is not None:
                     logger.info(
-                        f"Looking for time range: {effective_start_time} to {effective_end_time}"
+                        f"Looking for time range: {start_time} to {end_time}"
                     )
                     logger.info(
-                        f"Time data type: {type(time_data[0])}, Start time type: {type(effective_start_time)}"
+                        f"Time data type: {type(time_data[0])}, Start time type: {type(start_time)}"
                     )
                     logger.info(
                         f"Time data range: {np.min(time_data):.4f} to {np.max(time_data):.4f}"
@@ -677,13 +713,13 @@ def register_signal_filtering_callbacks(app):
                         )
                         time_data_seconds = time_data / 1000.0
                         # Find indices where time is within the selected range (in seconds)
-                        mask = (time_data_seconds >= effective_start_time) & (
-                            time_data_seconds <= effective_end_time
+                        mask = (time_data_seconds >= start_time) & (
+                            time_data_seconds <= end_time
                         )
                     else:
                         # Time data is already in seconds
-                        mask = (time_data >= effective_start_time) & (
-                            time_data <= effective_end_time
+                        mask = (time_data >= start_time) & (
+                            time_data <= end_time
                         )
 
                     logger.info(f"Mask sum: {np.sum(mask)} out of {len(mask)} points")
@@ -691,7 +727,7 @@ def register_signal_filtering_callbacks(app):
                         start_idx = np.where(mask)[0][0]
                         end_idx = np.where(mask)[0][-1] + 1
                         logger.info(
-                            f"Time range {effective_start_time} to {effective_end_time} maps to indices {start_idx} to {end_idx}"
+                            f"Time range {start_time} to {end_time} maps to indices {start_idx} to {end_idx}"
                         )
 
                         # Ensure we have enough data points for filtering
@@ -728,7 +764,7 @@ def register_signal_filtering_callbacks(app):
                                 )
                     else:
                         logger.warning(
-                            f"No data found in time range {effective_start_time} to {effective_end_time}, using full range"
+                            f"No data found in time range {start_time} to {end_time}, using full range"
                         )
                         start_idx = 0
                         end_idx = len(time_data)
@@ -773,15 +809,15 @@ def register_signal_filtering_callbacks(app):
                     f"Sampling frequency from data_info: {data_info.get('sampling_frequency') if data_info else 'None'}"
                 )
 
-                if effective_start_time is not None and effective_end_time is not None:
-                    start_idx = int(effective_start_time * sampling_freq)
-                    end_idx = int(effective_end_time * sampling_freq)
+                if start_time is not None and end_time is not None:
+                    start_idx = int(start_time * sampling_freq)
+                    end_idx = int(end_time * sampling_freq)
 
                     # Ensure valid indices
                     start_idx = max(0, min(start_idx, len(df) - 1))
                     end_idx = max(start_idx + 1, min(end_idx, len(df)))
                     logger.info(
-                        f"Time range {effective_start_time} to {effective_end_time} maps to indices {start_idx} to {end_idx}"
+                        f"Time range {start_time} to {end_time} maps to indices {start_idx} to {end_idx}"
                     )
                 else:
                     # Use full range if no time selection
@@ -1178,75 +1214,42 @@ def register_signal_filtering_callbacks(app):
                 None,
             )
 
-    # Time input update callbacks
+    # Update start position slider based on nudge buttons
     @app.callback(
-        [Output("filter-start-time", "value"), Output("filter-end-time", "value")],
+        Output("start-position-slider", "value"),
         [
-            Input("filter-time-range-slider", "value"),
-            Input("filter-btn-nudge-m10", "n_clicks"),
-            Input("filter-btn-nudge-m1", "n_clicks"),
-            Input("filter-btn-nudge-p1", "n_clicks"),
-            Input("filter-btn-nudge-p10", "n_clicks"),
+            Input("btn-nudge-m10", "n_clicks"),
+            Input("btn-nudge-m5", "n_clicks"),
+            Input("btn-center", "n_clicks"),
+            Input("btn-nudge-p5", "n_clicks"),
+            Input("btn-nudge-p10", "n_clicks"),
         ],
-        [State("filter-start-time", "value"), State("filter-end-time", "value")],
+        [State("start-position-slider", "value")],
     )
-    def update_filter_time_inputs(
-        slider_value, nudge_m10, nudge_m1, nudge_p1, nudge_p10, start_time, end_time
-    ):
-        """Update time inputs based on slider or nudge buttons."""
+    def update_start_position_slider(nudge_m10, nudge_m5, center_click, nudge_p5, nudge_p10, current_position):
+        """Update start position slider based on nudge buttons."""
         ctx = callback_context
         if not ctx.triggered:
             raise PreventUpdate
 
         trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        
+        if current_position is None:
+            current_position = 0
 
-        if trigger_id == "filter-time-range-slider" and slider_value:
-            return slider_value[0], slider_value[1]
+        if trigger_id == "btn-nudge-m10":
+            return max(0, current_position - 10)
+        elif trigger_id == "btn-nudge-m5":
+            return max(0, current_position - 5)
+        elif trigger_id == "btn-center":
+            return 50  # Center at 50%
+        elif trigger_id == "btn-nudge-p5":
+            return min(100, current_position + 5)
+        elif trigger_id == "btn-nudge-p10":
+            return min(100, current_position + 10)
 
-        # Handle nudge buttons
-        time_window = end_time - start_time if start_time and end_time else 10
+        return no_update
 
-        if trigger_id == "filter-btn-nudge-m10":
-            new_start = max(0, start_time - 10) if start_time else 0
-            new_end = new_start + time_window
-            return new_start, new_end
-        elif trigger_id == "filter-btn-nudge-m1":
-            new_start = max(0, start_time - 1) if start_time else 0
-            new_end = new_start + time_window
-            return new_start, new_end
-        elif trigger_id == "filter-btn-nudge-p1":
-            new_start = start_time + 1 if start_time else 1
-            new_end = new_start + time_window
-            return new_start, new_end
-        elif trigger_id == "filter-btn-nudge-p10":
-            new_start = start_time + 10 if start_time else 10
-            new_end = new_start + time_window
-            return new_start, new_end
-
-        return no_update, no_update
-
-    # Time slider range update callback
-    @app.callback(
-        Output("filter-time-range-slider", "max"),
-        [Input("store-uploaded-data", "data")],
-    )
-    def update_filter_time_slider_range(data_store):
-        """Update time slider range based on uploaded data."""
-        if not data_store:
-            return 100
-
-        try:
-            df = pd.DataFrame(data_store["data"])
-            if df.empty:
-                return 100
-
-            # Get time column (assume first column)
-            time_data = df.iloc[:, 0].values
-            max_time = np.max(time_data)
-            return max_time
-        except Exception as e:
-            logger.error(f"Error updating filter time slider range: {e}")
-            return 100
 
 
 # Helper functions for signal filtering
