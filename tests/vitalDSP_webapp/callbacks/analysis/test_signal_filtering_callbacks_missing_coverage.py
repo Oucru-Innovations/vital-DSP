@@ -137,7 +137,7 @@ class TestAutoSelectSignalTypeMissingCoverage:
         mock_data_service.get_data.return_value = None  # Mock get_data method
         mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             result = auto_select_callback("/filtering")
             assert result[0] == "Other"  # Should capitalize
 
@@ -173,7 +173,7 @@ class TestAutoSelectSignalTypeMissingCoverage:
         mock_data_service.get_data.return_value = None  # Mock get_data method
         mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             result = auto_select_callback("/filtering")
             assert result[0] == "UNKNOWN_TYPE"  # Should convert to uppercase
 
@@ -496,7 +496,7 @@ class TestSignalFilteringCallbacksAdditionalCoverage:
         mock_data_service.get_data.return_value = None  # Mock get_data method
         mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             result = auto_select_callback("/filtering")
             assert result[0] == "ECG"
 

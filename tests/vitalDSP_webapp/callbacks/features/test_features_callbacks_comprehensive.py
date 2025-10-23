@@ -68,7 +68,7 @@ class TestFeaturesAnalysisCallback:
 
     def test_callback_no_data_service(self):
         """Test callback with no data service"""
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=None, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=None, create=True):
             from vitalDSP_webapp.callbacks.features.features_callbacks import register_features_callbacks
 
             mock_app = MagicMock()

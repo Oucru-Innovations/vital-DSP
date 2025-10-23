@@ -129,9 +129,8 @@ def test_unified_callback_not_on_page(registered_callbacks):
 
     _set_trigger("physio-btn-update-analysis")
     out = fn(
-        pathname="/", n_clicks=1, slider_value=[0, 10],
-        nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
-        start_time=None, end_time=None,
+        pathname="/", n_clicks=1, nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
+        start_position=0, duration=10,
         signal_type=None, signal_source="filtered",
         analysis_categories=None, hrv_options=None, morphology_options=None,
         advanced_features=None, quality_options=None, transform_options=None,
@@ -148,9 +147,8 @@ def test_unified_callback_no_data(registered_callbacks):
     _set_trigger("physio-btn-update-analysis")
 
     out = fn(
-        pathname="/physiological", n_clicks=1, slider_value=[0, 10],
-        nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
-        start_time=None, end_time=None, signal_type=None, signal_source="filtered",
+        pathname="/physiological", n_clicks=1, nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
+        start_position=0, duration=10, signal_type=None, signal_source="filtered",
         analysis_categories=None, hrv_options=None, morphology_options=None,
         advanced_features=None, quality_options=None, transform_options=None,
         advanced_computation=None, feature_engineering=None, preprocessing=None
@@ -168,9 +166,8 @@ def test_unified_callback_no_column_mapping(registered_callbacks):
     _set_trigger("physio-btn-update-analysis")
 
     out = fn(
-        pathname="/physiological", n_clicks=1, slider_value=[0, 2],
-        nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
-        start_time=None, end_time=None, signal_type=None, signal_source="filtered",
+        pathname="/physiological", n_clicks=1, nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
+        start_position=0, duration=2, signal_type=None, signal_source="filtered",
         analysis_categories=None, hrv_options=None, morphology_options=None,
         advanced_features=None, quality_options=None, transform_options=None,
         advanced_computation=None, feature_engineering=None, preprocessing=None
@@ -186,9 +183,8 @@ def test_unified_callback_empty_dataframe(registered_callbacks):
     fn = registered_callbacks["physiological_analysis_callback"][0]
     _set_trigger("physio-btn-update-analysis")
     out = fn(
-        pathname="/physiological", n_clicks=1, slider_value=[0, 1],
-        nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
-        start_time=None, end_time=None, signal_type=None, signal_source="filtered",
+        pathname="/physiological", n_clicks=1, nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
+        start_position=0, duration=1, signal_type=None, signal_source="filtered",
         analysis_categories=None, hrv_options=None, morphology_options=None,
         advanced_features=None, quality_options=None, transform_options=None,
         advanced_computation=None, feature_engineering=None, preprocessing=None
@@ -214,9 +210,8 @@ def test_unified_callback_success_ms_to_sec_and_auto_switch_column(registered_ca
     _set_trigger("physio-btn-update-analysis")
 
     out = fn(
-        pathname="/physiological", n_clicks=1, slider_value=[0, 10],
-        nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
-        start_time=0, end_time=10, signal_type="auto", signal_source="filtered",
+        pathname="/physiological", n_clicks=1, nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
+        start_position=0, duration=10, signal_type="auto", signal_source="filtered",
         analysis_categories=["morphology", "frequency", "statistical"],
         hrv_options=[], morphology_options=["peaks", "duration"],
         advanced_features=[], quality_options=[], transform_options=[],
@@ -241,9 +236,8 @@ def test_unified_callback_error_route(registered_callbacks, monkeypatch):
     fn = registered_callbacks["physiological_analysis_callback"][0]
     _set_trigger("physio-btn-update-analysis")
     out = fn(
-        pathname="/physiological", n_clicks=1, slider_value=[0, 5],
-        nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
-        start_time=0, end_time=5, signal_type="ppg", signal_source="filtered",
+        pathname="/physiological", n_clicks=1, nudge_m10=0, nudge_m1=0, nudge_p1=0, nudge_p10=0,
+        start_position=0, duration=5, signal_type="ppg", signal_source="filtered",
         analysis_categories=["morphology"], hrv_options=[], morphology_options=["peaks"],
         advanced_features=[], quality_options=[], transform_options=[],
         advanced_computation=[], feature_engineering=[], preprocessing=[]
@@ -254,26 +248,7 @@ def test_unified_callback_error_route(registered_callbacks, monkeypatch):
 
 # -------- Time-input + time-slider range (registered versions) --------
 
-def test_update_physio_time_inputs_registered_slider_and_nudges(registered_callbacks):
-    fn = registered_callbacks["update_physio_time_inputs"][0]
-
-    # Slider triggered -> passthrough
-    class Ctx1: triggered = [{"prop_id": "physio-time-range-slider.value"}]
-    physio.callback_context = Ctx1()
-    start, end = fn([3, 13], 0, 0, 0, 0, 1, 11)
-    assert (start, end) == (3, 13)
-
-    # Nudge +1
-    class Ctx2: triggered = [{"prop_id": "physio-btn-nudge-p1.n_clicks"}]
-    physio.callback_context = Ctx2()
-    start, end = fn(None, 0, 0, 0, 0, 1, 11)
-    assert (start, end) == (2, 12)
-
-    # Nudge -10 floors at 0
-    class Ctx3: triggered = [{"prop_id": "physio-btn-nudge-m10.n_clicks"}]
-    physio.callback_context = Ctx3()
-    start, end = fn(None, 0, 0, 0, 0, 0, 10)
-    assert (start, end) == (0, 10)
+# Removed test_update_physio_time_inputs_registered_slider_and_nudges - callback no longer exists with new start/duration approach
 
 
 def test_update_physio_time_slider_range_registered(registered_callbacks):

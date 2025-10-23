@@ -143,9 +143,8 @@ def register_frequency_filtering_callbacks(app):
         ],
         [
             State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
-            State("freq-time-range-slider", "value"),
-            State("freq-start-time", "value"),
-            State("freq-end-time", "value"),
+            State("freq-start-time-input", "value"),  # NEW: start time input instead of slider
+            State("freq-duration-select", "value"),  # NEW: duration instead of start-time/end-time
             State(
                 "freq-signal-source-select", "value"
             ),  # Added signal source selection
@@ -181,9 +180,8 @@ def register_frequency_filtering_callbacks(app):
         nudge_p1,
         nudge_p10,
         pathname,  # MOVED to correct position - this is a State parameter
-        slider_value,
-        start_time,
-        end_time,
+        start_time,  # NEW: start time instead of slider_value
+        duration,  # NEW: duration instead of start_time/end_time
         signal_source,  # Added signal source parameter
         analysis_type,
         fft_window,
@@ -388,8 +386,10 @@ def register_frequency_filtering_callbacks(app):
                 f"Signal data is constant: {np.all(selected_signal == selected_signal[0])}"
             )
 
-            # Handle time window - use integer indexing like legacy code
-            if start_time is not None and end_time is not None:
+            # Handle time window - use start time and duration
+            if start_time is not None and duration is not None:
+                # Calculate end time from start time and duration
+                end_time = start_time + duration
                 start_sample = int(start_time * sampling_freq)
                 end_sample = int(end_time * sampling_freq)
 
@@ -650,7 +650,7 @@ def register_frequency_filtering_callbacks(app):
                                 signal_source_info = "Original Signal (Fallback)"
 
                     logger.info("=== TIME WINDOW DEBUG ===")
-                    logger.info(f"Applied time window: {start_time}s to {end_time}s")
+                    logger.info(f"Applied time window: {start_position}s to {end_time}s")
                     logger.info(
                         f"Start sample: {start_sample}, End sample: {end_sample}"
                     )
@@ -1069,54 +1069,51 @@ def register_frequency_filtering_callbacks(app):
 
     # Time input update callbacks
     @app.callback(
-        [Output("freq-start-time", "value"), Output("freq-end-time", "value")],
+        [Output("freq-start-position-slider", "value"), Output("freq-duration-select", "value")],
         [
-            Input("freq-time-range-slider", "value"),
+            Input("freq-start-position-slider", "value"),
+            Input("freq-duration-select", "value"),
             Input("freq-btn-nudge-m10", "n_clicks"),
             Input("freq-btn-nudge-m1", "n_clicks"),
             Input("freq-btn-nudge-p1", "n_clicks"),
             Input("freq-btn-nudge-p10", "n_clicks"),
         ],
-        [State("freq-start-time", "value"), State("freq-end-time", "value")],
+        [State("freq-start-position-slider", "value"), State("freq-duration-select", "value")],
     )
     def update_freq_time_inputs(
-        slider_value, nudge_m10, nudge_m1, nudge_p1, nudge_p10, start_time, end_time
+        start_position, duration, nudge_m10, nudge_m1, nudge_p1, nudge_p10, current_start, current_duration
     ):
-        """Update time inputs based on slider or nudge buttons."""
+        """Update time inputs based on nudge buttons."""
         ctx = callback_context
         if not ctx.triggered:
             raise PreventUpdate
 
         trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-        if trigger_id == "freq-time-range-slider" and slider_value:
-            return slider_value[0], slider_value[1]
+        # Use current values if available, otherwise defaults
+        start_pos = current_start if current_start is not None else 0
+        dur = current_duration if current_duration is not None else 10
 
         # Handle nudge buttons
-        time_window = end_time - start_time if start_time and end_time else 10
-
         if trigger_id == "freq-btn-nudge-m10":
-            new_start = max(0, start_time - 10) if start_time else 0
-            new_end = new_start + time_window
-            return new_start, new_end
+            new_start = max(0, start_pos - 10)
+            return new_start, dur
         elif trigger_id == "freq-btn-nudge-m1":
-            new_start = max(0, start_time - 1) if start_time else 0
-            new_end = new_start + time_window
-            return new_start, new_end
+            new_start = max(0, start_pos - 1)
+            return new_start, dur
         elif trigger_id == "freq-btn-nudge-p1":
-            new_start = start_time + 1 if start_time else 1
-            new_end = new_start + time_window
-            return new_start, new_end
+            new_start = start_pos + 1
+            return new_start, dur
         elif trigger_id == "freq-btn-nudge-p10":
-            new_start = start_time + 10 if start_time else 10
-            new_end = new_start + time_window
-            return new_start, new_end
+            new_start = start_pos + 10
+            return new_start, dur
 
-        return no_update, no_update
+        # Return current values for other triggers
+        return start_pos, dur
 
     # Time slider range update callback
     @app.callback(
-        Output("freq-time-range-slider", "max"),
+        Output("freq-start-position-slider", "max"),
         [Input("store-uploaded-data", "data")],
         prevent_initial_call=True,
     )

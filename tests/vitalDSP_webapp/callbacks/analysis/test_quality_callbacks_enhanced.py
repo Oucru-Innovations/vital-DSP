@@ -60,13 +60,12 @@ class TestQualityAssessmentCallback:
                 result = cb['func'](
                     n_clicks=None,
                     pathname="/other-page",
-                    slider_value=[0, 10],
-                    nudge_m10=None,
-                    nudge_m1=None,
-                    nudge_p1=None,
-                    nudge_p10=None,
-                    start_time=0,
-                    end_time=10,
+            nudge_m10=None,
+            nudge_m1=None,
+            nudge_p1=None,
+            nudge_p10=None,
+            start_position=0,
+            duration=10,
                     signal_type="auto",
                     quality_metrics=["snr", "artifacts"],
                     snr_threshold=10,
@@ -77,7 +76,7 @@ class TestQualityAssessmentCallback:
 
     def test_callback_no_data_service(self):
         """Test callback with no data service"""
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=None, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=None, create=True):
             from vitalDSP_webapp.callbacks.analysis.quality_callbacks import register_quality_callbacks
 
             mock_app = MagicMock()
@@ -97,13 +96,12 @@ class TestQualityAssessmentCallback:
                     result = cb['func'](
                         n_clicks=1,
                         pathname="/quality",
-                        slider_value=[0, 10],
-                        nudge_m10=None,
-                        nudge_m1=None,
-                        nudge_p1=None,
-                        nudge_p10=None,
-                        start_time=0,
-                        end_time=10,
+            nudge_m10=None,
+            nudge_m1=None,
+            nudge_p1=None,
+            nudge_p10=None,
+            start_position=0,
+            duration=10,
                         signal_type="auto",
                         quality_metrics=["snr"],
                         snr_threshold=10,
@@ -136,13 +134,12 @@ class TestQualityAssessmentCallback:
                     result = cb['func'](
                         n_clicks=1,
                         pathname="/quality",
-                        slider_value=[0, 10],
-                        nudge_m10=None,
-                        nudge_m1=None,
-                        nudge_p1=None,
-                        nudge_p10=None,
-                        start_time=0,
-                        end_time=10,
+            nudge_m10=None,
+            nudge_m1=None,
+            nudge_p1=None,
+            nudge_p10=None,
+            start_position=0,
+            duration=10,
                         signal_type="auto",
                         quality_metrics=["snr"],
                         snr_threshold=10,
@@ -176,13 +173,12 @@ class TestQualityAssessmentCallback:
                     result = cb['func'](
                         n_clicks=None,
                         pathname="/quality",
-                        slider_value=[0, 10],
-                        nudge_m10=None,
-                        nudge_m1=None,
-                        nudge_p1=None,
-                        nudge_p10=None,
-                        start_time=0,
-                        end_time=10,
+            nudge_m10=None,
+            nudge_m1=None,
+            nudge_p1=None,
+            nudge_p10=None,
+            start_position=0,
+            duration=10,
                         signal_type="auto",
                         quality_metrics=["snr"],
                         snr_threshold=10,
@@ -197,7 +193,7 @@ class TestQualityAssessmentCallback:
         mock_data_service.get_all_data.return_value = {"data_1": {"info": {"sampling_freq": fs}}}
         mock_data_service.get_column_mapping.return_value = None
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.quality_callbacks import register_quality_callbacks
 
             mock_app = MagicMock()
@@ -217,20 +213,19 @@ class TestQualityAssessmentCallback:
                     result = cb['func'](
                         n_clicks=1,
                         pathname="/quality",
-                        slider_value=[0, 10],
-                        nudge_m10=None,
-                        nudge_m1=None,
-                        nudge_p1=None,
-                        nudge_p10=None,
-                        start_time=0,
-                        end_time=10,
+            nudge_m10=None,
+            nudge_m1=None,
+            nudge_p1=None,
+            nudge_p10=None,
+            start_position=0,
+            duration=10,
                         signal_type="auto",
                         quality_metrics=["snr"],
                         snr_threshold=10,
                         artifact_threshold=0.1,
                         advanced_options=[]
                     )
-                    assert "process your data" in result[2]
+                    assert "configure column mapping" in result[2]
 
     def test_callback_with_different_metrics(self, mock_data_service, sample_signal_data):
         """Test callback with different quality metrics"""
@@ -273,13 +268,12 @@ class TestQualityAssessmentCallback:
                             result = cb['func'](
                                 n_clicks=1,
                                 pathname="/quality",
-                                slider_value=[0, 10],
-                                nudge_m10=None,
-                                nudge_m1=None,
-                                nudge_p1=None,
-                                nudge_p10=None,
-                                start_time=0,
-                                end_time=10,
+            nudge_m10=None,
+            nudge_m1=None,
+            nudge_p1=None,
+            nudge_p10=None,
+            start_position=0,
+            duration=10,
                                 signal_type="ecg",
                                 quality_metrics=metrics,
                                 snr_threshold=10,
@@ -322,13 +316,12 @@ class TestQualityAssessmentCallback:
                             result = cb['func'](
                                 n_clicks=1,
                                 pathname="/quality",
-                                slider_value=[0, 10],
-                                nudge_m10=None,
-                                nudge_m1=None,
-                                nudge_p1=None,
-                                nudge_p10=None,
-                                start_time=0,
-                                end_time=10,
+            nudge_m10=None,
+            nudge_m1=None,
+            nudge_p1=None,
+            nudge_p10=None,
+            start_position=0,
+            duration=10,
                                 signal_type=signal_type,
                                 quality_metrics=["snr"],
                                 snr_threshold=10,
@@ -377,13 +370,12 @@ class TestQualityAssessmentCallback:
                             result = cb['func'](
                                 n_clicks=1,
                                 pathname="/quality",
-                                slider_value=[0, 10],
-                                nudge_m10=None,
-                                nudge_m1=None,
-                                nudge_p1=None,
-                                nudge_p10=None,
-                                start_time=0,
-                                end_time=10,
+            nudge_m10=None,
+            nudge_m1=None,
+            nudge_p1=None,
+            nudge_p10=None,
+            start_position=0,
+            duration=10,
                                 signal_type="ecg",
                                 quality_metrics=["snr", "artifacts"],
                                 snr_threshold=snr_th,
@@ -433,13 +425,12 @@ class TestQualityAssessmentCallback:
                             result = cb['func'](
                                 n_clicks=1,
                                 pathname="/quality",
-                                slider_value=[0, 10],
-                                nudge_m10=None,
-                                nudge_m1=None,
-                                nudge_p1=None,
-                                nudge_p10=None,
-                                start_time=0,
-                                end_time=10,
+            nudge_m10=None,
+            nudge_m1=None,
+            nudge_p1=None,
+            nudge_p10=None,
+            start_position=0,
+            duration=10,
                                 signal_type="ecg",
                                 quality_metrics=["snr"],
                                 snr_threshold=10,
@@ -581,13 +572,12 @@ class TestQualityAssessmentCallback:
                     result = cb['func'](
                         n_clicks=1,
                         pathname="/quality",
-                        slider_value=[0, 10],
-                        nudge_m10=None,
-                        nudge_m1=None,
-                        nudge_p1=None,
-                        nudge_p10=None,
-                        start_time=0,
-                        end_time=10,
+            nudge_m10=None,
+            nudge_m1=None,
+            nudge_p1=None,
+            nudge_p10=None,
+            start_position=0,
+            duration=10,
                         signal_type="ecg",
                         quality_metrics=["snr"],
                         snr_threshold=10,

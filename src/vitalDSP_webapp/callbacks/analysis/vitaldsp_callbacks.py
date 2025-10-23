@@ -4998,11 +4998,8 @@ def register_vitaldsp_callbacks(app):
         ],
         [
             State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
-            State(
-                "time-range-slider", "value"
-            ),  # MOVED to State - only read when triggered
-            State("start-time", "value"),  # MOVED to State - prevents callback loop!
-            State("end-time", "value"),  # MOVED to State - prevents callback loop!
+            State("start-position-slider", "value"),  # NEW: start position instead of time-range-slider
+            State("duration-select", "value"),  # NEW: duration instead of start-time/end-time
             State("signal-source-select", "value"),
             State("analysis-options", "value"),
             State("signal-type-select", "value"),
@@ -5010,16 +5007,14 @@ def register_vitaldsp_callbacks(app):
     )
     def analyze_time_domain(
         n_clicks,
-        # start_time, end_time moved to State below
         nudge_m10,
         nudge_m1,
         nudge_p1,
         nudge_p10,
         current_theme,  # Theme input parameter
         pathname,  # State parameter
-        slider_value,  # State parameter
-        start_time,  # State parameter (moved from Input)
-        end_time,  # State parameter (moved from Input)
+        start_position,  # NEW: start position instead of slider_value
+        duration,  # NEW: duration instead of start_time/end_time
         signal_source,
         analysis_options,
         signal_type,
@@ -5027,7 +5022,7 @@ def register_vitaldsp_callbacks(app):
         """Main time domain analysis callback."""
         logger.info("=== TIME DOMAIN ANALYSIS CALLBACK ===")
         logger.info(
-            f"Input values - start_time: {start_time}, end_time: {end_time}, slider_value: {slider_value}"
+            f"Input values - start_position: {start_position}, duration: {duration}"
         )
 
         # Get trigger information
@@ -5167,65 +5162,56 @@ def register_vitaldsp_callbacks(app):
             sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)
             logger.info(f"Sampling frequency: {sampling_freq}")
 
-            # Handle time window adjustments for nudge buttons and slider
+            # Handle time window adjustments for nudge buttons
             if trigger_id in [
                 "btn-nudge-m10",
                 "btn-nudge-m1",
                 "btn-nudge-p1",
                 "btn-nudge-p10",
             ]:
-                if not start_time or not end_time:
-                    start_time, end_time = 0, 10
+                if not start_position or not duration:
+                    start_position, duration = 0, 10
 
                 if trigger_id == "btn-nudge-m10":
-                    start_time = max(0, start_time - 10)
-                    end_time = max(10, end_time - 10)
+                    start_position = max(0, start_position - 10)
                 elif trigger_id == "btn-nudge-m1":
-                    start_time = max(0, start_time - 1)
-                    end_time = max(1, end_time - 1)
+                    start_position = max(0, start_position - 1)
                 elif trigger_id == "btn-nudge-p1":
-                    start_time = start_time + 1
-                    end_time = end_time + 1
+                    start_position = start_position + 1
                 elif trigger_id == "btn-nudge-p10":
-                    start_time = start_time + 10
-                    end_time = end_time + 10
+                    start_position = start_position + 10
 
-                logger.info(f"Time window adjusted: {start_time} to {end_time}")
+                logger.info(f"Start position adjusted: {start_position}")
 
-            # Handle time range slider changes
-            elif trigger_id == "time-range-slider" and slider_value:
-                start_time = slider_value[0]
-                end_time = slider_value[1]
-                logger.info(f"Time range slider changed: {start_time} to {end_time}")
+            # Set default values if not specified
+            if not start_position or not duration:
+                start_position, duration = 0, 10
+                logger.info(f"Using default values: start_position={start_position}, duration={duration}")
 
-            # Handle manual time input changes
-            elif trigger_id in ["start-time", "end-time"]:
-                logger.info(
-                    f"Manual time input changed - start_time: {start_time}, end_time: {end_time}"
-                )
-
-            # Set default time window if not specified
-            if not start_time or not end_time:
-                start_time, end_time = 0, 10
-                logger.info(f"Using default time window: {start_time} to {end_time}")
-
-            # Ensure time values are numbers
+            # Ensure values are numbers
             try:
-                start_time = float(start_time) if start_time is not None else 0
-                end_time = float(end_time) if end_time is not None else 10
+                start_position = float(start_position) if start_position is not None else 0
+                duration = float(duration) if duration is not None else 10
                 logger.info(
-                    f"Converted time values: start_time={start_time:.3f}, end_time={end_time:.3f}"
+                    f"Converted values: start_position={start_position:.3f}, duration={duration:.3f}"
                 )
             except (ValueError, TypeError):
-                start_time, end_time = 0, 10
-                logger.warning("Invalid time values, using defaults")
+                start_position, duration = 0, 10
+                logger.warning("Invalid values, using defaults")
+
+            # Calculate end time from start position and duration
+            # start_position is a percentage (0-100), convert to actual time
+            data_duration = len(df) / sampling_freq
+            start_time_actual = (start_position / 100.0) * data_duration
+            end_time = start_time_actual + duration
+            logger.info(f"Calculated time window: {start_time_actual:.3f}s to {end_time:.3f}s")
 
             # Apply time window
-            start_sample = int(start_time * sampling_freq)
+            start_sample = int(start_time_actual * sampling_freq)
             end_sample = int(end_time * sampling_freq)
             logger.info(f"Sample range: {start_sample} to {end_sample}")
             logger.info(f"Data length: {len(df)}")
-            logger.info(f"Time window: {start_time:.3f}s to {end_time:.3f}s")
+            logger.info(f"Time window: {start_time_actual:.3f}s to {end_time:.3f}s")
 
             # Ensure we don't exceed data bounds
             if start_sample >= len(df):
@@ -5233,7 +5219,7 @@ def register_vitaldsp_callbacks(app):
                     f"Start sample {start_sample} >= data length {len(df)}, adjusting to 0"
                 )
                 start_sample = 0
-                start_time = 0
+                start_time_actual = 0
             if end_sample > len(df):
                 logger.warning(
                     f"End sample {end_sample} > data length {len(df)}, adjusting to {len(df)}"
@@ -5246,10 +5232,10 @@ def register_vitaldsp_callbacks(app):
             logger.info(f"Windowed data columns: {list(windowed_data.columns)}")
 
             # Create time axis - use actual time values, not just windowed data length
-            time_axis = np.linspace(start_time, end_time, len(windowed_data))
+            time_axis = np.linspace(start_time_actual, end_time, len(windowed_data))
             logger.info(f"Time axis shape: {time_axis.shape}")
             logger.info(f"Time axis range: {time_axis[0]:.3f} to {time_axis[-1]:.3f}")
-            logger.info(f"Requested time window: {start_time:.3f} to {end_time:.3f}")
+            logger.info(f"Requested time window: {start_time_actual:.3f} to {end_time:.3f}")
             logger.info(
                 f"Actual time axis range: {time_axis[0]:.3f} to {time_axis[-1]:.3f}"
             )
@@ -5258,7 +5244,7 @@ def register_vitaldsp_callbacks(app):
             logger.info(f"Original data length: {len(df)} samples")
             logger.info(f"Windowed data length: {len(windowed_data)} samples")
             logger.info(
-                f"Expected samples for {end_time - start_time:.3f}s window: {(end_time - start_time) * sampling_freq:.0f}"
+                f"Expected samples for {duration:.3f}s window: {duration * sampling_freq:.0f}"
             )
             logger.info(f"Actual samples in window: {len(windowed_data)}")
 
@@ -5615,7 +5601,7 @@ def register_vitaldsp_callbacks(app):
                 "raw_data": windowed_data.to_dict("records"),
                 "time_axis": time_axis.tolist(),
                 "sampling_freq": sampling_freq,
-                "window": [start_time, end_time],
+                "window": [start_position, end_time],
             }
 
             # Get filter info for display (use the filter_info already retrieved earlier)
@@ -5739,9 +5725,9 @@ def register_vitaldsp_callbacks(app):
 
     @app.callback(
         [
-            Output("time-range-slider", "min"),
-            Output("time-range-slider", "max"),
-            Output("time-range-slider", "value"),
+            Output("start-position-slider", "min"),
+            Output("start-position-slider", "max"),
+            Output("start-position-slider", "value"),
         ],
         [Input("url", "pathname")],
         prevent_initial_call=True,  # Prevent triggering on page load
@@ -5785,21 +5771,7 @@ def register_vitaldsp_callbacks(app):
             logger.error(f"Error updating time slider range: {e}")
             return 0, 100, [0, 10]
 
-    @app.callback(
-        [Output("start-time", "value"), Output("end-time", "value")],
-        [Input("time-range-slider", "value")],
-        prevent_initial_call=True,
-        prevent_update=True,
-    )
-    def sync_time_inputs_with_slider(slider_value):
-        """Sync time input fields with slider values to prevent circular updates."""
-        if not slider_value or len(slider_value) != 2:
-            return no_update, no_update
-
-        logger.info(
-            f"Syncing time inputs with slider: {slider_value[0]} to {slider_value[1]}"
-        )
-        return slider_value[0], slider_value[1]
+    # Removed sync_time_inputs_with_slider callback - no longer needed with start/duration approach
 
     @app.callback(
         [

@@ -345,11 +345,8 @@ def register_respiratory_callbacks(app):
         ],
         [
             State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
-            State(
-                "resp-time-range-slider", "value"
-            ),  # MOVED to State - only read when triggered by other inputs
-            State("resp-start-time", "value"),
-            State("resp-end-time", "value"),
+            State("resp-start-position-slider", "value"),  # NEW: start position instead of time-range-slider
+            State("resp-duration-select", "value"),  # NEW: duration instead of start-time/end-time
             State("resp-signal-type", "value"),
             State("resp-estimation-methods", "value"),
             State("resp-advanced-options", "value"),
@@ -368,9 +365,8 @@ def register_respiratory_callbacks(app):
         nudge_p1,
         nudge_p10,
         pathname,  # MOVED to correct position - this is a State parameter
-        slider_value,  # Now a State parameter
-        start_time,
-        end_time,
+        start_position,  # NEW: start position instead of slider_value
+        duration,  # NEW: duration instead of start_time/end_time
         signal_type,
         estimation_methods,
         advanced_options,
@@ -395,9 +391,8 @@ def register_respiratory_callbacks(app):
         logger.info(f"Pathname: {pathname}")
         logger.info("All callback parameters:")
         logger.info(f"  - n_clicks: {n_clicks}")
-        logger.info(f"  - slider_value: {slider_value}")
-        logger.info(f"  - start_time: {start_time}")
-        logger.info(f"  - end_time: {end_time}")
+        logger.info(f"  - start_position: {start_position}")
+        logger.info(f"  - duration: {duration}")
         logger.info(f"  - signal_type: {signal_type}")
         logger.info(f"  - estimation_methods: {estimation_methods}")
         logger.info(f"  - advanced_options: {advanced_options}")
@@ -499,31 +494,31 @@ def register_respiratory_callbacks(app):
                 "resp-btn-nudge-p1",
                 "resp-btn-nudge-p10",
             ]:
-                if not start_time or not end_time:
-                    start_time, end_time = 0, 10
+                if not start_position or not duration:
+                    start_position, duration = 0, 10
 
                 if trigger_id == "resp-btn-nudge-m10":
-                    start_time = max(0, start_time - 10)
-                    end_time = max(10, end_time - 10)
+                    start_position = max(0, start_position - 10)
                 elif trigger_id == "resp-btn-nudge-m1":
-                    start_time = max(0, start_time - 1)
-                    end_time = max(1, end_time - 1)
+                    start_position = max(0, start_position - 1)
                 elif trigger_id == "resp-btn-nudge-p1":
-                    start_time = start_time + 1
-                    end_time = end_time + 1
+                    start_position = start_position + 1
                 elif trigger_id == "resp-btn-nudge-p10":
-                    start_time = start_time + 10
-                    end_time = end_time + 10
+                    start_position = start_position + 10
 
-                logger.info(f"Time window adjusted: {start_time} to {end_time}")
+                logger.info(f"Start position adjusted: {start_position}")
 
             # Set default time window if not specified
-            if not start_time or not end_time:
-                start_time, end_time = 0, 10
-                logger.info(f"Using default time window: {start_time} to {end_time}")
+            if not start_position or not duration:
+                start_position, duration = 0, 10
+                logger.info(f"Using default values: start_position={start_position}, duration={duration}")
+
+            # Calculate end time from start position and duration
+            end_time = start_position + duration
+            logger.info(f"Calculated time window: {start_position:.3f}s to {end_time:.3f}s")
 
             # Apply time window
-            start_sample = int(start_time * sampling_freq)
+            start_sample = int(start_position * sampling_freq)
             end_sample = int(end_time * sampling_freq)
             windowed_data = df.iloc[start_sample:end_sample].copy()
 
@@ -623,7 +618,7 @@ def register_respiratory_callbacks(app):
                 "signal_data": signal_data.tolist(),
                 "time_axis": time_axis.tolist(),
                 "sampling_freq": sampling_freq,
-                "window": [start_time, end_time],
+                "window": [start_position, end_time],
                 "signal_type": signal_type,
                 "estimation_methods": estimation_methods,
             }
@@ -673,9 +668,9 @@ def register_respiratory_callbacks(app):
 
     @app.callback(
         [
-            Output("resp-time-range-slider", "min"),
-            Output("resp-time-range-slider", "max"),
-            Output("resp-time-range-slider", "value"),
+            Output("resp-start-position-slider", "min"),
+            Output("resp-start-position-slider", "max"),
+            Output("resp-start-position-slider", "value"),
         ],
         [Input("url", "pathname")],
         prevent_initial_call=True,  # Prevent triggering on page load

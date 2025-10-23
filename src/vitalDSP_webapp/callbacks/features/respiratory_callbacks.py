@@ -583,15 +583,14 @@ def register_respiratory_callbacks(app):
         [
             Input("url", "pathname"),
             Input("resp-analyze-btn", "n_clicks"),
-            Input("resp-time-range-slider", "value"),
             Input("resp-btn-nudge-m10", "n_clicks"),
             Input("resp-btn-nudge-m1", "n_clicks"),
             Input("resp-btn-nudge-p1", "n_clicks"),
             Input("resp-btn-nudge-p10", "n_clicks"),
         ],
         [
-            State("resp-start-time", "value"),
-            State("resp-end-time", "value"),
+            State("resp-start-position-slider", "value"),  # NEW: start position instead of time-range-slider
+            State("resp-duration-select", "value"),  # NEW: duration instead of start-time/end-time
             State("resp-signal-type", "value"),
             State("resp-signal-source-select", "value"),
             State("resp-estimation-methods", "value"),
@@ -606,13 +605,12 @@ def register_respiratory_callbacks(app):
     def respiratory_analysis_callback(
         pathname,
         n_clicks,
-        slider_value,
         nudge_m10,
         nudge_m1,
         nudge_p1,
         nudge_p10,
-        start_time,
-        end_time,
+        start_position,  # NEW: start position instead of slider_value
+        duration,  # NEW: duration instead of start_time/end_time
         signal_type,
         signal_source,
         estimation_methods,
@@ -1018,21 +1016,13 @@ def register_respiratory_callbacks(app):
                 None,
             )
 
-    @app.callback(
-        [Output("resp-start-time", "value"), Output("resp-end-time", "value")],
-        [Input("resp-time-range-slider", "value")],
-    )
-    def update_resp_time_inputs(slider_value):
-        """Update time input fields based on slider."""
-        if not slider_value:
-            return no_update, no_update
-        return slider_value[0], slider_value[1]
+    # Removed update_resp_time_inputs callback - no longer needed with start/duration approach
 
     @app.callback(
         [
-            Output("resp-time-range-slider", "min"),
-            Output("resp-time-range-slider", "max"),
-            Output("resp-time-range-slider", "value"),
+            Output("resp-start-position-slider", "min"),
+            Output("resp-start-position-slider", "max"),
+            Output("resp-start-position-slider", "value"),
         ],
         [Input("url", "pathname")],
     )

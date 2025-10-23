@@ -605,7 +605,7 @@ def frequency_layout():
                                                                 className="form-label",
                                                             ),
                                                             dbc.Input(
-                                                                id="freq-start-time",
+                                                                id="freq-start-time-input",
                                                                 type="number",
                                                                 value=0,
                                                                 min=0,
@@ -618,7 +618,7 @@ def frequency_layout():
                                                                 className="form-label",
                                                             ),
                                                             dbc.Input(
-                                                                id="freq-end-time",
+                                                                id="freq-duration-select",
                                                                 type="number",
                                                                 value=10,
                                                                 min=0,
@@ -675,7 +675,7 @@ def frequency_layout():
                                                                 className="form-label",
                                                             ),
                                                             dcc.RangeSlider(
-                                                                id="freq-time-range-slider",
+                                                                id="freq-start-position-slider",
                                                                 min=0,
                                                                 max=100,
                                                                 step=0.1,
@@ -2993,7 +2993,7 @@ def physiological_layout():
                                                                 className="form-label fw-bold small",
                                                             ),
                                                             dbc.Input(
-                                                                id="physio-start-time",
+                                                                id="physio-start-position-slider",
                                                                 type="number",
                                                                 value=0,
                                                                 min=0,
@@ -3011,7 +3011,7 @@ def physiological_layout():
                                                                 className="form-label fw-bold small",
                                                             ),
                                                             dbc.Input(
-                                                                id="physio-end-time",
+                                                                id="physio-duration-select",
                                                                 type="number",
                                                                 value=10,
                                                                 min=0,
@@ -3094,7 +3094,7 @@ def physiological_layout():
                                                 className="form-label fw-bold small",
                                             ),
                                             dcc.RangeSlider(
-                                                id="physio-time-range-slider",
+                                                id="physio-start-position-slider",
                                                 min=0,
                                                 max=100,
                                                 step=0.1,
@@ -3715,7 +3715,7 @@ def respiratory_layout():
                                                                 size="sm",
                                                             ),
                                                             dbc.Input(
-                                                                id="resp-start-time",
+                                                                id="resp-start-position-slider",
                                                                 type="number",
                                                                 value=0,
                                                                 min=0,
@@ -3732,7 +3732,7 @@ def respiratory_layout():
                                                                 size="sm",
                                                             ),
                                                             dbc.Input(
-                                                                id="resp-end-time",
+                                                                id="resp-duration-select",
                                                                 type="number",
                                                                 value=10,
                                                                 min=0,
@@ -3751,7 +3751,7 @@ def respiratory_layout():
                                                         "Time Range Slider", size="sm"
                                                     ),
                                                     dcc.RangeSlider(
-                                                        id="resp-time-range-slider",
+                                                        id="resp-start-position-slider",
                                                         min=0,
                                                         max=100,
                                                         step=0.1,
@@ -4564,7 +4564,7 @@ def transforms_layout():
                                                                 className="form-label",
                                                             ),
                                                             dbc.Input(
-                                                                id="transforms-start-time",
+                                                                id="transforms-start-position-slider",
                                                                 type="number",
                                                                 value=0,
                                                                 min=0,
@@ -4581,7 +4581,7 @@ def transforms_layout():
                                                                 className="form-label",
                                                             ),
                                                             dbc.Input(
-                                                                id="transforms-end-time",
+                                                                id="transforms-duration-select",
                                                                 type="number",
                                                                 value=10,
                                                                 min=0,
@@ -4633,7 +4633,7 @@ def transforms_layout():
                                                 className="form-label",
                                             ),
                                             dcc.RangeSlider(
-                                                id="transforms-time-range-slider",
+                                                id="transforms-start-position-slider",
                                                 min=0,
                                                 max=100,
                                                 step=0.1,
@@ -5029,7 +5029,7 @@ def quality_layout():
                                                                 className="form-label",
                                                             ),
                                                             dbc.Input(
-                                                                id="quality-start-time",
+                                                                id="quality-start-position-slider",
                                                                 type="number",
                                                                 value=0,
                                                                 min=0,
@@ -5046,7 +5046,7 @@ def quality_layout():
                                                                 className="form-label",
                                                             ),
                                                             dbc.Input(
-                                                                id="quality-end-time",
+                                                                id="quality-duration-select",
                                                                 type="number",
                                                                 value=10,
                                                                 min=0,
@@ -5098,7 +5098,7 @@ def quality_layout():
                                                 className="form-label",
                                             ),
                                             dcc.RangeSlider(
-                                                id="quality-time-range-slider",
+                                                id="quality-start-position-slider",
                                                 min=0,
                                                 max=100,
                                                 step=0.1,
@@ -5506,7 +5506,7 @@ def advanced_layout():
                                                                 className="form-label",
                                                             ),
                                                             dbc.Input(
-                                                                id="advanced-start-time",
+                                                                id="advanced-start-position-slider",
                                                                 type="number",
                                                                 value=0,
                                                                 min=0,
@@ -5523,7 +5523,7 @@ def advanced_layout():
                                                                 className="form-label",
                                                             ),
                                                             dbc.Input(
-                                                                id="advanced-end-time",
+                                                                id="advanced-duration-select",
                                                                 type="number",
                                                                 value=10,
                                                                 min=0,
@@ -5575,7 +5575,7 @@ def advanced_layout():
                                                 className="form-label",
                                             ),
                                             dcc.RangeSlider(
-                                                id="advanced-time-range-slider",
+                                                id="advanced-start-position-slider",
                                                 min=0,
                                                 max=100,
                                                 step=0.1,

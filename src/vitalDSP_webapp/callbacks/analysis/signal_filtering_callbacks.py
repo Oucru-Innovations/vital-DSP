@@ -468,7 +468,7 @@ def register_signal_filtering_callbacks(app):
                 sampling_freq = data_info.get('sampling_frequency', 1000)
                 data_duration = len(df) / sampling_freq
             
-            # Calculate start time based on percentage
+            # Calculate start time based on percentage (start_position is 0-100)
             start_time = (start_position / 100.0) * data_duration
             
             # Calculate end time based on duration
@@ -486,14 +486,14 @@ def register_signal_filtering_callbacks(app):
                 
                 # Only adjust position for actual nudge buttons, not for Apply Filter
                 if trigger_id == "btn-nudge-m10":
-                    start_position = max(0, start_position - 10)
+                    start_position = max(0, start_position - 10)  # Adjust percentage
                     # Recalculate time range with adjusted position
                     start_time = (start_position / 100.0) * data_duration
                     end_time = start_time + duration
                     # Ensure end time doesn't exceed data duration
                     if end_time > data_duration:
                         end_time = data_duration
-                        start_position = max(0, end_time - duration)
+                        start_position = max(0, (end_time - duration) / data_duration * 100)
                     logger.info(f"Nudge button triggered: {trigger_id}")
                     logger.info(f"Adjusted start position: {start_position}%")
                     logger.info(f"Adjusted time range: {start_time:.2f} to {end_time:.2f} seconds")
@@ -1216,35 +1216,7 @@ def register_signal_filtering_callbacks(app):
                 None,
             )
 
-    # Update start position slider based on nudge buttons
-    @app.callback(
-        Output("start-position-slider", "value"),
-        [
-            Input("btn-nudge-m10", "n_clicks"),
-            Input("btn-center", "n_clicks"),
-            Input("btn-nudge-p10", "n_clicks"),
-        ],
-        [State("start-position-slider", "value")],
-    )
-    def update_start_position_slider(nudge_m10, center_click, nudge_p10, current_position):
-        """Update start position slider based on nudge buttons."""
-        ctx = callback_context
-        if not ctx.triggered:
-            raise PreventUpdate
-
-        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-        
-        if current_position is None:
-            current_position = 0
-
-        if trigger_id == "btn-nudge-m10":
-            return max(0, current_position - 10)
-        elif trigger_id == "btn-center":
-            return 50  # Center at 50%
-        elif trigger_id == "btn-nudge-p10":
-            return min(100, current_position + 10)
-
-        return no_update
+    # Removed update_start_position_slider callback - duplicate with time domain callback
 
 
 

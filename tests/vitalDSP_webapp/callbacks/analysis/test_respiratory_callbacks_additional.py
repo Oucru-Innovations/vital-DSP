@@ -190,10 +190,10 @@ class TestRespiratoryCallbacksMissingLines:
         mock_app.callback = mock_callback
         register_respiratory_callbacks(mock_app)
 
-        # Find the update_resp_time_inputs callback (one that actually exists)
+        # Find the update_resp_time_slider_range callback (one that actually exists)
         time_callback = None
         for args, kwargs, func in captured_callbacks:
-            if func.__name__ == 'update_resp_time_inputs':
+            if func.__name__ == 'update_resp_time_slider_range':
                 time_callback = func
                 break
 

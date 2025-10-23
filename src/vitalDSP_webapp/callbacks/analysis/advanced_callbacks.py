@@ -44,9 +44,8 @@ def register_advanced_callbacks(app):
         ],
         [
             State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
-            State("advanced-time-range-slider", "value"),
-            State("advanced-start-time", "value"),
-            State("advanced-end-time", "value"),
+            State("advanced-start-position-slider", "value"),  # NEW: start position instead of time-range-slider
+            State("advanced-duration-select", "value"),  # NEW: duration instead of start-time/end-time
             State("advanced-signal-type", "value"),
             State("advanced-analysis-categories", "value"),
             State("advanced-ml-options", "value"),
@@ -63,9 +62,8 @@ def register_advanced_callbacks(app):
         nudge_m1,
         nudge_p1,
         nudge_p10,
-        slider_value,
-        start_time,
-        end_time,
+        start_position,  # NEW: start position instead of slider_value
+        duration,  # NEW: duration instead of start_time/end_time
         signal_type,
         analysis_categories,
         ml_options,
@@ -166,13 +164,14 @@ def register_advanced_callbacks(app):
                     )
 
                 # Get time window
-                if start_time is None or end_time is None:
-                    start_time = 0
-                    end_time = len(df) / data_info.get("sampling_frequency", 1000)
+                if start_position is None or duration is None:
+                    start_position = 0
+                    duration = len(df) / data_info.get("sampling_frequency", 1000)
 
                 # Convert time to indices
                 sampling_freq = data_info.get("sampling_frequency", 1000)
-                start_idx = int(start_time * sampling_freq)
+                end_time = start_position + duration
+                start_idx = int(start_position * sampling_freq)
                 end_idx = int(end_time * sampling_freq)
 
                 # Ensure valid indices
@@ -278,44 +277,7 @@ def register_advanced_callbacks(app):
             no_update,
         )
 
-    # Helper callbacks for time window updates
-    @app.callback(
-        [Output("advanced-start-time", "value"), Output("advanced-end-time", "value")],
-        [
-            Input("advanced-btn-nudge-m10", "n_clicks"),
-            Input("advanced-btn-nudge-m1", "n_clicks"),
-            Input("advanced-btn-nudge-p1", "n_clicks"),
-            Input("advanced-btn-nudge-p10", "n_clicks"),
-        ],
-        [State("advanced-start-time", "value"), State("advanced-end-time", "value")],
-    )
-    def update_advanced_time_inputs(
-        nudge_m10, nudge_m1, nudge_p1, nudge_p10, start_time, end_time
-    ):
-        """Update time inputs based on nudge button clicks."""
-        ctx = callback_context
-        if not ctx.triggered:
-            return no_update, no_update
-
-        button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-        start_time = start_time or 0
-        end_time = end_time or 10
-        duration = end_time - start_time
-
-        if button_id == "advanced-btn-nudge-m10":
-            start_time = max(0, start_time - 10)
-            end_time = start_time + duration
-        elif button_id == "advanced-btn-nudge-m1":
-            start_time = max(0, start_time - 1)
-            end_time = start_time + duration
-        elif button_id == "advanced-btn-nudge-p1":
-            start_time = start_time + 1
-            end_time = start_time + duration
-        elif button_id == "advanced-btn-nudge-p10":
-            start_time = start_time + 10
-            end_time = start_time + duration
-
-        return start_time, end_time
+    # Removed old sync callbacks - no longer needed with start/duration approach
 
     @app.callback(
         Output("advanced-time-range-slider", "value"),

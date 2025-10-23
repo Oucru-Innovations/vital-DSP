@@ -81,9 +81,8 @@ class TestPhysiologicalAnalysisCallback:
                         cb['func'](
                             pathname="/physiological",
                             n_clicks=None,
-                            slider_value=[0, 10],
                             nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                            start_time=0, end_time=10,
+                            start_position=0, duration=10,
                             signal_type="PPG",
                             signal_source="original",
                             analysis_categories=["hrv"],
@@ -123,9 +122,8 @@ class TestPhysiologicalAnalysisCallback:
                     result = cb['func'](
                         pathname="/other-page",
                         n_clicks=1,
-                        slider_value=[0, 10],
-                        nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                        start_time=0, end_time=10,
+                            nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
+                            start_position=0, duration=10,
                         signal_type="PPG",
                         signal_source="original",
                         analysis_categories=["hrv"],
@@ -169,9 +167,8 @@ class TestPhysiologicalAnalysisCallback:
                     result = cb['func'](
                         pathname="/physiological",
                         n_clicks=1,
-                        slider_value=[0, 10],
-                        nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                        start_time=0, end_time=10,
+                            nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
+                            start_position=0, duration=10,
                         signal_type="PPG",
                         signal_source="original",
                         analysis_categories=["hrv"],
@@ -217,9 +214,8 @@ class TestPhysiologicalAnalysisCallback:
                     result = cb['func'](
                         pathname="/physiological",
                         n_clicks=1,
-                        slider_value=[0, 10],
-                        nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                        start_time=0, end_time=10,
+                            nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
+                            start_position=0, duration=10,
                         signal_type="PPG",
                         signal_source="original",
                         analysis_categories=["hrv"],
@@ -265,9 +261,8 @@ class TestPhysiologicalAnalysisCallback:
                     result = cb['func'](
                         pathname="/physiological",
                         n_clicks=1,
-                        slider_value=[0, 10],
-                        nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                        start_time=0, end_time=10,
+                            nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
+                            start_position=0, duration=10,
                         signal_type="PPG",
                         signal_source="original",
                         analysis_categories=["hrv"],
@@ -309,9 +304,8 @@ class TestPhysiologicalAnalysisCallback:
                         result = cb['func'](
                             pathname="/physiological",
                             n_clicks=None,
-                            slider_value=None,
                             nudge_m10=1, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                            start_time=20, end_time=30,
+                            start_position=20, duration=10,
                             signal_type="PPG",
                             signal_source="original",
                             analysis_categories=["hrv"],
@@ -357,9 +351,8 @@ class TestPhysiologicalAnalysisCallback:
                         result = cb['func'](
                             pathname="/physiological",
                             n_clicks=None,
-                            slider_value=None,
                             nudge_m10=None, nudge_m1=1, nudge_p1=None, nudge_p10=None,
-                            start_time=5, end_time=15,
+                            start_position=5, duration=10,
                             signal_type="PPG",
                             signal_source="original",
                             analysis_categories=["hrv"],
@@ -403,9 +396,8 @@ class TestPhysiologicalAnalysisCallback:
                         result = cb['func'](
                             pathname="/physiological",
                             n_clicks=None,
-                            slider_value=None,
                             nudge_m10=None, nudge_m1=None, nudge_p1=1, nudge_p10=None,
-                            start_time=0, end_time=10,
+                            start_position=0, duration=10,
                             signal_type="PPG",
                             signal_source="original",
                             analysis_categories=["hrv"],
@@ -449,9 +441,8 @@ class TestPhysiologicalAnalysisCallback:
                         result = cb['func'](
                             pathname="/physiological",
                             n_clicks=None,
-                            slider_value=None,
                             nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=1,
-                            start_time=0, end_time=10,
+                            start_position=0, duration=10,
                             signal_type="PPG",
                             signal_source="original",
                             analysis_categories=["hrv"],
@@ -495,9 +486,8 @@ class TestPhysiologicalAnalysisCallback:
                         result = cb['func'](
                             pathname="/physiological",
                             n_clicks=None,
-                            slider_value=[2, 8],
                             nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                            start_time=0, end_time=10,
+                            start_position=2, duration=6,
                             signal_type="PPG",
                             signal_source="original",
                             analysis_categories=["hrv"],
@@ -550,9 +540,8 @@ class TestPhysiologicalAnalysisCallback:
                         result = cb['func'](
                             pathname="/physiological",
                             n_clicks=1,
-                            slider_value=[0, 10],
                             nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                            start_time=0, end_time=10,
+                            start_position=0, duration=10,
                             signal_type="PPG",
                             signal_source="filtered",
                             analysis_categories=["hrv"],
@@ -596,9 +585,8 @@ class TestPhysiologicalAnalysisCallback:
                         result = cb['func'](
                             pathname="/physiological",
                             n_clicks=1,
-                            slider_value=None,
                             nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                            start_time=None, end_time=None,
+                            start_position=None, duration=None,
                             signal_type=None,
                             signal_source="original",
                             analysis_categories=None,
@@ -621,23 +609,21 @@ class TestAdditionalEdgeCases:
 
     def test_nudge_with_none_times(self):
         """Test nudge buttons with None start/end times"""
-        start_time = None
-        end_time = None
+        start_position = None
+        duration = None
         # Lines 983-984
-        if not start_time or not end_time:
-            start_time, end_time = 0, 10
-        assert start_time == 0
-        assert end_time == 10
+        if not start_position or not duration:
+            start_position, duration = 0, 10
+        assert start_position == 0
+        assert duration == 10
 
     def test_negative_time_after_nudge(self):
         """Test that negative times are clamped to 0"""
-        start_time = 5
-        end_time = 15
+        start_position = 5
+        duration = 10
         # Nudge -10 should clamp to 0
-        start_time = max(0, start_time - 10)
-        end_time = max(10, end_time - 10)
-        assert start_time == 0
-        assert end_time == 10  # Should be 10, not 5, due to max(10, 5) = 10
+        start_position = max(0, start_position - 10)
+        assert start_position == 0
 
     def test_signal_with_low_variance(self):
         """Test signal column with very low variance (lines 1109-1126)"""

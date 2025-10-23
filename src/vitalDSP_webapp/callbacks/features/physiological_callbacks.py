@@ -847,15 +847,14 @@ def register_physiological_callbacks(app):
         [
             Input("url", "pathname"),
             Input("physio-btn-update-analysis", "n_clicks"),
-            Input("physio-time-range-slider", "value"),
             Input("physio-btn-nudge-m10", "n_clicks"),
             Input("physio-btn-nudge-m1", "n_clicks"),
             Input("physio-btn-nudge-p1", "n_clicks"),
             Input("physio-btn-nudge-p10", "n_clicks"),
         ],
         [
-            State("physio-start-time", "value"),
-            State("physio-end-time", "value"),
+            State("physio-start-position-slider", "value"),  # NEW: start position instead of time-range-slider
+            State("physio-duration-select", "value"),  # NEW: duration instead of start-time/end-time
             State("physio-signal-type", "value"),
             State("physio-signal-source-select", "value"),
             State("physio-analysis-categories", "value"),
@@ -872,13 +871,12 @@ def register_physiological_callbacks(app):
     def physiological_analysis_callback(
         pathname,
         n_clicks,
-        slider_value,
         nudge_m10,
         nudge_m1,
         nudge_p1,
         nudge_p10,
-        start_time,
-        end_time,
+        start_position,  # NEW: start position instead of slider_value
+        duration,  # NEW: duration instead of start_time/end_time
         signal_type,
         signal_source,
         analysis_categories,
@@ -979,36 +977,9 @@ def register_physiological_callbacks(app):
             sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)
             logger.info(f"Sampling frequency: {sampling_freq}")
 
-            # Handle time window adjustments for nudge buttons
-            if trigger_id in [
-                "physio-btn-nudge-m10",
-                "physio-btn-nudge-m1",
-                "physio-btn-nudge-p1",
-                "physio-btn-nudge-p10",
-            ]:
-                if not start_time or not end_time:
-                    start_time, end_time = 0, 10
-
-                if trigger_id == "physio-btn-nudge-m10":
-                    start_time = max(0, start_time - 10)
-                    end_time = max(10, end_time - 10)
-                elif trigger_id == "physio-btn-nudge-m1":
-                    start_time = max(0, start_time - 1)
-                    end_time = max(1, end_time - 1)
-                elif trigger_id == "physio-btn-nudge-p1":
-                    start_time = start_time + 1
-                    end_time = end_time + 1
-                elif trigger_id == "physio-btn-nudge-p10":
-                    start_time = start_time + 10
-                    end_time = end_time + 10
-
-            # Handle time window from slider
-            if trigger_id == "physio-time-range-slider" and slider_value:
-                start_time, end_time = slider_value[0], slider_value[1]
-
             # Set default values if not provided
-            start_time = start_time or 0
-            end_time = end_time or 10
+            start_position = start_position or 0
+            duration = duration or 10
             signal_type = signal_type or "auto"
             analysis_categories = analysis_categories or [
                 "hrv",
@@ -1048,7 +1019,7 @@ def register_physiological_callbacks(app):
                 "filtering",
             ]
 
-            logger.info(f"Time window: {start_time} - {end_time}")
+            logger.info(f"Time window: {start_position} - {start_position + duration}")
             logger.info(f"Signal type: {signal_type}")
             logger.info(f"Analysis categories: {analysis_categories}")
             logger.info(f"HRV options: {hrv_options}")
@@ -1198,13 +1169,13 @@ def register_physiological_callbacks(app):
                     )
                     time_data_seconds = time_data / 1000.0
                     # Adjust default time window for seconds
-                    if start_time == 0 and end_time == 10:
-                        start_time = 0
-                        end_time = min(
+                    if start_position == 0 and duration == 10:
+                        start_position = 0
+                        duration = min(
                             60, time_range / 1000.0
                         )  # Use up to 60 seconds or full range
                         logger.info(
-                            f"Adjusted time window to: {start_time} - {end_time} seconds"
+                            f"Adjusted time window to: {start_position} - {start_position + duration} seconds"
                         )
                 else:
                     # Time data is already in seconds
@@ -1212,7 +1183,8 @@ def register_physiological_callbacks(app):
                     logger.info("Time data is already in seconds")
 
                 # Apply time window
-                start_idx = np.searchsorted(time_data_seconds, start_time)
+                end_time = start_position + duration
+                start_idx = np.searchsorted(time_data_seconds, start_position)
                 end_idx = np.searchsorted(time_data_seconds, end_time)
 
                 # Ensure minimum signal length for analysis (at least 5 seconds worth of data)
@@ -1502,54 +1474,51 @@ def register_physiological_callbacks(app):
 
     # Time input update callbacks
     @app.callback(
-        [Output("physio-start-time", "value"), Output("physio-end-time", "value")],
+        [Output("physio-start-position-slider", "value"), Output("physio-duration-select", "value")],
         [
-            Input("physio-time-range-slider", "value"),
+            Input("physio-start-position-slider", "value"),
+            Input("physio-duration-select", "value"),
             Input("physio-btn-nudge-m10", "n_clicks"),
             Input("physio-btn-nudge-m1", "n_clicks"),
             Input("physio-btn-nudge-p1", "n_clicks"),
             Input("physio-btn-nudge-p10", "n_clicks"),
         ],
-        [State("physio-start-time", "value"), State("physio-end-time", "value")],
+        [State("physio-start-position-slider", "value"), State("physio-duration-select", "value")],
     )
     def update_physio_time_inputs(
-        slider_value, nudge_m10, nudge_m1, nudge_p1, nudge_p10, start_time, end_time
+        start_position, duration, nudge_m10, nudge_m1, nudge_p1, nudge_p10, current_start, current_duration
     ):
-        """Update time inputs based on slider or nudge buttons."""
+        """Update time inputs based on nudge buttons."""
         ctx = callback_context
         if not ctx.triggered:
-            raise Exception("No trigger detected")
+            raise PreventUpdate
 
         trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-        if trigger_id == "physio-time-range-slider" and slider_value:
-            return slider_value[0], slider_value[1]
+        # Use current values if available, otherwise defaults
+        start_pos = current_start if current_start is not None else 0
+        dur = current_duration if current_duration is not None else 10
 
         # Handle nudge buttons
-        time_window = end_time - start_time if start_time and end_time else 10
-
         if trigger_id == "physio-btn-nudge-m10":
-            new_start = max(0, start_time - 10) if start_time else 0
-            new_end = new_start + time_window
-            return new_start, new_end
+            new_start = max(0, start_pos - 10)
+            return new_start, dur
         elif trigger_id == "physio-btn-nudge-m1":
-            new_start = max(0, start_time - 1) if start_time else 0
-            new_end = new_start + time_window
-            return new_start, new_end
+            new_start = max(0, start_pos - 1)
+            return new_start, dur
         elif trigger_id == "physio-btn-nudge-p1":
-            new_start = start_time + 1 if start_time else 1
-            new_end = new_start + time_window
-            return new_start, new_end
+            new_start = start_pos + 1
+            return new_start, dur
         elif trigger_id == "physio-btn-nudge-p10":
-            new_start = start_time + 10 if start_time else 10
-            new_end = new_start + time_window
-            return new_start, new_end
+            new_start = start_pos + 10
+            return new_start, dur
 
-        return no_update, no_update
+        # Return current values for other triggers
+        return start_pos, dur
 
     # Time slider range update callback
     @app.callback(
-        Output("physio-time-range-slider", "max"),
+        Output("physio-start-position-slider", "max"),
         [Input("store-uploaded-data", "data")],
     )
     def update_physio_time_slider_range(data_store):
@@ -8195,29 +8164,21 @@ def physiological_analysis_callback(
             "physio-btn-nudge-p1",
             "physio-btn-nudge-p10",
         ]:
-            if not start_time or not end_time:
-                start_time, end_time = 0, 10
+            if not start_position or not duration:
+                start_position, duration = 0, 10
 
             if trigger_id == "physio-btn-nudge-m10":
-                start_time = max(0, start_time - 10)
-                end_time = max(10, end_time - 10)
+                start_position = max(0, start_position - 10)
             elif trigger_id == "physio-btn-nudge-m1":
-                start_time = max(0, start_time - 1)
-                end_time = max(1, end_time - 1)
+                start_position = max(0, start_position - 1)
             elif trigger_id == "physio-btn-nudge-p1":
-                start_time = start_time + 1
-                end_time = end_time + 1
+                start_position = start_position + 1
             elif trigger_id == "physio-btn-nudge-p10":
-                start_time = start_time + 10
-                end_time = end_time + 10
-
-        # Handle time window from slider
-        if trigger_id == "physio-time-range-slider" and slider_value:
-            start_time, end_time = slider_value[0], slider_value[1]
+                start_position = start_position + 10
 
         # Set default values if not provided
-        start_time = start_time or 0
-        end_time = end_time or 10
+        start_position = start_position or 0
+        duration = duration or 10
         signal_type = signal_type or "auto"
         analysis_categories = analysis_categories or ["hrv", "morphology"]
         hrv_options = hrv_options or ["time_domain"]
@@ -8400,7 +8361,7 @@ def physiological_analysis_callback(
             analysis_plots_fig = analysis_plots[0]
 
         # Generate results text
-        results_text = f"Comprehensive analysis completed for {signal_type} signal from {start_time}s to {end_time}s"
+        results_text = f"Comprehensive analysis completed for {signal_type} signal from {start_position}s to {start_position + duration}s"
         if analysis_results:
             feature_count = sum(
                 len(metrics)

@@ -53,9 +53,8 @@ def register_quality_callbacks(app):
         ],
         [
             State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
-            State("quality-time-range-slider", "value"),
-            State("quality-start-time", "value"),
-            State("quality-end-time", "value"),
+            State("quality-start-position-slider", "value"),  # NEW: start position instead of time-range-slider
+            State("quality-duration-select", "value"),  # NEW: duration instead of start-time/end-time
             State("quality-signal-type", "value"),
             State("quality-metrics", "value"),
             State("quality-snr-threshold", "value"),
@@ -70,9 +69,8 @@ def register_quality_callbacks(app):
         nudge_m1,
         nudge_p1,
         nudge_p10,
-        slider_value,
-        start_time,
-        end_time,
+        start_position,  # NEW: start position instead of slider_value
+        duration,  # NEW: duration instead of start_time/end_time
         signal_type,
         quality_metrics,
         snr_threshold,
@@ -202,8 +200,9 @@ def register_quality_callbacks(app):
             sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)
 
             # Extract time segment if specified
-            if start_time is not None and end_time is not None:
-                start_idx = int(start_time * sampling_freq)
+            if start_position is not None and duration is not None:
+                end_time = start_position + duration
+                start_idx = int(start_position * sampling_freq)
                 end_idx = int(end_time * sampling_freq)
                 signal_data = signal_data[start_idx:end_idx]
 
