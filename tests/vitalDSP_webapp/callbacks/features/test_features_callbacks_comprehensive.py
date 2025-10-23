@@ -100,7 +100,7 @@ class TestFeaturesAnalysisCallback:
         """Test callback with no data available"""
         mock_data_service.get_all_data.return_value = {}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.features_callbacks import register_features_callbacks
 
             mock_app = MagicMock()
@@ -134,7 +134,7 @@ class TestFeaturesAnalysisCallback:
         mock_data_service.get_all_data.return_value = {"data_1": {"info": {"sampling_freq": fs}}}
         mock_data_service.get_data.return_value = df
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.features_callbacks import register_features_callbacks
 
             mock_app = MagicMock()
@@ -169,7 +169,7 @@ class TestFeaturesAnalysisCallback:
         mock_data_service.get_data.return_value = df
         mock_data_service.get_column_mapping.return_value = None
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.features_callbacks import register_features_callbacks
 
             mock_app = MagicMock()
@@ -203,7 +203,7 @@ class TestFeaturesAnalysisCallback:
         mock_data_service.get_column_mapping.return_value = {"signal": "signal"}
         mock_data_service.get_data.return_value = pd.DataFrame()
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.features_callbacks import register_features_callbacks
 
             mock_app = MagicMock()
@@ -242,7 +242,7 @@ class TestFeaturesAnalysisCallback:
         mock_data_service.get_filtered_data.return_value = filtered_signal
         mock_data_service.get_filter_info.return_value = {"filter_type": "lowpass"}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.features_callbacks import register_features_callbacks
 
             mock_app = MagicMock()
@@ -283,7 +283,7 @@ class TestFeaturesAnalysisCallback:
         mock_data_service.get_column_mapping.return_value = {"signal": "signal"}
         mock_data_service.get_filtered_data.return_value = None
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.features_callbacks import register_features_callbacks
 
             mock_app = MagicMock()
@@ -332,7 +332,7 @@ class TestFeaturesAnalysisCallback:
             None
         ]
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.features_callbacks import register_features_callbacks
 
             mock_app = MagicMock()
@@ -384,7 +384,7 @@ class TestFeaturesAnalysisCallback:
             None
         ]
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.features_callbacks import register_features_callbacks
 
             mock_app = MagicMock()
@@ -425,7 +425,7 @@ class TestFeaturesAnalysisCallback:
 
         signal_types = ["auto", "ppg", "ecg", "eeg", None]
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.features_callbacks import register_features_callbacks
 
             mock_app = MagicMock()
@@ -473,7 +473,7 @@ class TestFeaturesAnalysisCallback:
             None
         ]
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.features_callbacks import register_features_callbacks
 
             mock_app = MagicMock()
@@ -509,7 +509,7 @@ class TestFeaturesAnalysisCallback:
         """Test callback handles exceptions gracefully"""
         mock_data_service.get_all_data.side_effect = Exception("Test error")
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.features_callbacks import register_features_callbacks
 
             mock_app = MagicMock()

@@ -287,9 +287,7 @@ def register_signal_filtering_callbacks(app):
             Input("url", "pathname"),
             Input("filter-btn-apply", "n_clicks"),
             Input("btn-nudge-m10", "n_clicks"),
-            Input("btn-nudge-m5", "n_clicks"),
             Input("btn-center", "n_clicks"),
-            Input("btn-nudge-p5", "n_clicks"),
             Input("btn-nudge-p10", "n_clicks"),
         ],
         [
@@ -320,9 +318,7 @@ def register_signal_filtering_callbacks(app):
         pathname,
         n_clicks,
         nudge_m10,
-        nudge_m5,
         center_click,
-        nudge_p5,
         nudge_p10,
         start_position,
         duration,
@@ -370,13 +366,18 @@ def register_signal_filtering_callbacks(app):
                 None,
             )
 
+        # DEBUG: Always log callback trigger
+        logger.info("=== ADVANCED FILTERING CALLBACK TRIGGERED ===")
+        logger.info(f"Callback context: {ctx}")
+        logger.info(f"Triggered: {ctx.triggered}")
+        
         # Allow callback to run for Apply Filter button and nudge buttons
         if ctx.triggered:
             trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
             logger.info(f"Trigger ID: {trigger_id}")
             
             # Only prevent update for non-relevant triggers
-            if trigger_id not in ["filter-btn-apply", "btn-nudge-m10", "btn-nudge-m5", "btn-center", "btn-nudge-p5", "btn-nudge-p10"]:
+            if trigger_id not in ["filter-btn-apply", "btn-nudge-m10", "btn-center", "btn-nudge-p10"]:
                 logger.info(f"Trigger {trigger_id} not relevant for filtering, preventing update")
                 raise PreventUpdate
         else:
@@ -416,21 +417,15 @@ def register_signal_filtering_callbacks(app):
 
             # Log the callback parameters
             logger.info("=== CALLBACK PARAMETERS ===")
-            logger.info(
-                f"Start time: {start_time_state} (type: {type(start_time_state)})"
-            )
-            logger.info(f"End time: {end_time_state} (type: {type(end_time_state)})")
+            logger.info(f"Start position: {start_position}% (type: {type(start_position)})")
+            logger.info(f"Duration: {duration}s (type: {type(duration)})")
             logger.info(f"Filter type: {filter_type} (type: {type(filter_type)})")
             logger.info(f"Filter family: {filter_family} (type: {type(filter_family)})")
-            logger.info(
-                f"Filter response: {filter_response} (type: {type(filter_response)})"
-            )
+            logger.info(f"Filter response: {filter_response} (type: {type(filter_response)})")
             logger.info(f"Low frequency: {low_freq} (type: {type(low_freq)})")
             logger.info(f"High frequency: {high_freq} (type: {type(high_freq)})")
             logger.info(f"Filter order: {filter_order} (type: {type(filter_order)})")
-            logger.info(
-                f"Advanced method: {advanced_method} (type: {type(advanced_method)})"
-            )
+            logger.info(f"Advanced method: {advanced_method} (type: {type(advanced_method)})")
             logger.info(f"Noise level: {noise_level} (type: {type(noise_level)})")
             logger.info(f"Iterations: {iterations} (type: {type(iterations)})")
             logger.info(f"Learning rate: {learning_rate} (type: {type(learning_rate)})")
@@ -489,29 +484,48 @@ def register_signal_filtering_callbacks(app):
             if ctx.triggered:
                 trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
                 
+                # Only adjust position for actual nudge buttons, not for Apply Filter
                 if trigger_id == "btn-nudge-m10":
                     start_position = max(0, start_position - 10)
-                elif trigger_id == "btn-nudge-m5":
-                    start_position = max(0, start_position - 5)
+                    # Recalculate time range with adjusted position
+                    start_time = (start_position / 100.0) * data_duration
+                    end_time = start_time + duration
+                    # Ensure end time doesn't exceed data duration
+                    if end_time > data_duration:
+                        end_time = data_duration
+                        start_position = max(0, end_time - duration)
+                    logger.info(f"Nudge button triggered: {trigger_id}")
+                    logger.info(f"Adjusted start position: {start_position}%")
+                    logger.info(f"Adjusted time range: {start_time:.2f} to {end_time:.2f} seconds")
                 elif trigger_id == "btn-center":
                     start_position = 50  # Center at 50%
-                elif trigger_id == "btn-nudge-p5":
-                    start_position = min(100, start_position + 5)
+                    # Recalculate time range with adjusted position
+                    start_time = (start_position / 100.0) * data_duration
+                    end_time = start_time + duration
+                    # Ensure end time doesn't exceed data duration
+                    if end_time > data_duration:
+                        end_time = data_duration
+                        start_position = max(0, end_time - duration)
+                    logger.info(f"Nudge button triggered: {trigger_id}")
+                    logger.info(f"Adjusted start position: {start_position}%")
+                    logger.info(f"Adjusted time range: {start_time:.2f} to {end_time:.2f} seconds")
                 elif trigger_id == "btn-nudge-p10":
                     start_position = min(100, start_position + 10)
-                
-                # Recalculate time range with adjusted position
-                start_time = (start_position / 100.0) * data_duration
-                end_time = start_time + duration
-                
-                # Ensure end time doesn't exceed data duration
-                if end_time > data_duration:
-                    end_time = data_duration
-                    start_time = max(0, end_time - duration)
-                
-                logger.info(f"Nudge button triggered: {trigger_id}")
-                logger.info(f"Adjusted start position: {start_position}%")
-                logger.info(f"Adjusted time range: {start_time:.2f} to {end_time:.2f} seconds")
+                    # Recalculate time range with adjusted position
+                    start_time = (start_position / 100.0) * data_duration
+                    end_time = start_time + duration
+                    # Ensure end time doesn't exceed data duration
+                    if end_time > data_duration:
+                        end_time = data_duration
+                        start_position = max(0, end_time - duration)
+                    logger.info(f"Nudge button triggered: {trigger_id}")
+                    logger.info(f"Adjusted start position: {start_position}%")
+                    logger.info(f"Adjusted time range: {start_time:.2f} to {end_time:.2f} seconds")
+                elif trigger_id == "filter-btn-apply":
+                    # Apply Filter button - use the current start_position and duration as-is
+                    logger.info(f"Apply Filter button triggered - using current parameters")
+                    logger.info(f"Start position: {start_position}%")
+                    logger.info(f"Time range: {start_time:.2f} to {end_time:.2f} seconds")
 
             logger.info("Data service method results:")
             logger.info(f"  get_data returned: {type(df)}")
@@ -684,7 +698,7 @@ def register_signal_filtering_callbacks(app):
                         f"Generated index-based time axis: {np.min(time_data):.4f} to {np.max(time_data):.4f} seconds"
                     )
 
-                # Find indices for the selected time range
+                # Calculate sample indices based on duration and sampling frequency
                 if start_time is not None and end_time is not None:
                     logger.info(
                         f"Looking for time range: {start_time} to {end_time}"
@@ -696,83 +710,71 @@ def register_signal_filtering_callbacks(app):
                         f"Time data range: {np.min(time_data):.4f} to {np.max(time_data):.4f}"
                     )
 
-                    # Convert time_data to float if needed
-                    if isinstance(time_data[0], str):
-                        try:
-                            time_data = pd.to_numeric(time_data, errors="coerce")
-                            logger.info("Converted time data to numeric")
-                        except Exception as e:
-                            logger.warning(
-                                f"Could not convert time data to numeric: {e}"
-                            )
-
-                    # Check if time data is in milliseconds and convert to seconds if needed
-                    if np.max(time_data) > 1000:  # Likely milliseconds
+                    # Get sampling frequency for sample calculation
+                    sampling_freq = data_info.get("sampling_frequency", 1000)
+                    logger.info(f"Using sampling frequency: {sampling_freq} Hz")
+                    
+                    # Calculate number of samples needed: duration * sampling_frequency
+                    duration_samples = int(duration * sampling_freq)
+                    logger.info(f"Duration {duration}s requires {duration_samples} samples at {sampling_freq} Hz")
+                    
+                    # Calculate start sample index based on start_time
+                    start_sample_idx = int(start_time * sampling_freq)
+                    end_sample_idx = start_sample_idx + duration_samples
+                    
+                    logger.info(f"Sample range: {start_sample_idx} to {end_sample_idx} ({duration_samples} samples)")
+                    
+                    # Ensure we don't exceed data bounds
+                    if end_sample_idx > len(df):
+                        logger.warning(f"End sample {end_sample_idx} exceeds data length {len(df)}, adjusting")
+                        end_sample_idx = len(df)
+                        start_sample_idx = max(0, end_sample_idx - duration_samples)
+                        logger.info(f"Adjusted sample range: {start_sample_idx} to {end_sample_idx}")
+                    
+                    # Use sample-based indexing instead of time-based masking
+                    start_idx = start_sample_idx
+                    end_idx = end_sample_idx
+                    
+                    logger.info(f"Final sample indices: {start_idx} to {end_idx} ({end_idx - start_idx} samples)")
+                    
+                    # Verify we have enough data points for filtering
+                    min_points = 100  # Minimum points needed for filtering
+                    if (end_idx - start_idx) < min_points:
+                        logger.warning(
+                            f"Only {end_idx - start_idx} samples selected, expanding range to get at least {min_points} samples"
+                        )
+                        # Expand the range to get more points
+                        center_idx = (start_idx + end_idx) // 2
+                        half_range = min_points // 2
+                        start_idx = max(0, center_idx - half_range)
+                        end_idx = min(len(df), center_idx + half_range)
                         logger.info(
-                            "Time data appears to be in milliseconds, converting to seconds"
-                        )
-                        time_data_seconds = time_data / 1000.0
-                        # Find indices where time is within the selected range (in seconds)
-                        mask = (time_data_seconds >= start_time) & (
-                            time_data_seconds <= end_time
-                        )
-                    else:
-                        # Time data is already in seconds
-                        mask = (time_data >= start_time) & (
-                            time_data <= end_time
+                            f"Expanded range: indices {start_idx} to {end_idx} ({end_idx - start_idx} samples)"
                         )
 
-                    logger.info(f"Mask sum: {np.sum(mask)} out of {len(mask)} points")
-                    if np.any(mask):
-                        start_idx = np.where(mask)[0][0]
-                        end_idx = np.where(mask)[0][-1] + 1
-                        logger.info(
-                            f"Time range {start_time} to {end_time} maps to indices {start_idx} to {end_idx}"
-                        )
-
-                        # Ensure we have enough data points for filtering
-                        min_points = 100  # Minimum points needed for filtering
+                        # If still not enough points, use a larger range
                         if (end_idx - start_idx) < min_points:
                             logger.warning(
-                                f"Only {end_idx - start_idx} points selected, expanding range to get at least {min_points} points"
+                                "Still not enough points, using larger range"
                             )
-                            # Expand the range to get more points
-                            center_idx = (start_idx + end_idx) // 2
-                            half_range = min_points // 2
+                            # Use a larger range around the center
+                            half_range = min(
+                                min_points, len(df) // 4
+                            )  # Use 1/4 of data or min_points
+                            center_idx = (
+                                len(df) // 2
+                            )  # Use center of full dataset
                             start_idx = max(0, center_idx - half_range)
-                            end_idx = min(len(time_data), center_idx + half_range)
+                            end_idx = min(len(df), center_idx + half_range)
                             logger.info(
-                                f"Expanded range: indices {start_idx} to {end_idx} ({end_idx - start_idx} points)"
+                                f"Using larger range: indices {start_idx} to {end_idx} ({end_idx - start_idx} samples)"
                             )
-
-                            # If still not enough points, use a larger range
-                            if (end_idx - start_idx) < min_points:
-                                logger.warning(
-                                    "Still not enough points, using larger range"
-                                )
-                                # Use a larger range around the center
-                                half_range = min(
-                                    min_points, len(time_data) // 4
-                                )  # Use 1/4 of data or min_points
-                                center_idx = (
-                                    len(time_data) // 2
-                                )  # Use center of full dataset
-                                start_idx = max(0, center_idx - half_range)
-                                end_idx = min(len(time_data), center_idx + half_range)
-                                logger.info(
-                                    f"Using larger range: indices {start_idx} to {end_idx} ({end_idx - start_idx} points)"
-                                )
-                    else:
-                        logger.warning(
-                            f"No data found in time range {start_time} to {end_time}, using full range"
-                        )
-                        start_idx = 0
-                        end_idx = len(time_data)
                 else:
-                    # Use full range if no time selection
+                    logger.warning(
+                        f"No time range specified, using full range"
+                    )
                     start_idx = 0
-                    end_idx = len(time_data)
-                    logger.info("No time range selected, using full data")
+                    end_idx = len(df)
 
                     # If full range is too large, use a reasonable subset
                     max_points = 10000  # Maximum points to process
@@ -1219,14 +1221,12 @@ def register_signal_filtering_callbacks(app):
         Output("start-position-slider", "value"),
         [
             Input("btn-nudge-m10", "n_clicks"),
-            Input("btn-nudge-m5", "n_clicks"),
             Input("btn-center", "n_clicks"),
-            Input("btn-nudge-p5", "n_clicks"),
             Input("btn-nudge-p10", "n_clicks"),
         ],
         [State("start-position-slider", "value")],
     )
-    def update_start_position_slider(nudge_m10, nudge_m5, center_click, nudge_p5, nudge_p10, current_position):
+    def update_start_position_slider(nudge_m10, center_click, nudge_p10, current_position):
         """Update start position slider based on nudge buttons."""
         ctx = callback_context
         if not ctx.triggered:
@@ -1239,12 +1239,8 @@ def register_signal_filtering_callbacks(app):
 
         if trigger_id == "btn-nudge-m10":
             return max(0, current_position - 10)
-        elif trigger_id == "btn-nudge-m5":
-            return max(0, current_position - 5)
         elif trigger_id == "btn-center":
             return 50  # Center at 50%
-        elif trigger_id == "btn-nudge-p5":
-            return min(100, current_position + 5)
         elif trigger_id == "btn-nudge-p10":
             return min(100, current_position + 10)
 

@@ -84,7 +84,7 @@ class TestQualityCallbacksRegistration:
 class TestQualityAssessmentCallback:
     """Test the main quality assessment callback."""
 
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
     @patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context')
     def test_callback_not_on_quality_page(self, mock_ctx, mock_get_data_service, mock_app):
         """Test callback behavior when not on quality page."""
@@ -135,7 +135,7 @@ class TestQualityAssessmentCallback:
         assert isinstance(result[0], go.Figure)  # Empty figure
         assert result[2] == "Navigate to Quality page"
 
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
     def test_callback_data_service_none(self, mock_get_data_service, mock_app):
         """Test callback behavior when data service is None."""
         # Setup mocks
@@ -184,7 +184,7 @@ class TestQualityAssessmentCallback:
         assert len(result) == 8
         assert "Data service not available" in result[2]
 
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
     def test_callback_no_data_available(self, mock_get_data_service, mock_app):
         """Test callback behavior when no data is available."""
         # Setup mocks
@@ -235,7 +235,7 @@ class TestQualityAssessmentCallback:
         assert len(result) == 8
         assert "No data available" in result[2]
 
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
     def test_callback_no_button_click(self, mock_get_data_service, mock_app, sample_dataframe):
         """Test callback behavior when button not clicked."""
         # Setup mocks
@@ -287,7 +287,7 @@ class TestQualityAssessmentCallback:
         assert len(result) == 8
         assert "Click" in result[2] and "Assess Signal Quality" in result[2]
 
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
     def test_callback_no_column_mapping(self, mock_get_data_service, mock_app, sample_dataframe):
         """Test callback behavior when no column mapping exists."""
         # Setup mocks
@@ -338,7 +338,7 @@ class TestQualityAssessmentCallback:
         assert isinstance(result, tuple)
         assert len(result) == 8
 
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
     def test_callback_with_valid_data(self, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
         """Test callback behavior with valid data."""
         # Setup mocks
@@ -393,7 +393,7 @@ class TestQualityAssessmentCallback:
         assert isinstance(result[0], go.Figure)
         assert isinstance(result[1], go.Figure)
 
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
     def test_callback_with_different_quality_metrics(self, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
         """Test callback with different quality metrics combinations."""
         metrics_combinations = [
@@ -456,7 +456,7 @@ class TestQualityAssessmentCallback:
             assert isinstance(result, tuple)
             assert len(result) == 8
 
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
     def test_callback_with_different_signal_types(self, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
         """Test callback with different signal types."""
         signal_types = ["ecg", "ppg", "general"]
@@ -511,7 +511,7 @@ class TestQualityAssessmentCallback:
             assert isinstance(result, tuple)
             assert len(result) == 8
 
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
     def test_callback_with_different_thresholds(self, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
         """Test callback with different threshold values."""
         threshold_combinations = [
@@ -571,7 +571,7 @@ class TestQualityAssessmentCallback:
             assert isinstance(result, tuple)
             assert len(result) == 8
 
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
     def test_callback_with_advanced_options(self, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
         """Test callback with advanced options."""
         advanced_options_combinations = [
@@ -631,7 +631,7 @@ class TestQualityAssessmentCallback:
             assert isinstance(result, tuple)
             assert len(result) == 8
 
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
     def test_callback_with_time_window_adjustment(self, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
         """Test callback with different time windows."""
         time_windows = [
@@ -690,7 +690,7 @@ class TestQualityAssessmentCallback:
             assert isinstance(result, tuple)
             assert len(result) == 8
 
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
     def test_callback_exception_handling(self, mock_get_data_service, mock_app):
         """Test callback exception handling."""
         # Setup mocks to raise an exception

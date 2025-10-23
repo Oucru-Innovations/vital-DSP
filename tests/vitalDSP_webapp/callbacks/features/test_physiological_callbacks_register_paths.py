@@ -48,12 +48,12 @@ def install_fake_data_service(fake_service_obj):
     sys.modules.setdefault("vitalDSP_webapp.services", types.ModuleType("vitalDSP_webapp.services"))
     sys.modules.setdefault("vitalDSP_webapp.services.data", types.ModuleType("vitalDSP_webapp.services.data"))
 
-    data_service_mod = types.ModuleType("vitalDSP_webapp.services.data.data_service")
-    def _get_data_service():
+    data_service_mod = types.ModuleType("vitalDSP_webapp.services.data.enhanced_data_service")
+    def _get_enhanced_data_service():
         return fake_service_obj
-    data_service_mod.get_data_service = _get_data_service
+    data_service_mod.get_enhanced_data_service = _get_enhanced_data_service
 
-    sys.modules["vitalDSP_webapp.services.data.data_service"] = data_service_mod
+    sys.modules["vitalDSP_webapp.services.data.enhanced_data_service"] = data_service_mod
 
 
 # --- Helper signals ---

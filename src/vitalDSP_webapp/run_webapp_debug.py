@@ -10,6 +10,9 @@ import logging
 import sys
 from vitalDSP_webapp.app import create_fastapi_app
 
+# Create the FastAPI app at module level (like the original script)
+fastapi_app = create_fastapi_app()
+
 def setup_logging(debug_mode: bool = False):
     """
     Set up logging configuration based on mode.
@@ -27,8 +30,8 @@ def setup_logging(debug_mode: bool = False):
                 logging.FileHandler('webapp_debug.log')
             ]
         )
-        print("🔍 DEBUG MODE: All logs enabled (DEBUG level)")
-        print("📝 Debug logs will be saved to: webapp_debug.log")
+        print("DEBUG MODE: All logs enabled (DEBUG level)")
+        print("Debug logs will be saved to: webapp_debug.log")
     else:
         # Normal mode: Show only INFO and above
         logging.basicConfig(
@@ -39,8 +42,8 @@ def setup_logging(debug_mode: bool = False):
                 logging.FileHandler('webapp.log')
             ]
         )
-        print("🚀 NORMAL MODE: Essential logs only (INFO level)")
-        print("📝 Logs will be saved to: webapp.log")
+        print("NORMAL MODE: Essential logs only (INFO level)")
+        print("Logs will be saved to: webapp.log")
     
     # Set specific logger levels for our services
     if debug_mode:
@@ -68,13 +71,10 @@ def run_webapp(debug_mode: bool = False, port: int = None, host: str = "0.0.0.0"
     if port is None:
         port = int(os.environ.get("PORT", 8000))
     
-    # Create the FastAPI app
-    fastapi_app = create_fastapi_app()
-    
-    print(f"\n🌐 Starting webapp on {host}:{port}")
-    print(f"📊 Mode: {'DEBUG' if debug_mode else 'NORMAL'}")
-    print(f"🔗 Access at: http://localhost:{port}")
-    print(f"🔗 API docs at: http://localhost:{port}/docs")
+    print(f"\nStarting webapp on {host}:{port}")
+    print(f"Mode: {'DEBUG' if debug_mode else 'NORMAL'}")
+    print(f"Access at: http://localhost:{port}")
+    print(f"API docs at: http://localhost:{port}/docs")
     print("\n" + "="*60)
     
     # Run the FastAPI app (which also serves the Dash app) using Uvicorn
@@ -82,8 +82,7 @@ def run_webapp(debug_mode: bool = False, port: int = None, host: str = "0.0.0.0"
         fastapi_app, 
         host=host, 
         port=port,
-        log_level="debug" if debug_mode else "info",
-        reload=debug_mode  # Enable auto-reload in debug mode
+        log_level="info"  # Use consistent log level
     )
 
 if __name__ == "__main__":
