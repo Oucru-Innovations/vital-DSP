@@ -4990,8 +4990,8 @@ def register_vitaldsp_callbacks(app):
             # Input("start-time", "value"),  # REMOVED - was causing callback loop with slider sync!
             # Input("end-time", "value"),  # REMOVED - was causing callback loop with slider sync!
             Input("btn-nudge-m10", "n_clicks"),
-            Input("btn-nudge-m1", "n_clicks"),
-            Input("btn-nudge-p1", "n_clicks"),
+            # Input("btn-nudge-m1", "n_clicks"),  # REMOVED - button doesn't exist in UI
+            # Input("btn-nudge-p1", "n_clicks"),  # REMOVED - button doesn't exist in UI
             Input("btn-nudge-p10", "n_clicks"),
             # Input("url", "pathname"),  # REMOVED - was running full analysis on EVERY page load!
             Input("body", "data-theme"),  # Add theme input
@@ -5008,8 +5008,8 @@ def register_vitaldsp_callbacks(app):
     def analyze_time_domain(
         n_clicks,
         nudge_m10,
-        nudge_m1,
-        nudge_p1,
+        # nudge_m1,  # REMOVED - button doesn't exist in UI
+        # nudge_p1,  # REMOVED - button doesn't exist in UI
         nudge_p10,
         current_theme,  # Theme input parameter
         pathname,  # State parameter
@@ -5165,8 +5165,6 @@ def register_vitaldsp_callbacks(app):
             # Handle time window adjustments for nudge buttons
             if trigger_id in [
                 "btn-nudge-m10",
-                "btn-nudge-m1",
-                "btn-nudge-p1",
                 "btn-nudge-p10",
             ]:
                 if not start_position or not duration:
@@ -5174,10 +5172,6 @@ def register_vitaldsp_callbacks(app):
 
                 if trigger_id == "btn-nudge-m10":
                     start_position = max(0, start_position - 10)
-                elif trigger_id == "btn-nudge-m1":
-                    start_position = max(0, start_position - 1)
-                elif trigger_id == "btn-nudge-p1":
-                    start_position = start_position + 1
                 elif trigger_id == "btn-nudge-p10":
                     start_position = start_position + 10
 
