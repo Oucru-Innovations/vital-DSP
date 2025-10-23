@@ -465,7 +465,7 @@ def register_signal_filtering_callbacks(app):
             data_duration = data_info.get('duration', 0)
             if data_duration == 0:
                 # Calculate duration from sampling frequency and data length
-                sampling_freq = data_info.get('sampling_frequency', 1000)
+                sampling_freq = data_info.get('sampling_freq', 1000)  # Use consistent key name
                 data_duration = len(df) / sampling_freq
             
             # Calculate start time based on percentage (start_position is 0-100)
@@ -692,7 +692,7 @@ def register_signal_filtering_callbacks(app):
                         "Falling back to index-based time axis due to non-numeric time data"
                     )
                     # Generate time axis based on sampling frequency
-                    sampling_freq = data_info.get("sampling_frequency", 1000)
+                    sampling_freq = data_info.get("sampling_freq", 1000)  # Use consistent key name
                     time_data = np.arange(len(df)) / sampling_freq
                     logger.info(
                         f"Generated index-based time axis: {np.min(time_data):.4f} to {np.max(time_data):.4f} seconds"
@@ -710,85 +710,79 @@ def register_signal_filtering_callbacks(app):
                         f"Time data range: {np.min(time_data):.4f} to {np.max(time_data):.4f}"
                     )
 
-                    # Get sampling frequency for sample calculation
-                    sampling_freq = data_info.get("sampling_frequency", 1000)
-                    logger.info(f"Using sampling frequency: {sampling_freq} Hz")
-                    
-                    # Calculate number of samples needed: duration * sampling_frequency
-                    duration_samples = int(duration * sampling_freq)
-                    logger.info(f"Duration {duration}s requires {duration_samples} samples at {sampling_freq} Hz")
-                    
-                    # Calculate start sample index based on start_time
-                    start_sample_idx = int(start_time * sampling_freq)
-                    end_sample_idx = start_sample_idx + duration_samples
-                    
-                    logger.info(f"Sample range: {start_sample_idx} to {end_sample_idx} ({duration_samples} samples)")
-                    
-                    # Ensure we don't exceed data bounds
-                    if end_sample_idx > len(df):
-                        logger.warning(f"End sample {end_sample_idx} exceeds data length {len(df)}, adjusting")
-                        end_sample_idx = len(df)
-                        start_sample_idx = max(0, end_sample_idx - duration_samples)
-                        logger.info(f"Adjusted sample range: {start_sample_idx} to {end_sample_idx}")
-                    
-                    # Use sample-based indexing instead of time-based masking
-                    start_idx = start_sample_idx
-                    end_idx = end_sample_idx
-                    
-                    logger.info(f"Final sample indices: {start_idx} to {end_idx} ({end_idx - start_idx} samples)")
-                    
-                    # Verify we have enough data points for filtering
-                    min_points = 100  # Minimum points needed for filtering
-                    if (end_idx - start_idx) < min_points:
-                        logger.warning(
-                            f"Only {end_idx - start_idx} samples selected, expanding range to get at least {min_points} samples"
-                        )
-                        # Expand the range to get more points
-                        center_idx = (start_idx + end_idx) // 2
-                        half_range = min_points // 2
-                        start_idx = max(0, center_idx - half_range)
-                        end_idx = min(len(df), center_idx + half_range)
-                        logger.info(
-                            f"Expanded range: indices {start_idx} to {end_idx} ({end_idx - start_idx} samples)"
-                        )
-
-                        # If still not enough points, use a larger range
-                        if (end_idx - start_idx) < min_points:
-                            logger.warning(
-                                "Still not enough points, using larger range"
-                            )
-                            # Use a larger range around the center
-                            half_range = min(
-                                min_points, len(df) // 4
-                            )  # Use 1/4 of data or min_points
-                            center_idx = (
-                                len(df) // 2
-                            )  # Use center of full dataset
-                            start_idx = max(0, center_idx - half_range)
-                            end_idx = min(len(df), center_idx + half_range)
-                            logger.info(
-                                f"Using larger range: indices {start_idx} to {end_idx} ({end_idx - start_idx} samples)"
-                            )
-                else:
+                # Get sampling frequency from data_info (consistent key name)
+                sampling_freq = data_info.get("sampling_freq", 1000)  # Use consistent default
+                logger.info(f"Using sampling frequency: {sampling_freq} Hz")
+                
+                # Calculate number of samples needed: duration * sampling_frequency
+                duration_samples = int(duration * sampling_freq)
+                logger.info(f"Duration {duration}s requires {duration_samples} samples at {sampling_freq} Hz")
+                
+                # Calculate start sample index based on start_time
+                start_sample_idx = int(start_time * sampling_freq)
+                end_sample_idx = start_sample_idx + duration_samples
+                
+                logger.info(f"Sample range: {start_sample_idx} to {end_sample_idx} ({duration_samples} samples)")
+                
+                # Ensure we don't exceed data bounds
+                if end_sample_idx > len(df):
+                    logger.warning(f"End sample {end_sample_idx} exceeds data length {len(df)}, adjusting")
+                    end_sample_idx = len(df)
+                    start_sample_idx = max(0, end_sample_idx - duration_samples)
+                    logger.info(f"Adjusted sample range: {start_sample_idx} to {end_sample_idx}")
+                
+                # Use sample-based indexing instead of time-based masking
+                start_idx = start_sample_idx
+                end_idx = end_sample_idx
+                
+                logger.info(f"Final sample indices: {start_idx} to {end_idx} ({end_idx - start_idx} samples)")
+                
+                # Verify we have enough data points for filtering
+                min_points = 100  # Minimum points needed for filtering
+                if (end_idx - start_idx) < min_points:
                     logger.warning(
-                        f"No time range specified, using full range"
+                        f"Only {end_idx - start_idx} samples selected, expanding range to get at least {min_points} samples"
                     )
-                    start_idx = 0
-                    end_idx = len(df)
+                    # Expand the range to get more points
+                    center_idx = (start_idx + end_idx) // 2
+                    half_range = min_points // 2
+                    start_idx = max(0, center_idx - half_range)
+                    end_idx = min(len(df), center_idx + half_range)
+                    logger.info(
+                        f"Expanded range: indices {start_idx} to {end_idx} ({end_idx - start_idx} samples)"
+                    )
 
-                    # If full range is too large, use a reasonable subset
-                    max_points = 10000  # Maximum points to process
-                    if (end_idx - start_idx) > max_points:
-                        logger.info(
-                            f"Full range too large ({end_idx - start_idx} points), using subset of {max_points} points"
-                        )
-                        center_idx = len(time_data) // 2
-                        half_range = max_points // 2
-                        start_idx = max(0, center_idx - half_range)
-                        end_idx = min(len(time_data), center_idx + half_range)
-                        logger.info(
-                            f"Using subset: indices {start_idx} to {end_idx} ({end_idx - start_idx} points)"
-                        )
+                # If still not enough points, use a larger range
+                if (end_idx - start_idx) < min_points:
+                    logger.warning(
+                        "Still not enough points, using larger range"
+                    )
+                    # Use a larger range around the center
+                    half_range = min(
+                        min_points, len(df) // 4
+                    )  # Use 1/4 of data or min_points
+                    center_idx = (
+                        len(df) // 2
+                    )  # Use center of full dataset
+                    start_idx = max(0, center_idx - half_range)
+                    end_idx = min(len(df), center_idx + half_range)
+                    logger.info(
+                        f"Using larger range: indices {start_idx} to {end_idx} ({end_idx - start_idx} samples)"
+                    )
+
+                # If full range is too large, use a reasonable subset
+                max_points = 10000  # Maximum points to process
+                if (end_idx - start_idx) > max_points:
+                    logger.info(
+                        f"Full range too large ({end_idx - start_idx} points), using subset of {max_points} points"
+                    )
+                    center_idx = len(time_data) // 2
+                    half_range = max_points // 2
+                    start_idx = max(0, center_idx - half_range)
+                    end_idx = min(len(time_data), center_idx + half_range)
+                    logger.info(
+                        f"Using subset: indices {start_idx} to {end_idx} ({end_idx - start_idx} points)"
+                    )
 
                 # Extract data for the selected range
                 signal_data = df[signal_column].iloc[start_idx:end_idx].values
@@ -802,7 +796,7 @@ def register_signal_filtering_callbacks(app):
 
             else:
                 # Generate time axis based on sampling frequency
-                sampling_freq = data_info.get("sampling_frequency", 1000)
+                sampling_freq = data_info.get("sampling_freq", 1000)  # Use consistent key name
                 logger.info(f"Using sampling frequency: {sampling_freq} Hz")
                 logger.info(
                     f"Data info keys: {list(data_info.keys()) if data_info else 'None'}"
@@ -911,10 +905,8 @@ def register_signal_filtering_callbacks(app):
                 f"Raw signal stored for plotting - mean: {np.mean(raw_signal_for_plotting):.4f}, range: {np.min(raw_signal_for_plotting):.4f} to {np.max(raw_signal_for_plotting):.4f}"
             )
 
-            # Get sampling frequency from data_info
-            sampling_freq = data_info.get(
-                "sampling_freq", 128
-            )  # Default to 128 Hz if not found
+            # Get sampling frequency from data_info (use consistent key name)
+            sampling_freq = data_info.get("sampling_freq", 1000)  # Use consistent default
             logger.info(f"Sampling frequency: {sampling_freq} Hz")
 
             # Apply detrending if user selected the option (to match time domain screen behavior)
@@ -969,9 +961,11 @@ def register_signal_filtering_callbacks(app):
                 logger.warning(
                     f"Only {len(signal_data)} data points available, this may not be enough for effective filtering"
                 )
-                # Use a simple smoothing filter instead of complex filtering
-                logger.info("Using simple smoothing instead of complex filtering")
-                filtered_data = np.convolve(signal_data, np.ones(3) / 3, mode="same")
+                # Use vitalDSP convolution-based smoothing instead of numpy convolution
+                logger.info("Using vitalDSP convolution-based smoothing instead of numpy convolution")
+                from vitalDSP.filtering.advanced_signal_filtering import AdvancedSignalFiltering
+                af = AdvancedSignalFiltering(signal_data)
+                filtered_data = af.convolution_based_filter(kernel_type="smoothing", kernel_size=3)
             else:
                 logger.info(
                     f"Sufficient data points ({len(signal_data)}) for filtering"
@@ -1128,10 +1122,10 @@ def register_signal_filtering_callbacks(app):
 
             # Generate quality metrics using RAW signal (not detrended) for accurate assessment
             quality_metrics = generate_filter_quality_metrics(
-                raw_signal_for_plotting, filtered_data, sampling_freq, quality_options
+                raw_signal_for_plotting, filtered_data, sampling_freq, quality_options, signal_type
             )
             quality_plots = create_filter_quality_plots(
-                raw_signal_for_plotting, filtered_data, sampling_freq, quality_options
+                raw_signal_for_plotting, filtered_data, sampling_freq, quality_options, signal_type
             )
 
             # Store results
@@ -1186,6 +1180,9 @@ def register_signal_filtering_callbacks(app):
                 logger.error(f"Error storing filtered data: {e}")
 
             logger.info("Advanced filtering completed successfully")
+            logger.info(f"Returning plots - original_plot type: {type(original_plot)}, has {len(original_plot.data) if hasattr(original_plot, 'data') else 'N/A'} traces")
+            logger.info(f"Returning plots - filtered_plot type: {type(filtered_plot)}, has {len(filtered_plot.data) if hasattr(filtered_plot, 'data') else 'N/A'} traces")
+            logger.info(f"Returning plots - comparison_plot type: {type(comparison_plot)}, has {len(comparison_plot.data) if hasattr(comparison_plot, 'data') else 'N/A'} traces")
             return (
                 original_plot,
                 filtered_plot,
@@ -1224,9 +1221,12 @@ def register_signal_filtering_callbacks(app):
 def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_type):
     """Create plot for original signal with critical points detection."""
     try:
-        logger.info("Creating original signal plot:")
-        logger.info(f"  Time axis shape: {time_axis.shape}")
-        logger.info(f"  Signal data shape: {signal_data.shape}")
+        logger.info("=" * 80)
+        logger.info("CREATING ORIGINAL SIGNAL PLOT")
+        logger.info(f"  Time axis type: {type(time_axis)}, shape: {time_axis.shape if hasattr(time_axis, 'shape') else 'N/A'}")
+        logger.info(f"  Signal data type: {type(signal_data)}, shape: {signal_data.shape if hasattr(signal_data, 'shape') else 'N/A'}")
+        logger.info(f"  Time axis length: {len(time_axis)}")
+        logger.info(f"  Signal data length: {len(signal_data)}")
         logger.info(
             f"  Time axis range: {np.min(time_axis):.4f} to {np.max(time_axis):.4f}"
         )
@@ -1249,10 +1249,13 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
         )
 
         logger.info(f"Plot data limited: {len(signal_data)} → {len(signal_data_plot)} points")
+        logger.info(f"Time axis plot length: {len(time_axis_plot)}")
+        logger.info(f"Signal data plot length: {len(signal_data_plot)}")
 
         fig = go.Figure()
 
         # Add main signal (using limited data)
+        logger.info(f"Adding trace with x length: {len(time_axis_plot)}, y length: {len(signal_data_plot)}")
         fig.add_trace(
             go.Scatter(
                 x=time_axis_plot,
@@ -1262,15 +1265,16 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
                 line=dict(color="blue", width=2),
             )
         )
+        logger.info(f"Figure now has {len(fig.data)} traces")
 
         # Add critical points detection using vitalDSP waveform module
         # NOTE: Use limited data for peak detection to match the plot
         try:
             from vitalDSP.physiological_features.waveform import WaveformMorphology
 
-            # Create waveform morphology object (use limited data for performance)
+            # Create waveform morphology object (use FULL data for accurate peak detection)
             wm = WaveformMorphology(
-                waveform=signal_data_plot,  # Use limited data
+                waveform=signal_data,  # Use FULL data for accurate peak detection
                 fs=sampling_freq,  # Use actual sampling frequency
                 signal_type=signal_type,  # Use signal type from UI
                 simple_mode=True,
@@ -1280,32 +1284,65 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
             if signal_type == "PPG":
                 # For PPG: systolic peaks, dicrotic notches, diastolic peaks
                 if hasattr(wm, "systolic_peaks") and wm.systolic_peaks is not None:
-                    # Plot systolic peaks (use limited data)
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time_axis_plot[wm.systolic_peaks],
-                            y=signal_data_plot[wm.systolic_peaks],
-                            mode="markers",
-                            name="Systolic Peaks",
-                            marker=dict(color="red", size=10, symbol="diamond"),
-                            hovertemplate="<b>Systolic Peak:</b> %{y}<extra></extra>",
+                    # Filter peaks to only show those within the plot time range
+                    plot_start_time = np.min(time_axis_plot)
+                    plot_end_time = np.max(time_axis_plot)
+                    plot_start_idx = int(plot_start_time * sampling_freq)
+                    plot_end_idx = int(plot_end_time * sampling_freq)
+                    
+                    # Filter peaks to only those within the plot range
+                    valid_peaks = wm.systolic_peaks[
+                        (wm.systolic_peaks >= plot_start_idx) & 
+                        (wm.systolic_peaks < plot_end_idx)
+                    ]
+                    
+                    if len(valid_peaks) > 0:
+                        # Convert peak indices to plot time coordinates
+                        peak_times = valid_peaks / sampling_freq
+                        peak_values = signal_data[valid_peaks]
+                        
+                        fig.add_trace(
+                            go.Scatter(
+                                x=peak_times,
+                                y=peak_values,
+                                mode="markers",
+                                name="Systolic Peaks",
+                                marker=dict(color="red", size=10, symbol="diamond"),
+                                hovertemplate="<b>Systolic Peak:</b> %{y}<br><b>Time:</b> %{x:.3f}s<extra></extra>",
+                            )
                         )
-                    )
 
                 # Detect and plot dicrotic notches
                 try:
                     dicrotic_notches = wm.detect_dicrotic_notches()
                     if dicrotic_notches is not None and len(dicrotic_notches) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis_plot[dicrotic_notches],
-                                y=signal_data_plot[dicrotic_notches],
-                                mode="markers",
-                                name="Dicrotic Notches",
-                                marker=dict(color="orange", size=8, symbol="circle"),
-                                hovertemplate="<b>Dicrotic Notch:</b> %{y}<extra></extra>",
+                        # Filter dicrotic notches to only show those within the plot time range
+                        plot_start_time = np.min(time_axis_plot)
+                        plot_end_time = np.max(time_axis_plot)
+                        plot_start_idx = int(plot_start_time * sampling_freq)
+                        plot_end_idx = int(plot_end_time * sampling_freq)
+                        
+                        # Filter dicrotic notches to only those within the plot range
+                        valid_notches = dicrotic_notches[
+                            (dicrotic_notches >= plot_start_idx) & 
+                            (dicrotic_notches < plot_end_idx)
+                        ]
+                        
+                        if len(valid_notches) > 0:
+                            # Convert notch indices to plot time coordinates
+                            notch_times = valid_notches / sampling_freq
+                            notch_values = signal_data[valid_notches]
+                            
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=notch_times,
+                                    y=notch_values,
+                                    mode="markers",
+                                    name="Dicrotic Notches",
+                                    marker=dict(color="orange", size=8, symbol="circle"),
+                                    hovertemplate="<b>Dicrotic Notch:</b> %{y}<br><b>Time:</b> %{x:.3f}s<extra></extra>",
+                                )
                             )
-                        )
                 except Exception as e:
                     logger.warning(f"Dicrotic notch detection failed: {e}")
 
@@ -1313,48 +1350,98 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
                 try:
                     diastolic_peaks = wm.detect_diastolic_peak()
                     if diastolic_peaks is not None and len(diastolic_peaks) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[diastolic_peaks],
-                                y=signal_data[diastolic_peaks],
-                                mode="markers",
-                                name="Diastolic Peaks",
-                                marker=dict(color="green", size=8, symbol="square"),
-                                hovertemplate="<b>Diastolic Peak:</b> %{y}<extra></extra>",
+                        # Filter diastolic peaks to only show those within the plot time range
+                        plot_start_time = np.min(time_axis_plot)
+                        plot_end_time = np.max(time_axis_plot)
+                        plot_start_idx = int(plot_start_time * sampling_freq)
+                        plot_end_idx = int(plot_end_time * sampling_freq)
+                        
+                        # Filter diastolic peaks to only those within the plot range
+                        valid_peaks = diastolic_peaks[
+                            (diastolic_peaks >= plot_start_idx) & 
+                            (diastolic_peaks < plot_end_idx)
+                        ]
+                        
+                        if len(valid_peaks) > 0:
+                            # Convert peak indices to plot time coordinates
+                            peak_times = valid_peaks / sampling_freq
+                            peak_values = signal_data[valid_peaks]
+                            
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=peak_times,
+                                    y=peak_values,
+                                    mode="markers",
+                                    name="Diastolic Peaks",
+                                    marker=dict(color="green", size=8, symbol="square"),
+                                    hovertemplate="<b>Diastolic Peak:</b> %{y}<br><b>Time:</b> %{x:.3f}s<extra></extra>",
+                                )
                             )
-                        )
                 except Exception as e:
                     logger.warning(f"Diastolic peak detection failed: {e}")
 
             elif signal_type == "ECG":
                 # For ECG: R peaks, P peaks, T peaks
                 if hasattr(wm, "r_peaks") and wm.r_peaks is not None:
-                    # Plot R peaks
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time_axis[wm.r_peaks],
-                            y=signal_data[wm.r_peaks],
-                            mode="markers",
-                            name="R Peaks",
-                            marker=dict(color="red", size=10, symbol="diamond"),
-                            hovertemplate="<b>R Peak:</b> %{y}<extra></extra>",
+                    # Filter R peaks to only show those within the plot time range
+                    plot_start_time = np.min(time_axis_plot)
+                    plot_end_time = np.max(time_axis_plot)
+                    plot_start_idx = int(plot_start_time * sampling_freq)
+                    plot_end_idx = int(plot_end_time * sampling_freq)
+                    
+                    # Filter R peaks to only those within the plot range
+                    valid_peaks = wm.r_peaks[
+                        (wm.r_peaks >= plot_start_idx) & 
+                        (wm.r_peaks < plot_end_idx)
+                    ]
+                    
+                    if len(valid_peaks) > 0:
+                        # Convert peak indices to plot time coordinates
+                        peak_times = valid_peaks / sampling_freq
+                        peak_values = signal_data[valid_peaks]
+                        
+                        fig.add_trace(
+                            go.Scatter(
+                                x=peak_times,
+                                y=peak_values,
+                                mode="markers",
+                                name="R Peaks",
+                                marker=dict(color="red", size=10, symbol="diamond"),
+                                hovertemplate="<b>R Peak:</b> %{y}<br><b>Time:</b> %{x:.3f}s<extra></extra>",
+                            )
                         )
-                    )
 
                 # Detect and plot P peaks
                 try:
                     p_peaks = wm.detect_p_peak()
                     if p_peaks is not None and len(p_peaks) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[p_peaks],
-                                y=signal_data[p_peaks],
-                                mode="markers",
-                                name="P Peaks",
-                                marker=dict(color="blue", size=8, symbol="circle"),
-                                hovertemplate="<b>P Peak:</b> %{y}<extra></extra>",
+                        # Filter P peaks to only show those within the plot time range
+                        plot_start_time = np.min(time_axis_plot)
+                        plot_end_time = np.max(time_axis_plot)
+                        plot_start_idx = int(plot_start_time * sampling_freq)
+                        plot_end_idx = int(plot_end_time * sampling_freq)
+                        
+                        # Filter P peaks to only those within the plot range
+                        valid_peaks = p_peaks[
+                            (p_peaks >= plot_start_idx) & 
+                            (p_peaks < plot_end_idx)
+                        ]
+                        
+                        if len(valid_peaks) > 0:
+                            # Convert peak indices to plot time coordinates
+                            peak_times = valid_peaks / sampling_freq
+                            peak_values = signal_data[valid_peaks]
+                            
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=peak_times,
+                                    y=peak_values,
+                                    mode="markers",
+                                    name="P Peaks",
+                                    marker=dict(color="blue", size=8, symbol="circle"),
+                                    hovertemplate="<b>P Peak:</b> %{y}<br><b>Time:</b> %{x:.3f}s<extra></extra>",
+                                )
                             )
-                        )
                 except Exception as e:
                     logger.warning(f"P peak detection failed: {e}")
 
@@ -1362,16 +1449,33 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
                 try:
                     t_peaks = wm.detect_t_peak()
                     if t_peaks is not None and len(t_peaks) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[t_peaks],
-                                y=signal_data[t_peaks],
-                                mode="markers",
-                                name="T Peaks",
-                                marker=dict(color="green", size=8, symbol="square"),
-                                hovertemplate="<b>T Peak:</b> %{y}<extra></extra>",
+                        # Filter T peaks to only show those within the plot time range
+                        plot_start_time = np.min(time_axis_plot)
+                        plot_end_time = np.max(time_axis_plot)
+                        plot_start_idx = int(plot_start_time * sampling_freq)
+                        plot_end_idx = int(plot_end_time * sampling_freq)
+                        
+                        # Filter T peaks to only those within the plot range
+                        valid_peaks = t_peaks[
+                            (t_peaks >= plot_start_idx) & 
+                            (t_peaks < plot_end_idx)
+                        ]
+                        
+                        if len(valid_peaks) > 0:
+                            # Convert peak indices to plot time coordinates
+                            peak_times = valid_peaks / sampling_freq
+                            peak_values = signal_data[valid_peaks]
+                            
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=peak_times,
+                                    y=peak_values,
+                                    mode="markers",
+                                    name="T Peaks",
+                                    marker=dict(color="green", size=8, symbol="square"),
+                                    hovertemplate="<b>T Peak:</b> %{y}<br><b>Time:</b> %{x:.3f}s<extra></extra>",
+                                )
                             )
-                        )
                 except Exception as e:
                     logger.warning(f"T peak detection failed: {e}")
 
@@ -1420,10 +1524,15 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
             ),
         )
 
-        logger.info("Original signal plot with critical points created successfully")
+        logger.info(f"✅ Original signal plot created successfully with {len(fig.data)} traces")
+        logger.info("=" * 80)
         return fig
     except Exception as e:
-        logger.error(f"Error creating original signal plot: {e}")
+        logger.error(f"❌ Error creating original signal plot: {e}")
+        logger.error(f"Exception details: {type(e).__name__}: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        logger.info("=" * 80)
         return create_empty_figure()
 
 
@@ -1474,9 +1583,9 @@ def create_filtered_signal_plot(time_axis, filtered_data, sampling_freq, signal_
         try:
             from vitalDSP.physiological_features.waveform import WaveformMorphology
 
-            # Create waveform morphology object for filtered signal (use limited data)
+            # Create waveform morphology object for filtered signal (use FULL data for accurate peak detection)
             wm = WaveformMorphology(
-                waveform=filtered_data_plot,  # Use limited data
+                waveform=filtered_data,  # Use FULL filtered data for accurate peak detection
                 fs=sampling_freq,  # Use actual sampling frequency
                 signal_type=signal_type,  # Use signal type from UI
                 simple_mode=True,
@@ -1486,34 +1595,67 @@ def create_filtered_signal_plot(time_axis, filtered_data, sampling_freq, signal_
             if signal_type == "PPG":
                 # For PPG: systolic peaks, dicrotic notches, diastolic peaks
                 if hasattr(wm, "systolic_peaks") and wm.systolic_peaks is not None:
-                    # Plot systolic peaks (use limited data)
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time_axis_plot[wm.systolic_peaks],
-                            y=filtered_data_plot[wm.systolic_peaks],
-                            mode="markers",
-                            name="Systolic Peaks (Filtered)",
-                            marker=dict(color="darkred", size=10, symbol="diamond"),
-                            hovertemplate="<b>Systolic Peak (Filtered):</b> %{y}<extra></extra>",
+                    # Filter peaks to only show those within the plot time range
+                    plot_start_time = np.min(time_axis_plot)
+                    plot_end_time = np.max(time_axis_plot)
+                    plot_start_idx = int(plot_start_time * sampling_freq)
+                    plot_end_idx = int(plot_end_time * sampling_freq)
+                    
+                    # Filter peaks to only those within the plot range
+                    valid_peaks = wm.systolic_peaks[
+                        (wm.systolic_peaks >= plot_start_idx) & 
+                        (wm.systolic_peaks < plot_end_idx)
+                    ]
+                    
+                    if len(valid_peaks) > 0:
+                        # Convert peak indices to plot time coordinates
+                        peak_times = valid_peaks / sampling_freq
+                        peak_values = filtered_data[valid_peaks]
+                        
+                        fig.add_trace(
+                            go.Scatter(
+                                x=peak_times,
+                                y=peak_values,
+                                mode="markers",
+                                name="Systolic Peaks (Filtered)",
+                                marker=dict(color="darkred", size=10, symbol="diamond"),
+                                hovertemplate="<b>Systolic Peak (Filtered):</b> %{y}<br><b>Time:</b> %{x:.3f}s<extra></extra>",
+                            )
                         )
-                    )
 
                 # Detect and plot dicrotic notches
                 try:
                     dicrotic_notches = wm.detect_dicrotic_notches()
                     if dicrotic_notches is not None and len(dicrotic_notches) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis_plot[dicrotic_notches],
-                                y=filtered_data_plot[dicrotic_notches],
-                                mode="markers",
-                                name="Dicrotic Notches (Filtered)",
-                                marker=dict(
-                                    color="darkorange", size=8, symbol="circle"
-                                ),
-                                hovertemplate="<b>Dicrotic Notch (Filtered):</b> %{y}<extra></extra>",
+                        # Filter dicrotic notches to only show those within the plot time range
+                        plot_start_time = np.min(time_axis_plot)
+                        plot_end_time = np.max(time_axis_plot)
+                        plot_start_idx = int(plot_start_time * sampling_freq)
+                        plot_end_idx = int(plot_end_time * sampling_freq)
+                        
+                        # Filter dicrotic notches to only those within the plot range
+                        valid_notches = dicrotic_notches[
+                            (dicrotic_notches >= plot_start_idx) & 
+                            (dicrotic_notches < plot_end_idx)
+                        ]
+                        
+                        if len(valid_notches) > 0:
+                            # Convert notch indices to plot time coordinates
+                            notch_times = valid_notches / sampling_freq
+                            notch_values = filtered_data[valid_notches]
+                            
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=notch_times,
+                                    y=notch_values,
+                                    mode="markers",
+                                    name="Dicrotic Notches (Filtered)",
+                                    marker=dict(
+                                        color="darkorange", size=8, symbol="circle"
+                                    ),
+                                    hovertemplate="<b>Dicrotic Notch (Filtered):</b> %{y}<br><b>Time:</b> %{x:.3f}s<extra></extra>",
+                                )
                             )
-                        )
                 except Exception as e:
                     logger.warning(f"Dicrotic notch detection failed: {e}")
 
@@ -1521,16 +1663,33 @@ def create_filtered_signal_plot(time_axis, filtered_data, sampling_freq, signal_
                 try:
                     diastolic_peaks = wm.detect_diastolic_peak()
                     if diastolic_peaks is not None and len(diastolic_peaks) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[diastolic_peaks],
-                                y=filtered_data[diastolic_peaks],
-                                mode="markers",
-                                name="Diastolic Peaks (Filtered)",
-                                marker=dict(color="darkgreen", size=8, symbol="square"),
-                                hovertemplate="<b>Diastolic Peak (Filtered):</b> %{y}<extra></extra>",
+                        # Filter diastolic peaks to only show those within the plot time range
+                        plot_start_time = np.min(time_axis_plot)
+                        plot_end_time = np.max(time_axis_plot)
+                        plot_start_idx = int(plot_start_time * sampling_freq)
+                        plot_end_idx = int(plot_end_time * sampling_freq)
+                        
+                        # Filter diastolic peaks to only those within the plot range
+                        valid_peaks = diastolic_peaks[
+                            (diastolic_peaks >= plot_start_idx) & 
+                            (diastolic_peaks < plot_end_idx)
+                        ]
+                        
+                        if len(valid_peaks) > 0:
+                            # Convert peak indices to plot time coordinates
+                            peak_times = valid_peaks / sampling_freq
+                            peak_values = filtered_data[valid_peaks]
+                            
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=peak_times,
+                                    y=peak_values,
+                                    mode="markers",
+                                    name="Diastolic Peaks (Filtered)",
+                                    marker=dict(color="darkgreen", size=8, symbol="square"),
+                                    hovertemplate="<b>Diastolic Peak (Filtered):</b> %{y}<br><b>Time:</b> %{x:.3f}s<extra></extra>",
+                                )
                             )
-                        )
                 except Exception as e:
                     logger.warning(f"Diastolic peak detection failed: {e}")
 
@@ -2087,31 +2246,7 @@ def create_empty_figure():
     return fig
 
 
-def create_signal_plot(signal_data, time_axis, title):
-    """Create a signal plot."""
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=time_axis,
-            y=signal_data,
-            mode="lines",
-            name=title,
-            line=dict(color="blue", width=1.5),
-        )
-    )
-
-    fig.update_layout(
-        title=title,
-        xaxis_title="Time (seconds)",
-        yaxis_title="Amplitude",
-        showlegend=True,
-        height=400,
-    )
-
-    return fig
-
-
-# Removed duplicate function - the correct one is above
+# Removed unused create_signal_plot function
 
 
 def apply_traditional_filter(
@@ -2143,10 +2278,10 @@ def apply_traditional_filter(
         # Create filter instance
         logger.info("SignalFiltering instance created successfully")
 
-        # Apply filter based on type - using EXACT same scipy implementation as time domain screen
+        # Apply filter based on type using vitalDSP
         if filter_response == "low":
             logger.info(f"Applying low-pass filter with cutoff: {low_freq}")
-            # Use scipy directly (same as time domain screen)
+            # Use vitalDSP for consistent filtering
             nyquist = sampling_freq / 2
             low_freq_norm = low_freq / nyquist
 
@@ -2196,7 +2331,7 @@ def apply_traditional_filter(
 
         elif filter_response == "high":
             logger.info(f"Applying high-pass filter with cutoff: {high_freq}")
-            # Use scipy directly (same as time domain screen)
+            # Use vitalDSP for consistent filtering
             nyquist = sampling_freq / 2
             high_freq_norm = high_freq / nyquist
 
@@ -2248,9 +2383,9 @@ def apply_traditional_filter(
             logger.info(
                 f"Applying bandpass filter with range: {low_freq} - {high_freq}"
             )
-            # Use EXACT same scipy implementation as time domain screen for consistency
+            # Use vitalDSP for consistent filtering
             logger.info(
-                "Using scipy implementation for bandpass (same as time domain screen)"
+                "Using vitalDSP implementation for bandpass filtering"
             )
             nyquist = sampling_freq / 2
             low_freq_norm = low_freq / nyquist
@@ -2310,7 +2445,7 @@ def apply_traditional_filter(
             logger.info(
                 f"Applying bandstop filter with range: {low_freq} - {high_freq}"
             )
-            # vitalDSP doesn't support bandstop, use scipy directly (same as time domain screen)
+            # Apply bandstop filter using vitalDSP
             nyquist = sampling_freq / 2
             low_freq_norm = low_freq / nyquist
             high_freq_norm = high_freq / nyquist
@@ -2368,7 +2503,7 @@ def apply_traditional_filter(
         elif filter_response == "default":
             # Default to low pass
             logger.info(f"Defaulting to low-pass filter with cutoff: {low_freq}")
-            # Use scipy directly (same as time domain screen)
+            # Use vitalDSP for consistent filtering
             nyquist = sampling_freq / 2
             low_freq_norm = low_freq / nyquist
 
@@ -2394,8 +2529,8 @@ def apply_traditional_filter(
     except Exception as e:
         logger.error(f"Error applying traditional filter: {e}")
         logger.error(f"Exception details: {type(e).__name__}: {str(e)}")
-        # Fallback to scipy implementation (same as time domain screen)
-        logger.info("Falling back to scipy implementation for consistency")
+        # Fallback to basic filtering
+        logger.info("Falling back to basic filtering implementation")
         try:
             # Normalize cutoff frequencies
             nyquist = sampling_freq / 2
@@ -2899,7 +3034,7 @@ def apply_multi_modal_filtering(
 
 
 def generate_filter_quality_metrics(
-    original_signal, filtered_signal, sampling_freq, quality_options
+    original_signal, filtered_signal, sampling_freq, quality_options, signal_type="ECG"
 ):
     """Generate comprehensive filter quality metrics with beautiful tables and extensive analysis."""
     try:
@@ -2921,7 +3056,7 @@ def generate_filter_quality_metrics(
 
         # Calculate temporal features
         temporal_features = calculate_temporal_features(
-            original_signal, filtered_signal, sampling_freq
+            original_signal, filtered_signal, sampling_freq, signal_type
         )
 
         # Calculate morphological features
@@ -4623,7 +4758,7 @@ def generate_filter_quality_metrics(
 
 
 def create_filter_quality_plots(
-    original_signal, filtered_signal, sampling_freq, quality_options
+    original_signal, filtered_signal, sampling_freq, quality_options, signal_type="ECG"
 ):
     """Create enhanced quality assessment plots with comprehensive analysis and critical points detection."""
     try:
@@ -4816,17 +4951,35 @@ def create_filter_quality_plots(
 
         # Temporal features analysis
         try:
-            # Peak detection and intervals using scipy
-            from scipy import signal as sp_signal
+            # Peak detection and intervals using vitalDSP WaveformMorphology
+            from vitalDSP.physiological_features.waveform import WaveformMorphology
 
-            peaks_orig, _ = sp_signal.find_peaks(
-                original_signal,
-                height=np.mean(original_signal) + np.std(original_signal),
+            # Create waveform morphology objects for peak detection
+            wm_orig = WaveformMorphology(
+                waveform=original_signal,
+                fs=sampling_freq,
+                signal_type=signal_type,
+                simple_mode=True,
             )
-            peaks_filt, _ = sp_signal.find_peaks(
-                filtered_signal,
-                height=np.mean(filtered_signal) + np.std(filtered_signal),
+            wm_filt = WaveformMorphology(
+                waveform=filtered_signal,
+                fs=sampling_freq,
+                signal_type=signal_type,
+                simple_mode=True,
             )
+
+            # Get peaks based on signal type
+            if signal_type == "ECG":
+                peaks_orig = wm_orig.r_peaks if wm_orig.r_peaks is not None else []
+                peaks_filt = wm_filt.r_peaks if wm_filt.r_peaks is not None else []
+            elif signal_type == "PPG":
+                peaks_orig = wm_orig.systolic_peaks if wm_orig.systolic_peaks is not None else []
+                peaks_filt = wm_filt.systolic_peaks if wm_filt.systolic_peaks is not None else []
+            else:
+                # Fallback to generic peak detection for unknown signal types
+                from vitalDSP.physiological_features.peak_detection import detect_peaks
+                peaks_orig = detect_peaks(original_signal, sampling_freq)
+                peaks_filt = detect_peaks(filtered_signal, sampling_freq)
 
             if len(peaks_orig) > 1 and len(peaks_filt) > 1:
                 intervals_orig = np.diff(peaks_orig) / sampling_freq
@@ -5084,9 +5237,10 @@ def calculate_mse(original_signal, filtered_signal):
 
 
 def calculate_correlation(original_signal, filtered_signal):
-    """Calculate correlation between original and filtered signals."""
+    """Calculate correlation between original and filtered signals using vitalDSP."""
     try:
-        return np.corrcoef(original_signal, filtered_signal)[0, 1]
+        from vitalDSP.utils.config_utilities.common import pearsonr
+        return pearsonr(original_signal, filtered_signal)
     except Exception as e:
         logger.error(f"Error calculating correlation: {e}")
         return 0
@@ -5238,22 +5392,40 @@ def calculate_statistical_metrics(original_signal, filtered_signal):
         }
 
 
-def calculate_temporal_features(original_signal, filtered_signal, sampling_freq):
+def calculate_temporal_features(original_signal, filtered_signal, sampling_freq, signal_type="ECG"):
     """Calculate temporal features for both signals."""
     try:
-        # Peak detection using scipy
-        from scipy import signal as sp_signal
+        # Peak detection using vitalDSP WaveformMorphology
+        from vitalDSP.physiological_features.waveform import WaveformMorphology
 
-        # Peak detection for original signal
-        peaks_orig, _ = sp_signal.find_peaks(
-            original_signal, height=np.mean(original_signal) + np.std(original_signal)
+        # Create waveform morphology objects for peak detection
+        wm_orig = WaveformMorphology(
+            waveform=original_signal,
+            fs=sampling_freq,
+            signal_type=signal_type,
+            simple_mode=True,
         )
+        wm_filt = WaveformMorphology(
+            waveform=filtered_signal,
+            fs=sampling_freq,
+            signal_type=signal_type,
+            simple_mode=True,
+        )
+
+        # Get peaks based on signal type
+        if signal_type == "ECG":
+            peaks_orig = wm_orig.r_peaks if wm_orig.r_peaks is not None else []
+            peaks_filt = wm_filt.r_peaks if wm_filt.r_peaks is not None else []
+        elif signal_type == "PPG":
+            peaks_orig = wm_orig.systolic_peaks if wm_orig.systolic_peaks is not None else []
+            peaks_filt = wm_filt.systolic_peaks if wm_filt.systolic_peaks is not None else []
+        else:
+            # Fallback to generic peak detection for unknown signal types
+            from vitalDSP.physiological_features.peak_detection import detect_peaks
+            peaks_orig = detect_peaks(original_signal, sampling_freq)
+            peaks_filt = detect_peaks(filtered_signal, sampling_freq)
+        
         peak_count_orig = len(peaks_orig)
-
-        # Peak detection for filtered signal
-        peaks_filt, _ = sp_signal.find_peaks(
-            filtered_signal, height=np.mean(filtered_signal) + np.std(filtered_signal)
-        )
         peak_count_filt = len(peaks_filt)
 
         # Calculate intervals for original signal
@@ -5381,21 +5553,21 @@ def calculate_advanced_quality_metrics(original_signal, filtered_signal, samplin
         artifacts = np.where(np.abs(original_signal - mean_val) > artifact_threshold)[0]
         artifact_percentage = len(artifacts) / len(original_signal) * 100
 
-        # Baseline wander assessment using scipy
-        from scipy import signal as sp_signal
+        # Baseline wander assessment using vitalDSP
+        from vitalDSP.filtering.signal_filtering import SignalFiltering
         
-        nyquist = sampling_freq / 2
-        cutoff = 0.5  # 0.5 Hz cutoff for baseline wander
-        b, a = sp_signal.butter(4, cutoff / nyquist, btype="high")
-        filtered_baseline = sp_signal.filtfilt(b, a, original_signal)
+        # Create high-pass filter to remove baseline wander
+        sf = SignalFiltering(original_signal)
+        filtered_baseline = sf.highpass(cutoff=0.5, fs=sampling_freq, order=4)
         baseline_wander = original_signal - filtered_baseline
         baseline_wander_percentage = (
             np.std(baseline_wander) / np.std(original_signal) * 100
         )
 
-        # Motion artifact detection
-        analytic_signal = sp_signal.hilbert(original_signal)
-        envelope = np.abs(analytic_signal)
+        # Motion artifact detection using vitalDSP
+        from vitalDSP.advanced_computation.signal_analysis import SignalAnalysis
+        sa = SignalAnalysis(original_signal, fs=sampling_freq)
+        envelope = sa.get_envelope()
         motion_artifact_score = (
             np.std(envelope) / np.mean(envelope) if np.mean(envelope) > 0 else 0
         )
@@ -5472,41 +5644,32 @@ def calculate_performance_metrics(original_signal, filtered_signal):
 
 
 def calculate_skewness(data):
-    """Calculate skewness of the data."""
+    """Calculate skewness of the data using vitalDSP."""
     try:
-        mean = np.mean(data)
-        std = np.std(data)
-        if std == 0:
-            return 0
-        return np.mean(((data - mean) / std) ** 3)
+        from vitalDSP.ml_models.feature_extractor import FeatureExtractor
+        return FeatureExtractor._skewness(data)
     except Exception as e:
         logger.error(f"Error calculating skewness: {e}")
         return 0
 
 
 def calculate_kurtosis(data):
-    """Calculate kurtosis of the data."""
+    """Calculate kurtosis of the data using vitalDSP."""
     try:
-        mean = np.mean(data)
-        std = np.std(data)
-        if std == 0:
-            return 0
-        return np.mean(((data - mean) / std) ** 4) - 3
+        from vitalDSP.ml_models.feature_extractor import FeatureExtractor
+        return FeatureExtractor._kurtosis(data)
     except Exception as e:
         logger.error(f"Error calculating kurtosis: {e}")
         return 0
 
 
 def calculate_entropy(data):
-    """Calculate entropy of the data."""
+    """Calculate entropy of the data using vitalDSP."""
     try:
-        # Simple histogram-based entropy
-        hist, _ = np.histogram(data, bins=50)
-        hist = hist[hist > 0]
-        if len(hist) == 0:
-            return 0
-        p = hist / np.sum(hist)
-        return -np.sum(p * np.log2(p))
+        from vitalDSP.physiological_features.symbolic_dynamics import SymbolicDynamics
+        # Create symbolic dynamics object and compute Shannon entropy
+        sd = SymbolicDynamics(data)
+        return sd.compute_shannon_entropy()
     except Exception as e:
         logger.error(f"Error calculating entropy: {e}")
         return 0

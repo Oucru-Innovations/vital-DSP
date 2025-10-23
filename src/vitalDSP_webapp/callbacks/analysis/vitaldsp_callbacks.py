@@ -15,6 +15,19 @@ import dash_bootstrap_components as dbc
 from scipy import signal
 import logging
 
+# Import plot utilities for performance optimization
+try:
+    from vitalDSP_webapp.utils.plot_utils import limit_plot_data, check_plot_data_size
+except ImportError:
+    # Fallback if plot_utils not available
+    def limit_plot_data(time_axis, signal_data, max_duration=300, max_points=10000, start_time=None):
+        """Fallback implementation of limit_plot_data"""
+        return time_axis, signal_data
+
+    def check_plot_data_size(time_axis, signal_data):
+        """Fallback implementation"""
+        return True
+
 # Import filtering functions from signal filtering callbacks
 from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
     apply_traditional_filter,
@@ -385,8 +398,26 @@ def create_signal_comparison_plot(
             # Ensure both signals have the same length for comparison
             min_length = min(len(original_signal), len(filtered_signal), len(time_axis))
             original_signal_trimmed = original_signal[:min_length]
-            filtered_signal_trimmed = filtered_signal[:min_length]
-            time_axis_trimmed = time_axis[:min_length]
+            filtered_signal_plot = filtered_signal[:min_length]
+            time_axis_plot = time_axis[:min_length]
+
+            # PERFORMANCE OPTIMIZATION: Limit plot data to max 5 minutes and 10K points
+            time_axis_plot, original_signal_plot = limit_plot_data(
+                time_axis_plot,
+                original_signal_trimmed,
+                max_duration=300,  # 5 minutes max
+                max_points=10000   # 10K points max
+            )
+
+            # Apply same limiting to filtered signal
+            _, filtered_signal_plot = limit_plot_data(
+                time_axis_plot,
+                filtered_signal_plot,
+                max_duration=300,
+                max_points=10000
+            )
+
+            logger.info(f"Comparison plot data limited: {len(original_signal_trimmed)} → {len(original_signal_plot)} points")
 
             # Detect critical points for both signals using vitalDSP waveform module (same as filtering screen)
             try:
@@ -394,7 +425,7 @@ def create_signal_comparison_plot(
 
                 # Detect critical points in original signal
                 original_wm = WaveformMorphology(
-                    waveform=original_signal_trimmed,
+                    waveform=original_signal_plot,
                     fs=sampling_freq,
                     signal_type=signal_type,
                     simple_mode=True,
@@ -402,7 +433,7 @@ def create_signal_comparison_plot(
 
                 # Detect critical points in filtered signal
                 filtered_wm = WaveformMorphology(
-                    waveform=filtered_signal_trimmed,
+                    waveform=filtered_signal_plot,
                     fs=sampling_freq,
                     signal_type=signal_type,
                     simple_mode=True,
@@ -427,8 +458,8 @@ def create_signal_comparison_plot(
             # Add original signal
             fig.add_trace(
                 go.Scatter(
-                    x=time_axis_trimmed,
-                    y=original_signal_trimmed,
+                    x=time_axis_plot,
+                    y=original_signal_plot,
                     mode="lines",
                     name="Raw Signal",
                     line=dict(color="blue", width=1),
@@ -447,8 +478,8 @@ def create_signal_comparison_plot(
                     ):
                         fig.add_trace(
                             go.Scatter(
-                                x=time_axis_trimmed[original_wm.systolic_peaks],
-                                y=original_signal_trimmed[original_wm.systolic_peaks],
+                                x=time_axis_plot[original_wm.systolic_peaks],
+                                y=original_signal_plot[original_wm.systolic_peaks],
                                 mode="markers",
                                 name="Raw Systolic Peaks",
                                 marker=dict(color="red", size=10, symbol="diamond"),
@@ -464,8 +495,8 @@ def create_signal_comparison_plot(
                         if dicrotic_notches is not None and len(dicrotic_notches) > 0:
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis_trimmed[dicrotic_notches],
-                                    y=original_signal_trimmed[dicrotic_notches],
+                                    x=time_axis_plot[dicrotic_notches],
+                                    y=original_signal_plot[dicrotic_notches],
                                     mode="markers",
                                     name="Raw Dicrotic Notches",
                                     marker=dict(
@@ -485,8 +516,8 @@ def create_signal_comparison_plot(
                         if diastolic_peaks is not None and len(diastolic_peaks) > 0:
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis_trimmed[diastolic_peaks],
-                                    y=original_signal_trimmed[diastolic_peaks],
+                                    x=time_axis_plot[diastolic_peaks],
+                                    y=original_signal_plot[diastolic_peaks],
                                     mode="markers",
                                     name="Raw Diastolic Peaks",
                                     marker=dict(color="green", size=8, symbol="square"),
@@ -506,8 +537,8 @@ def create_signal_comparison_plot(
                     ):
                         fig.add_trace(
                             go.Scatter(
-                                x=time_axis_trimmed[original_wm.r_peaks],
-                                y=original_signal_trimmed[original_wm.r_peaks],
+                                x=time_axis_plot[original_wm.r_peaks],
+                                y=original_signal_plot[original_wm.r_peaks],
                                 mode="markers",
                                 name="Raw R Peaks",
                                 marker=dict(color="red", size=10, symbol="diamond"),
@@ -523,8 +554,8 @@ def create_signal_comparison_plot(
                         if p_peaks is not None and len(p_peaks) > 0:
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis_trimmed[p_peaks],
-                                    y=original_signal_trimmed[p_peaks],
+                                    x=time_axis_plot[p_peaks],
+                                    y=original_signal_plot[p_peaks],
                                     mode="markers",
                                     name="Raw P Peaks",
                                     marker=dict(color="blue", size=8, symbol="circle"),
@@ -542,8 +573,8 @@ def create_signal_comparison_plot(
                         if t_peaks is not None and len(t_peaks) > 0:
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis_trimmed[t_peaks],
-                                    y=original_signal_trimmed[t_peaks],
+                                    x=time_axis_plot[t_peaks],
+                                    y=original_signal_plot[t_peaks],
                                     mode="markers",
                                     name="Raw T Peaks",
                                     marker=dict(color="green", size=8, symbol="square"),
@@ -561,8 +592,8 @@ def create_signal_comparison_plot(
                         if q_valleys is not None and len(q_valleys) > 0:
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis_trimmed[q_valleys],
-                                    y=original_signal_trimmed[q_valleys],
+                                    x=time_axis_plot[q_valleys],
+                                    y=original_signal_plot[q_valleys],
                                     mode="markers",
                                     name="Raw Q Valleys",
                                     marker=dict(
@@ -582,8 +613,8 @@ def create_signal_comparison_plot(
                         if s_valleys is not None and len(s_valleys) > 0:
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis_trimmed[s_valleys],
-                                    y=original_signal_trimmed[s_valleys],
+                                    x=time_axis_plot[s_valleys],
+                                    y=original_signal_plot[s_valleys],
                                     mode="markers",
                                     name="Raw S Valleys",
                                     marker=dict(
@@ -604,12 +635,12 @@ def create_signal_comparison_plot(
                             detect_peaks,
                         )
 
-                        peaks = detect_peaks(original_signal_trimmed, sampling_freq)
+                        peaks = detect_peaks(original_signal_plot, sampling_freq)
                         if len(peaks) > 0:
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis_trimmed[peaks],
-                                    y=original_signal_trimmed[peaks],
+                                    x=time_axis_plot[peaks],
+                                    y=original_signal_plot[peaks],
                                     mode="markers",
                                     name="Raw Detected Peaks",
                                     marker=dict(color="red", size=8, symbol="diamond"),
@@ -624,8 +655,8 @@ def create_signal_comparison_plot(
             # Add filtered signal
             fig.add_trace(
                 go.Scatter(
-                    x=time_axis_trimmed,
-                    y=filtered_signal_trimmed,
+                    x=time_axis_plot,
+                    y=filtered_signal_plot,
                     mode="lines",
                     name="Filtered Signal",
                     line=dict(color="purple", width=1),
@@ -644,8 +675,8 @@ def create_signal_comparison_plot(
                     ):
                         fig.add_trace(
                             go.Scatter(
-                                x=time_axis_trimmed[filtered_wm.systolic_peaks],
-                                y=filtered_signal_trimmed[filtered_wm.systolic_peaks],
+                                x=time_axis_plot[filtered_wm.systolic_peaks],
+                                y=filtered_signal_plot[filtered_wm.systolic_peaks],
                                 mode="markers",
                                 name="Filtered Systolic Peaks",
                                 marker=dict(color="red", size=10, symbol="diamond"),
@@ -661,8 +692,8 @@ def create_signal_comparison_plot(
                         if dicrotic_notches is not None and len(dicrotic_notches) > 0:
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis_trimmed[dicrotic_notches],
-                                    y=filtered_signal_trimmed[dicrotic_notches],
+                                    x=time_axis_plot[dicrotic_notches],
+                                    y=filtered_signal_plot[dicrotic_notches],
                                     mode="markers",
                                     name="Filtered Dicrotic Notches",
                                     marker=dict(
@@ -682,8 +713,8 @@ def create_signal_comparison_plot(
                         if diastolic_peaks is not None and len(diastolic_peaks) > 0:
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis_trimmed[diastolic_peaks],
-                                    y=filtered_signal_trimmed[diastolic_peaks],
+                                    x=time_axis_plot[diastolic_peaks],
+                                    y=filtered_signal_plot[diastolic_peaks],
                                     mode="markers",
                                     name="Filtered Diastolic Peaks",
                                     marker=dict(color="green", size=8, symbol="square"),
@@ -703,8 +734,8 @@ def create_signal_comparison_plot(
                     ):
                         fig.add_trace(
                             go.Scatter(
-                                x=time_axis_trimmed[filtered_wm.r_peaks],
-                                y=filtered_signal_trimmed[filtered_wm.r_peaks],
+                                x=time_axis_plot[filtered_wm.r_peaks],
+                                y=filtered_signal_plot[filtered_wm.r_peaks],
                                 mode="markers",
                                 name="Filtered R Peaks",
                                 marker=dict(color="red", size=10, symbol="diamond"),
@@ -720,8 +751,8 @@ def create_signal_comparison_plot(
                         if p_peaks is not None and len(p_peaks) > 0:
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis_trimmed[p_peaks],
-                                    y=filtered_signal_trimmed[p_peaks],
+                                    x=time_axis_plot[p_peaks],
+                                    y=filtered_signal_plot[p_peaks],
                                     mode="markers",
                                     name="Filtered P Peaks",
                                     marker=dict(color="blue", size=8, symbol="circle"),
@@ -739,8 +770,8 @@ def create_signal_comparison_plot(
                         if t_peaks is not None and len(t_peaks) > 0:
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis_trimmed[t_peaks],
-                                    y=filtered_signal_trimmed[t_peaks],
+                                    x=time_axis_plot[t_peaks],
+                                    y=filtered_signal_plot[t_peaks],
                                     mode="markers",
                                     name="Filtered T Peaks",
                                     marker=dict(color="green", size=8, symbol="square"),
@@ -758,8 +789,8 @@ def create_signal_comparison_plot(
                         if q_valleys is not None and len(q_valleys) > 0:
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis_trimmed[q_valleys],
-                                    y=filtered_signal_trimmed[q_valleys],
+                                    x=time_axis_plot[q_valleys],
+                                    y=filtered_signal_plot[q_valleys],
                                     mode="markers",
                                     name="Filtered Q Valleys",
                                     marker=dict(
@@ -779,8 +810,8 @@ def create_signal_comparison_plot(
                         if s_valleys is not None and len(s_valleys) > 0:
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis_trimmed[s_valleys],
-                                    y=filtered_signal_trimmed[s_valleys],
+                                    x=time_axis_plot[s_valleys],
+                                    y=filtered_signal_plot[s_valleys],
                                     mode="markers",
                                     name="Filtered S Valleys",
                                     marker=dict(
@@ -801,12 +832,12 @@ def create_signal_comparison_plot(
                             detect_peaks,
                         )
 
-                        peaks = detect_peaks(filtered_signal_trimmed, sampling_freq)
+                        peaks = detect_peaks(filtered_signal_plot, sampling_freq)
                         if len(peaks) > 0:
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis_trimmed[peaks],
-                                    y=filtered_signal_trimmed[peaks],
+                                    x=time_axis_plot[peaks],
+                                    y=filtered_signal_plot[peaks],
                                     mode="markers",
                                     name="Filtered Detected Peaks",
                                     marker=dict(color="red", size=8, symbol="diamond"),
@@ -887,13 +918,23 @@ def create_time_domain_plot(
     # Critical points are now detected using vitalDSP waveform analysis
     """Create the main time domain plot showing raw signal with critical points."""
     try:
+        # PERFORMANCE OPTIMIZATION: Limit plot data to max 5 minutes and 10K points
+        time_axis_plot, signal_data_plot = limit_plot_data(
+            time_axis,
+            signal_data,
+            max_duration=300,  # 5 minutes max
+            max_points=10000   # 10K points max
+        )
+
+        logger.info(f"Time domain plot data limited: {len(signal_data)} → {len(signal_data_plot)} points")
+
         fig = go.Figure()
 
-        # Add main signal (always show raw signal)
+        # Add main signal (always show raw signal with limited data)
         fig.add_trace(
             go.Scatter(
-                x=time_axis,
-                y=signal_data,
+                x=time_axis_plot,
+                y=signal_data_plot,
                 mode="lines",
                 name="Raw Signal",
                 line=dict(color="blue", width=1),
@@ -906,7 +947,7 @@ def create_time_domain_plot(
 
             # Create waveform morphology object
             wm = WaveformMorphology(
-                waveform=signal_data,
+                waveform=signal_data_plot,
                 fs=sampling_freq,
                 signal_type=signal_type,
                 simple_mode=True,
@@ -919,8 +960,8 @@ def create_time_domain_plot(
                     # Plot systolic peaks
                     fig.add_trace(
                         go.Scatter(
-                            x=time_axis[wm.systolic_peaks],
-                            y=signal_data[wm.systolic_peaks],
+                            x=time_axis_plot[wm.systolic_peaks],
+                            y=signal_data_plot[wm.systolic_peaks],
                             mode="markers",
                             name="Systolic Peaks",
                             marker=dict(color="red", size=10, symbol="diamond"),
@@ -934,8 +975,8 @@ def create_time_domain_plot(
                     if dicrotic_notches is not None and len(dicrotic_notches) > 0:
                         fig.add_trace(
                             go.Scatter(
-                                x=time_axis[dicrotic_notches],
-                                y=signal_data[dicrotic_notches],
+                                x=time_axis_plot[dicrotic_notches],
+                                y=signal_data_plot[dicrotic_notches],
                                 mode="markers",
                                 name="Dicrotic Notches",
                                 marker=dict(color="orange", size=8, symbol="circle"),
@@ -951,8 +992,8 @@ def create_time_domain_plot(
                     if diastolic_peaks is not None and len(diastolic_peaks) > 0:
                         fig.add_trace(
                             go.Scatter(
-                                x=time_axis[diastolic_peaks],
-                                y=signal_data[diastolic_peaks],
+                                x=time_axis_plot[diastolic_peaks],
+                                y=signal_data_plot[diastolic_peaks],
                                 mode="markers",
                                 name="Diastolic Peaks",
                                 marker=dict(color="green", size=8, symbol="square"),
@@ -968,8 +1009,8 @@ def create_time_domain_plot(
                     # Plot R peaks
                     fig.add_trace(
                         go.Scatter(
-                            x=time_axis[wm.r_peaks],
-                            y=signal_data[wm.r_peaks],
+                            x=time_axis_plot[wm.r_peaks],
+                            y=signal_data_plot[wm.r_peaks],
                             mode="markers",
                             name="R Peaks",
                             marker=dict(color="red", size=10, symbol="diamond"),
@@ -983,8 +1024,8 @@ def create_time_domain_plot(
                     if p_peaks is not None and len(p_peaks) > 0:
                         fig.add_trace(
                             go.Scatter(
-                                x=time_axis[p_peaks],
-                                y=signal_data[p_peaks],
+                                x=time_axis_plot[p_peaks],
+                                y=signal_data_plot[p_peaks],
                                 mode="markers",
                                 name="P Peaks",
                                 marker=dict(color="blue", size=8, symbol="circle"),
@@ -1000,8 +1041,8 @@ def create_time_domain_plot(
                     if t_peaks is not None and len(t_peaks) > 0:
                         fig.add_trace(
                             go.Scatter(
-                                x=time_axis[t_peaks],
-                                y=signal_data[t_peaks],
+                                x=time_axis_plot[t_peaks],
+                                y=signal_data_plot[t_peaks],
                                 mode="markers",
                                 name="T Peaks",
                                 marker=dict(color="green", size=8, symbol="square"),
@@ -1017,8 +1058,8 @@ def create_time_domain_plot(
                     if q_valleys is not None and len(q_valleys) > 0:
                         fig.add_trace(
                             go.Scatter(
-                                x=time_axis[q_valleys],
-                                y=signal_data[q_valleys],
+                                x=time_axis_plot[q_valleys],
+                                y=signal_data_plot[q_valleys],
                                 mode="markers",
                                 name="Q Valleys",
                                 marker=dict(
@@ -1036,8 +1077,8 @@ def create_time_domain_plot(
                     if s_valleys is not None and len(s_valleys) > 0:
                         fig.add_trace(
                             go.Scatter(
-                                x=time_axis[s_valleys],
-                                y=signal_data[s_valleys],
+                                x=time_axis_plot[s_valleys],
+                                y=signal_data_plot[s_valleys],
                                 mode="markers",
                                 name="S Valleys",
                                 marker=dict(
@@ -1059,12 +1100,12 @@ def create_time_domain_plot(
                         detect_peaks,
                     )
 
-                    peaks = detect_peaks(signal_data, sampling_freq)
+                    peaks = detect_peaks(signal_data_plot, sampling_freq)
                     if len(peaks) > 0:
                         fig.add_trace(
                             go.Scatter(
-                                x=time_axis[peaks],
-                                y=signal_data[peaks],
+                                x=time_axis_plot[peaks],
+                                y=signal_data_plot[peaks],
                                 mode="markers",
                                 name="Detected Peaks",
                                 marker=dict(color="red", size=8, symbol="diamond"),

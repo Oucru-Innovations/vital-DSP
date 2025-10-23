@@ -2005,3 +2005,16 @@ def create_data_preview(df: pd.DataFrame, data_info: dict) -> html.Div:
             logger.error(f"Error updating progress: {str(e)}")
             # Disable interval on error
             return current_progress, True
+
+    # Callback to enable interval when processing starts
+    @app.callback(
+        Output("upload-progress-interval", "disabled", allow_duplicate=True),
+        Input("btn-process-data", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def enable_progress_tracking(n_clicks):
+        """Enable progress tracking interval when processing starts."""
+        if not n_clicks:
+            raise PreventUpdate
+        # Enable the interval to start polling for progress
+        return False

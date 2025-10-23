@@ -14,6 +14,19 @@ from scipy import signal
 import logging
 from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 
+# Import plot utilities for performance optimization
+try:
+    from vitalDSP_webapp.utils.plot_utils import limit_plot_data, check_plot_data_size
+except ImportError:
+    # Fallback if plot_utils not available
+    def limit_plot_data(time_axis, signal_data, max_duration=300, max_points=10000, start_time=None):
+        """Fallback implementation of limit_plot_data"""
+        return time_axis, signal_data
+
+    def check_plot_data_size(time_axis, signal_data):
+        """Fallback implementation"""
+        return True
+
 logger = logging.getLogger(__name__)
 
 

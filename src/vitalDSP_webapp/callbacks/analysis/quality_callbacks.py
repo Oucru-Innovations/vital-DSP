@@ -22,6 +22,19 @@ from scipy import signal
 import dash_bootstrap_components as dbc
 import logging
 
+# Import plot utilities for performance optimization
+try:
+    from vitalDSP_webapp.utils.plot_utils import limit_plot_data, check_plot_data_size
+except ImportError:
+    # Fallback if plot_utils not available
+    def limit_plot_data(time_axis, signal_data, max_duration=300, max_points=10000, start_time=None):
+        """Fallback implementation of limit_plot_data"""
+        return time_axis, signal_data
+
+    def check_plot_data_size(time_axis, signal_data):
+        """Fallback implementation"""
+        return True
+
 logger = logging.getLogger(__name__)
 
 
@@ -684,6 +697,16 @@ def create_quality_main_plot(signal_data, quality_results, sampling_freq):
     try:
         time_axis = np.arange(len(signal_data)) / sampling_freq
 
+        # PERFORMANCE OPTIMIZATION: Limit plot data to max 5 minutes and 10K points
+        time_axis_plot, signal_data_plot = limit_plot_data(
+            time_axis,
+            signal_data,
+            max_duration=300,  # 5 minutes max
+            max_points=10000   # 10K points max
+        )
+
+        logger.info(f"Quality plot data limited: {len(signal_data)} → {len(signal_data_plot)} points")
+
         fig = make_subplots(
             rows=2,
             cols=1,
@@ -691,11 +714,11 @@ def create_quality_main_plot(signal_data, quality_results, sampling_freq):
             vertical_spacing=0.12,
         )
 
-        # Plot signal
+        # Plot signal (using limited data)
         fig.add_trace(
             go.Scatter(
-                x=time_axis,
-                y=signal_data,
+                x=time_axis_plot,
+                y=signal_data_plot,
                 mode="lines",
                 name="Signal",
                 line=dict(color="blue", width=1),
@@ -710,11 +733,13 @@ def create_quality_main_plot(signal_data, quality_results, sampling_freq):
             and "artifact_locations" in quality_results["artifacts"]
         ):
             artifact_indices = quality_results["artifacts"]["artifact_locations"]
+            # Filter artifacts to only include those within the limited time range
+            artifact_indices = [i for i in artifact_indices if i < len(signal_data_plot)]
             if artifact_indices:
                 fig.add_trace(
                     go.Scatter(
-                        x=time_axis[artifact_indices],
-                        y=signal_data[artifact_indices],
+                        x=time_axis_plot[artifact_indices],
+                        y=signal_data_plot[artifact_indices],
                         mode="markers",
                         name="Artifacts",
                         marker=dict(color="red", size=4, symbol="x"),

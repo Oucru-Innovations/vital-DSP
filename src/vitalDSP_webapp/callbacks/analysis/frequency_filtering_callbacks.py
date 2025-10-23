@@ -13,6 +13,19 @@ from scipy import signal
 from scipy.fft import rfft, rfftfreq
 import logging
 
+# Import plot utilities for performance optimization
+try:
+    from vitalDSP_webapp.utils.plot_utils import limit_plot_data, check_plot_data_size
+except ImportError:
+    # Fallback if plot_utils not available
+    def limit_plot_data(time_axis, signal_data, max_duration=300, max_points=10000, start_time=None):
+        """Fallback implementation of limit_plot_data"""
+        return time_axis, signal_data
+
+    def check_plot_data_size(time_axis, signal_data):
+        """Fallback implementation"""
+        return True
+
 
 # Helper function for formatting large numbers
 def format_large_number(value, precision=3, use_scientific=False):
@@ -963,12 +976,29 @@ def register_frequency_filtering_callbacks(app):
             # Create time axis
             time_axis = np.arange(len(selected_signal)) / sampling_freq
 
-            # Create filtered signal plot
+            # PERFORMANCE OPTIMIZATION: Limit plot data to max 5 minutes and 10K points
+            time_axis_plot, selected_signal_plot = limit_plot_data(
+                time_axis,
+                selected_signal,
+                max_duration=300,  # 5 minutes max
+                max_points=10000   # 10K points max
+            )
+
+            _, filtered_signal_plot = limit_plot_data(
+                time_axis,
+                filtered_signal,
+                max_duration=300,
+                max_points=10000
+            )
+
+            logger.info(f"Frequency filtering plot data limited: {len(selected_signal)} → {len(selected_signal_plot)} points")
+
+            # Create filtered signal plot (using limited data)
             signal_fig = go.Figure()
             signal_fig.add_trace(
                 go.Scatter(
-                    x=time_axis,
-                    y=selected_signal,
+                    x=time_axis_plot,
+                    y=selected_signal_plot,
                     mode="lines",
                     name="Original Signal",
                     line=dict(color="blue"),
@@ -977,8 +1007,8 @@ def register_frequency_filtering_callbacks(app):
             )
             signal_fig.add_trace(
                 go.Scatter(
-                    x=time_axis,
-                    y=filtered_signal,
+                    x=time_axis_plot,
+                    y=filtered_signal_plot,
                     mode="lines",
                     name="Filtered Signal",
                     line=dict(color="red"),

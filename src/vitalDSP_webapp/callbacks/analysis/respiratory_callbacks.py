@@ -12,6 +12,19 @@ from scipy import signal
 import dash_bootstrap_components as dbc
 import logging
 
+# Import plot utilities for performance optimization
+try:
+    from vitalDSP_webapp.utils.plot_utils import limit_plot_data, check_plot_data_size
+except ImportError:
+    # Fallback if plot_utils not available
+    def limit_plot_data(time_axis, signal_data, max_duration=300, max_points=10000, start_time=None):
+        """Fallback implementation of limit_plot_data"""
+        return time_axis, signal_data
+
+    def check_plot_data_size(time_axis, signal_data):
+        """Fallback implementation"""
+        return True
+
 # Initialize logger first
 logger = logging.getLogger(__name__)
 
@@ -905,11 +918,29 @@ def create_respiratory_signal_plot(
             except Exception as e:
                 logger.error(f"Moving average smoothing failed: {e}")
 
-        # Create the main signal plot
+        # PERFORMANCE OPTIMIZATION: Limit plot data to max 5 minutes and 10K points
+        time_axis_plot, processed_signal_plot = limit_plot_data(
+            time_axis,
+            processed_signal,
+            max_duration=300,  # 5 minutes max
+            max_points=10000   # 10K points max
+        )
+
+        # Also limit original signal data for consistency
+        _, signal_data_plot = limit_plot_data(
+            time_axis,
+            signal_data,
+            max_duration=300,
+            max_points=10000
+        )
+
+        logger.info(f"Plot data limited: {len(processed_signal)} → {len(processed_signal_plot)} points")
+
+        # Create the main signal plot (using limited data)
         fig.add_trace(
             go.Scatter(
-                x=time_axis,
-                y=processed_signal,
+                x=time_axis_plot,
+                y=processed_signal_plot,
                 mode="lines",
                 name=f"{signal_type.upper()} Signal (Processed)",
                 line=dict(color="#2E86AB", width=2),
@@ -917,12 +948,12 @@ def create_respiratory_signal_plot(
             )
         )
 
-        # Add original signal if preprocessing was applied
+        # Add original signal if preprocessing was applied (using limited data)
         if preprocessing_options and len(preprocessing_options) > 0:
             fig.add_trace(
                 go.Scatter(
-                    x=time_axis,
-                    y=signal_data,
+                    x=time_axis_plot,
+                    y=signal_data_plot,
                     mode="lines",
                     name=f"{signal_type.upper()} Signal (Original)",
                     line=dict(color="#95A5A6", width=1, dash="dot"),
@@ -931,22 +962,22 @@ def create_respiratory_signal_plot(
                 )
             )
 
-        # Add breathing pattern detection if enabled
+        # Add breathing pattern detection if enabled (use limited data for performance)
         if estimation_methods and "peak_detection" in estimation_methods:
             try:
-                # Detect breathing peaks
-                prominence = 0.3 * np.std(processed_signal)
+                # Detect breathing peaks on limited data
+                prominence = 0.3 * np.std(processed_signal_plot)
                 distance = int(0.5 * sampling_freq)  # Minimum 0.5s between breaths
 
                 peaks, properties = signal.find_peaks(
-                    processed_signal, prominence=prominence, distance=distance
+                    processed_signal_plot, prominence=prominence, distance=distance
                 )
 
                 if len(peaks) > 0:
                     fig.add_trace(
                         go.Scatter(
-                            x=time_axis[peaks],
-                            y=processed_signal[peaks],
+                            x=time_axis_plot[peaks],
+                            y=processed_signal_plot[peaks],
                             mode="markers",
                             name="Breathing Peaks",
                             marker=dict(color="red", size=8, symbol="diamond"),
@@ -957,8 +988,8 @@ def create_respiratory_signal_plot(
                     # Add breath annotations
                     for i, peak in enumerate(peaks[:10]):  # Limit to first 10 breaths
                         fig.add_annotation(
-                            x=time_axis[peak],
-                            y=processed_signal[peak],
+                            x=time_axis_plot[peak],
+                            y=processed_signal_plot[peak],
                             text=f"B{i+1}",
                             showarrow=True,
                             arrowhead=2,
@@ -3672,6 +3703,16 @@ def create_comprehensive_respiratory_plots(
     logger.info(f"  - high_cut: {high_cut}")
 
     try:
+        # PERFORMANCE OPTIMIZATION: Limit plot data to max 5 minutes and 10K points
+        time_axis_plot, signal_data_plot = limit_plot_data(
+            time_axis,
+            signal_data,
+            max_duration=300,  # 5 minutes max
+            max_points=10000   # 10K points max
+        )
+
+        logger.info(f"Comprehensive plots data limited: {len(signal_data)} → {len(signal_data_plot)} points")
+
         # Create subplots for different analyses
         logger.info("Creating subplots...")
         fig = make_subplots(
@@ -3694,11 +3735,11 @@ def create_comprehensive_respiratory_plots(
             horizontal_spacing=0.08,
         )
 
-        # 1. Time Domain Signal
+        # 1. Time Domain Signal (using limited data)
         fig.add_trace(
             go.Scatter(
-                x=time_axis,
-                y=signal_data,
+                x=time_axis_plot,
+                y=signal_data_plot,
                 mode="lines",
                 name="Original Signal",
                 line=dict(color="#2E86AB", width=2),
@@ -3716,10 +3757,10 @@ def create_comprehensive_respiratory_plots(
 
                 if low < high < 1.0:
                     b, a = signal.butter(4, [low, high], btype="bandpass")
-                    filtered_signal = signal.filtfilt(b, a, signal_data)
+                    filtered_signal = signal.filtfilt(b, a, signal_data_plot)
                     fig.add_trace(
                         go.Scatter(
-                            x=time_axis,
+                            x=time_axis_plot,
                             y=filtered_signal,
                             mode="lines",
                             name="Filtered Signal",
@@ -3732,8 +3773,8 @@ def create_comprehensive_respiratory_plots(
                 logger.error(f"Filtering failed: {e}")
 
         # 2. Frequency Domain
-        fft_result = np.abs(np.fft.rfft(signal_data))
-        freqs = np.fft.rfftfreq(len(signal_data), 1 / sampling_freq)
+        fft_result = np.abs(np.fft.rfft(signal_data_plot))
+        freqs = np.fft.rfftfreq(len(signal_data_plot), 1 / sampling_freq)
 
         fig.add_trace(
             go.Scatter(
@@ -3785,17 +3826,17 @@ def create_comprehensive_respiratory_plots(
         # 3. Breathing Pattern & Respiratory Rate Variability
         if estimation_methods and "peak_detection" in estimation_methods:
             try:
-                prominence = 0.3 * np.std(signal_data)
+                prominence = 0.3 * np.std(signal_data_plot)
                 distance = int(0.5 * sampling_freq)
                 peaks, _ = signal.find_peaks(
-                    signal_data, prominence=prominence, distance=distance
+                    signal_data_plot, prominence=prominence, distance=distance
                 )
 
                 if len(peaks) > 0:
                     fig.add_trace(
                         go.Scatter(
-                            x=time_axis[peaks],
-                            y=signal_data[peaks],
+                            x=time_axis_plot[peaks],
+                            y=signal_data_plot[peaks],
                             mode="markers",
                             name="Breathing Peaks",
                             marker=dict(color="red", size=8, symbol="diamond"),
@@ -3807,7 +3848,7 @@ def create_comprehensive_respiratory_plots(
                     # Add breath intervals
                     if len(peaks) > 1:
                         breath_intervals = np.diff(peaks) / sampling_freq
-                        interval_times = time_axis[peaks[1:]]
+                        interval_times = time_axis_plot[peaks[1:]]
 
                         # Calculate respiratory rate over time
                         rr_over_time = 60.0 / breath_intervals  # Convert to BPM
@@ -3869,7 +3910,7 @@ def create_comprehensive_respiratory_plots(
         if advanced_options and "sleep_apnea" in advanced_options:
             try:
                 # Amplitude-based apnea detection
-                apnea_threshold = 0.3 * np.std(signal_data)
+                apnea_threshold = 0.3 * np.std(signal_data_plot)
 
                 if detect_apnea_amplitude is None:
                     logger.warning(
@@ -3878,7 +3919,7 @@ def create_comprehensive_respiratory_plots(
                     apnea_events = []
                 else:
                     apnea_events = detect_apnea_amplitude(
-                        signal_data,
+                        signal_data_plot,
                         sampling_freq,
                         threshold=apnea_threshold,
                         min_duration=5,
@@ -3892,7 +3933,7 @@ def create_comprehensive_respiratory_plots(
                     pause_apnea_events = []
                 else:
                     pause_apnea_events = detect_apnea_pauses(
-                        signal_data, sampling_freq, min_pause_duration=5
+                        signal_data_plot, sampling_freq, min_pause_duration=5
                     )
 
                 # Plot all apnea events
@@ -3901,11 +3942,11 @@ def create_comprehensive_respiratory_plots(
                     for start, end in all_apnea_events:
                         start_idx = int(start * sampling_freq)
                         end_idx = int(end * sampling_freq)
-                        if start_idx < len(time_axis) and end_idx < len(time_axis):
+                        if start_idx < len(time_axis_plot) and end_idx < len(time_axis_plot):
                             fig.add_trace(
                                 go.Scatter(
-                                    x=time_axis[start_idx:end_idx],
-                                    y=signal_data[start_idx:end_idx],
+                                    x=time_axis_plot[start_idx:end_idx],
+                                    y=signal_data_plot[start_idx:end_idx],
                                     mode="lines",
                                     name="Apnea Event",
                                     line=dict(color="red", width=3),
@@ -3940,11 +3981,11 @@ def create_comprehensive_respiratory_plots(
             window_size = int(0.5 * sampling_freq)
             if window_size > 0:
                 moving_avg = np.convolve(
-                    signal_data, np.ones(window_size) / window_size, mode="same"
+                    signal_data_plot, np.ones(window_size) / window_size, mode="same"
                 )
                 fig.add_trace(
                     go.Scatter(
-                        x=time_axis,
+                        x=time_axis_plot,
                         y=moving_avg,
                         mode="lines",
                         name="Moving Average",
@@ -3955,12 +3996,12 @@ def create_comprehensive_respiratory_plots(
                 )
 
                 # Add signal envelope
-                upper_envelope = moving_avg + 2 * np.std(signal_data)
-                lower_envelope = moving_avg - 2 * np.std(signal_data)
+                upper_envelope = moving_avg + 2 * np.std(signal_data_plot)
+                lower_envelope = moving_avg - 2 * np.std(signal_data_plot)
 
                 fig.add_trace(
                     go.Scatter(
-                        x=time_axis,
+                        x=time_axis_plot,
                         y=upper_envelope,
                         mode="lines",
                         name="Upper Envelope",
@@ -3973,7 +4014,7 @@ def create_comprehensive_respiratory_plots(
 
                 fig.add_trace(
                     go.Scatter(
-                        x=time_axis,
+                        x=time_axis_plot,
                         y=lower_envelope,
                         mode="lines",
                         name="Lower Envelope",
@@ -3993,9 +4034,9 @@ def create_comprehensive_respiratory_plots(
                     try:
                         # Create a mini-ensemble visualization
                         ensemble_window = int(2.0 * sampling_freq)  # 2-second windows
-                        if ensemble_window > 0 and len(signal_data) > ensemble_window:
+                        if ensemble_window > 0 and len(signal_data_plot) > ensemble_window:
                             # Calculate local statistics in windows
-                            n_windows = len(signal_data) // ensemble_window
+                            n_windows = len(signal_data_plot) // ensemble_window
                             window_means = []
                             window_stds = []
                             window_times = []
@@ -4003,11 +4044,11 @@ def create_comprehensive_respiratory_plots(
                             for i in range(n_windows):
                                 start_idx = i * ensemble_window
                                 end_idx = start_idx + ensemble_window
-                                window_data = signal_data[start_idx:end_idx]
+                                window_data = signal_data_plot[start_idx:end_idx]
                                 window_means.append(np.mean(window_data))
                                 window_stds.append(np.std(window_data))
                                 window_times.append(
-                                    time_axis[start_idx + ensemble_window // 2]
+                                    time_axis_plot[start_idx + ensemble_window // 2]
                                 )
 
                             # Add ensemble stability indicator
