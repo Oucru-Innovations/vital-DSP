@@ -6,7 +6,9 @@ This module provides the main Dash and FastAPI application setup.
 
 from dash import Dash, html, dcc
 from fastapi import FastAPI
-from starlette.middleware.wsgi import WSGIMiddleware
+
+# Use the built-in FastAPI mounting approach instead of WSGI middleware
+# This avoids compatibility issues between FastAPI and Dash
 import dash_bootstrap_components as dbc
 
 # Import configuration
@@ -23,13 +25,23 @@ from vitalDSP_webapp.callbacks import (
     register_sidebar_callbacks,
     register_page_routing_callbacks,
     register_upload_callbacks,
+    register_header_monitoring_callbacks,
     register_vitaldsp_callbacks,
     register_frequency_filtering_callbacks,
     register_signal_filtering_callbacks,
     register_respiratory_callbacks,
+    register_quality_callbacks,
+    register_advanced_callbacks,
+    register_health_report_callbacks,
+    register_settings_callbacks,
+    register_tasks_callbacks,
+    register_pipeline_callbacks,
     register_physiological_callbacks,
     register_features_callbacks,
     register_preview_callbacks,
+)
+from vitalDSP_webapp.callbacks.core.theme_callbacks import (
+    register_theme_callbacks,
 )
 
 
@@ -53,6 +65,18 @@ def create_dash_app() -> Dash:
     )
     app.title = app_config.APP_NAME
 
+    # Get initial theme from settings
+    initial_theme = "light"  # default
+    try:
+        from vitalDSP_webapp.services.settings_service import SettingsService
+
+        service = SettingsService()
+        settings = service.get_general_settings()
+        if settings and hasattr(settings, "theme"):
+            initial_theme = settings.theme
+    except Exception as e:
+        print(f"Warning: Could not load theme from settings: {e}")
+
     # Set the layout of the app, including header, sidebar, and footer
     app.layout = html.Div(
         id="body",
@@ -61,9 +85,14 @@ def create_dash_app() -> Dash:
             dcc.Store(id="store_file_path"),
             dcc.Store(id="store_total_rows"),
             dcc.Store(id="store_window"),
-            dcc.Store(id="store_theme", data=app_config.THEME),
+            dcc.Store(id="store_theme", data=initial_theme),
             dcc.Store(id="store_processed_data"),
             dcc.Store(id="store_analysis_results"),
+            # Theme-related stores
+            dcc.Store(id="plot-theme-config", data={}),
+            dcc.Store(id="theme-status", data="light"),
+            # Debug elements
+            html.Div(id="theme-debug", style={"display": "none"}),
             # Global stores that persist across page changes
             dcc.Store(id="store-uploaded-data", storage_type="memory"),
             dcc.Store(id="store-data-config", storage_type="memory"),
@@ -151,6 +180,8 @@ def create_dash_app() -> Dash:
     register_sidebar_callbacks(app)
     register_page_routing_callbacks(app)
     register_upload_callbacks(app)
+    register_header_monitoring_callbacks(app)  # Register header monitoring callbacks
+    register_theme_callbacks(app)  # Register theme switching callbacks
     register_vitaldsp_callbacks(app)  # Register vitalDSP analysis callbacks
     register_frequency_filtering_callbacks(
         app
@@ -160,6 +191,12 @@ def create_dash_app() -> Dash:
     register_physiological_callbacks(app)  # Register physiological features callbacks
     register_features_callbacks(app)  # Register feature engineering callbacks
     register_preview_callbacks(app)  # Register preview callbacks
+    register_quality_callbacks(app)  # Register signal quality assessment callbacks
+    register_advanced_callbacks(app)  # Register advanced processing callbacks
+    register_health_report_callbacks(app)  # Register health report generation callbacks
+    register_settings_callbacks(app)  # Register settings management callbacks
+    register_pipeline_callbacks(app)
+    register_tasks_callbacks(app)  # Register pipeline visualization callbacks
 
     return app
 
@@ -187,8 +224,18 @@ def create_fastapi_app() -> FastAPI:
     # Create the Dash app
     dash_app = create_dash_app()
 
-    # Mount Dash app at the root ("/")
-    fastapi_app.mount("/", WSGIMiddleware(dash_app.server))
+    # Mount Dash app at the root ("/") using a simpler approach
+    # This avoids the WSGI middleware compatibility issues
+    from starlette.applications import Starlette
+    from starlette.routing import Mount
+    from starlette.middleware import Middleware
+    from starlette.middleware.wsgi import WSGIMiddleware
+
+    # Create a simple WSGI middleware wrapper
+    dash_wsgi = WSGIMiddleware(dash_app.server)
+
+    # Mount the Dash app
+    fastapi_app.mount("/", dash_wsgi)
 
     return fastapi_app
 

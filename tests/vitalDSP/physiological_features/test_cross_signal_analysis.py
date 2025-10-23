@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from vitalDSP.utils.common import pearsonr, coherence, grangercausalitytests
+from vitalDSP.utils.config_utilities.common import pearsonr, coherence, grangercausalitytests
 from vitalDSP.physiological_features.cross_signal_analysis import CrossSignalAnalysis
 
 

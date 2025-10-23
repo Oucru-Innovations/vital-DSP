@@ -1,3 +1,31 @@
+"""
+Physiological Features Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- SciPy integration for advanced signal processing
+- Interactive visualization capabilities
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.physiological_features.coherence_analysis import CoherenceAnalysis
+    >>> signal = np.random.randn(1000)
+    >>> processor = CoherenceAnalysis(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
 from scipy.signal import coherence
 from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 from vitalDSP.respiratory_analysis.respiratory_analysis import PreprocessConfig

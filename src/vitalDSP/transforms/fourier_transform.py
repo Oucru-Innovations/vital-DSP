@@ -1,4 +1,45 @@
+"""
+Fourier Transform Module for Physiological Signal Processing
+
+This module provides comprehensive Fourier Transform capabilities for analyzing
+the frequency content of physiological signals such as ECG, EEG, and PPG. It
+implements both Discrete Fourier Transform (DFT) and Inverse Discrete Fourier
+Transform (IDFT) with signal validation and error handling.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Discrete Fourier Transform (DFT) computation
+- Inverse Discrete Fourier Transform (IDFT) reconstruction
+- Signal validation and error handling
+- Frequency domain analysis capabilities
+- Signal reconstruction from frequency components
+
+Examples:
+--------
+Basic frequency analysis:
+    >>> import numpy as np
+    >>> from vitalDSP.transforms.fourier_transform import FourierTransform
+    >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
+    >>> ft = FourierTransform(signal)
+    >>> frequency_spectrum = ft.compute_dft()
+    >>> print(f"Spectrum shape: {frequency_spectrum.shape}")
+
+Signal reconstruction:
+    >>> reconstructed_signal = ft.compute_idft(frequency_spectrum)
+    >>> print(f"Reconstruction error: {np.mean((signal - reconstructed_signal)**2):.6f}")
+
+Frequency domain filtering:
+    >>> # Zero out high frequencies
+    >>> filtered_spectrum = frequency_spectrum.copy()
+    >>> filtered_spectrum[20:] = 0
+    >>> filtered_signal = ft.compute_idft(filtered_spectrum)
+"""
+
 import numpy as np
+from vitalDSP.utils.data_processing.validation import SignalValidator
 
 
 class FourierTransform:
@@ -28,12 +69,26 @@ class FourierTransform:
             The input signal to be transformed. The signal should be a 1D array representing time-domain data,
             such as an ECG or EEG signal.
 
+        Raises
+        ------
+        ValueError
+            If the signal is empty or invalid.
+
         Examples
         --------
         >>> signal = np.sin(np.linspace(0, 10, 100)) + np.random.normal(0, 0.1, 100)
         >>> ft = FourierTransform(signal)
         >>> print(ft.signal)
         """
+        # Validate signal - require min_length=2, don't allow empty signals
+        SignalValidator.validate_signal(
+            signal,
+            min_length=2,
+            allow_empty=False,
+            allow_nan=True,
+            allow_inf=True,
+            signal_name="signal",
+        )
         self.signal = signal
 
     def compute_dft(self):

@@ -457,3 +457,274 @@ def get_system_recommendations() -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Error getting system recommendations: {e}")
         return {}
+
+
+# Settings management functions for compatibility with tests
+def load_user_settings() -> Dict[str, Any]:
+    """Load user settings from file or return defaults."""
+    try:
+        settings_file = "settings.json"
+        if os.path.exists(settings_file):
+            with open(settings_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        else:
+            return get_default_settings()
+    except Exception as e:
+        logger.error(f"Error loading user settings: {e}")
+        return get_default_settings()
+
+
+def save_user_settings(settings: Dict[str, Any]) -> None:
+    """Save user settings to file."""
+    try:
+        settings_file = "settings.json"
+        with open(settings_file, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=2, ensure_ascii=False)
+        logger.info("User settings saved successfully")
+    except Exception as e:
+        logger.error(f"Error saving user settings: {e}")
+        raise
+
+
+def get_setting_value(key: str, default: Any = None) -> Any:
+    """Get a specific setting value."""
+    try:
+        settings = load_user_settings()
+        return settings.get(key, default)
+    except Exception as e:
+        logger.error(f"Error getting setting value for {key}: {e}")
+        return default
+
+
+def set_setting_value(key: str, value: Any) -> None:
+    """Set a specific setting value."""
+    try:
+        settings = load_user_settings()
+        settings[key] = value
+        save_user_settings(settings)
+    except Exception as e:
+        logger.error(f"Error setting value for {key}: {e}")
+        raise
+
+
+def reset_to_defaults() -> Dict[str, Any]:
+    """Reset settings to default values."""
+    try:
+        default_settings = get_default_settings()
+        save_user_settings(default_settings)
+        return default_settings
+    except Exception as e:
+        logger.error(f"Error resetting to defaults: {e}")
+        return get_default_settings()
+
+
+def validate_setting_value(key: str, value: Any) -> bool:
+    """Validate a specific setting value."""
+    try:
+        settings = {key: value}
+
+        # Validate based on setting type
+        if key in ["theme"]:
+            return SettingsValidator.validate_general_settings(settings)["valid"]
+        elif key in ["default_sampling_freq", "default_fft_points", "peak_threshold"]:
+            return SettingsValidator.validate_analysis_settings(settings)["valid"]
+        elif key in ["max_file_size", "auto_save_interval", "data_retention_days"]:
+            return SettingsValidator.validate_data_settings(settings)["valid"]
+        elif key in ["max_cpu_usage", "memory_limit_gb", "parallel_threads"]:
+            return SettingsValidator.validate_system_settings(settings)["valid"]
+        else:
+            return True  # Unknown keys are considered valid
+    except Exception as e:
+        logger.error(f"Error validating setting {key}: {e}")
+        return False
+
+
+def get_setting_schema() -> Dict[str, Any]:
+    """Get the settings schema/definition."""
+    return {
+        "theme": {
+            "type": "string",
+            "options": ["light", "dark", "auto"],
+            "default": "light",
+            "description": "Application theme",
+        },
+        "page_size": {
+            "type": "integer",
+            "options": [10, 25, 50, 100],
+            "default": 25,
+            "description": "Number of items per page",
+        },
+        "auto_refresh_interval": {
+            "type": "integer",
+            "min": 0,
+            "max": 300,
+            "default": 30,
+            "description": "Auto-refresh interval in seconds",
+        },
+        "default_sampling_freq": {
+            "type": "integer",
+            "min": 100,
+            "default": 1000,
+            "description": "Default sampling frequency in Hz",
+        },
+        "default_fft_points": {
+            "type": "integer",
+            "min": 256,
+            "default": 1024,
+            "description": "Default FFT points",
+        },
+        "peak_threshold": {
+            "type": "float",
+            "min": 0.1,
+            "max": 1.0,
+            "default": 0.5,
+            "description": "Peak detection threshold",
+        },
+        "max_file_size": {
+            "type": "integer",
+            "min": 10,
+            "max": 1000,
+            "default": 100,
+            "description": "Maximum file size in MB",
+        },
+        "auto_save_interval": {
+            "type": "integer",
+            "min": 1,
+            "max": 60,
+            "default": 5,
+            "description": "Auto-save interval in minutes",
+        },
+        "data_retention_days": {
+            "type": "integer",
+            "min": 1,
+            "max": 365,
+            "default": 30,
+            "description": "Data retention period in days",
+        },
+        "max_cpu_usage": {
+            "type": "integer",
+            "min": 10,
+            "max": 100,
+            "default": 80,
+            "description": "Maximum CPU usage percentage",
+        },
+        "memory_limit_gb": {
+            "type": "integer",
+            "min": 1,
+            "max": 32,
+            "default": 4,
+            "description": "Memory limit in GB",
+        },
+        "parallel_threads": {
+            "type": "integer",
+            "min": 1,
+            "max": 16,
+            "default": 4,
+            "description": "Number of parallel processing threads",
+        },
+    }
+
+
+def apply_setting_constraints(settings: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply constraints and validation to settings."""
+    try:
+        constrained_settings = settings.copy()
+
+        # Apply general constraints
+        general_validation = SettingsValidator.validate_general_settings(
+            constrained_settings
+        )
+        if not general_validation["valid"]:
+            logger.warning(
+                f"General settings validation failed: {general_validation['errors']}"
+            )
+
+        # Apply analysis constraints
+        analysis_validation = SettingsValidator.validate_analysis_settings(
+            constrained_settings
+        )
+        if not analysis_validation["valid"]:
+            logger.warning(
+                f"Analysis settings validation failed: {analysis_validation['errors']}"
+            )
+
+        # Apply data constraints
+        data_validation = SettingsValidator.validate_data_settings(constrained_settings)
+        if not data_validation["valid"]:
+            logger.warning(
+                f"Data settings validation failed: {data_validation['errors']}"
+            )
+
+        # Apply system constraints
+        system_validation = SettingsValidator.validate_system_settings(
+            constrained_settings
+        )
+        if not system_validation["valid"]:
+            logger.warning(
+                f"System settings validation failed: {system_validation['errors']}"
+            )
+
+        return constrained_settings
+    except Exception as e:
+        logger.error(f"Error applying setting constraints: {e}")
+        return settings
+
+
+def export_settings(filename: str = None) -> str:
+    """Export settings to a file."""
+    try:
+        settings = load_user_settings()
+        return SettingsExporter.export_settings_json(settings, filename)
+    except Exception as e:
+        logger.error(f"Error exporting settings: {e}")
+        raise
+
+
+def import_settings(filename: str) -> Dict[str, Any]:
+    """Import settings from a file."""
+    try:
+        return SettingsExporter.import_settings_json(filename)
+    except Exception as e:
+        logger.error(f"Error importing settings: {e}")
+        raise
+
+
+def backup_settings() -> str:
+    """Create a backup of current settings."""
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_filename = f"settings_backup_{timestamp}.json"
+        settings = load_user_settings()
+        return SettingsExporter.export_settings_json(settings, backup_filename)
+    except Exception as e:
+        logger.error(f"Error creating settings backup: {e}")
+        raise
+
+
+def restore_settings(backup_name: str) -> Dict[str, Any]:
+    """Restore settings from a backup."""
+    try:
+        restored_settings = SettingsExporter.import_settings_json(backup_name)
+        save_user_settings(restored_settings)
+        return restored_settings
+    except Exception as e:
+        logger.error(f"Error restoring settings from {backup_name}: {e}")
+        raise
+
+
+def get_default_settings() -> Dict[str, Any]:
+    """Get default settings values."""
+    return {
+        "theme": "light",
+        "page_size": 25,
+        "auto_refresh_interval": 30,
+        "default_sampling_freq": 1000,
+        "default_fft_points": 1024,
+        "peak_threshold": 0.5,
+        "max_file_size": 100,
+        "auto_save_interval": 5,
+        "data_retention_days": 30,
+        "max_cpu_usage": 80,
+        "memory_limit_gb": 4,
+        "parallel_threads": 4,
+    }

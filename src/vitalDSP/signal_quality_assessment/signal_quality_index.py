@@ -1,6 +1,35 @@
+"""
+Signal Quality Assessment Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- SciPy integration for advanced signal processing
+- Signal validation and error handling
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.signal_quality_assessment.signal_quality_index import SignalQualityIndex
+    >>> signal = np.random.randn(1000)
+    >>> processor = SignalQualityIndex(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
 import numpy as np
 from scipy.stats import pearsonr
 from scipy.stats import zscore, iqr, kurtosis, skew
+from vitalDSP.utils.data_processing.validation import SignalValidator
 
 
 class SignalQualityIndex:
@@ -19,6 +48,11 @@ class SignalQualityIndex:
         signal : numpy.ndarray
             The input signal to assess for quality.
 
+        Raises
+        ------
+        ValueError
+            If the signal is empty or invalid.
+
         Examples
         --------
         >>> signal = np.array([1, 2, 3, 4, 5])
@@ -26,6 +60,12 @@ class SignalQualityIndex:
         """
         if not isinstance(signal, np.ndarray):
             signal = np.array(signal)
+
+        # Validate signal - don't allow empty signals
+        SignalValidator.validate_signal(
+            signal, min_length=1, allow_empty=False, signal_name="signal"
+        )
+
         self.signal = signal
 
     def _scale_sqi(self, sqi_values, scale="zscore"):
@@ -45,10 +85,22 @@ class SignalQualityIndex:
             Scaled SQI values.
         """
         if scale == "zscore":
-            return zscore(sqi_values)
+            # Use manual z-score calculation to avoid precision loss warnings
+            mean_val = np.mean(sqi_values)
+            std_val = np.std(sqi_values)
+            if (
+                std_val > 1e-10
+            ):  # Use a small threshold to avoid division by tiny numbers
+                return (sqi_values - mean_val) / std_val
+            else:
+                return sqi_values  # Return original values if all are identical
         elif scale == "iqr":
             median = np.median(sqi_values)
-            return (sqi_values - median) / iqr(sqi_values)
+            iqr_val = iqr(sqi_values)
+            if iqr_val > 0:
+                return (sqi_values - median) / iqr_val
+            else:
+                return np.zeros_like(sqi_values)
         elif scale == "minmax":
             min_val = np.min(sqi_values)
             max_val = np.max(sqi_values)
@@ -307,9 +359,13 @@ class SignalQualityIndex:
         def compute_sqi(segment):
             zero_crossings = np.sum(np.diff(np.sign(segment)) != 0)
             expected_crossings = len(segment) / 2
-            sqi_value = (
-                1 - np.abs(zero_crossings - expected_crossings) / expected_crossings
-            )
+            # Avoid divide by zero
+            if expected_crossings > 0:
+                sqi_value = (
+                    1 - np.abs(zero_crossings - expected_crossings) / expected_crossings
+                )
+            else:
+                sqi_value = 1.0  # Perfect score for very short segments
             return sqi_value
 
         return self._process_segments(
@@ -440,6 +496,9 @@ class SignalQualityIndex:
             entropy = -np.sum(
                 probability_distribution * np.log2(probability_distribution + 1e-8)
             )
+            # Prevent division by zero
+            if len(segment) <= 1:
+                return 0.0
             normalized_entropy = entropy / np.log2(len(segment))
             return normalized_entropy
 
@@ -771,7 +830,11 @@ class SignalQualityIndex:
 
         def compute_sqi(segment):
             rmssd = np.sqrt(np.mean(np.diff(segment) ** 2))
-            normalized_rmssd = rmssd / np.mean(segment)
+            mean_segment = np.mean(segment)
+            # Prevent division by zero
+            if mean_segment == 0:
+                return 0.0
+            normalized_rmssd = rmssd / mean_segment
             return normalized_rmssd
 
         return self._process_segments(

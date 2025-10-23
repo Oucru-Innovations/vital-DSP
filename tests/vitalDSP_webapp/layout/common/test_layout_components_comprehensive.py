@@ -102,7 +102,8 @@ class TestHeader:
         assert header.className == "header"
         assert hasattr(header, 'style')
         assert hasattr(header, 'children')
-        assert len(header.children) == 2
+        # Header now has 5 children: title div, status div, memory store, system store, interval
+        assert len(header.children) == 5
         
     def test_header_styling(self):
         """Test Header component styling"""
@@ -126,7 +127,11 @@ class TestHeader:
         """Test Header component title element"""
         header = Header()
         
-        title_element = header.children[0]
+        # Title is now in the first child (Div) which contains H1
+        title_div = header.children[0]
+        assert title_div.__class__.__name__ == 'Div'
+        # The H1 is inside the title div
+        title_element = title_div.children[0]
         assert title_element.__class__.__name__ == 'H1'
         assert title_element.children == "vitalDSP"
         assert title_element.className == "mb-0"
@@ -140,7 +145,11 @@ class TestHeader:
         """Test Header component subtitle element"""
         header = Header()
         
-        subtitle_element = header.children[1]
+        # Subtitle is now in the first child (Div) which contains Span
+        title_div = header.children[0]
+        assert title_div.__class__.__name__ == 'Div'
+        # The Span is inside the title div
+        subtitle_element = title_div.children[1]
         assert subtitle_element.__class__.__name__ == 'Span'
         assert subtitle_element.children == "Digital Signal Processing for Vital Signs"
         assert subtitle_element.className == "ms-3"
@@ -155,8 +164,15 @@ class TestHeader:
         
         # Test semantic HTML structure
         assert header.__class__.__name__ == 'Header'
-        assert header.children[0].__class__.__name__ == 'H1'  # Main title
-        assert header.children[1].__class__.__name__ == 'Span'  # Subtitle
+        # Title is now in the first child (Div) which contains H1
+        title_div = header.children[0]
+        assert title_div.__class__.__name__ == 'Div'
+        # The H1 is inside the title div
+        title_element = title_div.children[0]
+        assert title_element.__class__.__name__ == 'H1'  # Main title
+        # Subtitle is also in the first child (Div) which contains Span
+        subtitle_element = title_div.children[1]
+        assert subtitle_element.__class__.__name__ == 'Span'  # Subtitle
 
 
 class TestSidebar:

@@ -206,9 +206,9 @@ def register_respiratory_callbacks(app):
             raise PreventUpdate
 
         try:
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
             if not data_service:
                 logger.warning("Data service not available")
                 return ["PPG"]
@@ -335,15 +335,19 @@ def register_respiratory_callbacks(app):
             Output("resp-features-store", "data"),
         ],
         [
-            Input("url", "pathname"),
+            # Input("url", "pathname"),  # REMOVED - was running full analysis on EVERY page load!
             Input("resp-analyze-btn", "n_clicks"),
-            Input("resp-time-range-slider", "value"),
+            # Input("resp-time-range-slider", "value"),  # REMOVED - was causing constant updates!
             Input("resp-btn-nudge-m10", "n_clicks"),
             Input("resp-btn-nudge-m1", "n_clicks"),
             Input("resp-btn-nudge-p1", "n_clicks"),
             Input("resp-btn-nudge-p10", "n_clicks"),
         ],
         [
+            State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
+            State(
+                "resp-time-range-slider", "value"
+            ),  # MOVED to State - only read when triggered by other inputs
             State("resp-start-time", "value"),
             State("resp-end-time", "value"),
             State("resp-signal-type", "value"),
@@ -358,13 +362,13 @@ def register_respiratory_callbacks(app):
         ],
     )
     def respiratory_analysis_callback(
-        pathname,
         n_clicks,
-        slider_value,
         nudge_m10,
         nudge_m1,
         nudge_p1,
         nudge_p10,
+        pathname,  # MOVED to correct position - this is a State parameter
+        slider_value,  # Now a State parameter
         start_time,
         end_time,
         signal_type,
@@ -421,9 +425,9 @@ def register_respiratory_callbacks(app):
         try:
             # Get data from the data service
             logger.info("Attempting to get data service...")
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
             logger.info("Data service retrieved successfully")
 
             # Get the most recent data
@@ -674,6 +678,7 @@ def register_respiratory_callbacks(app):
             Output("resp-time-range-slider", "value"),
         ],
         [Input("url", "pathname")],
+        prevent_initial_call=True,  # Prevent triggering on page load
     )
     def update_resp_time_slider_range(pathname):
         """Update time slider range based on data duration."""
@@ -686,9 +691,9 @@ def register_respiratory_callbacks(app):
 
         try:
             # Get data from the data service
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
 
             # Get the most recent data
             all_data = data_service.get_all_data()
@@ -972,7 +977,11 @@ def create_respiratory_signal_plot(
                     # Add breathing rate annotation
                     if len(peaks) > 1:
                         breath_intervals = np.diff(peaks) / sampling_freq
-                        breathing_rate = 60 / np.mean(breath_intervals)
+                        breathing_rate = (
+                            60 / np.mean(breath_intervals)
+                            if len(breath_intervals) > 0
+                            else 0
+                        )
                         fig.add_annotation(
                             x=0.02,
                             y=0.98,
@@ -989,7 +998,7 @@ def create_respiratory_signal_plot(
                 logger.error(f"Breathing peak detection failed: {e}")
 
         # Add baseline
-        baseline = np.mean(processed_signal)
+        baseline = np.mean(processed_signal) if len(processed_signal) > 0 else 0
         fig.add_hline(
             y=baseline,
             line_dash="dash",
@@ -1078,9 +1087,15 @@ def generate_comprehensive_respiratory_analysis(
 
                 if len(peaks) > 1:
                     breath_intervals = np.diff(peaks) / sampling_freq
-                    rr_bpm = 60 / np.mean(breath_intervals)
+                    rr_bpm = (
+                        60 / np.mean(breath_intervals)
+                        if len(breath_intervals) > 0
+                        else 0
+                    )
                     rr_std = (
                         60 * np.std(breath_intervals) / (np.mean(breath_intervals) ** 2)
+                        if len(breath_intervals) > 0 and np.mean(breath_intervals) > 0
+                        else 0
                     )
 
                     results.append(
@@ -1167,10 +1182,22 @@ def generate_comprehensive_respiratory_analysis(
         else:
             try:
                 logger.info("Creating preprocessing configuration...")
+                # CRITICAL FIX: Use 0.5 Hz as max for respiratory band (not 0.8 Hz from UI)
+                # Respiratory frequency range is 0.1-0.5 Hz (6-30 BPM)
+                # Using 0.8 Hz allows detection of cardiac harmonics
+                respiratory_lowcut = low_cut if low_cut and low_cut <= 0.5 else 0.1
+                respiratory_highcut = min(
+                    high_cut or 0.5, 0.5
+                )  # Cap at 0.5 Hz for respiratory
+
+                logger.info(
+                    f"Respiratory band filtering: {respiratory_lowcut}-{respiratory_highcut} Hz"
+                )
+
                 preprocess_config = PreprocessConfig(
                     filter_type="bandpass",
-                    lowcut=low_cut,
-                    highcut=high_cut,
+                    lowcut=respiratory_lowcut,
+                    highcut=respiratory_highcut,
                     respiratory_mode=True,
                 )
                 logger.info(f"PreprocessConfig created: {preprocess_config}")
@@ -1235,20 +1262,13 @@ def generate_comprehensive_respiratory_analysis(
                                 preprocess_config=preprocess_config,
                             )
                             # Zero crossing counts both up/down crossings, so divide by 2 for complete breaths
-                            rr = rr / 2
-                            logger.info(
-                                f"Zero crossing method result (corrected): {rr:.2f} BPM"
-                            )
+                            logger.info(f"Zero crossing method result: {rr:.2f} BPM")
                             results.append(
                                 html.Div(
                                     [
                                         html.Strong("Zero Crossing Method: "),
                                         html.Span(
                                             f"{rr:.2f} BPM", className="text-success"
-                                        ),
-                                        html.Small(
-                                            " (corrected for symmetry)",
-                                            className="text-muted ms-2",
                                         ),
                                     ],
                                     className="mb-2",
@@ -1267,32 +1287,15 @@ def generate_comprehensive_respiratory_analysis(
                             )
 
                     elif method == "time_domain":
-                        if time_domain_rr is None:
-                            logger.warning("time_domain_rr function not available")
-                            results.append(
-                                html.Div(
-                                    [
-                                        html.Strong("Time Domain Method: "),
-                                        html.Span(
-                                            "Function not available",
-                                            className="text-warning",
-                                        ),
-                                    ],
-                                    className="mb-2",
-                                )
+                        logger.info(
+                            "Computing respiratory rate using time domain method..."
+                        )
+                        try:
+                            rr = resp_analysis.compute_respiratory_rate(
+                                method="time_domain",
+                                preprocess_config=preprocess_config,
                             )
-                        else:
-                            rr = time_domain_rr(
-                                signal_data,
-                                sampling_freq,
-                                preprocess=(
-                                    "bandpass"
-                                    if "filter" in preprocessing_options
-                                    else None
-                                ),
-                                lowcut=low_cut,
-                                highcut=high_cut,
-                            )
+                            logger.info(f"Time domain method result: {rr:.2f} BPM")
                             results.append(
                                 html.Div(
                                     [
@@ -1300,43 +1303,32 @@ def generate_comprehensive_respiratory_analysis(
                                         html.Span(
                                             f"{rr:.2f} BPM", className="text-success"
                                         ),
+                                    ],
+                                    className="mb-2",
+                                )
+                            )
+                        except Exception as e:
+                            logger.error(f"Time domain method failed: {e}")
+                            results.append(
+                                html.Div(
+                                    [
+                                        html.Strong("Time Domain Method: "),
+                                        html.Span("Failed", className="text-danger"),
                                     ],
                                     className="mb-2",
                                 )
                             )
 
                     elif method == "frequency_domain":
-                        if frequency_domain_rr is None:
-                            logger.warning("frequency_domain_rr function not available")
-                            results.append(
-                                html.Div(
-                                    [
-                                        html.Strong("Frequency Domain Method: "),
-                                        html.Span(
-                                            "Function not available",
-                                            className="text-warning",
-                                        ),
-                                    ],
-                                    className="mb-2",
-                                )
+                        logger.info(
+                            "Computing respiratory rate using frequency domain method..."
+                        )
+                        try:
+                            rr = resp_analysis.compute_respiratory_rate(
+                                method="frequency_domain",
+                                preprocess_config=preprocess_config,
                             )
-                        else:
-                            rr = frequency_domain_rr(
-                                signal_data,
-                                sampling_freq,
-                                preprocess=(
-                                    "bandpass"
-                                    if "filter" in preprocessing_options
-                                    else None
-                                ),
-                                lowcut=low_cut,
-                                highcut=high_cut,
-                            )
-                            # Frequency domain method may detect double frequency, so divide by 2
-                            rr = rr / 2
-                            logger.info(
-                                f"Frequency domain method result (corrected): {rr:.2f} BPM"
-                            )
+                            logger.info(f"Frequency domain method result: {rr:.2f} BPM")
                             results.append(
                                 html.Div(
                                     [
@@ -1344,42 +1336,32 @@ def generate_comprehensive_respiratory_analysis(
                                         html.Span(
                                             f"{rr:.2f} BPM", className="text-success"
                                         ),
-                                        html.Small(
-                                            " (corrected for symmetry)",
-                                            className="text-muted ms-2",
-                                        ),
+                                    ],
+                                    className="mb-2",
+                                )
+                            )
+                        except Exception as e:
+                            logger.error(f"Frequency domain method failed: {e}")
+                            results.append(
+                                html.Div(
+                                    [
+                                        html.Strong("Frequency Domain Method: "),
+                                        html.Span("Failed", className="text-danger"),
                                     ],
                                     className="mb-2",
                                 )
                             )
 
                     elif method == "fft_based":
-                        if fft_based_rr is None:
-                            logger.warning("fft_based_rr function not available")
-                            results.append(
-                                html.Div(
-                                    [
-                                        html.Strong("FFT-based Method: "),
-                                        html.Span(
-                                            "Function not available",
-                                            className="text-warning",
-                                        ),
-                                    ],
-                                    className="mb-2",
-                                )
+                        logger.info(
+                            "Computing respiratory rate using FFT-based method..."
+                        )
+                        try:
+                            rr = resp_analysis.compute_respiratory_rate(
+                                method="fft_based",
+                                preprocess_config=preprocess_config,
                             )
-                        else:
-                            rr = fft_based_rr(
-                                signal_data,
-                                sampling_freq,
-                                preprocess=(
-                                    "bandpass"
-                                    if "filter" in preprocessing_options
-                                    else None
-                                ),
-                                lowcut=low_cut,
-                                highcut=high_cut,
-                            )
+                            logger.info(f"FFT-based method result: {rr:.2f} BPM")
                             results.append(
                                 html.Div(
                                     [
@@ -1387,38 +1369,32 @@ def generate_comprehensive_respiratory_analysis(
                                         html.Span(
                                             f"{rr:.2f} BPM", className="text-success"
                                         ),
+                                    ],
+                                    className="mb-2",
+                                )
+                            )
+                        except Exception as e:
+                            logger.error(f"FFT-based method failed: {e}")
+                            results.append(
+                                html.Div(
+                                    [
+                                        html.Strong("FFT-based Method: "),
+                                        html.Span("Failed", className="text-danger"),
                                     ],
                                     className="mb-2",
                                 )
                             )
 
                     elif method == "counting":
-                        if peak_detection_rr is None:
-                            logger.warning("peak_detection_rr function not available")
-                            results.append(
-                                html.Div(
-                                    [
-                                        html.Strong("Counting Method: "),
-                                        html.Span(
-                                            "Function not available",
-                                            className="text-warning",
-                                        ),
-                                    ],
-                                    className="mb-2",
-                                )
+                        logger.info(
+                            "Computing respiratory rate using counting method..."
+                        )
+                        try:
+                            rr = resp_analysis.compute_respiratory_rate(
+                                method="counting",
+                                preprocess_config=preprocess_config,
                             )
-                        else:
-                            rr = peak_detection_rr(
-                                signal_data,
-                                sampling_freq,
-                                preprocess=(
-                                    "bandpass"
-                                    if "filter" in preprocessing_options
-                                    else None
-                                ),
-                                lowcut=low_cut,
-                                highcut=high_cut,
-                            )
+                            logger.info(f"Counting method result: {rr:.2f} BPM")
                             results.append(
                                 html.Div(
                                     [
@@ -1426,6 +1402,17 @@ def generate_comprehensive_respiratory_analysis(
                                         html.Span(
                                             f"{rr:.2f} BPM", className="text-success"
                                         ),
+                                    ],
+                                    className="mb-2",
+                                )
+                            )
+                        except Exception as e:
+                            logger.error(f"Counting method failed: {e}")
+                            results.append(
+                                html.Div(
+                                    [
+                                        html.Strong("Counting Method: "),
+                                        html.Span("Failed", className="text-danger"),
                                     ],
                                     className="mb-2",
                                 )
@@ -1433,214 +1420,67 @@ def generate_comprehensive_respiratory_analysis(
 
                     elif method == "ensemble":
                         logger.info(
-                            "Computing ensemble respiratory rate using all available methods..."
+                            "Computing ensemble respiratory rate using vitalDSP ensemble method..."
                         )
                         logger.info(f"Ensemble method parameter: {ensemble_method}")
                         try:
-                            # Collect all available RR estimates
-                            ensemble_estimates = []
-                            method_names = []
-
-                            # Try each method and collect results
                             if RespiratoryAnalysis is not None:
-                                # Peak detection
-                                try:
-                                    rr_peak = resp_analysis.compute_respiratory_rate(
-                                        method="peaks",
-                                        min_breath_duration=min_breath_duration,
-                                        max_breath_duration=max_breath_duration,
+                                # Use vitalDSP's built-in ensemble method
+                                ensemble_result = (
+                                    resp_analysis.compute_respiratory_rate_ensemble(
                                         preprocess_config=preprocess_config,
+                                        methods=[
+                                            "counting",
+                                            "fft_based",
+                                            "frequency_domain",
+                                            "time_domain",
+                                        ],
                                     )
-                                    ensemble_estimates.append(rr_peak)
-                                    method_names.append("Peak Detection")
-                                except Exception:
-                                    pass
-
-                                # Zero crossing
-                                try:
-                                    rr_zero = resp_analysis.compute_respiratory_rate(
-                                        method="zero_crossing",
-                                        min_breath_duration=min_breath_duration,
-                                        max_breath_duration=max_breath_duration,
-                                        preprocess_config=preprocess_config,
-                                    )
-                                    ensemble_estimates.append(
-                                        rr_zero / 2
-                                    )  # Apply symmetry correction
-                                    method_names.append("Zero Crossing")
-                                except Exception:
-                                    pass
-
-                            # Direct function calls
-                            if time_domain_rr is not None:
-                                try:
-                                    rr_time = time_domain_rr(
-                                        signal_data,
-                                        sampling_freq,
-                                        preprocess=(
-                                            "bandpass"
-                                            if "filter" in preprocessing_options
-                                            else None
-                                        ),
-                                        lowcut=low_cut,
-                                        highcut=high_cut,
-                                    )
-                                    ensemble_estimates.append(rr_time)
-                                    method_names.append("Time Domain")
-                                except Exception:
-                                    pass
-
-                            if frequency_domain_rr is not None:
-                                try:
-                                    rr_freq = frequency_domain_rr(
-                                        signal_data,
-                                        sampling_freq,
-                                        preprocess=(
-                                            "bandpass"
-                                            if "filter" in preprocessing_options
-                                            else None
-                                        ),
-                                        lowcut=low_cut,
-                                        highcut=high_cut,
-                                    )
-                                    ensemble_estimates.append(
-                                        rr_freq / 2
-                                    )  # Apply symmetry correction
-                                    method_names.append("Frequency Domain")
-                                except Exception:
-                                    pass
-
-                            if fft_based_rr is not None:
-                                try:
-                                    rr_fft = fft_based_rr(
-                                        signal_data,
-                                        sampling_freq,
-                                        preprocess=(
-                                            "bandpass"
-                                            if "filter" in preprocessing_options
-                                            else None
-                                        ),
-                                        lowcut=low_cut,
-                                        highcut=high_cut,
-                                    )
-                                    ensemble_estimates.append(rr_fft)
-                                    method_names.append("FFT-based")
-                                except Exception:
-                                    pass
-
-                            if peak_detection_rr is not None:
-                                try:
-                                    rr_count = peak_detection_rr(
-                                        signal_data,
-                                        sampling_freq,
-                                        preprocess=(
-                                            "bandpass"
-                                            if "filter" in preprocessing_options
-                                            else None
-                                        ),
-                                        lowcut=low_cut,
-                                        highcut=high_cut,
-                                    )
-                                    ensemble_estimates.append(rr_count)
-                                    method_names.append("Counting")
-                                except Exception:
-                                    pass
-
-                            if len(ensemble_estimates) > 0:
-                                # Apply selected ensemble method
-                                current_ensemble_method = (
-                                    ensemble_method or "mean"
-                                )  # Default to mean if not specified
-                                logger.info(
-                                    f"Using ensemble method: {current_ensemble_method}"
                                 )
 
-                                if current_ensemble_method == "mean":
-                                    ensemble_result = np.mean(ensemble_estimates)
-                                    method_description = "Simple Average"
-                                elif current_ensemble_method == "weighted_mean":
-                                    # Weight by inverse of variance (more reliable methods get higher weight)
-                                    weights = [
-                                        1.0
-                                        / (1.0 + abs(est - np.mean(ensemble_estimates)))
-                                        for est in ensemble_estimates
-                                    ]
-                                    weights = np.array(weights) / np.sum(
-                                        weights
-                                    )  # Normalize weights
-                                    ensemble_result = np.average(
-                                        ensemble_estimates, weights=weights
-                                    )
-                                    method_description = (
-                                        "Weighted Average (by reliability)"
-                                    )
-                                elif current_ensemble_method == "bagging":
-                                    # Bootstrap aggregation
-                                    n_bootstrap = 100
-                                    bootstrap_estimates = []
-                                    for _ in range(n_bootstrap):
-                                        indices = np.random.choice(
-                                            len(ensemble_estimates),
-                                            size=len(ensemble_estimates),
-                                            replace=True,
-                                        )
-                                        bootstrap_sample = [
-                                            ensemble_estimates[i] for i in indices
-                                        ]
-                                        bootstrap_estimates.append(
-                                            np.mean(bootstrap_sample)
-                                        )
-                                    ensemble_result = np.mean(bootstrap_estimates)
-                                    method_description = "Bootstrap Aggregation"
-                                elif current_ensemble_method == "boosting":
-                                    # Sequential learning (simple implementation)
-                                    ensemble_result = ensemble_estimates[
-                                        0
-                                    ]  # Start with first estimate
-                                    for i in range(1, len(ensemble_estimates)):
-                                        # Simple boosting: adjust based on previous estimate
-                                        ensemble_result = (
-                                            0.7 * ensemble_result
-                                            + 0.3 * ensemble_estimates[i]
-                                        )
-                                    method_description = "Sequential Learning"
+                                # Extract results from vitalDSP ensemble
+                                rr_estimate = ensemble_result.get("respiratory_rate", 0)
+                                confidence = ensemble_result.get("confidence", 0)
+                                quality = ensemble_result.get("quality", "unknown")
+                                std_dev = ensemble_result.get("std", 0)
+                                n_methods = ensemble_result.get("n_methods", 0)
+                                individual_estimates = ensemble_result.get(
+                                    "individual_estimates", {}
+                                )
+
+                                # Determine confidence color and description
+                                if confidence >= 0.8:
+                                    confidence_desc = "High Confidence"
+                                    confidence_color = "text-success"
+                                elif confidence >= 0.5:
+                                    confidence_desc = "Medium Confidence"
+                                    confidence_color = "text-warning"
                                 else:
-                                    ensemble_result = np.mean(ensemble_estimates)
-                                    method_description = "Simple Average (fallback)"
+                                    confidence_desc = "Low Confidence"
+                                    confidence_color = "text-danger"
 
-                                # Calculate ensemble statistics
-                                ensemble_std = np.std(ensemble_estimates)
-                                ensemble_min = np.min(ensemble_estimates)
-                                ensemble_max = np.max(ensemble_estimates)
-
-                                # Calculate confidence interval (95%)
-                                ensemble_ci_lower = np.percentile(
-                                    ensemble_estimates, 2.5
-                                )
-                                ensemble_ci_upper = np.percentile(
-                                    ensemble_estimates, 97.5
-                                )
-
-                                # Calculate coefficient of variation
-                                ensemble_cv = (
-                                    ensemble_std / ensemble_result
-                                    if ensemble_result > 0
-                                    else 0
-                                )
-
-                                # Determine reliability score
-                                if ensemble_cv < 0.1:
-                                    reliability = "Excellent"
-                                    reliability_color = "text-success"
-                                elif ensemble_cv < 0.2:
-                                    reliability = "Good"
-                                    reliability_color = "text-info"
-                                elif ensemble_cv < 0.3:
-                                    reliability = "Fair"
-                                    reliability_color = "text-warning"
+                                # Determine quality color
+                                if quality == "high":
+                                    quality_color = "text-success"
+                                elif quality == "medium":
+                                    quality_color = "text-warning"
                                 else:
-                                    reliability = "Poor"
-                                    reliability_color = "text-danger"
+                                    quality_color = "text-danger"
+
+                                # Create individual method results display
+                                individual_results = []
+                                for (
+                                    method_name,
+                                    estimate,
+                                ) in individual_estimates.items():
+                                    if estimate is not None:
+                                        individual_results.append(
+                                            f"{method_name}: {estimate:.1f} BPM"
+                                        )
+                                    else:
+                                        individual_results.append(
+                                            f"{method_name}: Failed"
+                                        )
 
                                 results.append(
                                     html.Div(
@@ -1649,40 +1489,27 @@ def generate_comprehensive_respiratory_analysis(
                                                 "🎯 Ensemble Respiratory Rate: "
                                             ),
                                             html.Span(
-                                                f"{ensemble_result:.2f} ± {ensemble_std:.2f} BPM",
+                                                f"{rr_estimate:.2f} ± {std_dev:.2f} BPM",
                                                 className="text-success",
                                             ),
                                             html.Br(),
                                             html.Small(
-                                                f"Ensemble Method: {method_description}",
-                                                className="text-info",
+                                                f"Confidence: {confidence:.2f} ({confidence_desc})",
+                                                className=confidence_color,
                                             ),
                                             html.Br(),
                                             html.Small(
-                                                "Reliability: ", className="text-muted"
-                                            ),
-                                            html.Span(
-                                                f"{reliability}",
-                                                className=reliability_color,
+                                                f"Quality: {quality.title()}",
+                                                className=quality_color,
                                             ),
                                             html.Br(),
                                             html.Small(
-                                                f"Methods used: {len(ensemble_estimates)} ({', '.join(method_names)})",
+                                                f"Methods used: {n_methods}",
                                                 className="text-muted",
                                             ),
                                             html.Br(),
                                             html.Small(
-                                                f"Range: {ensemble_min:.1f} - {ensemble_max:.1f} BPM",
-                                                className="text-muted",
-                                            ),
-                                            html.Br(),
-                                            html.Small(
-                                                f"95% CI: {ensemble_ci_lower:.1f} - {ensemble_ci_upper:.1f} BPM",
-                                                className="text-muted",
-                                            ),
-                                            html.Br(),
-                                            html.Small(
-                                                f"Coefficient of Variation: {ensemble_cv:.3f}",
+                                                f"Individual estimates: {', '.join(individual_results)}",
                                                 className="text-muted",
                                             ),
                                         ],
@@ -1691,7 +1518,8 @@ def generate_comprehensive_respiratory_analysis(
                                 )
 
                                 logger.info(
-                                    f"Ensemble method result: {ensemble_result:.2f} ± {ensemble_std:.2f} BPM using {current_ensemble_method}"
+                                    f"vitalDSP Ensemble result: {rr_estimate:.2f} ± {std_dev:.2f} BPM "
+                                    f"(confidence: {confidence:.2f}, quality: {quality})"
                                 )
                             else:
                                 results.append(
@@ -1699,7 +1527,7 @@ def generate_comprehensive_respiratory_analysis(
                                         [
                                             html.Strong("Ensemble Method: "),
                                             html.Span(
-                                                "No methods available",
+                                                "RespiratoryAnalysis not available",
                                                 className="text-warning",
                                             ),
                                         ],
@@ -1768,7 +1596,11 @@ def generate_comprehensive_respiratory_analysis(
                     )
                     if len(peaks) > 1:
                         breath_intervals = np.diff(peaks) / sampling_freq
-                        rr_peak = 60.0 / np.mean(breath_intervals)
+                        rr_peak = (
+                            60.0 / np.mean(breath_intervals)
+                            if len(breath_intervals) > 0
+                            else 0
+                        )
                         method_results.append(("Peak Detection", rr_peak, len(peaks)))
                 except Exception as e:
                     logger.warning(f"Peak detection method failed: {e}")
@@ -1813,8 +1645,8 @@ def generate_comprehensive_respiratory_analysis(
                 if len(method_results) > 1:
                     # Calculate agreement metrics
                     rr_values = [result[1] for result in method_results]
-                    mean_rr = np.mean(rr_values)
-                    std_rr = np.std(rr_values)
+                    mean_rr = np.mean(rr_values) if len(rr_values) > 0 else 0
+                    std_rr = np.std(rr_values) if len(rr_values) > 0 else 0
                     cv_rr = std_rr / mean_rr if mean_rr > 0 else 0
 
                     # Calculate pairwise differences
@@ -3273,10 +3105,10 @@ def generate_comprehensive_respiratory_analysis(
                 logger.info("Processing signal quality assessment...")
                 try:
                     # Enhanced signal quality metrics
-                    signal_mean = np.mean(signal_data)
-                    signal_std = np.std(signal_data)
-                    signal_min = np.min(signal_data)
-                    signal_max = np.max(signal_data)
+                    signal_mean = np.mean(signal_data) if len(signal_data) > 0 else 0
+                    signal_std = np.std(signal_data) if len(signal_data) > 0 else 0
+                    signal_min = np.min(signal_data) if len(signal_data) > 0 else 0
+                    signal_max = np.max(signal_data) if len(signal_data) > 0 else 0
                     dynamic_range = signal_max - signal_min
 
                     # Calculate signal-to-noise ratio using different methods
@@ -3291,7 +3123,11 @@ def generate_comprehensive_respiratory_analysis(
 
                     # Method 2: Peak-to-peak SNR
                     peak_to_peak = signal_max - signal_min
-                    rms_noise = np.sqrt(np.mean((signal_data - signal_mean) ** 2))
+                    rms_noise = (
+                        np.sqrt(np.mean((signal_data - signal_mean) ** 2))
+                        if len(signal_data) > 0
+                        else 0
+                    )
                     snr_pp = (
                         20 * np.log10(peak_to_peak / (2 * rms_noise))
                         if rms_noise > 0
@@ -3299,9 +3135,13 @@ def generate_comprehensive_respiratory_analysis(
                     )
 
                     # Method 3: RMS SNR
-                    rms_signal = np.sqrt(np.mean(signal_data**2))
-                    rms_noise_signal = np.sqrt(
-                        np.mean((signal_data - signal_mean) ** 2)
+                    rms_signal = (
+                        np.sqrt(np.mean(signal_data**2)) if len(signal_data) > 0 else 0
+                    )
+                    rms_noise_signal = (
+                        np.sqrt(np.mean((signal_data - signal_mean) ** 2))
+                        if len(signal_data) > 0
+                        else 0
                     )
                     snr_rms = (
                         20 * np.log10(rms_signal / rms_noise_signal)
@@ -3478,11 +3318,11 @@ def generate_comprehensive_respiratory_analysis(
         )
 
         # Basic statistics
-        mean_val = np.mean(signal_data)
-        std_val = np.std(signal_data)
-        min_val = np.min(signal_data)
-        max_val = np.max(signal_data)
-        rms_val = np.sqrt(np.mean(signal_data**2))
+        mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
+        std_val = np.std(signal_data) if len(signal_data) > 0 else 0
+        min_val = np.min(signal_data) if len(signal_data) > 0 else 0
+        max_val = np.max(signal_data) if len(signal_data) > 0 else 0
+        rms_val = np.sqrt(np.mean(signal_data**2)) if len(signal_data) > 0 else 0
         peak_to_peak = max_val - min_val
 
         # Signal quality metrics

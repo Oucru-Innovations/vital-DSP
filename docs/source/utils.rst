@@ -23,7 +23,7 @@ Peak Detection
 
 Identify peaks in the signal, which are often indicative of significant events or features, such as heartbeats or respiratory cycles.
 
-.. automodule:: vitalDSP.utils.peak_detection
+.. automodule:: vitalDSP.utils.signal_processing.peak_detection
     :members:
     :undoc-members:
     :private-members:
@@ -38,7 +38,7 @@ Synthesize Data
 
 Methods for generating synthetic data, which can be used for training models, testing algorithms, or simulating signal processing scenarios.
 
-.. automodule:: vitalDSP.utils.synthesize_data
+.. automodule:: vitalDSP.utils.data_processing.synthesize_data
     :members:
     :undoc-members:
     :private-members:
@@ -53,7 +53,7 @@ Normalization
 
 Techniques and functions for normalizing data, ensuring that signals have consistent scales, which is essential for accurate analysis and model training.
 
-.. automodule:: vitalDSP.utils.normalization
+.. automodule:: vitalDSP.utils.signal_processing.normalization
     :members:
     :undoc-members:
     :private-members:
@@ -65,7 +65,7 @@ Scaler
 
 Functions for scaling data, which can include methods for both normalization and standardization to prepare signals for analysis or machine learning.
 
-.. automodule:: vitalDSP.utils.scaler
+.. automodule:: vitalDSP.utils.signal_processing.scaler
     :members:
     :undoc-members:
     :private-members:
@@ -80,7 +80,7 @@ Interpolations
 
 Functions for interpolating and filling gaps in data, essential for handling missing values and irregular sampling.
 
-.. automodule:: vitalDSP.utils.interpolations
+.. automodule:: vitalDSP.utils.signal_processing.interpolations
     :members:
     :undoc-members:
     :private-members:
@@ -95,7 +95,7 @@ Mother Wavelets
 
 Functions related to mother wavelets, which are used as the basis for wavelet transforms, crucial for time-frequency analysis.
 
-.. automodule:: vitalDSP.utils.mother_wavelets
+.. automodule:: vitalDSP.utils.signal_processing.mother_wavelets
     :members:
     :undoc-members:
     :private-members:
@@ -110,7 +110,7 @@ Attention Weights
 
 Functions and methods related to calculating and applying attention weights, commonly used in machine learning models to emphasize important parts of the data.
 
-.. automodule:: vitalDSP.utils.attention_weights
+.. automodule:: vitalDSP.utils.signal_processing.attention_weights
     :members:
     :undoc-members:
     :private-members:
@@ -122,7 +122,7 @@ Loss Functions
 
 Various loss functions used in training machine learning models, particularly in the context of signal processing tasks.
 
-.. automodule:: vitalDSP.utils.loss_functions
+.. automodule:: vitalDSP.utils.signal_processing.loss_functions
     :members:
     :undoc-members:
     :private-members:
@@ -134,7 +134,7 @@ Convolutional Kernels
 
 Functions for creating and applying convolutional kernels, which are essential in convolutional neural networks and other filtering tasks.
 
-.. automodule:: vitalDSP.utils.convolutional_kernels
+.. automodule:: vitalDSP.utils.signal_processing.convolutional_kernels
     :members:
     :undoc-members:
     :private-members:
@@ -149,7 +149,7 @@ Common Utilities
 
 A collection of common utility functions that provide general-purpose support across various signal processing tasks.
 
-.. automodule:: vitalDSP.utils.common
+.. automodule:: vitalDSP.utils.config_utilities.common
     :members:
     :undoc-members:
     :private-members:
@@ -164,7 +164,7 @@ Peak Detection
 
 .. code-block:: python
 
-   from vitalDSP.utils.peak_detection import PeakDetection
+   from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
    
    # Initialize peak detector
    detector = PeakDetection(signal, sampling_rate)
@@ -181,7 +181,7 @@ Data Synthesis
 
 .. code-block:: python
 
-   from vitalDSP.utils.synthesize_data import SynthesizeData
+   from vitalDSP.utils.data_processing.synthesize_data import SynthesizeData
    
    synthesizer = SynthesizeData()
    
@@ -204,8 +204,8 @@ Normalization
 
 .. code-block:: python
 
-   from vitalDSP.utils.normalization import z_score_normalization, min_max_normalization
-   from vitalDSP.utils.scaler import StandardScaler
+   from vitalDSP.utils.signal_processing.normalization import z_score_normalization, min_max_normalization
+   from vitalDSP.utils.signal_processing.scaler import StandardScaler
    
    # Z-score normalization
    normalized_signal = z_score_normalization(signal)
@@ -222,7 +222,7 @@ Interpolation
 
 .. code-block:: python
 
-   from vitalDSP.utils.interpolations import linear_interpolation, spline_interpolation
+   from vitalDSP.utils.signal_processing.interpolations import linear_interpolation, spline_interpolation
    
    # Linear interpolation
    interpolated = linear_interpolation(signal, missing_indices)
@@ -234,7 +234,7 @@ Convolutional Kernels
 ---------------------
 Functions for creating and applying convolutional kernels, which are essential in convolutional neural networks and other filtering tasks.
 
-.. automodule:: vitalDSP.utils.convolutional_kernels
+.. automodule:: vitalDSP.utils.signal_processing.convolutional_kernels
     :members:
     :undoc-members:
     :private-members:
@@ -246,7 +246,7 @@ Peak Detection
 --------------
 Identify peaks in the signal, which are often indicative of significant events or features, such as heartbeats or respiratory cycles.
 
-.. automodule:: vitalDSP.utils.peak_detection
+.. automodule:: vitalDSP.utils.signal_processing.peak_detection
     :members:
     :undoc-members:
     :private-members:
@@ -258,7 +258,7 @@ Loss Functions
 --------------
 Various loss functions used in training machine learning models, particularly in the context of signal processing tasks.
 
-.. automodule:: vitalDSP.utils.loss_functions
+.. automodule:: vitalDSP.utils.signal_processing.loss_functions
     :members:
     :undoc-members:
     :private-members:
@@ -269,7 +269,7 @@ Mother Wavelets
 ---------------
 Functions related to mother wavelets, which are used as the basis for wavelet transforms, crucial for time-frequency analysis.
 
-.. automodule:: vitalDSP.utils.mother_wavelets
+.. automodule:: vitalDSP.utils.signal_processing.mother_wavelets
     :members:
     :undoc-members:
     :private-members:
@@ -280,7 +280,7 @@ Normalization
 -------------
 Techniques and functions for normalizing data, ensuring that signals have consistent scales, which is essential for accurate analysis and model training.
 
-.. automodule:: vitalDSP.utils.normalization
+.. automodule:: vitalDSP.utils.signal_processing.normalization
     :members:
     :undoc-members:
     :private-members:
@@ -291,7 +291,7 @@ Scaler
 ------
 Functions for scaling data, which can include methods for both normalization and standardization to prepare signals for analysis or machine learning.
 
-.. automodule:: vitalDSP.utils.scaler
+.. automodule:: vitalDSP.utils.signal_processing.scaler
     :members:
     :undoc-members:
     :private-members:
@@ -302,7 +302,7 @@ Synthesize Data
 ---------------
 Methods for generating synthetic data, which can be used for training models, testing algorithms, or simulating signal processing scenarios.
 
-.. automodule:: vitalDSP.utils.synthesize_data
+.. automodule:: vitalDSP.utils.data_processing.synthesize_data
     :members:
     :undoc-members:
     :private-members:

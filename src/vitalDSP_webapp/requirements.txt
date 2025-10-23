@@ -9,6 +9,7 @@ plotly>=5.17.0
 fastapi>=0.104.0
 uvicorn[standard]>=0.30.0
 starlette>=0.27.0
+a2wsgi>=1.7.0
 
 # Data processing and analysis
 pandas>=2.0.0

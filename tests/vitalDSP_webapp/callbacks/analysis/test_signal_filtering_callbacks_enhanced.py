@@ -129,7 +129,7 @@ class TestAutoSelectSignalTypeCallback:
         """Test auto-select with no data available"""
         mock_data_service.get_all_data.return_value = {}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 
             mock_app = MagicMock()
@@ -159,7 +159,7 @@ class TestAutoSelectSignalTypeCallback:
         mock_data_service.get_data.return_value = sample_ecg_data
         mock_data_service.get_column_mapping.return_value = {"signal": "ECG"}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 
             mock_app = MagicMock()
@@ -187,7 +187,7 @@ class TestAutoSelectSignalTypeCallback:
             "sampling_freq": 1000
         }
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 
             mock_app = MagicMock()
@@ -217,7 +217,7 @@ class TestAutoSelectSignalTypeCallback:
         mock_data_service.get_data.return_value = sample_ecg_data
         mock_data_service.get_column_mapping.return_value = {"signal": "ECG"}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 
             mock_app = MagicMock()
@@ -248,7 +248,7 @@ class TestAutoSelectSignalTypeCallback:
         mock_data_service.get_data.return_value = sample_ppg_data
         mock_data_service.get_column_mapping.return_value = {"signal": "PPG"}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 
             mock_app = MagicMock()
@@ -278,7 +278,7 @@ class TestAutoSelectSignalTypeCallback:
         mock_data_service.get_data.return_value = sample_ecg_data
         mock_data_service.get_column_mapping.return_value = {"signal": "signal"}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 
             mock_app = MagicMock()
@@ -306,7 +306,7 @@ class TestAutoSelectSignalTypeCallback:
         """Test auto-select handles exceptions gracefully"""
         mock_data_service.get_all_data.side_effect = Exception("Test error")
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 
             mock_app = MagicMock()
@@ -489,37 +489,39 @@ class TestAdvancedFilteringCallback:
 
             for cb in callbacks_registered:
                 if 'advanced_filtering_callback' in cb['func'].__name__:
-                    with pytest.raises(PreventUpdate):
-                        cb['func'](
-                            pathname="/filtering",
-                            n_clicks=None,
-                            slider_value=[0, 10],
-                            nudge_m10=None,
-                            nudge_m1=None,
-                            nudge_p1=None,
-                            nudge_p10=None,
-                            start_time_state=0,
-                            end_time_state=10,
-                            filter_type="traditional",
-                            filter_family="butterworth",
-                            filter_response="lowpass",
-                            low_freq=0.5,
-                            high_freq=50,
-                            filter_order=4,
-                            advanced_method="convolution",
-                            noise_level=0.1,
-                            iterations=10,
-                            learning_rate=0.01,
-                            artifact_type="baseline",
-                            artifact_strength=0.5,
-                            neural_type="autoencoder",
-                            neural_complexity="medium",
-                            ensemble_method="voting",
-                            ensemble_n_filters=3,
-                            quality_options=["snr", "rmse"],
-                            detrend_option=None,
-                            signal_type="PPG"
-                        )
+                    # The callback should NOT raise PreventUpdate when there's no trigger
+                    # It should continue execution and return empty figures
+                    result = cb['func'](
+                        pathname="/filtering",
+                        n_clicks=None,
+                        nudge_m10=None,
+                        center_click=None,
+                        nudge_p10=None,
+                        start_position=0,
+                        duration=10,
+                        filter_type="traditional",
+                        filter_family="butterworth",
+                        filter_response="lowpass",
+                        low_freq=0.5,
+                        high_freq=50,
+                        filter_order=4,
+                        advanced_method="convolution",
+                        noise_level=0.1,
+                        iterations=10,
+                        learning_rate=0.01,
+                        artifact_type="baseline",
+                        artifact_strength=0.5,
+                        neural_type="autoencoder",
+                        neural_complexity="medium",
+                        ensemble_method="voting",
+                        ensemble_n_filters=3,
+                        quality_options=["snr", "rmse"],
+                        detrend_option=None,
+                        signal_type="PPG"
+                    )
+                    # Should return empty figures when no trigger
+                    assert isinstance(result, tuple)
+                    assert len(result) == 6  # Should return 6 outputs
 
     def test_advanced_filtering_not_on_filtering_page(self, mock_callback_context):
         """Test callback when not on filtering page"""
@@ -544,13 +546,11 @@ class TestAdvancedFilteringCallback:
                         result = cb['func'](
                             pathname="/other-page",
                             n_clicks=1,
-                            slider_value=[0, 10],
                             nudge_m10=None,
-                            nudge_m1=None,
-                            nudge_p1=None,
+                            center_click=None,
                             nudge_p10=None,
-                            start_time_state=0,
-                            end_time_state=10,
+                            start_position=0,
+                            duration=10,
                             filter_type="traditional",
                             filter_family="butterworth",
                             filter_response="lowpass",

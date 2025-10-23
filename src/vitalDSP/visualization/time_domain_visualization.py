@@ -1,3 +1,44 @@
+"""
+Time Domain Visualization Module for Physiological Signal Processing
+
+This module provides comprehensive visualization capabilities for time-domain
+analysis of physiological signals including ECG, PPG, EEG, and other vital signs.
+It implements interactive plotting using Plotly for trend analysis, moving averages,
+and signal pattern visualization.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Interactive time-domain signal visualization
+- Trend analysis and pattern recognition plots
+- Moving average and weighted moving average visualization
+- Exponential smoothing and linear trend analysis
+- Real-time signal monitoring capabilities
+- Export-ready interactive plots
+
+Examples:
+--------
+Basic trend visualization:
+    >>> import numpy as np
+    >>> from vitalDSP.visualization.time_domain_visualization import TrendAnalysisVisualizer
+    >>> from vitalDSP.physiological_features.trend_analysis import TrendAnalysis
+    >>> signal = np.sin(np.linspace(0, 10, 1000)) + np.random.normal(0, 0.1, 1000)
+    >>> trend_analysis = TrendAnalysis(signal)
+    >>> visualizer = TrendAnalysisVisualizer(trend_analysis)
+    >>> trend = trend_analysis.compute_trend()
+    >>> visualizer.plot_trend(signal, trend, "Signal Trend Analysis")
+
+Moving average visualization:
+    >>> moving_avg = trend_analysis.compute_moving_average(window_size=20)
+    >>> visualizer.plot_moving_average(moving_avg, 20, "Moving Average")
+
+Exponential smoothing:
+    >>> exp_smooth = trend_analysis.compute_exponential_smoothing(alpha=0.3)
+    >>> visualizer.plot_exponential_smoothing(exp_smooth, 0.3)
+"""
+
 import plotly.graph_objs as go
 
 

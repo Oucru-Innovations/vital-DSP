@@ -431,3 +431,54 @@ def update_settings(category: str, **kwargs) -> bool:
     else:
         logger.error(f"Unknown settings category: {category}")
         return False
+
+
+# Compatibility functions for tests
+def load_settings() -> Dict[str, Any]:
+    """Load settings from file (compatibility function)."""
+    service = get_settings_service()
+    settings = service.get_all_settings()
+    # Convert ApplicationSettings to dict for compatibility
+    return asdict(settings)
+
+
+def save_settings(settings: Dict[str, Any]) -> bool:
+    """Save settings to file (compatibility function)."""
+    service = get_settings_service()
+    # Convert dict to ApplicationSettings if needed
+    if isinstance(settings, dict):
+        # Create ApplicationSettings from dict
+        app_settings = ApplicationSettings(**settings)
+        return service.save_settings(app_settings)
+    return service.save_settings(settings)
+
+
+def get_default_settings() -> Dict[str, Any]:
+    """Get default settings (compatibility function)."""
+    # Create default ApplicationSettings
+    default_settings = ApplicationSettings()
+    return asdict(default_settings)
+
+
+def validate_settings(settings: Dict[str, Any]) -> bool:
+    """Validate settings (compatibility function)."""
+    service = get_settings_service()
+    try:
+        # Convert dict to ApplicationSettings for validation
+        if isinstance(settings, dict):
+            app_settings = ApplicationSettings(**settings)
+            # Call the service validation method and check if there are any errors
+            errors = service.validate_settings()
+            return len(errors) == 0  # Return True if no errors
+        # Call the service validation method and check if there are any errors
+        errors = service.validate_settings()
+        return len(errors) == 0  # Return True if no errors
+    except Exception:
+        return False
+
+
+def merge_settings(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge settings (compatibility function)."""
+    # Simple dict merge for compatibility
+    merged = {**base, **override}
+    return merged

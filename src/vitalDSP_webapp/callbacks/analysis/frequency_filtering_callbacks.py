@@ -44,6 +44,36 @@ def format_large_number(value, precision=3, use_scientific=False):
 logger = logging.getLogger(__name__)
 
 
+def configure_plot_with_pan_zoom(fig, title="", height=400):
+    """
+    Configure plotly figure with pan/zoom tools and consistent styling.
+
+    Args:
+        fig: Plotly figure object
+        title: Plot title
+        height: Plot height in pixels
+
+    Returns:
+        Configured plotly figure
+    """
+    fig.update_layout(
+        title=title,
+        height=height,
+        showlegend=True,
+        template="plotly_white",
+        # Enable pan and zoom - use simpler configuration
+        dragmode="pan",  # Default to pan mode
+        # Show the modebar with all tools
+        modebar=dict(
+            orientation="v",  # Vertical orientation
+            bgcolor="rgba(255,255,255,0.8)",  # Semi-transparent background
+            color="rgba(0,0,0,0.5)",  # Dark icons
+            activecolor="rgba(0,0,0,0.8)",  # Darker when active
+        ),
+    )
+    return fig
+
+
 def register_frequency_filtering_callbacks(app):
     """Register all frequency domain analysis and filtering callbacks."""
 
@@ -59,9 +89,9 @@ def register_frequency_filtering_callbacks(app):
             raise PreventUpdate
 
         try:
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
             if not data_service:
                 logger.warning("Data service not available")
                 return ["original"]
@@ -104,15 +134,16 @@ def register_frequency_filtering_callbacks(app):
             Output("store-time-freq-data", "data"),
         ],
         [
-            Input("url", "pathname"),
+            # Input("url", "pathname"),  # REMOVED - was running full analysis on EVERY page load!
             Input("freq-btn-update-analysis", "n_clicks"),
-            Input("freq-time-range-slider", "value"),
             Input("freq-btn-nudge-m10", "n_clicks"),
             Input("freq-btn-nudge-m1", "n_clicks"),
             Input("freq-btn-nudge-p1", "n_clicks"),
             Input("freq-btn-nudge-p10", "n_clicks"),
         ],
         [
+            State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
+            State("freq-time-range-slider", "value"),
             State("freq-start-time", "value"),
             State("freq-end-time", "value"),
             State(
@@ -144,13 +175,13 @@ def register_frequency_filtering_callbacks(app):
         ],
     )
     def frequency_domain_callback(
-        pathname,
         n_clicks,
-        slider_value,
         nudge_m10,
         nudge_m1,
         nudge_p1,
         nudge_p10,
+        pathname,  # MOVED to correct position - this is a State parameter
+        slider_value,
         start_time,
         end_time,
         signal_source,  # Added signal source parameter
@@ -210,7 +241,7 @@ def register_frequency_filtering_callbacks(app):
         try:
             # Get data from the data service
             logger.info("Attempting to import data service...")
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 
             logger.info("Data service imported successfully")
 
@@ -225,7 +256,7 @@ def register_frequency_filtering_callbacks(app):
                 logger.info(f"Added vitalDSP path: {vitaldsp_path}")
             logger.info(f"Current sys.path: {sys.path[:3]}")
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
             data_store = data_service.get_all_data()
 
             if not data_store:
@@ -342,8 +373,12 @@ def register_frequency_filtering_callbacks(app):
             logger.info(
                 f"Signal data range: {np.min(selected_signal):.3f} to {np.max(selected_signal):.3f}"
             )
-            logger.info(f"Signal data sample values: {selected_signal[:5]}")
-            logger.info(f"Time data sample values: {time_data[:5]}")
+            logger.info(
+                f"Signal data summary: dtype={selected_signal.dtype}, count={len(selected_signal)}"
+            )
+            logger.info(
+                f"Time data summary: dtype={time_data.dtype}, count={len(time_data)}"
+            )
             logger.info(
                 f"Signal data statistics - Mean: {np.mean(selected_signal):.3f}, Std: {np.std(selected_signal):.3f}"
             )
@@ -643,8 +678,12 @@ def register_frequency_filtering_callbacks(app):
             logger.info(
                 f"Final time range: {time_data[0]:.3f}s to {time_data[-1]:.3f}s"
             )
-            logger.info(f"Signal data sample values: {selected_signal[:10]}")
-            logger.info(f"Time data sample values: {time_data[:10]}")
+            logger.info(
+                f"Signal data summary: dtype={selected_signal.dtype}, count={len(selected_signal)}"
+            )
+            logger.info(
+                f"Time data summary: dtype={time_data.dtype}, count={len(time_data)}"
+            )
 
             # Normalize selected signal for better analysis
             if np.std(selected_signal) > 0:
@@ -951,6 +990,15 @@ def register_frequency_filtering_callbacks(app):
                 xaxis_title="Time (seconds)",
                 yaxis_title="Amplitude",
                 showlegend=True,
+                template="plotly_white",
+                # Enable pan and zoom
+                dragmode="pan",
+                modebar=dict(
+                    orientation="v",
+                    bgcolor="rgba(255,255,255,0.8)",
+                    color="rgba(0,0,0,0.5)",
+                    activecolor="rgba(0,0,0,0.8)",
+                ),
             )
 
             # Create filter response plot
@@ -973,6 +1021,15 @@ def register_frequency_filtering_callbacks(app):
                 xaxis_title="Frequency (Hz)",
                 yaxis_title="Magnitude (dB)",
                 showlegend=True,
+                template="plotly_white",
+                # Enable pan and zoom
+                dragmode="pan",
+                modebar=dict(
+                    orientation="v",
+                    bgcolor="rgba(255,255,255,0.8)",
+                    color="rgba(0,0,0,0.5)",
+                    activecolor="rgba(0,0,0,0.8)",
+                ),
             )
 
             # Create stats
@@ -1059,7 +1116,9 @@ def register_frequency_filtering_callbacks(app):
 
     # Time slider range update callback
     @app.callback(
-        Output("freq-time-range-slider", "max"), [Input("store-uploaded-data", "data")]
+        Output("freq-time-range-slider", "max"),
+        [Input("store-uploaded-data", "data")],
+        prevent_initial_call=True,
     )
     def update_freq_time_slider_range(data_store):
         """Update time slider range based on uploaded data."""
@@ -1235,6 +1294,21 @@ def create_fft_plot(
         showlegend=True,
         hovermode="closest",
         margin=dict(l=80, r=50, t=80, b=80),  # Add margins to prevent overlap
+        template="plotly_white",
+        # Add pan/zoom tools
+        dragmode="pan",
+        modebar=dict(
+            add=[
+                "pan2d",
+                "zoom2d",
+                "select2d",
+                "lasso2d",
+                "zoomIn2d",
+                "zoomOut2d",
+                "autoScale2d",
+                "resetScale2d",
+            ]
+        ),
     )
 
     # Update axes labels with better positioning
@@ -1384,6 +1458,21 @@ def create_stft_plot(
         showlegend=True,
         hovermode="closest",
         margin=dict(l=80, r=50, t=80, b=80),  # Add margins to prevent overlap
+        template="plotly_white",
+        # Add pan/zoom tools
+        dragmode="pan",
+        modebar=dict(
+            add=[
+                "pan2d",
+                "zoom2d",
+                "select2d",
+                "lasso2d",
+                "zoomIn2d",
+                "zoomOut2d",
+                "autoScale2d",
+                "resetScale2d",
+            ]
+        ),
     )
 
     # Update axes labels with better positioning
@@ -1409,7 +1498,7 @@ def create_wavelet_plot(
     logger.info(f"Creating wavelet plot with type: {wavelet_type}, levels: {levels}")
 
     try:
-        import pywt
+        from vitalDSP.transforms.wavelet_transform import WaveletTransform
 
         # Validate input parameters
         if levels <= 0:
@@ -1447,15 +1536,8 @@ def create_wavelet_plot(
             return fig
 
         # Validate wavelet type
-        valid_wavelets = pywt.wavelist()
-        if wavelet_type not in valid_wavelets:
-            logger.warning(
-                f"Invalid wavelet type: {wavelet_type}. Available: {valid_wavelets[:10]}..."
-            )
-            # Use a default wavelet
-            default_wavelet = "db4" if "db4" in valid_wavelets else "haar"
-            logger.info(f"Using default wavelet: {default_wavelet}")
-            wavelet_type = default_wavelet
+        wt = WaveletTransform(selected_signal, wavelet_name=wavelet_type)
+        # Note: vitalDSP WaveletTransform handles validation internally
 
         # Validate signal data
         if np.any(np.isnan(selected_signal)) or np.any(np.isinf(selected_signal)):
@@ -1497,7 +1579,11 @@ def create_wavelet_plot(
             f"Performing wavelet decomposition with {wavelet_type} wavelet, {levels} levels"
         )
         try:
-            coeffs = pywt.wavedec(selected_signal, wavelet_type, level=levels)
+            coefficients = wt.perform_wavelet_transform()
+            # Convert to list format for compatibility
+            coeffs = (
+                [coefficients] if isinstance(coefficients, np.ndarray) else coefficients
+            )
             logger.info(
                 f"Wavelet decomposition completed. Number of coefficients: {len(coeffs)}"
             )
@@ -1748,6 +1834,21 @@ def create_wavelet_plot(
             showlegend=True,
             hovermode="closest",
             margin=dict(l=80, r=50, t=80, b=80),  # Add margins to prevent overlap
+            template="plotly_white",
+            # Add pan/zoom tools
+            dragmode="pan",
+            modebar=dict(
+                add=[
+                    "pan2d",
+                    "zoom2d",
+                    "select2d",
+                    "lasso2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "autoScale2d",
+                    "resetScale2d",
+                ]
+            ),
         )
 
         # Update axes labels with better positioning
@@ -2153,6 +2254,21 @@ def perform_psd_analysis(
         showlegend=True,
         hovermode="closest",
         margin=dict(l=80, r=50, t=80, b=80),  # Add margins to prevent overlap
+        template="plotly_white",
+        # Add pan/zoom tools
+        dragmode="pan",
+        modebar=dict(
+            add=[
+                "pan2d",
+                "zoom2d",
+                "select2d",
+                "lasso2d",
+                "zoomIn2d",
+                "zoomOut2d",
+                "autoScale2d",
+                "resetScale2d",
+            ]
+        ),
     )
 
     # Update axes labels with better positioning
@@ -2435,10 +2551,15 @@ def perform_wavelet_analysis(
 
     # For wavelet analysis, we'll create a simplified PSD from the approximation coefficients
     try:
-        import pywt
+        from vitalDSP.transforms.wavelet_transform import WaveletTransform
 
-        # Perform wavelet decomposition
-        coeffs = pywt.wavedec(selected_signal, wavelet_type, level=levels)
+        # Perform wavelet decomposition using vitalDSP
+        wt = WaveletTransform(selected_signal, wavelet_name=wavelet_type)
+        coefficients = wt.perform_wavelet_transform()
+        # Convert to list format for compatibility
+        coeffs = (
+            [coefficients] if isinstance(coefficients, np.ndarray) else coefficients
+        )
 
         # Validate coefficients
         if not coeffs or len(coeffs) == 0:

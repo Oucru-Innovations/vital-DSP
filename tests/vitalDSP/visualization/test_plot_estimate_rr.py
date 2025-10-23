@@ -50,7 +50,7 @@ def setup_stubs(monkeypatch):
         "vitalDSP.respiratory_analysis.estimate_rr.frequency_domain_rr",
         frequency_domain_rr_stub,
     )
-    monkeypatch.setattr("vitalDSP.utils.common.find_peaks", find_peaks_stub)
+    monkeypatch.setattr("vitalDSP.utils.find_peaks", find_peaks_stub)
 
 
 def test_plot_rr_estimations(setup_stubs):

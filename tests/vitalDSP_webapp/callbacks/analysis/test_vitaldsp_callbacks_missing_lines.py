@@ -706,10 +706,12 @@ class TestEdgeCases:
         empty_signal = np.array([])
         empty_time = np.array([])
         
-        # Function handles errors gracefully and returns error HTML
+        # Function handles empty data gracefully and returns valid HTML with zero values
         result = generate_time_domain_stats(empty_signal, empty_time, 1000)
         assert isinstance(result, html.Div)
-        assert "Error" in str(result)
+        # Should contain zero values for empty signal, not an error
+        assert "Signal Length: 0 samples" in str(result)
+        assert "Mean Amplitude: 0.0000" in str(result)
 
     def test_apply_filter_empty_signal(self):
         """Test filter application with empty signal."""

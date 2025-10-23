@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 import warnings
-from vitalDSP.utils.interpolations import (
+from vitalDSP.utils.signal_processing.interpolations import (
     linear_interpolation,
     spline_interpolation,
     mean_imputation,

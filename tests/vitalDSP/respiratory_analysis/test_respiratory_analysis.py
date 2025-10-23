@@ -16,11 +16,15 @@ from vitalDSP.respiratory_analysis.respiratory_analysis import RespiratoryAnalys
 
 # Mock the preprocess_signal function since it is used for preprocessing the signal.
 @pytest.fixture
-def mock_preprocess_signal(mocker):
-    return mocker.patch(
+def mock_preprocess_signal(monkeypatch):
+    def mock_preprocess(*args, **kwargs):
+        return np.sin(np.linspace(0, 10, 100))
+    
+    monkeypatch.setattr(
         "vitalDSP.preprocess.preprocess_operations.preprocess_signal",
-        return_value=np.sin(np.linspace(0, 10, 100)),
+        mock_preprocess
     )
+    return mock_preprocess
 
 
 # Mock PreprocessConfig to use default configurations.
@@ -76,13 +80,18 @@ def test_compute_respiratory_rate_time_domain(
 
 
 def test_compute_respiratory_rate_frequency_domain(
-    mock_preprocess_signal, mocker, mock_preprocess_config
+    mock_preprocess_signal, monkeypatch, mock_preprocess_config
 ):
     signal = np.sin(np.linspace(0, 10, 100))
-    mocker.patch(
-        "vitalDSP.respiratory_analysis.estimate_rr.frequency_domain_rr",
-        return_value=15.0,
+    
+    def mock_frequency_domain_rr(signal, sampling_rate, preprocess=None, **kwargs):
+        return 15.0
+    
+    monkeypatch.setattr(
+        "vitalDSP.respiratory_analysis.respiratory_analysis.frequency_domain_rr",
+        mock_frequency_domain_rr
     )
+    
     ra = RespiratoryAnalysis(signal, fs=256)
     respiratory_rate = ra.compute_respiratory_rate(
         method="frequency_domain", preprocess_config=mock_preprocess_config
@@ -92,12 +101,18 @@ def test_compute_respiratory_rate_frequency_domain(
 
 
 def test_compute_respiratory_rate_fft_based(
-    mock_preprocess_signal, mocker, mock_preprocess_config
+    mock_preprocess_signal, monkeypatch, mock_preprocess_config
 ):
     signal = np.sin(np.linspace(0, 10, 100))
-    mocker.patch(
-        "vitalDSP.respiratory_analysis.estimate_rr.fft_based_rr", return_value=18.0
+    
+    def mock_fft_based_rr(signal, sampling_rate, preprocess=None, **kwargs):
+        return 18.0
+    
+    monkeypatch.setattr(
+        "vitalDSP.respiratory_analysis.respiratory_analysis.fft_based_rr",
+        mock_fft_based_rr
     )
+    
     ra = RespiratoryAnalysis(signal, fs=256)
     respiratory_rate = ra.compute_respiratory_rate(
         method="fft_based", preprocess_config=mock_preprocess_config
@@ -107,12 +122,18 @@ def test_compute_respiratory_rate_fft_based(
 
 
 def test_compute_respiratory_rate_counting(
-    mock_preprocess_signal, mocker, mock_preprocess_config
+    mock_preprocess_signal, monkeypatch, mock_preprocess_config
 ):
     signal = np.sin(np.linspace(0, 10, 100))
-    mocker.patch(
-        "vitalDSP.respiratory_analysis.estimate_rr.peak_detection_rr", return_value=20.0
+    
+    def mock_peak_detection_rr(signal, sampling_rate, preprocess=None, **kwargs):
+        return 20.0
+    
+    monkeypatch.setattr(
+        "vitalDSP.respiratory_analysis.respiratory_analysis.peak_detection_rr",
+        mock_peak_detection_rr
     )
+    
     ra = RespiratoryAnalysis(signal, fs=256)
     respiratory_rate = ra.compute_respiratory_rate(
         method="counting", preprocess_config=mock_preprocess_config

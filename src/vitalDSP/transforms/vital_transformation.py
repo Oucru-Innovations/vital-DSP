@@ -1,3 +1,31 @@
+"""
+Signal Transforms Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- SciPy integration for advanced signal processing
+- Performance optimization
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.transforms.vital_transformation import VitalTransformation
+    >>> signal = np.random.randn(1000)
+    >>> processor = VitalTransformation(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
 import numpy as np
 from scipy import signal
 from vitalDSP.filtering.artifact_removal import ArtifactRemoval
@@ -371,9 +399,17 @@ class VitalTransformation:
         normalization_range = options.get("normalization_range", (0, 1))
         min_val = np.min(self.signal)
         max_val = np.max(self.signal)
-        self.signal = (self.signal - min_val) / (max_val - min_val) * (
-            normalization_range[1] - normalization_range[0]
-        ) + normalization_range[0]
+
+        # Avoid divide by zero warning
+        if max_val - min_val > 0:
+            self.signal = (self.signal - min_val) / (max_val - min_val) * (
+                normalization_range[1] - normalization_range[0]
+            ) + normalization_range[0]
+        else:
+            # If signal is constant, set to middle of range
+            self.signal = np.full_like(
+                self.signal, (normalization_range[0] + normalization_range[1]) / 2
+            )
 
     def apply_smoothing(self, options=None):
         """

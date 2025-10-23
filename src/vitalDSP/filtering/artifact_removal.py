@@ -1,7 +1,34 @@
+"""
+Signal Filtering Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- SciPy integration for advanced signal processing
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.filtering.artifact_removal import ArtifactRemoval
+    >>> signal = np.random.randn(1000)
+    >>> processor = ArtifactRemoval(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
 import numpy as np
 from scipy.signal import butter, filtfilt, convolve, medfilt
 from scipy.signal.windows import gaussian
-from vitalDSP.utils.mother_wavelets import Wavelet
+from vitalDSP.utils.signal_processing.mother_wavelets import Wavelet
 from sklearn.decomposition import IncrementalPCA
 
 
@@ -229,9 +256,9 @@ class ArtifactRemoval:
         for i in reversed(range(level)):
             # Upsample
             upsampled_approx = np.zeros(len(approx_coeffs) * 2)
-            upsampled_approx[::2] = approx_coeffs
+            upsampled_approx[::2] = np.real(approx_coeffs)
             upsampled_detail = np.zeros(len(detail_coeffs[i]) * 2)
-            upsampled_detail[::2] = detail_coeffs[i]
+            upsampled_detail[::2] = np.real(detail_coeffs[i])
 
             # Truncate to the same length before summing
             upsampled_approx = upsampled_approx[: len(upsampled_detail)]

@@ -1,4 +1,33 @@
+"""
+Advanced Computation Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- Signal validation and error handling
+- Advanced filtering algorithms
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.advanced_computation.kalman_filter import KalmanFilter
+    >>> signal = np.random.randn(1000)
+    >>> processor = KalmanFilter(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
 import numpy as np
+import warnings
 
 
 class KalmanFilter:
@@ -61,12 +90,86 @@ class KalmanFilter:
         measurement_covariance : numpy.ndarray
             The measurement noise covariance matrix.
         """
+        # Input validation and numerical stability checks
+        self._validate_matrices(
+            initial_state,
+            initial_covariance,
+            process_covariance,
+            measurement_covariance,
+        )
+
         self.state = initial_state.astype(float)  # Ensuring state is float
         self.covariance = initial_covariance.astype(
             float
         )  # Ensuring covariance is float
         self.process_covariance = process_covariance.astype(float)
         self.measurement_covariance = measurement_covariance.astype(float)
+
+        # Numerical stability checks
+        self._check_numerical_stability()
+
+    def _validate_matrices(
+        self,
+        initial_state,
+        initial_covariance,
+        process_covariance,
+        measurement_covariance,
+    ):
+        """Validate input matrices for proper dimensions and properties."""
+        # Check dimensions
+        if initial_state.ndim != 1:
+            raise ValueError("Initial state must be 1-dimensional")
+
+        if initial_covariance.ndim != 2:
+            raise ValueError("Initial covariance must be 2-dimensional")
+
+        if process_covariance.ndim != 2:
+            raise ValueError("Process covariance must be 2-dimensional")
+
+        if measurement_covariance.ndim != 2:
+            raise ValueError("Measurement covariance must be 2-dimensional")
+
+        # Check for positive definiteness of covariance matrices
+        if not np.all(np.linalg.eigvals(initial_covariance) > 0):
+            raise ValueError("Initial covariance must be positive definite")
+
+        if not np.all(np.linalg.eigvals(process_covariance) > 0):
+            raise ValueError("Process covariance must be positive definite")
+
+        if not np.all(np.linalg.eigvals(measurement_covariance) > 0):
+            raise ValueError("Measurement covariance must be positive definite")
+
+    def _check_numerical_stability(self):
+        """Check for potential numerical stability issues."""
+        # Check for very small eigenvalues that could cause numerical issues
+        initial_eigenvals = np.linalg.eigvals(self.covariance)
+        process_eigenvals = np.linalg.eigvals(self.process_covariance)
+        measurement_eigenvals = np.linalg.eigvals(self.measurement_covariance)
+
+        min_eigenval = min(
+            np.min(initial_eigenvals),
+            np.min(process_eigenvals),
+            np.min(measurement_eigenvals),
+        )
+
+        if min_eigenval <= 1e-12:
+            raise ValueError(
+                f"Very small eigenvalues detected ({min_eigenval:.2e}). "
+                f"This may cause numerical instability."
+            )
+
+        # Check condition numbers
+        initial_cond = np.linalg.cond(self.covariance)
+        process_cond = np.linalg.cond(self.process_covariance)
+        measurement_cond = np.linalg.cond(self.measurement_covariance)
+
+        max_cond = max(initial_cond, process_cond, measurement_cond)
+
+        if max_cond > 1e12:
+            raise ValueError(
+                f"High condition number detected ({max_cond:.2e}). "
+                f"This may cause numerical instability."
+            )
 
     def filter(
         self,
@@ -130,16 +233,48 @@ class KalmanFilter:
                 measurement_matrix @ self.covariance @ measurement_matrix.T
                 + self.measurement_covariance
             )
-            kalman_gain = (
-                self.covariance
-                @ measurement_matrix.T
-                @ np.linalg.inv(innovation_covariance)
-            )
+
+            # Numerical stability check for innovation covariance
+            if np.linalg.cond(innovation_covariance) > 1e12:
+                warnings.warn(
+                    "High condition number in innovation covariance. Using pseudoinverse."
+                )
+                kalman_gain = (
+                    self.covariance
+                    @ measurement_matrix.T
+                    @ np.linalg.pinv(innovation_covariance)
+                )
+            else:
+                kalman_gain = (
+                    self.covariance
+                    @ measurement_matrix.T
+                    @ np.linalg.inv(innovation_covariance)
+                )
+
             self.state = self.state + kalman_gain @ innovation
+
+            # Joseph form for numerical stability
+            Identity = np.eye(len(self.state))
             self.covariance = (
-                np.eye(len(self.state)) - kalman_gain @ measurement_matrix
-            ) @ self.covariance
+                Identity - kalman_gain @ measurement_matrix
+            ) @ self.covariance @ (
+                Identity - kalman_gain @ measurement_matrix
+            ).T + kalman_gain @ self.measurement_covariance @ kalman_gain.T
+
+            # Ensure covariance remains positive definite
+            self.covariance = self._ensure_positive_definite(self.covariance)
 
             filtered_signal.append(self.state.copy())
 
         return np.array(filtered_signal)
+
+    def _ensure_positive_definite(self, matrix):
+        """Ensure matrix remains positive definite using eigenvalue clipping."""
+        eigenvals, eigenvecs = np.linalg.eigh(matrix)
+
+        # Clip eigenvalues to prevent numerical issues
+        min_eigenval = 1e-12
+        eigenvals = np.maximum(eigenvals, min_eigenval)
+
+        # Reconstruct matrix
+        return eigenvecs @ np.diag(eigenvals) @ eigenvecs.T

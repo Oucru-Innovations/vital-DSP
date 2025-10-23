@@ -1,13 +1,17 @@
 """
 Services module for vitalDSP webapp.
 
-This module provides a clean, modular structure for all service components
-used in the application.
+This module contains service classes that handle integration between
+the webapp frontend and the core vitalDSP processing components.
 """
 
-# Data services
-from .data.data_service import get_data_service
+from .pipeline_integration import get_pipeline_service, PipelineIntegrationService
+from .progress_tracker import get_progress_tracker, ProgressTracker, track_progress
 
 __all__ = [
-    "get_data_service",
+    "get_pipeline_service",
+    "PipelineIntegrationService",
+    "get_progress_tracker",
+    "ProgressTracker",
+    "track_progress",
 ]

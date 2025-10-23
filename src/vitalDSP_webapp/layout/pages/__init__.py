@@ -18,6 +18,7 @@ from .analysis_pages import (
     health_report_layout,
     settings_layout,
 )
+from .pipeline_page import pipeline_layout
 
 __all__ = [
     "upload_layout",
@@ -32,4 +33,5 @@ __all__ = [
     "advanced_layout",
     "health_report_layout",
     "settings_layout",
+    "pipeline_layout",
 ]

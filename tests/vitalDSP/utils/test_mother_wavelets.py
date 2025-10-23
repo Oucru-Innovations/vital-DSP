@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import warnings
-from vitalDSP.utils.mother_wavelets import Wavelet
+from vitalDSP.utils.signal_processing.mother_wavelets import Wavelet
 
 # Filter out expected warnings about invalid mathematical operations
 warnings.filterwarnings("ignore", category=RuntimeWarning, message="invalid value encountered in.*")

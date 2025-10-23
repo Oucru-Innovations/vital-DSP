@@ -1,3 +1,29 @@
+"""
+Signal Quality Assessment Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- Pattern and anomaly detection
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.signal_quality_assessment.artifact_detection_removal import ArtifactDetectionRemoval
+    >>> signal = np.random.randn(1000)
+    >>> processor = ArtifactDetectionRemoval(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
 import numpy as np
 
 
@@ -278,7 +304,170 @@ def iterative_artifact_removal(signal, max_iterations=5, threshold=0.5):
 
         # Replace only artifact indices with the median of the non-artifact portion of the signal
         if len(artifact_indices) > 0:
-            median_value = np.median(np.delete(cleaned_signal, artifact_indices))
-            cleaned_signal[artifact_indices] = median_value
+            # Get valid (non-artifact) values
+            valid_indices = np.delete(np.arange(len(cleaned_signal)), artifact_indices)
+            if len(valid_indices) > 0:
+                median_value = np.median(cleaned_signal[valid_indices])
+                cleaned_signal[artifact_indices] = median_value
+            else:
+                # If no valid values, set artifacts to 0
+                cleaned_signal[artifact_indices] = 0
 
     return cleaned_signal
+
+
+class ArtifactDetectionRemoval:
+    """
+    A comprehensive artifact detection and removal class for physiological signals.
+
+    This class provides various methods for detecting and removing artifacts from
+    physiological signals including ECG, PPG, EEG, and other vital signs.
+
+    Parameters
+    ----------
+    signal : numpy.ndarray
+        The input signal to process.
+    fs : float, optional
+        Sampling frequency of the signal (default: 250 Hz).
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> signal = np.random.randn(1000)
+    >>> adr = ArtifactDetectionRemoval(signal, fs=250)
+    >>> artifacts = adr.detect_artifacts()
+    >>> cleaned_signal = adr.remove_artifacts()
+    """
+
+    def __init__(self, signal, fs=250):
+        """
+        Initialize the ArtifactDetectionRemoval class.
+
+        Parameters
+        ----------
+        signal : numpy.ndarray
+            The input signal to process.
+        fs : float, optional
+            Sampling frequency of the signal (default: 250 Hz).
+        """
+        self.signal = np.array(signal)
+        self.fs = fs
+        self.artifact_indices = None
+
+    def detect_artifacts(self, method="threshold", **kwargs):
+        """
+        Detect artifacts in the signal using various methods.
+
+        Parameters
+        ----------
+        method : str, optional
+            Method to use for artifact detection. Options:
+            - 'threshold': Amplitude thresholding (default)
+            - 'z_score': Z-score based detection
+            - 'kurtosis': Kurtosis based detection
+            - 'adaptive': Adaptive threshold detection
+        **kwargs
+            Additional parameters for the specific detection method.
+
+        Returns
+        -------
+        numpy.ndarray
+            Indices of detected artifacts.
+        """
+        if method == "threshold":
+            threshold = kwargs.get("threshold", 0.5)
+            self.artifact_indices = threshold_artifact_detection(self.signal, threshold)
+        elif method == "z_score":
+            z_threshold = kwargs.get("z_threshold", 3.0)
+            self.artifact_indices = z_score_artifact_detection(self.signal, z_threshold)
+        elif method == "kurtosis":
+            kurt_threshold = kwargs.get("kurt_threshold", 3.0)
+            self.artifact_indices = kurtosis_artifact_detection(
+                self.signal, kurt_threshold
+            )
+        elif method == "adaptive":
+            window_size = kwargs.get("window_size", 100)
+            std_factor = kwargs.get("std_factor", 2.0)
+            self.artifact_indices = adaptive_threshold_artifact_detection(
+                self.signal, window_size, std_factor
+            )
+        else:
+            raise ValueError(f"Unknown detection method: {method}")
+
+        return self.artifact_indices
+
+    def remove_artifacts(self, method="moving_average", **kwargs):
+        """
+        Remove artifacts from the signal using various methods.
+
+        Parameters
+        ----------
+        method : str, optional
+            Method to use for artifact removal. Options:
+            - 'moving_average': Moving average filter (default)
+            - 'wavelet': Wavelet-based removal
+            - 'median': Median filter
+            - 'iterative': Iterative removal
+        **kwargs
+            Additional parameters for the specific removal method.
+
+        Returns
+        -------
+        numpy.ndarray
+            Signal with artifacts removed.
+        """
+        if method == "moving_average":
+            window_size = kwargs.get("window_size", 5)
+            return moving_average_artifact_removal(self.signal, window_size)
+        elif method == "wavelet":
+            wavelet_func = kwargs.get("wavelet_func", "db4")
+            level = kwargs.get("level", 3)
+            return wavelet_artifact_removal(self.signal, wavelet_func, level)
+        elif method == "median":
+            kernel_size = kwargs.get("kernel_size", 3)
+            return median_filter_artifact_removal(self.signal, kernel_size)
+        elif method == "iterative":
+            max_iterations = kwargs.get("max_iterations", 5)
+            threshold = kwargs.get("threshold", 0.5)
+            return iterative_artifact_removal(self.signal, max_iterations, threshold)
+        else:
+            raise ValueError(f"Unknown removal method: {method}")
+
+    def process(
+        self,
+        detection_method="threshold",
+        removal_method="moving_average",
+        detection_kwargs=None,
+        removal_kwargs=None,
+    ):
+        """
+        Complete processing pipeline: detect and remove artifacts.
+
+        Parameters
+        ----------
+        detection_method : str, optional
+            Method for artifact detection (default: 'threshold').
+        removal_method : str, optional
+            Method for artifact removal (default: 'moving_average').
+        detection_kwargs : dict, optional
+            Parameters for detection method.
+        removal_kwargs : dict, optional
+            Parameters for removal method.
+
+        Returns
+        -------
+        numpy.ndarray
+            Processed signal with artifacts removed.
+        """
+        if detection_kwargs is None:
+            detection_kwargs = {}
+        if removal_kwargs is None:
+            removal_kwargs = {}
+
+        # Detect artifacts
+        self.detect_artifacts(detection_method, **detection_kwargs)
+
+        # Remove artifacts
+        cleaned_signal = self.remove_artifacts(removal_method, **removal_kwargs)
+
+        return cleaned_signal

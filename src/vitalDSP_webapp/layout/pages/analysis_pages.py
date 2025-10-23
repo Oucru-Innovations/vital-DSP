@@ -51,12 +51,33 @@ def time_domain_layout():
                                                     ),
                                                     dbc.Col(
                                                         [
-                                                            dbc.Button(
-                                                                "📊 Export Results",
-                                                                id="btn-export-results",
-                                                                color="success",
-                                                                outline=True,
-                                                                size="lg",
+                                                            dbc.ButtonGroup(
+                                                                [
+                                                                    dbc.Button(
+                                                                        [
+                                                                            html.I(
+                                                                                className="fas fa-file-csv me-2"
+                                                                            ),
+                                                                            "Export CSV",
+                                                                        ],
+                                                                        id="btn-export-time-domain-csv",
+                                                                        color="success",
+                                                                        outline=True,
+                                                                        size="lg",
+                                                                    ),
+                                                                    dbc.Button(
+                                                                        [
+                                                                            html.I(
+                                                                                className="fas fa-file-code me-2"
+                                                                            ),
+                                                                            "Export JSON",
+                                                                        ],
+                                                                        id="btn-export-time-domain-json",
+                                                                        color="info",
+                                                                        outline=True,
+                                                                        size="lg",
+                                                                    ),
+                                                                ],
                                                                 className="w-100",
                                                             )
                                                         ],
@@ -144,93 +165,112 @@ def time_domain_layout():
                                             ),
                                             # Time Window Controls
                                             html.H6("Time Window", className="mb-3"),
+                                            # Modern Time Range Controls
                                             dbc.Row(
                                                 [
                                                     dbc.Col(
                                                         [
                                                             html.Label(
-                                                                "Start Time (s)",
-                                                                className="form-label",
+                                                                "Start Position (%)",
+                                                                className="form-label fw-bold",
                                                             ),
-                                                            dbc.Input(
-                                                                id="start-time",
-                                                                type="number",
-                                                                value=0,
+                                                            html.Small(
+                                                                "Position in data (0% = start, 100% = end)",
+                                                                className="text-muted",
+                                                            ),
+                                                            dcc.Slider(
+                                                                id="start-position-slider",
                                                                 min=0,
-                                                                step=0.1,
-                                                                placeholder="0",
+                                                                max=100,
+                                                                step=1,
+                                                                value=0,
+                                                                marks={
+                                                                    0: "0%",
+                                                                    25: "25%",
+                                                                    50: "50%",
+                                                                    75: "75%",
+                                                                    100: "100%",
+                                                                },
+                                                                tooltip={"placement": "bottom", "always_visible": True},
+                                                                className="mb-3",
                                                             ),
                                                         ],
-                                                        md=6,
+                                                        md=8,
                                                     ),
                                                     dbc.Col(
                                                         [
                                                             html.Label(
-                                                                "End Time (s)",
-                                                                className="form-label",
+                                                                "Duration",
+                                                                className="form-label fw-bold",
                                                             ),
-                                                            dbc.Input(
-                                                                id="end-time",
-                                                                type="number",
-                                                                value=10,
-                                                                min=0,
-                                                                step=0.1,
-                                                                placeholder="10",
+                                                            html.Small(
+                                                                "Analysis window size",
+                                                                className="text-muted",
+                                                            ),
+                                                            dbc.Select(
+                                                                id="duration-select",
+                                                                options=[
+                                                                    {"label": "30 seconds", "value": 30},
+                                                                    {"label": "1 minute", "value": 60},
+                                                                    {"label": "2 minutes", "value": 120},
+                                                                    {"label": "5 minutes", "value": 300},
+                                                                ],
+                                                                value=60,  # Default to 1 minute
+                                                                className="mb-3",
                                                             ),
                                                         ],
-                                                        md=6,
+                                                        md=4,
                                                     ),
                                                 ],
                                                 className="mb-3",
                                             ),
-                                            # Quick Window Navigation
+                                            # Quick Navigation Buttons
                                             html.Div(
                                                 [
-                                                    dbc.Button(
-                                                        "⏪ -10s",
-                                                        id="btn-nudge-m10",
-                                                        color="secondary",
-                                                        size="sm",
-                                                        className="me-1",
+                                                    html.Label(
+                                                        "Quick Navigation",
+                                                        className="form-label fw-bold mb-2",
                                                     ),
-                                                    dbc.Button(
-                                                        "⏪ -1s",
-                                                        id="btn-nudge-m1",
-                                                        color="secondary",
-                                                        size="sm",
-                                                        className="me-1",
-                                                    ),
-                                                    dbc.Button(
-                                                        "+1s ⏩",
-                                                        id="btn-nudge-p1",
-                                                        color="secondary",
-                                                        size="sm",
-                                                        className="me-1",
-                                                    ),
-                                                    dbc.Button(
-                                                        "+10s ⏩",
-                                                        id="btn-nudge-p10",
-                                                        color="secondary",
-                                                        size="sm",
+                                                    dbc.ButtonGroup(
+                                                        [
+                                                            dbc.Button(
+                                                                "⏪ -10%",
+                                                                id="btn-nudge-m10",
+                                                                color="secondary",
+                                                                size="sm",
+                                                                className="me-1",
+                                                            ),
+                                                            dbc.Button(
+                                                                "⏪ -5%",
+                                                                id="btn-nudge-m5",
+                                                                color="secondary",
+                                                                size="sm",
+                                                                className="me-1",
+                                                            ),
+                                                            dbc.Button(
+                                                                "Center",
+                                                                id="btn-center",
+                                                                color="info",
+                                                                size="sm",
+                                                                className="me-1",
+                                                            ),
+                                                            dbc.Button(
+                                                                "+5% ⏩",
+                                                                id="btn-nudge-p5",
+                                                                color="secondary",
+                                                                size="sm",
+                                                                className="me-1",
+                                                            ),
+                                                            dbc.Button(
+                                                                "+10% ⏩",
+                                                                id="btn-nudge-p10",
+                                                                color="secondary",
+                                                                size="sm",
+                                                            ),
+                                                        ],
+                                                        className="mb-3",
                                                     ),
                                                 ],
-                                                className="mb-3",
-                                            ),
-                                            # Range Slider for Time Window
-                                            html.Label(
-                                                "Time Range Slider",
-                                                className="form-label",
-                                            ),
-                                            dcc.RangeSlider(
-                                                id="time-range-slider",
-                                                min=0,
-                                                max=100,
-                                                step=0.1,
-                                                value=[0, 10],
-                                                allowCross=False,
-                                                pushable=1,
-                                                updatemode="mouseup",
-                                                className="mb-4",
                                             ),
                                             # Signal Source Selection
                                             html.H6("Signal Source", className="mb-3"),
@@ -449,6 +489,10 @@ def time_domain_layout():
             dcc.Store(id="store-time-domain-data"),
             dcc.Store(id="store-filtered-data"),
             dcc.Store(id="store-analysis-results"),
+            dcc.Store(id="store-time-domain-features"),  # For export
+            # Download components for export
+            dcc.Download(id="download-time-domain-csv"),
+            dcc.Download(id="download-time-domain-json"),
         ]
     )
 
@@ -1535,65 +1579,52 @@ def filtering_layout():
                                         ],
                                         md=2,
                                     ),
-                                    # Time Window Controls - Compact
+                                    # Modern Time Range Controls
                                     dbc.Col(
                                         [
                                             html.Label(
-                                                "Time Range (s):",
+                                                "Start Position (%)",
                                                 className="form-label mb-1",
                                             ),
-                                            dbc.Row(
-                                                [
-                                                    dbc.Col(
-                                                        [
-                                                            dbc.Input(
-                                                                id="filter-start-time",
-                                                                type="number",
-                                                                value=0,
-                                                                min=0,
-                                                                step=0.1,
-                                                                size="sm",
-                                                                placeholder="Start",
-                                                            )
-                                                        ],
-                                                        width=6,
-                                                    ),
-                                                    dbc.Col(
-                                                        [
-                                                            dbc.Input(
-                                                                id="filter-end-time",
-                                                                type="number",
-                                                                value=10,
-                                                                min=0,
-                                                                step=0.1,
-                                                                size="sm",
-                                                                placeholder="End",
-                                                            )
-                                                        ],
-                                                        width=6,
-                                                    ),
-                                                ]
-                                            ),
-                                            # Time Range Slider
-                                            html.Label(
-                                                "Time Range Slider:",
-                                                className="form-label mb-1 mt-2",
-                                            ),
-                                            dcc.RangeSlider(
-                                                id="filter-time-range-slider",
+                                            dcc.Slider(
+                                                id="start-position-slider",
                                                 min=0,
                                                 max=100,
-                                                step=0.1,
-                                                value=[0, 10],
-                                                marks={},
-                                                tooltip={
-                                                    "placement": "bottom",
-                                                    "always_visible": True,
+                                                step=1,
+                                                value=0,
+                                                marks={
+                                                    0: "0%",
+                                                    25: "25%",
+                                                    50: "50%",
+                                                    75: "75%",
+                                                    100: "100%",
                                                 },
-                                                className="mt-1",
+                                                tooltip={"placement": "bottom", "always_visible": True},
+                                                className="mb-2",
                                             ),
                                         ],
                                         md=3,
+                                    ),
+                                    # Duration Selection
+                                    dbc.Col(
+                                        [
+                                            html.Label(
+                                                "Duration",
+                                                className="form-label mb-1",
+                                            ),
+                                            dbc.Select(
+                                                id="duration-select",
+                                                options=[
+                                                    {"label": "30s", "value": 30},
+                                                    {"label": "1min", "value": 60},
+                                                    {"label": "2min", "value": 120},
+                                                    {"label": "5min", "value": 300},
+                                                ],
+                                                value=60,  # Default to 1 minute
+                                                size="sm",
+                                            ),
+                                        ],
+                                        md=2,
                                     ),
                                     # Quick Navigation
                                     dbc.Col(
@@ -1605,26 +1636,22 @@ def filtering_layout():
                                             dbc.ButtonGroup(
                                                 [
                                                     dbc.Button(
-                                                        "←10s",
-                                                        id="filter-btn-nudge-m10",
+                                                        "-10%",
+                                                        id="btn-nudge-m10",
                                                         color="secondary",
                                                         size="sm",
+                                                        className="me-1",
                                                     ),
                                                     dbc.Button(
-                                                        "←1s",
-                                                        id="filter-btn-nudge-m1",
-                                                        color="secondary",
+                                                        "Center",
+                                                        id="btn-center",
+                                                        color="info",
                                                         size="sm",
+                                                        className="me-1",
                                                     ),
                                                     dbc.Button(
-                                                        "+1s",
-                                                        id="filter-btn-nudge-p1",
-                                                        color="secondary",
-                                                        size="sm",
-                                                    ),
-                                                    dbc.Button(
-                                                        "+10s",
-                                                        id="filter-btn-nudge-p10",
+                                                        "+10%",
+                                                        id="btn-nudge-p10",
                                                         color="secondary",
                                                         size="sm",
                                                     ),
@@ -1646,6 +1673,44 @@ def filtering_layout():
                                                 color="primary",
                                                 size="sm",
                                                 className="w-100",
+                                            ),
+                                        ],
+                                        md=2,
+                                    ),
+                                    # Export Buttons
+                                    dbc.Col(
+                                        [
+                                            html.Label(
+                                                "Export:", className="form-label mb-1"
+                                            ),
+                                            dbc.ButtonGroup(
+                                                [
+                                                    dbc.Button(
+                                                        [
+                                                            html.I(
+                                                                className="fas fa-file-csv me-1"
+                                                            ),
+                                                            "CSV",
+                                                        ],
+                                                        id="btn-export-filtered-csv",
+                                                        color="success",
+                                                        outline=True,
+                                                        size="sm",
+                                                    ),
+                                                    dbc.Button(
+                                                        [
+                                                            html.I(
+                                                                className="fas fa-file-code me-1"
+                                                            ),
+                                                            "JSON",
+                                                        ],
+                                                        id="btn-export-filtered-json",
+                                                        color="info",
+                                                        outline=True,
+                                                        size="sm",
+                                                    ),
+                                                ],
+                                                size="sm",
                                             ),
                                         ],
                                         md=2,
@@ -2714,6 +2779,10 @@ def filtering_layout():
             dcc.Store(id="store-filtering-data"),
             dcc.Store(id="store-filter-comparison"),
             dcc.Store(id="store-filter-quality-metrics"),
+            dcc.Store(id="store-filtered-signal"),  # For export
+            # Download components for export
+            dcc.Download(id="download-filtered-csv"),
+            dcc.Download(id="download-filtered-json"),
         ]
     )
 
@@ -2762,12 +2831,33 @@ def physiological_layout():
                                                     ),
                                                     dbc.Col(
                                                         [
-                                                            dbc.Button(
-                                                                "📊 Export Results",
-                                                                id="physio-btn-export-results",
-                                                                color="success",
-                                                                outline=True,
-                                                                size="lg",
+                                                            dbc.ButtonGroup(
+                                                                [
+                                                                    dbc.Button(
+                                                                        [
+                                                                            html.I(
+                                                                                className="fas fa-file-csv me-2"
+                                                                            ),
+                                                                            "Export CSV",
+                                                                        ],
+                                                                        id="btn-export-physio-csv",
+                                                                        color="success",
+                                                                        outline=True,
+                                                                        size="lg",
+                                                                    ),
+                                                                    dbc.Button(
+                                                                        [
+                                                                            html.I(
+                                                                                className="fas fa-file-code me-2"
+                                                                            ),
+                                                                            "Export JSON",
+                                                                        ],
+                                                                        id="btn-export-physio-json",
+                                                                        color="info",
+                                                                        outline=True,
+                                                                        size="lg",
+                                                                    ),
+                                                                ],
                                                                 className="w-100",
                                                             )
                                                         ],
@@ -3550,6 +3640,9 @@ def physiological_layout():
             dcc.Store(id="store-physio-data"),
             dcc.Store(id="store-physio-features"),
             dcc.Store(id="store-physio-analysis"),
+            # Download components for export
+            dcc.Download(id="download-physio-csv"),
+            dcc.Download(id="download-physio-json"),
         ]
     )
 
@@ -3934,9 +4027,9 @@ def respiratory_layout():
                                                             dbc.Input(
                                                                 id="resp-high-cut",
                                                                 type="number",
-                                                                value=0.8,
+                                                                value=0.5,
                                                                 min=0.1,
-                                                                max=2.0,
+                                                                max=0.5,
                                                                 step=0.01,
                                                                 className="mb-2",
                                                             ),
@@ -6496,6 +6589,15 @@ def settings_layout():
                                                                         ],
                                                                         value="light",
                                                                         className="mb-3",
+                                                                    ),
+                                                                    # Debug info
+                                                                    html.Div(
+                                                                        id="theme-debug",
+                                                                        style={
+                                                                            "font-size": "12px",
+                                                                            "color": "gray",
+                                                                            "margin-top": "10px",
+                                                                        },
                                                                     ),
                                                                     html.Label(
                                                                         "Time Zone",

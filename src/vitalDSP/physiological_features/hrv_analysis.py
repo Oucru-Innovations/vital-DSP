@@ -1,8 +1,34 @@
+"""
+Physiological Features Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- Comprehensive signal analysis
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.physiological_features.hrv_analysis import HrvAnalysis
+    >>> signal = np.random.randn(1000)
+    >>> processor = HrvAnalysis(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
 import numpy as np
 from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
 from vitalDSP.physiological_features.frequency_domain import FrequencyDomainFeatures
 from vitalDSP.physiological_features.nonlinear import NonlinearFeatures
-from vitalDSP.transforms.beats_transformation import RRTransformation
 import logging as logger
 
 
@@ -68,6 +94,9 @@ class HRVFeatures:
             The sampling frequency in Hz. Default is 1000 Hz.
         """
         if nn_intervals is None:
+            # Lazy import to avoid circular import
+            from vitalDSP.transforms.beats_transformation import RRTransformation
+
             rr_transformation = RRTransformation(
                 signals, fs=fs, signal_type=signal_type, options=options
             )

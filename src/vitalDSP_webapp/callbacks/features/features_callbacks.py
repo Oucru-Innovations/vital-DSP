@@ -60,9 +60,9 @@ def register_features_callbacks(app):
 
         # Check if data is available first
         try:
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
 
             if data_service is None:
                 logger.error("Data service is None")
@@ -435,10 +435,19 @@ def apply_preprocessing(
 
                 except Exception as e:
                     logger.warning(f"vitalDSP normalization failed, using basic: {e}")
-                    # Fallback to basic normalization
-                    processed_signal = (
-                        processed_signal - np.mean(processed_signal)
-                    ) / np.std(processed_signal)
+                    # Fallback to basic normalization with safety checks
+                    # Handle infinite values
+                    processed_signal = np.where(
+                        np.isfinite(processed_signal), processed_signal, 0
+                    )
+                    signal_mean = np.mean(processed_signal)
+                    signal_std = np.std(processed_signal)
+                    if signal_std > 0:
+                        processed_signal = (processed_signal - signal_mean) / signal_std
+                    else:
+                        processed_signal = (
+                            processed_signal - signal_mean
+                        )  # Just center if std is 0
             elif option == "filter":
                 # Use filter parameters from filtering screen if available
                 if filter_info is not None:

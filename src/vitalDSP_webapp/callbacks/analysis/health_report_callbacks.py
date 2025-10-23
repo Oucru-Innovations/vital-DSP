@@ -10,7 +10,7 @@ from dash import Input, Output, State, callback_context, no_update, html
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import logging
-from vitalDSP_webapp.services.data.data_service import get_data_service
+from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ def register_health_report_callbacks(app):
         if button_id == "health-report-generate-btn" and n_clicks:
             try:
                 # Get data service
-                data_service = get_data_service()
+                data_service = get_enhanced_data_service()
 
                 # Get stored data
                 stored_data = data_service.get_all_data()

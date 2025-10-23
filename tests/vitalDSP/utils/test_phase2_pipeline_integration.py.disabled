@@ -1,0 +1,719 @@
+"""
+Comprehensive Test Suite for Phase 2: Pipeline Integration Components
+
+This module contains comprehensive tests for:
+- Standard 8-Stage Processing Pipeline
+- Memory Management and Data Type Optimization
+- Robust Error Handling and Recovery System
+
+Author: vitalDSP Development Team
+Date: October 12, 2025
+Version: 1.0.0
+"""
+
+import os
+import sys
+import pytest
+import numpy as np
+import pandas as pd
+import tempfile
+import shutil
+import time
+import threading
+from pathlib import Path
+from datetime import datetime
+from unittest.mock import Mock, patch, MagicMock
+
+# Add the src directory to the path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
+
+from vitalDSP.utils.core_infrastructure.processing_pipeline import (
+    StandardProcessingPipeline, ProcessingStage, ProcessingCache, CheckpointManager,
+    ProcessingResult, ProcessingCheckpoint
+)
+from vitalDSP.utils.core_infrastructure.memory_manager import (
+    MemoryManager, DataTypeOptimizer, MemoryProfiler, MemoryStrategy, MemoryInfo,
+    ProcessingMemoryProfile
+)
+from vitalDSP.utils.core_infrastructure.error_recovery import (
+    ErrorHandler, ErrorRecoveryManager, RobustProcessingPipeline, ErrorSeverity,
+    ErrorCategory, ErrorInfo, RecoveryResult, error_handler
+)
+from vitalDSP.utils.dynamic_config import DynamicConfigManager
+
+
+class TestProcessingPipeline:
+    """Test suite for Standard Processing Pipeline."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        """Create temporary directory for tests."""
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture
+    def config_manager(self):
+        """Create configuration manager for tests."""
+        return DynamicConfigManager()
+
+    @pytest.fixture
+    def pipeline(self, temp_dir, config_manager):
+        """Create processing pipeline for tests."""
+        cache_dir = os.path.join(temp_dir, 'cache')
+        checkpoint_dir = os.path.join(temp_dir, 'checkpoints')
+        return StandardProcessingPipeline(config_manager, cache_dir, checkpoint_dir)
+
+    @pytest.fixture
+    def sample_signal(self):
+        """Create sample signal for tests."""
+        # Create a 10-second ECG-like signal at 250 Hz
+        fs = 250
+        duration = 10
+        t = np.linspace(0, duration, fs * duration)
+        
+        # Generate synthetic ECG signal
+        signal = np.sin(2 * np.pi * 1.2 * t) + 0.5 * np.sin(2 * np.pi * 0.8 * t)
+        signal += 0.1 * np.random.randn(len(signal))  # Add noise
+        
+        return signal, fs
+
+    def test_pipeline_initialization(self, pipeline):
+        """Test pipeline initialization."""
+        assert pipeline is not None
+        assert pipeline.config is not None
+        assert pipeline.cache is not None
+        assert pipeline.checkpoint_manager is not None
+        assert pipeline.quality_screener is not None
+        assert pipeline.parallel_pipeline is not None
+
+    def test_processing_cache_basic_operations(self, temp_dir):
+        """Test processing cache basic operations."""
+        cache = ProcessingCache(os.path.join(temp_dir, 'cache'))
+        
+        # Test cache key generation
+        data = np.array([1, 2, 3, 4, 5])
+        key = cache.get_cache_key(data, 'test_operation', {'param': 'value'})
+        assert isinstance(key, str)
+        assert len(key) > 0
+        
+        # Test cache set/get
+        result = {'data': data, 'result': 'success'}
+        cache.set(key, result)
+        
+        retrieved = cache.get(key)
+        assert retrieved is not None
+        assert np.array_equal(retrieved['data'], data)
+        assert retrieved['result'] == 'success'
+        
+        # Test cache miss
+        non_existent_key = 'non_existent_key'
+        retrieved = cache.get(non_existent_key)
+        assert retrieved is None
+
+    def test_processing_cache_statistics(self, temp_dir):
+        """Test processing cache statistics."""
+        cache = ProcessingCache(os.path.join(temp_dir, 'cache'))
+        
+        # Initial stats
+        stats = cache.get_stats()
+        assert stats['hit_rate'] == 0.0
+        assert stats['total_hits'] == 0
+        assert stats['total_misses'] == 0
+        
+        # Test cache operations
+        data = np.array([1, 2, 3])
+        key = cache.get_cache_key(data, 'test', {})
+        
+        # Cache miss
+        retrieved = cache.get(key)
+        assert retrieved is None
+        
+        # Cache hit
+        cache.set(key, {'data': data})
+        retrieved = cache.get(key)
+        assert retrieved is not None
+        
+        # Check stats
+        stats = cache.get_stats()
+        assert stats['total_hits'] == 1
+        assert stats['total_misses'] == 1
+        assert stats['hit_rate'] == 0.5
+
+    def test_checkpoint_manager_basic_operations(self, temp_dir):
+        """Test checkpoint manager basic operations."""
+        checkpoint_manager = CheckpointManager(os.path.join(temp_dir, 'checkpoints'))
+        
+        # Test session ID creation
+        session_id = checkpoint_manager.create_session_id()
+        assert isinstance(session_id, str)
+        assert 'session_' in session_id
+        
+        # Test checkpoint save/load
+        test_data = {'signal': np.array([1, 2, 3]), 'metadata': {'fs': 250}}
+        test_metadata = {'stage': 'test', 'timestamp': datetime.now()}
+        
+        checkpoint_path = checkpoint_manager.save_checkpoint(
+            session_id, ProcessingStage.DATA_INGESTION, test_data, test_metadata
+        )
+        assert os.path.exists(checkpoint_path)
+        
+        loaded_data, loaded_metadata = checkpoint_manager.load_checkpoint(
+            session_id, ProcessingStage.DATA_INGESTION
+        )
+        assert loaded_data is not None
+        assert loaded_metadata is not None
+        assert np.array_equal(loaded_data['signal'], test_data['signal'])
+        
+        # Test checkpoint listing
+        checkpoints = checkpoint_manager.list_checkpoints(session_id)
+        assert len(checkpoints) == 1
+        assert checkpoints[0].stage == ProcessingStage.DATA_INGESTION
+
+    def test_checkpoint_manager_cleanup(self, temp_dir):
+        """Test checkpoint manager cleanup."""
+        checkpoint_manager = CheckpointManager(os.path.join(temp_dir, 'checkpoints'))
+        
+        session_id = checkpoint_manager.create_session_id()
+        
+        # Create multiple checkpoints
+        for stage in [ProcessingStage.DATA_INGESTION, ProcessingStage.QUALITY_SCREENING]:
+            checkpoint_manager.save_checkpoint(session_id, stage, {'data': 'test'}, {})
+            
+        # Verify checkpoints exist
+        checkpoints = checkpoint_manager.list_checkpoints(session_id)
+        assert len(checkpoints) == 2
+        
+        # Cleanup
+        checkpoint_manager.cleanup_session(session_id)
+        
+        # Verify cleanup
+        checkpoints = checkpoint_manager.list_checkpoints(session_id)
+        assert len(checkpoints) == 0
+
+    def test_pipeline_stage_execution(self, pipeline, sample_signal):
+        """Test individual pipeline stage execution."""
+        signal, fs = sample_signal
+        context = {
+            'signal': signal,
+            'fs': fs,
+            'signal_type': 'ecg',
+            'metadata': {},
+            'session_id': 'test_session',
+            'start_time': datetime.now(),
+            'results': {}
+        }
+        
+        # Test data ingestion stage
+        result = pipeline._execute_stage(ProcessingStage.DATA_INGESTION, context)
+        assert result.success
+        assert result.stage == ProcessingStage.DATA_INGESTION
+        assert result.data is not None
+        assert 'signal_length' in result.data
+        assert 'sampling_frequency' in result.data
+        assert result.data['sampling_frequency'] == fs
+
+    def test_pipeline_complete_processing(self, pipeline, sample_signal):
+        """Test complete pipeline processing."""
+        signal, fs = sample_signal
+        
+        # Process signal through complete pipeline
+        results = pipeline.process_signal(signal, fs, 'ecg')
+        
+        assert results is not None
+        assert 'processing_summary' in results
+        assert 'data_ingestion' in results
+        assert 'quality_assessment' in results
+        assert 'processing_results' in results
+        assert 'output_options' in results
+        
+        # Verify processing summary
+        summary = results['processing_summary']
+        assert summary['signal_type'] == 'ecg'
+        assert summary['sampling_frequency'] == fs
+        assert summary['total_duration'] == len(signal) / fs
+
+    def test_pipeline_error_handling(self, pipeline):
+        """Test pipeline error handling."""
+        # Test with invalid signal
+        invalid_signal = np.array([])  # Empty signal
+        
+        with pytest.raises(Exception):
+            pipeline.process_signal(invalid_signal, 250, 'ecg')
+
+    def test_pipeline_statistics(self, pipeline, sample_signal):
+        """Test pipeline statistics tracking."""
+        signal, fs = sample_signal
+        
+        # Process signal
+        pipeline.process_signal(signal, fs, 'ecg')
+        
+        # Get statistics
+        stats = pipeline.get_processing_statistics()
+        
+        assert 'pipeline_stats' in stats
+        assert 'cache_stats' in stats
+        assert 'config_stats' in stats
+        
+        pipeline_stats = stats['pipeline_stats']
+        assert pipeline_stats['stages_completed'] > 0
+        assert pipeline_stats['total_processing_time'] > 0
+
+
+class TestMemoryManager:
+    """Test suite for Memory Manager and Data Type Optimization."""
+
+    @pytest.fixture
+    def config_manager(self):
+        """Create configuration manager for tests."""
+        return DynamicConfigManager()
+
+    @pytest.fixture
+    def memory_manager(self, config_manager):
+        """Create memory manager for tests."""
+        return MemoryManager(config_manager, MemoryStrategy.BALANCED)
+
+    @pytest.fixture
+    def data_type_optimizer(self, config_manager):
+        """Create data type optimizer for tests."""
+        return DataTypeOptimizer(config_manager)
+
+    def test_memory_manager_initialization(self, memory_manager):
+        """Test memory manager initialization."""
+        assert memory_manager is not None
+        assert memory_manager.strategy == MemoryStrategy.BALANCED
+        assert memory_manager.data_type_optimizer is not None
+        assert memory_manager.memory_limits is not None
+
+    def test_memory_info_retrieval(self, memory_manager):
+        """Test memory information retrieval."""
+        memory_info = memory_manager.get_memory_info()
+        
+        assert isinstance(memory_info, MemoryInfo)
+        assert memory_info.total_memory_gb > 0
+        assert memory_info.available_memory_gb >= 0
+        assert memory_info.used_memory_gb >= 0
+        assert 0 <= memory_info.memory_percent <= 100
+
+    def test_memory_processing_capability(self, memory_manager):
+        """Test memory processing capability assessment."""
+        # Test small data (should fit in memory)
+        small_data_size = 10  # MB
+        operations = ['load', 'filter', 'features']
+        
+        can_process = memory_manager.can_process_in_memory(small_data_size, operations)
+        assert isinstance(can_process, bool)
+        
+        # Test chunk size recommendation
+        chunk_size = memory_manager.recommend_chunk_size(small_data_size, operations)
+        assert isinstance(chunk_size, int)
+        assert chunk_size > 0
+
+    def test_memory_monitoring(self, memory_manager):
+        """Test memory monitoring functionality."""
+        # Start monitoring
+        memory_manager.start_memory_monitoring(interval=0.1)
+        
+        # Wait a bit
+        time.sleep(0.5)
+        
+        # Stop monitoring
+        memory_manager.stop_memory_monitoring()
+        
+        # Check memory history
+        assert len(memory_manager.memory_history) > 0
+        
+        # Get statistics
+        stats = memory_manager.get_memory_statistics()
+        assert 'current_memory' in stats
+        assert 'memory_limits' in stats
+        assert 'monitoring' in stats
+
+    def test_memory_profiling(self, memory_manager):
+        """Test memory profiling functionality."""
+        def test_function(data):
+            return np.sum(data)
+        
+        test_data = np.random.randn(1000)
+        data_size_mb = test_data.nbytes / (1024**2)
+        
+        profile = memory_manager.profile_operation(
+            'test_operation', data_size_mb, test_function, test_data
+        )
+        
+        assert isinstance(profile, ProcessingMemoryProfile)
+        assert profile.operation == 'test_operation'
+        assert profile.input_size_mb == data_size_mb
+        assert profile.processing_time > 0
+
+    def test_data_type_optimization(self, data_type_optimizer):
+        """Test data type optimization."""
+        # Test float64 to float32 optimization
+        original_data = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+        
+        optimized_data = data_type_optimizer.optimize_signal(original_data, 'ecg')
+        
+        assert optimized_data.dtype == np.float32
+        assert np.array_equal(original_data.astype(np.float32), optimized_data)
+
+    def test_feature_optimization(self, data_type_optimizer):
+        """Test feature dictionary optimization."""
+        features = {
+            'mean': 1.5,
+            'std': 0.8,
+            'data': np.array([1, 2, 3], dtype=np.float64),
+            'list_data': [1.0, 2.0, 3.0]
+        }
+        
+        optimized_features = data_type_optimizer.optimize_features(features, 'ecg')
+        
+        assert optimized_features['mean'] == np.float32(1.5)
+        assert optimized_features['std'] == np.float32(0.8)
+        assert optimized_features['data'].dtype == np.float32
+        assert optimized_features['list_data'].dtype == np.float32
+
+    def test_memory_cleanup(self, memory_manager):
+        """Test memory cleanup functionality."""
+        # Add some data to memory history
+        memory_manager.memory_history = [{'test': 'data'}] * 10
+        memory_manager.processing_profiles = [Mock()] * 10
+        
+        # Perform cleanup
+        memory_manager.cleanup_memory()
+        
+        # Verify cleanup
+        assert len(memory_manager.memory_history) <= 250
+        assert len(memory_manager.processing_profiles) <= 50
+
+    def test_memory_warnings(self, memory_manager):
+        """Test memory warning generation."""
+        warnings = memory_manager.get_memory_warnings()
+        assert isinstance(warnings, list)
+
+
+class TestErrorRecovery:
+    """Test suite for Error Handling and Recovery System."""
+
+    @pytest.fixture
+    def config_manager(self):
+        """Create configuration manager for tests."""
+        return DynamicConfigManager()
+
+    @pytest.fixture
+    def error_handler(self, config_manager):
+        """Create error handler for tests."""
+        return ErrorHandler(config_manager)
+
+    @pytest.fixture
+    def recovery_manager(self, config_manager):
+        """Create recovery manager for tests."""
+        return ErrorRecoveryManager(config_manager)
+
+    @pytest.fixture
+    def robust_pipeline(self, config_manager):
+        """Create robust pipeline for tests."""
+        return RobustProcessingPipeline(config_manager)
+
+    def test_error_handler_initialization(self, error_handler):
+        """Test error handler initialization."""
+        assert error_handler is not None
+        assert error_handler.recovery_manager is not None
+        assert error_handler.error_templates is not None
+
+    def test_error_handling(self, error_handler):
+        """Test error handling functionality."""
+        # Create test error
+        test_error = ValueError("Test error message")
+        context = {'function': 'test_function', 'args': 'test_args'}
+        
+        # Handle error
+        error_info = error_handler.handle_error(
+            test_error, context, ErrorSeverity.MEDIUM, ErrorCategory.PROCESSING
+        )
+        
+        assert isinstance(error_info, ErrorInfo)
+        assert error_info.error_type == 'ValueError'
+        assert error_info.message == 'Test error message'
+        assert error_info.severity == ErrorSeverity.MEDIUM
+        assert error_info.category == ErrorCategory.PROCESSING
+
+    def test_user_friendly_messages(self, error_handler):
+        """Test user-friendly error message generation."""
+        error_info = ErrorInfo(
+            error_id='test_id',
+            timestamp=datetime.now(),
+            severity=ErrorSeverity.MEDIUM,
+            category=ErrorCategory.MEMORY,
+            error_type='MemoryError',
+            message='Out of memory',
+            details={},
+            context={}
+        )
+        
+        message = error_handler.get_user_friendly_message(error_info)
+        assert isinstance(message, str)
+        assert len(message) > 0
+        assert 'memory' in message.lower()
+
+    def test_error_statistics(self, error_handler):
+        """Test error statistics generation."""
+        # Add some test errors
+        for i in range(5):
+            error_info = ErrorInfo(
+                error_id=f'test_{i}',
+                timestamp=datetime.now(),
+                severity=ErrorSeverity.MEDIUM,
+                category=ErrorCategory.PROCESSING,
+                error_type='ValueError',
+                message=f'Test error {i}',
+                details={},
+                context={}
+            )
+            error_handler.error_history.append(error_info)
+        
+        stats = error_handler.get_error_statistics()
+        
+        assert stats['total_errors'] == 5
+        assert 'severity_distribution' in stats
+        assert 'category_distribution' in stats
+        assert 'error_type_distribution' in stats
+
+    def test_recovery_manager_initialization(self, recovery_manager):
+        """Test recovery manager initialization."""
+        assert recovery_manager is not None
+        assert recovery_manager.recovery_strategies is not None
+        assert len(recovery_manager.recovery_strategies) > 0
+
+    def test_memory_error_recovery(self, recovery_manager):
+        """Test memory error recovery."""
+        error_info = ErrorInfo(
+            error_id='test_id',
+            timestamp=datetime.now(),
+            severity=ErrorSeverity.HIGH,
+            category=ErrorCategory.MEMORY,
+            error_type='MemoryError',
+            message='Out of memory',
+            details={},
+            context={'chunk_size': 10000}
+        )
+        
+        context = {'chunk_size': 10000}
+        
+        recovery_result = recovery_manager.attempt_recovery(error_info, context)
+        
+        assert isinstance(recovery_result, RecoveryResult)
+        # Recovery may or may not succeed depending on system state
+        assert isinstance(recovery_result.success, bool)
+
+    def test_partial_results_management(self, recovery_manager):
+        """Test partial results management."""
+        session_id = 'test_session'
+        results = {'data': np.array([1, 2, 3]), 'features': {'mean': 2.0}}
+        
+        # Save partial results
+        recovery_manager.save_partial_results(session_id, results)
+        
+        # Retrieve partial results
+        retrieved = recovery_manager.get_partial_results(session_id)
+        assert retrieved is not None
+        assert np.array_equal(retrieved['results']['data'], results['data'])
+        
+        # Cleanup
+        recovery_manager.cleanup_partial_results(session_id)
+        retrieved = recovery_manager.get_partial_results(session_id)
+        assert retrieved is None
+
+    def test_error_handler_decorator(self):
+        """Test error handler decorator."""
+        @error_handler(severity=ErrorSeverity.LOW, category=ErrorCategory.USER)
+        def test_function(value):
+            if value < 0:
+                raise ValueError("Negative value not allowed")
+            return value * 2
+        
+        # Test successful execution
+        result = test_function(5)
+        assert result == 10
+        
+        # Test error handling
+        with pytest.raises(ValueError):
+            test_function(-1)
+
+    def test_robust_pipeline_initialization(self, robust_pipeline):
+        """Test robust pipeline initialization."""
+        assert robust_pipeline is not None
+        assert robust_pipeline.error_handler is not None
+        assert robust_pipeline.recovery_manager is not None
+
+    def test_robust_processing(self, robust_pipeline):
+        """Test robust processing functionality."""
+        def test_processing_function(data):
+            return np.sum(data)
+        
+        test_data = np.array([1, 2, 3, 4, 5])
+        
+        result = robust_pipeline.process_with_error_handling(
+            test_processing_function, test_data
+        )
+        
+        assert result == 15
+        assert robust_pipeline.stats['total_operations'] == 1
+        assert robust_pipeline.stats['successful_operations'] == 1
+
+    def test_robust_processing_with_error(self, robust_pipeline):
+        """Test robust processing with error."""
+        def failing_function(data):
+            raise ValueError("Test error")
+        
+        test_data = np.array([1, 2, 3])
+        
+        with pytest.raises(ValueError):
+            robust_pipeline.process_with_error_handling(failing_function, test_data)
+        
+        assert robust_pipeline.stats['total_operations'] == 1
+        assert robust_pipeline.stats['failed_operations'] == 1
+
+    def test_processing_statistics(self, robust_pipeline):
+        """Test processing statistics."""
+        stats = robust_pipeline.get_processing_statistics()
+        
+        assert 'processing_stats' in stats
+        assert 'success_rate' in stats
+        assert 'recovery_rate' in stats
+        assert 'error_stats' in stats
+
+    def test_error_report_generation(self, error_handler):
+        """Test error report generation."""
+        # Add test errors
+        for i in range(3):
+            error_info = ErrorInfo(
+                error_id=f'test_{i}',
+                timestamp=datetime.now(),
+                severity=ErrorSeverity.MEDIUM,
+                category=ErrorCategory.PROCESSING,
+                error_type='ValueError',
+                message=f'Test error {i}',
+                details={},
+                context={}
+            )
+            error_handler.error_history.append(error_info)
+        
+        report = error_handler.generate_error_report()
+        
+        assert isinstance(report, str)
+        assert 'Error Report' in report
+        assert 'Total Errors: 3' in report
+
+
+class TestIntegration:
+    """Integration tests for Phase 2 components."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        """Create temporary directory for tests."""
+        temp_dir = tempfile.mkdtemp()
+        yield temp_dir
+        shutil.rmtree(temp_dir)
+
+    @pytest.fixture
+    def config_manager(self):
+        """Create configuration manager for tests."""
+        return DynamicConfigManager()
+
+    @pytest.fixture
+    def integrated_pipeline(self, temp_dir, config_manager):
+        """Create integrated pipeline with all Phase 2 components."""
+        cache_dir = os.path.join(temp_dir, 'cache')
+        checkpoint_dir = os.path.join(temp_dir, 'checkpoints')
+        
+        pipeline = StandardProcessingPipeline(config_manager, cache_dir, checkpoint_dir)
+        memory_manager = MemoryManager(config_manager)
+        error_handler = ErrorHandler(config_manager)
+        
+        return pipeline, memory_manager, error_handler
+
+    def test_integrated_processing(self, integrated_pipeline, temp_dir):
+        """Test integrated processing with all components."""
+        pipeline, memory_manager, error_handler = integrated_pipeline
+        
+        # Create sample signal
+        fs = 250
+        duration = 5  # 5 seconds
+        t = np.linspace(0, duration, fs * duration)
+        signal = np.sin(2 * np.pi * 1.2 * t) + 0.1 * np.random.randn(len(t))
+        
+        # Start memory monitoring
+        memory_manager.start_memory_monitoring(interval=0.1)
+        
+        try:
+            # Process signal through pipeline
+            results = pipeline.process_signal(signal, fs, 'ecg')
+            
+            # Verify results
+            assert results is not None
+            assert 'processing_summary' in results
+            
+            # Get memory statistics
+            memory_stats = memory_manager.get_memory_statistics()
+            assert 'current_memory' in memory_stats
+            
+            # Get error statistics
+            error_stats = error_handler.get_error_statistics()
+            assert 'total_errors' in error_stats
+            
+        finally:
+            memory_manager.stop_memory_monitoring()
+
+    def test_error_recovery_integration(self, integrated_pipeline):
+        """Test error recovery integration."""
+        pipeline, memory_manager, error_handler = integrated_pipeline
+        
+        # Create a function that will fail
+        def failing_processing_function(signal, fs):
+            if len(signal) > 1000:
+                raise MemoryError("Simulated memory error")
+            return {'processed': signal}
+        
+        # Test with small signal (should succeed)
+        small_signal = np.random.randn(100)
+        result = failing_processing_function(small_signal, 250)
+        assert 'processed' in result
+        
+        # Test with large signal (should fail)
+        large_signal = np.random.randn(2000)
+        
+        with pytest.raises(MemoryError):
+            failing_processing_function(large_signal, 250)
+
+    def test_memory_optimization_integration(self, integrated_pipeline):
+        """Test memory optimization integration."""
+        pipeline, memory_manager, error_handler = integrated_pipeline
+        
+        # Create large signal
+        large_signal = np.random.randn(10000).astype(np.float64)
+        
+        # Optimize data types
+        optimized_signal = memory_manager.optimize_data_types(large_signal, 'ecg')
+        
+        # Verify optimization
+        assert optimized_signal.dtype == np.float32
+        assert optimized_signal.nbytes < large_signal.nbytes
+
+    def test_checkpointing_integration(self, integrated_pipeline, temp_dir):
+        """Test checkpointing integration."""
+        pipeline, memory_manager, error_handler = integrated_pipeline
+        
+        # Create signal
+        signal = np.random.randn(1000)
+        fs = 250
+        
+        # Process with checkpointing
+        results = pipeline.process_signal(signal, fs, 'ecg', resume_from_checkpoint=True)
+        
+        # Verify processing completed
+        assert results is not None
+        assert 'processing_summary' in results
+
+
+if __name__ == '__main__':
+    pytest.main([__file__, '-v'])

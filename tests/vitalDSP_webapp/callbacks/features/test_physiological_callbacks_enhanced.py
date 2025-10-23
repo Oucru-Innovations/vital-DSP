@@ -343,7 +343,7 @@ class TestAutoSelectPhysioSignalType:
         """Test callback with no data available"""
         mock_data_service.get_all_data.return_value = {}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.physiological_callbacks import register_physiological_callbacks
 
             mock_app = MagicMock()
@@ -368,7 +368,7 @@ class TestAutoSelectPhysioSignalType:
         mock_data_service.get_all_data.return_value = {"data_1": {}}
         mock_data_service.get_data_info.return_value = None
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.physiological_callbacks import register_physiological_callbacks
 
             mock_app = MagicMock()
@@ -393,7 +393,7 @@ class TestAutoSelectPhysioSignalType:
         mock_data_service.get_all_data.return_value = {"data_1": {}}
         mock_data_service.get_data_info.return_value = {"signal_type": "ecg", "sampling_freq": 1000}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.physiological_callbacks import register_physiological_callbacks
 
             mock_app = MagicMock()
@@ -418,7 +418,7 @@ class TestAutoSelectPhysioSignalType:
         mock_data_service.get_all_data.return_value = {"data_1": {}}
         mock_data_service.get_data_info.return_value = {"signal_type": "ppg", "sampling_freq": 1000}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.physiological_callbacks import register_physiological_callbacks
 
             mock_app = MagicMock()
@@ -446,7 +446,7 @@ class TestAutoSelectPhysioSignalType:
         mock_data_service.get_data.return_value = df
         mock_data_service.get_column_mapping.return_value = {"signal": "ECG"}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.physiological_callbacks import register_physiological_callbacks
 
             mock_app = MagicMock()
@@ -474,7 +474,7 @@ class TestAutoSelectPhysioSignalType:
         mock_data_service.get_data.return_value = df
         mock_data_service.get_column_mapping.return_value = {"signal": "PPG"}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.physiological_callbacks import register_physiological_callbacks
 
             mock_app = MagicMock()
@@ -506,7 +506,7 @@ class TestAutoSelectPhysioSignalType:
         mock_data_service.get_data.return_value = df
         mock_data_service.get_column_mapping.return_value = {"signal": "signal"}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.physiological_callbacks import register_physiological_callbacks
 
             mock_app = MagicMock()
@@ -539,7 +539,7 @@ class TestAutoSelectPhysioSignalType:
         mock_data_service.get_data.return_value = df
         mock_data_service.get_column_mapping.return_value = {"signal": "signal"}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.physiological_callbacks import register_physiological_callbacks
 
             mock_app = MagicMock()
@@ -568,7 +568,7 @@ class TestAutoSelectPhysioSignalType:
         mock_data_service.get_data.return_value = df
         mock_data_service.get_column_mapping.return_value = {"signal": "signal"}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.physiological_callbacks import register_physiological_callbacks
 
             mock_app = MagicMock()
@@ -593,7 +593,7 @@ class TestAutoSelectPhysioSignalType:
         """Test callback handles exceptions gracefully"""
         mock_data_service.get_all_data.side_effect = Exception("Test error")
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.features.physiological_callbacks import register_physiological_callbacks
 
             mock_app = MagicMock()
