@@ -1019,7 +1019,16 @@ def register_physiological_callbacks(app):
                 "filtering",
             ]
 
-            logger.info(f"Time window: {start_position} - {start_position + duration}")
+            # Handle start_position - it comes as a list from RangeSlider [min, max]
+            # We want the first value (start time)
+            if isinstance(start_position, list):
+                start_time = start_position[0]
+                logger.info(f"start_position is a list: {start_position}, using first value: {start_time}")
+            else:
+                start_time = start_position
+                logger.info(f"start_position is a single value: {start_time}")
+
+            logger.info(f"Time window: {start_time} - {start_time + duration}")
             logger.info(f"Signal type: {signal_type}")
             logger.info(f"Analysis categories: {analysis_categories}")
             logger.info(f"HRV options: {hrv_options}")
@@ -1169,13 +1178,13 @@ def register_physiological_callbacks(app):
                     )
                     time_data_seconds = time_data / 1000.0
                     # Adjust default time window for seconds
-                    if start_position == 0 and duration == 10:
-                        start_position = 0
+                    if start_time == 0 and duration == 10:
+                        start_time = 0
                         duration = min(
                             60, time_range / 1000.0
                         )  # Use up to 60 seconds or full range
                         logger.info(
-                            f"Adjusted time window to: {start_position} - {start_position + duration} seconds"
+                            f"Adjusted time window to: {start_time} - {start_time + duration} seconds"
                         )
                 else:
                     # Time data is already in seconds
@@ -1183,8 +1192,8 @@ def register_physiological_callbacks(app):
                     logger.info("Time data is already in seconds")
 
                 # Apply time window
-                end_time = start_position + duration
-                start_idx = np.searchsorted(time_data_seconds, start_position)
+                end_time = start_time + duration
+                start_idx = np.searchsorted(time_data_seconds, start_time)
                 end_idx = np.searchsorted(time_data_seconds, end_time)
 
                 # Ensure minimum signal length for analysis (at least 5 seconds worth of data)

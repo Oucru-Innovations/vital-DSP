@@ -663,7 +663,7 @@ def register_frequency_filtering_callbacks(app):
                                 signal_source_info = "Original Signal (Fallback)"
 
                     logger.info("=== TIME WINDOW DEBUG ===")
-                    logger.info(f"Applied time window: {start_position}s to {end_time}s")
+                    logger.info(f"Applied time window: {start_time}s to {end_time}s")
                     logger.info(
                         f"Start sample: {start_sample}, End sample: {end_sample}"
                     )

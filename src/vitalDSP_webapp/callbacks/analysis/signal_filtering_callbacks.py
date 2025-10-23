@@ -195,7 +195,7 @@ def register_signal_filtering_callbacks(app):
                                 FourierTransform,
                             )
 
-                            ft = FourierTransform(signal_data, fs=sampling_freq)
+                            ft = FourierTransform(signal_data)  # FourierTransform takes only signal, not fs
                             f, psd = ft.compute_psd()
                             dominant_freq = f[np.argmax(psd)]
 
@@ -456,23 +456,44 @@ def register_signal_filtering_callbacks(app):
             column_mapping = data_service.get_column_mapping(latest_data_id)
 
             # Calculate time range from start position and duration
+            # IMPORTANT: Convert types - duration comes as STRING from dropdown!
             if start_position is None:
                 start_position = 0
+            else:
+                start_position = float(start_position)  # Ensure numeric
+
             if duration is None:
                 duration = 60  # Default to 1 minute
-            
+            else:
+                # Duration comes as STRING from dropdown - must convert!
+                try:
+                    duration = float(duration)
+                    logger.info(f"Duration converted to float: {duration}")
+                except (ValueError, TypeError) as e:
+                    logger.error(f"Failed to convert duration '{duration}' to float: {e}")
+                    duration = 60  # Fallback to default
+
+            # Get sampling frequency - CRITICAL for proper time calculations
+            sampling_freq = data_info.get('sampling_freq', 1000)
+            logger.info(f"Sampling frequency from data_info: {sampling_freq} Hz")
+
             # Get data duration to calculate actual time range
             data_duration = data_info.get('duration', 0)
             if data_duration == 0:
                 # Calculate duration from sampling frequency and data length
-                sampling_freq = data_info.get('sampling_freq', 1000)  # Use consistent key name
                 data_duration = len(df) / sampling_freq
-            
+                logger.info(f"Calculated data duration: {data_duration:.2f} seconds ({len(df)} samples / {sampling_freq} Hz)")
+
             # Calculate start time based on percentage (start_position is 0-100)
             start_time = (start_position / 100.0) * data_duration
-            
+
             # Calculate end time based on duration
             end_time = start_time + duration
+
+            logger.info(f"Time window calculation:")
+            logger.info(f"  start_position: {start_position}% → start_time: {start_time:.2f}s")
+            logger.info(f"  duration: {duration}s → end_time: {end_time:.2f}s")
+            logger.info(f"  data_duration: {data_duration:.2f}s")
             
             # Ensure end time doesn't exceed data duration
             if end_time > data_duration:
@@ -823,7 +844,10 @@ def register_signal_filtering_callbacks(app):
 
                 # Extract data for the selected range
                 signal_data = df[signal_column].iloc[start_idx:end_idx].values
-                time_axis = np.arange(start_idx, end_idx) / sampling_freq
+                # Create time axis that matches the signal data length
+                # Start from the actual time of start_idx to maintain correct time reference
+                time_axis = (np.arange(len(signal_data)) + start_idx) / sampling_freq
+                logger.info(f"Created time axis: length={len(time_axis)}, range={time_axis[0]:.3f}s to {time_axis[-1]:.3f}s")
 
             # Ensure signal data is numeric
             try:
@@ -861,17 +885,29 @@ def register_signal_filtering_callbacks(app):
                 )
 
             logger.info(f"Signal data shape: {signal_data.shape}")
+            logger.info(f"Time axis shape: {time_axis.shape}")
+
+            # CRITICAL CHECK: Ensure time_axis and signal_data have same length
+            if len(time_axis) != len(signal_data):
+                logger.error(f"LENGTH MISMATCH: time_axis={len(time_axis)}, signal_data={len(signal_data)}")
+                logger.error("This will cause empty plots! Fixing by regenerating time_axis...")
+                time_axis = np.arange(len(signal_data)) / sampling_freq
+                logger.info(f"Regenerated time_axis with length {len(time_axis)}")
+
             safe_log_range(logger, signal_data, "Signal data")
             if len(signal_data) > 0:
                 logger.info(
                     f"Signal data sample: {signal_data[:5] if len(signal_data) >= 5 else signal_data}"
                 )
+                logger.info(f"Time axis sample: {time_axis[:5] if len(time_axis) >= 5 else time_axis}")
             else:
                 logger.warning("Signal data is empty - cannot compute range or sample")
 
             logger.info("Final data extraction:")
             logger.info(f"  Start index: {start_idx}")
             logger.info(f"  End index: {end_idx}")
+            logger.info(f"  Signal data length: {len(signal_data)}")
+            logger.info(f"  Time axis length: {len(time_axis)}")
             logger.info(f"  Signal data shape: {signal_data.shape}")
             logger.info(f"  Time axis shape: {time_axis.shape}")
 
@@ -1096,6 +1132,17 @@ def register_signal_filtering_callbacks(app):
             logger.info(f"Processed signal data shape: {signal_data.shape}")
             logger.info(f"Filtered signal data shape: {filtered_data.shape}")
             logger.info(f"Time axis shape: {time_axis.shape}")
+
+            # CRITICAL: Verify lengths match before plotting
+            if len(time_axis) != len(raw_signal_for_plotting):
+                logger.error(f"MISMATCH BEFORE PLOT: time_axis={len(time_axis)}, raw_signal={len(raw_signal_for_plotting)}")
+                logger.error("Adjusting time_axis to match raw_signal length...")
+                time_axis = np.arange(len(raw_signal_for_plotting)) / sampling_freq
+                logger.info(f"Adjusted time_axis to length {len(time_axis)}")
+
+            if len(filtered_data) != len(raw_signal_for_plotting):
+                logger.warning(f"Filtered data length ({len(filtered_data)}) != raw signal length ({len(raw_signal_for_plotting)})")
+
             logger.info(
                 f"Raw signal range: {np.min(raw_signal_for_plotting):.4f} to {np.max(raw_signal_for_plotting):.4f}"
             )
@@ -1105,10 +1152,13 @@ def register_signal_filtering_callbacks(app):
             logger.info(
                 f"Filtered signal range: {np.min(filtered_data):.4f} to {np.max(filtered_data):.4f}"
             )
+            logger.info(f"Time axis range: {time_axis[0]:.4f}s to {time_axis[-1]:.4f}s")
 
+            logger.info("Calling create_original_signal_plot...")
             original_plot = create_original_signal_plot(
                 time_axis, raw_signal_for_plotting, sampling_freq, signal_type
             )
+            logger.info(f"Original plot created: {type(original_plot)}, has {len(original_plot.data) if hasattr(original_plot, 'data') else 'N/A'} traces")
             filtered_plot = create_filtered_signal_plot(
                 time_axis, filtered_data, sampling_freq, signal_type
             )
@@ -4870,10 +4920,10 @@ def create_filter_quality_plots(
         # Enhanced frequency response analysis using vitalDSP
         from vitalDSP.transforms.fourier_transform import FourierTransform
 
-        ft_orig = FourierTransform(original_signal, fs=sampling_freq)
+        ft_orig = FourierTransform(original_signal)  # FourierTransform takes only signal
         freqs_orig, psd_orig = ft_orig.compute_psd()
 
-        ft_filt = FourierTransform(filtered_signal, fs=sampling_freq)
+        ft_filt = FourierTransform(filtered_signal)  # FourierTransform takes only signal
         freqs_filt, psd_filt = ft_filt.compute_psd()
 
         fig.add_trace(
@@ -5263,10 +5313,10 @@ def calculate_frequency_metrics(original_signal, filtered_signal, sampling_freq)
         # Frequency analysis using vitalDSP
         from vitalDSP.transforms.fourier_transform import FourierTransform
 
-        ft_orig = FourierTransform(original_signal, fs=sampling_freq)
+        ft_orig = FourierTransform(original_signal)  # FourierTransform takes only signal
         freqs_orig, psd_orig = ft_orig.compute_psd()
 
-        ft_filt = FourierTransform(filtered_signal, fs=sampling_freq)
+        ft_filt = FourierTransform(filtered_signal)  # FourierTransform takes only signal
         freqs_filt, psd_filt = ft_filt.compute_psd()
 
         # Find peak frequency for filtered signal
@@ -5555,10 +5605,11 @@ def calculate_advanced_quality_metrics(original_signal, filtered_signal, samplin
 
         # Baseline wander assessment using vitalDSP
         from vitalDSP.filtering.signal_filtering import SignalFiltering
-        
+
         # Create high-pass filter to remove baseline wander
         sf = SignalFiltering(original_signal)
-        filtered_baseline = sf.highpass(cutoff=0.5, fs=sampling_freq, order=4)
+        # Use butterworth with btype="high" instead of highpass method
+        filtered_baseline = sf.butterworth(cutoff=0.5, fs=sampling_freq, order=4, btype="high")
         baseline_wander = original_signal - filtered_baseline
         baseline_wander_percentage = (
             np.std(baseline_wander) / np.std(original_signal) * 100

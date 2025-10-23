@@ -56,7 +56,7 @@ def limit_plot_data(
         signal_data = signal_data[:min_len]
 
     original_length = len(signal_data)
-    original_duration = time_axis[-1] - time_axis[0]
+    original_duration = time_axis[-1] - time_axis[0] if len(time_axis) > 0 else 0
 
     # Step 1: Limit duration to max_duration
     if original_duration > max_duration:
@@ -65,9 +65,10 @@ def limit_plot_data(
             end_time = start_time + max_duration
             mask = (time_axis >= start_time) & (time_axis <= end_time)
         else:
-            # Use first max_duration seconds
-            end_time = time_axis[0] + max_duration
-            mask = time_axis <= end_time
+            # Use first max_duration seconds from the START of the provided data
+            start_time = time_axis[0]
+            end_time = start_time + max_duration
+            mask = (time_axis >= start_time) & (time_axis <= end_time)
 
         time_axis = time_axis[mask]
         signal_data = signal_data[mask]
@@ -92,11 +93,15 @@ def limit_plot_data(
             f"(from {original_length} to {len(signal_data)} points)"
         )
 
-    final_duration = time_axis[-1] - time_axis[0] if len(time_axis) > 0 else 0
+    final_duration = time_axis[-1] - time_axis[0] if len(time_axis) > 1 else 0
     logger.info(
         f"Plot data limited: {original_length} points ({original_duration:.1f}s) → "
         f"{len(signal_data)} points ({final_duration:.1f}s)"
     )
+
+    # Final check: ensure we have data to plot
+    if len(time_axis) == 0 or len(signal_data) == 0:
+        logger.warning("limit_plot_data resulted in empty arrays!")
 
     return time_axis, signal_data
 

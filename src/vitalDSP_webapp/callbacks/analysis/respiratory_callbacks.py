@@ -500,6 +500,15 @@ def register_respiratory_callbacks(app):
             sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)
             logger.info(f"Sampling frequency: {sampling_freq}")
 
+            # Handle start_position FIRST - it comes as a list from RangeSlider [min, max]
+            # We want the first value (start time)
+            if isinstance(start_position, list):
+                start_time = start_position[0]
+                logger.info(f"start_position is a list: {start_position}, using first value: {start_time}")
+            else:
+                start_time = start_position if start_position else 0
+                logger.info(f"start_position is a single value: {start_time}")
+
             # Handle time window adjustments for nudge buttons
             if trigger_id in [
                 "resp-btn-nudge-m10",
@@ -507,31 +516,32 @@ def register_respiratory_callbacks(app):
                 "resp-btn-nudge-p1",
                 "resp-btn-nudge-p10",
             ]:
-                if not start_position or not duration:
-                    start_position, duration = 0, 10
+                if not start_time or not duration:
+                    start_time, duration = 0, 10
 
                 if trigger_id == "resp-btn-nudge-m10":
-                    start_position = max(0, start_position - 10)
+                    start_time = max(0, start_time - 10)
                 elif trigger_id == "resp-btn-nudge-m1":
-                    start_position = max(0, start_position - 1)
+                    start_time = max(0, start_time - 1)
                 elif trigger_id == "resp-btn-nudge-p1":
-                    start_position = start_position + 1
+                    start_time = start_time + 1
                 elif trigger_id == "resp-btn-nudge-p10":
-                    start_position = start_position + 10
+                    start_time = start_time + 10
 
-                logger.info(f"Start position adjusted: {start_position}")
+                logger.info(f"Start time adjusted: {start_time}")
 
             # Set default time window if not specified
-            if not start_position or not duration:
-                start_position, duration = 0, 10
-                logger.info(f"Using default values: start_position={start_position}, duration={duration}")
+
+            if not start_time or not duration:
+                start_time, duration = 0, 10
+                logger.info(f"Using default values: start_time={start_time}, duration={duration}")
 
             # Calculate end time from start position and duration
-            end_time = start_position + duration
-            logger.info(f"Calculated time window: {start_position:.3f}s to {end_time:.3f}s")
+            end_time = start_time + duration
+            logger.info(f"Calculated time window: {start_time:.3f}s to {end_time:.3f}s")
 
             # Apply time window
-            start_sample = int(start_position * sampling_freq)
+            start_sample = int(start_time * sampling_freq)
             end_sample = int(end_time * sampling_freq)
             windowed_data = df.iloc[start_sample:end_sample].copy()
 
