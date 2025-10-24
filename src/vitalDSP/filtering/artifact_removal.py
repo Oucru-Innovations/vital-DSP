@@ -547,16 +547,22 @@ class ArtifactRemoval:
         batch_size=1000,
     ):
         """
-        Use Independent Component Analysis (ICA) to remove artifacts using IncrementalPCA.
+        Use Independent Component Analysis (ICA) to remove artifacts.
 
-        This method separates the signal into independent components and allows for the
-        removal of specific components identified as artifacts. ICA is particularly useful
-        for separating mixed signals into their independent sources.
+        This enhanced version automatically handles 1D signals by creating synthetic
+        components. ICA separates the signal into independent components and allows
+        for the removal of specific components identified as artifacts.
+
+        For 1D signals (single channel), synthetic components are automatically
+        generated using derivatives and delayed versions, enabling ICA to separate
+        artifacts from the underlying physiological signal.
 
         Parameters
         ----------
         num_components : int
             The number of independent components to retain.
+            For 1D signals, this determines how many synthetic components to generate.
+            Recommended: 3-5 for good artifact separation.
         max_iterations : int
             The maximum number of iterations for convergence.
         tol : float
@@ -564,25 +570,62 @@ class ArtifactRemoval:
         seed : int
             The seed for random number generation to ensure reproducibility.
         window_size : int, optional
-            The size of the sliding window to create a multi-dimensional signal. If None, no windowing is applied.
+            The size of the sliding window to create a multi-dimensional signal.
+            If None, automatic synthetic component generation is used for 1D signals.
         step_size : int, optional
-            The step size for the sliding window. Must be used with window_size. If None, no windowing is applied.
+            The step size for the sliding window. Must be used with window_size.
         batch_size : int, optional
-            The batch size for IncrementalPCA to manage memory usage.
+            The batch size for IncrementalPCA to manage memory usage (legacy parameter).
 
         Returns
         -------
         clean_signal : numpy.ndarray
-            The artifact-removed signal.
+            The artifact-removed signal (same shape as input).
+
+        Notes
+        -----
+        **For 1D Signals (Single Channel)**:
+        The method automatically creates synthetic components from:
+        - Original signal
+        - First derivative (captures rapid changes/spikes)
+        - Delayed version (captures temporal patterns)
+        - Second derivative (captures acceleration/motion artifacts)
+        - Smoothed version (captures baseline trends)
+
+        **For Multi-Channel Signals**:
+        Uses traditional windowing approach if window_size is specified.
 
         Examples
         --------
+        >>> # Example 1: 1D signal (most common case)
+        >>> import numpy as np
+        >>> signal_1d = np.sin(2*np.pi*np.linspace(0,10,1000)) + 0.1*np.random.randn(1000)
+        >>> ar = ArtifactRemoval(signal_1d)
+        >>> clean = ar.ica_artifact_removal(num_components=3)
+        >>> print(clean.shape)  # (1000,)
+        >>>
+        >>> # Example 2: With windowing (for backward compatibility)
         >>> signal = np.array([1, 2, 3, 4, 5, 6, 7, 8])
         >>> ar = ArtifactRemoval(signal)
-        >>> clean_signal = ar.ica_artifact_removal(num_components=1, window_size=4, step_size=2)
-        >>> print(clean_signal)
+        >>> clean = ar.ica_artifact_removal(num_components=1, window_size=4, step_size=2)
+        >>> print(clean.shape)  # (8,)
         """
-        # Apply windowing if window_size and step_size are provided
+        # Use enhanced ICA from blind_source_separation for 1D signals
+        if self.signal.ndim == 1 and not (window_size and step_size):
+            from vitalDSP.signal_quality_assessment.blind_source_separation import ica_artifact_removal as enhanced_ica
+
+            # Use the enhanced ICA that handles 1D signals with synthetic components
+            clean_signal = enhanced_ica(
+                self.signal,
+                max_iter=max_iterations,
+                tol=tol,
+                auto_synthetic=True,
+                n_components=max(3, num_components + 2)  # Ensure enough components for good separation
+            )
+
+            return clean_signal
+
+        # Legacy path: Apply windowing if window_size and step_size are provided
         if window_size and step_size:
             segments = [
                 self.signal[i : i + window_size]
@@ -590,13 +633,18 @@ class ArtifactRemoval:
             ]
             multi_dimensional_signal = np.array(segments).T
         else:
-            multi_dimensional_signal = self.signal.reshape(-1, 1)
+            # Fallback for edge case
+            raise ValueError(
+                "For 1D signals without windowing, ICA will use automatic synthetic components. "
+                "This should not be reached. Please report this as a bug."
+            )
 
         # Validate the number of components based on the signal's dimensionality
         n_features = multi_dimensional_signal.shape[1]
         if num_components > n_features:
             raise ValueError(
-                f"n_components={num_components} invalid for n_features={n_features}. Ensure the signal has sufficient dimensionality for PCA."
+                f"n_components={num_components} invalid for n_features={n_features}. "
+                f"For 1D signals, omit window_size/step_size to use automatic synthetic components."
             )
 
         # Center the signal

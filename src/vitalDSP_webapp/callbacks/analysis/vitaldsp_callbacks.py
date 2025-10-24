@@ -2907,13 +2907,13 @@ def create_signal_quality_table(
         artifact_percentage = (artifact_count / len(signal_data)) * 100
 
         # Baseline wander detection (low frequency drift)
-        from scipy.signal import savgol_filter
+        from vitalDSP.filtering.signal_filtering import SignalFiltering
 
         try:
-            # Use Savitzky-Golay filter to estimate baseline
+            # Use Savitzky-Golay filter to estimate baseline using vitalDSP
             window_length = min(51, len(signal_data) // 10 * 2 + 1)  # Ensure odd number
             if window_length >= 3:
-                baseline = savgol_filter(signal_data, window_length, 1)
+                baseline = SignalFiltering.savgol_filter(signal_data, window_length, 1)
                 baseline_wander = np.std(signal_data - baseline)
                 baseline_wander_percentage = (
                     baseline_wander / np.std(signal_data)
@@ -4149,13 +4149,9 @@ def create_additional_metrics_table(
         hist = hist[hist > 0]  # Remove zero bins
         shannon_entropy = -np.sum(hist * np.log2(hist))
 
-        # Approximate entropy (simplified)
-        try:
-            from scipy.stats import entropy
-
-            approx_entropy = entropy(hist) if len(hist) > 1 else 0
-        except Exception:
-            approx_entropy = 0
+        # Approximate entropy (use Shannon entropy, scipy.stats.entropy is redundant)
+        # Shannon entropy is already computed above, we can use it for approximate entropy
+        approx_entropy = shannon_entropy if len(hist) > 1 else 0
 
         # Fractal dimension (simplified Higuchi method)
         try:
@@ -4227,12 +4223,18 @@ def create_additional_metrics_table(
         )
 
         # Morphological features
-        # Signal complexity (based on number of local extrema)
-        from scipy.signal import argrelextrema
+        # Signal complexity (based on number of local extrema) using vitalDSP
+        from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
 
         try:
-            local_maxima = argrelextrema(signal_data, np.greater, order=3)[0]
-            local_minima = argrelextrema(signal_data, np.less, order=3)[0]
+            # Detect peaks (local maxima) using relative extrema method
+            peak_detector_max = PeakDetection(signal_data, method='rel_extrema', order=3)
+            local_maxima = peak_detector_max.detect_peaks()
+
+            # Detect troughs (local minima) by inverting the signal
+            peak_detector_min = PeakDetection(-signal_data, method='rel_extrema', order=3)
+            local_minima = peak_detector_min.detect_peaks()
+
             complexity_score = (len(local_maxima) + len(local_minima)) / len(
                 signal_data
             )
@@ -4915,16 +4917,14 @@ def apply_filter(
                 ripple=0.5,
             )
         elif filter_family == "cheby2" or filter_family == "chebyshev2":
-            # Note: vitalDSP uses chebyshev for Type I. For Type II, fallback to scipy
-            from scipy import signal as sp_signal
-
-            nyquist = sampling_freq / 2
-            if isinstance(cutoff, list):
-                cutoff_norm = [c / nyquist for c in cutoff]
-            else:
-                cutoff_norm = cutoff / nyquist
-            b, a = sp_signal.cheby2(filter_order, 40, cutoff_norm, btype=filter_type)
-            return sp_signal.filtfilt(b, a, signal_data)
+            # Use vitalDSP's Chebyshev Type II filter implementation
+            return sf.chebyshev2(
+                cutoff,
+                fs=sampling_freq,
+                order=filter_order,
+                btype=filter_type,
+                stopband_attenuation=40,
+            )
         elif filter_family == "ellip" or filter_family == "elliptic":
             return sf.elliptic(
                 cutoff,
@@ -4935,16 +4935,13 @@ def apply_filter(
                 stopband_attenuation=40,
             )
         elif filter_family == "bessel":
-            # Bessel filter - fallback to scipy (not in vitalDSP SignalFiltering)
-            from scipy import signal as sp_signal
-
-            nyquist = sampling_freq / 2
-            if isinstance(cutoff, list):
-                cutoff_norm = [c / nyquist for c in cutoff]
-            else:
-                cutoff_norm = cutoff / nyquist
-            b, a = sp_signal.bessel(filter_order, cutoff_norm, btype=filter_type)
-            return sp_signal.filtfilt(b, a, signal_data)
+            # Use vitalDSP's Bessel filter implementation
+            return sf.bessel(
+                cutoff,
+                fs=sampling_freq,
+                order=filter_order,
+                btype=filter_type,
+            )
         else:
             # Default to Butterworth
             logger.warning(
@@ -4989,25 +4986,25 @@ def apply_filter(
             return signal_data
 
 
-def detect_peaks(signal_data, sampling_freq):
-    """Detect peaks in the signal."""
-    try:
-        # Calculate adaptive threshold
-        mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
-        std_val = np.std(signal_data) if len(signal_data) > 0 else 0
-        threshold = mean_val + 2 * std_val
+# def detect_peaks(signal_data, sampling_freq):
+#     """Detect peaks in the signal."""
+#     try:
+#         # Calculate adaptive threshold
+#         mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
+#         std_val = np.std(signal_data) if len(signal_data) > 0 else 0
+#         threshold = mean_val + 2 * std_val
 
-        # Find peaks with minimum distance constraint
-        min_distance = int(sampling_freq * 0.1)  # Minimum 0.1 seconds between peaks
-        peaks, _ = signal.find_peaks(
-            signal_data, height=threshold, distance=min_distance
-        )
+#         # Find peaks with minimum distance constraint
+#         min_distance = int(sampling_freq * 0.1)  # Minimum 0.1 seconds between peaks
+#         peaks, _ = signal.find_peaks(
+#             signal_data, height=threshold, distance=min_distance
+#         )
 
-        return peaks
+#         return peaks
 
-    except Exception as e:
-        logger.error(f"Error detecting peaks: {e}")
-        return np.array([])
+#     except Exception as e:
+#         logger.error(f"Error detecting peaks: {e}")
+#         return np.array([])
 
 
 def register_vitaldsp_callbacks(app):
@@ -5403,12 +5400,13 @@ def register_vitaldsp_callbacks(app):
                             # Apply filter using the same method as filtering screen
                             # Apply detrending if it was applied in the filtering screen
                             if detrending_applied:
-                                from scipy import signal as scipy_signal
+                                from vitalDSP.transforms.vital_transformation import VitalTransformation
 
-                                signal_data_detrended = scipy_signal.detrend(
-                                    signal_data
-                                )
-                                logger.info("Applied detrending to signal")
+                                # Use vitalDSP's detrending implementation
+                                transformer = VitalTransformation(signal_data, fs=sampling_freq, signal_type='ECG')
+                                transformer.apply_detrending(options={'detrend_type': 'linear'})
+                                signal_data_detrended = transformer.signal
+                                logger.info("Applied vitalDSP detrending to signal")
                             else:
                                 signal_data_detrended = signal_data
 
@@ -6093,15 +6091,14 @@ def create_enhanced_psd_plot(
         # Convert window from seconds to samples
         window_samples = int(window_sec * sampling_freq)
 
-        # Use scipy.signal.welch for PSD computation
-        from scipy.signal import welch
+        # Use vitalDSP's SignalPowerAnalysis for PSD computation
+        from vitalDSP.physiological_features.signal_power_analysis import SignalPowerAnalysis
 
-        # Apply window function
-        windowed_signal = signal_data * np.hanning(len(signal_data))
+        # Create SignalPowerAnalysis instance
+        spa = SignalPowerAnalysis(signal_data)
 
-        # Compute PSD
-        freqs, psd = welch(
-            windowed_signal,
+        # Compute PSD using vitalDSP
+        freqs, psd = spa.compute_psd(
             fs=sampling_freq,
             nperseg=min(window_samples, len(signal_data)),
             noverlap=int(min(window_samples, len(signal_data)) * overlap),
@@ -6179,7 +6176,6 @@ def create_enhanced_spectrogram_plot(
 ):
     """Create enhanced spectrogram plot."""
     try:
-        from scipy.signal import spectrogram
 
         # Apply window function
         if window_type == "hann":
@@ -6198,14 +6194,19 @@ def create_enhanced_spectrogram_plot(
         else:
             window_func = np.ones(window_size)
 
-        # Compute spectrogram
-        freqs, times, Sxx = spectrogram(
-            signal_data,
-            fs=sampling_freq,
-            window=window_func,
-            nperseg=window_size,
-            noverlap=int(window_size * overlap),
-        )
+        # Compute spectrogram using vitalDSP's STFT
+        from vitalDSP.transforms.stft import STFT
+
+        hop_size = window_size - int(window_size * overlap)
+        stft_obj = STFT(signal_data, window_size=window_size, hop_size=hop_size, n_fft=window_size)
+        stft_matrix = stft_obj.compute_stft()
+
+        # Convert STFT to magnitude spectrogram
+        Sxx = np.abs(stft_matrix) ** 2  # Power spectrogram
+
+        # Create time and frequency axes
+        times = np.arange(Sxx.shape[1]) * hop_size / sampling_freq
+        freqs = np.fft.rfftfreq(window_size, 1/sampling_freq)
 
         # Apply frequency range filter
         if freq_max:
@@ -6303,9 +6304,10 @@ def generate_frequency_analysis_results(
 
         elif analysis_type == "psd":
             # PSD specific analysis
-            from scipy.signal import welch
+            from vitalDSP.physiological_features.signal_power_analysis import SignalPowerAnalysis
 
-            freqs, psd = welch(signal_data, fs=sampling_freq)
+            spa = SignalPowerAnalysis(signal_data)
+            freqs, psd = spa.compute_psd(fs=sampling_freq, nperseg=min(256, len(signal_data)//2))
 
             # Find peak frequency
             peak_freq_idx = np.argmax(psd)
@@ -6422,10 +6424,11 @@ def create_frequency_band_power_table(
             "Gamma (30-100 Hz)": (30, 100),
         }
 
-        # Compute PSD
-        from scipy.signal import welch
+        # Compute PSD using vitalDSP's SignalPowerAnalysis
+        from vitalDSP.physiological_features.signal_power_analysis import SignalPowerAnalysis
 
-        freqs, psd = welch(signal_data, fs=sampling_freq)
+        spa = SignalPowerAnalysis(signal_data)
+        freqs, psd = spa.compute_psd(fs=sampling_freq, nperseg=min(256, len(signal_data) // 2))
 
         # Calculate band powers
         band_powers = {}

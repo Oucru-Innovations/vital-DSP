@@ -731,6 +731,134 @@ class SignalFiltering:
 
         return filtered_signal
 
+    def chebyshev2(
+        self, cutoff, fs, order=4, btype="low", stopband_attenuation=40, iterations=1
+    ):
+        """
+        Chebyshev Type II filter implementation.
+
+        The Chebyshev Type II filter has a flat passband and equiripple stopband attenuation.
+        Unlike Type I, it has zeros in the stopband which provides sharper roll-off
+        characteristics. This filter is useful when you need better stopband attenuation
+        with acceptable passband characteristics.
+
+        Parameters
+        ----------
+        cutoff : float or list
+            Cutoff frequency of the filter. For bandpass/bandstop, provide [low, high].
+        fs : float
+            Sampling frequency of the signal.
+        order : int, optional
+            Order of the Chebyshev Type II filter. Default is 4.
+        btype : str, optional
+            Type of filter - 'low', 'high', 'band', or 'bandstop'. Default is 'low'.
+        stopband_attenuation : float, optional
+            Minimum attenuation required in the stopband in dB. Default is 40 dB.
+        iterations : int, optional
+            The number of times to apply the filter. Default is 1.
+
+        Returns
+        -------
+        filtered_signal : numpy.ndarray
+            The filtered signal.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from vitalDSP.filtering.signal_filtering import SignalFiltering
+        >>> signal = np.random.randn(1000)
+        >>> sf = SignalFiltering(signal)
+        >>> filtered = sf.chebyshev2(cutoff=50, fs=250, order=4, btype='low', stopband_attenuation=40)
+        >>> print(f"Filtered signal shape: {filtered.shape}")
+        """
+        from scipy import signal as sp_signal
+
+        nyquist = fs / 2
+
+        # Normalize cutoff frequency
+        if isinstance(cutoff, list):
+            normal_cutoff = [c / nyquist for c in cutoff]
+        else:
+            normal_cutoff = cutoff / nyquist
+
+        # Design Chebyshev Type II filter
+        b, a = sp_signal.cheby2(order, stopband_attenuation, normal_cutoff, btype=btype, analog=False)
+
+        # Apply filter iteratively
+        filtered_signal = self.signal.copy()
+        for _ in range(iterations):
+            filtered_signal = sp_signal.filtfilt(b, a, filtered_signal)
+
+        return filtered_signal
+
+    def bessel(self, cutoff, fs, order=4, btype="low", iterations=1):
+        """
+        Bessel (Thomson) filter implementation.
+
+        The Bessel filter has a maximally flat group delay, which means it preserves
+        the waveform shape of filtered signals in the passband. This makes it ideal
+        for applications where maintaining pulse shape is critical, such as ECG and
+        PPG signal processing.
+
+        Parameters
+        ----------
+        cutoff : float or list
+            Cutoff frequency of the filter. For bandpass/bandstop, provide [low, high].
+        fs : float
+            Sampling frequency of the signal.
+        order : int, optional
+            Order of the Bessel filter. Default is 4.
+        btype : str, optional
+            Type of filter - 'low', 'high', 'band', or 'bandstop'. Default is 'low'.
+        iterations : int, optional
+            The number of times to apply the filter. Default is 1.
+
+        Returns
+        -------
+        filtered_signal : numpy.ndarray
+            The filtered signal.
+
+        Notes
+        -----
+        The Bessel filter is particularly useful for:
+        - ECG signal processing (preserves QRS complex shape)
+        - PPG signal processing (preserves pulse waveform)
+        - Applications requiring linear phase response
+        - Situations where overshoot and ringing must be minimized
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from vitalDSP.filtering.signal_filtering import SignalFiltering
+        >>> # ECG-like signal with sharp peaks
+        >>> t = np.linspace(0, 1, 1000)
+        >>> ecg_signal = np.sin(2 * np.pi * 1.2 * t) + 0.5 * np.sin(2 * np.pi * 60 * t)
+        >>> sf = SignalFiltering(ecg_signal)
+        >>> # Apply Bessel lowpass to remove high-frequency noise while preserving peak shape
+        >>> filtered = sf.bessel(cutoff=50, fs=1000, order=4, btype='low')
+        >>> print(f"Filtered signal shape: {filtered.shape}")
+        """
+        from scipy import signal as sp_signal
+
+        nyquist = fs / 2
+
+        # Normalize cutoff frequency
+        if isinstance(cutoff, list):
+            normal_cutoff = [c / nyquist for c in cutoff]
+        else:
+            normal_cutoff = cutoff / nyquist
+
+        # Design Bessel filter
+        # Note: Bessel filter is also known as Thomson filter
+        b, a = sp_signal.bessel(order, normal_cutoff, btype=btype, analog=False, norm='phase')
+
+        # Apply filter iteratively
+        filtered_signal = self.signal.copy()
+        for _ in range(iterations):
+            filtered_signal = sp_signal.filtfilt(b, a, filtered_signal)
+
+        return filtered_signal
+
     def bandpass(
         self, lowcut, highcut, fs, order=4, filter_type="butter", iterations=1
     ):

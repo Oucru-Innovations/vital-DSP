@@ -338,40 +338,120 @@ class VitalTransformation:
 
     def apply_detrending(self, options=None):
         """
-        Detrend the signal with customizable options.
+        Detrend the signal with customizable options using pure NumPy implementation.
+
+        This method removes trends from the signal, which is crucial for physiological
+        signal processing. Detrending eliminates baseline wander and drift that can
+        interfere with feature extraction and analysis.
 
         Parameters
         ----------
         options : dict, optional
-            A dictionary of options for detrending.
+            A dictionary of options for detrending. Default options:
+            {
+                'detrend_type': 'linear',  # 'linear', 'constant', or 'polynomial'
+                'polynomial_order': 3,      # Used when detrend_type='polynomial'
+                'break_points': None,       # For piecewise detrending
+            }
 
         Returns
         -------
         None
+            Modifies self.signal in place.
+
+        Notes
+        -----
+        Detrending Types:
+        - **linear**: Removes linear trend using least squares fitting
+        - **constant**: Removes DC component (mean value)
+        - **polynomial**: Removes polynomial trend of specified order
+
+        The implementation uses pure NumPy for better performance and removes
+        the scipy dependency.
+
+        Clinical Applications:
+        - ECG: Removes baseline wander due to respiration or movement
+        - PPG: Eliminates DC shifts and slow baseline drift
+        - General: Ensures zero-mean signal for accurate feature extraction
 
         Examples
         --------
-        >>> signal = np.random.randn(1000)  # Example signal
-        >>> transformer = ECG_PPG_Transformation(signal, fs=256, signal_type='ECG')
+        >>> import numpy as np
+        >>> from vitalDSP.transforms.vital_transformation import VitalTransformation
+        >>>
+        >>> # Example 1: Linear detrending (default)
+        >>> signal_with_drift = np.random.randn(1000) + np.linspace(0, 10, 1000)
+        >>> transformer = VitalTransformation(signal_with_drift, fs=256, signal_type='ECG')
         >>> transformer.apply_detrending(options={'detrend_type': 'linear'})
-        >>> print(transformer.signal)
+        >>> print(f"Signal mean after detrending: {np.mean(transformer.signal):.6f}")
+        >>>
+        >>> # Example 2: Constant (mean) detrending
+        >>> ecg_signal = np.random.randn(1000) + 5.0  # Signal with DC offset
+        >>> transformer2 = VitalTransformation(ecg_signal, fs=256, signal_type='ECG')
+        >>> transformer2.apply_detrending(options={'detrend_type': 'constant'})
+        >>> print(f"Signal mean after constant detrend: {np.mean(transformer2.signal):.6f}")
+        >>>
+        >>> # Example 3: Polynomial detrending
+        >>> ppg_signal = np.random.randn(1000) + 0.001 * np.arange(1000)**2
+        >>> transformer3 = VitalTransformation(ppg_signal, fs=128, signal_type='PPG')
+        >>> transformer3.apply_detrending(options={
+        ...     'detrend_type': 'polynomial',
+        ...     'polynomial_order': 2
+        ... })
+        >>> print(f"Detrended PPG signal length: {len(transformer3.signal)}")
         """
         if options is None:
             options = {
                 "detrend_type": "linear",
-                "lowcut": 0.5,
-                "highcut": 30,
-                "filter_order": 4,
-                "filter_type": "butter",
+                "polynomial_order": 3,
+                "break_points": None,
             }
 
         detrend_type = options.get("detrend_type", "linear")
-        if detrend_type == "linear":
-            self.signal = signal.detrend(self.signal, type="linear")
-        elif detrend_type == "constant":
-            self.signal = signal.detrend(self.signal, type="constant")
+
+        # Get signal length
+        N = len(self.signal)
+
+        if detrend_type == "constant":
+            # Remove mean (DC component)
+            self.signal = self.signal - np.mean(self.signal)
+
+        elif detrend_type == "linear":
+            # Remove linear trend using least squares
+            # Create time vector
+            x = np.arange(N)
+
+            # Fit linear model: y = mx + b
+            # Using normal equations: [m, b] = (X^T X)^-1 X^T y
+            # where X = [x, ones]
+            X = np.vstack([x, np.ones(N)]).T
+
+            # Solve least squares
+            coeffs = np.linalg.lstsq(X, self.signal, rcond=None)[0]
+
+            # Compute and subtract trend
+            trend = coeffs[0] * x + coeffs[1]
+            self.signal = self.signal - trend
+
+        elif detrend_type == "polynomial":
+            # Remove polynomial trend
+            polynomial_order = options.get("polynomial_order", 3)
+
+            # Create time vector
+            x = np.arange(N)
+
+            # Fit polynomial
+            coeffs = np.polyfit(x, self.signal, polynomial_order)
+
+            # Compute and subtract polynomial trend
+            trend = np.polyval(coeffs, x)
+            self.signal = self.signal - trend
+
         else:
-            raise ValueError(f"Unknown detrending method: {detrend_type}")
+            raise ValueError(
+                f"Unknown detrending method: {detrend_type}. "
+                f"Supported methods: 'constant', 'linear', 'polynomial'"
+            )
 
     def apply_normalization(self, options=None):
         """

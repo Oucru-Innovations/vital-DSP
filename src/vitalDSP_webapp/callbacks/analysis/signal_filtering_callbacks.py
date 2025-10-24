@@ -3088,11 +3088,29 @@ def generate_filter_quality_metrics(
 ):
     """Generate comprehensive filter quality metrics with beautiful tables and extensive analysis."""
     try:
-        # Calculate basic metrics
-        snr_improvement = calculate_snr_improvement(original_signal, filtered_signal)
+        # Use vitalDSP's comprehensive FilteringQualityAssessment
+        from vitalDSP.signal_quality_assessment.filtering_quality_assessment import FilteringQualityAssessment
+
+        # Create quality assessment instance with signal-adaptive thresholds
+        fqa = FilteringQualityAssessment(
+            original_signal=original_signal,
+            filtered_signal=filtered_signal,
+            fs=sampling_freq,
+            signal_type=signal_type
+        )
+
+        # Perform comprehensive quality assessment
+        quality_results = fqa.assess_quality()
+
+        # Extract key metrics for backward compatibility
+        snr_improvement = quality_results['metrics']['snr_db']['value']
+        correlation = quality_results['metrics']['shape_similarity']['score']
+        smoothness = quality_results['metrics']['smoothness_improvement']['score']
+        noise_reduction = quality_results['metrics']['noise_reduction']['score']
+        peak_preservation = quality_results['metrics']['peak_preservation']['score']
+
+        # Calculate legacy MSE (for display only, not used in quality assessment)
         mse = calculate_mse(original_signal, filtered_signal)
-        correlation = calculate_correlation(original_signal, filtered_signal)
-        smoothness = calculate_smoothness(filtered_signal)
 
         # Calculate frequency domain metrics
         freq_metrics = calculate_frequency_metrics(
@@ -3130,6 +3148,27 @@ def generate_filter_quality_metrics(
                 html.H4(
                     "🔍 Comprehensive Filter Quality Assessment",
                     className="text-center mb-4 text-primary",
+                ),
+                # Overall Quality Summary Card
+                dbc.Alert(
+                    [
+                        html.H5(
+                            [
+                                html.I(className="fas fa-award me-2"),
+                                f"Overall Quality: {quality_results['overall_quality']}",
+                            ],
+                            className="alert-heading",
+                        ),
+                        html.Hr(),
+                        html.P(quality_results['recommendation'], className="mb-1"),
+                        html.Small(
+                            f"Signal Type: {quality_results['signal_type']} | "
+                            f"Sampling Frequency: {quality_results['sampling_frequency']} Hz",
+                            className="text-muted",
+                        ),
+                    ],
+                    color="success" if quality_results['overall_quality'] in ['Excellent', 'Good'] else "warning" if quality_results['overall_quality'] == 'Acceptable' else "danger",
+                    className="mb-4",
                 ),
                 # Signal Quality Table
                 dbc.Card(
@@ -3177,10 +3216,41 @@ def generate_filter_quality_metrics(
                                         ),
                                         html.Tbody(
                                             [
+                                                # Noise Reduction (NEW - properly designed metric)
                                                 html.Tr(
                                                     [
                                                         html.Td(
-                                                            "SNR Improvement",
+                                                            "Noise Reduction",
+                                                            className="fw-bold",
+                                                        ),
+                                                        html.Td(
+                                                            "0%",
+                                                            className="text-center",
+                                                        ),
+                                                        html.Td(
+                                                            f"{noise_reduction:.1%}",
+                                                            className="text-center",
+                                                        ),
+                                                        html.Td(
+                                                            f"+{noise_reduction:.1%}",
+                                                            className="text-center",
+                                                        ),
+                                                        html.Td(
+                                                            [
+                                                                html.Span(
+                                                                    f"{'✅' if quality_results['metrics']['noise_reduction']['status'] == 'Excellent' else '🟢' if quality_results['metrics']['noise_reduction']['status'] == 'Good' else '🟡' if quality_results['metrics']['noise_reduction']['status'] == 'Acceptable' else '🔴'} {quality_results['metrics']['noise_reduction']['status']}",
+                                                                    className=f"badge {'bg-success' if quality_results['metrics']['noise_reduction']['status'] in ['Excellent', 'Good'] else 'bg-warning' if quality_results['metrics']['noise_reduction']['status'] == 'Acceptable' else 'bg-danger'}",
+                                                                )
+                                                            ],
+                                                            className="text-center",
+                                                        ),
+                                                    ]
+                                                ),
+                                                # SNR (using dynamic thresholds)
+                                                html.Tr(
+                                                    [
+                                                        html.Td(
+                                                            "SNR (Signal-to-Noise Ratio)",
                                                             className="fw-bold",
                                                         ),
                                                         html.Td(
@@ -3198,65 +3268,79 @@ def generate_filter_quality_metrics(
                                                         html.Td(
                                                             [
                                                                 html.Span(
-                                                                    (
-                                                                        "✅ Excellent"
-                                                                        if snr_improvement
-                                                                        > 10
-                                                                        else (
-                                                                            "🟡 Good"
-                                                                            if snr_improvement
-                                                                            > 5
-                                                                            else "🔴 Poor"
-                                                                        )
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if snr_improvement > 10 else 'bg-warning' if snr_improvement > 5 else 'bg-danger'}",
+                                                                    f"{'✅' if quality_results['metrics']['snr_db']['status'] == 'Excellent' else '🟢' if quality_results['metrics']['snr_db']['status'] == 'Good' else '🟡' if quality_results['metrics']['snr_db']['status'] == 'Acceptable' else '🔴'} {quality_results['metrics']['snr_db']['status']}",
+                                                                    className=f"badge {'bg-success' if quality_results['metrics']['snr_db']['status'] in ['Excellent', 'Good'] else 'bg-warning' if quality_results['metrics']['snr_db']['status'] == 'Acceptable' else 'bg-danger'}",
                                                                 )
                                                             ],
                                                             className="text-center",
                                                         ),
                                                     ]
                                                 ),
+                                                # Peak Preservation (NEW - critical for physio signals)
                                                 html.Tr(
                                                     [
                                                         html.Td(
-                                                            "Mean Square Error",
+                                                            "Peak Preservation",
                                                             className="fw-bold",
                                                         ),
                                                         html.Td(
-                                                            "N/A",
+                                                            "100%",
                                                             className="text-center",
                                                         ),
                                                         html.Td(
-                                                            f"{mse:.4f}",
+                                                            f"{peak_preservation:.1%}",
                                                             className="text-center",
                                                         ),
                                                         html.Td(
-                                                            f"-{mse:.4f}",
+                                                            f"{peak_preservation:.1%}",
                                                             className="text-center",
                                                         ),
                                                         html.Td(
                                                             [
                                                                 html.Span(
-                                                                    (
-                                                                        "✅ Excellent"
-                                                                        if mse < 0.01
-                                                                        else (
-                                                                            "🟡 Good"
-                                                                            if mse < 0.1
-                                                                            else "🔴 Poor"
-                                                                        )
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if mse < 0.01 else 'bg-warning' if mse < 0.1 else 'bg-danger'}",
+                                                                    f"{'✅' if quality_results['metrics']['peak_preservation']['status'] == 'Excellent' else '🟢' if quality_results['metrics']['peak_preservation']['status'] == 'Good' else '🟡' if quality_results['metrics']['peak_preservation']['status'] == 'Acceptable' else '🔴'} {quality_results['metrics']['peak_preservation']['status']}",
+                                                                    className=f"badge {'bg-success' if quality_results['metrics']['peak_preservation']['status'] in ['Excellent', 'Good'] else 'bg-warning' if quality_results['metrics']['peak_preservation']['status'] == 'Acceptable' else 'bg-danger'}",
                                                                 )
                                                             ],
                                                             className="text-center",
                                                         ),
                                                     ]
                                                 ),
+                                                # Smoothness Improvement (using dynamic thresholds)
                                                 html.Tr(
                                                     [
                                                         html.Td(
-                                                            "Correlation",
+                                                            "Smoothness Improvement",
+                                                            className="fw-bold",
+                                                        ),
+                                                        html.Td(
+                                                            "0%",
+                                                            className="text-center",
+                                                        ),
+                                                        html.Td(
+                                                            f"{smoothness:.1%}",
+                                                            className="text-center",
+                                                        ),
+                                                        html.Td(
+                                                            f"+{smoothness:.1%}",
+                                                            className="text-center",
+                                                        ),
+                                                        html.Td(
+                                                            [
+                                                                html.Span(
+                                                                    f"{'✅' if quality_results['metrics']['smoothness_improvement']['status'] == 'Excellent' else '🟢' if quality_results['metrics']['smoothness_improvement']['status'] == 'Good' else '🟡' if quality_results['metrics']['smoothness_improvement']['status'] == 'Acceptable' else '🔴'} {quality_results['metrics']['smoothness_improvement']['status']}",
+                                                                    className=f"badge {'bg-success' if quality_results['metrics']['smoothness_improvement']['status'] in ['Excellent', 'Good'] else 'bg-warning' if quality_results['metrics']['smoothness_improvement']['status'] == 'Acceptable' else 'bg-danger'}",
+                                                                )
+                                                            ],
+                                                            className="text-center",
+                                                        ),
+                                                    ]
+                                                ),
+                                                # Shape Similarity (using dynamic thresholds)
+                                                html.Tr(
+                                                    [
+                                                        html.Td(
+                                                            "Shape Similarity (Correlation)",
                                                             className="fw-bold",
                                                         ),
                                                         html.Td(
@@ -3274,18 +3358,38 @@ def generate_filter_quality_metrics(
                                                         html.Td(
                                                             [
                                                                 html.Span(
-                                                                    (
-                                                                        "✅ Excellent"
-                                                                        if correlation
-                                                                        > 0.9
-                                                                        else (
-                                                                            "🟡 Good"
-                                                                            if correlation
-                                                                            > 0.7
-                                                                            else "🔴 Poor"
-                                                                        )
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if correlation > 0.9 else 'bg-warning' if correlation > 0.7 else 'bg-danger'}",
+                                                                    f"{'✅' if quality_results['metrics']['shape_similarity']['status'] == 'Excellent' else '🟢' if quality_results['metrics']['shape_similarity']['status'] == 'Good' else '🟡' if quality_results['metrics']['shape_similarity']['status'] == 'Acceptable' else '🔴'} {quality_results['metrics']['shape_similarity']['status']}",
+                                                                    className=f"badge {'bg-success' if quality_results['metrics']['shape_similarity']['status'] in ['Excellent', 'Good'] else 'bg-warning' if quality_results['metrics']['shape_similarity']['status'] == 'Acceptable' else 'bg-danger'}",
+                                                                )
+                                                            ],
+                                                            className="text-center",
+                                                        ),
+                                                    ]
+                                                ),
+                                                # MSE (reference only - not used for quality assessment)
+                                                html.Tr(
+                                                    [
+                                                        html.Td(
+                                                            "MSE (Reference Only)",
+                                                            className="fw-bold text-muted",
+                                                        ),
+                                                        html.Td(
+                                                            "0.000",
+                                                            className="text-center text-muted",
+                                                        ),
+                                                        html.Td(
+                                                            f"{mse:.4f}",
+                                                            className="text-center text-muted",
+                                                        ),
+                                                        html.Td(
+                                                            f"{mse:.4f}",
+                                                            className="text-center text-muted",
+                                                        ),
+                                                        html.Td(
+                                                            [
+                                                                html.Span(
+                                                                    "ℹ️ Info",
+                                                                    className="badge bg-secondary",
                                                                 )
                                                             ],
                                                             className="text-center",
@@ -4917,14 +5021,20 @@ def create_filter_quality_plots(
         except Exception as e:
             logger.warning(f"Critical points detection failed in quality plots: {e}")
 
-        # Enhanced frequency response analysis using vitalDSP
-        from vitalDSP.transforms.fourier_transform import FourierTransform
+        # Enhanced frequency response analysis using vitalDSP SignalPowerAnalysis
+        from vitalDSP.physiological_features.signal_power_analysis import SignalPowerAnalysis
 
-        ft_orig = FourierTransform(original_signal)  # FourierTransform takes only signal
-        freqs_orig, psd_orig = ft_orig.compute_psd()
+        # Compute PSD for original signal
+        spa_orig = SignalPowerAnalysis(original_signal)
+        freqs_orig, psd_orig = spa_orig.compute_psd(
+            fs=sampling_freq, nperseg=min(256, len(original_signal)//2)
+        )
 
-        ft_filt = FourierTransform(filtered_signal)  # FourierTransform takes only signal
-        freqs_filt, psd_filt = ft_filt.compute_psd()
+        # Compute PSD for filtered signal
+        spa_filt = SignalPowerAnalysis(filtered_signal)
+        freqs_filt, psd_filt = spa_filt.compute_psd(
+            fs=sampling_freq, nperseg=min(256, len(filtered_signal)//2)
+        )
 
         fig.add_trace(
             go.Scatter(
@@ -5309,15 +5419,20 @@ def calculate_smoothness(signal_data):
 def calculate_frequency_metrics(original_signal, filtered_signal, sampling_freq):
     """Calculate frequency domain metrics for both original and filtered signals."""
     try:
-        # Calculate PSD for both signals
-        # Frequency analysis using vitalDSP
-        from vitalDSP.transforms.fourier_transform import FourierTransform
+        # Calculate PSD for both signals using vitalDSP SignalPowerAnalysis
+        from vitalDSP.physiological_features.signal_power_analysis import SignalPowerAnalysis
 
-        ft_orig = FourierTransform(original_signal)  # FourierTransform takes only signal
-        freqs_orig, psd_orig = ft_orig.compute_psd()
+        # Compute PSD for original signal
+        spa_orig = SignalPowerAnalysis(original_signal)
+        freqs_orig, psd_orig = spa_orig.compute_psd(
+            fs=sampling_freq, nperseg=min(256, len(original_signal)//2)
+        )
 
-        ft_filt = FourierTransform(filtered_signal)  # FourierTransform takes only signal
-        freqs_filt, psd_filt = ft_filt.compute_psd()
+        # Compute PSD for filtered signal
+        spa_filt = SignalPowerAnalysis(filtered_signal)
+        freqs_filt, psd_filt = spa_filt.compute_psd(
+            fs=sampling_freq, nperseg=min(256, len(filtered_signal)//2)
+        )
 
         # Find peak frequency for filtered signal
         peak_idx_filt = np.argmax(psd_filt)
@@ -5615,10 +5730,10 @@ def calculate_advanced_quality_metrics(original_signal, filtered_signal, samplin
             np.std(baseline_wander) / np.std(original_signal) * 100
         )
 
-        # Motion artifact detection using vitalDSP
-        from vitalDSP.advanced_computation.signal_analysis import SignalAnalysis
-        sa = SignalAnalysis(original_signal, fs=sampling_freq)
-        envelope = sa.get_envelope()
+        # Motion artifact detection using vitalDSP EnvelopeDetection
+        from vitalDSP.physiological_features.envelope_detection import EnvelopeDetection
+        ed = EnvelopeDetection(original_signal)
+        envelope = ed.hilbert_envelope()
         motion_artifact_score = (
             np.std(envelope) / np.mean(envelope) if np.mean(envelope) > 0 else 0
         )
