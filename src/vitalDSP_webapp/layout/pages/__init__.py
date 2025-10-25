@@ -5,9 +5,9 @@ This module contains layouts for various application pages.
 """
 
 from .upload_page import upload_layout
+from .time_domain_page import time_domain_layout
+from .frequency_page import frequency_layout
 from .analysis_pages import (
-    time_domain_layout,
-    frequency_layout,
     filtering_layout,
     physiological_layout,
     respiratory_layout,

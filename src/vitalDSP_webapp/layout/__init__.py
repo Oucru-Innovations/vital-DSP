@@ -12,9 +12,10 @@ from .common.footer import Footer
 
 # Page layouts
 from .pages.upload_page import upload_layout
+from .pages.time_domain_page import time_domain_layout
+from .pages.frequency_page import frequency_layout
 from .pages.analysis_pages import (
-    time_domain_layout,
-    frequency_layout,
+    # time_domain_layout,
     filtering_layout,
     physiological_layout,
     respiratory_layout,

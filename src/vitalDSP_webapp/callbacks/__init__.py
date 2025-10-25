@@ -14,6 +14,7 @@ from .core.upload_callbacks import register_upload_callbacks
 
 # Analysis callbacks
 from .analysis.vitaldsp_callbacks import register_vitaldsp_callbacks
+from .analysis.time_domain_callbacks import register_time_domain_callbacks
 from .analysis.frequency_filtering_callbacks import (
     register_frequency_filtering_callbacks,
 )
@@ -38,6 +39,7 @@ __all__ = [
     "register_upload_callbacks",
     "register_header_monitoring_callbacks",
     # Analysis
+    "register_time_domain_callbacks",
     "register_vitaldsp_callbacks",
     "register_frequency_filtering_callbacks",
     "register_signal_filtering_callbacks",

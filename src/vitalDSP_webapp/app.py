@@ -27,6 +27,7 @@ from vitalDSP_webapp.callbacks import (
     register_upload_callbacks,
     register_header_monitoring_callbacks,
     register_vitaldsp_callbacks,
+    register_time_domain_callbacks,
     register_frequency_filtering_callbacks,
     register_signal_filtering_callbacks,
     register_respiratory_callbacks,
@@ -183,6 +184,7 @@ def create_dash_app() -> Dash:
     register_header_monitoring_callbacks(app)  # Register header monitoring callbacks
     register_theme_callbacks(app)  # Register theme switching callbacks
     register_vitaldsp_callbacks(app)  # Register vitalDSP analysis callbacks
+    register_time_domain_callbacks(app)  # Register time domain analysis callbacks
     register_frequency_filtering_callbacks(
         app
     )  # Register frequency and filtering callbacks
@@ -197,6 +199,10 @@ def create_dash_app() -> Dash:
     register_settings_callbacks(app)  # Register settings management callbacks
     register_pipeline_callbacks(app)
     register_tasks_callbacks(app)  # Register pipeline visualization callbacks
+    
+    # Register export callbacks
+    from vitalDSP_webapp.callbacks.utils.export_callbacks import register_all_export_callbacks
+    register_all_export_callbacks(app)
 
     return app
 

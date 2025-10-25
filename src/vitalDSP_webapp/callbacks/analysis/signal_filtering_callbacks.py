@@ -282,6 +282,9 @@ def register_signal_filtering_callbacks(app):
             Output("filter-quality-metrics", "children"),
             Output("filter-quality-plots", "figure"),
             Output("store-filtering-data", "data"),
+            Output("store-filter-comparison", "data"),
+            Output("store-filter-quality-metrics", "data"),
+            Output("store-filtered-signal", "data"),
         ],
         [
             Input("url", "pathname"),
@@ -312,6 +315,19 @@ def register_signal_filtering_callbacks(app):
             State("filter-quality-options", "value"),
             State("detrend-option", "value"),
             State("filter-signal-type-select", "value"),
+            # Additional traditional filter parameters
+            State("savgol-window", "value"),
+            State("savgol-polyorder", "value"),
+            State("moving-avg-window", "value"),
+            State("gaussian-sigma", "value"),
+            # Artifact removal parameters
+            State("wavelet-type", "value"),
+            State("wavelet-level", "value"),
+            State("threshold-type", "value"),
+            State("threshold-value", "value"),
+            # Multi-modal parameters
+            State("reference-signal", "value"),
+            State("fusion-method", "value"),
         ],
     )
     def advanced_filtering_callback(
@@ -341,6 +357,19 @@ def register_signal_filtering_callbacks(app):
         quality_options,
         detrend_option,
         signal_type,
+        # Additional traditional filter parameters
+        savgol_window,
+        savgol_polyorder,
+        moving_avg_window,
+        gaussian_sigma,
+        # Artifact removal parameters
+        wavelet_type,
+        wavelet_level,
+        threshold_type,
+        threshold_value,
+        # Multi-modal parameters
+        reference_signal,
+        fusion_method,
     ):
 
         ctx = callback_context
@@ -363,6 +392,9 @@ def register_signal_filtering_callbacks(app):
                 create_empty_figure(),
                 "Navigate to Filtering page",
                 create_empty_figure(),
+                None,
+                None,
+                None,
                 None,
             )
 
@@ -406,6 +438,9 @@ def register_signal_filtering_callbacks(app):
                     create_empty_figure(),
                     "No data available",
                     create_empty_figure(),
+                    None,
+                    None,
+                    None,
                     None,
                 )
 
@@ -568,6 +603,9 @@ def register_signal_filtering_callbacks(app):
                     "No data available",
                     create_empty_figure(),
                     None,
+                    None,
+                    None,
+                    None,
                 )
 
             # Determine which column to use for signal data
@@ -614,6 +652,9 @@ def register_signal_filtering_callbacks(app):
                     create_empty_figure(),
                     "Could not determine signal column",
                     create_empty_figure(),
+                    None,
+                    None,
+                    None,
                     None,
                 )
 
@@ -1233,6 +1274,46 @@ def register_signal_filtering_callbacks(app):
             logger.info(f"Returning plots - original_plot type: {type(original_plot)}, has {len(original_plot.data) if hasattr(original_plot, 'data') else 'N/A'} traces")
             logger.info(f"Returning plots - filtered_plot type: {type(filtered_plot)}, has {len(filtered_plot.data) if hasattr(filtered_plot, 'data') else 'N/A'} traces")
             logger.info(f"Returning plots - comparison_plot type: {type(comparison_plot)}, has {len(comparison_plot.data) if hasattr(comparison_plot, 'data') else 'N/A'} traces")
+            # Prepare additional store data
+            comparison_data = {
+                "original_signal": original_signal.tolist() if original_signal is not None else [],
+                "filtered_signal": filtered_data.tolist() if filtered_data is not None else [],
+                "time_axis": time_axis.tolist() if time_axis is not None else [],
+                "sampling_freq": sampling_freq,
+                "filter_type": filter_type,
+                "filter_params": {
+                    "filter_family": filter_family,
+                    "filter_response": filter_response,
+                    "low_freq": low_freq,
+                    "high_freq": high_freq,
+                    "filter_order": filter_order,
+                }
+            }
+            
+            quality_metrics_data = {
+                "snr_improvement": quality_metrics.get("snr_improvement", 0) if isinstance(quality_metrics, dict) else 0,
+                "mse": quality_metrics.get("mse", 0) if isinstance(quality_metrics, dict) else 0,
+                "correlation": quality_metrics.get("correlation", 0) if isinstance(quality_metrics, dict) else 0,
+                "filter_type": filter_type,
+                "timestamp": pd.Timestamp.now().isoformat(),
+            }
+            
+            filtered_signal_data = {
+                "signal": filtered_data.tolist() if filtered_data is not None else [],
+                "time": time_axis.tolist() if time_axis is not None else [],
+                "sampling_freq": sampling_freq,
+                "filter_type": filter_type,
+                "filter_params": {
+                    "filter_family": filter_family,
+                    "filter_response": filter_response,
+                    "low_freq": low_freq,
+                    "high_freq": high_freq,
+                    "filter_order": filter_order,
+                },
+                "signal_type": signal_type,
+                "timestamp": pd.Timestamp.now().isoformat(),
+            }
+            
             return (
                 original_plot,
                 filtered_plot,
@@ -1240,6 +1321,9 @@ def register_signal_filtering_callbacks(app):
                 quality_metrics,
                 quality_plots,
                 stored_data,
+                comparison_data,
+                quality_metrics_data,
+                filtered_signal_data,
             )
 
         except Exception as e:
@@ -1260,6 +1344,9 @@ def register_signal_filtering_callbacks(app):
                 create_empty_figure(),
                 error_msg,
                 create_empty_figure(),
+                None,
+                None,
+                None,
                 None,
             )
 
@@ -5839,3 +5926,766 @@ def calculate_entropy(data):
     except Exception as e:
         logger.error(f"Error calculating entropy: {e}")
         return 0
+
+
+def create_filtering_results_table(
+    raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping, signal_type=None
+):
+    """Create comprehensive filtering results table."""
+    try:
+        signal_col = column_mapping.get("signal")
+        if not signal_col or signal_col not in raw_data.columns:
+            return "Signal column not found in data"
+
+        raw_signal = raw_data[signal_col].values
+
+        # Check if we have filtered data to compare
+        if filtered_data is None or np.array_equal(raw_signal, filtered_data):
+            return html.Div(
+                [
+                    html.H6("🔧 Filtering Results", className="text-muted"),
+                    html.P(
+                        "No filtering applied or filtered data identical to raw data",
+                        className="text-muted",
+                    ),
+                ]
+            )
+
+        # Calculate comprehensive filtering metrics
+        # Ensure both signals have the same length for comparison
+        min_length = min(len(raw_signal), len(filtered_data))
+        raw_signal_trimmed = raw_signal[:min_length]
+        filtered_data_trimmed = filtered_data[:min_length]
+
+        # Power analysis
+        raw_power = np.mean(raw_signal_trimmed**2)
+        filtered_power = np.mean(filtered_data_trimmed**2)
+        power_reduction = (
+            (raw_power - filtered_power) / raw_power * 100 if raw_power > 0 else 0
+        )
+
+        # RMS analysis
+        raw_rms = np.sqrt(np.mean(raw_signal_trimmed**2))
+        filtered_rms = np.sqrt(np.mean(filtered_data_trimmed**2))
+        rms_reduction = (raw_rms - filtered_rms) / raw_rms * 100 if raw_rms > 0 else 0
+
+        # Frequency domain analysis
+        raw_fft = np.abs(np.fft.rfft(raw_signal_trimmed))
+        filtered_fft = np.abs(np.fft.rfft(filtered_data_trimmed))
+        freqs = np.fft.rfftfreq(min_length, 1 / sampling_freq)
+
+        # Ensure all arrays have the same length
+        min_fft_length = min(len(raw_fft), len(filtered_fft), len(freqs))
+        raw_fft = raw_fft[:min_fft_length]
+        filtered_fft = filtered_fft[:min_fft_length]
+        freqs = freqs[:min_fft_length]
+
+        # Power in different frequency bands
+        # DC and very low frequency (0-0.5 Hz)
+        dc_mask = freqs <= 0.5
+        if np.any(dc_mask):
+            dc_reduction = np.mean(raw_fft[dc_mask]) - np.mean(filtered_fft[dc_mask])
+            dc_reduction_percent = (
+                (dc_reduction / np.mean(raw_fft[dc_mask])) * 100
+                if np.mean(raw_fft[dc_mask]) > 0
+                else 0
+            )
+        else:
+            dc_reduction = 0
+            dc_reduction_percent = 0
+
+        # Low frequency (0.5-5 Hz) - respiratory and slow variations
+        low_freq_mask = (freqs > 0.5) & (freqs <= 5)
+        if np.any(low_freq_mask):
+            low_freq_reduction = np.mean(raw_fft[low_freq_mask]) - np.mean(
+                filtered_fft[low_freq_mask]
+            )
+            low_freq_reduction_percent = (
+                (low_freq_reduction / np.mean(raw_fft[low_freq_mask])) * 100
+                if np.mean(raw_fft[low_freq_mask]) > 0
+                else 0
+            )
+        else:
+            low_freq_reduction = 0
+            low_freq_reduction_percent = 0
+
+        # Mid frequency (5-40 Hz) - cardiac and physiological
+        mid_freq_mask = (freqs > 5) & (freqs <= 40)
+        if np.any(mid_freq_mask):
+            mid_freq_reduction = np.mean(raw_fft[mid_freq_mask]) - np.mean(
+                filtered_fft[mid_freq_mask]
+            )
+            mid_freq_reduction_percent = (
+                (mid_freq_reduction / np.mean(raw_fft[mid_freq_mask])) * 100
+                if np.mean(raw_fft[mid_freq_mask]) > 0
+                else 0
+            )
+        else:
+            mid_freq_reduction = 0
+            mid_freq_reduction_percent = 0
+
+        # High frequency (>40 Hz) - noise and artifacts
+        high_freq_mask = freqs > 40
+        if np.any(high_freq_mask):
+            high_freq_reduction = np.mean(raw_fft[high_freq_mask]) - np.mean(
+                filtered_fft[high_freq_mask]
+            )
+            high_freq_reduction_percent = (
+                (high_freq_reduction / np.mean(raw_fft[high_freq_mask])) * 100
+                if np.mean(raw_fft[high_freq_mask]) > 0
+                else 0
+            )
+        else:
+            high_freq_reduction = 0
+            high_freq_reduction_percent = 0
+
+        # Signal-to-noise ratio improvement
+        raw_snr = (
+            10 * np.log10(raw_power / np.var(raw_signal))
+            if np.var(raw_signal) > 0
+            else 0
+        )
+        filtered_snr = (
+            10 * np.log10(filtered_power / np.var(filtered_data))
+            if np.var(filtered_data) > 0
+            else 0
+        )
+        snr_improvement = filtered_snr - raw_snr
+
+        # Peak preservation analysis
+        # Use vitalDSP for ECG/PPG peak detection, scipy for others
+        if signal_type and signal_type.lower() in ["ecg", "ppg"]:
+            from vitalDSP.physiological_features.waveform import WaveformMorphology
+
+            try:
+                # Detect peaks in both signals using vitalDSP
+                wm_raw = WaveformMorphology(
+                    raw_signal, fs=sampling_freq, signal_type=signal_type.upper()
+                )
+                wm_filtered = WaveformMorphology(
+                    filtered_data, fs=sampling_freq, signal_type=signal_type.upper()
+                )
+
+                if signal_type.lower() == "ecg":
+                    raw_peaks = wm_raw.r_peaks
+                    filtered_peaks = wm_filtered.r_peaks
+                elif signal_type.lower() == "ppg":
+                    raw_peaks = wm_raw.systolic_peaks
+                    filtered_peaks = wm_filtered.systolic_peaks
+
+                peak_preservation = (
+                    len(filtered_peaks) / len(raw_peaks) * 100
+                    if len(raw_peaks) > 0
+                    else 0
+                )
+            except Exception:
+                peak_preservation = 0
+        else:
+            # Use scipy for other signal types
+            from scipy.signal import find_peaks
+
+            try:
+                # Detect peaks in both signals
+                raw_peaks, _ = find_peaks(
+                    raw_signal, prominence=0.1 * np.std(raw_signal)
+                )
+                filtered_peaks, _ = find_peaks(
+                    filtered_data, prominence=0.1 * np.std(filtered_data)
+                )
+
+                peak_preservation = (
+                    len(filtered_peaks) / len(raw_peaks) * 100
+                    if len(raw_peaks) > 0
+                    else 0
+                )
+
+                # Peak amplitude preservation
+                if len(raw_peaks) > 0 and len(filtered_peaks) > 0:
+                    raw_peak_amps = raw_signal[raw_peaks]
+                    filtered_peak_amps = filtered_data[filtered_peaks]
+                    amplitude_preservation = (
+                        np.mean(filtered_peak_amps) / np.mean(raw_peak_amps) * 100
+                        if np.mean(raw_peak_amps) > 0
+                        else 0
+                    )
+                else:
+                    amplitude_preservation = 0
+            except Exception:
+                peak_preservation = 0
+                amplitude_preservation = 0
+
+        # Phase distortion analysis
+        raw_phase = np.angle(np.fft.fft(raw_signal))
+        filtered_phase = np.angle(np.fft.fft(filtered_data))
+        phase_distortion = np.mean(np.abs(raw_phase - filtered_phase))
+
+        # Group delay analysis (simplified)
+        try:
+            # Calculate group delay as derivative of phase
+            raw_group_delay = np.gradient(raw_phase)
+            filtered_group_delay = np.gradient(filtered_phase)
+            group_delay_variation = np.std(filtered_group_delay - raw_group_delay)
+        except Exception:
+            group_delay_variation = 0
+
+        return html.Div(
+            [
+                html.H6("🔧 Filtering Results Analysis", className="text-primary mb-3"),
+                # Summary metrics cards
+                dbc.Row(
+                    [
+                        dbc.Col(
+                            [
+                                dbc.Card(
+                                    [
+                                        dbc.CardBody(
+                                            [
+                                                html.H4(
+                                                    f"{power_reduction:.1f}%",
+                                                    className="text-center text-primary mb-0",
+                                                ),
+                                                html.Small(
+                                                    "Power Reduction",
+                                                    className="text-center d-block text-muted",
+                                                ),
+                                            ]
+                                        )
+                                    ],
+                                    className="text-center border-primary",
+                                )
+                            ],
+                            md=3,
+                        ),
+                        dbc.Col(
+                            [
+                                dbc.Card(
+                                    [
+                                        dbc.CardBody(
+                                            [
+                                                html.H4(
+                                                    f"{snr_improvement:.1f} dB",
+                                                    className="text-center text-success mb-0",
+                                                ),
+                                                html.Small(
+                                                    "SNR Improvement",
+                                                    className="text-center d-block text-muted",
+                                                ),
+                                            ]
+                                        )
+                                    ],
+                                    className="text-center border-success",
+                                )
+                            ],
+                            md=3,
+                        ),
+                        dbc.Col(
+                            [
+                                dbc.Card(
+                                    [
+                                        dbc.CardBody(
+                                            [
+                                                html.H4(
+                                                    f"{peak_preservation:.1f}%",
+                                                    className="text-center text-warning mb-0",
+                                                ),
+                                                html.Small(
+                                                    "Peak Preservation",
+                                                    className="text-center d-block text-muted",
+                                                ),
+                                            ]
+                                        )
+                                    ],
+                                    className="text-center border-warning",
+                                )
+                            ],
+                            md=3,
+                        ),
+                        dbc.Col(
+                            [
+                                dbc.Card(
+                                    [
+                                        dbc.CardBody(
+                                            [
+                                                html.H4(
+                                                    f"{phase_distortion:.3f}",
+                                                    className="text-center text-info mb-0",
+                                                ),
+                                                html.Small(
+                                                    "Phase Distortion",
+                                                    className="text-center d-block text-muted",
+                                                ),
+                                            ]
+                                        )
+                                    ],
+                                    className="text-center border-info",
+                                )
+                            ],
+                            md=3,
+                        ),
+                    ],
+                    className="mb-3",
+                ),
+                # Overall filtering metrics
+                html.H6("Overall Filtering Performance", className="mb-2"),
+                dbc.Table(
+                    [
+                        html.Thead(
+                            [
+                                html.Tr(
+                                    [
+                                        html.Th("Metric", className="text-center"),
+                                        html.Th("Raw Signal", className="text-center"),
+                                        html.Th(
+                                            "Filtered Signal", className="text-center"
+                                        ),
+                                        html.Th("Improvement", className="text-center"),
+                                        html.Th("Description", className="text-center"),
+                                    ]
+                                )
+                            ]
+                        ),
+                        html.Tbody(
+                            [
+                                html.Tr(
+                                    [
+                                        html.Td("Signal Power", className="fw-bold"),
+                                        html.Td(
+                                            f"{raw_power:.3f}", className="text-end"
+                                        ),
+                                        html.Td(
+                                            f"{filtered_power:.3f}",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            f"{power_reduction:.1f}%",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            "Mean squared amplitude",
+                                            className="text-muted",
+                                        ),
+                                    ]
+                                ),
+                                html.Tr(
+                                    [
+                                        html.Td("RMS Amplitude", className="fw-bold"),
+                                        html.Td(f"{raw_rms:.3f}", className="text-end"),
+                                        html.Td(
+                                            f"{filtered_rms:.3f}", className="text-end"
+                                        ),
+                                        html.Td(
+                                            f"{rms_reduction:.1f}%",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            "Root mean square amplitude",
+                                            className="text-muted",
+                                        ),
+                                    ]
+                                ),
+                                html.Tr(
+                                    [
+                                        html.Td("Signal-to-Noise", className="fw-bold"),
+                                        html.Td(
+                                            f"{raw_snr:.1f} dB", className="text-end"
+                                        ),
+                                        html.Td(
+                                            f"{filtered_snr:.1f} dB",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            f"{snr_improvement:.1f} dB",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            "Signal quality improvement",
+                                            className="text-muted",
+                                        ),
+                                    ]
+                                ),
+                                html.Tr(
+                                    [
+                                        html.Td("Peak Count", className="fw-bold"),
+                                        html.Td(
+                                            f"{len(raw_peaks) if 'raw_peaks' in locals() else 'N/A'}",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            f"{len(filtered_peaks) if 'filtered_peaks' in locals() else 'N/A'}",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            f"{peak_preservation:.1f}%",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            "Peak detection preservation",
+                                            className="text-muted",
+                                        ),
+                                    ]
+                                ),
+                            ]
+                        ),
+                    ],
+                    bordered=True,
+                    hover=True,
+                    responsive=True,
+                    className="mb-3",
+                ),
+                # Frequency-specific improvements
+                html.H6("Frequency-Domain Improvements", className="mb-2"),
+                dbc.Table(
+                    [
+                        html.Thead(
+                            [
+                                html.Tr(
+                                    [
+                                        html.Th(
+                                            "Frequency Band", className="text-center"
+                                        ),
+                                        html.Th("Raw Power", className="text-center"),
+                                        html.Th(
+                                            "Filtered Power", className="text-center"
+                                        ),
+                                        html.Th("Reduction", className="text-center"),
+                                        html.Th("Description", className="text-center"),
+                                    ]
+                                )
+                            ]
+                        ),
+                        html.Tbody(
+                            [
+                                html.Tr(
+                                    [
+                                        html.Td("DC (0-0.5 Hz)", className="fw-bold"),
+                                        html.Td(
+                                            f"{np.mean(raw_fft[dc_mask]):.3f}",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            f"{np.mean(filtered_fft[dc_mask]):.3f}",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            f"{dc_reduction_percent:.1f}%",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            "Baseline and drift reduction",
+                                            className="text-muted",
+                                        ),
+                                    ]
+                                ),
+                                html.Tr(
+                                    [
+                                        html.Td("Low (0.5-5 Hz)", className="fw-bold"),
+                                        html.Td(
+                                            f"{np.mean(raw_fft[low_freq_mask]):.3f}",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            f"{np.mean(filtered_fft[low_freq_mask]):.3f}",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            f"{low_freq_reduction_percent:.1f}%",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            "Respiratory noise reduction",
+                                            className="text-muted",
+                                        ),
+                                    ]
+                                ),
+                                html.Tr(
+                                    [
+                                        html.Td("Mid (5-40 Hz)", className="fw-bold"),
+                                        html.Td(
+                                            f"{np.mean(raw_fft[mid_freq_mask]):.3f}",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            f"{np.mean(filtered_fft[mid_freq_mask]):.3f}",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            f"{mid_freq_reduction_percent:.1f}%",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            "Cardiac signal preservation",
+                                            className="text-muted",
+                                        ),
+                                    ]
+                                ),
+                                html.Tr(
+                                    [
+                                        html.Td("High (>40 Hz)", className="fw-bold"),
+                                        html.Td(
+                                            f"{np.mean(raw_fft[high_freq_mask]):.3f}",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            f"{np.mean(filtered_fft[high_freq_mask]):.3f}",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            f"{high_freq_reduction_percent:.1f}%",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            "High frequency noise reduction",
+                                            className="text-muted",
+                                        ),
+                                    ]
+                                ),
+                            ]
+                        ),
+                    ],
+                    bordered=True,
+                    hover=True,
+                    responsive=True,
+                    className="mb-3",
+                ),
+                # Signal integrity metrics
+                html.H6("Signal Integrity Metrics", className="mb-2"),
+                dbc.Table(
+                    [
+                        html.Thead(
+                            [
+                                html.Tr(
+                                    [
+                                        html.Th("Metric", className="text-center"),
+                                        html.Th("Value", className="text-center"),
+                                        html.Td("Quality", className="text-center"),
+                                        html.Th("Description", className="text-center"),
+                                    ]
+                                )
+                            ]
+                        ),
+                        html.Tbody(
+                            [
+                                html.Tr(
+                                    [
+                                        html.Td(
+                                            "Peak Amplitude Preservation",
+                                            className="fw-bold",
+                                        ),
+                                        html.Td(
+                                            f"{amplitude_preservation:.1f}%",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            html.Span(
+                                                (
+                                                    "Excellent"
+                                                    if amplitude_preservation > 95
+                                                    else (
+                                                        "Good"
+                                                        if amplitude_preservation > 90
+                                                        else (
+                                                            "Fair"
+                                                            if amplitude_preservation
+                                                            > 80
+                                                            else "Poor"
+                                                        )
+                                                    )
+                                                ),
+                                                className=f"badge {'bg-success' if amplitude_preservation > 95 else 'bg-info' if amplitude_preservation > 90 else 'bg-warning' if amplitude_preservation > 80 else 'bg-danger'}",
+                                            ),
+                                            className="text-center",
+                                        ),
+                                        html.Td(
+                                            "Peak height preservation",
+                                            className="text-muted",
+                                        ),
+                                    ]
+                                ),
+                                html.Tr(
+                                    [
+                                        html.Td(
+                                            "Phase Distortion", className="fw-bold"
+                                        ),
+                                        html.Td(
+                                            f"{phase_distortion:.3f} rad",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            html.Span(
+                                                (
+                                                    "Excellent"
+                                                    if phase_distortion < 0.1
+                                                    else (
+                                                        "Good"
+                                                        if phase_distortion < 0.3
+                                                        else (
+                                                            "Fair"
+                                                            if phase_distortion < 0.5
+                                                            else "Poor"
+                                                        )
+                                                    )
+                                                ),
+                                                className=f"badge {'bg-success' if phase_distortion < 0.1 else 'bg-info' if phase_distortion < 0.3 else 'bg-warning' if phase_distortion < 0.5 else 'bg-danger'}",
+                                            ),
+                                            className="text-center",
+                                        ),
+                                        html.Td(
+                                            "Phase response distortion",
+                                            className="text-muted",
+                                        ),
+                                    ]
+                                ),
+                                html.Tr(
+                                    [
+                                        html.Td(
+                                            "Group Delay Variation", className="fw-bold"
+                                        ),
+                                        html.Td(
+                                            f"{group_delay_variation:.3f}",
+                                            className="text-end",
+                                        ),
+                                        html.Td(
+                                            html.Span(
+                                                (
+                                                    "Excellent"
+                                                    if group_delay_variation < 0.1
+                                                    else (
+                                                        "Good"
+                                                        if group_delay_variation < 0.3
+                                                        else (
+                                                            "Fair"
+                                                            if group_delay_variation
+                                                            < 0.5
+                                                            else "Poor"
+                                                        )
+                                                    )
+                                                ),
+                                                className=f"badge {'bg-success' if group_delay_variation < 0.1 else 'bg-info' if group_delay_variation < 0.3 else 'bg-warning' if group_delay_variation < 0.5 else 'bg-danger'}",
+                                            ),
+                                            className="text-center",
+                                        ),
+                                        html.Td(
+                                            "Group delay consistency",
+                                            className="text-muted",
+                                        ),
+                                    ]
+                                ),
+                            ]
+                        ),
+                    ],
+                    bordered=True,
+                    hover=True,
+                    responsive=True,
+                    size="sm",
+                ),
+            ]
+        )
+
+    except Exception as e:
+        logger.error(f"Error creating filtering results table: {e}")
+        return f"Error in filtering analysis: {str(e)}"
+
+
+def apply_filter(
+    signal_data,
+    sampling_freq,
+    filter_family,
+    filter_response,
+    low_freq,
+    high_freq,
+    filter_order,
+):
+    """
+    Apply filter to the signal using vitalDSP SignalFiltering class.
+
+    This function now uses the validated vitalDSP SignalFiltering implementation
+    for improved error handling, parameter validation, and consistency.
+
+    Args:
+        signal_data: Signal array
+        sampling_freq: Sampling frequency in Hz
+        filter_family: Filter type (butter, cheby1, cheby2, ellip, bessel)
+        filter_response: Filter response (bandpass, lowpass, highpass, bandstop)
+        low_freq: Low cutoff frequency in Hz
+        high_freq: High cutoff frequency in Hz
+        filter_order: Filter order
+
+    Returns:
+        np.ndarray: Filtered signal
+    """
+    try:
+        from vitalDSP.filtering.signal_filtering import SignalFiltering
+
+        # Create SignalFiltering instance
+        sf = SignalFiltering(signal_data)
+
+        # Determine cutoff and filter type
+        if filter_response == "bandpass":
+            cutoff = [low_freq, high_freq]
+            filter_type = "band"
+        elif filter_response == "lowpass":
+            cutoff = high_freq
+            filter_type = "low"
+        elif filter_response == "highpass":
+            cutoff = low_freq
+            filter_type = "high"
+        elif filter_response == "bandstop":
+            cutoff = [low_freq, high_freq]
+            filter_type = "bandstop"
+        else:
+            # Default to bandpass
+            cutoff = [low_freq, high_freq]
+            filter_type = "band"
+
+        # Apply appropriate filter using vitalDSP
+        if filter_family == "butter" or filter_family == "butterworth":
+            return sf.butterworth(
+                cutoff, fs=sampling_freq, order=filter_order, btype=filter_type
+            )
+        elif filter_family == "cheby1" or filter_family == "chebyshev1":
+            return sf.chebyshev(
+                cutoff,
+                fs=sampling_freq,
+                order=filter_order,
+                btype=filter_type,
+                ripple=0.5,
+            )
+        elif filter_family == "cheby2" or filter_family == "chebyshev2":
+            # Use vitalDSP's Chebyshev Type II filter implementation
+            return sf.chebyshev2(
+                cutoff,
+                fs=sampling_freq,
+                order=filter_order,
+                btype=filter_type,
+                stopband_attenuation=40,
+            )
+        elif filter_family == "ellip" or filter_family == "elliptic":
+            return sf.elliptic(
+                cutoff,
+                fs=sampling_freq,
+                order=filter_order,
+                btype=filter_type,
+                ripple=0.5,
+                stopband_attenuation=40,
+            )
+        elif filter_family == "bessel":
+            # Use vitalDSP's Bessel filter implementation
+            return sf.bessel(
+                cutoff,
+                fs=sampling_freq,
+                order=filter_order,
+                btype=filter_type,
+            )
+        else:
+            # Default to Butterworth
+            logger.warning(
+                f"Unknown filter family '{filter_family}', defaulting to Butterworth"
+            )
+            return sf.butterworth(
+                cutoff, fs=sampling_freq, order=filter_order, btype=filter_type
+            )
+
+    except Exception as e:
+        logger.error(f"Error applying filter: {e}")
+        # Return original signal if filtering fails
+        return signal_data

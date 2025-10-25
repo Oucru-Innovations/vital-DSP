@@ -106,6 +106,11 @@ class WaveletTransform:
             "coif3": lambda: wavelet_class.coif(order=3),
             "coif4": lambda: wavelet_class.coif(order=4),
             "coif5": lambda: wavelet_class.coif(order=5),
+            # Common abbreviations for continuous wavelets
+            "mexh": lambda: wavelet_class.mexican_hat(),
+            "morl": lambda: wavelet_class.morlet(),
+            "mexican_hat": lambda: wavelet_class.mexican_hat(),
+            "morlet": lambda: wavelet_class.morlet(),
         }
 
         # Get the wavelet method

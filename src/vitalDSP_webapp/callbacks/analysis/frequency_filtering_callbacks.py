@@ -156,8 +156,8 @@ def register_frequency_filtering_callbacks(app):
         ],
         [
             State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
-            State("freq-start-time-input", "value"),  # NEW: start time input instead of slider
-            State("freq-duration-select", "value"),  # NEW: duration instead of start-time/end-time
+            State("freq-start-position-slider", "value"),  # Start position (0-100%)
+            State("freq-duration-select", "value"),  # Duration (30s, 1m, 2m, 5m)
             State(
                 "freq-signal-source-select", "value"
             ),  # Added signal source selection
@@ -184,6 +184,7 @@ def register_frequency_filtering_callbacks(app):
             State("freq-min", "value"),
             State("freq-max", "value"),
             State("freq-analysis-options", "value"),
+            State("store-filtered-signal", "data"),  # NEW: Access to filtered signal from filtering page
         ],
     )
     def frequency_domain_callback(
@@ -193,8 +194,8 @@ def register_frequency_filtering_callbacks(app):
         nudge_p1,
         nudge_p10,
         pathname,  # MOVED to correct position - this is a State parameter
-        start_time,  # NEW: start time instead of slider_value
-        duration,  # NEW: duration instead of start_time/end_time
+        start_position,  # Start position as percentage (0-100%)
+        duration,  # Duration in seconds (30, 60, 120, 300)
         signal_source,  # Added signal source parameter
         analysis_type,
         fft_window,
@@ -219,6 +220,7 @@ def register_frequency_filtering_callbacks(app):
         freq_min,
         freq_max,
         analysis_options,
+        filtered_signal_data,  # NEW: Filtered signal data from filtering page
     ):
         """Unified callback for frequency domain analysis."""
         ctx = callback_context
@@ -358,6 +360,28 @@ def register_frequency_filtering_callbacks(app):
                 # Try to load filtered data from filtering screen
                 filtered_data = data_service.get_filtered_data(data_id)
                 filter_info = data_service.get_filter_info(data_id)
+                
+                # Also check for filtered signal from filtering page
+                if filtered_data is None and filtered_signal_data is not None:
+                    logger.info("No filtered signal from data service, checking filtering page store...")
+                    try:
+                        if isinstance(filtered_signal_data, dict) and "signal" in filtered_signal_data:
+                            filtered_data = np.array(filtered_signal_data["signal"])
+                            logger.info(f"Retrieved filtered signal from filtering page store: {filtered_data.shape}")
+                            
+                            # Extract filter info from the store data
+                            if "filter_params" in filtered_signal_data:
+                                filter_info = {
+                                    "filter_type": filtered_signal_data.get("filter_type", "unknown"),
+                                    "parameters": filtered_signal_data.get("filter_params", {}),
+                                    "signal_type": filtered_signal_data.get("signal_type", "unknown"),
+                                    "sampling_freq": filtered_signal_data.get("sampling_freq", 100)
+                                }
+                                logger.info(f"Retrieved filter info from filtering page store: {filter_info}")
+                    except Exception as e:
+                        logger.error(f"Error retrieving filtered signal from filtering page store: {e}")
+                        filtered_data = None
+                        filter_info = None
 
                 if filtered_data is not None:
                     logger.info(
@@ -399,12 +423,36 @@ def register_frequency_filtering_callbacks(app):
                 f"Signal data is constant: {np.all(selected_signal == selected_signal[0])}"
             )
 
-            # Handle time window - use start time and duration
-            if start_time is not None and duration is not None:
-                # Calculate end time from start time and duration
-                end_time = start_time + duration
-                start_sample = int(start_time * sampling_freq)
-                end_sample = int(end_time * sampling_freq)
+            # Handle time window - convert start position (%) to actual time
+            if start_position is not None and duration is not None:
+                # Ensure both values are numbers (convert from string if necessary)
+                try:
+                    start_position = float(start_position)
+                    duration = float(duration)
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Invalid time window values - start: {start_position}, duration: {duration}, using defaults")
+                    start_position = 0.0
+                    duration = 60.0
+                
+                # Convert start position (0-100%) to actual time in seconds
+                total_duration = time_data[-1] - time_data[0]
+                actual_start_time = (start_position / 100.0) * total_duration
+                actual_end_time = actual_start_time + duration
+
+                # Ensure end time doesn't exceed total duration
+                if actual_end_time > total_duration:
+                    actual_end_time = total_duration
+                    actual_start_time = max(0, actual_end_time - duration)
+
+                start_sample = int(actual_start_time * sampling_freq)
+                end_sample = int(actual_end_time * sampling_freq)
+
+                logger.info(f"Time window calculation:")
+                logger.info(f"  Start position: {start_position}%")
+                logger.info(f"  Duration: {duration}s")
+                logger.info(f"  Total duration: {total_duration:.2f}s")
+                logger.info(f"  Actual start time: {actual_start_time:.2f}s")
+                logger.info(f"  Actual end time: {actual_end_time:.2f}s")
 
                 # Ensure we have valid indices - use original signal length for bounds checking
                 original_signal_length = len(original_signal_data)
@@ -450,7 +498,6 @@ def register_frequency_filtering_callbacks(app):
                             logger.info(
                                 f"Original signal length: {original_signal_length}"
                             )
-                            logger.info(f"Time range: {start_sample} to {end_sample}")
                             logger.info(f"Expected window length: {expected_length}")
                             logger.info(
                                 "Applying dynamic filtering to current window..."
@@ -663,7 +710,7 @@ def register_frequency_filtering_callbacks(app):
                                 signal_source_info = "Original Signal (Fallback)"
 
                     logger.info("=== TIME WINDOW DEBUG ===")
-                    logger.info(f"Applied time window: {start_time}s to {end_time}s")
+                    logger.info(f"Applied time window: {actual_start_time:.2f}s to {actual_end_time:.2f}s (position {start_position}%, duration {duration}s)")
                     logger.info(
                         f"Start sample: {start_sample}, End sample: {end_sample}"
                     )
@@ -1366,7 +1413,6 @@ def create_stft_plot(
     logger.info(
         f"STFT Parameters - Time resolution: {time_resolution:.3f}s, Frequency resolution: {freq_resolution:.3f}Hz"
     )
-    logger.info(f"Overlap: {overlap} samples ({overlap/window_size*100:.1f}%)")
 
     # Compute STFT
     freqs, times, Zxx = signal.stft(
@@ -1522,7 +1568,6 @@ def create_wavelet_plot(
     selected_signal, sampling_freq, wavelet_type, levels, freq_min, freq_max
 ):
     """Create enhanced wavelet plot with vitalDSP insights."""
-    logger.info(f"Creating wavelet plot with type: {wavelet_type}, levels: {levels}")
 
     try:
         from vitalDSP.transforms.wavelet_transform import WaveletTransform
@@ -1563,6 +1608,10 @@ def create_wavelet_plot(
             return fig
 
         # Validate wavelet type
+        if wavelet_type is None or wavelet_type == "":
+            logger.warning("Wavelet type is None or empty, using default 'db4'")
+            wavelet_type = "db4"
+        
         wt = WaveletTransform(selected_signal, wavelet_name=wavelet_type)
         # Note: vitalDSP WaveletTransform handles validation internally
 
@@ -1785,19 +1834,22 @@ def create_wavelet_plot(
                     )
 
                     # Pad or truncate coefficients to match signal length
-                    if len(coeffs[i]) < len(selected_signal):
+                    # Ensure coefficients are real numbers before plotting
+                    real_coeff = np.real(coeffs[i]) if np.iscomplexobj(coeffs[i]) else coeffs[i]
+                    
+                    if len(real_coeff) < len(selected_signal):
                         # Pad with zeros
                         padded_coeff = np.pad(
-                            coeffs[i],
-                            (0, len(selected_signal) - len(coeffs[i])),
+                            real_coeff,
+                            (0, len(selected_signal) - len(real_coeff)),
                             mode="constant",
                         )
                         logger.info(
-                            f"Padded coefficients from {len(coeffs[i])} to {len(padded_coeff)}"
+                            f"Padded coefficients from {len(real_coeff)} to {len(padded_coeff)}"
                         )
                     else:
                         # Truncate
-                        padded_coeff = coeffs[i][: len(selected_signal)]
+                        padded_coeff = real_coeff[: len(selected_signal)]
                         logger.info(
                             f"Truncated coefficients from {len(coeffs[i])} to {len(padded_coeff)}"
                         )
@@ -2580,6 +2632,11 @@ def perform_wavelet_analysis(
     try:
         from vitalDSP.transforms.wavelet_transform import WaveletTransform
 
+        # Validate wavelet type
+        if wavelet_type is None or wavelet_type == "":
+            logger.warning("Wavelet type is None or empty, using default 'db4'")
+            wavelet_type = "db4"
+
         # Perform wavelet decomposition using vitalDSP
         wt = WaveletTransform(selected_signal, wavelet_name=wavelet_type)
         coefficients = wt.perform_wavelet_transform()
@@ -2768,17 +2825,36 @@ def perform_wavelet_analysis(
             stability_table = generate_stability_table(freqs, magnitudes)
             harmonics_table = generate_harmonics_table(freqs, magnitudes)
 
-        # Store data
+        # Store data - ensure all arrays are real numbers only
         freq_data = {
-            "frequencies": freqs.tolist(),
-            "magnitudes": magnitudes.tolist(),
+            "frequencies": np.real(freqs).tolist() if np.iscomplexobj(freqs) else freqs.tolist(),
+            "magnitudes": np.real(magnitudes).tolist() if np.iscomplexobj(magnitudes) else magnitudes.tolist(),
             "analysis_type": f"Wavelet_{wavelet_type.upper()}",
         }
+        # Convert coefficients to real numbers only (remove complex parts if any)
+        # Handle both individual complex coefficients and arrays with mixed real/complex
+        def safe_coeff_to_list(coeff):
+            if coeff is None or len(coeff) == 0:
+                return []
+            try:
+                if np.iscomplexobj(coeff):
+                    # Entire coefficient array is complex
+                    return np.real(coeff).tolist()
+                else:
+                    # Check if individual elements are complex
+                    if hasattr(coeff, 'dtype') and np.issubdtype(coeff.dtype, np.complexfloating):
+                        return np.real(coeff).tolist()
+                    else:
+                        return coeff.tolist()
+            except Exception as e:
+                logger.warning(f"Error converting coefficient to list: {e}")
+                return []
+        
         time_freq_data = {
             "levels": levels,
             "wavelet_type": wavelet_type,
             "coefficients": [
-                coeff.tolist()
+                safe_coeff_to_list(coeff)
                 for coeff in coeffs
                 if coeff is not None and len(coeff) > 0
             ],

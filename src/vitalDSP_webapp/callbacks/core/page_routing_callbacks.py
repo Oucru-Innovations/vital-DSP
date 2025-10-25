@@ -10,10 +10,10 @@ import logging
 
 # Import layouts from the new modular structure
 from vitalDSP_webapp.layout.pages.upload_page import upload_layout
+from vitalDSP_webapp.layout.pages.filtering_page import filtering_layout
+from vitalDSP_webapp.layout.pages.time_domain_page import time_domain_layout
+from vitalDSP_webapp.layout.pages.frequency_page import frequency_layout
 from vitalDSP_webapp.layout.pages.analysis_pages import (
-    time_domain_layout,
-    frequency_layout,
-    filtering_layout,
     physiological_layout,
     respiratory_layout,
     features_layout,
