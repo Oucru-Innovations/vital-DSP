@@ -13,9 +13,9 @@ from vitalDSP_webapp.layout.pages.upload_page import upload_layout
 from vitalDSP_webapp.layout.pages.filtering_page import filtering_layout
 from vitalDSP_webapp.layout.pages.time_domain_page import time_domain_layout
 from vitalDSP_webapp.layout.pages.frequency_page import frequency_layout
+from vitalDSP_webapp.layout.pages.respiratory_page import respiratory_layout
 from vitalDSP_webapp.layout.pages.analysis_pages import (
     physiological_layout,
-    respiratory_layout,
     features_layout,
     transforms_layout,
     quality_layout,

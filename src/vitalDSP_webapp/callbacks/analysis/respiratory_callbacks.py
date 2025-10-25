@@ -348,47 +348,47 @@ def register_respiratory_callbacks(app):
             Output("resp-features-store", "data"),
         ],
         [
-            # Input("url", "pathname"),  # REMOVED - was running full analysis on EVERY page load!
+            Input("url", "pathname"),  # Trigger on page navigation
             Input("resp-analyze-btn", "n_clicks"),
-            # Input("resp-time-range-slider", "value"),  # REMOVED - was causing constant updates!
             Input("resp-btn-nudge-m10", "n_clicks"),
             Input("resp-btn-nudge-m1", "n_clicks"),
             Input("resp-btn-nudge-p1", "n_clicks"),
             Input("resp-btn-nudge-p10", "n_clicks"),
         ],
         [
-            State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
             State("resp-start-position-slider", "value"),  # NEW: start position instead of time-range-slider
             State("resp-duration-select", "value"),  # NEW: duration instead of start-time/end-time
             State("resp-signal-type", "value"),
             State("resp-estimation-methods", "value"),
             State("resp-advanced-options", "value"),
-            State("resp-preprocessing-options", "value"),
-            State("resp-low-cut", "value"),
-            State("resp-high-cut", "value"),
+            # REMOVED: State("resp-preprocessing-options", "value") - preprocessing done on filtering page
+            # REMOVED: State("resp-low-cut", "value") - preprocessing done on filtering page
+            # REMOVED: State("resp-high-cut", "value") - preprocessing done on filtering page
             State("resp-min-breath-duration", "value"),
             State("resp-max-breath-duration", "value"),
             State("resp-ensemble-method", "value"),
+            State("store-filtered-signal", "data"),  # NEW: Access to filtered signal from filtering page
         ],
     )
     def respiratory_analysis_callback(
+        pathname,  # Input - triggers on page navigation
         n_clicks,
         nudge_m10,
         nudge_m1,
         nudge_p1,
         nudge_p10,
-        pathname,  # MOVED to correct position - this is a State parameter
-        start_position,  # NEW: start position instead of slider_value
-        duration,  # NEW: duration instead of start_time/end_time
+        start_position,  # State: start position instead of slider_value
+        duration,  # State: duration instead of start_time/end_time
         signal_type,
         estimation_methods,
         advanced_options,
-        preprocessing_options,
-        low_cut,
-        high_cut,
+        # REMOVED: preprocessing_options - preprocessing done on filtering page
+        # REMOVED: low_cut - preprocessing done on filtering page
+        # REMOVED: high_cut - preprocessing done on filtering page
         min_breath_duration,
         max_breath_duration,
         ensemble_method,
+        filtered_signal_data,  # State: Filtered signal data from filtering page
     ):
         """Unified callback for respiratory analysis - handles both page load and user interactions."""
         ctx = callback_context
@@ -409,9 +409,7 @@ def register_respiratory_callbacks(app):
         logger.info(f"  - signal_type: {signal_type}")
         logger.info(f"  - estimation_methods: {estimation_methods}")
         logger.info(f"  - advanced_options: {advanced_options}")
-        logger.info(f"  - preprocessing_options: {preprocessing_options}")
-        logger.info(f"  - low_cut: {low_cut}")
-        logger.info(f"  - high_cut: {high_cut}")
+        # REMOVED: preprocessing_options, low_cut, high_cut - preprocessing done on filtering page
         logger.info(f"  - min_breath_duration: {min_breath_duration}")
         logger.info(f"  - max_breath_duration: {max_breath_duration}")
 
@@ -500,45 +498,61 @@ def register_respiratory_callbacks(app):
             sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)
             logger.info(f"Sampling frequency: {sampling_freq}")
 
-            # Handle start_position FIRST - it comes as a list from RangeSlider [min, max]
-            # We want the first value (start time)
-            if isinstance(start_position, list):
-                start_time = start_position[0]
-                logger.info(f"start_position is a list: {start_position}, using first value: {start_time}")
-            else:
-                start_time = start_position if start_position else 0
-                logger.info(f"start_position is a single value: {start_time}")
+            # Set default values
+            if start_position is None:
+                start_position = 0
+            if duration is None:
+                duration = 60
 
             # Handle time window adjustments for nudge buttons
+            # Nudge buttons adjust the position by percentage
             if trigger_id in [
                 "resp-btn-nudge-m10",
                 "resp-btn-nudge-m1",
                 "resp-btn-nudge-p1",
                 "resp-btn-nudge-p10",
             ]:
-                if not start_time or not duration:
-                    start_time, duration = 0, 10
-
                 if trigger_id == "resp-btn-nudge-m10":
-                    start_time = max(0, start_time - 10)
+                    start_position = max(0, start_position - 10)  # -10%
                 elif trigger_id == "resp-btn-nudge-m1":
-                    start_time = max(0, start_time - 1)
+                    start_position = max(0, start_position - 5)   # -5%
                 elif trigger_id == "resp-btn-nudge-p1":
-                    start_time = start_time + 1
+                    start_position = min(100, start_position + 5)  # +5%
                 elif trigger_id == "resp-btn-nudge-p10":
-                    start_time = start_time + 10
+                    start_position = min(100, start_position + 10) # +10%
 
-                logger.info(f"Start time adjusted: {start_time}")
+                logger.info(f"Position adjusted: {start_position}%")
 
-            # Set default time window if not specified
+            # Get total signal duration in seconds
+            time_column = column_mapping.get("time")
+            if time_column and time_column in df.columns:
+                time_diff = df[time_column].iloc[-1] - df[time_column].iloc[0]
+                # Convert Timedelta to seconds if necessary
+                if hasattr(time_diff, 'total_seconds'):
+                    total_duration = time_diff.total_seconds()
+                else:
+                    total_duration = float(time_diff)
+            else:
+                total_duration = len(df) / sampling_freq
 
-            if not start_time or not duration:
-                start_time, duration = 0, 10
-                logger.info(f"Using default values: start_time={start_time}, duration={duration}")
+            # Convert start position (0-100%) to actual start time in seconds
+            actual_start_time = (start_position / 100.0) * total_duration
+            actual_end_time = actual_start_time + duration
 
-            # Calculate end time from start position and duration
-            end_time = start_time + duration
-            logger.info(f"Calculated time window: {start_time:.3f}s to {end_time:.3f}s")
+            # Ensure end time doesn't exceed total duration
+            if actual_end_time > total_duration:
+                actual_end_time = total_duration
+                actual_start_time = max(0, actual_end_time - duration)
+
+            logger.info(f"Time window calculation:")
+            logger.info(f"  Start position: {start_position}%")
+            logger.info(f"  Duration: {duration}s")
+            logger.info(f"  Total duration: {total_duration:.2f}s")
+            logger.info(f"  Actual start time: {actual_start_time:.2f}s")
+            logger.info(f"  Actual end time: {actual_end_time:.2f}s")
+
+            start_time = actual_start_time
+            end_time = actual_end_time
 
             # Apply time window
             start_sample = int(start_time * sampling_freq)
@@ -571,6 +585,84 @@ def register_respiratory_callbacks(app):
                 f"Signal data range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}"
             )
             logger.info(f"Signal data mean: {np.mean(signal_data):.3f}")
+            
+            # Data validation: Check for extreme values that indicate data corruption
+            signal_range = np.max(signal_data) - np.min(signal_data)
+            signal_std = np.std(signal_data)
+            
+            # Check for suspiciously large values (likely data corruption)
+            if signal_range > 1e6 or signal_std > 1e6 or np.any(np.abs(signal_data) > 1e6):
+                logger.error(f"⚠️  DETECTED EXTREME SIGNAL VALUES - Possible data corruption!")
+                logger.error(f"   Signal range: {signal_range:.3e}")
+                logger.error(f"   Signal std: {signal_std:.3e}")
+                logger.error(f"   Max absolute value: {np.max(np.abs(signal_data)):.3e}")
+                logger.error(f"   This suggests data corruption or incorrect data type conversion")
+                
+                # Try to fix by normalizing the signal
+                logger.info("Attempting to fix by normalizing signal...")
+                try:
+                    # Check if it's a scaling issue (values are too large by a factor)
+                    if np.max(np.abs(signal_data)) > 1e6:
+                        # Try to scale down by finding a reasonable factor
+                        scale_factor = 1e6 / np.max(np.abs(signal_data))
+                        signal_data = signal_data * scale_factor
+                        logger.info(f"Scaled signal down by factor {scale_factor:.3e}")
+                        logger.info(f"New signal range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
+                    else:
+                        # If values are still reasonable, just normalize
+                        signal_data = (signal_data - np.mean(signal_data)) / np.std(signal_data)
+                        logger.info("Normalized signal to zero mean and unit variance")
+                        logger.info(f"New signal range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
+                except Exception as e:
+                    logger.error(f"Failed to fix signal data: {e}")
+                    logger.error("Using original data (may cause analysis issues)")
+            else:
+                logger.info("✓ Signal data validation passed - values are within reasonable range")
+
+            # Check for filtered signal from filtering page
+            if filtered_signal_data is not None:
+                logger.info("Checking for filtered signal from filtering page store...")
+                try:
+                    if isinstance(filtered_signal_data, dict) and "signal" in filtered_signal_data:
+                        filtered_signal = np.array(filtered_signal_data["signal"])
+                        logger.info(f"Retrieved filtered signal from filtering page store: {filtered_signal.shape}")
+
+                        # Use filtered signal if it matches our time window
+                        # The filtered signal should be the full signal, so we need to window it
+                        if len(filtered_signal) >= end_sample:
+                            signal_data = filtered_signal[start_sample:end_sample]
+                            logger.info(f"Using filtered signal data (windowed): {signal_data.shape}")
+                            
+                            # Validate filtered signal data as well
+                            filtered_range = np.max(signal_data) - np.min(signal_data)
+                            filtered_std = np.std(signal_data)
+                            
+                            if filtered_range > 1e6 or filtered_std > 1e6 or np.any(np.abs(signal_data) > 1e6):
+                                logger.error(f"⚠️  FILTERED SIGNAL ALSO HAS EXTREME VALUES!")
+                                logger.error(f"   Filtered signal range: {filtered_range:.3e}")
+                                logger.error(f"   Filtered signal std: {filtered_std:.3e}")
+                                logger.error(f"   This suggests the filtering process created corrupted data")
+                                
+                                # Try to fix the filtered signal
+                                try:
+                                    if np.max(np.abs(signal_data)) > 1e6:
+                                        scale_factor = 1e6 / np.max(np.abs(signal_data))
+                                        signal_data = signal_data * scale_factor
+                                        logger.info(f"Scaled filtered signal down by factor {scale_factor:.3e}")
+                                    else:
+                                        signal_data = (signal_data - np.mean(signal_data)) / np.std(signal_data)
+                                        logger.info("Normalized filtered signal")
+                                except Exception as e:
+                                    logger.error(f"Failed to fix filtered signal: {e}")
+                                    logger.info("Falling back to original signal data")
+                                    signal_data = windowed_data[signal_column].values
+                            else:
+                                logger.info("✓ Filtered signal data validation passed")
+                        else:
+                            logger.warning(f"Filtered signal too short ({len(filtered_signal)} < {end_sample}), using original")
+                except Exception as e:
+                    logger.error(f"Error retrieving filtered signal: {e}")
+                    logger.info("Falling back to original signal data")
 
             # Auto-detect signal type if needed
             if signal_type == "auto":
@@ -579,21 +671,74 @@ def register_respiratory_callbacks(app):
                 logger.info(f"Auto-detected signal type: {signal_type}")
 
             logger.info(f"Final signal type: {signal_type}")
+
+            # Extract respiratory signal from ECG/PPG if needed
+            respiratory_signal = signal_data.copy()
+            if signal_type in ["ecg", "ppg"]:
+                logger.info(f"Extracting respiratory signal from {signal_type.upper()}...")
+                try:
+                    # Use vitalDSP's respiratory_filtering function
+                    from vitalDSP.preprocess.preprocess_operations import respiratory_filtering
+
+                    # Apply respiratory filtering (0.1-0.5 Hz bandpass for respiratory frequencies)
+                    respiratory_signal = respiratory_filtering(
+                        signal_data,
+                        sampling_freq,
+                        lowcut=0.1,  # 6 BPM
+                        highcut=0.5,  # 30 BPM
+                        order=4
+                    )
+
+                    logger.info(f"Successfully extracted respiratory signal from {signal_type.upper()} using vitalDSP")
+                    logger.info(f"  - Signal range: {np.min(respiratory_signal):.3f} to {np.max(respiratory_signal):.3f}")
+                    logger.info(f"  - Signal mean: {np.mean(respiratory_signal):.3f}, std: {np.std(respiratory_signal):.3f}")
+                    
+                    # Validate extracted respiratory signal
+                    resp_range = np.max(respiratory_signal) - np.min(respiratory_signal)
+                    resp_std = np.std(respiratory_signal)
+                    
+                    if resp_range > 1e6 or resp_std > 1e6 or np.any(np.abs(respiratory_signal) > 1e6):
+                        logger.error(f"⚠️  RESPIRATORY EXTRACTION CREATED EXTREME VALUES!")
+                        logger.error(f"   Respiratory signal range: {resp_range:.3e}")
+                        logger.error(f"   Respiratory signal std: {resp_std:.3e}")
+                        logger.error(f"   This suggests the respiratory_filtering function has issues")
+                        
+                        # Try to fix the respiratory signal
+                        try:
+                            if np.max(np.abs(respiratory_signal)) > 1e6:
+                                scale_factor = 1e6 / np.max(np.abs(respiratory_signal))
+                                respiratory_signal = respiratory_signal * scale_factor
+                                logger.info(f"Scaled respiratory signal down by factor {scale_factor:.3e}")
+                            else:
+                                respiratory_signal = (respiratory_signal - np.mean(respiratory_signal)) / np.std(respiratory_signal)
+                                logger.info("Normalized respiratory signal")
+                        except Exception as e:
+                            logger.error(f"Failed to fix respiratory signal: {e}")
+                            logger.info("Falling back to original signal")
+                            respiratory_signal = signal_data
+                    else:
+                        logger.info("✓ Respiratory signal extraction validation passed")
+
+                except Exception as e:
+                    logger.error(f"Error extracting respiratory signal: {e}")
+                    logger.info("Falling back to original signal")
+                    respiratory_signal = signal_data
+            else:
+                logger.info(f"Signal type '{signal_type}' is already respiratory signal, no extraction needed")
+
             logger.info(f"Estimation methods: {estimation_methods}")
             logger.info(f"Advanced options: {advanced_options}")
-            logger.info(f"Preprocessing options: {preprocessing_options}")
+            # REMOVED: preprocessing_options logging - preprocessing done on filtering page
 
             # Create main respiratory signal plot with annotations
             logger.info("Creating main respiratory signal plot with annotations...")
             main_plot = create_respiratory_signal_plot(
-                signal_data,
+                respiratory_signal,  # Use extracted respiratory signal instead of raw ECG/PPG
                 time_axis,
                 sampling_freq,
                 signal_type,
                 estimation_methods,
-                preprocessing_options,
-                low_cut,
-                high_cut,
+                # REMOVED: preprocessing_options, low_cut, high_cut - preprocessing done on filtering page
             )
             logger.info("Main respiratory signal plot created successfully")
             logger.info(f"Main plot type: {type(main_plot)}")
@@ -601,15 +746,13 @@ def register_respiratory_callbacks(app):
             # Generate comprehensive respiratory analysis results
             logger.info("Generating comprehensive respiratory analysis results...")
             analysis_results = generate_comprehensive_respiratory_analysis(
-                signal_data,
+                respiratory_signal,  # Use extracted respiratory signal
                 time_axis,
                 sampling_freq,
                 signal_type,
                 estimation_methods,
                 advanced_options,
-                preprocessing_options,
-                low_cut,
-                high_cut,
+                # REMOVED: preprocessing_options, low_cut, high_cut - preprocessing done on filtering page
                 min_breath_duration,
                 max_breath_duration,
                 ensemble_method,
@@ -623,22 +766,21 @@ def register_respiratory_callbacks(app):
             # Create respiratory analysis plots
             logger.info("Creating respiratory analysis plots...")
             analysis_plots = create_comprehensive_respiratory_plots(
-                signal_data,
+                respiratory_signal,  # Use extracted respiratory signal
                 time_axis,
                 sampling_freq,
                 signal_type,
                 estimation_methods,
                 advanced_options,
-                preprocessing_options,
-                low_cut,
-                high_cut,
+                # REMOVED: preprocessing_options, low_cut, high_cut - preprocessing done on filtering page
             )
             logger.info("Respiratory analysis plots created successfully")
             logger.info(f"Analysis plots type: {type(analysis_plots)}")
 
             # Store processed data
             resp_data = {
-                "signal_data": signal_data.tolist(),
+                "signal_data": signal_data.tolist(),  # Original ECG/PPG
+                "respiratory_signal": respiratory_signal.tolist(),  # Extracted respiratory signal
                 "time_axis": time_axis.tolist(),
                 "sampling_freq": sampling_freq,
                 "window": [start_position, end_time],
@@ -648,8 +790,7 @@ def register_respiratory_callbacks(app):
 
             resp_features = {
                 "advanced_options": advanced_options,
-                "preprocessing_options": preprocessing_options,
-                "filter_params": {"low_cut": low_cut, "high_cut": high_cut},
+                # REMOVED: preprocessing_options, filter_params - preprocessing done on filtering page
                 "breath_constraints": {
                     "min_duration": min_breath_duration,
                     "max_duration": max_breath_duration,
@@ -679,15 +820,8 @@ def register_respiratory_callbacks(app):
                 None,
             )
 
-    @app.callback(
-        [Output("resp-start-time", "value"), Output("resp-end-time", "value")],
-        [Input("resp-time-range-slider", "value")],
-    )
-    def update_resp_time_inputs(slider_value):
-        """Update time input fields based on slider."""
-        if not slider_value:
-            return no_update, no_update
-        return slider_value[0], slider_value[1]
+    # REMOVED: Orphaned callback update_resp_time_inputs - referenced non-existent components
+    # (resp-start-time, resp-end-time, resp-time-range-slider)
 
     @app.callback(
         [
@@ -748,35 +882,14 @@ def register_respiratory_callbacks(app):
         [Input("resp-advanced-options", "value")],
     )
     def update_additional_analysis_section(advanced_options):
-        """Update additional analysis section based on selected options."""
-        if not advanced_options:
-            return html.Div()
+        """Update additional analysis section based on selected options.
 
-        sections = []
-
-        # Create inline grid layout for advanced analysis sections
-        if any(advanced_options):
-            sections.append(
-                dbc.Card(
-                    [
-                        dbc.CardHeader(
-                            [
-                                html.H5(
-                                    "🔬 Advanced Analysis Results", className="mb-0"
-                                ),
-                                html.Small(
-                                    "Inline analysis blocks for efficient space usage",
-                                    className="text-muted",
-                                ),
-                            ]
-                        ),
-                        dbc.CardBody([html.Div(id="resp-advanced-analysis-results")]),
-                    ],
-                    className="mb-2 shadow-sm",
-                )
-            )
-
-        return html.Div(sections)
+        Note: This is currently a placeholder. All analysis results are shown in the main
+        resp-analysis-results div. This section can be used for future additional analysis
+        displays if needed.
+        """
+        # Return empty div - all analysis is shown in the main analysis card
+        return html.Div()
 
     @app.callback(
         Output("resp-btn-export-results", "n_clicks"),
@@ -861,11 +974,13 @@ def create_respiratory_signal_plot(
     sampling_freq,
     signal_type,
     estimation_methods,
-    preprocessing_options,
-    low_cut,
-    high_cut,
+    # REMOVED: preprocessing_options, low_cut, high_cut - preprocessing done on filtering page
 ):
-    """Create the main respiratory signal plot with annotations."""
+    """Create the main respiratory signal plot with annotations.
+
+    Note: Preprocessing (filtering, denoising) should be done on the filtering page.
+    This function receives already-filtered signal data from store-filtered-signal.
+    """
     logger.info("=== CREATE RESPIRATORY SIGNAL PLOT STARTED ===")
     logger.info("Input parameters:")
     logger.info(f"  - signal_data shape: {signal_data.shape}")
@@ -873,121 +988,52 @@ def create_respiratory_signal_plot(
     logger.info(f"  - sampling_freq: {sampling_freq}")
     logger.info(f"  - signal_type: {signal_type}")
     logger.info(f"  - estimation_methods: {estimation_methods}")
-    logger.info(f"  - preprocessing_options: {preprocessing_options}")
-    logger.info(f"  - low_cut: {low_cut}")
-    logger.info(f"  - high_cut: {high_cut}")
+    # REMOVED: preprocessing_options, low_cut, high_cut logging - preprocessing done on filtering page
 
     try:
         fig = go.Figure()
 
-        # Apply preprocessing if selected
-        logger.info("Applying preprocessing...")
-        processed_signal = signal_data.copy()
-        if preprocessing_options and "filter" in preprocessing_options:
-            try:
-                # Design bandpass filter for respiratory frequencies
-                nyquist = sampling_freq / 2
-                low = low_cut / nyquist
-                high = high_cut / nyquist
-
-                if low < high < 1.0:
-                    b, a = signal.butter(4, [low, high], btype="bandpass")
-                    processed_signal = signal.filtfilt(b, a, processed_signal)
-                    logger.info(f"Applied bandpass filter: {low_cut}-{high_cut} Hz")
-            except Exception as e:
-                logger.error(f"Bandpass filtering failed: {e}")
-
-        # Apply additional preprocessing options
-        if preprocessing_options and "baseline_correction" in preprocessing_options:
-            try:
-                # Remove baseline wander using high-pass filter
-                baseline_cutoff = 0.01  # 0.01 Hz cutoff for baseline
-                baseline_nyquist = baseline_cutoff / nyquist
-                if baseline_nyquist < 1.0:
-                    b_baseline, a_baseline = signal.butter(
-                        2, baseline_nyquist, btype="highpass"
-                    )
-                    processed_signal = signal.filtfilt(
-                        b_baseline, a_baseline, processed_signal
-                    )
-                    logger.info("Applied baseline correction")
-            except Exception as e:
-                logger.error(f"Baseline correction failed: {e}")
-
-        if preprocessing_options and "moving_average" in preprocessing_options:
-            try:
-                # Apply moving average smoothing
-                window_size = int(0.1 * sampling_freq)  # 100ms window
-                if window_size > 0:
-                    processed_signal = np.convolve(
-                        processed_signal,
-                        np.ones(window_size) / window_size,
-                        mode="same",
-                    )
-                    logger.info("Applied moving average smoothing")
-            except Exception as e:
-                logger.error(f"Moving average smoothing failed: {e}")
+        # REMOVED: Preprocessing logic - all preprocessing is done on the filtering page
+        # Signal data received here is already filtered from store-filtered-signal
 
         # PERFORMANCE OPTIMIZATION: Limit plot data to max 5 minutes and 10K points
-        time_axis_plot, processed_signal_plot = limit_plot_data(
+        time_axis_plot, signal_data_plot = limit_plot_data(
             time_axis,
-            processed_signal,
+            signal_data,
             max_duration=300,  # 5 minutes max
             max_points=10000   # 10K points max
         )
 
-        # Also limit original signal data for consistency
-        _, signal_data_plot = limit_plot_data(
-            time_axis,
-            signal_data,
-            max_duration=300,
-            max_points=10000
-        )
-
-        logger.info(f"Plot data limited: {len(processed_signal)} → {len(processed_signal_plot)} points")
+        logger.info(f"Plot data limited: {len(signal_data)} → {len(signal_data_plot)} points")
 
         # Create the main signal plot (using limited data)
         fig.add_trace(
             go.Scatter(
                 x=time_axis_plot,
-                y=processed_signal_plot,
+                y=signal_data_plot,
                 mode="lines",
-                name=f"{signal_type.upper()} Signal (Processed)",
+                name=f"{signal_type.upper()} Signal",
                 line=dict(color="#2E86AB", width=2),
                 hovertemplate="<b>Time:</b> %{x:.3f}s<br><b>Amplitude:</b> %{y:.3f}<extra></extra>",
             )
         )
 
-        # Add original signal if preprocessing was applied (using limited data)
-        if preprocessing_options and len(preprocessing_options) > 0:
-            fig.add_trace(
-                go.Scatter(
-                    x=time_axis_plot,
-                    y=signal_data_plot,
-                    mode="lines",
-                    name=f"{signal_type.upper()} Signal (Original)",
-                    line=dict(color="#95A5A6", width=1, dash="dot"),
-                    opacity=0.7,
-                    hovertemplate="<b>Time:</b> %{x:.3f}s<br><b>Amplitude:</b> %{y:.3f}<extra></extra>",
-                )
-            )
-
         # Add breathing pattern detection if enabled (use limited data for performance)
         if estimation_methods and "peak_detection" in estimation_methods:
             try:
                 # Detect breathing peaks on limited data
-                prominence = 0.3 * np.std(processed_signal_plot)
+                prominence = 0.3 * np.std(signal_data_plot)
                 distance = int(0.5 * sampling_freq)  # Minimum 0.5s between breaths
 
                 peaks, properties = signal.find_peaks(
-                    processed_signal_plot, prominence=prominence, distance=distance
+                    signal_data_plot, prominence=prominence, distance=distance
                 )
 
                 if len(peaks) > 0:
                     fig.add_trace(
                         go.Scatter(
                             x=time_axis_plot[peaks],
-                            y=processed_signal_plot[peaks],
+                            y=signal_data_plot[peaks],
                             mode="markers",
                             name="Breathing Peaks",
                             marker=dict(color="red", size=8, symbol="diamond"),
@@ -999,7 +1045,7 @@ def create_respiratory_signal_plot(
                     for i, peak in enumerate(peaks[:10]):  # Limit to first 10 breaths
                         fig.add_annotation(
                             x=time_axis_plot[peak],
-                            y=processed_signal_plot[peak],
+                            y=signal_data_plot[peak],
                             text=f"B{i+1}",
                             showarrow=True,
                             arrowhead=2,
@@ -1034,7 +1080,7 @@ def create_respiratory_signal_plot(
                 logger.error(f"Breathing peak detection failed: {e}")
 
         # Add baseline
-        baseline = np.mean(processed_signal) if len(processed_signal) > 0 else 0
+        baseline = np.mean(signal_data_plot) if len(signal_data_plot) > 0 else 0
         fig.add_hline(
             y=baseline,
             line_dash="dash",
@@ -1069,14 +1115,16 @@ def generate_comprehensive_respiratory_analysis(
     signal_type,
     estimation_methods,
     advanced_options,
-    preprocessing_options,
-    low_cut,
-    high_cut,
+    # REMOVED: preprocessing_options, low_cut, high_cut - preprocessing done on filtering page
     min_breath_duration,
     max_breath_duration,
     ensemble_method=None,
 ):
-    """Generate comprehensive respiratory analysis results using vitalDSP."""
+    """Generate comprehensive respiratory analysis results using vitalDSP.
+
+    Note: Preprocessing (filtering, denoising) should be done on the filtering page.
+    This function receives already-filtered signal data from store-filtered-signal.
+    """
     logger.info("=== GENERATE COMPREHENSIVE RESPIRATORY ANALYSIS STARTED ===")
     logger.info("Input parameters:")
     logger.info(f"  - signal_data shape: {signal_data.shape}")
@@ -1085,9 +1133,7 @@ def generate_comprehensive_respiratory_analysis(
     logger.info(f"  - signal_type: {signal_type}")
     logger.info(f"  - estimation_methods: {estimation_methods}")
     logger.info(f"  - advanced_options: {advanced_options}")
-    logger.info(f"  - preprocessing_options: {preprocessing_options}")
-    logger.info(f"  - low_cut: {low_cut}")
-    logger.info(f"  - high_cut: {high_cut}")
+    # REMOVED: preprocessing_options, low_cut, high_cut - preprocessing done on filtering page
     logger.info(f"  - min_breath_duration: {min_breath_duration}")
     logger.info(f"  - max_breath_duration: {max_breath_duration}")
     logger.info(f"  - ensemble_method: {ensemble_method}")
@@ -1209,38 +1255,11 @@ def generate_comprehensive_respiratory_analysis(
                     )
                 )
 
-        # Create preprocessing configuration
-        if PreprocessConfig is None:
-            logger.error(
-                "PreprocessConfig module not available - using default settings"
-            )
-            preprocess_config = None
-        else:
-            try:
-                logger.info("Creating preprocessing configuration...")
-                # CRITICAL FIX: Use 0.5 Hz as max for respiratory band (not 0.8 Hz from UI)
-                # Respiratory frequency range is 0.1-0.5 Hz (6-30 BPM)
-                # Using 0.8 Hz allows detection of cardiac harmonics
-                respiratory_lowcut = low_cut if low_cut and low_cut <= 0.5 else 0.1
-                respiratory_highcut = min(
-                    high_cut or 0.5, 0.5
-                )  # Cap at 0.5 Hz for respiratory
-
-                logger.info(
-                    f"Respiratory band filtering: {respiratory_lowcut}-{respiratory_highcut} Hz"
-                )
-
-                preprocess_config = PreprocessConfig(
-                    filter_type="bandpass",
-                    lowcut=respiratory_lowcut,
-                    highcut=respiratory_highcut,
-                    respiratory_mode=True,
-                )
-                logger.info(f"PreprocessConfig created: {preprocess_config}")
-            except Exception as config_error:
-                logger.error(f"Failed to create PreprocessConfig: {config_error}")
-                logger.info("Using default preprocessing settings")
-                preprocess_config = None
+        # REMOVED: Preprocessing configuration - preprocessing done on filtering page
+        # Signal data received here is already filtered from store-filtered-signal
+        # VitalDSP algorithms will work on the pre-filtered signal
+        preprocess_config = None
+        logger.info("Using pre-filtered signal from filtering page (no additional preprocessing)")
 
         # Respiratory Rate Estimation using multiple methods
         logger.info(f"Processing estimation methods: {estimation_methods}")
@@ -2008,25 +2027,9 @@ def generate_comprehensive_respiratory_analysis(
                         (max_breath_duration or 6.0) * sampling_freq
                     )
 
-                    # Apply filtering if preprocessing options include filtering
-                    processed_signal = signal_data.copy()
-                    if preprocessing_options and "filter" in preprocessing_options:
-                        from scipy import signal as scipy_signal
-
-                        # Apply bandpass filter using user-specified cutoffs
-                        low_cutoff = low_cut or 0.1
-                        high_cutoff = high_cut or 0.8
-                        nyquist = sampling_freq / 2
-                        low = low_cutoff / nyquist
-                        high = high_cutoff / nyquist
-                        b, a = scipy_signal.butter(4, [low, high], btype="band")
-                        processed_signal = scipy_signal.filtfilt(b, a, signal_data)
-                        logger.info(
-                            f"Applied bandpass filter: {low_cutoff}-{high_cutoff} Hz"
-                        )
-
+                    # REMOVED: Preprocessing logic - signal data is already filtered from filtering page
                     peaks, properties = signal.find_peaks(
-                        processed_signal,
+                        signal_data,
                         prominence=prominence,
                         distance=min_distance_samples,
                     )
@@ -2047,11 +2050,7 @@ def generate_comprehensive_respiratory_analysis(
                         logger.info(
                             f"  - Max breath duration: {max_breath_duration or 6.0}s"
                         )
-                        logger.info(f"  - Low cut: {low_cut or 0.1} Hz")
-                        logger.info(f"  - High cut: {high_cut or 0.8} Hz")
-                        logger.info(
-                            f"  - Filtering applied: {'Yes' if preprocessing_options and 'filter' in preprocessing_options else 'No'}"
-                        )
+                        # REMOVED: low_cut, high_cut, preprocessing_options logging
                         logger.info(f"  - Detected peaks: {len(peaks)}")
                         logger.info(f"  - Calculated RR: {rr_bpm:.2f} BPM")
                         rr_std = 60.0 * variability / (mean_interval**2)
@@ -2573,13 +2572,11 @@ def generate_comprehensive_respiratory_analysis(
                         try:
                             # For demonstration, use the same signal as both PPG and ECG
                             # In real applications, you would have separate signals
+                            # REMOVED: preprocess, lowcut, highcut - signal already filtered from filtering page
                             fusion_rr = ppg_ecg_fusion(
                                 signal_data,
                                 signal_data,
                                 sampling_freq,
-                                preprocess="bandpass",
-                                lowcut=low_cut,
-                                highcut=high_cut,
                             )
 
                             results.append(
@@ -2807,13 +2804,11 @@ def generate_comprehensive_respiratory_analysis(
                         try:
                             # For demonstration, use the same signal as both respiratory and cardiac
                             # In real applications, you would have separate signals
+                            # REMOVED: preprocess, lowcut, highcut - signal already filtered from filtering page
                             fusion_rr = respiratory_cardiac_fusion(
                                 signal_data,
                                 signal_data,
                                 sampling_freq,
-                                preprocess="bandpass",
-                                lowcut=low_cut,
-                                highcut=high_cut,
                             )
 
                             results.append(
@@ -3038,15 +3033,13 @@ def generate_comprehensive_respiratory_analysis(
                         try:
                             # For demonstration, use the same signal as multiple modalities
                             # In real applications, you would have different signal types
+                            # REMOVED: preprocess, lowcut, highcut - signal already filtered from filtering page
                             multimodal_rr = multimodal_analysis(
                                 [
                                     signal_data,
                                     signal_data,
                                 ],  # Using same signal for demo
                                 sampling_freq,
-                                preprocess="bandpass",
-                                lowcut=low_cut,
-                                highcut=high_cut,
                             )
 
                             results.append(
@@ -3695,11 +3688,13 @@ def create_comprehensive_respiratory_plots(
     signal_type,
     estimation_methods,
     advanced_options,
-    preprocessing_options,
-    low_cut,
-    high_cut,
+    # REMOVED: preprocessing_options, low_cut, high_cut - preprocessing done on filtering page
 ):
-    """Create comprehensive respiratory analysis plots."""
+    """Create comprehensive respiratory analysis plots.
+
+    Note: Preprocessing (filtering, denoising) should be done on the filtering page.
+    This function receives already-filtered signal data from store-filtered-signal.
+    """
     logger.info("=== CREATE COMPREHENSIVE RESPIRATORY PLOTS STARTED ===")
     logger.info("Input parameters:")
     logger.info(f"  - signal_data shape: {signal_data.shape}")
@@ -3708,9 +3703,7 @@ def create_comprehensive_respiratory_plots(
     logger.info(f"  - signal_type: {signal_type}")
     logger.info(f"  - estimation_methods: {estimation_methods}")
     logger.info(f"  - advanced_options: {advanced_options}")
-    logger.info(f"  - preprocessing_options: {preprocessing_options}")
-    logger.info(f"  - low_cut: {low_cut}")
-    logger.info(f"  - high_cut: {high_cut}")
+    # REMOVED: preprocessing_options, low_cut, high_cut - preprocessing done on filtering page
 
     try:
         # PERFORMANCE OPTIMIZATION: Limit plot data to max 5 minutes and 10K points
@@ -3746,41 +3739,18 @@ def create_comprehensive_respiratory_plots(
         )
 
         # 1. Time Domain Signal (using limited data)
+        # REMOVED: Preprocessing logic - signal data is already filtered from filtering page
         fig.add_trace(
             go.Scatter(
                 x=time_axis_plot,
                 y=signal_data_plot,
                 mode="lines",
-                name="Original Signal",
+                name="Signal",
                 line=dict(color="#2E86AB", width=2),
             ),
             row=1,
             col=1,
         )
-
-        # Apply preprocessing if selected
-        if preprocessing_options and "filter" in preprocessing_options:
-            try:
-                nyquist = sampling_freq / 2
-                low = low_cut / nyquist
-                high = high_cut / nyquist
-
-                if low < high < 1.0:
-                    b, a = signal.butter(4, [low, high], btype="bandpass")
-                    filtered_signal = signal.filtfilt(b, a, signal_data_plot)
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time_axis_plot,
-                            y=filtered_signal,
-                            mode="lines",
-                            name="Filtered Signal",
-                            line=dict(color="#E74C3C", width=2),
-                        ),
-                        row=1,
-                        col=1,
-                    )
-            except Exception as e:
-                logger.error(f"Filtering failed: {e}")
 
         # 2. Frequency Domain
         fft_result = np.abs(np.fft.rfft(signal_data_plot))
