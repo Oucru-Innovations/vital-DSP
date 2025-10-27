@@ -680,12 +680,26 @@ def register_respiratory_callbacks(app):
                     # Use vitalDSP's respiratory_filtering function
                     from vitalDSP.preprocess.preprocess_operations import respiratory_filtering
 
-                    # Apply respiratory filtering (0.1-0.5 Hz bandpass for respiratory frequencies)
+                    # Convert breath duration constraints to frequency cutoffs
+                    # Frequency (Hz) = 1 / Duration (s)
+                    # Default: min_duration=1.2s → max_freq=0.833Hz, max_duration=6.0s → min_freq=0.167Hz
+                    min_duration = min_breath_duration if min_breath_duration else 1.2  # Default 1.2s (50 BPM)
+                    max_duration = max_breath_duration if max_breath_duration else 6.0  # Default 6.0s (10 BPM)
+
+                    # Calculate frequency range from breath duration constraints
+                    highcut_freq = 1.0 / min_duration  # Shortest breath → highest frequency
+                    lowcut_freq = 1.0 / max_duration   # Longest breath → lowest frequency
+
+                    logger.info(f"Breath duration constraints: {min_duration:.1f}s to {max_duration:.1f}s")
+                    logger.info(f"Respiratory frequency range: {lowcut_freq:.3f} Hz to {highcut_freq:.3f} Hz")
+                    logger.info(f"Respiratory rate range: {60/max_duration:.1f} to {60/min_duration:.1f} BPM")
+
+                    # Apply respiratory filtering with user-specified breath duration constraints
                     respiratory_signal = respiratory_filtering(
                         signal_data,
                         sampling_freq,
-                        lowcut=0.1,  # 6 BPM
-                        highcut=0.5,  # 30 BPM
+                        lowcut=lowcut_freq,
+                        highcut=highcut_freq,
                         order=4
                     )
 
@@ -1241,8 +1255,9 @@ def generate_comprehensive_respiratory_analysis(
         else:
             try:
                 logger.info("Initializing vitalDSP RespiratoryAnalysis...")
+                # signal_data already contains the extracted/filtered respiratory signal (passed from caller)
                 resp_analysis = RespiratoryAnalysis(signal_data, sampling_freq)
-                logger.info("RespiratoryAnalysis initialized successfully")
+                logger.info("RespiratoryAnalysis initialized with respiratory signal")
             except Exception as e:
                 logger.error(f"Failed to initialize RespiratoryAnalysis: {e}")
                 logger.info("Falling back to basic analysis")
@@ -3722,20 +3737,20 @@ def create_comprehensive_respiratory_plots(
             rows=3,
             cols=2,
             subplot_titles=(
-                "Time Domain Signal",
-                "Frequency Domain",
-                "Breathing Pattern & RRV",
-                "Respiratory Rate Over Time",
-                "Sleep Apnea Detection",
-                "Signal Quality & Ensemble",
+                "Respiratory Signal (Time Domain)",
+                "Frequency Spectrum (FFT)",
+                "Breathing Patterns & Peaks",
+                "Respiratory Rate Variability",
+                "Advanced Analysis",
+                "Signal Statistics",
             ),
             specs=[
                 [{"secondary_y": False}, {"secondary_y": False}],
                 [{"secondary_y": False}, {"secondary_y": False}],
                 [{"secondary_y": False}, {"secondary_y": False}],
             ],
-            vertical_spacing=0.08,
-            horizontal_spacing=0.08,
+            vertical_spacing=0.10,
+            horizontal_spacing=0.10,
         )
 
         # 1. Time Domain Signal (using limited data)
@@ -3745,8 +3760,9 @@ def create_comprehensive_respiratory_plots(
                 x=time_axis_plot,
                 y=signal_data_plot,
                 mode="lines",
-                name="Signal",
-                line=dict(color="#2E86AB", width=2),
+                name="Respiratory Signal",
+                line=dict(color="#2E86AB", width=2.5),
+                hovertemplate="<b>Time:</b> %{x:.2f}s<br><b>Amplitude:</b> %{y:.3f}<extra></extra>",
             ),
             row=1,
             col=1,
@@ -4070,25 +4086,26 @@ def create_comprehensive_respiratory_plots(
         fig.update_layout(
             title="Comprehensive Respiratory Analysis",
             template="plotly_white",
-            height=800,
+            height=900,
             showlegend=True,
-            margin=dict(l=40, r=40, t=80, b=40),
+            margin=dict(l=50, r=50, t=100, b=50),
+            hovermode="closest",
         )
 
-        # Update axes labels
-        logger.info("Updating axes labels...")
-        fig.update_xaxes(title_text="Time (s)", row=1, col=1)
-        fig.update_yaxes(title_text="Amplitude", row=1, col=1)
-        fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=2)
-        fig.update_yaxes(title_text="Magnitude", row=1, col=2)
-        fig.update_xaxes(title_text="Time (s)", row=2, col=1)
-        fig.update_yaxes(title_text="Amplitude", row=2, col=1)
-        fig.update_xaxes(title_text="Time (s)", row=2, col=2)
-        fig.update_yaxes(title_text="Interval (s) / RR (BPM)", row=2, col=2)
-        fig.update_xaxes(title_text="Time (s)", row=3, col=1)
-        fig.update_yaxes(title_text="Amplitude", row=3, col=1)
-        fig.update_xaxes(title_text="Time (s)", row=3, col=2)
-        fig.update_yaxes(title_text="Amplitude / Statistics", row=3, col=2)
+        # Update axes labels with gridlines for better visibility
+        logger.info("Updating axes labels and gridlines...")
+        fig.update_xaxes(title_text="Time (s)", showgrid=True, gridwidth=1, gridcolor='LightGray', row=1, col=1)
+        fig.update_yaxes(title_text="Amplitude", showgrid=True, gridwidth=1, gridcolor='LightGray', row=1, col=1)
+        fig.update_xaxes(title_text="Frequency (Hz)", showgrid=True, gridwidth=1, gridcolor='LightGray', row=1, col=2)
+        fig.update_yaxes(title_text="Magnitude", showgrid=True, gridwidth=1, gridcolor='LightGray', row=1, col=2)
+        fig.update_xaxes(title_text="Time (s)", showgrid=True, gridwidth=1, gridcolor='LightGray', row=2, col=1)
+        fig.update_yaxes(title_text="Amplitude", showgrid=True, gridwidth=1, gridcolor='LightGray', row=2, col=1)
+        fig.update_xaxes(title_text="Time (s)", showgrid=True, gridwidth=1, gridcolor='LightGray', row=2, col=2)
+        fig.update_yaxes(title_text="Interval (s) / RR (BPM)", showgrid=True, gridwidth=1, gridcolor='LightGray', row=2, col=2)
+        fig.update_xaxes(title_text="Time (s)", showgrid=True, gridwidth=1, gridcolor='LightGray', row=3, col=1)
+        fig.update_yaxes(title_text="Amplitude", showgrid=True, gridwidth=1, gridcolor='LightGray', row=3, col=1)
+        fig.update_xaxes(title_text="Time (s)", showgrid=True, gridwidth=1, gridcolor='LightGray', row=3, col=2)
+        fig.update_yaxes(title_text="Statistics", showgrid=True, gridwidth=1, gridcolor='LightGray', row=3, col=2)
 
         logger.info("=== CREATE COMPREHENSIVE RESPIRATORY PLOTS COMPLETED ===")
         return fig

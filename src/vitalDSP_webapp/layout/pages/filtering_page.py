@@ -539,6 +539,7 @@ def filtering_layout():
                                                         "Advanced Filters",
                                                         className="mb-2",
                                                     ),
+                                                    # Method Selection
                                                     dbc.Row(
                                                         [
                                                             dbc.Col(
@@ -551,11 +552,11 @@ def filtering_layout():
                                                                         id="advanced-filter-method",
                                                                         options=[
                                                                             {
-                                                                                "label": "Kalman",
+                                                                                "label": "Kalman Filter",
                                                                                 "value": "kalman",
                                                                             },
                                                                             {
-                                                                                "label": "Optimization",
+                                                                                "label": "Optimization-Based",
                                                                                 "value": "optimization",
                                                                             },
                                                                             {
@@ -567,77 +568,397 @@ def filtering_layout():
                                                                                 "value": "convolution",
                                                                             },
                                                                             {
-                                                                                "label": "Attention",
+                                                                                "label": "Attention-Based",
                                                                                 "value": "attention",
+                                                                            },
+                                                                            {
+                                                                                "label": "Adaptive (LMS)",
+                                                                                "value": "adaptive",
                                                                             },
                                                                         ],
                                                                         value="kalman",
                                                                         size="sm",
                                                                     ),
                                                                 ],
-                                                                width=6,
-                                                            ),
-                                                            dbc.Col(
-                                                                [
-                                                                    html.Label(
-                                                                        "Noise Level:",
-                                                                        className="form-label",
-                                                                    ),
-                                                                    dbc.Input(
-                                                                        id="advanced-noise-level",
-                                                                        type="number",
-                                                                        value=0.1,
-                                                                        min=0.01,
-                                                                        max=1.0,
-                                                                        step=0.01,
-                                                                        size="sm",
-                                                                    ),
-                                                                ],
-                                                                width=6,
-                                                            ),
-                                                        ],
-                                                        className="mb-2",
-                                                    ),
-                                                    dbc.Row(
-                                                        [
-                                                            dbc.Col(
-                                                                [
-                                                                    html.Label(
-                                                                        "Iterations:",
-                                                                        className="form-label",
-                                                                    ),
-                                                                    dbc.Input(
-                                                                        id="advanced-iterations",
-                                                                        type="number",
-                                                                        value=100,
-                                                                        min=10,
-                                                                        max=1000,
-                                                                        step=10,
-                                                                        size="sm",
-                                                                    ),
-                                                                ],
-                                                                width=6,
-                                                            ),
-                                                            dbc.Col(
-                                                                [
-                                                                    html.Label(
-                                                                        "Learning Rate:",
-                                                                        className="form-label",
-                                                                    ),
-                                                                    dbc.Input(
-                                                                        id="advanced-learning-rate",
-                                                                        type="number",
-                                                                        value=0.01,
-                                                                        min=0.001,
-                                                                        max=0.1,
-                                                                        step=0.001,
-                                                                        size="sm",
-                                                                    ),
-                                                                ],
-                                                                width=6,
+                                                                width=12,
                                                             ),
                                                         ],
                                                         className="mb-3",
+                                                    ),
+                                                    # Kalman Filter Parameters
+                                                    html.Div(
+                                                        [
+                                                            html.H6("Kalman Parameters", className="mb-2 text-primary"),
+                                                            dbc.Row(
+                                                                [
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label("R (Measurement Noise):", className="form-label"),
+                                                                            dbc.Input(
+                                                                                id="kalman-r",
+                                                                                type="number",
+                                                                                value=1.0,
+                                                                                min=0.001,
+                                                                                max=10.0,
+                                                                                step=0.01,
+                                                                                size="sm",
+                                                                            ),
+                                                                            html.Small("Lower = trust measurements more", className="text-muted"),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label("Q (Process Noise):", className="form-label"),
+                                                                            dbc.Input(
+                                                                                id="kalman-q",
+                                                                                type="number",
+                                                                                value=1.0,
+                                                                                min=0.001,
+                                                                                max=10.0,
+                                                                                step=0.01,
+                                                                                size="sm",
+                                                                            ),
+                                                                            html.Small("Lower = trust model more", className="text-muted"),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                ],
+                                                                className="mb-2",
+                                                            ),
+                                                        ],
+                                                        id="kalman-params",
+                                                    ),
+                                                    # Optimization-Based Parameters
+                                                    html.Div(
+                                                        [
+                                                            html.H6("Optimization Parameters", className="mb-2 text-primary"),
+                                                            dbc.Row(
+                                                                [
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label("Loss Function:", className="form-label"),
+                                                                            dbc.Select(
+                                                                                id="optimization-loss-type",
+                                                                                options=[
+                                                                                    {"label": "MSE (Mean Squared Error)", "value": "mse"},
+                                                                                    {"label": "MAE (Mean Absolute Error)", "value": "mae"},
+                                                                                    {"label": "Huber Loss", "value": "huber"},
+                                                                                    {"label": "Smooth L1", "value": "smooth_l1"},
+                                                                                    {"label": "Log-Cosh", "value": "log_cosh"},
+                                                                                    {"label": "Quantile Loss", "value": "quantile"},
+                                                                                ],
+                                                                                value="mse",
+                                                                                size="sm",
+                                                                            ),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label("Initial Guess:", className="form-label"),
+                                                                            dbc.Input(
+                                                                                id="optimization-initial-guess",
+                                                                                type="number",
+                                                                                value=0.0,
+                                                                                step=0.1,
+                                                                                size="sm",
+                                                                            ),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                ],
+                                                                className="mb-2",
+                                                            ),
+                                                            dbc.Row(
+                                                                [
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label("Learning Rate:", className="form-label"),
+                                                                            dbc.Input(
+                                                                                id="optimization-learning-rate",
+                                                                                type="number",
+                                                                                value=0.01,
+                                                                                min=0.001,
+                                                                                max=0.1,
+                                                                                step=0.001,
+                                                                                size="sm",
+                                                                            ),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label("Iterations:", className="form-label"),
+                                                                            dbc.Input(
+                                                                                id="optimization-iterations",
+                                                                                type="number",
+                                                                                value=100,
+                                                                                min=10,
+                                                                                max=1000,
+                                                                                step=10,
+                                                                                size="sm",
+                                                                            ),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                ],
+                                                                className="mb-2",
+                                                            ),
+                                                        ],
+                                                        id="optimization-params",
+                                                        style={"display": "none"},
+                                                    ),
+                                                    # Gradient Descent Parameters
+                                                    html.Div(
+                                                        [
+                                                            html.H6("Gradient Descent Parameters", className="mb-2 text-primary"),
+                                                            dbc.Row(
+                                                                [
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label("Learning Rate:", className="form-label"),
+                                                                            dbc.Input(
+                                                                                id="gradient-learning-rate",
+                                                                                type="number",
+                                                                                value=0.01,
+                                                                                min=0.001,
+                                                                                max=1.0,
+                                                                                step=0.001,
+                                                                                size="sm",
+                                                                            ),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label("Iterations:", className="form-label"),
+                                                                            dbc.Input(
+                                                                                id="gradient-iterations",
+                                                                                type="number",
+                                                                                value=100,
+                                                                                min=10,
+                                                                                max=1000,
+                                                                                step=10,
+                                                                                size="sm",
+                                                                            ),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                ],
+                                                                className="mb-2",
+                                                            ),
+                                                        ],
+                                                        id="gradient-params",
+                                                        style={"display": "none"},
+                                                    ),
+                                                    # Convolution Parameters
+                                                    html.Div(
+                                                        [
+                                                            html.H6("Convolution Parameters", className="mb-2 text-primary"),
+                                                            dbc.Row(
+                                                                [
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label("Kernel Type:", className="form-label"),
+                                                                            dbc.Select(
+                                                                                id="convolution-kernel-type",
+                                                                                options=[
+                                                                                    {"label": "Smoothing", "value": "smoothing"},
+                                                                                    {"label": "Sharpening", "value": "sharpening"},
+                                                                                    {"label": "Edge Detection", "value": "edge_detection"},
+                                                                                ],
+                                                                                value="smoothing",
+                                                                                size="sm",
+                                                                            ),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label("Kernel Size:", className="form-label"),
+                                                                            dbc.Input(
+                                                                                id="convolution-kernel-size",
+                                                                                type="number",
+                                                                                value=3,
+                                                                                min=3,
+                                                                                max=15,
+                                                                                step=2,
+                                                                                size="sm",
+                                                                            ),
+                                                                            html.Small("Must be odd number", className="text-muted"),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                ],
+                                                                className="mb-2",
+                                                            ),
+                                                        ],
+                                                        id="convolution-params",
+                                                        style={"display": "none"},
+                                                    ),
+                                                    # Attention-Based Parameters
+                                                    html.Div(
+                                                        [
+                                                            html.H6("Attention Parameters", className="mb-2 text-primary"),
+                                                            dbc.Row(
+                                                                [
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label("Attention Type:", className="form-label"),
+                                                                            dbc.Select(
+                                                                                id="attention-type",
+                                                                                options=[
+                                                                                    {"label": "Uniform", "value": "uniform"},
+                                                                                    {"label": "Linear", "value": "linear"},
+                                                                                    {"label": "Gaussian", "value": "gaussian"},
+                                                                                    {"label": "Exponential", "value": "exponential"},
+                                                                                ],
+                                                                                value="uniform",
+                                                                                size="sm",
+                                                                            ),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label("Window Size:", className="form-label"),
+                                                                            dbc.Input(
+                                                                                id="attention-size",
+                                                                                type="number",
+                                                                                value=5,
+                                                                                min=3,
+                                                                                max=21,
+                                                                                step=2,
+                                                                                size="sm",
+                                                                            ),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                ],
+                                                                className="mb-2",
+                                                            ),
+                                                            # Gaussian-specific parameter
+                                                            html.Div(
+                                                                dbc.Row(
+                                                                    [
+                                                                        dbc.Col(
+                                                                            [
+                                                                                html.Label("Sigma (σ):", className="form-label"),
+                                                                                dbc.Input(
+                                                                                    id="attention-sigma",
+                                                                                    type="number",
+                                                                                    value=1.0,
+                                                                                    min=0.1,
+                                                                                    max=5.0,
+                                                                                    step=0.1,
+                                                                                    size="sm",
+                                                                                ),
+                                                                            ],
+                                                                            width=6,
+                                                                        ),
+                                                                    ],
+                                                                    className="mb-2",
+                                                                ),
+                                                                id="attention-gaussian-params",
+                                                                style={"display": "none"},
+                                                            ),
+                                                            # Linear/Exponential-specific parameters
+                                                            html.Div(
+                                                                dbc.Row(
+                                                                    [
+                                                                        dbc.Col(
+                                                                            [
+                                                                                html.Label("Direction:", className="form-label"),
+                                                                                dbc.Select(
+                                                                                    id="attention-ascending",
+                                                                                    options=[
+                                                                                        {"label": "Ascending", "value": "true"},
+                                                                                        {"label": "Descending", "value": "false"},
+                                                                                    ],
+                                                                                    value="true",
+                                                                                    size="sm",
+                                                                                ),
+                                                                            ],
+                                                                            width=6,
+                                                                        ),
+                                                                    ],
+                                                                    className="mb-2",
+                                                                ),
+                                                                id="attention-linear-params",
+                                                                style={"display": "none"},
+                                                            ),
+                                                            # Exponential-specific parameter
+                                                            html.Div(
+                                                                dbc.Row(
+                                                                    [
+                                                                        dbc.Col(
+                                                                            [
+                                                                                html.Label("Base:", className="form-label"),
+                                                                                dbc.Input(
+                                                                                    id="attention-base",
+                                                                                    type="number",
+                                                                                    value=2.0,
+                                                                                    min=1.1,
+                                                                                    max=10.0,
+                                                                                    step=0.1,
+                                                                                    size="sm",
+                                                                                ),
+                                                                            ],
+                                                                            width=6,
+                                                                        ),
+                                                                    ],
+                                                                    className="mb-2",
+                                                                ),
+                                                                id="attention-exponential-params",
+                                                                style={"display": "none"},
+                                                            ),
+                                                        ],
+                                                        id="attention-params",
+                                                        style={"display": "none"},
+                                                    ),
+                                                    # Adaptive Filter Parameters
+                                                    html.Div(
+                                                        [
+                                                            html.H6("Adaptive (LMS) Parameters", className="mb-2 text-primary"),
+                                                            dbc.Row(
+                                                                [
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label("Step Size (μ):", className="form-label"),
+                                                                            dbc.Input(
+                                                                                id="adaptive-mu",
+                                                                                type="number",
+                                                                                value=0.01,
+                                                                                min=0.001,
+                                                                                max=1.0,
+                                                                                step=0.001,
+                                                                                size="sm",
+                                                                            ),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label("Filter Order:", className="form-label"),
+                                                                            dbc.Input(
+                                                                                id="adaptive-order",
+                                                                                type="number",
+                                                                                value=4,
+                                                                                min=2,
+                                                                                max=20,
+                                                                                step=1,
+                                                                                size="sm",
+                                                                            ),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                ],
+                                                                className="mb-2",
+                                                            ),
+                                                        ],
+                                                        id="adaptive-params",
+                                                        style={"display": "none"},
                                                     ),
                                                 ],
                                                 id="advanced-filter-params",

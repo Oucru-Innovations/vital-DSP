@@ -273,6 +273,90 @@ def register_signal_filtering_callbacks(app):
             ensemble_style,
         )
 
+    # Advanced Filter Method Selection Callback
+    @app.callback(
+        [
+            Output("kalman-params", "style"),
+            Output("optimization-params", "style"),
+            Output("gradient-params", "style"),
+            Output("convolution-params", "style"),
+            Output("attention-params", "style"),
+            Output("adaptive-params", "style"),
+        ],
+        [Input("advanced-filter-method", "value")],
+        prevent_initial_call=True,
+    )
+    def update_advanced_filter_method_visibility(method):
+        """Show/hide advanced filter method parameters based on selected method."""
+        hidden_style = {"display": "none"}
+        visible_style = {"display": "block"}
+
+        # Initialize all as hidden
+        kalman_style = hidden_style
+        optimization_style = hidden_style
+        gradient_style = hidden_style
+        convolution_style = hidden_style
+        attention_style = hidden_style
+        adaptive_style = hidden_style
+
+        # Show the appropriate section based on method
+        if method == "kalman":
+            kalman_style = visible_style
+        elif method == "optimization":
+            optimization_style = visible_style
+        elif method == "gradient_descent":
+            gradient_style = visible_style
+        elif method == "convolution":
+            convolution_style = visible_style
+        elif method == "attention":
+            attention_style = visible_style
+        elif method == "adaptive":
+            adaptive_style = visible_style
+
+        return (
+            kalman_style,
+            optimization_style,
+            gradient_style,
+            convolution_style,
+            attention_style,
+            adaptive_style,
+        )
+
+    # Attention Type Selection Callback
+    @app.callback(
+        [
+            Output("attention-gaussian-params", "style"),
+            Output("attention-linear-params", "style"),
+            Output("attention-exponential-params", "style"),
+        ],
+        [Input("attention-type", "value")],
+        prevent_initial_call=True,
+    )
+    def update_attention_type_visibility(attention_type):
+        """Show/hide attention-specific parameters based on selected attention type."""
+        hidden_style = {"display": "none"}
+        visible_style = {"display": "block"}
+
+        # Initialize all as hidden
+        gaussian_style = hidden_style
+        linear_style = hidden_style
+        exponential_style = hidden_style
+
+        # Show the appropriate section based on attention type
+        if attention_type == "gaussian":
+            gaussian_style = visible_style
+        elif attention_type == "linear":
+            linear_style = visible_style
+        elif attention_type == "exponential":
+            linear_style = visible_style  # Linear params include direction
+            exponential_style = visible_style  # Also show base parameter
+
+        return (
+            gaussian_style,
+            linear_style,
+            exponential_style,
+        )
+
     # Advanced Filtering Callback
     @app.callback(
         [
@@ -303,9 +387,29 @@ def register_signal_filtering_callbacks(app):
             State("filter-high-freq-advanced", "value"),
             State("filter-order-advanced", "value"),
             State("advanced-filter-method", "value"),
-            State("advanced-noise-level", "value"),
-            State("advanced-iterations", "value"),
-            State("advanced-learning-rate", "value"),
+            # Kalman filter parameters
+            State("kalman-r", "value"),
+            State("kalman-q", "value"),
+            # Optimization parameters
+            State("optimization-loss-type", "value"),
+            State("optimization-initial-guess", "value"),
+            State("optimization-learning-rate", "value"),
+            State("optimization-iterations", "value"),
+            # Gradient descent parameters
+            State("gradient-learning-rate", "value"),
+            State("gradient-iterations", "value"),
+            # Convolution parameters
+            State("convolution-kernel-type", "value"),
+            State("convolution-kernel-size", "value"),
+            # Attention parameters
+            State("attention-type", "value"),
+            State("attention-size", "value"),
+            State("attention-sigma", "value"),
+            State("attention-ascending", "value"),
+            State("attention-base", "value"),
+            # Adaptive filter parameters
+            State("adaptive-mu", "value"),
+            State("adaptive-order", "value"),
             State("artifact-type", "value"),
             State("artifact-removal-strength", "value"),
             State("neural-network-type", "value"),
@@ -345,9 +449,29 @@ def register_signal_filtering_callbacks(app):
         high_freq,
         filter_order,
         advanced_method,
-        noise_level,
-        iterations,
-        learning_rate,
+        # Kalman filter parameters
+        kalman_r,
+        kalman_q,
+        # Optimization parameters
+        optimization_loss_type,
+        optimization_initial_guess,
+        optimization_learning_rate,
+        optimization_iterations,
+        # Gradient descent parameters
+        gradient_learning_rate,
+        gradient_iterations,
+        # Convolution parameters
+        convolution_kernel_type,
+        convolution_kernel_size,
+        # Attention parameters
+        attention_type,
+        attention_size,
+        attention_sigma,
+        attention_ascending,
+        attention_base,
+        # Adaptive filter parameters
+        adaptive_mu,
+        adaptive_order,
         artifact_type,
         artifact_strength,
         neural_type,
@@ -461,9 +585,19 @@ def register_signal_filtering_callbacks(app):
             logger.info(f"High frequency: {high_freq} (type: {type(high_freq)})")
             logger.info(f"Filter order: {filter_order} (type: {type(filter_order)})")
             logger.info(f"Advanced method: {advanced_method} (type: {type(advanced_method)})")
-            logger.info(f"Noise level: {noise_level} (type: {type(noise_level)})")
-            logger.info(f"Iterations: {iterations} (type: {type(iterations)})")
-            logger.info(f"Learning rate: {learning_rate} (type: {type(learning_rate)})")
+            # Log method-specific parameters based on selected method
+            if advanced_method == "kalman":
+                logger.info(f"Kalman R: {kalman_r}, Q: {kalman_q}")
+            elif advanced_method == "optimization":
+                logger.info(f"Optimization: loss={optimization_loss_type}, lr={optimization_learning_rate}, iterations={optimization_iterations}")
+            elif advanced_method == "gradient_descent":
+                logger.info(f"Gradient descent: lr={gradient_learning_rate}, iterations={gradient_iterations}")
+            elif advanced_method == "convolution":
+                logger.info(f"Convolution: kernel_type={convolution_kernel_type}, kernel_size={convolution_kernel_size}")
+            elif advanced_method == "attention":
+                logger.info(f"Attention: type={attention_type}, size={attention_size}, sigma={attention_sigma}")
+            elif advanced_method == "adaptive":
+                logger.info(f"Adaptive: mu={adaptive_mu}, order={adaptive_order}")
             logger.info(f"Artifact type: {artifact_type} (type: {type(artifact_type)})")
             logger.info(
                 f"Artifact strength: {artifact_strength} (type: {type(artifact_strength)})"
@@ -982,6 +1116,9 @@ def register_signal_filtering_callbacks(app):
                 f"Raw signal stored for plotting - mean: {np.mean(raw_signal_for_plotting):.4f}, range: {np.min(raw_signal_for_plotting):.4f} to {np.max(raw_signal_for_plotting):.4f}"
             )
 
+            # Store original signal for comparison (before any preprocessing)
+            original_signal = signal_data.copy()
+
             # Get sampling frequency from data_info (use consistent key name)
             sampling_freq = data_info.get("sampling_freq", 1000)  # Use consistent default
             logger.info(f"Sampling frequency: {sampling_freq} Hz")
@@ -992,9 +1129,6 @@ def register_signal_filtering_callbacks(app):
                     "Applying detrending to match time domain screen behavior (zero baseline)"
                 )
                 from vitalDSP.filtering.artifact_removal import ArtifactRemoval
-
-                # Store original signal for comparison
-                original_signal = signal_data.copy()
 
                 # Apply baseline correction (detrending) using vitalDSP
                 ar = ArtifactRemoval(signal_data)
@@ -1097,9 +1231,29 @@ def register_signal_filtering_callbacks(app):
                     filtered_data = apply_advanced_filter(
                         signal_data,
                         advanced_method,
-                        noise_level,
-                        iterations,
-                        learning_rate,
+                        # Kalman parameters
+                        kalman_r=kalman_r,
+                        kalman_q=kalman_q,
+                        # Optimization parameters
+                        optimization_loss_type=optimization_loss_type,
+                        optimization_initial_guess=optimization_initial_guess,
+                        optimization_learning_rate=optimization_learning_rate,
+                        optimization_iterations=optimization_iterations,
+                        # Gradient descent parameters
+                        gradient_learning_rate=gradient_learning_rate,
+                        gradient_iterations=gradient_iterations,
+                        # Convolution parameters
+                        convolution_kernel_type=convolution_kernel_type,
+                        convolution_kernel_size=convolution_kernel_size,
+                        # Attention parameters
+                        attention_type=attention_type,
+                        attention_size=attention_size,
+                        attention_sigma=attention_sigma,
+                        attention_ascending=attention_ascending,
+                        attention_base=attention_base,
+                        # Adaptive parameters
+                        adaptive_mu=adaptive_mu,
+                        adaptive_order=adaptive_order,
                     )
                 elif filter_type == "artifact":
                     # Enhanced artifact removal with all parameters
@@ -2844,55 +2998,118 @@ def apply_enhanced_artifact_removal(
 
 
 def apply_advanced_filter(
-    signal_data, advanced_method, noise_level, iterations, learning_rate
+    signal_data,
+    advanced_method,
+    # Kalman parameters
+    kalman_r=None,
+    kalman_q=None,
+    # Optimization parameters
+    optimization_loss_type=None,
+    optimization_initial_guess=None,
+    optimization_learning_rate=None,
+    optimization_iterations=None,
+    # Gradient descent parameters
+    gradient_learning_rate=None,
+    gradient_iterations=None,
+    # Convolution parameters
+    convolution_kernel_type=None,
+    convolution_kernel_size=None,
+    # Attention parameters
+    attention_type=None,
+    attention_size=None,
+    attention_sigma=None,
+    attention_ascending=None,
+    attention_base=None,
+    # Adaptive parameters
+    adaptive_mu=None,
+    adaptive_order=None,
 ):
-    """Apply advanced filtering using vitalDSP functions."""
+    """Apply advanced filtering using vitalDSP functions with method-specific parameters."""
     try:
         logger.info(f"Applying advanced filter: {advanced_method}")
 
         # Import vitalDSP advanced filtering functions
         from vitalDSP.filtering.advanced_signal_filtering import AdvancedSignalFiltering
 
-        # Set default values
+        # Set default values for method
         advanced_method = advanced_method or "kalman"
-        noise_level = noise_level or 0.1
-        iterations = iterations or 100
-        learning_rate = learning_rate or 0.01
 
         # Create advanced filter instance
         advanced_filter = AdvancedSignalFiltering(signal_data)
 
-        # Apply filter based on method
+        # Apply filter based on method with specific parameters
         if advanced_method == "kalman":
-            filtered_signal = advanced_filter.kalman_filter(R=noise_level, Q=1)
+            R = kalman_r if kalman_r is not None else 1.0
+            Q = kalman_q if kalman_q is not None else 1.0
+            logger.info(f"Kalman filter parameters: R={R}, Q={Q}")
+            filtered_signal = advanced_filter.kalman_filter(R=R, Q=Q)
+
         elif advanced_method == "optimization":
+            loss_type = optimization_loss_type or "mse"
+            initial_guess = optimization_initial_guess if optimization_initial_guess is not None else 0.0
+            lr = optimization_learning_rate if optimization_learning_rate is not None else 0.01
+            iters = optimization_iterations if optimization_iterations is not None else 100
+            logger.info(f"Optimization parameters: loss={loss_type}, lr={lr}, iterations={iters}")
             filtered_signal = advanced_filter.optimization_based_filtering(
                 target=signal_data,
-                loss_type="mse",
-                learning_rate=learning_rate,
-                iterations=iterations,
+                loss_type=loss_type,
+                initial_guess=initial_guess,
+                learning_rate=lr,
+                iterations=iters,
             )
+
         elif advanced_method == "gradient_descent":
+            lr = gradient_learning_rate if gradient_learning_rate is not None else 0.01
+            iters = gradient_iterations if gradient_iterations is not None else 100
+            logger.info(f"Gradient descent parameters: lr={lr}, iterations={iters}")
             filtered_signal = advanced_filter.gradient_descent_filter(
-                target=signal_data, learning_rate=learning_rate, iterations=iterations
+                target=signal_data, learning_rate=lr, iterations=iters
             )
+
         elif advanced_method == "convolution":
+            kernel_type = convolution_kernel_type or "smoothing"
+            kernel_size = convolution_kernel_size if convolution_kernel_size is not None else 3
+            logger.info(f"Convolution parameters: kernel_type={kernel_type}, kernel_size={kernel_size}")
             filtered_signal = advanced_filter.convolution_based_filter(
-                kernel_type="smoothing", kernel_size=5
+                kernel_type=kernel_type, kernel_size=kernel_size
             )
+
         elif advanced_method == "attention":
+            att_type = attention_type or "uniform"
+            att_size = attention_size if attention_size is not None else 5
+            kwargs = {}
+            if att_type == "gaussian" and attention_sigma is not None:
+                kwargs["sigma"] = attention_sigma
+            if att_type in ["linear", "exponential"] and attention_ascending is not None:
+                kwargs["ascending"] = (attention_ascending == "true")
+            if att_type == "exponential" and attention_base is not None:
+                kwargs["base"] = attention_base
+            logger.info(f"Attention parameters: type={att_type}, size={att_size}, kwargs={kwargs}")
             filtered_signal = advanced_filter.attention_based_filter(
-                attention_type="uniform", size=5
+                attention_type=att_type, size=att_size, **kwargs
             )
+
+        elif advanced_method == "adaptive":
+            mu = adaptive_mu if adaptive_mu is not None else 0.01
+            order = adaptive_order if adaptive_order is not None else 4
+            logger.info(f"Adaptive filter parameters: mu={mu}, order={order}")
+            # Adaptive filter needs a desired signal - use smoothed version as target
+            from scipy.signal import savgol_filter
+            desired = savgol_filter(signal_data, window_length=min(51, len(signal_data)//2*2+1), polyorder=3)
+            filtered_signal = advanced_filter.adaptive_filtering(
+                desired_signal=desired, mu=mu, filter_order=order
+            )
+
         else:
             # Default to Kalman filter
-            filtered_signal = advanced_filter.kalman_filter(R=noise_level, Q=1)
+            logger.warning(f"Unknown advanced method '{advanced_method}', defaulting to Kalman")
+            filtered_signal = advanced_filter.kalman_filter(R=1.0, Q=1.0)
 
         logger.info(f"Advanced filter applied successfully: {advanced_method}")
         return filtered_signal
 
     except Exception as e:
-        logger.error(f"Error applying advanced filter: {e}")
+        logger.error(f"Error applying advanced filter: {e}", exc_info=True)
         # Return original signal if advanced filtering fails
         return signal_data
 

@@ -379,9 +379,9 @@ def respiratory_layout():
                                                             dbc.Input(
                                                                 id="resp-min-breath-duration",
                                                                 type="number",
-                                                                value=0.1,
-                                                                min=0.1,
-                                                                max=2.0,
+                                                                value=1.8,
+                                                                min=0.5,
+                                                                max=5.0,
                                                                 step=0.1,
                                                                 className="mb-1",
                                                             ),
