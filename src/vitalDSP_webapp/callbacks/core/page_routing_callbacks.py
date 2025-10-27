@@ -15,7 +15,7 @@ from vitalDSP_webapp.layout.pages.time_domain_page import time_domain_layout
 from vitalDSP_webapp.layout.pages.frequency_page import frequency_layout
 from vitalDSP_webapp.layout.pages.respiratory_page import respiratory_layout
 from vitalDSP_webapp.layout.pages.analysis_pages import (
-    physiological_layout,
+    # physiological_layout,
     features_layout,
     transforms_layout,
     quality_layout,
@@ -23,6 +23,7 @@ from vitalDSP_webapp.layout.pages.analysis_pages import (
     health_report_layout,
     settings_layout,
 )
+from vitalDSP_webapp.layout.pages.physiological_page import physiological_layout
 from vitalDSP_webapp.layout.pages.pipeline_page import pipeline_layout
 from vitalDSP_webapp.layout.pages.tasks_page import tasks_layout
 

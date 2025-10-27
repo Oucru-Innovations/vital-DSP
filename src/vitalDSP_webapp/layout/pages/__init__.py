@@ -8,9 +8,9 @@ from .upload_page import upload_layout
 from .time_domain_page import time_domain_layout
 from .frequency_page import frequency_layout
 from .respiratory_page import respiratory_layout
+from .physiological_page import physiological_layout
 from .analysis_pages import (
     filtering_layout,
-    physiological_layout,
     features_layout,
     transforms_layout,
     quality_layout,

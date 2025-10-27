@@ -16,8 +16,24 @@ import logging
 
 
 # Helper function for formatting large numbers
-def format_large_number(value, precision=3, use_scientific=False, as_integer=False):
-    """Format large numbers with appropriate scaling and units."""
+def format_large_number(value, precision=3, use_scientific=False, as_integer=False, unit=None):
+    """
+    Format large numbers with appropriate scaling and units.
+
+    Args:
+        value: Numerical value to format
+        precision: Number of decimal places
+        use_scientific: Force scientific notation
+        as_integer: Format as integer (for counts)
+        unit: Explicit unit string (e.g., 'ms', 'Hz'). If provided, no unit conversion is applied.
+
+    Returns:
+        Formatted string with appropriate scaling
+
+    Note:
+        When unit is specified (e.g., 'ms'), the function assumes the value is already in the
+        correct unit and will NOT apply scaling conversions (no m/k prefixes).
+    """
     if value == 0:
         return "0"
 
@@ -27,6 +43,20 @@ def format_large_number(value, precision=3, use_scientific=False, as_integer=Fal
 
     abs_value = abs(value)
 
+    # If unit is explicitly provided (e.g., 'ms'), don't apply unit scaling
+    # Just format the number with appropriate notation
+    if unit is not None:
+        if use_scientific or abs_value >= 1e6:
+            return f"{value:.{precision}e}"
+        elif abs_value >= 1e3:
+            # Use thousands (k) notation
+            scaled_value = value / 1e3
+            return f"{scaled_value:.{precision}f}k"
+        else:
+            # Regular decimal notation - value is already in correct unit
+            return f"{value:.{precision}f}"
+
+    # Original behavior when no unit specified (for backward compatibility)
     if use_scientific or abs_value >= 1e6:
         # Use scientific notation for very large numbers
         return f"{value:.{precision}e}"
@@ -38,11 +68,11 @@ def format_large_number(value, precision=3, use_scientific=False, as_integer=Fal
         # Regular decimal notation
         return f"{value:.{precision}f}"
     elif abs_value >= 1e-3:
-        # Use millis (m) notation
-        scaled_value = value * 1e3
-        return f"{scaled_value:.{precision}f}m"
+        # For small values (0.001 to 1.0), just use regular decimal notation
+        # Do NOT add 'm' suffix as these might be dimensionless values (correlation, ratio, etc.)
+        return f"{value:.{precision}f}"
     else:
-        # Use scientific notation for very small numbers
+        # Use scientific notation for very small numbers (< 0.001)
         return f"{value:.{precision}e}"
 
 
@@ -2872,18 +2902,57 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                     if key.endswith("_db"):
                         formatted_value = f"{value:.1f} dB"
                     elif key.endswith("_ratio") or key.endswith("_strength"):
-                        formatted_value = f"{value:.3f}"
+                        # Handle infinity and NaN values
+                        if np.isinf(value):
+                            formatted_value = "N/A (HF power = 0)"
+                        elif np.isnan(value):
+                            formatted_value = "N/A"
+                        else:
+                            formatted_value = f"{value:.3f}"
                     elif key.endswith("_freq") or key.endswith("_frequency"):
                         formatted_value = f"{value:.3f} Hz"
+                    elif key == "pnn50" or key == "pnn_20" or key.startswith("pnn_"):
+                        # Percentage values (pNN50, pNN20, etc.)
+                        formatted_value = f"{value:.2f}%"
+                    elif key.endswith("nu_power") or key.endswith("_normalized"):
+                        # Normalized power values (LFnu, HFnu)
+                        formatted_value = f"{value:.3f} (n.u.)"
+                    elif key == "cvnn":
+                        # Coefficient of variation (percentage)
+                        formatted_value = f"{value:.2f}%"
+                    elif key.endswith("_entropy") or key == "sample_entropy" or key == "approximate_entropy":
+                        # Entropy values
+                        if value is None or np.isnan(value):
+                            formatted_value = "N/A"
+                        else:
+                            formatted_value = f"{value:.3f}"
+                    elif key.startswith("dfa_") or key.endswith("_alpha1") or key.endswith("_alpha2"):
+                        # DFA alpha values (dimensionless)
+                        formatted_value = f"{value:.3f}"
+                    elif key == "fractal_dimension" or key == "lyapunov_exponent":
+                        # Nonlinear features
+                        formatted_value = f"{value:.3f}"
                     elif (
                         key.endswith("_ms")
                         or key == "mean_rr"
                         or key == "rmssd"
-                        or key == "mean_beat_interval"
-                        or key == "beat_variability"
-                        or key == "beat_regularity"
+                        or key == "sdnn"
+                        or key == "std_nn"
+                        or key == "median_nn"
+                        or key == "iqr_nn"
+                        or key == "sdsd"
+                        or key == "poincare_sd1"
+                        or key == "poincare_sd2"
                     ):
-                        formatted_value = f"{format_large_number(value)} ms"
+                        # Values are already in milliseconds - don't apply unit conversion
+                        formatted_value = f"{format_large_number(value, unit='ms')} ms"
+                    elif key == "mean_beat_interval" or key == "beat_variability":
+                        # Convert from seconds to milliseconds
+                        value_ms = value * 1000
+                        formatted_value = f"{format_large_number(value_ms, unit='ms')} ms"
+                    elif key == "beat_regularity":
+                        # Regularity is dimensionless
+                        formatted_value = f"{value:.3f}"
                     elif (
                         key.endswith("_peaks")
                         or key.endswith("_beats")
@@ -2893,6 +2962,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                         or key == "zero_crossings"
                         or key == "envelope_peaks"
                         or key == "anomalies_detected"
+                        or key == "nn50"
                     ):
                         # Integer formatting for counts
                         formatted_value = format_large_number(value, as_integer=True)
@@ -2987,23 +3057,66 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 className="h-100 border-0 shadow-sm",
             )
 
-        # HRV Results
+        # HRV Results - Time Domain
         if "hrv_metrics" in results and "error" not in results["hrv_metrics"]:
-            hrv_metrics = {
+            hrv_time_metrics = {
                 "mean_rr": results["hrv_metrics"].get("mean_rr", 0),
+                "sdnn": results["hrv_metrics"].get("sdnn", 0),
                 "rmssd": results["hrv_metrics"].get("rmssd", 0),
+                "nn50": results["hrv_metrics"].get("nn50", 0),
                 "pnn50": results["hrv_metrics"].get("pnn50", 0),
+                "pnn_20": results["hrv_metrics"].get("pnn_20", 0),
+            }
+            hrv_time_card = create_metric_card(
+                "HRV - Time Domain", "💓", hrv_time_metrics, "danger"
+            )
+            if hrv_time_card:
+                sections.append(
+                    html.Div(hrv_time_card, className="col-lg-4 col-md-6 col-sm-12 mb-3")
+                )
+
+            # HRV Results - Frequency Domain
+            hrv_freq_metrics = {
+                "total_power": results["hrv_metrics"].get("total_power", 0),
+                "ulf_power": results["hrv_metrics"].get("ulf_power", 0),
+                "vlf_power": results["hrv_metrics"].get("vlf_power", 0),
                 "lf_power": results["hrv_metrics"].get("lf_power", 0),
                 "hf_power": results["hrv_metrics"].get("hf_power", 0),
                 "lf_hf_ratio": results["hrv_metrics"].get("lf_hf_ratio", 0),
+                "lfnu_power": results["hrv_metrics"].get("lfnu_power", 0),
+                "hfnu_power": results["hrv_metrics"].get("hfnu_power", 0),
             }
-            hrv_card = create_metric_card(
-                "Heart Rate Variability", "💓", hrv_metrics, "danger"
+            hrv_freq_card = create_metric_card(
+                "HRV - Frequency Domain", "📡", hrv_freq_metrics, "warning"
             )
-            if hrv_card:
+            if hrv_freq_card:
                 sections.append(
-                    html.Div(hrv_card, className="col-lg-4 col-md-6 col-sm-12 mb-3")
+                    html.Div(hrv_freq_card, className="col-lg-4 col-md-6 col-sm-12 mb-3")
                 )
+
+            # HRV Results - Nonlinear
+            hrv_nonlinear_metrics = {}
+            if results["hrv_metrics"].get("poincare_sd1") is not None:
+                hrv_nonlinear_metrics["poincare_sd1"] = results["hrv_metrics"].get("poincare_sd1", 0)
+            if results["hrv_metrics"].get("poincare_sd2") is not None:
+                hrv_nonlinear_metrics["poincare_sd2"] = results["hrv_metrics"].get("poincare_sd2", 0)
+            if results["hrv_metrics"].get("poincare_sd1_sd2_ratio") is not None:
+                hrv_nonlinear_metrics["poincare_sd1_sd2_ratio"] = results["hrv_metrics"].get("poincare_sd1_sd2_ratio", 0)
+            if results["hrv_metrics"].get("dfa_alpha1") is not None:
+                hrv_nonlinear_metrics["dfa_alpha1"] = results["hrv_metrics"].get("dfa_alpha1", 0)
+            if results["hrv_metrics"].get("sample_entropy") is not None:
+                hrv_nonlinear_metrics["sample_entropy"] = results["hrv_metrics"].get("sample_entropy", 0)
+            if results["hrv_metrics"].get("approximate_entropy") is not None:
+                hrv_nonlinear_metrics["approximate_entropy"] = results["hrv_metrics"].get("approximate_entropy", 0)
+
+            if hrv_nonlinear_metrics:
+                hrv_nonlinear_card = create_metric_card(
+                    "HRV - Nonlinear", "🌀", hrv_nonlinear_metrics, "info"
+                )
+                if hrv_nonlinear_card:
+                    sections.append(
+                        html.Div(hrv_nonlinear_card, className="col-lg-4 col-md-6 col-sm-12 mb-3")
+                    )
 
         # Morphology Results
         if (
@@ -5767,18 +5880,57 @@ def register_additional_physiological_callbacks(app):
                     if key.endswith("_db"):
                         formatted_value = f"{value:.1f} dB"
                     elif key.endswith("_ratio") or key.endswith("_strength"):
-                        formatted_value = f"{value:.3f}"
+                        # Handle infinity and NaN values
+                        if np.isinf(value):
+                            formatted_value = "N/A (HF power = 0)"
+                        elif np.isnan(value):
+                            formatted_value = "N/A"
+                        else:
+                            formatted_value = f"{value:.3f}"
                     elif key.endswith("_freq") or key.endswith("_frequency"):
                         formatted_value = f"{value:.3f} Hz"
+                    elif key == "pnn50" or key == "pnn_20" or key.startswith("pnn_"):
+                        # Percentage values (pNN50, pNN20, etc.)
+                        formatted_value = f"{value:.2f}%"
+                    elif key.endswith("nu_power") or key.endswith("_normalized"):
+                        # Normalized power values (LFnu, HFnu)
+                        formatted_value = f"{value:.3f} (n.u.)"
+                    elif key == "cvnn":
+                        # Coefficient of variation (percentage)
+                        formatted_value = f"{value:.2f}%"
+                    elif key.endswith("_entropy") or key == "sample_entropy" or key == "approximate_entropy":
+                        # Entropy values
+                        if value is None or np.isnan(value):
+                            formatted_value = "N/A"
+                        else:
+                            formatted_value = f"{value:.3f}"
+                    elif key.startswith("dfa_") or key.endswith("_alpha1") or key.endswith("_alpha2"):
+                        # DFA alpha values (dimensionless)
+                        formatted_value = f"{value:.3f}"
+                    elif key == "fractal_dimension" or key == "lyapunov_exponent":
+                        # Nonlinear features
+                        formatted_value = f"{value:.3f}"
                     elif (
                         key.endswith("_ms")
                         or key == "mean_rr"
                         or key == "rmssd"
-                        or key == "mean_beat_interval"
-                        or key == "beat_variability"
-                        or key == "beat_regularity"
+                        or key == "sdnn"
+                        or key == "std_nn"
+                        or key == "median_nn"
+                        or key == "iqr_nn"
+                        or key == "sdsd"
+                        or key == "poincare_sd1"
+                        or key == "poincare_sd2"
                     ):
-                        formatted_value = f"{format_large_number(value)} ms"
+                        # Values are already in milliseconds - don't apply unit conversion
+                        formatted_value = f"{format_large_number(value, unit='ms')} ms"
+                    elif key == "mean_beat_interval" or key == "beat_variability":
+                        # Convert from seconds to milliseconds
+                        value_ms = value * 1000
+                        formatted_value = f"{format_large_number(value_ms, unit='ms')} ms"
+                    elif key == "beat_regularity":
+                        # Regularity is dimensionless
+                        formatted_value = f"{value:.3f}"
                     elif (
                         key.endswith("_peaks")
                         or key.endswith("_beats")
@@ -5788,6 +5940,7 @@ def register_additional_physiological_callbacks(app):
                         or key == "zero_crossings"
                         or key == "envelope_peaks"
                         or key == "anomalies_detected"
+                        or key == "nn50"
                     ):
                         # Integer formatting for counts
                         formatted_value = format_large_number(value, as_integer=True)
@@ -6140,34 +6293,85 @@ def get_vitaldsp_hrv_analysis(
         mapped_results = {}
 
         if "time_domain" in hrv_options:
+            # IMPORTANT: vitalDSP returns NN intervals in SECONDS, but HRV metrics should be in MILLISECONDS
+            # We need to multiply time-domain metrics by 1000 (except counts and percentages)
             mapped_results.update(
                 {
-                    "mean_rr": hrv_result.get("mean_nn", 0),
-                    "std_rr": hrv_result.get("std_nn", 0),
-                    "rmssd": hrv_result.get("rmssd", 0),
-                    "nn50": hrv_result.get("nn50", 0),
-                    "pnn50": hrv_result.get("pnn50", 0),
+                    "mean_rr": hrv_result.get("mean_nn", 0) * 1000,  # Convert seconds to milliseconds
+                    "sdnn": hrv_result.get("sdnn", 0) * 1000,  # Convert seconds to milliseconds
+                    "std_nn": hrv_result.get("std_nn", 0) * 1000,  # Convert seconds to milliseconds
+                    "rmssd": hrv_result.get("rmssd", 0) * 1000,  # Convert seconds to milliseconds
+                    "nn50": hrv_result.get("nn50", 0),  # Count - no conversion needed
+                    "pnn50": hrv_result.get("pnn50", 0),  # Percentage - no conversion needed
+                    "median_nn": hrv_result.get("median_nn", 0) * 1000,  # Convert seconds to milliseconds
+                    "iqr_nn": hrv_result.get("iqr_nn", 0) * 1000,  # Convert seconds to milliseconds
+                    "cvnn": hrv_result.get("cvnn", 0),  # Coefficient of variation - dimensionless, no conversion
+                    "sdsd": hrv_result.get("sdsd", 0) * 1000,  # Convert seconds to milliseconds
+                    "pnn_20": hrv_result.get("pnn_20", 0),  # Percentage - no conversion needed
                 }
             )
 
         if "freq_domain" in hrv_options:
+            # Check signal duration for frequency domain analysis
+            signal_duration = len(signal_data) / sampling_freq  # Duration in seconds
+            min_duration_for_freq = 120  # 2 minutes recommended for frequency domain HRV
+
+            if signal_duration < min_duration_for_freq:
+                logger.warning(
+                    f"Signal duration ({signal_duration:.1f}s) is shorter than recommended for frequency domain HRV "
+                    f"(minimum {min_duration_for_freq}s). Results may be unreliable."
+                )
+                # Add warning to results
+                mapped_results["freq_domain_warning"] = (
+                    f"Signal too short ({signal_duration:.1f}s) for reliable frequency domain HRV. "
+                    f"Recommend ≥{min_duration_for_freq}s (2-5 minutes)."
+                )
+
+            # Get power values
+            total_power = hrv_result.get("total_power", 0)
+            ulf_power = hrv_result.get("ulf_power", 0)
+            vlf_power = hrv_result.get("vlf_power", 0)
+            lf_power = hrv_result.get("lf_power", 0)
+            hf_power = hrv_result.get("hf_power", 0)
+
+            # Calculate normalized powers (LFnu and HFnu)
+            lf_hf_sum = lf_power + hf_power
+            lfnu = (lf_power / lf_hf_sum) if lf_hf_sum > 0 else 0
+            hfnu = (hf_power / lf_hf_sum) if lf_hf_sum > 0 else 0
+
             mapped_results.update(
                 {
-                    "total_power": hrv_result.get("total_power", 0),
-                    "vlf_power": hrv_result.get("vlf_power", 0),
-                    "lf_power": hrv_result.get("lf_power", 0),
-                    "hf_power": hrv_result.get("hf_power", 0),
+                    "total_power": total_power,
+                    "ulf_power": ulf_power,
+                    "vlf_power": vlf_power,
+                    "lf_power": lf_power,
+                    "hf_power": hf_power,
                     "lf_hf_ratio": hrv_result.get("lf_hf_ratio", 0),
+                    "lfnu_power": hrv_result.get("lfnu_power", lfnu),  # Use vitalDSP value or calculated
+                    "hfnu_power": hrv_result.get("hfnu_power", hfnu),  # Use vitalDSP value or calculated
                 }
             )
 
         if "nonlinear" in hrv_options:
+            # Poincaré SD1/SD2 are also in seconds, need to convert to milliseconds
+            poincare_sd1 = hrv_result.get("poincare_sd1", 0) * 1000  # Convert to milliseconds
+            poincare_sd2 = hrv_result.get("poincare_sd2", 0) * 1000  # Convert to milliseconds
+
             mapped_results.update(
                 {
-                    "poincare_sd1": hrv_result.get("poincare_sd1", 0),
-                    "poincare_sd2": hrv_result.get("poincare_sd2", 0),
-                    "dfa_alpha1": hrv_result.get("dfa", 0),
-                    "dfa_alpha2": 0,  # vitalDSP doesn't provide alpha2
+                    "poincare_sd1": poincare_sd1,
+                    "poincare_sd2": poincare_sd2,
+                    "poincare_sd1_sd2_ratio": (
+                        poincare_sd1 / poincare_sd2
+                        if poincare_sd2 != 0
+                        else 0
+                    ),
+                    "dfa_alpha1": hrv_result.get("dfa", 0),  # Dimensionless - no conversion
+                    "dfa_alpha2": hrv_result.get("dfa_alpha2", 0),  # Dimensionless - no conversion
+                    "sample_entropy": hrv_result.get("sample_entropy", None),  # Dimensionless - no conversion
+                    "approximate_entropy": hrv_result.get("approximate_entropy", None),  # Dimensionless - no conversion
+                    "fractal_dimension": hrv_result.get("fractal_dimension", 0),  # Dimensionless - no conversion
+                    "lyapunov_exponent": hrv_result.get("lyapunov_exponent", 0),  # Dimensionless - no conversion
                 }
             )
 
@@ -6332,8 +6536,24 @@ def get_vitaldsp_signal_quality(
                     window_size = len(signal_data) // 2
                     step_size = max(1, window_size // 2)
 
-                sqi_values, _, _ = sqi.amplitude_variability_sqi(window_size, step_size)
-                overall_score = np.mean(sqi_values) if len(sqi_values) > 0 else 0
+                # Use 'minmax' scaling instead of 'zscore' to get values in [0, 1] range
+                sqi_values, _, _ = sqi.amplitude_variability_sqi(
+                    window_size, step_size, scale='minmax'
+                )
+
+                # Convert to 0-1 range if not already
+                if len(sqi_values) > 0:
+                    sqi_min = np.min(sqi_values)
+                    sqi_max = np.max(sqi_values)
+                    if sqi_max > sqi_min:
+                        # Normalize to 0-1 range
+                        sqi_normalized = (sqi_values - sqi_min) / (sqi_max - sqi_min)
+                        overall_score = float(np.mean(sqi_normalized))
+                    else:
+                        # All values are the same - use median approach
+                        overall_score = 0.5  # Neutral quality
+                else:
+                    overall_score = 0
 
                 mapped_results.update(
                     {
@@ -6363,13 +6583,34 @@ def get_vitaldsp_signal_quality(
                 mapped_results.update({"artifacts_detected": 0, "artifact_ratio": 0})
 
         if "snr_estimation" in quality_options:
-            # Use basic SNR estimation
+            # Use improved SNR estimation for filtered signals
             try:
-                signal_power = np.mean(signal_data**2)
-                noise_power = np.var(signal_data)
+                # For filtered signals, estimate noise from high-frequency residuals
+                # Detrend signal to remove baseline
+                from scipy import signal as scipy_signal
+                detrended = scipy_signal.detrend(signal_data)
+
+                # Use smoothed signal as "clean" signal estimate
+                # Apply Savitzky-Golay filter for smoothing
+                window_length = min(51, len(signal_data) // 2 * 2 + 1)  # Must be odd
+                if window_length >= 5:
+                    from scipy.signal import savgol_filter
+                    smoothed = savgol_filter(detrended, window_length, polyorder=3)
+                    # Noise is the residual
+                    noise = detrended - smoothed
+                    signal_power = np.var(smoothed)
+                    noise_power = np.var(noise)
+                else:
+                    # Fallback for very short signals
+                    signal_power = np.var(detrended)
+                    noise_power = signal_power * 0.1  # Assume 10% noise
+
                 snr_db = (
-                    10 * np.log10(signal_power / noise_power) if noise_power > 0 else 0
+                    10 * np.log10(signal_power / noise_power) if noise_power > 0 else 40.0
                 )
+
+                # Clip to reasonable range (0-60 dB)
+                snr_db = float(np.clip(snr_db, 0, 60))
 
                 mapped_results.update({"snr_db": snr_db, "adaptive_snr": snr_db})
             except Exception as e:
