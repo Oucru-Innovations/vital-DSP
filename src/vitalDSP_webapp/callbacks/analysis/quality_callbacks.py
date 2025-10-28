@@ -16,7 +16,7 @@ IMPROVEMENTS OVER ORIGINAL quality_callbacks.py:
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from dash import Input, Output, State, callback_context, no_update, html
+from dash import Input, Output, State, callback_context, no_update, html, dash, ALL
 from dash.exceptions import PreventUpdate
 from scipy import signal
 import dash_bootstrap_components as dbc
@@ -45,6 +45,91 @@ def register_quality_callbacks(app):
     # Import vitalDSP modules
     _import_vitaldsp_modules()
 
+    # SQI parameter update callback
+    @app.callback(
+        Output("quality-sqi-parameters-container", "children"),
+        [Input("quality-sqi-type", "value")],
+    )
+    def update_sqi_parameters(sqi_type):
+        """Update SQI parameter inputs based on selected SQI type."""
+        from .quality_sqi_functions import get_sqi_parameters_layout
+
+        if not sqi_type:
+            return []
+
+        return get_sqi_parameters_layout(sqi_type)
+
+    # SQI parameter storage callback
+    @app.callback(
+        Output("store-quality-sqi-params", "data"),
+        [Input({"type": "sqi-param", "param": ALL}, "value")],
+        [
+            State({"type": "sqi-param", "param": ALL}, "id"),
+            State("quality-sqi-type", "value"),
+        ],
+        prevent_initial_call=True,
+    )
+    def store_sqi_parameters(param_values, param_ids, sqi_type):
+        """Store SQI parameters for use in analysis."""
+        params = {}
+        if param_ids and param_values:
+            for param_id, value in zip(param_ids, param_values):
+                param_name = param_id["param"]
+                params[param_name] = value
+        params["sqi_type"] = sqi_type
+        return params
+
+    # Conditional threshold inputs callback
+    @app.callback(
+        [
+            Output({"type": "sqi-param-threshold-row", "param": "single"}, "style"),
+            Output({"type": "sqi-param-threshold-row", "param": "range"}, "style"),
+        ],
+        [Input({"type": "sqi-param", "param": "threshold_type"}, "value")],
+    )
+    def update_threshold_inputs_visibility(threshold_type):
+        """Show/hide threshold inputs based on threshold type."""
+        if threshold_type == "range":
+            return {"display": "none"}, {"display": "block"}
+        else:
+            return {"display": "block"}, {"display": "none"}
+
+    # Navigation callback for position slider
+    @app.callback(
+        Output("quality-start-position", "value"),
+        [
+            Input("quality-btn-nudge-m10", "n_clicks"),
+            Input("quality-btn-nudge-m5", "n_clicks"),
+            Input("quality-btn-center", "n_clicks"),
+            Input("quality-btn-nudge-p5", "n_clicks"),
+            Input("quality-btn-nudge-p10", "n_clicks"),
+        ],
+        [State("quality-start-position", "value")],
+    )
+    def update_quality_position_nudge(
+        nudge_m10, nudge_m5, center, nudge_p5, nudge_p10, start_position
+    ):
+        """Update time position based on nudge button clicks."""
+        ctx = callback_context
+        if not ctx.triggered:
+            raise PreventUpdate
+
+        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        start_position = start_position if start_position is not None else 0
+
+        if trigger_id == "quality-btn-nudge-m10":
+            return max(0, start_position - 10)
+        elif trigger_id == "quality-btn-nudge-m5":
+            return max(0, start_position - 5)
+        elif trigger_id == "quality-btn-center":
+            return 50  # Center at 50%
+        elif trigger_id == "quality-btn-nudge-p5":
+            return min(100, start_position + 5)
+        elif trigger_id == "quality-btn-nudge-p10":
+            return min(100, start_position + 10)
+
+        return start_position
+
     @app.callback(
         [
             Output("quality-main-plot", "figure"),
@@ -58,40 +143,47 @@ def register_quality_callbacks(app):
         ],
         [
             Input("quality-analyze-btn", "n_clicks"),
-            # Input("url", "pathname"),  # REMOVED - was running full analysis on EVERY page load!
-            Input("quality-btn-nudge-m10", "n_clicks"),
-            Input("quality-btn-nudge-m1", "n_clicks"),
-            Input("quality-btn-nudge-p1", "n_clicks"),
-            Input("quality-btn-nudge-p10", "n_clicks"),
+            Input("quality-metrics-bins", "value"),
+            Input("quality-metrics-scope", "value"),
         ],
         [
-            State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
-            State("quality-start-position-slider", "value"),  # NEW: start position instead of time-range-slider
-            State("quality-duration-select", "value"),  # NEW: duration instead of start-time/end-time
+            State("url", "pathname"),
+            State("quality-start-position", "value"),  # Position slider (0-100%)
+            State("quality-duration", "value"),  # Duration dropdown
             State("quality-signal-type", "value"),
-            State("quality-metrics", "value"),
-            State("quality-snr-threshold", "value"),
-            State("quality-artifact-threshold", "value"),
-            State("quality-advanced-options", "value"),
+            State("quality-signal-source", "value"),  # Signal source selector
+            State("quality-sqi-type", "value"),  # NEW: SQI type selector
+            State("quality-analysis-options", "value"),  # Analysis options
+            State("store-quality-sqi-params", "data"),  # NEW: SQI parameters from store
+            State("store-filtered-signal", "data"),  # Filtered signal data
+            State("store-quality-data", "data"),  # Store full signal data
+            State("store-quality-results", "data"),  # Store for quality results
         ],
     )
     def quality_assessment_callback(
         n_clicks,
+        bins_count,  # NEW: Number of bins for histogram
+        metrics_scope,  # NEW: segment vs entire
         pathname,
-        nudge_m10,
-        nudge_m1,
-        nudge_p1,
-        nudge_p10,
-        start_position,  # NEW: start position instead of slider_value
-        duration,  # NEW: duration instead of start_time/end_time
+        start_position,  # Position slider (0-100%)
+        duration,  # Duration dropdown
         signal_type,
-        quality_metrics,
-        snr_threshold,
-        artifact_threshold,
-        advanced_options,
+        signal_source,  # Signal source selector
+        sqi_type,  # NEW: SQI type
+        analysis_options,  # Analysis options
+        sqi_params,  # NEW: SQI parameters
+        filtered_signal_data,  # Filtered signal data
+        stored_quality_data,  # Store for quality data
+        stored_quality_results,  # Store for quality results
     ):
         """Main callback for signal quality assessment using vitalDSP."""
         logger.info("=== vitalDSP QUALITY ASSESSMENT CALLBACK TRIGGERED ===")
+        
+        # Check which input triggered the callback
+        ctx = callback_context
+        trigger_id = None
+        if ctx.triggered:
+            trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
         # Only run this when we're on the quality page
         if pathname != "/quality":
@@ -107,16 +199,107 @@ def register_quality_callbacks(app):
                 None,
             )
 
-        # Check if button was clicked
+        # Check if button was clicked (for initial analysis)
         if n_clicks is None:
-            return (
-                create_empty_figure(),
-                create_empty_figure(),
-                "Click 'Assess Signal Quality' to analyze your signal.",
-                "",
-                "",
-                "",
-                None,
+            # If metrics controls changed, we still need to check if we have stored results
+            if trigger_id in ["quality-metrics-bins", "quality-metrics-scope"]:
+                # Try to use stored results if available
+                if stored_quality_data and stored_quality_data.get("signal"):
+                    logger.info("Metrics controls changed - updating metrics plot with stored data")
+                    # We'll update metrics plot with stored data below
+                    pass
+                else:
+                    return (
+                        create_empty_figure(),
+                        create_empty_figure(),
+                        "Please click 'Assess Signal Quality' first.",
+                        "",
+                        "",
+                        "",
+                        stored_quality_data if stored_quality_data else None,
+                        None,
+                    )
+            else:
+                return (
+                    create_empty_figure(),
+                    create_empty_figure(),
+                    "Click 'Assess Signal Quality' to analyze your signal.",
+                    "",
+                    "",
+                    "",
+                        stored_quality_data if stored_quality_data else None,
+                    None,
+                )
+
+        # If only metrics controls changed (bins or scope), reuse stored results if available
+        if n_clicks is None and trigger_id in ["quality-metrics-bins", "quality-metrics-scope"]:
+            logger.info("Metrics controls updated - attempting to reuse stored results")
+            logger.info(f"stored_quality_results exists: {stored_quality_results is not None}")
+            if stored_quality_results:
+                logger.info(f"stored_quality_results keys: {stored_quality_results.keys() if isinstance(stored_quality_results, dict) else 'not a dict'}")
+                logger.info(f"sqi_values in results: {'sqi_values' in stored_quality_results if isinstance(stored_quality_results, dict) else False}")
+            
+            # Check if we have stored results to reuse
+            if stored_quality_results and isinstance(stored_quality_results, dict) and stored_quality_results.get("sqi_values"):
+                logger.info(f"Using stored results for metrics plot update with {len(stored_quality_results.get('sqi_values', []))} SQI values")
+                
+                # Convert bins to int
+                try:
+                    bins = int(bins_count) if bins_count else 30
+                except (ValueError, TypeError):
+                    bins = 30
+                
+                # Get stored results
+                stored_signal_data = stored_quality_data.get("signal") if stored_quality_data else None
+                stored_sampling_freq = stored_quality_data.get("sampling_freq") if stored_quality_data else 100
+                
+                if stored_signal_data:
+                    # Recreate plots with updated bins/scope
+                    main_plot = create_quality_main_plot(
+                        np.array(stored_signal_data),
+                        stored_quality_results,
+                        stored_sampling_freq
+                    )
+                    
+                    # For metrics plot, use appropriate data based on scope
+                    scope = metrics_scope if metrics_scope else "segment"
+                    
+                    # Check if we have stored entire signal quality results
+                    if scope == "entire" and stored_quality_data and "entire_quality_results" in stored_quality_data:
+                        entire_quality_results = stored_quality_data.get("entire_quality_results")
+                        if entire_quality_results:
+                            metrics_plot = create_quality_metrics_plot(entire_quality_results, bins=bins)
+                        else:
+                            # Fallback to segment results
+                            metrics_plot = create_quality_metrics_plot(stored_quality_results, bins=bins)
+                    else:
+                        metrics_plot = create_quality_metrics_plot(stored_quality_results, bins=bins)
+                    
+                    # Create results displays
+                    assessment_results = create_assessment_results_display(stored_quality_results)
+                    issues_recommendations = create_issues_recommendations_display(stored_quality_results)
+                    detailed_analysis = create_detailed_analysis_display(stored_quality_results)
+                    score_dashboard = create_score_dashboard(stored_quality_results)
+                    
+                    return (
+                        main_plot,
+                        metrics_plot,
+                        assessment_results,
+                        issues_recommendations,
+                        detailed_analysis,
+                        score_dashboard,
+                        stored_quality_data,
+                        stored_quality_results,
+                    )
+                else:
+                    return (
+                        create_empty_figure(),
+                        create_empty_figure(),
+                        "Please click 'Assess Signal Quality' first.",
+                        "",
+                        "",
+                        "",
+                        stored_quality_data,
                 None,
             )
 
@@ -167,17 +350,20 @@ def register_quality_callbacks(app):
                     None,
                 )
 
-            # Get the most recent data entry
+            # Get the most recent data entry (data_service returns dict with IDs as keys)
             latest_data_id = list(all_data.keys())[-1]
             latest_data = all_data[latest_data_id]
+            logger.info(f"Latest data ID: {latest_data_id}")
 
             # Get column mapping
             column_mapping = data_service.get_column_mapping(latest_data_id)
-            if column_mapping is None:
+            logger.info(f"Column mapping: {column_mapping}")
+
+            if not column_mapping:
                 return (
                     create_empty_figure(),
                     create_empty_figure(),
-                    "Please configure column mapping to process your data.",
+                    "No column mapping found. Please upload data first.",
                     "",
                     "",
                     "",
@@ -185,20 +371,161 @@ def register_quality_callbacks(app):
                     None,
                 )
 
-            # Extract signal data and sampling frequency
-            signal_data = latest_data.get("data")
+            # Get the actual data DataFrame
+            df = data_service.get_data(latest_data_id)
+            if df is None or df.empty:
+                return (
+                    create_empty_figure(),
+                    create_empty_figure(),
+                    "Data is empty. Please upload valid data.",
+                    "",
+                    "",
+                    "",
+                    None,
+                    None,
+                )
+
+            logger.info(f"Data shape: {df.shape}, columns: {df.columns.tolist()}")
+
+            # Determine which signal to use (filtered or original)
+            signal_data = None
+            time_data = None
+
+            if signal_source == "filtered" and filtered_signal_data:
+                logger.info("Attempting to use filtered signal data")
+                signal_data = np.array(filtered_signal_data.get("filtered_signal", []))
+                if len(signal_data) == 0:
+                    logger.warning("Filtered signal is empty, falling back to original")
+                    signal_data = None
+
+            # Fall back to original signal if filtered not available
             if signal_data is None:
-                # If no 'data' field, assume the latest_data itself is the signal data
-                signal_data = latest_data
+                logger.info("Using original signal data from DataFrame")
+                # Get time column
+                time_col = column_mapping.get("time")
+                if not time_col or time_col not in df.columns:
+                    # Try default time column names
+                    for col in ["time", "Time", "timestamp"]:
+                        if col in df.columns:
+                            time_col = col
+                            break
 
-            # Check if signal data is actually a valid array or DataFrame
-            if not isinstance(signal_data, (np.ndarray, list)) and not hasattr(
-                signal_data, "values"
-            ):
+                if not time_col:
+                    return (
+                        create_empty_figure(),
+                        create_empty_figure(),
+                        "No time column found in data",
+                        "",
+                        "",
+                        "",
+                        None,
+                        None,
+                    )
+
+                time_data = df[time_col].values
+
+                # Get signal column based on signal type
+                signal_col = None
+                if signal_type == "PPG":
+                    signal_col = column_mapping.get("signal") or column_mapping.get("ppg")
+                elif signal_type == "ECG":
+                    signal_col = column_mapping.get("ecg")
+
+                # Try common column names if mapping didn't work
+                if not signal_col or signal_col not in df.columns:
+                    for col in ["signal", "waveform", "ppg", "ecg", "RED", "value"]:
+                        if col in df.columns:
+                            signal_col = col
+                            logger.info(f"Using column: {col}")
+                            break
+
+                if not signal_col:
+                    return (
+                        create_empty_figure(),
+                        create_empty_figure(),
+                        f"No signal column found for type {signal_type}",
+                        "",
+                        "",
+                        "",
+                        None,
+                        None,
+                    )
+
+                signal_data = df[signal_col].values
+
+            # If we have filtered signal but no time data yet, get time from df
+            if time_data is None:
+                time_col = column_mapping.get("time")
+                if not time_col or time_col not in df.columns:
+                    for col in ["time", "Time", "timestamp"]:
+                        if col in df.columns:
+                            time_col = col
+                            break
+                if time_col and time_col in df.columns:
+                    time_data = df[time_col].values
+                else:
+                    # Generate time data based on sampling frequency
+                    sampling_freq = latest_data.get("info", {}).get("sampling_freq", 100)
+                    time_data = np.arange(len(signal_data)) / sampling_freq
+
+            # Ensure time and signal have same length
+            min_len = min(len(time_data), len(signal_data))
+            time_data = time_data[:min_len]
+            signal_data = signal_data[:min_len]
+
+            # Ensure time_data and signal_data are numeric arrays
+            time_data = np.array(time_data, dtype=np.float64)
+            signal_data = np.array(signal_data, dtype=np.float64)
+
+            # Check if time data is in Unix timestamp format (very large values)
+            # If so, normalize it to start from 0
+            if time_data[0] > 1e9:  # Likely Unix timestamp
+                logger.info(f"Detected Unix timestamp format, normalizing time data (first value: {time_data[0]:.2e})")
+
+                # Normalize to start from 0 FIRST (to get relative time)
+                time_data = time_data - time_data[0]
+
+                # Calculate the time span
+                time_span = time_data[-1]
+                logger.info(f"Time span after normalization: {time_span:.2e}")
+
+                # Check if we need to convert units based on the span
+                if time_span > 1e9:  # Nanoseconds
+                    logger.info("Converting from nanoseconds to seconds")
+                    time_data = time_data / 1e9
+                elif time_span > 1e6:  # Microseconds
+                    logger.info("Converting from microseconds to seconds")
+                    time_data = time_data / 1e6
+                elif time_span > 1e3:  # Milliseconds
+                    logger.info("Converting from milliseconds to seconds")
+                    time_data = time_data / 1000.0
+
+            total_duration = float(time_data[-1] - time_data[0])
+            logger.info(f"Loaded data: {len(signal_data)} samples, duration: {total_duration:.2f}s")
+
+            # STORE ORIGINAL SIGNAL DATA BEFORE WINDOWING (for entire signal SQI computation)
+            original_signal_data = signal_data.copy()
+            original_time_data = time_data.copy()
+
+            # Calculate sampling frequency from time data
+            if len(time_data) > 1:
+                sampling_freq = 1 / np.mean(np.diff(time_data))
+            else:
+                sampling_freq = latest_data.get("info", {}).get("sampling_freq", 100)
+
+            # Calculate start time from position percentage
+            start_position = float(start_position) if start_position is not None else 0
+            duration = float(duration) if duration is not None else 60
+            start_time = (start_position / 100.0) * total_duration
+            end_time = start_time + duration
+
+            # Extract time segment
+            mask = (time_data >= start_time) & (time_data <= end_time)
+            if not np.any(mask):
                 return (
                     create_empty_figure(),
                     create_empty_figure(),
-                    "No signal data available. Please upload a signal first.",
+                    f"No data in time window {start_time:.1f}-{end_time:.1f}s",
                     "",
                     "",
                     "",
@@ -206,34 +533,92 @@ def register_quality_callbacks(app):
                     None,
                 )
 
-            # Convert DataFrame to numpy array if needed
-            if hasattr(signal_data, "values"):
-                signal_data = signal_data.values
+            windowed_time = time_data[mask]
+            windowed_signal = signal_data[mask]
 
-            sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)
+            logger.info(f"Windowed data: {len(windowed_signal)} samples from {start_time:.1f}s to {end_time:.1f}s")
 
-            # Extract time segment if specified
-            if start_position is not None and duration is not None:
-                end_time = start_position + duration
-                start_idx = int(start_position * sampling_freq)
-                end_idx = int(end_time * sampling_freq)
-                signal_data = signal_data[start_idx:end_idx]
+            # Use windowed signal for quality assessment
+            signal_data = windowed_signal
 
-            # Perform quality assessment using vitalDSP
-            quality_results = assess_signal_quality_vitaldsp(
+            # Perform quality assessment using vitalDSP SQI
+            from .quality_sqi_functions import compute_sqi
+
+            # Get SQI parameters (with defaults if not set)
+            if not sqi_params:
+                sqi_params = {"sqi_type": sqi_type or "snr_sqi"}
+
+            logger.info(f"Computing SQI: {sqi_type}, params: {sqi_params}")
+
+            quality_results = compute_sqi(
                 signal_data,
+                sqi_type or "snr_sqi",
+                sqi_params,
                 sampling_freq,
-                quality_metrics if quality_metrics else [],
-                snr_threshold if snr_threshold else 10.0,
-                artifact_threshold if artifact_threshold else 3.0,
-                advanced_options if advanced_options else [],
             )
+            
+            logger.info(f"Quality results computed: {len(quality_results.get('sqi_values', []))} SQI values")
+            logger.info(f"Quality results keys: {quality_results.keys()}")
+
+            # Also compute SQI for entire signal (before windowing) for scope toggle
+            entire_signal_data = None
+            entire_sqi_results = None
+            
+            # Use original_signal_data that we stored before windowing
+            if original_signal_data is not None and len(original_signal_data) > 0:
+                entire_signal_data = original_signal_data
+            
+            # If we have entire signal, compute SQI for it
+            window_size_param = sqi_params.get("window_size") if sqi_params else None
+            window_size_param = int(window_size_param) if window_size_param not in [None, "", 0] else 1000
+            if entire_signal_data is not None and len(entire_signal_data) > window_size_param:
+                logger.info(f"Computing SQI for entire signal: {len(entire_signal_data)} samples")
+                from .quality_sqi_functions import compute_sqi
+                try:
+                    entire_sqi_results = compute_sqi(
+                        entire_signal_data,
+                        sqi_type or "snr_sqi",
+                        sqi_params,
+                        sampling_freq,
+                    )
+                    logger.info(f"Entire signal SQI computed: {len(entire_sqi_results.get('sqi_values', []))} values")
+                except Exception as e:
+                    logger.warning(f"Could not compute SQI for entire signal: {e}")
+            
+            # Store windowed signal for segment analysis
+            windowed_signal_store = {
+                "signal": signal_data.tolist(),
+                "sampling_freq": sampling_freq,
+                "entire_signal": entire_signal_data.tolist() if entire_signal_data is not None else None,
+                "entire_sqi_values": entire_sqi_results.get("sqi_values", []) if entire_sqi_results else [],
+                "entire_quality_results": entire_sqi_results if entire_sqi_results else None,  # Store full entire results
+            }
 
             # Create visualizations
             main_plot = create_quality_main_plot(
                 signal_data, quality_results, sampling_freq
             )
-            metrics_plot = create_quality_metrics_plot(quality_results)
+            
+            # For metrics plot, use appropriate data based on scope
+            # Convert bins to int (handles string from Select component)
+            try:
+                bins = int(bins_count) if bins_count else 30
+            except (ValueError, TypeError):
+                bins = 30
+            
+            scope = metrics_scope if metrics_scope else "segment"
+            
+            # If entire signal requested, check if we have stored full signal data
+            if scope == "entire" and stored_quality_data and "entire_quality_results" in stored_quality_data:
+                # Use stored entire signal SQI results (includes all metrics, not just sqi_values)
+                entire_quality_results = stored_quality_data.get("entire_quality_results")
+                if entire_quality_results:
+                    metrics_plot = create_quality_metrics_plot(entire_quality_results, bins=bins)
+                else:
+                    # Fallback: use segment results if entire results not available
+                    metrics_plot = create_quality_metrics_plot(quality_results, bins=bins)
+            else:
+                metrics_plot = create_quality_metrics_plot(quality_results, bins=bins)
 
             # Create results displays
             assessment_results = create_assessment_results_display(quality_results)
@@ -250,7 +635,7 @@ def register_quality_callbacks(app):
                 issues_recommendations,
                 detailed_analysis,
                 score_dashboard,
-                {"signal": signal_data.tolist(), "sampling_freq": sampling_freq},
+                windowed_signal_store,
                 quality_results,
             )
 
@@ -693,7 +1078,7 @@ def create_empty_figure():
 
 
 def create_quality_main_plot(signal_data, quality_results, sampling_freq):
-    """Create main quality visualization plot."""
+    """Create main quality visualization plot with segment classification."""
     try:
         time_axis = np.arange(len(signal_data)) / sampling_freq
 
@@ -710,62 +1095,217 @@ def create_quality_main_plot(signal_data, quality_results, sampling_freq):
         fig = make_subplots(
             rows=2,
             cols=1,
-            subplot_titles=["Signal with Quality Markers", "Quality Metrics Over Time"],
-            vertical_spacing=0.12,
+            subplot_titles=["Signal with Quality Classification", "SQI Values Over Time"],
+            vertical_spacing=0.12,  # Optimized spacing
+            row_heights=[0.60, 0.40],  # Better balance: 60% signal, 40% SQI
+            specs=[[{"secondary_y": False}], [{"secondary_y": False}]],
         )
 
-        # Plot signal (using limited data)
+        # Get SQI results for segment classification
+        sqi_values = quality_results.get("sqi_values", [])
+        threshold = quality_results.get("threshold", 0.5)
+        threshold_type = quality_results.get("threshold_type", "above")
+        
+        # Plot signal base (will be colored based on segments)
         fig.add_trace(
             go.Scatter(
                 x=time_axis_plot,
                 y=signal_data_plot,
                 mode="lines",
                 name="Signal",
-                line=dict(color="blue", width=1),
+                line=dict(color="#95a5a6", width=1.5),  # Gray color
             ),
             row=1,
             col=1,
         )
 
-        # Mark artifacts if available
-        if (
-            "artifacts" in quality_results
-            and "artifact_locations" in quality_results["artifacts"]
-        ):
-            artifact_indices = quality_results["artifacts"]["artifact_locations"]
-            # Filter artifacts to only include those within the limited time range
-            artifact_indices = [i for i in artifact_indices if i < len(signal_data_plot)]
-            if artifact_indices:
+        # Determine which segments are good/bad based on SQI values and threshold
+        if sqi_values:
+            window_size_samples = int(len(signal_data) / len(sqi_values)) if len(sqi_values) > 0 else len(signal_data)
+            segment_time_duration = window_size_samples / sampling_freq
+            
+            # Collect segments by quality type
+            good_segments = []
+            poor_segments = []
+            
+            for i, sqi_val in enumerate(sqi_values):
+                seg_start_time = i * segment_time_duration
+                seg_end_time = min((i + 1) * segment_time_duration, time_axis_plot[-1])
+                
+                # Match vitalDSP's logic: threshold determines ABNORMAL segments
+                if isinstance(threshold, list):
+                    # Range threshold: value should be between min and max to be NORMAL
+                    is_good = threshold[0] <= sqi_val <= threshold[1]
+                elif threshold_type == "above":
+                    # Values ABOVE threshold are ABNORMAL, so <= threshold is NORMAL
+                    is_good = sqi_val <= threshold
+                elif threshold_type == "below":
+                    # Values BELOW threshold are ABNORMAL, so >= threshold is NORMAL
+                    is_good = sqi_val >= threshold
+                else:
+                    is_good = sqi_val >= threshold  # Default to below logic (most common)
+                
+                start_idx = max(0, int(seg_start_time * sampling_freq))
+                end_idx = min(len(signal_data_plot), int(seg_end_time * sampling_freq))
+                
+                if end_idx > start_idx:
+                    if is_good:
+                        good_segments.append((start_idx, end_idx))
+                    else:
+                        poor_segments.append((start_idx, end_idx))
+            
+            # Add good quality segments (all as one trace with gaps)
+            if good_segments:
+                x_good = []
+                y_good = []
+                x_good.append(time_axis_plot[good_segments[0][0]])
+                y_good.append(signal_data_plot[good_segments[0][0]])
+                
+                for start, end in good_segments:
+                    x_good.extend(time_axis_plot[start:end])
+                    y_good.extend(signal_data_plot[start:end])
+                    x_good.append(None)  # Add None to create gap
+                    y_good.append(None)
+                
                 fig.add_trace(
                     go.Scatter(
-                        x=time_axis_plot[artifact_indices],
-                        y=signal_data_plot[artifact_indices],
-                        mode="markers",
-                        name="Artifacts",
-                        marker=dict(color="red", size=4, symbol="x"),
+                        x=x_good,
+                        y=y_good,
+                        mode="lines",
+                        name="Good Quality",
+                        line=dict(color="#2ecc71", width=2.5),
+                        showlegend=True,
+                        legendgroup="quality_good",
+                        hovertemplate='Good Quality Segment<br>Time: %{x:.2f}s<br>Amplitude: %{y:.2f}<extra></extra>',
+                        opacity=0.85,
                     ),
                     row=1,
                     col=1,
                 )
 
-        # Plot SQI values over time if available
-        if (
-            "baseline_wander" in quality_results
-            and "sqi_values" in quality_results["baseline_wander"]
-        ):
-            sqi_values = quality_results["baseline_wander"]["sqi_values"]
-            window_size = int(10 * sampling_freq)
-            step_size = int(5 * sampling_freq)
-            sqi_times = np.arange(len(sqi_values)) * step_size / sampling_freq
+            # Add poor quality segments (all as one trace with gaps)
+            if poor_segments:
+                x_poor = []
+                y_poor = []
+                
+                for start, end in poor_segments:
+                    x_poor.extend(time_axis_plot[start:end])
+                    y_poor.extend(signal_data_plot[start:end])
+                    x_poor.append(None)  # Add None to create gap
+                    y_poor.append(None)
+                
+                fig.add_trace(
+                    go.Scatter(
+                        x=x_poor,
+                        y=y_poor,
+                        mode="lines",
+                        name="Poor Quality",
+                        line=dict(color="#e74c3c", width=2.5),
+                        showlegend=True,
+                        legendgroup="quality_poor",
+                        hovertemplate='Poor Quality Segment<br>Time: %{x:.2f}s<br>Amplitude: %{y:.2f}<extra></extra>',
+                        opacity=0.85,
+                    ),
+                    row=1,
+                    col=1,
+                )
 
+        # Plot SQI values over time with threshold line
+        if sqi_values:
+            window_size_samples = int(len(signal_data) / len(sqi_values)) if len(sqi_values) > 0 else len(signal_data)
+            segment_time_duration = window_size_samples / sampling_freq
+            
+            # Create time points for SQI segments
+            sqi_times = np.array([i * segment_time_duration for i in range(len(sqi_values))])
+            
+            # SQI values over time
             fig.add_trace(
                 go.Scatter(
                     x=sqi_times,
                     y=sqi_values,
                     mode="lines+markers",
-                    name="Baseline SQI",
-                    line=dict(color="green", width=2),
+                    name="SQI Value",
+                    line=dict(color="#3498db", width=2.5),  # Bright blue
+                    marker=dict(size=5, color="#3498db"),
                 ),
+                row=2,
+                col=1,
+            )
+            
+            # Add threshold line
+            if len(sqi_times) > 0:
+                # Handle both single threshold and range threshold
+                if isinstance(threshold, list):
+                    # Range threshold - add two lines
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[sqi_times[0], sqi_times[-1]],
+                            y=[threshold[0], threshold[0]],
+                            mode="lines",
+                            name="Threshold Min",
+                            line=dict(color="#e67e22", width=2, dash="dash"),
+                        ),
+                        row=2,
+                        col=1,
+                    )
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[sqi_times[0], sqi_times[-1]],
+                            y=[threshold[1], threshold[1]],
+                            mode="lines",
+                            name="Threshold Max",
+                            line=dict(color="#e67e22", width=2, dash="dash"),
+                        ),
+                        row=2,
+                        col=1,
+                    )
+                else:
+                    # Single threshold
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[sqi_times[0], sqi_times[-1]],
+                            y=[threshold, threshold],
+                            mode="lines",
+                            name="Threshold",
+                            line=dict(color="#e74c3c", width=2.5, dash="dash"),
+                        ),
+                        row=2,
+                        col=1,
+                    )
+            
+            # Add colored regions (green = good quality, red = poor quality)
+            for i in range(len(sqi_values)):
+                if i + 1 < len(sqi_times):
+                    sqi_val = sqi_values[i]
+                    
+                    # Match vitalDSP's logic: threshold determines ABNORMAL segments
+                    if isinstance(threshold, list):
+                        # Range threshold: value should be between min and max to be NORMAL
+                        is_good = threshold[0] <= sqi_val <= threshold[1]
+                    else:
+                        # Single threshold
+                        if threshold_type == "above":
+                            # Values ABOVE threshold are ABNORMAL, so <= threshold is NORMAL
+                            is_good = sqi_val <= threshold
+                        elif threshold_type == "below":
+                            # Values BELOW threshold are ABNORMAL, so >= threshold is NORMAL
+                            is_good = sqi_val >= threshold
+                        else:
+                            is_good = sqi_val >= threshold  # Default to below logic (most common)
+                    
+                    color = "#2ecc71" if is_good else "#e74c3c"  # Bright colors
+                    opacity = 0.15 if is_good else 0.15
+                    
+                    fig.add_shape(
+                        type="rect",
+                        x0=sqi_times[i],
+                        x1=sqi_times[min(i + 1, len(sqi_times) - 1)],
+                        y0=0,
+                        y1=1,
+                        fillcolor=color,
+                        opacity=opacity,
+                        layer="below",
+                        line_width=0,
                 row=2,
                 col=1,
             )
@@ -773,75 +1313,346 @@ def create_quality_main_plot(signal_data, quality_results, sampling_freq):
         fig.update_xaxes(title_text="Time (s)", row=1, col=1)
         fig.update_xaxes(title_text="Time (s)", row=2, col=1)
         fig.update_yaxes(title_text="Amplitude", row=1, col=1)
-        fig.update_yaxes(title_text="SQI Value", row=2, col=1)
+        fig.update_yaxes(title_text="SQI Value", row=2, col=1, range=[0, 1])
 
-        fig.update_layout(height=800, showlegend=True, hovermode="x unified")
+        # Add quality score annotation - positioned at top right
+        quality_score = quality_results.get("quality_score", 0)
+        overall_quality = quality_results.get("overall_quality", "UNKNOWN")
 
-        return fig
+        # Choose color based on quality
+        quality_colors = {
+            "EXCELLENT": "#27ae60",  # Green
+            "GOOD": "#2ecc71",       # Light green
+            "FAIR": "#f39c12",       # Orange
+            "POOR": "#e74c3c",       # Red
+        }
+        annotation_color = quality_colors.get(overall_quality, "#95a5a6")
 
-    except Exception as e:
-        logger.error(f"Error creating main plot: {e}")
-        return create_empty_figure()
-
-
-def create_quality_metrics_plot(quality_results):
-    """Create quality metrics visualization."""
-    try:
-        metrics_data = []
-        metric_names = []
-
-        # Extract metrics
-        if "snr" in quality_results and "snr_db" in quality_results["snr"]:
-            metrics_data.append(min(1.0, quality_results["snr"]["snr_db"] / 30.0))
-            metric_names.append("SNR")
-
-        if "baseline_wander" in quality_results:
-            metrics_data.append(quality_results["baseline_wander"]["mean_sqi"])
-            metric_names.append("Baseline")
-
-        if "amplitude" in quality_results:
-            metrics_data.append(quality_results["amplitude"]["mean_sqi"])
-            metric_names.append("Amplitude")
-
-        if "stability" in quality_results:
-            metrics_data.append(quality_results["stability"]["mean_sqi"])
-            metric_names.append("Stability")
-
-        if "artifacts" in quality_results:
-            artifact_score = max(
-                0, 1.0 - quality_results["artifacts"]["artifact_percentage"] / 100.0
-            )
-            metrics_data.append(artifact_score)
-            metric_names.append("Artifact-free")
-
-        # Create bar chart
-        fig = go.Figure(
-            data=[
-                go.Bar(
-                    x=metric_names,
-                    y=metrics_data,
-                    marker=dict(
-                        color=metrics_data,
-                        colorscale="RdYlGn",
-                        cmin=0,
-                        cmax=1,
-                    ),
-                )
-            ]
+        fig.add_annotation(
+            text=f"<b>{overall_quality}</b><br>{quality_score:.1%}",
+            xref="paper",
+            yref="paper",
+            x=0.98,
+            y=0.98,
+            xanchor="right",
+            yanchor="top",
+            showarrow=False,
+            font=dict(size=16, color="white"),
+            bgcolor=annotation_color,
+            bordercolor="white",
+            borderwidth=2,
+            borderpad=8,
         )
 
         fig.update_layout(
-            title="Signal Quality Metrics (0-1 Scale)",
-            xaxis_title="Metric",
-            yaxis_title="Quality Score",
-            yaxis=dict(range=[0, 1]),
-            height=400,
+            height=700,  # Reduced from 1400 to fit better in container
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.0,
+                xanchor="left",
+                x=0.0,
+                bgcolor="rgba(255, 255, 255, 0.9)",  # Semi-transparent background
+                bordercolor="gray",
+                borderwidth=1,
+            ),
+            hovermode="x unified",
+            margin=dict(l=50, r=30, t=80, b=50),  # Optimized margins
+            plot_bgcolor="white",
+            paper_bgcolor="white",
         )
 
         return fig
 
     except Exception as e:
-        logger.error(f"Error creating metrics plot: {e}")
+        logger.error(f"Error creating main plot: {e}", exc_info=True)
+        return create_empty_figure()
+
+
+def create_quality_metrics_plot(quality_results, bins=30):
+    """Create quality metrics visualization with histogram and quantiles.
+    
+    Args:
+        quality_results: SQI results dictionary
+        bins: Number of bins for histogram (default 30)
+    """
+    try:
+        # Get SQI values from results
+        sqi_values = quality_results.get("sqi_values", [])
+        threshold = quality_results.get("threshold", 0.5)
+        mean_sqi = quality_results.get("mean_sqi", 0)
+        std_sqi = quality_results.get("std_sqi", 0)
+        
+        if not sqi_values:
+            logger.warning("No SQI values found in results")
+            return create_empty_figure()
+        
+        # Convert to numpy array for calculations
+        sqi_array = np.array(sqi_values)
+        
+        # Calculate quantiles
+        quantiles = {
+            "Min": np.min(sqi_array),
+            "Q1": np.percentile(sqi_array, 25),
+            "Median": np.median(sqi_array),
+            "Q3": np.percentile(sqi_array, 75),
+            "Max": np.max(sqi_array),
+        }
+        
+        # Create subplots: histogram and statistics
+        fig = make_subplots(
+            rows=2,
+            cols=2,
+            subplot_titles=[
+                "SQI Distribution",
+                "Statistics",
+                "SQI Over Time",
+                "Classification",
+            ],
+            vertical_spacing=0.15,
+            horizontal_spacing=0.15,
+            specs=[
+                [{"type": "xy"}, {"type": "xy"}],  # All xy plots for compatibility
+                [{"type": "xy"}, {"type": "xy"}],
+            ],
+        )
+        
+        # 1. Histogram with quantile lines (use provided bins parameter)
+        # Ensure bins is an integer
+        try:
+            bins_int = int(bins) if bins else 30
+        except (ValueError, TypeError):
+            bins_int = 30
+            
+        hist_data, bin_edges = np.histogram(sqi_array, bins=bins_int, range=(0, 1))
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        
+        fig.add_trace(
+                go.Bar(
+                x=bin_centers,
+                y=hist_data,
+                name="Distribution",
+                    marker=dict(
+                    color=hist_data,
+                    colorscale="Viridis",
+                    showscale=True,
+                    colorbar=dict(title="Count", len=0.9, y=0.75, x=1.02),
+                ),
+            ),
+            row=1,
+            col=1,
+        )
+        
+        # Add quantile lines
+        for q_name, q_value in quantiles.items():
+            fig.add_vline(
+                x=q_value,
+                line_dash="dash",
+                line_color="red" if "Min" in q_name or "Max" in q_name else "orange",
+                annotation_text=q_name,
+                annotation_position="top",
+                row=1,
+                col=1,
+            )
+        
+        # Add threshold line(s) - handle both single and range thresholds
+        if isinstance(threshold, list) and len(threshold) == 2:
+            # Range threshold: add two lines
+            fig.add_vline(
+                x=threshold[0],
+                line_dash="dash",
+                line_color="red",
+                line_width=2,
+                annotation_text=f"Min: {threshold[0]:.3f}",
+                annotation_position="top right",
+                row=1,
+                col=1,
+            )
+            fig.add_vline(
+                x=threshold[1],
+                line_dash="dash",
+                line_color="red",
+                line_width=2,
+                annotation_text=f"Max: {threshold[1]:.3f}",
+                annotation_position="top right",
+                row=1,
+                col=1,
+            )
+        else:
+            # Single threshold
+            threshold_val = float(threshold) if not isinstance(threshold, list) else 0.5
+            fig.add_vline(
+                x=threshold_val,
+                line_dash="solid",
+                line_color="blue",
+                line_width=3,
+                annotation_text=f"Threshold: {threshold_val:.3f}",
+                annotation_position="top right",
+                annotation_bgcolor="blue",
+                annotation_font=dict(color="white"),
+                row=1,
+                col=1,
+            )
+        
+        # 2. Statistics and quantiles table as a bar chart with actual values
+        stats_labels = ["Mean", "Std", "Min", "Q1", "Median", "Q3", "Max"]
+        stats_values = [
+            mean_sqi,
+            std_sqi,
+            quantiles['Min'],
+            quantiles['Q1'],
+            quantiles['Median'],
+            quantiles['Q3'],
+            quantiles['Max'],
+        ]
+        
+        fig.add_trace(
+            go.Bar(
+                x=stats_labels,
+                y=stats_values,
+                marker=dict(
+                    color=stats_values,
+                    colorscale="Viridis",
+                    showscale=False,
+                ),
+                text=[f"{v:.3f}" for v in stats_values],
+                textposition="outside",
+                showlegend=False,
+            ),
+            row=1,
+            col=2,
+        )
+        fig.update_xaxes(title_text="Statistic", row=1, col=2)
+        fig.update_yaxes(title_text="Value", row=1, col=2)
+        
+        # Add threshold as horizontal line (handle single and range)
+        if isinstance(threshold, list) and len(threshold) == 2:
+            # Range: add two horizontal lines
+            fig.add_hline(
+                y=threshold[0],
+                line_dash="dash",
+                line_color="red",
+                annotation_text=f"Min: {threshold[0]:.3f}",
+                row=1,
+                col=2,
+            )
+            fig.add_hline(
+                y=threshold[1],
+                line_dash="dash",
+                line_color="red",
+                annotation_text=f"Max: {threshold[1]:.3f}",
+                row=1,
+                col=2,
+            )
+        else:
+            # Single threshold
+            threshold_val = float(threshold) if not isinstance(threshold, list) else 0.5
+            fig.add_hline(
+                y=threshold_val,
+                line_dash="dash",
+                line_color="red",
+                annotation_text=f"Threshold: {threshold_val:.3f}",
+                row=1,
+                col=2,
+            )
+        
+        # 3. SQI Over Time
+        time_points = np.arange(len(sqi_values))
+        fig.add_trace(
+            go.Scatter(
+                x=time_points,
+                y=sqi_values,
+                mode="lines+markers",
+                name="SQI",
+                line=dict(color="blue", width=2),
+                marker=dict(size=4),
+            ),
+            row=2,
+            col=1,
+        )
+        # Add threshold line for SQI Over Time plot (handle single and range)
+        if isinstance(threshold, list) and len(threshold) == 2:
+            # Range: add two horizontal lines
+            fig.add_hline(
+                y=threshold[0],
+                line_dash="dash",
+                line_color="red",
+                annotation_text=f"Min: {threshold[0]:.3f}",
+                row=2,
+                col=1,
+            )
+            fig.add_hline(
+                y=threshold[1],
+                line_dash="dash",
+                line_color="red",
+                annotation_text=f"Max: {threshold[1]:.3f}",
+                row=2,
+                col=1,
+            )
+        else:
+            # Single threshold
+            threshold_val = float(threshold) if not isinstance(threshold, list) else 0.5
+            fig.add_hline(
+                y=threshold_val,
+                line_dash="dash",
+                line_color="red",
+                annotation_text=f"Threshold: {threshold_val:.3f}",
+                row=2,
+                col=1,
+            )
+        fig.update_xaxes(title_text="Segment Index", row=2, col=1)
+        fig.update_yaxes(title_text="SQI Value", row=2, col=1)
+        
+        # 4. Quality Classification (bar chart instead of pie for subplot compatibility)
+        num_normal = quality_results.get("num_normal", 0)
+        num_abnormal = quality_results.get("num_abnormal", 0)
+        total_segments = num_normal + num_abnormal
+        
+        if total_segments > 0:
+            normal_pct = (num_normal / total_segments) * 100
+            abnormal_pct = (num_abnormal / total_segments) * 100
+            
+            fig.add_trace(
+                go.Bar(
+                    x=["Good Quality", "Poor Quality"],
+                    y=[num_normal, num_abnormal],
+                    text=[
+                        f"{num_normal} ({normal_pct:.1f}%)",
+                        f"{num_abnormal} ({abnormal_pct:.1f}%)"
+                    ],
+                    textposition="auto",
+                    marker=dict(
+                        color=["green", "red"],
+                        line=dict(color="black", width=2),
+                    ),
+                    showlegend=False,
+                ),
+                row=2,
+                col=2,
+            )
+        
+        # Update layout
+        fig.update_xaxes(title_text="SQI Value", range=[0, 1], row=1, col=1)
+        fig.update_yaxes(title_text="Frequency", row=1, col=1)
+        
+        # Update axes for quality classification bar chart
+        fig.update_xaxes(title_text="", row=2, col=2)
+        fig.update_yaxes(title_text="Number of Segments", row=2, col=2)
+
+        fig.update_layout(
+            height=600,  # Reduced from 800 to fit better
+            showlegend=False,
+            title_text="Signal Quality Index (SQI) Analysis",
+            title_x=0.5,
+            title_font=dict(size=14),
+            margin=dict(l=50, r=50, t=80, b=50),  # Optimized margins
+        )
+
+        return fig
+
+    except Exception as e:
+        logger.error(f"Error creating metrics plot: {e}", exc_info=True)
         return create_empty_figure()
 
 
@@ -849,20 +1660,34 @@ def create_assessment_results_display(quality_results):
     """Create assessment results display."""
     try:
         if "error" in quality_results:
-            return f"Error: {quality_results['error']}"
-        if "overall_score" not in quality_results:
-            return html.Div("No quality assessment results available.")
+            return dbc.Alert(f"Error: {quality_results['error']}", color="danger")
 
-        overall = quality_results["overall_score"]
-        quality_class = (
-            "success"
-            if overall["quality"] == "excellent"
-            else (
-                "info"
-                if overall["quality"] == "good"
-                else "warning" if overall["quality"] == "fair" else "danger"
-            )
-        )
+        # Support both old format (overall_score) and new format (quality_score, overall_quality)
+        if "overall_score" in quality_results:
+            overall = quality_results["overall_score"]
+            quality = overall.get("quality", "unknown")
+            score = overall.get("score", 0)
+            percentage = overall.get("percentage", 0)
+        elif "quality_score" in quality_results:
+            quality = quality_results.get("overall_quality", "UNKNOWN")
+            score = quality_results.get("quality_score", 0)
+            percentage = quality_results.get("quality_score", 0) * 100
+        else:
+            return dbc.Alert("No quality assessment results available.", color="warning")
+
+        # Map quality labels
+        quality_map = {
+            "excellent": ("EXCELLENT", "success"),
+            "EXCELLENT": ("EXCELLENT", "success"),
+            "good": ("GOOD", "info"),
+            "GOOD": ("GOOD", "info"),
+            "fair": ("FAIR", "warning"),
+            "FAIR": ("FAIR", "warning"),
+            "poor": ("POOR", "danger"),
+            "POOR": ("POOR", "danger"),
+        }
+        
+        quality_label, quality_class = quality_map.get(quality, (quality.upper(), "secondary"))
 
         return dbc.Card(
             dbc.CardBody(
@@ -871,11 +1696,15 @@ def create_assessment_results_display(quality_results):
                     dbc.Alert(
                         [
                             html.H5(
-                                f"Quality: {overall['quality'].upper()}",
+                                f"Quality: {quality_label}",
                                 className="alert-heading",
                             ),
                             html.P(
-                                f"Score: {overall['score']:.3f} ({overall['percentage']:.1f}%)"
+                                f"Score: {score:.3f} ({percentage:.1f}%)"
+                            ),
+                            html.P(
+                                f"SQI Type: {quality_results.get('sqi_type', 'N/A')}",
+                                className="mb-0"
                             ),
                         ],
                         color=quality_class,
@@ -886,53 +1715,111 @@ def create_assessment_results_display(quality_results):
         )
 
     except Exception as e:
-        logger.error(f"Error creating assessment results: {e}")
-        return html.Div(f"Error: {str(e)}")
+        logger.error(f"Error creating assessment results: {e}", exc_info=True)
+        return dbc.Alert(f"Error: {str(e)}", color="danger")
 
 
 def create_issues_recommendations_display(quality_results):
     """Create issues and recommendations display."""
     try:
         issues = []
+        quality_score = quality_results.get("quality_score", 1.0)
+        num_normal = quality_results.get("num_normal", 0)
+        num_abnormal = quality_results.get("num_abnormal", 0)
+        total_segments = num_normal + num_abnormal
 
-        if "artifacts" in quality_results:
-            artifact_pct = quality_results["artifacts"]["artifact_percentage"]
-            if artifact_pct > 5:
+        # Quality score based issues
+        if quality_score < 0.4:
                 issues.append(
-                    f"High artifact content ({artifact_pct:.1f}%). Consider applying artifact removal filters."
+                "Low overall quality score. Consider signal filtering or data collection improvement."
+            )
+        elif quality_score < 0.6:
+            issues.append(
+                "Moderate quality score. Some segments may need further processing."
+            )
+
+        # Segment-based issues
+        if total_segments > 0:
+            abnormal_percentage = (num_abnormal / total_segments) * 100
+            if abnormal_percentage > 30:
+                issues.append(
+                    f"High percentage of poor quality segments ({abnormal_percentage:.1f}%). Consider adjusting processing parameters."
+                )
+            elif abnormal_percentage > 10:
+                issues.append(
+                    f"Some poor quality segments detected ({abnormal_percentage:.1f}%). Review signal quality thresholds."
                 )
 
-        if "baseline_wander" in quality_results:
-            if quality_results["baseline_wander"]["quality"] == "poor":
+        # SQI-specific recommendations
+        sqi_type = quality_results.get("sqi_type", "unknown")
+        mean_sqi = quality_results.get("mean_sqi", 0)
+        std_sqi = quality_results.get("std_sqi", 0)
+        threshold = quality_results.get("threshold", 0.5)
+        threshold_type = quality_results.get("threshold_type", "above")
+
+        # Handle both single and range thresholds
+        if isinstance(threshold, list) and len(threshold) == 2:
+            # Range threshold: check if mean is outside the range
+            if mean_sqi < threshold[0]:
                 issues.append(
-                    "Significant baseline wander detected. Consider applying baseline correction."
+                    f"Mean SQI value ({mean_sqi:.3f}) is below the lower threshold ({threshold[0]:.3f}). Consider adjusting threshold or improving signal quality."
+                )
+            elif mean_sqi > threshold[1]:
+                issues.append(
+                    f"Mean SQI value ({mean_sqi:.3f}) is above the upper threshold ({threshold[1]:.3f}). Consider adjusting threshold."
+                )
+        else:
+            # Single threshold
+            threshold_val = float(threshold) if not isinstance(threshold, list) else 0.5
+            if threshold_type == "above" and mean_sqi < threshold_val:
+                issues.append(
+                    f"Mean SQI value ({mean_sqi:.3f}) is below the threshold ({threshold_val:.3f}). Consider adjusting threshold or improving signal quality."
+                )
+            elif threshold_type == "below" and mean_sqi > threshold_val:
+                issues.append(
+                    f"Mean SQI value ({mean_sqi:.3f}) is above the threshold ({threshold_val:.3f}). Consider adjusting threshold."
                 )
 
-        if "continuity" in quality_results:
-            if (
-                quality_results["continuity"]["has_nan"]
-                or quality_results["continuity"]["has_inf"]
-            ):
-                issues.append(
-                    "Signal contains NaN or Inf values. Data integrity check needed."
+        if std_sqi > 0.2:
+            issues.append(
+                f"High variability in SQI values (std: {std_sqi:.3f}). Signal quality varies significantly over time."
                 )
 
         if not issues:
             return dbc.Alert("No significant quality issues detected.", color="success")
 
-        return dbc.Card(
-            dbc.CardBody(
-                [
+        recommendations = [
                     html.H4("Issues & Recommendations", className="card-title"),
-                    html.Ul([html.Li(issue) for issue in issues]),
-                ]
-            ),
+        ]
+        
+        if issues:
+            recommendations.append(html.Ul([html.Li(issue) for issue in issues]))
+        
+        # Add statistics
+        recommendations.append(
+            html.Hr(className="my-3")
+        )
+        recommendations.append(
+            html.H5("Quality Statistics", className="card-title")
+        )
+        recommendations.append(
+            html.P(f"Total Segments: {total_segments} (Normal: {num_normal}, Abnormal: {num_abnormal})")
+        )
+        recommendations.append(
+            html.P(f"Mean SQI: {mean_sqi:.3f} ± {std_sqi:.3f}")
+        )
+        recommendations.append(
+            html.P(f"Quality Score: {quality_score:.1%}")
+        )
+
+        return dbc.Card(
+            dbc.CardBody(recommendations),
             className="mt-3",
         )
 
     except Exception as e:
-        logger.error(f"Error creating recommendations: {e}")
-        return html.Div()
+        logger.error(f"Error creating recommendations: {e}", exc_info=True)
+        return dbc.Alert(f"Error: {str(e)}", color="danger")
 
 
 def create_detailed_analysis_display(quality_results):
@@ -940,32 +1827,61 @@ def create_detailed_analysis_display(quality_results):
     try:
         details = []
 
-        if "snr" in quality_results:
-            details.append(html.H5("SNR Analysis"))
-            details.append(html.P(f"SNR: {quality_results['snr']['snr_db']:.2f} dB"))
-
-        if "artifacts" in quality_results:
-            details.append(html.H5("Artifact Detection"))
-            details.append(
-                html.P(
-                    f"Total artifacts: {quality_results['artifacts']['artifact_count']} ({quality_results['artifacts']['artifact_percentage']:.2f}%)"
-                )
-            )
-            details.append(
-                html.P(
-                    f"Z-score method: {quality_results['artifacts']['zscore_count']} artifacts"
-                )
-            )
-            details.append(
-                html.P(
-                    f"Adaptive method: {quality_results['artifacts']['adaptive_count']} artifacts"
-                )
-            )
-            details.append(
-                html.P(
-                    f"Kurtosis method: {quality_results['artifacts']['kurtosis_count']} artifacts"
-                )
-            )
+        # Get SQI-specific details
+        sqi_type = quality_results.get("sqi_type", "unknown")
+        threshold = quality_results.get("threshold", 0.5)
+        threshold_type = quality_results.get("threshold_type", "above")
+        sqi_values = quality_results.get("sqi_values", [])
+        
+        # SQI Information
+        details.append(html.H5("SQI Configuration"))
+        details.append(html.P(f"SQI Type: {sqi_type.replace('_', ' ').title()}"))
+        
+        # Handle both single and range thresholds
+        if isinstance(threshold, list) and len(threshold) == 2:
+            details.append(html.P(f"Threshold: {threshold[0]:.3f} - {threshold[1]:.3f} ({threshold_type})"))
+        else:
+            threshold_val = float(threshold) if not isinstance(threshold, list) else 0.5
+            details.append(html.P(f"Threshold: {threshold_val:.3f} ({threshold_type})"))
+        
+        if sqi_values:
+            details.append(html.P(f"Number of SQI Values: {len(sqi_values)}"))
+        
+        # SQI Statistics
+        details.append(html.Hr(className="my-3"))
+        details.append(html.H5("SQI Statistics"))
+        
+        mean_sqi = quality_results.get("mean_sqi", 0)
+        std_sqi = quality_results.get("std_sqi", 0)
+        min_sqi = quality_results.get("min_sqi", 0)
+        max_sqi = quality_results.get("max_sqi", 0)
+        
+        details.append(html.P(f"Mean SQI: {mean_sqi:.3f}"))
+        details.append(html.P(f"Std Dev: {std_sqi:.3f}"))
+        details.append(html.P(f"Min SQI: {min_sqi:.3f}"))
+        details.append(html.P(f"Max SQI: {max_sqi:.3f}"))
+        
+        # Segment Information
+        details.append(html.Hr(className="my-3"))
+        details.append(html.H5("Segment Analysis"))
+        
+        num_normal = quality_results.get("num_normal", 0)
+        num_abnormal = quality_results.get("num_abnormal", 0)
+        num_segments = quality_results.get("num_segments", 0)
+        
+        details.append(html.P(f"Total Segments: {num_segments}"))
+        details.append(html.P(f"Normal Segments: {num_normal} ({num_normal/num_segments*100:.1f}%)" if num_segments > 0 else f"Normal Segments: {num_normal}"))
+        details.append(html.P(f"Abnormal Segments: {num_abnormal} ({num_abnormal/num_segments*100:.1f}%)" if num_segments > 0 else f"Abnormal Segments: {num_abnormal}"))
+        
+        # Quality Score Information
+        details.append(html.Hr(className="my-3"))
+        details.append(html.H5("Quality Assessment"))
+        
+        quality_score = quality_results.get("quality_score", 0)
+        overall_quality = quality_results.get("overall_quality", "UNKNOWN")
+        
+        details.append(html.P(f"Overall Quality: {overall_quality}"))
+        details.append(html.P(f"Quality Score: {quality_score:.1%}"))
 
         return dbc.Card(
             dbc.CardBody(details),
@@ -973,46 +1889,55 @@ def create_detailed_analysis_display(quality_results):
         )
 
     except Exception as e:
-        logger.error(f"Error creating detailed analysis: {e}")
-        return html.Div()
+        logger.error(f"Error creating detailed analysis: {e}", exc_info=True)
+        return dbc.Alert(f"Error: {str(e)}", color="danger")
 
 
 def create_score_dashboard(quality_results):
     """Create score dashboard."""
     try:
-        if "overall_score" not in quality_results:
-            return html.Div()
+        # Support both old and new format
+        if "overall_score" in quality_results:
+            overall = quality_results["overall_score"]
+            percentage = overall.get("percentage", 0)
+            quality = overall.get("quality", "unknown")
+        elif "quality_score" in quality_results:
+            percentage = quality_results.get("quality_score", 0) * 100
+            quality = quality_results.get("overall_quality", "UNKNOWN")
+        else:
+            return dbc.Alert("No score data available.", color="warning")
 
-        overall = quality_results["overall_score"]
+        # Map quality to progress bar color
+        color_map = {
+            "excellent": "success",
+            "EXCELLENT": "success",
+            "good": "info",
+            "GOOD": "info",
+            "fair": "warning",
+            "FAIR": "warning",
+            "poor": "danger",
+            "POOR": "danger",
+        }
+        
+        progress_color = color_map.get(quality, "secondary")
 
         return dbc.Card(
             dbc.CardBody(
                 [
                     html.H4("Quality Score Dashboard", className="card-title"),
                     dbc.Progress(
-                        value=overall["percentage"],
-                        label=f"{overall['percentage']:.1f}%",
-                        color=(
-                            "success"
-                            if overall["quality"] == "excellent"
-                            else (
-                                "info"
-                                if overall["quality"] == "good"
-                                else (
-                                    "warning"
-                                    if overall["quality"] == "fair"
-                                    else "danger"
-                                )
-                            )
-                        ),
+                        value=percentage,
+                        label=f"{percentage:.1f}%",
+                        color=progress_color,
                         className="mb-3",
                         style={"height": "30px"},
                     ),
+                    html.P(f"Quality Level: {quality}", className="mb-0"),
                 ]
             ),
             className="mt-3",
         )
 
     except Exception as e:
-        logger.error(f"Error creating score dashboard: {e}")
-        return html.Div()
+        logger.error(f"Error creating score dashboard: {e}", exc_info=True)
+        return dbc.Alert(f"Error: {str(e)}", color="danger")

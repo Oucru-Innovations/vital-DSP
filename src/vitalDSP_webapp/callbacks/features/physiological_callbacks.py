@@ -1009,7 +1009,7 @@ def register_physiological_callbacks(app):
 
             # Set default values if not provided
             start_position = start_position or 0
-            duration = duration or 10
+            duration = duration or 60  # Default to 1 minute instead of 10 seconds
             signal_type = signal_type or "auto"
             analysis_categories = analysis_categories or [
                 "hrv",
@@ -1049,16 +1049,34 @@ def register_physiological_callbacks(app):
                 "filtering",
             ]
 
-            # Handle start_position - it comes as a list from RangeSlider [min, max]
-            # We want the first value (start time)
-            if isinstance(start_position, list):
-                start_time = start_position[0]
-                logger.info(f"start_position is a list: {start_position}, using first value: {start_time}")
-            else:
-                start_time = start_position
-                logger.info(f"start_position is a single value: {start_time}")
+            # Convert duration to numeric (Select returns string)
+            try:
+                duration = float(duration) if duration is not None else 60
+            except (ValueError, TypeError):
+                duration = 60  # Default to 1 minute if conversion fails
+            
+            # Convert start_position to numeric
+            try:
+                start_position = float(start_position) if start_position is not None else 0
+            except (ValueError, TypeError):
+                start_position = 0
+            
+            # Handle nudge buttons for start_position adjustments
+            if trigger_id in ["physio-btn-nudge-m10", "physio-btn-nudge-m1", "physio-btn-nudge-p1", "physio-btn-nudge-p10"]:
+                # Adjust start position by percentage
+                if trigger_id == "physio-btn-nudge-m10":
+                    start_position = max(0, start_position - 10)
+                elif trigger_id == "physio-btn-nudge-m1":
+                    start_position = max(0, start_position - 5)
+                elif trigger_id == "physio-btn-nudge-p1":
+                    start_position = min(100, start_position + 5)
+                elif trigger_id == "physio-btn-nudge-p10":
+                    start_position = min(100, start_position + 10)
+                logger.info(f"Adjusted start position via nudge: {start_position}%")
 
-            logger.info(f"Time window: {start_time} - {start_time + duration}")
+            # Handle start_position as percentage (0-100) - convert to time
+            # start_position is now a percentage of the data length
+            logger.info(f"Start position: {start_position}%, Duration: {duration}s")
             logger.info(f"Signal type: {signal_type}")
             logger.info(f"Analysis categories: {analysis_categories}")
             logger.info(f"HRV options: {hrv_options}")
@@ -1201,30 +1219,34 @@ def register_physiological_callbacks(app):
                     time_data_seconds = (
                         (df[time_col] - first_timestamp).dt.total_seconds().values
                     )
-                    logger.info("Time data converted to seconds from first timestamp")
+                    time_range_seconds = time_data_seconds[-1] - time_data_seconds[0]
+                    logger.info(f"Time data converted to seconds from first timestamp. Range: {time_range_seconds:.2f}s")
                 elif time_range > 1000:  # Likely milliseconds
                     logger.info(
                         "Time data appears to be in milliseconds, converting to seconds"
                     )
                     time_data_seconds = time_data / 1000.0
-                    # Adjust default time window for seconds
-                    if start_time == 0 and duration == 10:
-                        start_time = 0
-                        duration = min(
-                            60, time_range / 1000.0
-                        )  # Use up to 60 seconds or full range
-                        logger.info(
-                            f"Adjusted time window to: {start_time} - {start_time + duration} seconds"
-                        )
+                    time_range_seconds = time_range / 1000.0
                 else:
                     # Time data is already in seconds
                     time_data_seconds = time_data
+                    time_range_seconds = time_range
                     logger.info("Time data is already in seconds")
 
+                # Convert start_position percentage to actual time
+                start_time_actual = (start_position / 100.0) * time_range_seconds
+                end_time_actual = start_time_actual + duration
+                
+                # Ensure end_time doesn't exceed data range
+                if end_time_actual > time_range_seconds:
+                    end_time_actual = time_range_seconds
+                    start_time_actual = max(0, end_time_actual - duration)
+                
+                logger.info(f"Time window: {start_time_actual:.2f}s to {end_time_actual:.2f}s")
+                
                 # Apply time window
-                end_time = start_time + duration
-                start_idx = np.searchsorted(time_data_seconds, start_time)
-                end_idx = np.searchsorted(time_data_seconds, end_time)
+                start_idx = np.searchsorted(time_data_seconds, start_time_actual)
+                end_idx = np.searchsorted(time_data_seconds, end_time_actual)
 
                 # Ensure minimum signal length for analysis (at least 5 seconds worth of data)
                 min_samples = max(
@@ -1538,18 +1560,18 @@ def register_physiological_callbacks(app):
         start_pos = current_start if current_start is not None else 0
         dur = current_duration if current_duration is not None else 10
 
-        # Handle nudge buttons
+        # Handle nudge buttons (percentage-based)
         if trigger_id == "physio-btn-nudge-m10":
-            new_start = max(0, start_pos - 10)
+            new_start = max(0, start_pos - 10)  # Decrease by 10%
             return new_start, dur
         elif trigger_id == "physio-btn-nudge-m1":
-            new_start = max(0, start_pos - 1)
+            new_start = max(0, start_pos - 5)  # Decrease by 5%
             return new_start, dur
         elif trigger_id == "physio-btn-nudge-p1":
-            new_start = start_pos + 1
+            new_start = min(100, start_pos + 5)  # Increase by 5%
             return new_start, dur
         elif trigger_id == "physio-btn-nudge-p10":
-            new_start = start_pos + 10
+            new_start = min(100, start_pos + 10)  # Increase by 10%
             return new_start, dur
 
         # Return current values for other triggers
@@ -1586,6 +1608,8 @@ def update_physio_time_inputs(
     slider_value, nudge_m10, nudge_m1, nudge_p1, nudge_p10, start_time, end_time
 ):
     """Update time inputs based on slider or nudge buttons."""
+    # NOTE: This function appears to be legacy code for old start/end time pattern
+    # It's kept for backward compatibility but may not be used in the new start/duration pattern
     ctx = callback_context
     if not ctx.triggered:
         raise Exception("No trigger detected")
@@ -1595,7 +1619,7 @@ def update_physio_time_inputs(
     if trigger_id == "physio-time-range-slider" and slider_value:
         return slider_value[0], slider_value[1]
 
-    # Handle nudge buttons
+    # Handle nudge buttons (legacy - using percentage-based adjustments now)
     time_window = end_time - start_time if start_time and end_time else 10
 
     if trigger_id == "physio-btn-nudge-m10":
@@ -1603,11 +1627,11 @@ def update_physio_time_inputs(
         new_end = new_start + time_window
         return new_start, new_end
     elif trigger_id == "physio-btn-nudge-m1":
-        new_start = max(0, start_time - 1) if start_time else 0
+        new_start = max(0, start_time - 5) if start_time else 0  # Changed to 5
         new_end = new_start + time_window
         return new_start, new_end
     elif trigger_id == "physio-btn-nudge-p1":
-        new_start = start_time + 1 if start_time else 1
+        new_start = start_time + 5 if start_time else 5  # Changed to 5
         new_end = new_start + time_window
         return new_start, new_end
     elif trigger_id == "physio-btn-nudge-p10":

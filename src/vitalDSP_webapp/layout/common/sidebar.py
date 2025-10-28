@@ -62,7 +62,7 @@ def Sidebar():
                         className="mb-2",
                     ),
                     # Features section
-                    html.H6("Features", className="mt-4 mb-2 text-muted"),
+                    html.H6("Feature Analysis", className="mt-4 mb-2 text-muted"),
                     html.Div(
                         [
                             html.A(
@@ -84,6 +84,38 @@ def Sidebar():
                                     " Advanced Features",
                                 ],
                                 href="/features",
+                                className="nav-link text-white",
+                            ),
+                            html.A(
+                                [
+                                    html.I(className="fas fa-exchange-alt"),
+                                    " Transforms",
+                                ],
+                                href="/transforms",
+                                className="nav-link text-white",
+                            ),
+                            html.A(
+                                [
+                                    html.I(className="fas fa-shield-alt"),
+                                    " Quality",
+                                ],
+                                href="/quality",
+                                className="nav-link text-white",
+                            ),
+                            html.A(
+                                [
+                                    html.I(className="fas fa-brain"),
+                                    " Advanced Processing",
+                                ],
+                                href="/advanced",
+                                className="nav-link text-white",
+                            ),
+                            html.A(
+                                [
+                                    html.I(className="fas fa-file-medical"),
+                                    " Health Report",
+                                ],
+                                href="/health-report",
                                 className="nav-link text-white",
                             ),
                         ],
@@ -206,6 +238,30 @@ def Sidebar():
                                 href="/features",
                                 className="nav-icon text-white",
                                 title="Advanced Features",
+                            ),
+                            html.A(
+                                html.I(className="fas fa-exchange-alt"),
+                                href="/transforms",
+                                className="nav-icon text-white",
+                                title="Transforms",
+                            ),
+                            html.A(
+                                html.I(className="fas fa-shield-alt"),
+                                href="/quality",
+                                className="nav-icon text-white",
+                                title="Quality",
+                            ),
+                            html.A(
+                                html.I(className="fas fa-brain"),
+                                href="/advanced",
+                                className="nav-icon text-white",
+                                title="Advanced",
+                            ),
+                            html.A(
+                                html.I(className="fas fa-file-medical"),
+                                href="/health-report",
+                                className="nav-icon text-white",
+                                title="Health Report",
                             ),
                         ],
                         className="mb-3",

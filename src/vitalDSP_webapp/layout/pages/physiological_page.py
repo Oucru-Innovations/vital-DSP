@@ -205,46 +205,51 @@ def physiological_layout():
                                     ),
                                     dbc.CardBody(
                                         [
-                                            # Time Inputs
-                                            dbc.Row(
-                                                [
-                                                    dbc.Col(
-                                                        [
-                                                            html.Label(
-                                                                "Start Time (s)",
-                                                                className="form-label fw-bold small",
-                                                            ),
-                                                            dbc.Input(
-                                                                id="physio-start-position-slider",
-                                                                type="number",
-                                                                value=0,
-                                                                min=0,
-                                                                step=0.1,
-                                                                placeholder="0",
-                                                                className="form-control-sm",
-                                                            ),
-                                                        ],
-                                                        md=6,
-                                                    ),
-                                                    dbc.Col(
-                                                        [
-                                                            html.Label(
-                                                                "End Time (s)",
-                                                                className="form-label fw-bold small",
-                                                            ),
-                                                            dbc.Input(
-                                                                id="physio-duration-select",
-                                                                type="number",
-                                                                value=10,
-                                                                min=0,
-                                                                step=0.1,
-                                                                placeholder="10",
-                                                                className="form-control-sm",
-                                                            ),
-                                                        ],
-                                                        md=6,
-                                                    ),
+                                            # Start Position Slider - NEW PATTERN
+                                            html.Label(
+                                                "Start Position (%)",
+                                                className="form-label fw-bold small",
+                                            ),
+                                            html.Small(
+                                                "Position in data (0% = start, 100% = end)",
+                                                className="text-muted d-block mb-1",
+                                            ),
+                                            dcc.Slider(
+                                                id="physio-start-position-slider",
+                                                min=0,
+                                                max=100,
+                                                step=1,
+                                                value=0,
+                                                marks={
+                                                    0: "0%",
+                                                    25: "25%",
+                                                    50: "50%",
+                                                    75: "75%",
+                                                    100: "100%",
+                                                },
+                                                tooltip={"placement": "bottom", "always_visible": True},
+                                                className="mb-3",
+                                            ),
+                                            # Duration Dropdown - NEW PATTERN
+                                            html.Label(
+                                                "Duration",
+                                                className="form-label fw-bold small",
+                                            ),
+                                            html.Small(
+                                                "Analysis window size",
+                                                className="text-muted d-block mb-1",
+                                            ),
+                                            dbc.Select(
+                                                id="physio-duration-select",
+                                                options=[
+                                                    {"label": "10 seconds", "value": 10},
+                                                    {"label": "30 seconds", "value": 30},
+                                                    {"label": "1 minute", "value": 60},
+                                                    {"label": "2 minutes", "value": 120},
+                                                    {"label": "5 minutes", "value": 300},
+                                                    {"label": "10 minutes", "value": 600},
                                                 ],
+                                                value=60,  # Default to 1 minute
                                                 className="mb-3",
                                             ),
                                             # Quick Navigation Buttons
@@ -252,78 +257,40 @@ def physiological_layout():
                                                 "Quick Navigation",
                                                 className="form-label fw-bold small",
                                             ),
-                                            dbc.Row(
+                                            html.Small(
+                                                "Adjust start position",
+                                                className="text-muted d-block mb-1",
+                                            ),
+                                            dbc.ButtonGroup(
                                                 [
-                                                    dbc.Col(
-                                                        [
-                                                            dbc.Button(
-                                                                "⏪ -10s",
-                                                                id="physio-btn-nudge-m10",
-                                                                color="secondary",
-                                                                size="sm",
-                                                                className="w-100 mb-1",
-                                                            )
-                                                        ],
-                                                        md=6,
+                                                    dbc.Button(
+                                                        "⏪ -10%",
+                                                        id="physio-btn-nudge-m10",
+                                                        size="sm",
+                                                        color="secondary",
+                                                        className="me-1",
                                                     ),
-                                                    dbc.Col(
-                                                        [
-                                                            dbc.Button(
-                                                                "⏪ -1s",
-                                                                id="physio-btn-nudge-m1",
-                                                                color="secondary",
-                                                                size="sm",
-                                                                className="w-100 mb-1",
-                                                            )
-                                                        ],
-                                                        md=6,
+                                                    dbc.Button(
+                                                        "⏪ -5%",
+                                                        id="physio-btn-nudge-m1",
+                                                        size="sm",
+                                                        color="secondary",
+                                                        className="me-1",
+                                                    ),
+                                                    dbc.Button(
+                                                        "+5% ⏩",
+                                                        id="physio-btn-nudge-p1",
+                                                        size="sm",
+                                                        color="secondary",
+                                                        className="me-1",
+                                                    ),
+                                                    dbc.Button(
+                                                        "+10% ⏩",
+                                                        id="physio-btn-nudge-p10",
+                                                        size="sm",
+                                                        color="secondary",
                                                     ),
                                                 ],
-                                                className="mb-2",
-                                            ),
-                                            dbc.Row(
-                                                [
-                                                    dbc.Col(
-                                                        [
-                                                            dbc.Button(
-                                                                "+1s ⏩",
-                                                                id="physio-btn-nudge-p1",
-                                                                color="secondary",
-                                                                size="sm",
-                                                                className="w-100 mb-1",
-                                                            )
-                                                        ],
-                                                        md=6,
-                                                    ),
-                                                    dbc.Col(
-                                                        [
-                                                            dbc.Button(
-                                                                "+10s ⏩",
-                                                                id="physio-btn-nudge-p10",
-                                                                color="secondary",
-                                                                size="sm",
-                                                                className="w-100",
-                                                            )
-                                                        ],
-                                                        md=6,
-                                                    ),
-                                                ],
-                                                className="mb-3",
-                                            ),
-                                            # Time Range Slider
-                                            html.Label(
-                                                "Time Range Slider",
-                                                className="form-label fw-bold small",
-                                            ),
-                                            dcc.RangeSlider(
-                                                id="physio-start-position-slider",
-                                                min=0,
-                                                max=100,
-                                                step=0.1,
-                                                value=[0, 10],
-                                                allowCross=False,
-                                                pushable=1,
-                                                updatemode="mouseup",
                                                 className="mb-2",
                                             ),
                                         ]

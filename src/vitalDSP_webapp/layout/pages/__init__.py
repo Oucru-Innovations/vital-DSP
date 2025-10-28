@@ -12,12 +12,12 @@ from .physiological_page import physiological_layout
 from .analysis_pages import (
     filtering_layout,
     features_layout,
-    transforms_layout,
-    quality_layout,
-    advanced_layout,
     health_report_layout,
     settings_layout,
 )
+from .advanced_page import advanced_layout
+from .quality_page import quality_layout
+from .transform_page import transforms_layout
 from .pipeline_page import pipeline_layout
 
 __all__ = [

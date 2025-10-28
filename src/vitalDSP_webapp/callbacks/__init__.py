@@ -20,6 +20,7 @@ from .analysis.frequency_filtering_callbacks import (
 )
 from .analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 from .analysis.respiratory_callbacks import register_respiratory_callbacks
+from .analysis.transform_callbacks import register_transform_callbacks
 from .analysis.quality_callbacks import register_quality_callbacks
 from .analysis.advanced_callbacks import register_advanced_callbacks
 from .analysis.health_report_callbacks import register_health_report_callbacks
@@ -44,6 +45,7 @@ __all__ = [
     "register_frequency_filtering_callbacks",
     "register_signal_filtering_callbacks",
     "register_respiratory_callbacks",
+    "register_transform_callbacks",
     "register_quality_callbacks",
     "register_advanced_callbacks",
     "register_health_report_callbacks",

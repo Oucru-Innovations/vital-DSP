@@ -49,34 +49,28 @@ def register_advanced_callbacks(app):
         ],
         [
             Input("advanced-analyze-btn", "n_clicks"),
-            # Input("url", "pathname"),  # REMOVED - was running full analysis on EVERY page load!
-            Input("advanced-btn-nudge-m10", "n_clicks"),
-            Input("advanced-btn-nudge-m1", "n_clicks"),
-            Input("advanced-btn-nudge-p1", "n_clicks"),
-            Input("advanced-btn-nudge-p10", "n_clicks"),
         ],
         [
             State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
-            State("advanced-start-position-slider", "value"),  # NEW: start position instead of time-range-slider
-            State("advanced-duration-select", "value"),  # NEW: duration instead of start-time/end-time
+            State("advanced-start-position", "value"),  # Position slider (0-100%)
+            State("advanced-duration", "value"),  # Duration dropdown
+            State("advanced-signal-source", "value"),  # Signal source selector
             State("advanced-signal-type", "value"),
             State("advanced-analysis-categories", "value"),
             State("advanced-ml-options", "value"),
             State("advanced-deep-learning-options", "value"),
-            State("advanced-cross-validation-folds", "value"),
+            State("advanced-cv-folds", "value"),  # Fixed ID
             State("advanced-random-state", "value"),
             State("advanced-model-config", "value"),
+            State("store-filtered-signal", "data"),  # Filtered signal store
         ],
     )
     def advanced_analysis_callback(
         n_clicks,
         pathname,
-        nudge_m10,
-        nudge_m1,
-        nudge_p1,
-        nudge_p10,
-        start_position,  # NEW: start position instead of slider_value
-        duration,  # NEW: duration instead of start_time/end_time
+        start_position,  # Position slider (0-100%)
+        duration,  # Duration dropdown
+        signal_source,  # Signal source selector
         signal_type,
         analysis_categories,
         ml_options,
@@ -84,10 +78,11 @@ def register_advanced_callbacks(app):
         cv_folds,
         random_state,
         model_config,
+        filtered_signal_data,  # Filtered signal store
     ):
         """Main callback for advanced analysis."""
-        ctx = callback_context
-        if not ctx.triggered:
+        # Only run if button was clicked
+        if not n_clicks:
             return (
                 create_empty_figure(),
                 create_empty_figure(),
@@ -100,29 +95,22 @@ def register_advanced_callbacks(app):
                 None,
             )
 
-        button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-
-        # Handle time window updates
-        if button_id in [
-            "advanced-btn-nudge-m10",
-            "advanced-btn-nudge-m1",
-            "advanced-btn-nudge-p1",
-            "advanced-btn-nudge-p10",
-        ]:
+        # Only run on advanced page
+        if pathname != "/advanced":
             return (
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
+                create_empty_figure(),
+                create_empty_figure(),
+                "",
+                "",
+                "",
+                "",
+                create_empty_figure(),
+                None,
+                None,
             )
 
         # Handle analysis button click
-        if button_id == "advanced-analyze-btn" and n_clicks:
+        if n_clicks:
             try:
                 # Get data service
                 data_service = get_enhanced_data_service()
@@ -151,10 +139,42 @@ def register_advanced_callbacks(app):
                         None,
                     )
 
-                # Use the most recent data
+                # Use the most recent data (data_service returns dict with IDs as keys)
                 data_id = list(stored_data.keys())[-1]
-                df = stored_data[data_id]
+                latest_data = stored_data[data_id]
+                logger.info(f"Latest data ID: {data_id}")
+                
+                # Get column mapping first to find signal column
+                column_mapping = data_service.get_column_mapping(data_id)
+                logger.info(f"Column mapping: {column_mapping}")
+                
+                if not column_mapping:
+                    error_fig = create_empty_figure()
+                    error_results = html.Div(
+                        [
+                            html.H5("Data Error"),
+                            html.P("No column mapping found. Please upload data first."),
+                        ]
+                    )
+                    return (
+                        error_fig,
+                        error_fig,
+                        error_results,
+                        "",
+                        "",
+                        "",
+                        "",
+                        error_fig,
+                        None,
+                        None,
+                    )
+                
+                # Get data info
                 data_info = data_service.get_data_info(data_id)
+                
+                # Get the actual DataFrame
+                df = data_service.get_data(data_id)
+                logger.info(f"Data shape: {df.shape if df is not None else 'None'}, columns: {list(df.columns) if df is not None else 'None'}")
 
                 if df is None or df.empty:
                     error_fig = create_empty_figure()
@@ -176,24 +196,55 @@ def register_advanced_callbacks(app):
                         None,
                     )
 
-                # Get time window
-                if start_position is None or duration is None:
-                    start_position = 0
-                    duration = len(df) / data_info.get("sampling_frequency", 1000)
-
-                # Convert time to indices
+                # Get sampling frequency
                 sampling_freq = data_info.get("sampling_frequency", 1000)
-                end_time = start_position + duration
-                start_idx = int(start_position * sampling_freq)
+
+                # Convert position (0-100%) and duration to time indices
+                start_position = float(start_position) if start_position is not None else 0
+                duration = float(duration) if duration is not None else 60
+
+                # Calculate total duration and start time
+                total_duration = len(df) / sampling_freq
+                start_time = (start_position / 100.0) * total_duration
+                end_time = min(start_time + duration, total_duration)
+
+                # Convert to sample indices
+                start_idx = int(start_time * sampling_freq)
                 end_idx = int(end_time * sampling_freq)
 
                 # Ensure valid indices
                 start_idx = max(0, min(start_idx, len(df) - 1))
                 end_idx = max(start_idx + 1, min(end_idx, len(df)))
 
-                # Extract signal data
-                signal_data = df.iloc[start_idx:end_idx].values.flatten()
-                time_axis = np.arange(start_idx, end_idx) / sampling_freq
+                # Check signal source
+                signal_source = signal_source or "filtered"
+
+                # Get signal data based on source
+                if signal_source == "filtered" and filtered_signal_data:
+                    # Use filtered signal if available
+                    signal_data = np.array(filtered_signal_data["signal"])
+                    # Apply same windowing
+                    if len(signal_data) >= end_idx:
+                        signal_data = signal_data[start_idx:end_idx]
+                    else:
+                        # Fallback to original signal column
+                        signal_col = column_mapping.get("signal", "signal")
+                        if signal_col and signal_col in df.columns:
+                            signal_data = df[signal_col].values[start_idx:end_idx]
+                        else:
+                            # Final fallback: use first numeric column
+                            signal_data = df.iloc[start_idx:end_idx].values.flatten()
+                else:
+                    # Use original signal column
+                    signal_col = column_mapping.get("signal", "signal")
+                    if signal_col and signal_col in df.columns:
+                        signal_data = df[signal_col].values[start_idx:end_idx]
+                    else:
+                        # Fallback: use first numeric column
+                        signal_data = df.iloc[start_idx:end_idx].values.flatten()
+
+                # Create time axis (normalized to start from 0)
+                time_axis = np.arange(len(signal_data)) / sampling_freq
 
                 # Auto-detect signal type if needed
                 if signal_type == "auto":
@@ -292,17 +343,40 @@ def register_advanced_callbacks(app):
 
     # Removed old sync callbacks - no longer needed with start/duration approach
 
+    # Navigation callback for position slider
     @app.callback(
-        Output("advanced-time-range-slider", "value"),
-        [Input("advanced-time-range-slider", "id")],  # Dummy input - this callback is disabled
+        Output("advanced-start-position", "value"),
+        [
+            Input("advanced-btn-nudge-m10", "n_clicks"),
+            Input("advanced-btn-nudge-m1", "n_clicks"),
+            Input("advanced-btn-nudge-p1", "n_clicks"),
+            Input("advanced-btn-nudge-p10", "n_clicks"),
+        ],
+        [State("advanced-start-position", "value")],
         prevent_initial_call=True,
     )
-    def update_advanced_time_slider_range(dummy):
-        """
-        DISABLED: This callback was causing loops by listening to start-time/end-time.
-        Slider should only be updated by user interaction, not programmatically.
-        """
-        return no_update
+    def update_advanced_position_slider(nudge_m10, nudge_m1, nudge_p1, nudge_p10, start_position):
+        """Update position slider based on navigation button clicks."""
+        ctx = callback_context
+        if not ctx.triggered:
+            return no_update
+
+        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+        # Get current position (default to 0 if None)
+        start_position = start_position if start_position is not None else 0
+
+        # Update position based on button clicked
+        if trigger_id == "advanced-btn-nudge-m10":
+            return max(0, start_position - 10)
+        elif trigger_id == "advanced-btn-nudge-m1":
+            return max(0, start_position - 1)
+        elif trigger_id == "advanced-btn-nudge-p1":
+            return min(100, start_position + 1)
+        elif trigger_id == "advanced-btn-nudge-p10":
+            return min(100, start_position + 10)
+
+        return start_position
 
 
 # Helper functions for advanced analysis
@@ -375,12 +449,11 @@ def perform_advanced_analysis(
     """Perform comprehensive advanced analysis."""
     try:
         analysis_results = {}
-
-        # Feature extraction
-        if "feature_engineering" in analysis_categories:
-            analysis_results["features"] = extract_advanced_features(
-                signal_data, sampling_freq
-            )
+        
+        # Always extract features (needed for ML/DL analysis)
+        analysis_results["features"] = extract_advanced_features(
+            signal_data, sampling_freq
+        )
 
         # Machine learning analysis
         if "ml_analysis" in analysis_categories and ml_options:
@@ -390,9 +463,13 @@ def perform_advanced_analysis(
 
         # Deep learning analysis
         if "deep_learning" in analysis_categories and deep_learning_options:
-            analysis_results["dl_results"] = perform_deep_learning_analysis(
-                signal_data, sampling_freq, deep_learning_options
-            )
+            try:
+                analysis_results["dl_results"] = perform_deep_learning_analysis(
+                    signal_data, sampling_freq, deep_learning_options
+                )
+            except Exception as e:
+                logger.error(f"Error in deep learning analysis: {e}")
+                analysis_results["dl_results"] = {"error": f"Deep learning analysis failed: {str(e)}"}
 
         # Pattern recognition
         if "pattern_recognition" in analysis_categories:
@@ -400,16 +477,17 @@ def perform_advanced_analysis(
                 signal_data, sampling_freq
             )
 
-        # Ensemble methods
-        if "ensemble_methods" in analysis_categories:
+        # Ensemble methods (fixed: use "ensemble" not "ensemble_methods")
+        if "ensemble" in analysis_categories:
             analysis_results["ensemble"] = perform_ensemble_analysis(
                 signal_data, sampling_freq, cv_folds, random_state
             )
-
-        # Advanced signal processing
-        if "advanced_processing" in analysis_categories:
-            analysis_results["advanced_processing"] = (
-                perform_advanced_signal_processing(signal_data, sampling_freq)
+        
+        # Advanced signal processing (when pattern recognition is enabled, include advanced processing)
+        # Also handle classification, regression, etc. through ML analysis
+        if "pattern_recognition" in analysis_categories or "classification" in analysis_categories or "regression" in analysis_categories or "clustering" in analysis_categories or "dimensionality_reduction" in analysis_categories or "forecasting" in analysis_categories:
+            analysis_results["advanced_processing"] = perform_advanced_signal_processing(
+                signal_data, sampling_freq
             )
 
         return analysis_results
@@ -1098,11 +1176,18 @@ def train_lstm_model(data):
         logger.info("Training LSTM model...")
         lstm_filter.train()
 
-        # Apply the filter
+        # Apply the filter - LSTM is passed the full signal data, but it needs proper windowing
+        # The NeuralNetworkFiltering class should handle this internally, but we need to be careful
         filtered_signal = lstm_filter.apply_filter()
 
-        # Calculate performance metrics
-        mse = np.mean((signal_data[:-1] - filtered_signal.flatten()) ** 2)
+        # Ensure shapes match for MSE calculation
+        filtered_signal_flat = filtered_signal.flatten()
+        # Match the shorter length
+        min_len = min(len(signal_data), len(filtered_signal_flat))
+        if min_len > 0:
+            mse = np.mean((signal_data[:min_len] - filtered_signal_flat[:min_len]) ** 2)
+        else:
+            mse = 0.0
 
         logger.info(f"LSTM training complete. MSE: {mse:.6f}")
 
@@ -1540,7 +1625,9 @@ def perform_empirical_mode_decomposition(signal_data, sampling_freq):
 def create_main_advanced_plot(time_axis, signal_data, analysis_results, signal_type):
     """Create the main advanced analysis plot."""
     try:
-        if "error" in analysis_results:
+        # Don't fail if individual analysis steps have errors - plot what we have
+        # Only fail if analysis_results itself is None or empty
+        if not analysis_results:
             return create_empty_figure()
 
         fig = go.Figure()
@@ -1574,7 +1661,8 @@ def create_main_advanced_plot(time_axis, signal_data, analysis_results, signal_t
 def create_advanced_performance_plot(analysis_results, analysis_categories):
     """Create advanced performance plot."""
     try:
-        if "error" in analysis_results:
+        # Don't fail if individual analysis steps have errors - plot what we have
+        if not analysis_results:
             return create_empty_figure()
 
         fig = go.Figure()
@@ -1608,7 +1696,8 @@ def create_advanced_performance_plot(analysis_results, analysis_categories):
 def create_advanced_visualizations(analysis_results, signal_data, sampling_freq):
     """Create advanced visualizations including EMD decomposition."""
     try:
-        if "error" in analysis_results:
+        # Don't fail if individual analysis steps have errors - plot what we have
+        if not analysis_results:
             return create_empty_figure()
 
         # Check if EMD results are available
@@ -1717,7 +1806,7 @@ def create_advanced_visualizations(analysis_results, signal_data, sampling_freq)
 
 # Result display functions
 def create_advanced_analysis_summary(analysis_results, signal_type):
-    """Create advanced analysis summary."""
+    """Create advanced analysis summary with actual results."""
     try:
         if "error" in analysis_results:
             return html.Div(
@@ -1728,32 +1817,89 @@ def create_advanced_analysis_summary(analysis_results, signal_type):
             )
 
         sections = []
-
-        # Overall summary
+        
+        # Overall summary header
         sections.append(
             html.Div(
                 [
                     html.H5("🧠 Advanced Analysis Summary"),
                     html.P(f"Signal Type: {signal_type.upper()}"),
-                    html.P(f"Analysis Categories: {len(analysis_results)}"),
+                    html.P(f"Analysis Categories Completed: {len([k for k, v in analysis_results.items() if 'error' not in str(v)])}"),
                 ]
             )
         )
 
-        # Category summaries
-        for category, results in analysis_results.items():
-            if "error" not in results:
-                sections.append(
-                    html.Div(
-                        [
-                            html.H6(f"📊 {category.replace('_', ' ').title()}"),
-                            html.P("Status: Completed"),
-                        ],
-                        className="mb-2",
-                    )
-                )
+        # Display features if available
+        if "features" in analysis_results and "error" not in analysis_results["features"]:
+            features = analysis_results["features"]
+            sections.append(html.Hr())
+            sections.append(html.H6("📊 Extracted Features"))
+            
+            # Statistical features
+            if "statistical" in features and "error" not in features["statistical"]:
+                stat = features["statistical"]
+                sections.append(html.P(html.Strong("Statistical Features:")))
+                sections.append(html.P(f"  • Mean: {stat.get('mean', 0):.6f}"))
+                sections.append(html.P(f"  • Std Dev: {stat.get('std', 0):.6f}"))
+                sections.append(html.P(f"  • Skewness: {stat.get('skewness', 0):.6f}"))
+                sections.append(html.P(f"  • Kurtosis: {stat.get('kurtosis', 0):.6f}"))
+                sections.append(html.P(f"  • Entropy: {stat.get('entropy', 0):.6f}"))
+            
+            # Spectral features
+            if "spectral" in features and "error" not in features["spectral"]:
+                spec = features["spectral"]
+                sections.append(html.P(html.Strong("Spectral Features:")))
+                sections.append(html.P(f"  • Spectral Centroid: {spec.get('spectral_centroid', 0):.2f} Hz"))
+                sections.append(html.P(f"  • Spectral Bandwidth: {spec.get('spectral_bandwidth', 0):.2f} Hz"))
+                sections.append(html.P(f"  • Dominant Frequency: {spec.get('dominant_frequency', 0):.2f} Hz"))
+            
+            # Temporal features
+            if "temporal" in features and "error" not in features["temporal"]:
+                temp = features["temporal"]
+                sections.append(html.P(html.Strong("Temporal Features:")))
+                sections.append(html.P(f"  • Peak Count: {temp.get('peak_count', 0)}"))
+                sections.append(html.P(f"  • Mean Interval: {temp.get('mean_interval', 0):.4f} s"))
+                sections.append(html.P(f"  • Heart Rate: {temp.get('heart_rate', 0):.2f} bpm"))
+                sections.append(html.P(f"  • Interval Std: {temp.get('interval_std', 0):.4f} s"))
+            
+            # Morphological features
+            if "morphological" in features and "error" not in features["morphological"]:
+                morph = features["morphological"]
+                sections.append(html.P(html.Strong("Morphological Features:")))
+                sections.append(html.P(f"  • Amplitude Range: {morph.get('amplitude_range', 0):.6f}"))
+                sections.append(html.P(f"  • Mean Amplitude: {morph.get('amplitude_mean', 0):.6f}"))
+                sections.append(html.P(f"  • Zero Crossings: {morph.get('zero_crossings', 0)}"))
+                sections.append(html.P(f"  • Signal Energy: {morph.get('signal_energy', 0):.2f}"))
 
-        return html.Div(sections)
+        # Display pattern recognition if available
+        if "patterns" in analysis_results and "error" not in analysis_results["patterns"]:
+            patterns = analysis_results["patterns"]
+            sections.append(html.Hr())
+            sections.append(html.H6("🎯 Pattern Recognition"))
+            
+            if "peaks" in patterns and "error" not in patterns["peaks"]:
+                peak_pat = patterns["peaks"]
+                sections.append(html.P(html.Strong("Peak Patterns:")))
+                sections.append(html.P(f"  • Number of Peaks: {peak_pat.get('num_peaks', 0)}"))
+                if "mean_interval" in peak_pat:
+                    sections.append(html.P(f"  • Mean Interval: {peak_pat.get('mean_interval', 0):.4f} s"))
+                    sections.append(html.P(f"  • Heart Rate: {peak_pat.get('heart_rate', 0):.2f} bpm"))
+            
+            if "frequency" in patterns and "error" not in patterns["frequency"]:
+                freq_pat = patterns["frequency"]
+                sections.append(html.P(html.Strong("Frequency Patterns:")))
+                sections.append(html.P(f"  • Dominant Frequency: {freq_pat.get('dominant_frequency', 0):.2f} Hz"))
+                sections.append(html.P(f"  • Spectral Centroid: {freq_pat.get('spectral_centroid', 0):.2f} Hz"))
+                sections.append(html.P(f"  • Total Power: {freq_pat.get('total_power', 0):.2f}"))
+            
+            if "morphology" in patterns and "error" not in patterns["morphology"]:
+                morph_pat = patterns["morphology"]
+                sections.append(html.P(html.Strong("Morphological Patterns:")))
+                sections.append(html.P(f"  • Peak Count: {morph_pat.get('num_peaks', 0)}"))
+                sections.append(html.P(f"  • Mean Peak Height: {morph_pat.get('mean_peak_height', 0):.6f}"))
+                sections.append(html.P(f"  • Peak Variability: {morph_pat.get('peak_variability', 0):.4f}"))
+
+        return html.Div(sections, className="p-3")
 
     except Exception as e:
         logger.error(f"Error creating analysis summary: {e}")
@@ -1763,7 +1909,7 @@ def create_advanced_analysis_summary(analysis_results, signal_type):
 
 
 def create_advanced_model_details(analysis_results, analysis_categories):
-    """Create advanced model details."""
+    """Create advanced model details with actual results."""
     try:
         if "error" in analysis_results:
             return html.Div(
@@ -1774,34 +1920,115 @@ def create_advanced_model_details(analysis_results, analysis_categories):
             )
 
         sections = []
-
-        if "ml_results" in analysis_results:
+        
+        # ML Models
+        if "ml_results" in analysis_results and "error" not in analysis_results["ml_results"]:
             ml_results = analysis_results["ml_results"]
-            if "error" not in ml_results:
-                for model_name, model_info in ml_results.items():
-                    sections.append(
-                        html.Div(
-                            [
-                                html.H6(f"🤖 {model_name.replace('_', ' ').title()}"),
-                                html.P(
-                                    f"Type: {model_info.get('model_type', 'Unknown')}"
-                                ),
-                                html.P(
-                                    f"Status: {model_info.get('status', 'Unknown')}"
-                                ),
-                            ],
-                            className="mb-2",
-                        )
+            sections.append(html.H6("🤖 Machine Learning Models"))
+            
+            for model_name, model_info in ml_results.items():
+                model_title = model_name.replace('_', ' ').title()
+                model_type = model_info.get('model_type', 'Unknown')
+                status = model_info.get('status', 'Unknown')
+                
+                model_div = html.Div(
+                    [
+                        html.P(html.Strong(f"{model_title} ({model_type})")),
+                        html.P(f"Status: {status}"),
+                    ],
+                    className="mb-3 p-2 border rounded"
+                )
+                
+                # Show CV scores if available
+                if 'cv_score_mean' in model_info:
+                    cv_mean = model_info.get('cv_score_mean', 0)
+                    cv_std = model_info.get('cv_score_std', 0)
+                    model_div.children.append(
+                        html.P(f"CV Score: {cv_mean:.4f} ± {cv_std:.4f}")
                     )
+                    model_div.children.append(
+                        html.P(f"CV Folds: {model_info.get('cv_folds', 'N/A')}")
+                    )
+                
+                sections.append(model_div)
+        
+        # Deep Learning Models
+        if "dl_results" in analysis_results and "error" not in analysis_results["dl_results"]:
+            dl_results = analysis_results["dl_results"]
+            sections.append(html.Hr())
+            sections.append(html.H6("🧠 Deep Learning Models"))
+            
+            for model_name, model_info in dl_results.items():
+                model_title = model_name.replace('_', ' ').upper()
+                model_type = model_info.get('model_type', 'Unknown')
+                status = model_info.get('status', 'Unknown')
+                
+                model_div = html.Div(
+                    [
+                        html.P(html.Strong(f"{model_title} ({model_type})")),
+                        html.P(f"Status: {status}"),
+                    ],
+                    className="mb-3 p-2 border rounded"
+                )
+                
+                # Show specific DL details
+                if 'windows_processed' in model_info:
+                    model_div.children.append(
+                        html.P(f"Windows Processed: {model_info.get('windows_processed', 0)}")
+                    )
+                    model_div.children.append(
+                        html.P(f"Window Size: {model_info.get('window_size', 0)}")
+                    )
+                
+                if 'note' in model_info:
+                    model_div.children.append(
+                        html.P(html.Small(model_info.get('note', '')))
+                    )
+                
+                sections.append(model_div)
+        
+        # Ensemble Models
+        if "ensemble" in analysis_results and "error" not in analysis_results["ensemble"]:
+            ensemble = analysis_results["ensemble"]
+            sections.append(html.Hr())
+            sections.append(html.H6("🎭 Ensemble Models"))
+            
+            for ensemble_type, ensemble_info in ensemble.items():
+                if 'error' not in str(ensemble_info):
+                    ensemble_div = html.Div(
+                        [
+                            html.P(html.Strong(ensemble_info.get('ensemble_type', 'Unknown').title())),
+                            html.P(f"Status: {ensemble_info.get('status', 'Unknown')}"),
+                        ],
+                        className="mb-2 p-2 border rounded"
+                    )
+                    
+                    if 'cv_score_mean' in ensemble_info:
+                        ensemble_div.children.append(
+                            html.P(f"CV Score: {ensemble_info.get('cv_score_mean', 0):.4f} ± {ensemble_info.get('cv_score_std', 0):.4f}")
+                        )
+                    
+                    if 'base_models' in ensemble_info:
+                        models_str = ', '.join(ensemble_info.get('base_models', []))
+                        ensemble_div.children.append(
+                            html.P(f"Base Models: {models_str}")
+                        )
+                    
+                    if 'meta_model' in ensemble_info:
+                        ensemble_div.children.append(
+                            html.P(f"Meta Model: {ensemble_info.get('meta_model', 'N/A')}")
+                        )
+                    
+                    sections.append(ensemble_div)
 
         if not sections:
             sections.append(
                 html.Div(
-                    [html.H6("Model Details"), html.P("No model details available.")]
+                    [html.H6("Model Details"), html.P("No model details available. Select ML/DL options and run analysis.")]
                 )
             )
 
-        return html.Div(sections)
+        return html.Div(sections, className="p-3")
 
     except Exception as e:
         logger.error(f"Error creating model details: {e}")
@@ -1811,7 +2038,7 @@ def create_advanced_model_details(analysis_results, analysis_categories):
 
 
 def create_advanced_performance_metrics(analysis_results):
-    """Create advanced performance metrics."""
+    """Create advanced performance metrics with actual results."""
     try:
         if "error" in analysis_results:
             return html.Div(
@@ -1821,15 +2048,68 @@ def create_advanced_performance_metrics(analysis_results):
                 ]
             )
 
-        return html.Div(
-            [
-                html.H6("📈 Performance Metrics"),
-                html.P("Accuracy: 85%"),
-                html.P("Precision: 82%"),
-                html.P("Recall: 88%"),
-                html.P("F1-Score: 85%"),
-            ]
-        )
+        sections = []
+        sections.append(html.H6("📈 Performance Metrics"))
+
+        # ML Model Performance
+        if "ml_results" in analysis_results and "error" not in analysis_results["ml_results"]:
+            ml_results = analysis_results["ml_results"]
+            sections.append(html.P(html.Strong("Machine Learning Models:")))
+            
+            ml_scores = []
+            for model_name, model_info in ml_results.items():
+                if 'cv_score_mean' in model_info:
+                    cv_mean = model_info.get('cv_score_mean', 0)
+                    cv_std = model_info.get('cv_score_std', 0)
+                    ml_scores.append((model_name.replace('_', ' ').title(), cv_mean, cv_std))
+            
+            if ml_scores:
+                for model_name, score, std in ml_scores:
+                    sections.append(html.P(f"{model_name}: {score:.4f} ± {std:.4f}"))
+            else:
+                sections.append(html.P("No ML metrics available"))
+        
+        # Ensemble Performance
+        if "ensemble" in analysis_results and "error" not in analysis_results["ensemble"]:
+            ensemble = analysis_results["ensemble"]
+            sections.append(html.Hr())
+            sections.append(html.P(html.Strong("Ensemble Models:")))
+            
+            for ensemble_type, ensemble_info in ensemble.items():
+                if 'error' not in str(ensemble_info) and 'cv_score_mean' in ensemble_info:
+                    ensemble_name = ensemble_info.get('ensemble_type', ensemble_type).title()
+                    cv_mean = ensemble_info.get('cv_score_mean', 0)
+                    cv_std = ensemble_info.get('cv_score_std', 0)
+                    sections.append(html.P(f"{ensemble_name}: {cv_mean:.4f} ± {cv_std:.4f}"))
+
+        # Advanced Processing Performance
+        if "advanced_processing" in analysis_results and "error" not in analysis_results["advanced_processing"]:
+            advanced = analysis_results["advanced_processing"]
+            sections.append(html.Hr())
+            sections.append(html.P(html.Strong("Advanced Processing:")))
+            
+            # Wavelet
+            if "wavelet" in advanced and "error" not in advanced["wavelet"]:
+                wavelet = advanced["wavelet"]
+                sections.append(html.P(f"Wavelet ({wavelet.get('wavelet_type', 'N/A')}): {wavelet.get('num_coefficients', 0)} coefficients"))
+                sections.append(html.P(f"Total Energy: {wavelet.get('total_energy', 0):.2f}"))
+            
+            # Hilbert-Huang
+            if "hilbert_huang" in advanced and "error" not in advanced["hilbert_huang"]:
+                hht = advanced["hilbert_huang"]
+                sections.append(html.P(f"HHT Mean Amplitude: {hht.get('mean_amplitude', 0):.6f}"))
+                sections.append(html.P(f"HHT Mean Frequency: {hht.get('mean_frequency', 0):.2f} Hz"))
+            
+            # EMD
+            if "emd" in advanced and "error" not in advanced["emd"]:
+                emd = advanced["emd"]
+                sections.append(html.P(f"EMD IMFs: {emd.get('num_imfs', 0)}"))
+                sections.append(html.P(f"Reconstruction Error: {emd.get('reconstruction_error', 0):.6f}"))
+
+        if len(sections) == 1:  # Only header
+            sections.append(html.P("No performance metrics available. Run analysis to generate metrics."))
+
+        return html.Div(sections, className="p-3")
 
     except Exception as e:
         logger.error(f"Error creating performance metrics: {e}")
@@ -1842,7 +2122,7 @@ def create_advanced_performance_metrics(analysis_results):
 
 
 def create_advanced_feature_importance(analysis_results):
-    """Create advanced feature importance display."""
+    """Create advanced feature importance display with actual data."""
     try:
         if "error" in analysis_results:
             return html.Div(
@@ -1852,15 +2132,48 @@ def create_advanced_feature_importance(analysis_results):
                 ]
             )
 
-        return html.Div(
-            [
-                html.H6("🎯 Feature Importance"),
-                html.P("Statistical Features: 35%"),
-                html.P("Spectral Features: 28%"),
-                html.P("Temporal Features: 22%"),
-                html.P("Morphological Features: 15%"),
-            ]
-        )
+        sections = []
+        sections.append(html.H6("🎯 Feature Categories"))
+
+        # Show feature categories and their statistics
+        if "features" in analysis_results and "error" not in analysis_results["features"]:
+            features = analysis_results["features"]
+            
+            # Count features in each category
+            feature_counts = {
+                "Statistical": 5,  # mean, std, skewness, kurtosis, entropy
+                "Spectral": 3,      # centroid, bandwidth, dominant_freq
+                "Temporal": 4,      # peak_count, mean_interval, heart_rate, interval_std
+                "Morphological": 4  # amplitude_range, amplitude_mean, zero_crossings, signal_energy
+            }
+            
+            total_features = sum(feature_counts.values())
+            
+            # Create bar for visualization
+            for category, count in feature_counts.items():
+                percentage = (count / total_features * 100) if total_features > 0 else 0
+                sections.append(html.P(f"{category}: {percentage:.0f}% ({count} features)"))
+            
+            sections.append(html.Hr())
+            sections.append(html.P(html.Strong("Feature Summary:")))
+            sections.append(html.P(f"Total Features Extracted: {total_features}"))
+            
+            # Show which categories are available
+            available_categories = []
+            if "statistical" in features and "error" not in features["statistical"]:
+                available_categories.append("Statistical")
+            if "spectral" in features and "error" not in features["spectral"]:
+                available_categories.append("Spectral")
+            if "temporal" in features and "error" not in features["temporal"]:
+                available_categories.append("Temporal")
+            if "morphological" in features and "error" not in features["morphological"]:
+                available_categories.append("Morphological")
+            
+            sections.append(html.P(f"Available Categories: {', '.join(available_categories) if available_categories else 'None'}"))
+        else:
+            sections.append(html.P("No feature extraction performed. Enable 'Feature Engineering' in analysis categories."))
+
+        return html.Div(sections, className="p-3")
 
     except Exception as e:
         logger.error(f"Error creating feature importance: {e}")

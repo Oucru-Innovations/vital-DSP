@@ -17,12 +17,15 @@ from vitalDSP_webapp.layout.pages.respiratory_page import respiratory_layout
 from vitalDSP_webapp.layout.pages.analysis_pages import (
     # physiological_layout,
     features_layout,
-    transforms_layout,
-    quality_layout,
-    advanced_layout,
+    # transforms_layout,
+    # quality_layout,
+    # advanced_layout,
     health_report_layout,
     settings_layout,
 )
+from vitalDSP_webapp.layout.pages.advanced_page import advanced_layout
+from vitalDSP_webapp.layout.pages.quality_page import quality_layout
+from vitalDSP_webapp.layout.pages.transform_page import transforms_layout
 from vitalDSP_webapp.layout.pages.physiological_page import physiological_layout
 from vitalDSP_webapp.layout.pages.pipeline_page import pipeline_layout
 from vitalDSP_webapp.layout.pages.tasks_page import tasks_layout
