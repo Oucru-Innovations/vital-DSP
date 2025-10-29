@@ -298,7 +298,7 @@ def filtering_layout():
                                                         "value": "detrend",
                                                     }
                                                 ],
-                                                value=["detrend"],
+                                                value=[],  # Default to unchecked
                                                 className="mb-3",
                                             ),
                                             # Filter Type Change Callback

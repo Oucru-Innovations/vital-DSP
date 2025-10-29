@@ -209,27 +209,9 @@ def register_quality_callbacks(app):
                     # We'll update metrics plot with stored data below
                     pass
                 else:
-                    return (
-                        create_empty_figure(),
-                        create_empty_figure(),
-                        "Please click 'Assess Signal Quality' first.",
-                        "",
-                        "",
-                        "",
-                        stored_quality_data if stored_quality_data else None,
-                        None,
-                    )
+                    return create_empty_figure(), create_empty_figure(), "Please click 'Assess Signal Quality' first.", "", "", "", stored_quality_data if stored_quality_data else None, None
             else:
-                return (
-                    create_empty_figure(),
-                    create_empty_figure(),
-                    "Click 'Assess Signal Quality' to analyze your signal.",
-                    "",
-                    "",
-                    "",
-                        stored_quality_data if stored_quality_data else None,
-                    None,
-                )
+                return create_empty_figure(), create_empty_figure(), "Click 'Assess Signal Quality' to analyze your signal.", "", "", "", stored_quality_data if stored_quality_data else None, None
 
         # If only metrics controls changed (bins or scope), reuse stored results if available
         if n_clicks is None and trigger_id in ["quality-metrics-bins", "quality-metrics-scope"]:

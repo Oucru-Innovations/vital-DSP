@@ -217,109 +217,341 @@ def advanced_layout():
                                                 ],
                                                 className="mb-3",
                                             ),
-                                            # Machine Learning Options
-                                            html.H6(
-                                                "Machine Learning Options",
+                                            # Machine Learning Methods (Accordion)
+                                            html.H6("🤖 Machine Learning Methods", className="mb-3"),
+                                            dbc.Accordion(
+                                                [
+                                                    # SVM
+                                                    dbc.AccordionItem(
+                                                        [
+                                                            dbc.Checkbox(
+                                                                id="advanced-svm-enable",
+                                                                label="Enable SVM Analysis",
+                                                                value=True,
+                                                                className="mb-3",
+                                                            ),
+                                                            html.Label("Kernel Type", className="form-label small"),
+                                                            dbc.Select(
+                                                                id="advanced-svm-kernel",
+                                                                options=[
+                                                                    {"label": "RBF (Radial Basis Function)", "value": "rbf"},
+                                                                    {"label": "Linear", "value": "linear"},
+                                                                    {"label": "Polynomial", "value": "poly"},
+                                                                    {"label": "Sigmoid", "value": "sigmoid"},
+                                                                ],
+                                                                value="rbf",
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Label("C (Regularization)", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-svm-c",
+                                                                type="number",
+                                                                value=1.0,
+                                                                min=0.001,
+                                                                step=0.1,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Label("Gamma", className="form-label small"),
+                                                            dbc.Select(
+                                                                id="advanced-svm-gamma",
+                                                                options=[
+                                                                    {"label": "Auto", "value": "auto"},
+                                                                    {"label": "Scale", "value": "scale"},
+                                                                ],
+                                                                value="scale",
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Small("ℹ️ SVM finds optimal hyperplane for classification", className="text-muted"),
+                                                        ],
+                                                        title="Support Vector Machine (SVM)",
+                                                    ),
+                                                    # Random Forest
+                                                    dbc.AccordionItem(
+                                                        [
+                                                            dbc.Checkbox(
+                                                                id="advanced-rf-enable",
+                                                                label="Enable Random Forest",
+                                                                value=True,
+                                                                className="mb-3",
+                                                            ),
+                                                            html.Label("Number of Trees", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-rf-n-estimators",
+                                                                type="number",
+                                                                value=100,
+                                                                min=10,
+                                                                max=1000,
+                                                                step=10,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Label("Max Depth", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-rf-max-depth",
+                                                                type="number",
+                                                                value=10,
+                                                                min=1,
+                                                                max=50,
+                                                                step=1,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Label("Min Samples Split", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-rf-min-samples-split",
+                                                                type="number",
+                                                                value=2,
+                                                                min=2,
+                                                                max=20,
+                                                                step=1,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Small("ℹ️ Ensemble of decision trees for robust predictions", className="text-muted"),
+                                                        ],
+                                                        title="Random Forest",
+                                                    ),
+                                                    # Neural Network
+                                                    dbc.AccordionItem(
+                                                        [
+                                                            dbc.Checkbox(
+                                                                id="advanced-nn-enable",
+                                                                label="Enable Neural Network",
+                                                                value=False,
+                                                                className="mb-3",
+                                                            ),
+                                                            html.Label("Hidden Layer Sizes", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-nn-hidden-layers",
+                                                                type="text",
+                                                                value="100,50",
+                                                                placeholder="e.g., 100,50",
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Label("Activation Function", className="form-label small"),
+                                                            dbc.Select(
+                                                                id="advanced-nn-activation",
+                                                                options=[
+                                                                    {"label": "ReLU", "value": "relu"},
+                                                                    {"label": "Tanh", "value": "tanh"},
+                                                                    {"label": "Logistic", "value": "logistic"},
+                                                                ],
+                                                                value="relu",
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Label("Learning Rate", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-nn-learning-rate",
+                                                                type="number",
+                                                                value=0.001,
+                                                                min=0.0001,
+                                                                max=1.0,
+                                                                step=0.0001,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Small("ℹ️ Multi-layer perceptron for complex patterns", className="text-muted"),
+                                                        ],
+                                                        title="Neural Network (MLP)",
+                                                    ),
+                                                ],
+                                                id="advanced-ml-accordion",
+                                                start_collapsed=False,
                                                 className="mb-3",
                                             ),
+                                            # Hidden checklist for backward compatibility
                                             dcc.Checklist(
                                                 id="advanced-ml-options",
                                                 options=[
-                                                    {
-                                                        "label": "Support Vector Machines (SVM)",
-                                                        "value": "svm",
-                                                    },
-                                                    {
-                                                        "label": "Random Forest",
-                                                        "value": "random_forest",
-                                                    },
-                                                    {
-                                                        "label": "Neural Networks",
-                                                        "value": "neural_networks",
-                                                    },
-                                                    {
-                                                        "label": "Gradient Boosting",
-                                                        "value": "gradient_boosting",
-                                                    },
-                                                    {
-                                                        "label": "K-Means Clustering",
-                                                        "value": "kmeans",
-                                                    },
-                                                    {
-                                                        "label": "Principal Component Analysis (PCA)",
-                                                        "value": "pca",
-                                                    },
-                                                    {
-                                                        "label": "Independent Component Analysis (ICA)",
-                                                        "value": "ica",
-                                                    },
-                                                    {
-                                                        "label": "Hidden Markov Models (HMM)",
-                                                        "value": "hmm",
-                                                    },
-                                                    {
-                                                        "label": "Gaussian Mixture Models (GMM)",
-                                                        "value": "gmm",
-                                                    },
-                                                    {
-                                                        "label": "Autoencoders",
-                                                        "value": "autoencoders",
-                                                    },
+                                                    {"label": "SVM", "value": "svm"},
+                                                    {"label": "Random Forest", "value": "random_forest"},
+                                                    {"label": "Neural Networks", "value": "neural_networks"},
                                                 ],
                                                 value=["svm", "random_forest"],
+                                                style={"display": "none"},
+                                            ),
+                                            # Deep Learning Methods (Accordion)
+                                            html.H6("🧠 Deep Learning Methods", className="mb-3"),
+                                            dbc.Accordion(
+                                                [
+                                                    # LSTM
+                                                    dbc.AccordionItem(
+                                                        [
+                                                            dbc.Checkbox(
+                                                                id="advanced-lstm-enable",
+                                                                label="Enable LSTM Analysis",
+                                                                value=True,
+                                                                className="mb-3",
+                                                            ),
+                                                            html.Label("Hidden Units", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-lstm-units",
+                                                                type="number",
+                                                                value=128,
+                                                                min=16,
+                                                                max=512,
+                                                                step=16,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Label("Number of Layers", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-lstm-layers",
+                                                                type="number",
+                                                                value=2,
+                                                                min=1,
+                                                                max=5,
+                                                                step=1,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Label("Dropout Rate", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-lstm-dropout",
+                                                                type="number",
+                                                                value=0.2,
+                                                                min=0.0,
+                                                                max=0.9,
+                                                                step=0.1,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Label("Learning Rate", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-lstm-lr",
+                                                                type="number",
+                                                                value=0.001,
+                                                                min=0.0001,
+                                                                max=0.1,
+                                                                step=0.0001,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Small("ℹ️ LSTM networks excel at time series analysis", className="text-muted"),
+                                                        ],
+                                                        title="LSTM (Long Short-Term Memory)",
+                                                    ),
+                                                    # CNN
+                                                    dbc.AccordionItem(
+                                                        [
+                                                            dbc.Checkbox(
+                                                                id="advanced-cnn-enable",
+                                                                label="Enable CNN Analysis",
+                                                                value=True,
+                                                                className="mb-3",
+                                                            ),
+                                                            html.Label("Number of Filters", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-cnn-filters",
+                                                                type="text",
+                                                                value="64,128,256",
+                                                                placeholder="e.g., 64,128,256",
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Label("Kernel Size", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-cnn-kernel",
+                                                                type="number",
+                                                                value=3,
+                                                                min=2,
+                                                                max=11,
+                                                                step=1,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Label("Pool Size", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-cnn-pool",
+                                                                type="number",
+                                                                value=2,
+                                                                min=2,
+                                                                max=5,
+                                                                step=1,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Label("Dropout Rate", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-cnn-dropout",
+                                                                type="number",
+                                                                value=0.3,
+                                                                min=0.0,
+                                                                max=0.9,
+                                                                step=0.1,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Small("ℹ️ CNN extracts local patterns from signal data", className="text-muted"),
+                                                        ],
+                                                        title="CNN (Convolutional Neural Network)",
+                                                    ),
+                                                    # Transformer
+                                                    dbc.AccordionItem(
+                                                        [
+                                                            dbc.Checkbox(
+                                                                id="advanced-transformer-enable",
+                                                                label="Enable Transformer",
+                                                                value=False,
+                                                                className="mb-3",
+                                                            ),
+                                                            html.Label("Attention Heads", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-transformer-heads",
+                                                                type="number",
+                                                                value=8,
+                                                                min=1,
+                                                                max=16,
+                                                                step=1,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Label("Number of Layers", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-transformer-layers",
+                                                                type="number",
+                                                                value=4,
+                                                                min=1,
+                                                                max=12,
+                                                                step=1,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Label("Model Dimension", className="form-label small"),
+                                                            dbc.Input(
+                                                                id="advanced-transformer-dim",
+                                                                type="number",
+                                                                value=512,
+                                                                min=128,
+                                                                max=1024,
+                                                                step=128,
+                                                                size="sm",
+                                                                className="mb-2",
+                                                            ),
+                                                            html.Small("ℹ️ Transformer uses self-attention mechanisms", className="text-muted"),
+                                                        ],
+                                                        title="Transformer Model",
+                                                    ),
+                                                ],
+                                                id="advanced-dl-accordion",
+                                                start_collapsed=False,
                                                 className="mb-3",
                                             ),
-                                            # Deep Learning Options
-                                            html.H6(
-                                                "Deep Learning Options",
-                                                className="mb-3",
-                                            ),
+                                            # Hidden checklist for backward compatibility
                                             dcc.Checklist(
                                                 id="advanced-deep-learning-options",
                                                 options=[
-                                                    {
-                                                        "label": "Convolutional Neural Networks (CNN)",
-                                                        "value": "cnn",
-                                                    },
-                                                    {
-                                                        "label": "Recurrent Neural Networks (RNN)",
-                                                        "value": "rnn",
-                                                    },
-                                                    {
-                                                        "label": "Long Short-Term Memory (LSTM)",
-                                                        "value": "lstm",
-                                                    },
-                                                    {
-                                                        "label": "Gated Recurrent Units (GRU)",
-                                                        "value": "gru",
-                                                    },
-                                                    {
-                                                        "label": "Transformer Models",
-                                                        "value": "transformer",
-                                                    },
-                                                    {
-                                                        "label": "Autoencoders",
-                                                        "value": "autoencoders",
-                                                    },
-                                                    {
-                                                        "label": "Generative Adversarial Networks (GAN)",
-                                                        "value": "gan",
-                                                    },
-                                                    {
-                                                        "label": "Attention Mechanisms",
-                                                        "value": "attention",
-                                                    },
-                                                    {
-                                                        "label": "Transfer Learning",
-                                                        "value": "transfer_learning",
-                                                    },
-                                                    {
-                                                        "label": "Federated Learning",
-                                                        "value": "federated_learning",
-                                                    },
+                                                    {"label": "LSTM", "value": "lstm"},
+                                                    {"label": "CNN", "value": "cnn"},
+                                                    {"label": "Transformer", "value": "transformer"},
                                                 ],
-                                                value=["cnn", "lstm"],
-                                                className="mb-3",
+                                                value=["lstm", "cnn"],
+                                                style={"display": "none"},
                                             ),
                                             # Advanced Parameters
                                             html.H6(
@@ -592,15 +824,43 @@ def advanced_layout():
                                         [
                                             dcc.Graph(
                                                 id="advanced-visualizations",
-                                                style={"height": "500px"},
+                                                style={"height": "800px"},
                                                 config={
                                                     "displayModeBar": True,
                                                     "displaylogo": False,
+                                                    "modeBarButtonsToRemove": ["lasso2d", "select2d"],
                                                 },
                                             )
                                         ]
                                     ),
                                 ]
+                            )
+                        ],
+                        md=12,
+                    )
+                ],
+                className="mb-4",
+            ),
+            # Detailed Analysis Report Section
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            dbc.Card(
+                                [
+                                    dbc.CardHeader(
+                                        [
+                                            html.H5(
+                                                "📝 Detailed Analysis Report",
+                                                className="mb-0",
+                                            )
+                                        ]
+                                    ),
+                                    dbc.CardBody(
+                                        [html.Div(id="advanced-detailed-report")]
+                                    ),
+                                ],
+                                style={"height": "100%"}
                             )
                         ],
                         md=12,

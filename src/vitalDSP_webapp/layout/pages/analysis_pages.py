@@ -301,7 +301,7 @@ def filtering_layout():
                                                         "value": "detrend",
                                                     }
                                                 ],
-                                                value=["detrend"],
+                                                value=[],  # Default to unchecked
                                                 className="mb-3",
                                             ),
                                             # Filter Type Change Callback
@@ -1421,7 +1421,7 @@ def features_layout():
                                                         "value": "artifact_removal",
                                                     },
                                                 ],
-                                                value=["detrend", "normalize"],
+                                                value=[],  # Default to unchecked
                                                 className="mb-3",
                                             ),
                                             # Feature Categories
