@@ -171,6 +171,10 @@ class OptimizedQualityScreener:
         )
         thresholds.update(signal_params)
 
+        # Ensure snr_threshold exists (for backward compatibility)
+        if "snr_threshold" not in thresholds:
+            thresholds["snr_threshold"] = thresholds.get("snr_min_db", 10.0)
+
         return thresholds
 
     def screen_signal(
@@ -880,6 +884,78 @@ class OptimizedQualityScreener:
             "parallel_speedup": 0.0,
             "memory_usage_mb": 0.0,
         }
+
+    # Backward compatibility methods (aliases for optimized methods)
+    def _screen_single_segment(self, segment: Dict[str, Any]) -> ScreeningResult:
+        """Screen a single segment (backward compatibility wrapper)."""
+        return self._screen_single_segment_optimized(segment)
+
+    def _stage1_snr_check(self, signal: np.ndarray) -> Tuple[bool, Dict[str, Any]]:
+        """Stage 1 SNR check (backward compatibility wrapper)."""
+        result = self._stage1_snr_check_optimized(signal)
+        return result["passed"], result
+
+    def _stage2_statistical_screen(
+        self, signal: np.ndarray
+    ) -> Tuple[bool, Dict[str, Any]]:
+        """Stage 2 statistical screen (backward compatibility wrapper)."""
+        result = self._stage2_statistical_screen_optimized(signal)
+        return result["passed"], result
+
+    def _stage3_signal_specific_screen(
+        self, signal: np.ndarray
+    ) -> Tuple[bool, Dict[str, Any]]:
+        """Stage 3 signal-specific screen (backward compatibility wrapper)."""
+        result = self._stage3_signal_specific_screen_optimized(signal)
+        return result["passed"], result
+
+    def _calculate_quality_metrics(self, signal: np.ndarray) -> QualityMetrics:
+        """Calculate quality metrics (backward compatibility wrapper)."""
+        # Create a segment dict for processing
+        segment = {
+            "segment_id": "temp",
+            "start_idx": 0,
+            "end_idx": len(signal),
+            "data": signal,
+            "duration_seconds": len(signal) / self.sampling_rate,
+        }
+        result = self._screen_single_segment_optimized(segment)
+        return result.quality_metrics
+
+    def _determine_quality_level(self, quality_score: float) -> QualityLevel:
+        """Determine quality level from score."""
+        quality_levels = self.config.quality_screener.quality_levels
+        if quality_score > quality_levels["excellent"]:
+            return QualityLevel.EXCELLENT
+        elif quality_score > quality_levels["good"]:
+            return QualityLevel.GOOD
+        elif quality_score > quality_levels["fair"]:
+            return QualityLevel.FAIR
+        elif quality_score > quality_levels["poor"]:
+            return QualityLevel.POOR
+        else:
+            return QualityLevel.UNUSABLE
+
+    def _get_processing_recommendation(self, quality_level: QualityLevel) -> str:
+        """Get processing recommendation for quality level."""
+        recommendations = {
+            QualityLevel.EXCELLENT: "Full processing recommended",
+            QualityLevel.GOOD: "Standard processing recommended",
+            QualityLevel.FAIR: "Conservative processing recommended",
+            QualityLevel.POOR: "Minimal processing or manual review",
+            QualityLevel.UNUSABLE: "Skip processing or manual review",
+        }
+        return recommendations.get(quality_level, "Manual review recommended")
+
+    def configure_thresholds(self, **kwargs) -> None:
+        """Configure thresholds dynamically."""
+        # Update thresholds dict with new values
+        for key, value in kwargs.items():
+            if key in self.thresholds:
+                self.thresholds[key] = value
+            else:
+                # Add new threshold
+                self.thresholds[key] = value
 
 
 # Backward compatibility alias

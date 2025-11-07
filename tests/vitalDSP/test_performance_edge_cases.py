@@ -329,5 +329,3 @@ class TestPerformanceRegression:
         assert len(filtered) == len(signal)
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

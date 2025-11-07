@@ -424,5 +424,3 @@ class TestPerformanceScenarios:
         assert wavelet_result in [True, False]
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

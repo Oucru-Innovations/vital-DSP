@@ -447,7 +447,6 @@ The OUCRU CSV loader is now **production-ready** and provides a user-friendly in
 
 ---
 
-**Author**: Claude (vitalDSP Enhancement Project)
 **Version**: 1.1.0
 **Date**: 2025-01-11
 **Status**: Complete ✅

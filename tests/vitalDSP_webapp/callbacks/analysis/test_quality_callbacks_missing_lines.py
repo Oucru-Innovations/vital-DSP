@@ -1086,5 +1086,3 @@ class TestQualityDataValidation:
             pytest.skip(f"Quality analysis workflow test failed: {e}")
 
 
-if __name__ == "__main__":
-    pytest.main([__file__])

@@ -124,9 +124,10 @@ class TestUploadCallbacksComprehensive:
         
         assert isinstance(result, html.Div)
 
-    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_data_service')
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_enhanced_data_service')
     @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.DataProcessor')
-    def test_callback_with_csv_upload(self, mock_data_processor, mock_get_data_service):
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context')
+    def test_callback_with_csv_upload(self, mock_ctx, mock_data_processor, mock_get_data_service):
         """Test callback behavior with CSV upload"""
         # Setup mocks
         mock_data_service = Mock()
@@ -165,30 +166,29 @@ class TestUploadCallbacksComprehensive:
         assert upload_callback is not None
         
         # Test the callback with CSV upload
+        mock_ctx.triggered = [{"prop_id": "upload-data.contents", "value": encoded_content}]
         with patch('pandas.read_csv', return_value=mock_df):
-            with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
-                mock_ctx.triggered = [{"prop_id": "upload-data.contents", "value": encoded_content}]
-                
-                result = upload_callback(
-                    upload_contents=encoded_content,
-                    load_path_clicks=None,
-                    load_sample_clicks=None,
-                    filename="test.csv",
-                    file_path=None,
-                    sampling_freq=100,
-                    time_unit="seconds",
-                    data_type="ppg",
-                    data_format='auto',
-                    oucru_sampling_rate_column=None,
-                    oucru_interpolate_time=None
-                )
-                
-                # Should return multiple outputs
-                assert isinstance(result, tuple)
-                assert len(result) >= 15  # Expected number of outputs
+            result = upload_callback(
+                upload_contents=encoded_content,
+                load_path_clicks=None,
+                load_sample_clicks=None,
+                filename="test.csv",
+                file_path=None,
+                sampling_freq=100,
+                time_unit="seconds",
+                data_type="ppg",
+                data_format='auto',
+                oucru_sampling_rate_column=None,
+                oucru_interpolate_time=None
+            )
+            
+            # Should return multiple outputs
+            assert isinstance(result, tuple)
+            assert len(result) >= 15  # Expected number of outputs
 
-    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_data_service')
-    def test_callback_with_sample_data_load(self, mock_get_data_service):
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_enhanced_data_service')
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context')
+    def test_callback_with_sample_data_load(self, mock_ctx, mock_get_data_service):
         """Test callback behavior with sample data loading"""
         # Setup mocks
         mock_data_service = Mock()
@@ -215,32 +215,31 @@ class TestUploadCallbacksComprehensive:
         assert upload_callback is not None
         
         # Test the callback with sample data load
-        with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
-            mock_ctx.triggered = [{"prop_id": "btn-load-sample.n_clicks", "value": 1}]
+        mock_ctx.triggered = [{"prop_id": "btn-load-sample.n_clicks", "value": 1}]
+        with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.DataProcessor.generate_sample_ppg_data') as mock_generate:
+            mock_df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
+            mock_generate.return_value = mock_df
             
-            with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.DataProcessor.generate_sample_ppg_data') as mock_generate:
-                mock_df = pd.DataFrame({'time': [0, 1, 2], 'signal': [0.1, 0.2, 0.3]})
-                mock_generate.return_value = mock_df
-                
-                result = upload_callback(
-                    upload_contents=None,
-                    load_path_clicks=None,
-                    load_sample_clicks=1,
-                    filename=None,
-                    file_path=None,
-                    sampling_freq=100,
-                    time_unit="seconds",
-                    data_type="ppg",
-                    data_format='auto',
-                    oucru_sampling_rate_column=None,
-                    oucru_interpolate_time=None
-                )
-                
-                # Should return multiple outputs
-                assert isinstance(result, tuple)
-                assert len(result) >= 15  # Expected number of outputs
+            result = upload_callback(
+                upload_contents=None,
+                load_path_clicks=None,
+                load_sample_clicks=1,
+                filename=None,
+                file_path=None,
+                sampling_freq=100,
+                time_unit="seconds",
+                data_type="ppg",
+                data_format='auto',
+                oucru_sampling_rate_column=None,
+                oucru_interpolate_time=None
+            )
+            
+            # Should return multiple outputs
+            assert isinstance(result, tuple)
+            assert len(result) >= 15  # Expected number of outputs
 
-    def test_callback_with_no_trigger(self):
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context')
+    def test_callback_with_no_trigger(self, mock_ctx):
         """Test callback behavior with no trigger"""
         # Register callbacks and capture them
         captured_callbacks = []
@@ -263,25 +262,24 @@ class TestUploadCallbacksComprehensive:
         assert upload_callback is not None
         
         # Test the callback with no trigger
-        with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
-            mock_ctx.triggered = []
-            
-            with pytest.raises(PreventUpdate):
-                upload_callback(
-                    upload_contents=None,
-                    load_path_clicks=None,
-                    load_sample_clicks=None,
-                    filename=None,
-                    file_path=None,
-                    sampling_freq=100,
-                    time_unit="seconds",
-                    data_type="ppg",
-                    data_format='auto',
-                    oucru_sampling_rate_column=None,
-                    oucru_interpolate_time=None
-                )
+        mock_ctx.triggered = []
+        with pytest.raises(PreventUpdate):
+            upload_callback(
+                upload_contents=None,
+                load_path_clicks=None,
+                load_sample_clicks=None,
+                filename=None,
+                file_path=None,
+                sampling_freq=100,
+                time_unit="seconds",
+                data_type="ppg",
+                data_format='auto',
+                oucru_sampling_rate_column=None,
+                oucru_interpolate_time=None
+            )
 
-    def test_callback_with_invalid_file_format(self):
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context')
+    def test_callback_with_invalid_file_format(self, mock_ctx):
         """Test callback behavior with invalid file format"""
         # Register callbacks and capture them
         captured_callbacks = []
@@ -305,30 +303,29 @@ class TestUploadCallbacksComprehensive:
         
         # Test the callback with invalid file format
         invalid_content = base64.b64encode(b"invalid content").decode()
+        mock_ctx.triggered = [{"prop_id": "upload-data.contents", "value": invalid_content}]
         
-        with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
-            mock_ctx.triggered = [{"prop_id": "upload-data.contents", "value": invalid_content}]
-            
-            result = upload_callback(
-                upload_contents=invalid_content,
-                load_path_clicks=None,
-                load_sample_clicks=None,
-                filename="test.xyz",  # Invalid extension
-                file_path=None,
-                sampling_freq=100,
-                time_unit="seconds",
-                data_type="ppg",
-                data_format='auto',
-                oucru_sampling_rate_column=None,
-                oucru_interpolate_time=None
-            )
-            
-            # Should return error status
-            assert isinstance(result, tuple)
-            assert len(result) >= 15
+        result = upload_callback(
+            upload_contents=invalid_content,
+            load_path_clicks=None,
+            load_sample_clicks=None,
+            filename="test.xyz",  # Invalid extension
+            file_path=None,
+            sampling_freq=100,
+            time_unit="seconds",
+            data_type="ppg",
+            data_format='auto',
+            oucru_sampling_rate_column=None,
+            oucru_interpolate_time=None
+        )
+        
+        # Should return error status
+        assert isinstance(result, tuple)
+        assert len(result) >= 15
 
-    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_data_service')
-    def test_column_mapping_callback(self, mock_get_data_service):
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_enhanced_data_service')
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context')
+    def test_column_mapping_callback(self, mock_ctx, mock_get_data_service):
         """Test column mapping callback"""
         # Setup mocks
         mock_data_service = Mock()
@@ -450,8 +447,9 @@ class TestUploadCallbacksComprehensive:
         # Should still create preview even with missing info
         assert len(result.children) > 0
 
-    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_data_service')
-    def test_callback_with_txt_upload(self, mock_get_data_service):
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_enhanced_data_service')
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context')
+    def test_callback_with_txt_upload(self, mock_ctx, mock_get_data_service):
         """Test callback behavior with TXT file upload"""
         # Setup mocks
         mock_data_service = Mock()
@@ -485,30 +483,29 @@ class TestUploadCallbacksComprehensive:
         assert upload_callback is not None
 
         # Test the callback with TXT upload
+        mock_ctx.triggered = [{"prop_id": "upload-data.contents", "value": upload_contents}]
         with patch('pandas.read_csv', return_value=mock_df):
-            with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
-                mock_ctx.triggered = [{"prop_id": "upload-data.contents", "value": upload_contents}]
+            result = upload_callback(
+                upload_contents=upload_contents,
+                load_path_clicks=None,
+                load_sample_clicks=None,
+                filename="test.txt",
+                file_path=None,
+                sampling_freq=100,
+                time_unit="seconds",
+                data_type="ppg",
+                data_format='auto',
+                oucru_sampling_rate_column=None,
+                oucru_interpolate_time=None
+            )
 
-                result = upload_callback(
-                    upload_contents=upload_contents,
-                    load_path_clicks=None,
-                    load_sample_clicks=None,
-                    filename="test.txt",
-                    file_path=None,
-                    sampling_freq=100,
-                    time_unit="seconds",
-                    data_type="ppg",
-                    data_format='auto',
-                    oucru_sampling_rate_column=None,
-                    oucru_interpolate_time=None
-                )
+            # Should return multiple outputs
+            assert isinstance(result, tuple)
+            assert len(result) >= 15
 
-                # Should return multiple outputs
-                assert isinstance(result, tuple)
-                assert len(result) >= 15
-
-    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_data_service')
-    def test_callback_with_file_path_csv(self, mock_get_data_service):
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_enhanced_data_service')
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context')
+    def test_callback_with_file_path_csv(self, mock_ctx, mock_get_data_service):
         """Test callback behavior with loading from file path (CSV)"""
         # Setup mocks
         mock_data_service = Mock()
@@ -537,30 +534,29 @@ class TestUploadCallbacksComprehensive:
         assert upload_callback is not None
 
         # Test the callback with file path loading
+        mock_ctx.triggered = [{"prop_id": "btn-load-path.n_clicks", "value": 1}]
         with patch('pandas.read_csv', return_value=mock_df):
-            with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
-                mock_ctx.triggered = [{"prop_id": "btn-load-path.n_clicks", "value": 1}]
+            result = upload_callback(
+                upload_contents=None,
+                load_path_clicks=1,
+                load_sample_clicks=None,
+                filename=None,
+                file_path="/path/to/test.csv",
+                sampling_freq=100,
+                time_unit="seconds",
+                data_type="ppg",
+                data_format='auto',
+                oucru_sampling_rate_column=None,
+                oucru_interpolate_time=None
+            )
 
-                result = upload_callback(
-                    upload_contents=None,
-                    load_path_clicks=1,
-                    load_sample_clicks=None,
-                    filename=None,
-                    file_path="/path/to/test.csv",
-                    sampling_freq=100,
-                    time_unit="seconds",
-                    data_type="ppg",
-                    data_format='auto',
-                    oucru_sampling_rate_column=None,
-                    oucru_interpolate_time=None
-                )
+            # Should return multiple outputs
+            assert isinstance(result, tuple)
+            assert len(result) >= 15
 
-                # Should return multiple outputs
-                assert isinstance(result, tuple)
-                assert len(result) >= 15
-
-    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_data_service')
-    def test_callback_with_file_path_txt(self, mock_get_data_service):
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.get_enhanced_data_service')
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context')
+    def test_callback_with_file_path_txt(self, mock_ctx, mock_get_data_service):
         """Test callback behavior with loading from file path (TXT)"""
         # Setup mocks
         mock_data_service = Mock()
@@ -589,29 +585,28 @@ class TestUploadCallbacksComprehensive:
         assert upload_callback is not None
 
         # Test the callback with TXT file path loading
+        mock_ctx.triggered = [{"prop_id": "btn-load-path.n_clicks", "value": 1}]
         with patch('pandas.read_csv', return_value=mock_df):
-            with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
-                mock_ctx.triggered = [{"prop_id": "btn-load-path.n_clicks", "value": 1}]
+            result = upload_callback(
+                upload_contents=None,
+                load_path_clicks=1,
+                load_sample_clicks=None,
+                filename=None,
+                file_path="/path/to/test.txt",
+                sampling_freq=100,
+                time_unit="seconds",
+                data_type="ppg",
+                data_format='auto',
+                oucru_sampling_rate_column=None,
+                oucru_interpolate_time=None
+            )
 
-                result = upload_callback(
-                    upload_contents=None,
-                    load_path_clicks=1,
-                    load_sample_clicks=None,
-                    filename=None,
-                    file_path="/path/to/test.txt",
-                    sampling_freq=100,
-                    time_unit="seconds",
-                    data_type="ppg",
-                    data_format='auto',
-                    oucru_sampling_rate_column=None,
-                    oucru_interpolate_time=None
-                )
+            # Should return multiple outputs
+            assert isinstance(result, tuple)
+            assert len(result) >= 15
 
-                # Should return multiple outputs
-                assert isinstance(result, tuple)
-                assert len(result) >= 15
-
-    def test_callback_with_invalid_file_path(self):
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context')
+    def test_callback_with_invalid_file_path(self, mock_ctx):
         """Test callback behavior with invalid file path"""
         # Register callbacks and capture them
         captured_callbacks = []
@@ -634,30 +629,30 @@ class TestUploadCallbacksComprehensive:
         assert upload_callback is not None
 
         # Test the callback with invalid file path format
-        with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
-            mock_ctx.triggered = [{"prop_id": "btn-load-path.n_clicks", "value": 1}]
+        mock_ctx.triggered = [{"prop_id": "btn-load-path.n_clicks", "value": 1}]
+        
+        result = upload_callback(
+            upload_contents=None,
+            load_path_clicks=1,
+            load_sample_clicks=None,
+            filename=None,
+            file_path="/path/to/test.xyz",  # Invalid extension
+            sampling_freq=100,
+            time_unit="seconds",
+            data_type="ppg",
+            data_format='auto',
+            oucru_sampling_rate_column=None,
+            oucru_interpolate_time=None
+        )
 
-            result = upload_callback(
-                upload_contents=None,
-                load_path_clicks=1,
-                load_sample_clicks=None,
-                filename=None,
-                file_path="/path/to/test.xyz",  # Invalid extension
-                sampling_freq=100,
-                time_unit="seconds",
-                data_type="ppg",
-                data_format='auto',
-                oucru_sampling_rate_column=None,
-                oucru_interpolate_time=None
-            )
+        # Should return error status
+        assert isinstance(result, tuple)
+        assert len(result) >= 15
+        # First element should be error message
+        assert "❌" in str(result[0]) or "Unsupported" in str(result[0])
 
-            # Should return error status
-            assert isinstance(result, tuple)
-            assert len(result) >= 15
-            # First element should be error message
-            assert "❌" in result[0] or "Unsupported" in result[0]
-
-    def test_callback_with_unknown_trigger(self):
+    @patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context')
+    def test_callback_with_unknown_trigger(self, mock_ctx):
         """Test callback behavior with unknown trigger"""
         # Register callbacks and capture them
         captured_callbacks = []
@@ -680,23 +675,22 @@ class TestUploadCallbacksComprehensive:
         assert upload_callback is not None
 
         # Test the callback with unknown trigger
-        with patch('vitalDSP_webapp.callbacks.core.upload_callbacks.callback_context') as mock_ctx:
-            mock_ctx.triggered = [{"prop_id": "unknown-component.n_clicks", "value": 1}]
-
-            with pytest.raises(PreventUpdate):
-                upload_callback(
-                    upload_contents=None,
-                    load_path_clicks=None,
-                    load_sample_clicks=None,
-                    filename=None,
-                    file_path=None,
-                    sampling_freq=100,
-                    time_unit="seconds",
-                    data_type="ppg",
-                    data_format='auto',
-                    oucru_sampling_rate_column=None,
-                    oucru_interpolate_time=None
-                )
+        mock_ctx.triggered = [{"prop_id": "unknown-component.n_clicks", "value": 1}]
+        
+        with pytest.raises(PreventUpdate):
+            upload_callback(
+                upload_contents=None,
+                load_path_clicks=None,
+                load_sample_clicks=None,
+                filename=None,
+                file_path=None,
+                sampling_freq=100,
+                time_unit="seconds",
+                data_type="ppg",
+                data_format='auto',
+                oucru_sampling_rate_column=None,
+                oucru_interpolate_time=None
+            )
 
     def test_hide_progress_section_callback(self):
         """Test hide progress section callback"""

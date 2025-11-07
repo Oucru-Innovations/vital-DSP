@@ -1171,7 +1171,7 @@ class EnhancedDataService:
     # ============================================================================
     # COMPATIBILITY LAYER - Methods to match old DataService interface
     # ============================================================================
-    
+
     def __init__(self, max_memory_mb: int = 500):
         """
         Initialize enhanced data service with compatibility layer.
@@ -1201,19 +1201,21 @@ class EnhancedDataService:
             "cache_hits": 0,
             "cache_misses": 0,
         }
-        
+
         # Compatibility attributes for old interface
         self.current_headers = None
         self.current_metadata = None
         self.current_data = None
         self.data_config = {}
-        
+
         # Data store for compatibility (maps data_id to data/info)
         self._data_store = {}
         self._column_mappings = {}
         self._next_id = 1
-        
-        logger.info(f"EnhancedDataService initialized with {max_memory_mb}MB memory limit")
+
+        logger.info(
+            f"EnhancedDataService initialized with {max_memory_mb}MB memory limit"
+        )
         logger.debug("EnhancedDataService compatibility layer initialized")
 
     def store_data(self, df: pd.DataFrame, info: Dict[str, Any]) -> str:
@@ -1390,7 +1392,9 @@ class EnhancedDataService:
             single_col = df.columns[0]
             mapping["time"] = single_col
             mapping["signal"] = single_col
-            logger.debug(f"Single column detected, mapping both time and signal to: {single_col}")
+            logger.debug(
+                f"Single column detected, mapping both time and signal to: {single_col}"
+            )
 
         logger.debug(f"Auto-detected column mapping: {mapping}")
         return mapping

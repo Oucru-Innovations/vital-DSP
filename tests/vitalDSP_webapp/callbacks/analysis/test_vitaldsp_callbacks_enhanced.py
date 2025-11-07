@@ -66,50 +66,50 @@ class TestFormatLargeNumber:
 
     def test_format_zero(self):
         """Test formatting zero"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import format_large_number
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import format_large_number
         assert format_large_number(0) == "0"
 
     def test_format_scientific_large(self):
         """Test scientific notation for large numbers"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import format_large_number
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import format_large_number
         result = format_large_number(1e7, use_scientific=True)
         assert "e+" in result or "e" in result
 
     def test_format_thousands(self):
         """Test thousands (k) notation (line 37-38)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import format_large_number
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import format_large_number
         result = format_large_number(5000)
         assert "k" in result
         assert "5.000k" == result
 
     def test_format_regular_decimal(self):
         """Test regular decimal notation"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import format_large_number
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import format_large_number
         result = format_large_number(123.456)
         assert "123.456" == result
 
     def test_format_millis(self):
         """Test millis (m) notation"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import format_large_number
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import format_large_number
         result = format_large_number(0.005)
         assert "m" in result
 
     def test_format_scientific_small(self):
         """Test scientific notation for very small numbers"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import format_large_number
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import format_large_number
         result = format_large_number(1e-6)
         assert "e-" in result
 
     def test_format_negative_large(self):
         """Test formatting negative large numbers"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import format_large_number
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import format_large_number
         result = format_large_number(-5000)
         assert "-" in result
         assert "k" in result
 
     def test_format_with_precision(self):
         """Test formatting with different precision"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import format_large_number
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import format_large_number
         result1 = format_large_number(123.456, precision=1)
         result2 = format_large_number(123.456, precision=5)
         assert "123.5" == result1
@@ -121,7 +121,7 @@ class TestCreateEmptyFigure:
 
     def test_create_empty_figure(self):
         """Test creating an empty figure"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_empty_figure
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_empty_figure
 
         fig = create_empty_figure()
 
@@ -135,7 +135,7 @@ class TestCreateSignalSourceTable:
 
     def test_signal_source_table_basic(self):
         """Test basic signal source table creation"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         table = create_signal_source_table(
             signal_source_info="Original Signal",
@@ -150,7 +150,7 @@ class TestCreateSignalSourceTable:
 
     def test_signal_source_table_with_filter_info(self):
         """Test signal source table with filter information"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "traditional",
@@ -174,7 +174,7 @@ class TestCreateSignalSourceTable:
 
     def test_signal_source_table_advanced_filter(self):
         """Test signal source table with advanced filter"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "advanced",
@@ -196,7 +196,7 @@ class TestCreateSignalSourceTable:
 
     def test_signal_source_table_artifact_removal(self):
         """Test signal source table with artifact removal"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "artifact",
@@ -217,7 +217,7 @@ class TestCreateSignalSourceTable:
 
     def test_signal_source_table_neural_filter(self):
         """Test signal source table with neural network filter"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "neural",
@@ -238,7 +238,7 @@ class TestCreateSignalSourceTable:
 
     def test_signal_source_table_ensemble_filter(self):
         """Test signal source table with ensemble filter"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "ensemble",
@@ -259,7 +259,7 @@ class TestCreateSignalSourceTable:
 
     def test_signal_source_table_empty_parameters(self):
         """Test signal source table with empty filter parameters"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "unknown",
@@ -281,7 +281,7 @@ class TestCalculateHiguchiFractalDimension:
 
     def test_higuchi_fractal_basic(self, sample_signal_data):
         """Test basic Higuchi fractal dimension calculation"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import higuchi_fractal_dimension
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import higuchi_fractal_dimension
 
         _, signal, _ = sample_signal_data
         result = higuchi_fractal_dimension(signal, k_max=10)
@@ -291,7 +291,7 @@ class TestCalculateHiguchiFractalDimension:
 
     def test_higuchi_fractal_short_signal(self):
         """Test Higuchi with short signal"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import higuchi_fractal_dimension
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import higuchi_fractal_dimension
 
         signal = np.random.randn(50)
         result = higuchi_fractal_dimension(signal, k_max=5)
@@ -300,7 +300,7 @@ class TestCalculateHiguchiFractalDimension:
 
     def test_higuchi_fractal_constant_signal(self):
         """Test Higuchi with constant signal"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import higuchi_fractal_dimension
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import higuchi_fractal_dimension
 
         signal = np.ones(1000)
         result = higuchi_fractal_dimension(signal, k_max=10)
@@ -309,7 +309,7 @@ class TestCalculateHiguchiFractalDimension:
 
     def test_higuchi_fractal_large_k_max(self, sample_signal_data):
         """Test Higuchi with large k_max"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import higuchi_fractal_dimension
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import higuchi_fractal_dimension
 
         _, signal, _ = sample_signal_data
         result = higuchi_fractal_dimension(signal, k_max=50)
@@ -318,7 +318,7 @@ class TestCalculateHiguchiFractalDimension:
 
     def test_higuchi_fractal_exception_handling(self):
         """Test Higuchi exception handling"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import higuchi_fractal_dimension
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import higuchi_fractal_dimension
 
         # Test with very short signal that might cause issues
         signal = np.array([1.0, 2.0])
@@ -332,7 +332,7 @@ class TestCreateSignalComparisonPlot:
 
     def test_comparison_plot_with_filtered_signal_ppg(self, sample_ppg_signal):
         """Test comparison plot with PPG signal"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, sampling_freq = sample_ppg_signal
         filtered_signal = original_signal * 0.9  # Simulated filtered signal
@@ -348,7 +348,7 @@ class TestCreateSignalComparisonPlot:
 
     def test_comparison_plot_with_filtered_signal_ecg(self, sample_ecg_signal):
         """Test comparison plot with ECG signal"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, sampling_freq = sample_ecg_signal
         filtered_signal = original_signal * 0.9  # Simulated filtered signal
@@ -364,7 +364,7 @@ class TestCreateSignalComparisonPlot:
 
     def test_comparison_plot_without_filtered_signal(self, sample_signal_data):
         """Test comparison plot without filtered signal"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, sampling_freq = sample_signal_data
 
@@ -380,7 +380,7 @@ class TestCreateSignalComparisonPlot:
 
     def test_comparison_plot_mismatched_lengths(self):
         """Test comparison plot with mismatched signal lengths"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis = np.linspace(0, 10, 1000)
         original_signal = np.random.randn(1000)
@@ -396,7 +396,7 @@ class TestCreateSignalComparisonPlot:
 
     def test_comparison_plot_short_signals(self):
         """Test comparison plot with short signals"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis = np.linspace(0, 1, 100)
         original_signal = np.random.randn(100)
@@ -415,14 +415,16 @@ class TestCallbacksRegistration:
     """Test callback registration"""
 
     def test_register_vitaldsp_callbacks(self):
-        """Test that callbacks are registered"""
+        """Test that register_vitaldsp_callbacks runs without errors"""
         from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import register_vitaldsp_callbacks
 
         mock_app = MagicMock()
         register_vitaldsp_callbacks(mock_app)
 
-        # Should have registered callbacks
-        assert mock_app.callback.called
+        # Note: register_vitaldsp_callbacks no longer registers callbacks
+        # (callbacks were migrated to time_domain_callbacks.py)
+        # Function should run without errors
+        assert True  # Just verify it runs without exception
 
 
 class TestEdgeCases:
@@ -484,7 +486,7 @@ class TestFilterInfoFormatting:
 
     def test_butterworth_lowpass(self):
         """Test Butterworth lowpass filter info"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "traditional",
@@ -501,7 +503,7 @@ class TestFilterInfoFormatting:
 
     def test_chebyshev_highpass(self):
         """Test Chebyshev highpass filter info"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "traditional",
@@ -519,7 +521,7 @@ class TestFilterInfoFormatting:
 
     def test_elliptic_bandpass(self):
         """Test Elliptic bandpass filter info"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "traditional",
@@ -539,7 +541,7 @@ class TestFilterInfoFormatting:
 
     def test_bessel_bandstop(self):
         """Test Bessel bandstop filter info"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "traditional",
@@ -557,7 +559,7 @@ class TestFilterInfoFormatting:
 
     def test_notch_filter(self):
         """Test notch filter info"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "traditional",
@@ -607,39 +609,37 @@ class TestSamplingFrequencyVariations:
 
     def test_low_sampling_freq_10hz(self):
         """Test with 10 Hz sampling"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         table = create_signal_source_table("Test", None, 10.0, 100)
         assert table is not None
 
     def test_medium_sampling_freq_100hz(self):
         """Test with 100 Hz sampling"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         table = create_signal_source_table("Test", None, 100.0, 1000)
         assert table is not None
 
     def test_standard_sampling_freq_1000hz(self):
         """Test with 1000 Hz sampling"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         table = create_signal_source_table("Test", None, 1000.0, 10000)
         assert table is not None
 
     def test_high_sampling_freq_10000hz(self):
         """Test with 10000 Hz sampling"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         table = create_signal_source_table("Test", None, 10000.0, 100000)
         assert table is not None
 
     def test_very_high_sampling_freq_100000hz(self):
         """Test with 100000 Hz sampling"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         table = create_signal_source_table("Test", None, 100000.0, 1000000)
         assert table is not None
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

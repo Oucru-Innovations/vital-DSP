@@ -247,8 +247,10 @@ class CNN1D(BaseDeepModel):
             if self.use_residual and i > 0:
                 # Match dimensions if needed
                 if residual.shape[-1] != x.shape[-1]:
-                    residual = layers.Conv1D(n_filters, 1, padding="same")(residual)
-                x = layers.Add()([x, residual])
+                    residual = layers.Conv1D(
+                        n_filters, 1, padding="same", name=f"residual_conv1d_{i+1}"
+                    )(residual)
+                x = layers.Add(name=f"add_{i+1}")([x, residual])
 
             x = layers.MaxPooling1D(pool_size, name=f"maxpool_{i+1}")(x)
             x = layers.Dropout(self.dropout_rate, name=f"dropout_{i+1}")(x)

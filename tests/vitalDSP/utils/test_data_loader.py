@@ -726,5 +726,3 @@ class TestIntegration:
 
 
 # Run tests
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

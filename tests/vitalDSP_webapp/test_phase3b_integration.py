@@ -225,14 +225,3 @@ def test_integration():
         return False
 
 
-if __name__ == "__main__":
-    logger.info("Starting Phase 3B Heavy Data Processing Integration Tests...")
-    
-    success = test_integration()
-    
-    if success:
-        logger.info("\n🚀 Phase 3B implementation is ready for production!")
-        sys.exit(0)
-    else:
-        logger.error("\n❌ Phase 3B implementation needs fixes before production")
-        sys.exit(1)

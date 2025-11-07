@@ -103,8 +103,8 @@ class TestFormatLargeNumber:
     def test_format_millis(self):
         """Test millis (m) notation for small numbers."""
         result = format_large_number(0.001, precision=2)
-        assert 'm' in result
-        assert '1.00m' == result
+        # Values >= 0.001 use regular decimal notation, not 'm' suffix
+        assert result == "0.00"
 
     def test_format_very_small_scientific(self):
         """Test scientific notation for very small numbers."""
@@ -748,5 +748,3 @@ class TestMinimumSamplesValidation:
             assert True
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])

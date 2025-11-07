@@ -19,12 +19,16 @@ try:
     from vitalDSP_webapp.utils.plot_utils import limit_plot_data, check_plot_data_size
 except ImportError:
     # Fallback if plot_utils not available
-    def limit_plot_data(time_axis, signal_data, max_duration=300, max_points=10000, start_time=None):
+    def limit_plot_data(
+        time_axis, signal_data, max_duration=300, max_points=10000, start_time=None
+    ):
         """Fallback implementation of limit_plot_data"""
         return time_axis, signal_data
+
     def check_plot_data_size(time_axis, signal_data, max_points=10000):
         """Fallback implementation of check_plot_data_size"""
         return True
+
 
 logger = logging.getLogger(__name__)
 
@@ -88,19 +92,44 @@ def register_signal_filtering_callbacks(app):
             Output("advanced-filter-method", "value"),
         ],
         [Input("url", "pathname")],
+        [
+            State("filter-signal-type-select", "value"),
+            State("filter-type-select", "value"),
+            State("advanced-filter-method", "value"),
+        ],
         prevent_initial_call=True,
     )
-    def auto_select_signal_type_and_defaults(pathname):
+    def auto_select_signal_type_and_defaults(
+        pathname, current_signal_type, current_filter_type, current_advanced_method
+    ):
         """Auto-select signal type and set appropriate defaults based on uploaded data."""
         logger.info("=== AUTO-SELECT SIGNAL TYPE CALLBACK TRIGGERED ===")
         logger.info(f"Pathname: {pathname}")
+        logger.info(
+            f"Current user selections - Signal: {current_signal_type}, Filter: {current_filter_type}, Method: {current_advanced_method}"
+        )
 
         if pathname != "/filtering":
             logger.info("Not on filtering page, preventing update")
             raise PreventUpdate
 
+        # If user has already made selections, don't override them
+        # Check if this is NOT the first time on the page (current values are not None)
+        if (
+            current_filter_type is not None
+            or current_advanced_method is not None
+            or current_signal_type is not None
+        ):
+            logger.info(
+                f"User has existing selections - Signal: {current_signal_type}, Filter: {current_filter_type}, Method: {current_advanced_method}"
+            )
+            logger.info("Preserving user selections, not auto-selecting")
+            raise PreventUpdate
+
         try:
-            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
             data_service = get_enhanced_data_service()
             if not data_service:
@@ -195,7 +224,9 @@ def register_signal_filtering_callbacks(app):
                                 FourierTransform,
                             )
 
-                            ft = FourierTransform(signal_data)  # FourierTransform takes only signal, not fs
+                            ft = FourierTransform(
+                                signal_data
+                            )  # FourierTransform takes only signal, not fs
                             f, psd = ft.compute_psd()
                             dominant_freq = f[np.argmax(psd)]
 
@@ -381,6 +412,11 @@ def register_signal_filtering_callbacks(app):
             State("start-position-slider", "value"),
             State("duration-select", "value"),
             State("filter-type-select", "value"),
+            State("filter-signal-source", "value"),  # NEW: Signal source selector
+            State("filter-application-count", "value"),  # NEW: Filter application count
+            State(
+                "store-filtered-signal", "data"
+            ),  # NEW: Access to current filtered signal
             State("filter-family-advanced", "value"),
             State("filter-response-advanced", "value"),
             State("filter-low-freq-advanced", "value"),
@@ -443,6 +479,9 @@ def register_signal_filtering_callbacks(app):
         start_position,
         duration,
         filter_type,
+        signal_source,  # NEW: Signal source selector
+        filter_count,  # NEW: Filter application count
+        current_filtered_signal,  # NEW: Current filtered signal data
         filter_family,
         filter_response,
         low_freq,
@@ -500,7 +539,7 @@ def register_signal_filtering_callbacks(app):
 
         logger.info("=== ADVANCED FILTERING CALLBACK TRIGGERED ===")
         logger.info(f"Pathname: {pathname}")
-        
+
         if ctx.triggered:
             trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
             logger.info(f"Trigger ID: {trigger_id}")
@@ -526,15 +565,22 @@ def register_signal_filtering_callbacks(app):
         logger.info("=== ADVANCED FILTERING CALLBACK TRIGGERED ===")
         logger.info(f"Callback context: {ctx}")
         logger.info(f"Triggered: {ctx.triggered}")
-        
+
         # Allow callback to run for Apply Filter button and nudge buttons
         if ctx.triggered:
             trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
             logger.info(f"Trigger ID: {trigger_id}")
-            
+
             # Only prevent update for non-relevant triggers
-            if trigger_id not in ["filter-btn-apply", "btn-nudge-m10", "btn-center", "btn-nudge-p10"]:
-                logger.info(f"Trigger {trigger_id} not relevant for filtering, preventing update")
+            if trigger_id not in [
+                "filter-btn-apply",
+                "btn-nudge-m10",
+                "btn-center",
+                "btn-nudge-p10",
+            ]:
+                logger.info(
+                    f"Trigger {trigger_id} not relevant for filtering, preventing update"
+                )
                 raise PreventUpdate
         else:
             # Allow callback to run even without trigger context (for initial load)
@@ -542,7 +588,9 @@ def register_signal_filtering_callbacks(app):
 
         try:
             # Get data from the data service
-            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
             data_service = get_enhanced_data_service()
 
@@ -576,26 +624,40 @@ def register_signal_filtering_callbacks(app):
 
             # Log the callback parameters
             logger.info("=== CALLBACK PARAMETERS ===")
-            logger.info(f"Start position: {start_position}% (type: {type(start_position)})")
+            logger.info(
+                f"Start position: {start_position}% (type: {type(start_position)})"
+            )
             logger.info(f"Duration: {duration}s (type: {type(duration)})")
             logger.info(f"Filter type: {filter_type} (type: {type(filter_type)})")
             logger.info(f"Filter family: {filter_family} (type: {type(filter_family)})")
-            logger.info(f"Filter response: {filter_response} (type: {type(filter_response)})")
+            logger.info(
+                f"Filter response: {filter_response} (type: {type(filter_response)})"
+            )
             logger.info(f"Low frequency: {low_freq} (type: {type(low_freq)})")
             logger.info(f"High frequency: {high_freq} (type: {type(high_freq)})")
             logger.info(f"Filter order: {filter_order} (type: {type(filter_order)})")
-            logger.info(f"Advanced method: {advanced_method} (type: {type(advanced_method)})")
+            logger.info(
+                f"Advanced method: {advanced_method} (type: {type(advanced_method)})"
+            )
             # Log method-specific parameters based on selected method
             if advanced_method == "kalman":
                 logger.info(f"Kalman R: {kalman_r}, Q: {kalman_q}")
             elif advanced_method == "optimization":
-                logger.info(f"Optimization: loss={optimization_loss_type}, lr={optimization_learning_rate}, iterations={optimization_iterations}")
+                logger.info(
+                    f"Optimization: loss={optimization_loss_type}, lr={optimization_learning_rate}, iterations={optimization_iterations}"
+                )
             elif advanced_method == "gradient_descent":
-                logger.info(f"Gradient descent: lr={gradient_learning_rate}, iterations={gradient_iterations}")
+                logger.info(
+                    f"Gradient descent: lr={gradient_learning_rate}, iterations={gradient_iterations}"
+                )
             elif advanced_method == "convolution":
-                logger.info(f"Convolution: kernel_type={convolution_kernel_type}, kernel_size={convolution_kernel_size}")
+                logger.info(
+                    f"Convolution: kernel_type={convolution_kernel_type}, kernel_size={convolution_kernel_size}"
+                )
             elif advanced_method == "attention":
-                logger.info(f"Attention: type={attention_type}, size={attention_size}, sigma={attention_sigma}")
+                logger.info(
+                    f"Attention: type={attention_type}, size={attention_size}, sigma={attention_sigma}"
+                )
             elif advanced_method == "adaptive":
                 logger.info(f"Adaptive: mu={adaptive_mu}, order={adaptive_order}")
             logger.info(f"Artifact type: {artifact_type} (type: {type(artifact_type)})")
@@ -639,19 +701,23 @@ def register_signal_filtering_callbacks(app):
                     duration = float(duration)
                     logger.info(f"Duration converted to float: {duration}")
                 except (ValueError, TypeError) as e:
-                    logger.error(f"Failed to convert duration '{duration}' to float: {e}")
+                    logger.error(
+                        f"Failed to convert duration '{duration}' to float: {e}"
+                    )
                     duration = 60  # Fallback to default
 
             # Get sampling frequency - CRITICAL for proper time calculations
-            sampling_freq = data_info.get('sampling_freq', 1000)
+            sampling_freq = data_info.get("sampling_freq", 1000)
             logger.info(f"Sampling frequency from data_info: {sampling_freq} Hz")
 
             # Get data duration to calculate actual time range
-            data_duration = data_info.get('duration', 0)
+            data_duration = data_info.get("duration", 0)
             if data_duration == 0:
                 # Calculate duration from sampling frequency and data length
                 data_duration = len(df) / sampling_freq
-                logger.info(f"Calculated data duration: {data_duration:.2f} seconds ({len(df)} samples / {sampling_freq} Hz)")
+                logger.info(
+                    f"Calculated data duration: {data_duration:.2f} seconds ({len(df)} samples / {sampling_freq} Hz)"
+                )
 
             # Calculate start time based on percentage (start_position is 0-100)
             start_time = (start_position / 100.0) * data_duration
@@ -660,20 +726,22 @@ def register_signal_filtering_callbacks(app):
             end_time = start_time + duration
 
             logger.info(f"Time window calculation:")
-            logger.info(f"  start_position: {start_position}% → start_time: {start_time:.2f}s")
+            logger.info(
+                f"  start_position: {start_position}% → start_time: {start_time:.2f}s"
+            )
             logger.info(f"  duration: {duration}s → end_time: {end_time:.2f}s")
             logger.info(f"  data_duration: {data_duration:.2f}s")
-            
+
             # Ensure end time doesn't exceed data duration
             if end_time > data_duration:
                 end_time = data_duration
                 start_time = max(0, end_time - duration)
-            
+
             # Handle nudge button adjustments
             ctx = callback_context
             if ctx.triggered:
                 trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-                
+
                 # Only adjust position for actual nudge buttons, not for Apply Filter
                 if trigger_id == "btn-nudge-m10":
                     start_position = max(0, start_position - 10)  # Adjust percentage
@@ -683,10 +751,14 @@ def register_signal_filtering_callbacks(app):
                     # Ensure end time doesn't exceed data duration
                     if end_time > data_duration:
                         end_time = data_duration
-                        start_position = max(0, (end_time - duration) / data_duration * 100)
+                        start_position = max(
+                            0, (end_time - duration) / data_duration * 100
+                        )
                     logger.info(f"Nudge button triggered: {trigger_id}")
                     logger.info(f"Adjusted start position: {start_position}%")
-                    logger.info(f"Adjusted time range: {start_time:.2f} to {end_time:.2f} seconds")
+                    logger.info(
+                        f"Adjusted time range: {start_time:.2f} to {end_time:.2f} seconds"
+                    )
                 elif trigger_id == "btn-center":
                     start_position = 50  # Center at 50%
                     # Recalculate time range with adjusted position
@@ -698,7 +770,9 @@ def register_signal_filtering_callbacks(app):
                         start_position = max(0, end_time - duration)
                     logger.info(f"Nudge button triggered: {trigger_id}")
                     logger.info(f"Adjusted start position: {start_position}%")
-                    logger.info(f"Adjusted time range: {start_time:.2f} to {end_time:.2f} seconds")
+                    logger.info(
+                        f"Adjusted time range: {start_time:.2f} to {end_time:.2f} seconds"
+                    )
                 elif trigger_id == "btn-nudge-p10":
                     start_position = min(100, start_position + 10)
                     # Recalculate time range with adjusted position
@@ -710,12 +784,18 @@ def register_signal_filtering_callbacks(app):
                         start_position = max(0, end_time - duration)
                     logger.info(f"Nudge button triggered: {trigger_id}")
                     logger.info(f"Adjusted start position: {start_position}%")
-                    logger.info(f"Adjusted time range: {start_time:.2f} to {end_time:.2f} seconds")
+                    logger.info(
+                        f"Adjusted time range: {start_time:.2f} to {end_time:.2f} seconds"
+                    )
                 elif trigger_id == "filter-btn-apply":
                     # Apply Filter button - use the current start_position and duration as-is
-                    logger.info(f"Apply Filter button triggered - using current parameters")
+                    logger.info(
+                        f"Apply Filter button triggered - using current parameters"
+                    )
                     logger.info(f"Start position: {start_position}%")
-                    logger.info(f"Time range: {start_time:.2f} to {end_time:.2f} seconds")
+                    logger.info(
+                        f"Time range: {start_time:.2f} to {end_time:.2f} seconds"
+                    )
 
             logger.info("Data service method results:")
             logger.info(f"  get_data returned: {type(df)}")
@@ -791,6 +871,13 @@ def register_signal_filtering_callbacks(app):
                     None,
                     None,
                 )
+
+            # Extract FULL signal BEFORE any windowing (for filtering entire signal)
+            # This allows us to store the full filtered signal for use in other screens
+            full_signal_data = df[signal_column].values
+            logger.info(
+                f"Extracted full signal for filtering: {len(full_signal_data)} samples"
+            )
 
             # Log the actual data sample
             logger.info(f"Signal column: {signal_column}")
@@ -888,7 +975,9 @@ def register_signal_filtering_callbacks(app):
                         "Falling back to index-based time axis due to non-numeric time data"
                     )
                     # Generate time axis based on sampling frequency
-                    sampling_freq = data_info.get("sampling_freq", 1000)  # Use consistent key name
+                    sampling_freq = data_info.get(
+                        "sampling_freq", 1000
+                    )  # Use consistent key name
                     time_data = np.arange(len(df)) / sampling_freq
                     logger.info(
                         f"Generated index-based time axis: {np.min(time_data):.4f} to {np.max(time_data):.4f} seconds"
@@ -896,9 +985,7 @@ def register_signal_filtering_callbacks(app):
 
                 # Calculate sample indices based on duration and sampling frequency
                 if start_time is not None and end_time is not None:
-                    logger.info(
-                        f"Looking for time range: {start_time} to {end_time}"
-                    )
+                    logger.info(f"Looking for time range: {start_time} to {end_time}")
                     logger.info(
                         f"Time data type: {type(time_data[0])}, Start time type: {type(start_time)}"
                     )
@@ -907,32 +994,44 @@ def register_signal_filtering_callbacks(app):
                     )
 
                 # Get sampling frequency from data_info (consistent key name)
-                sampling_freq = data_info.get("sampling_freq", 1000)  # Use consistent default
+                sampling_freq = data_info.get(
+                    "sampling_freq", 1000
+                )  # Use consistent default
                 logger.info(f"Using sampling frequency: {sampling_freq} Hz")
-                
+
                 # Calculate number of samples needed: duration * sampling_frequency
                 duration_samples = int(duration * sampling_freq)
-                logger.info(f"Duration {duration}s requires {duration_samples} samples at {sampling_freq} Hz")
-                
+                logger.info(
+                    f"Duration {duration}s requires {duration_samples} samples at {sampling_freq} Hz"
+                )
+
                 # Calculate start sample index based on start_time
                 start_sample_idx = int(start_time * sampling_freq)
                 end_sample_idx = start_sample_idx + duration_samples
-                
-                logger.info(f"Sample range: {start_sample_idx} to {end_sample_idx} ({duration_samples} samples)")
-                
+
+                logger.info(
+                    f"Sample range: {start_sample_idx} to {end_sample_idx} ({duration_samples} samples)"
+                )
+
                 # Ensure we don't exceed data bounds
                 if end_sample_idx > len(df):
-                    logger.warning(f"End sample {end_sample_idx} exceeds data length {len(df)}, adjusting")
+                    logger.warning(
+                        f"End sample {end_sample_idx} exceeds data length {len(df)}, adjusting"
+                    )
                     end_sample_idx = len(df)
                     start_sample_idx = max(0, end_sample_idx - duration_samples)
-                    logger.info(f"Adjusted sample range: {start_sample_idx} to {end_sample_idx}")
-                
+                    logger.info(
+                        f"Adjusted sample range: {start_sample_idx} to {end_sample_idx}"
+                    )
+
                 # Use sample-based indexing instead of time-based masking
                 start_idx = start_sample_idx
                 end_idx = end_sample_idx
-                
-                logger.info(f"Final sample indices: {start_idx} to {end_idx} ({end_idx - start_idx} samples)")
-                
+
+                logger.info(
+                    f"Final sample indices: {start_idx} to {end_idx} ({end_idx - start_idx} samples)"
+                )
+
                 # Verify we have enough data points for filtering
                 min_points = 100  # Minimum points needed for filtering
                 if (end_idx - start_idx) < min_points:
@@ -950,16 +1049,12 @@ def register_signal_filtering_callbacks(app):
 
                 # If still not enough points, use a larger range
                 if (end_idx - start_idx) < min_points:
-                    logger.warning(
-                        "Still not enough points, using larger range"
-                    )
+                    logger.warning("Still not enough points, using larger range")
                     # Use a larger range around the center
                     half_range = min(
                         min_points, len(df) // 4
                     )  # Use 1/4 of data or min_points
-                    center_idx = (
-                        len(df) // 2
-                    )  # Use center of full dataset
+                    center_idx = len(df) // 2  # Use center of full dataset
                     start_idx = max(0, center_idx - half_range)
                     end_idx = min(len(df), center_idx + half_range)
                     logger.info(
@@ -980,8 +1075,78 @@ def register_signal_filtering_callbacks(app):
                         f"Using subset: indices {start_idx} to {end_idx} ({end_idx - start_idx} points)"
                     )
 
-                # Extract data for the selected range
+                # Extract data for the selected range (for display)
                 signal_data = df[signal_column].iloc[start_idx:end_idx].values
+
+                # NEW: Check if we should use filtered signal instead of original (CASCADING FILTERS)
+                if signal_source == "filtered":
+                    logger.info("=== CASCADING FILTER MODE (time column path) ===")
+                    logger.info(
+                        "Attempting to retrieve FULL filtered signal from Enhanced Data Service..."
+                    )
+
+                    try:
+                        # PRIORITY 1: Get FULL filtered signal from Enhanced Data Service
+                        full_filtered_from_service = data_service.get_filtered_data(
+                            latest_data_id
+                        )
+
+                        if (
+                            full_filtered_from_service is not None
+                            and len(full_filtered_from_service) > 0
+                        ):
+                            logger.info(
+                                f"✅ Retrieved FULL filtered signal from Data Service: {len(full_filtered_from_service)} samples"
+                            )
+
+                            # Use full filtered signal as the base for cascading
+                            full_signal_data = full_filtered_from_service
+
+                            # Extract window for display
+                            signal_data = full_filtered_from_service[start_idx:end_idx]
+                            logger.info(
+                                f"Extracted window for display: {len(signal_data)} samples (from {start_idx} to {end_idx})"
+                            )
+                        else:
+                            # PRIORITY 2: Fallback to Dash Store (windowed, less ideal)
+                            logger.warning(
+                                "⚠️ No full filtered signal in Data Service, falling back to Dash Store (windowed)"
+                            )
+                            if current_filtered_signal:
+                                filtered_signal_array = np.array(
+                                    current_filtered_signal.get("filtered_signal", [])
+                                )
+                                if len(filtered_signal_array) > 0:
+                                    # Use the filtered signal for the selected range
+                                    filtered_start_idx = max(
+                                        0,
+                                        min(start_idx, len(filtered_signal_array) - 1),
+                                    )
+                                    filtered_end_idx = max(
+                                        filtered_start_idx + 1,
+                                        min(end_idx, len(filtered_signal_array)),
+                                    )
+                                    signal_data = filtered_signal_array[
+                                        filtered_start_idx:filtered_end_idx
+                                    ]
+                                    # WARN: This is windowed data, not full signal
+                                    full_signal_data = filtered_signal_array
+                                    logger.warning(
+                                        f"⚠️ Using WINDOWED filtered signal from Dash Store: {len(full_signal_data)} samples (not ideal for cascading)"
+                                    )
+                                else:
+                                    logger.warning(
+                                        "Filtered signal from Dash Store is empty, using original signal"
+                                    )
+                            else:
+                                logger.warning(
+                                    "No current filtered signal in Dash Store, using original signal"
+                                )
+                    except Exception as e:
+                        logger.error(
+                            f"Error accessing filtered signal: {e}, using original signal",
+                            exc_info=True,
+                        )
 
                 # Generate time axis in seconds
                 # Use the converted time_data (already in seconds from datetime conversion)
@@ -992,7 +1157,9 @@ def register_signal_filtering_callbacks(app):
 
             else:
                 # Generate time axis based on sampling frequency
-                sampling_freq = data_info.get("sampling_freq", 1000)  # Use consistent key name
+                sampling_freq = data_info.get(
+                    "sampling_freq", 1000
+                )  # Use consistent key name
                 logger.info(f"Using sampling frequency: {sampling_freq} Hz")
                 logger.info(
                     f"Data info keys: {list(data_info.keys()) if data_info else 'None'}"
@@ -1017,12 +1184,85 @@ def register_signal_filtering_callbacks(app):
                     end_idx = len(df)
                     logger.info("No time range selected, using full data")
 
-                # Extract data for the selected range
+                # Extract data for the selected range (for display)
                 signal_data = df[signal_column].iloc[start_idx:end_idx].values
+
+                # NEW: Check if we should use filtered signal instead of original (CASCADING FILTERS)
+                if signal_source == "filtered":
+                    logger.info("=== CASCADING FILTER MODE (no time column path) ===")
+                    logger.info(
+                        "Attempting to retrieve FULL filtered signal from Enhanced Data Service..."
+                    )
+
+                    try:
+                        # PRIORITY 1: Get FULL filtered signal from Enhanced Data Service
+                        full_filtered_from_service = data_service.get_filtered_data(
+                            latest_data_id
+                        )
+
+                        if (
+                            full_filtered_from_service is not None
+                            and len(full_filtered_from_service) > 0
+                        ):
+                            logger.info(
+                                f"✅ Retrieved FULL filtered signal from Data Service: {len(full_filtered_from_service)} samples"
+                            )
+
+                            # Use full filtered signal as the base for cascading
+                            full_signal_data = full_filtered_from_service
+
+                            # Extract window for display
+                            signal_data = full_filtered_from_service[start_idx:end_idx]
+                            logger.info(
+                                f"Extracted window for display: {len(signal_data)} samples (from {start_idx} to {end_idx})"
+                            )
+                        else:
+                            # PRIORITY 2: Fallback to Dash Store (windowed, less ideal)
+                            logger.warning(
+                                "⚠️ No full filtered signal in Data Service, falling back to Dash Store (windowed)"
+                            )
+                            if current_filtered_signal:
+                                filtered_signal_array = np.array(
+                                    current_filtered_signal.get("filtered_signal", [])
+                                )
+                                if len(filtered_signal_array) > 0:
+                                    # Use the filtered signal for the selected range
+                                    filtered_start_idx = max(
+                                        0,
+                                        min(start_idx, len(filtered_signal_array) - 1),
+                                    )
+                                    filtered_end_idx = max(
+                                        filtered_start_idx + 1,
+                                        min(end_idx, len(filtered_signal_array)),
+                                    )
+                                    signal_data = filtered_signal_array[
+                                        filtered_start_idx:filtered_end_idx
+                                    ]
+                                    # WARN: This is windowed data, not full signal
+                                    full_signal_data = filtered_signal_array
+                                    logger.warning(
+                                        f"⚠️ Using WINDOWED filtered signal from Dash Store: {len(full_signal_data)} samples (not ideal for cascading)"
+                                    )
+                                else:
+                                    logger.warning(
+                                        "Filtered signal is empty, using original signal"
+                                    )
+                            else:
+                                logger.warning(
+                                    "No current filtered signal in Dash Store, using original signal"
+                                )
+                    except Exception as e:
+                        logger.error(
+                            f"Error accessing filtered signal: {e}, using original signal",
+                            exc_info=True,
+                        )
+
                 # Create time axis that matches the signal data length
                 # Start from the actual time of start_idx to maintain correct time reference
                 time_axis = (np.arange(len(signal_data)) + start_idx) / sampling_freq
-                logger.info(f"Created time axis: length={len(time_axis)}, range={time_axis[0]:.3f}s to {time_axis[-1]:.3f}s")
+                logger.info(
+                    f"Created time axis: length={len(time_axis)}, range={time_axis[0]:.3f}s to {time_axis[-1]:.3f}s"
+                )
 
             # Ensure signal data is numeric
             try:
@@ -1064,8 +1304,12 @@ def register_signal_filtering_callbacks(app):
 
             # CRITICAL CHECK: Ensure time_axis and signal_data have same length
             if len(time_axis) != len(signal_data):
-                logger.error(f"LENGTH MISMATCH: time_axis={len(time_axis)}, signal_data={len(signal_data)}")
-                logger.error("This will cause empty plots! Fixing by regenerating time_axis...")
+                logger.error(
+                    f"LENGTH MISMATCH: time_axis={len(time_axis)}, signal_data={len(signal_data)}"
+                )
+                logger.error(
+                    "This will cause empty plots! Fixing by regenerating time_axis..."
+                )
                 time_axis = np.arange(len(signal_data)) / sampling_freq
                 logger.info(f"Regenerated time_axis with length {len(time_axis)}")
 
@@ -1074,7 +1318,9 @@ def register_signal_filtering_callbacks(app):
                 logger.info(
                     f"Signal data sample: {signal_data[:5] if len(signal_data) >= 5 else signal_data}"
                 )
-                logger.info(f"Time axis sample: {time_axis[:5] if len(time_axis) >= 5 else time_axis}")
+                logger.info(
+                    f"Time axis sample: {time_axis[:5] if len(time_axis) >= 5 else time_axis}"
+                )
             else:
                 logger.warning("Signal data is empty - cannot compute range or sample")
 
@@ -1120,8 +1366,40 @@ def register_signal_filtering_callbacks(app):
             original_signal = signal_data.copy()
 
             # Get sampling frequency from data_info (use consistent key name)
-            sampling_freq = data_info.get("sampling_freq", 1000)  # Use consistent default
+            sampling_freq = data_info.get(
+                "sampling_freq", 1000
+            )  # Use consistent default
             logger.info(f"Sampling frequency: {sampling_freq} Hz")
+
+            # Process FULL signal for filtering entire signal (to store in data service)
+            # This allows other screens to extract any window from the filtered signal
+            full_signal_for_filtering = None
+            if full_signal_data is not None and len(full_signal_data) > 0:
+                logger.info(
+                    f"Processing full signal for filtering: {len(full_signal_data)} samples"
+                )
+                # Ensure full signal is numeric
+                try:
+                    full_signal_for_filtering = pd.to_numeric(
+                        full_signal_data, errors="coerce"
+                    )
+                    if np.isnan(full_signal_for_filtering).any():
+                        valid_mask = ~np.isnan(full_signal_for_filtering)
+                        full_signal_for_filtering = full_signal_for_filtering[
+                            valid_mask
+                        ]
+                        logger.info(
+                            f"Removed {np.sum(~valid_mask)} non-numeric values from full signal"
+                        )
+                except Exception as e:
+                    logger.warning(
+                        f"Error converting full signal to numeric: {e}, skipping full signal filtering"
+                    )
+                    full_signal_for_filtering = None
+            else:
+                logger.info(
+                    "Full signal data not available, will filter only windowed signal"
+                )
 
             # Apply detrending if user selected the option (to match time domain screen behavior)
             if detrend_option and "detrend" in detrend_option:
@@ -1161,6 +1439,20 @@ def register_signal_filtering_callbacks(app):
 
                 # Use zero-baseline signal for filtering to match time domain screen
                 signal_data = signal_data_zero_baseline
+
+                # Also apply detrending to full signal if available
+                if full_signal_for_filtering is not None:
+                    logger.info("Applying detrending to full signal for storage")
+                    ar_full = ArtifactRemoval(full_signal_for_filtering)
+                    full_signal_detrended = ar_full.baseline_correction(
+                        cutoff=0.5, fs=sampling_freq
+                    )
+                    full_signal_for_filtering = full_signal_detrended - np.mean(
+                        full_signal_detrended
+                    )
+                    logger.info(
+                        f"Full signal detrended: {len(full_signal_for_filtering)} samples"
+                    )
             else:
                 logger.info("Detrending not selected, using original signal baseline")
                 logger.info(
@@ -1173,10 +1465,17 @@ def register_signal_filtering_callbacks(app):
                     f"Only {len(signal_data)} data points available, this may not be enough for effective filtering"
                 )
                 # Use vitalDSP convolution-based smoothing instead of numpy convolution
-                logger.info("Using vitalDSP convolution-based smoothing instead of numpy convolution")
-                from vitalDSP.filtering.advanced_signal_filtering import AdvancedSignalFiltering
+                logger.info(
+                    "Using vitalDSP convolution-based smoothing instead of numpy convolution"
+                )
+                from vitalDSP.filtering.advanced_signal_filtering import (
+                    AdvancedSignalFiltering,
+                )
+
                 af = AdvancedSignalFiltering(signal_data)
-                filtered_data = af.convolution_based_filter(kernel_type="smoothing", kernel_size=3)
+                filtered_data = af.convolution_based_filter(
+                    kernel_type="smoothing", kernel_size=3
+                )
             else:
                 logger.info(
                     f"Sufficient data points ({len(signal_data)}) for filtering"
@@ -1188,16 +1487,170 @@ def register_signal_filtering_callbacks(app):
             )  # Default to 100 Hz based on the data info
             logger.info(f"Using sampling frequency for filtering: {sampling_freq} Hz")
 
-            # Apply filtering based on type
-            logger.info("=== APPLYING FILTERING ===")
+            # FILTER FULL SIGNAL FIRST (for storage in data service)
+            # This allows other screens to extract any window from the filtered signal
+            full_filtered_signal = None
+            if (
+                full_signal_for_filtering is not None
+                and len(full_signal_for_filtering) > 0
+            ):
+                logger.info(f"=== FILTERING FULL SIGNAL FOR STORAGE ===")
+                logger.info(
+                    f"Full signal length: {len(full_signal_for_filtering)} samples"
+                )
+
+                try:
+                    # Apply the same filtering logic to the full signal
+                    full_filtered_temp = full_signal_for_filtering.copy()
+
+                    # Apply filter n times (iterative filtering)
+                    filter_count_full = max(1, min(filter_count or 1, 10))
+
+                    for iteration in range(filter_count_full):
+                        current_full_input = full_filtered_temp.copy()
+                        logger.info(
+                            f"=== Full Signal Filter Iteration {iteration + 1}/{filter_count_full} ==="
+                        )
+                        logger.info(f"Filter type for FULL signal: '{filter_type}'")
+                        logger.info(f"Advanced method: '{advanced_method}'")
+
+                        if len(current_full_input) >= 50:
+                            if filter_type == "traditional":
+                                logger.info(
+                                    "Applying TRADITIONAL filter to FULL signal"
+                                )
+                                filter_family = filter_family or "butter"
+                                filter_response = filter_response or "low"
+                                low_freq = low_freq or 10
+                                high_freq = high_freq or 50
+                                filter_order = filter_order or 4
+
+                                full_filtered_temp = apply_traditional_filter(
+                                    current_full_input,
+                                    sampling_freq,
+                                    filter_family,
+                                    filter_response,
+                                    low_freq,
+                                    high_freq,
+                                    filter_order,
+                                )
+                                full_filtered_temp = (
+                                    apply_additional_traditional_filters(
+                                        full_filtered_temp,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                        None,
+                                    )
+                                )
+                            elif filter_type == "advanced":
+                                logger.info("Applying ADVANCED filter to FULL signal")
+                                full_filtered_temp = apply_advanced_filter(
+                                    current_full_input,
+                                    advanced_method,
+                                    kalman_r=kalman_r,
+                                    kalman_q=kalman_q,
+                                    optimization_loss_type=optimization_loss_type,
+                                    optimization_initial_guess=optimization_initial_guess,
+                                    optimization_learning_rate=optimization_learning_rate,
+                                    optimization_iterations=optimization_iterations,
+                                    gradient_learning_rate=gradient_learning_rate,
+                                    gradient_iterations=gradient_iterations,
+                                    convolution_kernel_type=convolution_kernel_type,
+                                    convolution_kernel_size=convolution_kernel_size,
+                                    attention_type=attention_type,
+                                    attention_size=attention_size,
+                                    attention_sigma=attention_sigma,
+                                    attention_ascending=attention_ascending,
+                                    attention_base=attention_base,
+                                    adaptive_mu=adaptive_mu,
+                                    adaptive_order=adaptive_order,
+                                )
+                            elif filter_type == "artifact":
+                                full_filtered_temp = apply_enhanced_artifact_removal(
+                                    current_full_input,
+                                    sampling_freq,
+                                    artifact_type,
+                                    artifact_strength,
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                )
+                            elif filter_type == "neural":
+                                full_filtered_temp = apply_neural_filter(
+                                    current_full_input, neural_type, neural_complexity
+                                )
+                            elif filter_type == "ensemble":
+                                full_filtered_temp = apply_enhanced_ensemble_filter(
+                                    current_full_input,
+                                    ensemble_method,
+                                    ensemble_n_filters,
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                    None,
+                                )
+                            else:
+                                full_filtered_temp = current_full_input
+                        else:
+                            # Simple smoothing for small signals
+                            from vitalDSP.filtering.advanced_signal_filtering import (
+                                AdvancedSignalFiltering,
+                            )
+
+                            af_full = AdvancedSignalFiltering(current_full_input)
+                            full_filtered_temp = af_full.convolution_based_filter(
+                                kernel_type="smoothing", kernel_size=3
+                            )
+
+                    full_filtered_signal = full_filtered_temp
+                    logger.info(
+                        f"✅ Full signal filtered successfully: {len(full_filtered_signal)} samples"
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Error filtering full signal: {e}, will store windowed filtered signal only",
+                        exc_info=True,
+                    )
+                    full_filtered_signal = None
+
+            # Apply filtering based on type (for windowed signal display)
+            logger.info("=== APPLYING FILTERING TO WINDOWED SIGNAL ===")
             logger.info(f"Filter type: {filter_type}")
+            logger.info(f"Filter application count: {filter_count}")
             logger.info(f"Input signal data shape: {signal_data.shape}")
             logger.info(
                 f"Input signal data range: {np.min(signal_data):.4f} to {np.max(signal_data):.4f}"
             )
 
+            # NEW: Apply filter n times (iterative filtering)
+            filter_count = max(1, min(filter_count or 1, 10))  # Ensure valid range 1-10
+            logger.info(f"Will apply filter {filter_count} time(s)")
+
+            # Start with the input signal
+            filtered_data = signal_data.copy()
+
+            # Loop to apply filter n times
+            for iteration in range(filter_count):
+                logger.info(
+                    f"=== Filter Application Iteration {iteration + 1}/{filter_count} ==="
+                )
+                current_input = (
+                    filtered_data.copy()
+                )  # Use previous iteration's output as input
+
             # Only apply complex filtering if we have enough data points
-            if len(signal_data) >= 50:
+            if len(current_input) >= 50:
                 if filter_type == "traditional":
                     # Apply traditional filter
                     logger.info(
@@ -1211,7 +1664,7 @@ def register_signal_filtering_callbacks(app):
                     filter_order = filter_order or 4
 
                     filtered_data = apply_traditional_filter(
-                        signal_data,
+                        current_input,  # Use current iteration's input
                         sampling_freq,
                         filter_family,
                         filter_response,
@@ -1229,7 +1682,7 @@ def register_signal_filtering_callbacks(app):
                 elif filter_type == "advanced":
                     logger.info(f"Applying advanced filter: {advanced_method}")
                     filtered_data = apply_advanced_filter(
-                        signal_data,
+                        current_input,  # Use current iteration's input
                         advanced_method,
                         # Kalman parameters
                         kalman_r=kalman_r,
@@ -1330,13 +1783,17 @@ def register_signal_filtering_callbacks(app):
 
             # CRITICAL: Verify lengths match before plotting
             if len(time_axis) != len(raw_signal_for_plotting):
-                logger.error(f"MISMATCH BEFORE PLOT: time_axis={len(time_axis)}, raw_signal={len(raw_signal_for_plotting)}")
+                logger.error(
+                    f"MISMATCH BEFORE PLOT: time_axis={len(time_axis)}, raw_signal={len(raw_signal_for_plotting)}"
+                )
                 logger.error("Adjusting time_axis to match raw_signal length...")
                 time_axis = np.arange(len(raw_signal_for_plotting)) / sampling_freq
                 logger.info(f"Adjusted time_axis to length {len(time_axis)}")
 
             if len(filtered_data) != len(raw_signal_for_plotting):
-                logger.warning(f"Filtered data length ({len(filtered_data)}) != raw signal length ({len(raw_signal_for_plotting)})")
+                logger.warning(
+                    f"Filtered data length ({len(filtered_data)}) != raw signal length ({len(raw_signal_for_plotting)})"
+                )
 
             logger.info(
                 f"Raw signal range: {np.min(raw_signal_for_plotting):.4f} to {np.max(raw_signal_for_plotting):.4f}"
@@ -1353,7 +1810,9 @@ def register_signal_filtering_callbacks(app):
             original_plot = create_original_signal_plot(
                 time_axis, raw_signal_for_plotting, sampling_freq, signal_type
             )
-            logger.info(f"Original plot created: {type(original_plot)}, has {len(original_plot.data) if hasattr(original_plot, 'data') else 'N/A'} traces")
+            logger.info(
+                f"Original plot created: {type(original_plot)}, has {len(original_plot.data) if hasattr(original_plot, 'data') else 'N/A'} traces"
+            )
             filtered_plot = create_filtered_signal_plot(
                 time_axis, filtered_data, sampling_freq, signal_type
             )
@@ -1367,10 +1826,18 @@ def register_signal_filtering_callbacks(app):
 
             # Generate quality metrics using RAW signal (not detrended) for accurate assessment
             quality_metrics = generate_filter_quality_metrics(
-                raw_signal_for_plotting, filtered_data, sampling_freq, quality_options, signal_type
+                raw_signal_for_plotting,
+                filtered_data,
+                sampling_freq,
+                quality_options,
+                signal_type,
             )
             quality_plots = create_filter_quality_plots(
-                raw_signal_for_plotting, filtered_data, sampling_freq, quality_options, signal_type
+                raw_signal_for_plotting,
+                filtered_data,
+                sampling_freq,
+                quality_options,
+                signal_type,
             )
 
             # Store results
@@ -1381,6 +1848,8 @@ def register_signal_filtering_callbacks(app):
                 "time_axis": time_axis.tolist(),
                 "filter_type": filter_type,
                 "detrending_applied": detrend_option and "detrend" in detrend_option,
+                "signal_source": signal_source,  # NEW: Store signal source
+                "filter_count": filter_count,  # NEW: Store filter application count
                 "parameters": {
                     "filter_family": filter_family,
                     "filter_response": filter_response,
@@ -1390,12 +1859,16 @@ def register_signal_filtering_callbacks(app):
                     "advanced_method": advanced_method,
                     "artifact_type": artifact_type,
                     "ensemble_method": ensemble_method,
+                    "signal_source": signal_source,  # NEW: Include in parameters too
+                    "filter_count": filter_count,  # NEW: Include in parameters too
                 },
             }
 
             # Store filtered data in data service for use in other screens
             try:
-                from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+                from vitalDSP_webapp.services.data.enhanced_data_service import (
+                    get_enhanced_data_service,
+                )
 
                 data_service = get_enhanced_data_service()
 
@@ -1407,9 +1880,23 @@ def register_signal_filtering_callbacks(app):
                     "timestamp": pd.Timestamp.now().isoformat(),
                 }
 
-                # Store the filtered signal data
+                # Store the FULL filtered signal data (not windowed) so other screens can extract any window
+                signal_to_store = (
+                    full_filtered_signal
+                    if full_filtered_signal is not None
+                    else filtered_data
+                )
+                logger.info(
+                    f"Storing {'FULL' if full_filtered_signal is not None else 'WINDOWED'} filtered signal: {len(signal_to_store)} samples"
+                )
+
+                # Log signal statistics for debugging
+                logger.info(
+                    f"📊 STORED Filtered signal stats - min: {np.min(signal_to_store):.4f}, max: {np.max(signal_to_store):.4f}, mean: {np.mean(signal_to_store):.4f}"
+                )
+
                 success = data_service.store_filtered_data(
-                    latest_data_id, filtered_data, filter_info
+                    latest_data_id, signal_to_store, filter_info
                 )
 
                 if success:
@@ -1425,49 +1912,82 @@ def register_signal_filtering_callbacks(app):
                 logger.error(f"Error storing filtered data: {e}")
 
             logger.info("Advanced filtering completed successfully")
-            logger.info(f"Returning plots - original_plot type: {type(original_plot)}, has {len(original_plot.data) if hasattr(original_plot, 'data') else 'N/A'} traces")
-            logger.info(f"Returning plots - filtered_plot type: {type(filtered_plot)}, has {len(filtered_plot.data) if hasattr(filtered_plot, 'data') else 'N/A'} traces")
-            logger.info(f"Returning plots - comparison_plot type: {type(comparison_plot)}, has {len(comparison_plot.data) if hasattr(comparison_plot, 'data') else 'N/A'} traces")
+            logger.info(
+                f"Returning plots - original_plot type: {type(original_plot)}, has {len(original_plot.data) if hasattr(original_plot, 'data') else 'N/A'} traces"
+            )
+            logger.info(
+                f"Returning plots - filtered_plot type: {type(filtered_plot)}, has {len(filtered_plot.data) if hasattr(filtered_plot, 'data') else 'N/A'} traces"
+            )
+            logger.info(
+                f"Returning plots - comparison_plot type: {type(comparison_plot)}, has {len(comparison_plot.data) if hasattr(comparison_plot, 'data') else 'N/A'} traces"
+            )
             # Prepare additional store data
             comparison_data = {
-                "original_signal": original_signal.tolist() if original_signal is not None else [],
-                "filtered_signal": filtered_data.tolist() if filtered_data is not None else [],
+                "original_signal": (
+                    original_signal.tolist() if original_signal is not None else []
+                ),
+                "filtered_signal": (
+                    filtered_data.tolist() if filtered_data is not None else []
+                ),
                 "time_axis": time_axis.tolist() if time_axis is not None else [],
                 "sampling_freq": sampling_freq,
                 "filter_type": filter_type,
+                "signal_source": signal_source,  # NEW: Store signal source
+                "filter_count": filter_count,  # NEW: Store filter application count
                 "filter_params": {
                     "filter_family": filter_family,
                     "filter_response": filter_response,
                     "low_freq": low_freq,
                     "high_freq": high_freq,
                     "filter_order": filter_order,
-                }
+                    "signal_source": signal_source,  # NEW
+                    "filter_count": filter_count,  # NEW
+                },
             }
-            
+
             quality_metrics_data = {
-                "snr_improvement": quality_metrics.get("snr_improvement", 0) if isinstance(quality_metrics, dict) else 0,
-                "mse": quality_metrics.get("mse", 0) if isinstance(quality_metrics, dict) else 0,
-                "correlation": quality_metrics.get("correlation", 0) if isinstance(quality_metrics, dict) else 0,
+                "snr_improvement": (
+                    quality_metrics.get("snr_improvement", 0)
+                    if isinstance(quality_metrics, dict)
+                    else 0
+                ),
+                "mse": (
+                    quality_metrics.get("mse", 0)
+                    if isinstance(quality_metrics, dict)
+                    else 0
+                ),
+                "correlation": (
+                    quality_metrics.get("correlation", 0)
+                    if isinstance(quality_metrics, dict)
+                    else 0
+                ),
                 "filter_type": filter_type,
                 "timestamp": pd.Timestamp.now().isoformat(),
             }
-            
+
             filtered_signal_data = {
                 "signal": filtered_data.tolist() if filtered_data is not None else [],
+                "filtered_signal": (
+                    filtered_data.tolist() if filtered_data is not None else []
+                ),  # NEW: Also store with this key for compatibility
                 "time": time_axis.tolist() if time_axis is not None else [],
                 "sampling_freq": sampling_freq,
                 "filter_type": filter_type,
+                "signal_source": signal_source,  # NEW: Store signal source
+                "filter_count": filter_count,  # NEW: Store filter application count
                 "filter_params": {
                     "filter_family": filter_family,
                     "filter_response": filter_response,
                     "low_freq": low_freq,
                     "high_freq": high_freq,
                     "filter_order": filter_order,
+                    "signal_source": signal_source,  # NEW
+                    "filter_count": filter_count,  # NEW
                 },
                 "signal_type": signal_type,
                 "timestamp": pd.Timestamp.now().isoformat(),
             }
-            
+
             return (
                 original_plot,
                 filtered_plot,
@@ -1507,15 +2027,18 @@ def register_signal_filtering_callbacks(app):
     # Removed update_start_position_slider callback - duplicate with time domain callback
 
 
-
 # Helper functions for signal filtering
 def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_type):
     """Create plot for original signal with critical points detection."""
     try:
         logger.info("=" * 80)
         logger.info("CREATING ORIGINAL SIGNAL PLOT")
-        logger.info(f"  Time axis type: {type(time_axis)}, shape: {time_axis.shape if hasattr(time_axis, 'shape') else 'N/A'}")
-        logger.info(f"  Signal data type: {type(signal_data)}, shape: {signal_data.shape if hasattr(signal_data, 'shape') else 'N/A'}")
+        logger.info(
+            f"  Time axis type: {type(time_axis)}, shape: {time_axis.shape if hasattr(time_axis, 'shape') else 'N/A'}"
+        )
+        logger.info(
+            f"  Signal data type: {type(signal_data)}, shape: {signal_data.shape if hasattr(signal_data, 'shape') else 'N/A'}"
+        )
         logger.info(f"  Time axis length: {len(time_axis)}")
         logger.info(f"  Signal data length: {len(signal_data)}")
         logger.info(
@@ -1536,17 +2059,21 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
             time_axis,
             signal_data,
             max_duration=300,  # 5 minutes max
-            max_points=10000   # 10K points max
+            max_points=10000,  # 10K points max
         )
 
-        logger.info(f"Plot data limited: {len(signal_data)} → {len(signal_data_plot)} points")
+        logger.info(
+            f"Plot data limited: {len(signal_data)} → {len(signal_data_plot)} points"
+        )
         logger.info(f"Time axis plot length: {len(time_axis_plot)}")
         logger.info(f"Signal data plot length: {len(signal_data_plot)}")
 
         fig = go.Figure()
 
         # Add main signal (using limited data)
-        logger.info(f"Adding trace with x length: {len(time_axis_plot)}, y length: {len(signal_data_plot)}")
+        logger.info(
+            f"Adding trace with x length: {len(time_axis_plot)}, y length: {len(signal_data_plot)}"
+        )
         fig.add_trace(
             go.Scatter(
                 x=time_axis_plot,
@@ -1580,18 +2107,18 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
                     plot_end_time = np.max(time_axis_plot)
                     plot_start_idx = int(plot_start_time * sampling_freq)
                     plot_end_idx = int(plot_end_time * sampling_freq)
-                    
+
                     # Filter peaks to only those within the plot range
                     valid_peaks = wm.systolic_peaks[
-                        (wm.systolic_peaks >= plot_start_idx) & 
-                        (wm.systolic_peaks < plot_end_idx)
+                        (wm.systolic_peaks >= plot_start_idx)
+                        & (wm.systolic_peaks < plot_end_idx)
                     ]
-                    
+
                     if len(valid_peaks) > 0:
                         # Convert peak indices to plot time coordinates
                         peak_times = valid_peaks / sampling_freq
                         peak_values = signal_data[valid_peaks]
-                        
+
                         fig.add_trace(
                             go.Scatter(
                                 x=peak_times,
@@ -1612,25 +2139,27 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
                         plot_end_time = np.max(time_axis_plot)
                         plot_start_idx = int(plot_start_time * sampling_freq)
                         plot_end_idx = int(plot_end_time * sampling_freq)
-                        
+
                         # Filter dicrotic notches to only those within the plot range
                         valid_notches = dicrotic_notches[
-                            (dicrotic_notches >= plot_start_idx) & 
-                            (dicrotic_notches < plot_end_idx)
+                            (dicrotic_notches >= plot_start_idx)
+                            & (dicrotic_notches < plot_end_idx)
                         ]
-                        
+
                         if len(valid_notches) > 0:
                             # Convert notch indices to plot time coordinates
                             notch_times = valid_notches / sampling_freq
                             notch_values = signal_data[valid_notches]
-                            
+
                             fig.add_trace(
                                 go.Scatter(
                                     x=notch_times,
                                     y=notch_values,
                                     mode="markers",
                                     name="Dicrotic Notches",
-                                    marker=dict(color="orange", size=8, symbol="circle"),
+                                    marker=dict(
+                                        color="orange", size=8, symbol="circle"
+                                    ),
                                     hovertemplate="<b>Dicrotic Notch:</b> %{y}<br><b>Time:</b> %{x:.3f}s<extra></extra>",
                                 )
                             )
@@ -1646,18 +2175,18 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
                         plot_end_time = np.max(time_axis_plot)
                         plot_start_idx = int(plot_start_time * sampling_freq)
                         plot_end_idx = int(plot_end_time * sampling_freq)
-                        
+
                         # Filter diastolic peaks to only those within the plot range
                         valid_peaks = diastolic_peaks[
-                            (diastolic_peaks >= plot_start_idx) & 
-                            (diastolic_peaks < plot_end_idx)
+                            (diastolic_peaks >= plot_start_idx)
+                            & (diastolic_peaks < plot_end_idx)
                         ]
-                        
+
                         if len(valid_peaks) > 0:
                             # Convert peak indices to plot time coordinates
                             peak_times = valid_peaks / sampling_freq
                             peak_values = signal_data[valid_peaks]
-                            
+
                             fig.add_trace(
                                 go.Scatter(
                                     x=peak_times,
@@ -1679,18 +2208,17 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
                     plot_end_time = np.max(time_axis_plot)
                     plot_start_idx = int(plot_start_time * sampling_freq)
                     plot_end_idx = int(plot_end_time * sampling_freq)
-                    
+
                     # Filter R peaks to only those within the plot range
                     valid_peaks = wm.r_peaks[
-                        (wm.r_peaks >= plot_start_idx) & 
-                        (wm.r_peaks < plot_end_idx)
+                        (wm.r_peaks >= plot_start_idx) & (wm.r_peaks < plot_end_idx)
                     ]
-                    
+
                     if len(valid_peaks) > 0:
                         # Convert peak indices to plot time coordinates
                         peak_times = valid_peaks / sampling_freq
                         peak_values = signal_data[valid_peaks]
-                        
+
                         fig.add_trace(
                             go.Scatter(
                                 x=peak_times,
@@ -1711,18 +2239,17 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
                         plot_end_time = np.max(time_axis_plot)
                         plot_start_idx = int(plot_start_time * sampling_freq)
                         plot_end_idx = int(plot_end_time * sampling_freq)
-                        
+
                         # Filter P peaks to only those within the plot range
                         valid_peaks = p_peaks[
-                            (p_peaks >= plot_start_idx) & 
-                            (p_peaks < plot_end_idx)
+                            (p_peaks >= plot_start_idx) & (p_peaks < plot_end_idx)
                         ]
-                        
+
                         if len(valid_peaks) > 0:
                             # Convert peak indices to plot time coordinates
                             peak_times = valid_peaks / sampling_freq
                             peak_values = signal_data[valid_peaks]
-                            
+
                             fig.add_trace(
                                 go.Scatter(
                                     x=peak_times,
@@ -1745,18 +2272,17 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
                         plot_end_time = np.max(time_axis_plot)
                         plot_start_idx = int(plot_start_time * sampling_freq)
                         plot_end_idx = int(plot_end_time * sampling_freq)
-                        
+
                         # Filter T peaks to only those within the plot range
                         valid_peaks = t_peaks[
-                            (t_peaks >= plot_start_idx) & 
-                            (t_peaks < plot_end_idx)
+                            (t_peaks >= plot_start_idx) & (t_peaks < plot_end_idx)
                         ]
-                        
+
                         if len(valid_peaks) > 0:
                             # Convert peak indices to plot time coordinates
                             peak_times = valid_peaks / sampling_freq
                             peak_values = signal_data[valid_peaks]
-                            
+
                             fig.add_trace(
                                 go.Scatter(
                                     x=peak_times,
@@ -1815,13 +2341,16 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
             ),
         )
 
-        logger.info(f"✅ Original signal plot created successfully with {len(fig.data)} traces")
+        logger.info(
+            f"✅ Original signal plot created successfully with {len(fig.data)} traces"
+        )
         logger.info("=" * 80)
         return fig
     except Exception as e:
         logger.error(f"❌ Error creating original signal plot: {e}")
         logger.error(f"Exception details: {type(e).__name__}: {str(e)}")
         import traceback
+
         logger.error(f"Traceback: {traceback.format_exc()}")
         logger.info("=" * 80)
         return create_empty_figure()
@@ -1851,10 +2380,12 @@ def create_filtered_signal_plot(time_axis, filtered_data, sampling_freq, signal_
             time_axis,
             filtered_data,
             max_duration=300,  # 5 minutes max
-            max_points=10000   # 10K points max
+            max_points=10000,  # 10K points max
         )
 
-        logger.info(f"Plot data limited: {len(filtered_data)} → {len(filtered_data_plot)} points")
+        logger.info(
+            f"Plot data limited: {len(filtered_data)} → {len(filtered_data_plot)} points"
+        )
 
         fig = go.Figure()
 
@@ -1891,18 +2422,18 @@ def create_filtered_signal_plot(time_axis, filtered_data, sampling_freq, signal_
                     plot_end_time = np.max(time_axis_plot)
                     plot_start_idx = int(plot_start_time * sampling_freq)
                     plot_end_idx = int(plot_end_time * sampling_freq)
-                    
+
                     # Filter peaks to only those within the plot range
                     valid_peaks = wm.systolic_peaks[
-                        (wm.systolic_peaks >= plot_start_idx) & 
-                        (wm.systolic_peaks < plot_end_idx)
+                        (wm.systolic_peaks >= plot_start_idx)
+                        & (wm.systolic_peaks < plot_end_idx)
                     ]
-                    
+
                     if len(valid_peaks) > 0:
                         # Convert peak indices to plot time coordinates
                         peak_times = valid_peaks / sampling_freq
                         peak_values = filtered_data[valid_peaks]
-                        
+
                         fig.add_trace(
                             go.Scatter(
                                 x=peak_times,
@@ -1923,18 +2454,18 @@ def create_filtered_signal_plot(time_axis, filtered_data, sampling_freq, signal_
                         plot_end_time = np.max(time_axis_plot)
                         plot_start_idx = int(plot_start_time * sampling_freq)
                         plot_end_idx = int(plot_end_time * sampling_freq)
-                        
+
                         # Filter dicrotic notches to only those within the plot range
                         valid_notches = dicrotic_notches[
-                            (dicrotic_notches >= plot_start_idx) & 
-                            (dicrotic_notches < plot_end_idx)
+                            (dicrotic_notches >= plot_start_idx)
+                            & (dicrotic_notches < plot_end_idx)
                         ]
-                        
+
                         if len(valid_notches) > 0:
                             # Convert notch indices to plot time coordinates
                             notch_times = valid_notches / sampling_freq
                             notch_values = filtered_data[valid_notches]
-                            
+
                             fig.add_trace(
                                 go.Scatter(
                                     x=notch_times,
@@ -1959,25 +2490,27 @@ def create_filtered_signal_plot(time_axis, filtered_data, sampling_freq, signal_
                         plot_end_time = np.max(time_axis_plot)
                         plot_start_idx = int(plot_start_time * sampling_freq)
                         plot_end_idx = int(plot_end_time * sampling_freq)
-                        
+
                         # Filter diastolic peaks to only those within the plot range
                         valid_peaks = diastolic_peaks[
-                            (diastolic_peaks >= plot_start_idx) & 
-                            (diastolic_peaks < plot_end_idx)
+                            (diastolic_peaks >= plot_start_idx)
+                            & (diastolic_peaks < plot_end_idx)
                         ]
-                        
+
                         if len(valid_peaks) > 0:
                             # Convert peak indices to plot time coordinates
                             peak_times = valid_peaks / sampling_freq
                             peak_values = filtered_data[valid_peaks]
-                            
+
                             fig.add_trace(
                                 go.Scatter(
                                     x=peak_times,
                                     y=peak_values,
                                     mode="markers",
                                     name="Diastolic Peaks (Filtered)",
-                                    marker=dict(color="darkgreen", size=8, symbol="square"),
+                                    marker=dict(
+                                        color="darkgreen", size=8, symbol="square"
+                                    ),
                                     hovertemplate="<b>Diastolic Peak (Filtered):</b> %{y}<br><b>Time:</b> %{x:.3f}s<extra></extra>",
                                 )
                             )
@@ -2109,18 +2642,17 @@ def create_filter_comparison_plot(
             time_axis,
             original_signal,
             max_duration=300,  # 5 minutes max
-            max_points=10000   # 10K points max
+            max_points=10000,  # 10K points max
         )
 
         # Apply same limiting to filtered signal (use same time_axis_plot for consistency)
         _, filtered_signal_plot = limit_plot_data(
-            time_axis,
-            filtered_signal,
-            max_duration=300,
-            max_points=10000
+            time_axis, filtered_signal, max_duration=300, max_points=10000
         )
 
-        logger.info(f"Comparison plot data limited: {len(original_signal)} → {len(original_signal_plot)} points")
+        logger.info(
+            f"Comparison plot data limited: {len(original_signal)} → {len(original_signal_plot)} points"
+        )
 
         fig = go.Figure()
 
@@ -2675,9 +3207,7 @@ def apply_traditional_filter(
                 f"Applying bandpass filter with range: {low_freq} - {high_freq}"
             )
             # Use vitalDSP for consistent filtering
-            logger.info(
-                "Using vitalDSP implementation for bandpass filtering"
-            )
+            logger.info("Using vitalDSP implementation for bandpass filtering")
             nyquist = sampling_freq / 2
             low_freq_norm = low_freq / nyquist
             high_freq_norm = high_freq / nyquist
@@ -3046,10 +3576,22 @@ def apply_advanced_filter(
 
         elif advanced_method == "optimization":
             loss_type = optimization_loss_type or "mse"
-            initial_guess = optimization_initial_guess if optimization_initial_guess is not None else 0.0
-            lr = optimization_learning_rate if optimization_learning_rate is not None else 0.01
-            iters = optimization_iterations if optimization_iterations is not None else 100
-            logger.info(f"Optimization parameters: loss={loss_type}, lr={lr}, iterations={iters}")
+            initial_guess = (
+                optimization_initial_guess
+                if optimization_initial_guess is not None
+                else 0.0
+            )
+            lr = (
+                optimization_learning_rate
+                if optimization_learning_rate is not None
+                else 0.01
+            )
+            iters = (
+                optimization_iterations if optimization_iterations is not None else 100
+            )
+            logger.info(
+                f"Optimization parameters: loss={loss_type}, lr={lr}, iterations={iters}"
+            )
             filtered_signal = advanced_filter.optimization_based_filtering(
                 target=signal_data,
                 loss_type=loss_type,
@@ -3068,8 +3610,12 @@ def apply_advanced_filter(
 
         elif advanced_method == "convolution":
             kernel_type = convolution_kernel_type or "smoothing"
-            kernel_size = convolution_kernel_size if convolution_kernel_size is not None else 3
-            logger.info(f"Convolution parameters: kernel_type={kernel_type}, kernel_size={kernel_size}")
+            kernel_size = (
+                convolution_kernel_size if convolution_kernel_size is not None else 3
+            )
+            logger.info(
+                f"Convolution parameters: kernel_type={kernel_type}, kernel_size={kernel_size}"
+            )
             filtered_signal = advanced_filter.convolution_based_filter(
                 kernel_type=kernel_type, kernel_size=kernel_size
             )
@@ -3080,11 +3626,16 @@ def apply_advanced_filter(
             kwargs = {}
             if att_type == "gaussian" and attention_sigma is not None:
                 kwargs["sigma"] = attention_sigma
-            if att_type in ["linear", "exponential"] and attention_ascending is not None:
-                kwargs["ascending"] = (attention_ascending == "true")
+            if (
+                att_type in ["linear", "exponential"]
+                and attention_ascending is not None
+            ):
+                kwargs["ascending"] = attention_ascending == "true"
             if att_type == "exponential" and attention_base is not None:
                 kwargs["base"] = attention_base
-            logger.info(f"Attention parameters: type={att_type}, size={att_size}, kwargs={kwargs}")
+            logger.info(
+                f"Attention parameters: type={att_type}, size={att_size}, kwargs={kwargs}"
+            )
             filtered_signal = advanced_filter.attention_based_filter(
                 attention_type=att_type, size=att_size, **kwargs
             )
@@ -3095,14 +3646,21 @@ def apply_advanced_filter(
             logger.info(f"Adaptive filter parameters: mu={mu}, order={order}")
             # Adaptive filter needs a desired signal - use smoothed version as target
             from scipy.signal import savgol_filter
-            desired = savgol_filter(signal_data, window_length=min(51, len(signal_data)//2*2+1), polyorder=3)
+
+            desired = savgol_filter(
+                signal_data,
+                window_length=min(51, len(signal_data) // 2 * 2 + 1),
+                polyorder=3,
+            )
             filtered_signal = advanced_filter.adaptive_filtering(
                 desired_signal=desired, mu=mu, filter_order=order
             )
 
         else:
             # Default to Kalman filter
-            logger.warning(f"Unknown advanced method '{advanced_method}', defaulting to Kalman")
+            logger.warning(
+                f"Unknown advanced method '{advanced_method}', defaulting to Kalman"
+            )
             filtered_signal = advanced_filter.kalman_filter(R=1.0, Q=1.0)
 
         logger.info(f"Advanced filter applied successfully: {advanced_method}")
@@ -3393,25 +3951,27 @@ def generate_filter_quality_metrics(
     """Generate comprehensive filter quality metrics with beautiful tables and extensive analysis."""
     try:
         # Use vitalDSP's comprehensive FilteringQualityAssessment
-        from vitalDSP.signal_quality_assessment.filtering_quality_assessment import FilteringQualityAssessment
+        from vitalDSP.signal_quality_assessment.filtering_quality_assessment import (
+            FilteringQualityAssessment,
+        )
 
         # Create quality assessment instance with signal-adaptive thresholds
         fqa = FilteringQualityAssessment(
             original_signal=original_signal,
             filtered_signal=filtered_signal,
             fs=sampling_freq,
-            signal_type=signal_type
+            signal_type=signal_type,
         )
 
         # Perform comprehensive quality assessment
         quality_results = fqa.assess_quality()
 
         # Extract key metrics for backward compatibility
-        snr_improvement = quality_results['metrics']['snr_db']['value']
-        correlation = quality_results['metrics']['shape_similarity']['score']
-        smoothness = quality_results['metrics']['smoothness_improvement']['score']
-        noise_reduction = quality_results['metrics']['noise_reduction']['score']
-        peak_preservation = quality_results['metrics']['peak_preservation']['score']
+        snr_improvement = quality_results["metrics"]["snr_db"]["value"]
+        correlation = quality_results["metrics"]["shape_similarity"]["score"]
+        smoothness = quality_results["metrics"]["smoothness_improvement"]["score"]
+        noise_reduction = quality_results["metrics"]["noise_reduction"]["score"]
+        peak_preservation = quality_results["metrics"]["peak_preservation"]["score"]
 
         # Calculate legacy MSE (for display only, not used in quality assessment)
         mse = calculate_mse(original_signal, filtered_signal)
@@ -3464,14 +4024,22 @@ def generate_filter_quality_metrics(
                             className="alert-heading",
                         ),
                         html.Hr(),
-                        html.P(quality_results['recommendation'], className="mb-1"),
+                        html.P(quality_results["recommendation"], className="mb-1"),
                         html.Small(
                             f"Signal Type: {quality_results['signal_type']} | "
                             f"Sampling Frequency: {quality_results['sampling_frequency']} Hz",
                             className="text-muted",
                         ),
                     ],
-                    color="success" if quality_results['overall_quality'] in ['Excellent', 'Good'] else "warning" if quality_results['overall_quality'] == 'Acceptable' else "danger",
+                    color=(
+                        "success"
+                        if quality_results["overall_quality"] in ["Excellent", "Good"]
+                        else (
+                            "warning"
+                            if quality_results["overall_quality"] == "Acceptable"
+                            else "danger"
+                        )
+                    ),
                     className="mb-4",
                 ),
                 # Signal Quality Table
@@ -5326,18 +5894,20 @@ def create_filter_quality_plots(
             logger.warning(f"Critical points detection failed in quality plots: {e}")
 
         # Enhanced frequency response analysis using vitalDSP SignalPowerAnalysis
-        from vitalDSP.physiological_features.signal_power_analysis import SignalPowerAnalysis
+        from vitalDSP.physiological_features.signal_power_analysis import (
+            SignalPowerAnalysis,
+        )
 
         # Compute PSD for original signal
         spa_orig = SignalPowerAnalysis(original_signal)
         freqs_orig, psd_orig = spa_orig.compute_psd(
-            fs=sampling_freq, nperseg=min(256, len(original_signal)//2)
+            fs=sampling_freq, nperseg=min(256, len(original_signal) // 2)
         )
 
         # Compute PSD for filtered signal
         spa_filt = SignalPowerAnalysis(filtered_signal)
         freqs_filt, psd_filt = spa_filt.compute_psd(
-            fs=sampling_freq, nperseg=min(256, len(filtered_signal)//2)
+            fs=sampling_freq, nperseg=min(256, len(filtered_signal) // 2)
         )
 
         fig.add_trace(
@@ -5437,11 +6007,16 @@ def create_filter_quality_plots(
                 peaks_orig = wm_orig.r_peaks if wm_orig.r_peaks is not None else []
                 peaks_filt = wm_filt.r_peaks if wm_filt.r_peaks is not None else []
             elif signal_type == "PPG":
-                peaks_orig = wm_orig.systolic_peaks if wm_orig.systolic_peaks is not None else []
-                peaks_filt = wm_filt.systolic_peaks if wm_filt.systolic_peaks is not None else []
+                peaks_orig = (
+                    wm_orig.systolic_peaks if wm_orig.systolic_peaks is not None else []
+                )
+                peaks_filt = (
+                    wm_filt.systolic_peaks if wm_filt.systolic_peaks is not None else []
+                )
             else:
                 # Fallback to generic peak detection for unknown signal types
                 from vitalDSP.physiological_features.peak_detection import detect_peaks
+
                 peaks_orig = detect_peaks(original_signal, sampling_freq)
                 peaks_filt = detect_peaks(filtered_signal, sampling_freq)
 
@@ -5704,6 +6279,7 @@ def calculate_correlation(original_signal, filtered_signal):
     """Calculate correlation between original and filtered signals using vitalDSP."""
     try:
         from vitalDSP.utils.config_utilities.common import pearsonr
+
         return pearsonr(original_signal, filtered_signal)
     except Exception as e:
         logger.error(f"Error calculating correlation: {e}")
@@ -5724,18 +6300,20 @@ def calculate_frequency_metrics(original_signal, filtered_signal, sampling_freq)
     """Calculate frequency domain metrics for both original and filtered signals."""
     try:
         # Calculate PSD for both signals using vitalDSP SignalPowerAnalysis
-        from vitalDSP.physiological_features.signal_power_analysis import SignalPowerAnalysis
+        from vitalDSP.physiological_features.signal_power_analysis import (
+            SignalPowerAnalysis,
+        )
 
         # Compute PSD for original signal
         spa_orig = SignalPowerAnalysis(original_signal)
         freqs_orig, psd_orig = spa_orig.compute_psd(
-            fs=sampling_freq, nperseg=min(256, len(original_signal)//2)
+            fs=sampling_freq, nperseg=min(256, len(original_signal) // 2)
         )
 
         # Compute PSD for filtered signal
         spa_filt = SignalPowerAnalysis(filtered_signal)
         freqs_filt, psd_filt = spa_filt.compute_psd(
-            fs=sampling_freq, nperseg=min(256, len(filtered_signal)//2)
+            fs=sampling_freq, nperseg=min(256, len(filtered_signal) // 2)
         )
 
         # Find peak frequency for filtered signal
@@ -5861,7 +6439,9 @@ def calculate_statistical_metrics(original_signal, filtered_signal):
         }
 
 
-def calculate_temporal_features(original_signal, filtered_signal, sampling_freq, signal_type="ECG"):
+def calculate_temporal_features(
+    original_signal, filtered_signal, sampling_freq, signal_type="ECG"
+):
     """Calculate temporal features for both signals."""
     try:
         # Peak detection using vitalDSP WaveformMorphology
@@ -5886,14 +6466,19 @@ def calculate_temporal_features(original_signal, filtered_signal, sampling_freq,
             peaks_orig = wm_orig.r_peaks if wm_orig.r_peaks is not None else []
             peaks_filt = wm_filt.r_peaks if wm_filt.r_peaks is not None else []
         elif signal_type == "PPG":
-            peaks_orig = wm_orig.systolic_peaks if wm_orig.systolic_peaks is not None else []
-            peaks_filt = wm_filt.systolic_peaks if wm_filt.systolic_peaks is not None else []
+            peaks_orig = (
+                wm_orig.systolic_peaks if wm_orig.systolic_peaks is not None else []
+            )
+            peaks_filt = (
+                wm_filt.systolic_peaks if wm_filt.systolic_peaks is not None else []
+            )
         else:
             # Fallback to generic peak detection for unknown signal types
             from vitalDSP.physiological_features.peak_detection import detect_peaks
+
             peaks_orig = detect_peaks(original_signal, sampling_freq)
             peaks_filt = detect_peaks(filtered_signal, sampling_freq)
-        
+
         peak_count_orig = len(peaks_orig)
         peak_count_filt = len(peaks_filt)
 
@@ -6028,7 +6613,9 @@ def calculate_advanced_quality_metrics(original_signal, filtered_signal, samplin
         # Create high-pass filter to remove baseline wander
         sf = SignalFiltering(original_signal)
         # Use butterworth with btype="high" instead of highpass method
-        filtered_baseline = sf.butterworth(cutoff=0.5, fs=sampling_freq, order=4, btype="high")
+        filtered_baseline = sf.butterworth(
+            cutoff=0.5, fs=sampling_freq, order=4, btype="high"
+        )
         baseline_wander = original_signal - filtered_baseline
         baseline_wander_percentage = (
             np.std(baseline_wander) / np.std(original_signal) * 100
@@ -6036,6 +6623,7 @@ def calculate_advanced_quality_metrics(original_signal, filtered_signal, samplin
 
         # Motion artifact detection using vitalDSP EnvelopeDetection
         from vitalDSP.physiological_features.envelope_detection import EnvelopeDetection
+
         ed = EnvelopeDetection(original_signal)
         envelope = ed.hilbert_envelope()
         motion_artifact_score = (
@@ -6117,6 +6705,7 @@ def calculate_skewness(data):
     """Calculate skewness of the data using vitalDSP."""
     try:
         from vitalDSP.ml_models.feature_extractor import FeatureExtractor
+
         return FeatureExtractor._skewness(data)
     except Exception as e:
         logger.error(f"Error calculating skewness: {e}")
@@ -6127,6 +6716,7 @@ def calculate_kurtosis(data):
     """Calculate kurtosis of the data using vitalDSP."""
     try:
         from vitalDSP.ml_models.feature_extractor import FeatureExtractor
+
         return FeatureExtractor._kurtosis(data)
     except Exception as e:
         logger.error(f"Error calculating kurtosis: {e}")
@@ -6137,6 +6727,7 @@ def calculate_entropy(data):
     """Calculate entropy of the data using vitalDSP."""
     try:
         from vitalDSP.physiological_features.symbolic_dynamics import SymbolicDynamics
+
         # Create symbolic dynamics object and compute Shannon entropy
         sd = SymbolicDynamics(data)
         return sd.compute_shannon_entropy()
@@ -6146,7 +6737,13 @@ def calculate_entropy(data):
 
 
 def create_filtering_results_table(
-    raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping, signal_type=None
+    raw_data,
+    filtered_data,
+    time_axis,
+    sampling_freq,
+    analysis_options,
+    column_mapping,
+    signal_type=None,
 ):
     """Create comprehensive filtering results table."""
     try:

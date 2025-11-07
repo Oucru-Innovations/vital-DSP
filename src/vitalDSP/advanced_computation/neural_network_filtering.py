@@ -201,11 +201,52 @@ class NeuralNetworkFiltering:
         tuple
             Input features (X) and corresponding outputs (y) for training.
         """
-        X, y = [], []
-        for i in range(len(signal) - 1):
-            X.append(signal[i])
-            y.append(signal[i + 1])
-        return np.array(X).reshape(-1, 1), np.array(y)
+        if self.network_type == "recurrent":
+            # Recurrent networks need sequences with multiple features
+            # Use a sliding window of 10 samples to create 10 features per sample
+            window_size = 10
+            X, y = [], []
+            for i in range(len(signal) - window_size):
+                X.append(signal[i:i+window_size])
+                y.append(signal[i + window_size])
+            if len(X) == 0:
+                # Fallback for very short signals
+                X.append(signal[:-1])
+                y.append(signal[-1])
+                # Pad X to have 10 features if needed
+                if len(X[0]) < 10:
+                    padded = np.pad(X[0], (0, 10 - len(X[0])), mode='edge')
+                    X = [padded]
+            X = np.array(X)
+            # Reshape to (batch, time_steps, features) where time_steps=1, features=10
+            X = X.reshape(X.shape[0], 1, X.shape[1])
+            return X, np.array(y)
+        elif self.network_type == "convolutional":
+            # Convolutional networks need 2D input (batch, height, width)
+            # Reshape 1D signal into 2D image-like structure
+            X, y = [], []
+            for i in range(len(signal) - 1):
+                X.append(signal[i])
+                y.append(signal[i + 1])
+            X = np.array(X).reshape(-1, 1)
+            # Reshape to (batch, height, width) - create a square-like structure
+            # For simplicity, reshape to (batch, 1, width) where width is the feature
+            # But convolution expects 2D, so reshape to (batch, height, width)
+            # Let's reshape to (batch, 12, 12) by padding/truncating
+            target_size = 12
+            batch_size = len(X)
+            X_2d = np.zeros((batch_size, target_size, target_size))
+            for i, x in enumerate(X):
+                # Reshape single value into 2D by repeating
+                X_2d[i] = np.full((target_size, target_size), x[0])
+            return X_2d, np.array(y)
+        else:
+            # Feedforward network - original implementation
+            X, y = [], []
+            for i in range(len(signal) - 1):
+                X.append(signal[i])
+                y.append(signal[i + 1])
+            return np.array(X).reshape(-1, 1), np.array(y)
 
     def _prepare_input(self, signal):
         """
@@ -221,10 +262,43 @@ class NeuralNetworkFiltering:
         numpy.ndarray
             Input features (X) for prediction.
         """
-        X = []
-        for i in range(len(signal) - 1):
-            X.append(signal[i])
-        return np.array(X).reshape(-1, 1)
+        if self.network_type == "recurrent":
+            # Recurrent networks need sequences with multiple features
+            window_size = 10
+            X = []
+            for i in range(len(signal) - window_size + 1):
+                X.append(signal[i:i+window_size])
+            if len(X) == 0:
+                # Fallback for very short signals
+                X.append(signal)
+                # Pad X to have 10 features if needed
+                if len(X[0]) < 10:
+                    padded = np.pad(X[0], (0, 10 - len(X[0])), mode='edge')
+                    X = [padded]
+            X = np.array(X)
+            # Reshape to (batch, time_steps, features) where time_steps=1, features=10
+            X = X.reshape(X.shape[0], 1, X.shape[1])
+            return X
+        elif self.network_type == "convolutional":
+            # Convolutional networks need 2D input (batch, height, width)
+            X = []
+            for i in range(len(signal) - 1):
+                X.append(signal[i])
+            X = np.array(X).reshape(-1, 1)
+            # Reshape to (batch, height, width)
+            target_size = 12
+            batch_size = len(X)
+            X_2d = np.zeros((batch_size, target_size, target_size))
+            for i, x in enumerate(X):
+                # Reshape single value into 2D by repeating
+                X_2d[i] = np.full((target_size, target_size), x[0])
+            return X_2d
+        else:
+            # Feedforward network - original implementation
+            X = []
+            for i in range(len(signal) - 1):
+                X.append(signal[i])
+            return np.array(X).reshape(-1, 1)
 
 
 # Simple Feedforward Network Implementation (Placeholder)
@@ -323,18 +397,29 @@ class ConvolutionalNetwork:
         self.batch_norm = batch_norm
 
         # Assume the input shape is (batch_size, height, width)
+        # Input is reshaped to (batch, 12, 12) by data preparation
         self.filters = [
             np.random.randn(3, 3) for _ in range(16)
         ]  # 16 filters of size 3x3
 
-        # Adjust the weight initialization for the fully connected layers
-        self.weights = [np.random.randn(144, 64), np.random.randn(64, 1)]
-        self.biases = [np.random.randn(64), np.random.randn(1)]
+        # Weights will be initialized lazily on first forward pass
+        # to adapt to actual input size
+        self.weights = None
+        self.biases = None
+        self._weights_initialized = False
 
     def _forward(self, X):
         # Apply convolution followed by flattening the output
         A = self._convolution(X)
         A = A.reshape(A.shape[0], -1)  # Flatten
+
+        # Initialize weights on first forward pass based on actual input size
+        if not self._weights_initialized:
+            conv_output_size = A.shape[1]
+            self.weights = [np.random.randn(conv_output_size, 64), np.random.randn(64, 1)]
+            self.biases = [np.random.randn(64), np.random.randn(1)]
+            self._weights_initialized = True
+
         activations = [A]
         for W, b in zip(self.weights, self.biases):
             Z = np.dot(activations[-1], W) + b
@@ -361,7 +446,7 @@ class ConvolutionalNetwork:
         self._backward(X, y, activations, learning_rate)
 
     def _backward(self, X, y, activations, learning_rate):
-        delta = activations[-1] - y
+        delta = activations[-1] - y.reshape(-1, 1)  # Ensure y matches output shape
         for i in reversed(range(len(self.weights))):
             dW = np.dot(activations[i].T, delta)
             db = np.sum(delta, axis=0)
@@ -374,6 +459,14 @@ class ConvolutionalNetwork:
     def predict(self, X):
         A = self._convolution(X)
         A = A.reshape(A.shape[0], -1)  # Flatten for fully connected layers
+
+        # Initialize weights on first predict if not already initialized
+        if not self._weights_initialized:
+            conv_output_size = A.shape[1]
+            self.weights = [np.random.randn(conv_output_size, 64), np.random.randn(64, 1)]
+            self.biases = [np.random.randn(64), np.random.randn(1)]
+            self._weights_initialized = True
+
         for W, b in zip(self.weights, self.biases):
             Z = np.dot(A, W) + b
             if self.batch_norm:

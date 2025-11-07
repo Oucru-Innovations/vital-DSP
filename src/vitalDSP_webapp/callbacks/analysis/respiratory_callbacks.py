@@ -17,13 +17,16 @@ try:
     from vitalDSP_webapp.utils.plot_utils import limit_plot_data, check_plot_data_size
 except ImportError:
     # Fallback if plot_utils not available
-    def limit_plot_data(time_axis, signal_data, max_duration=300, max_points=10000, start_time=None):
+    def limit_plot_data(
+        time_axis, signal_data, max_duration=300, max_points=10000, start_time=None
+    ):
         """Fallback implementation of limit_plot_data"""
         return time_axis, signal_data
 
     def check_plot_data_size(time_axis, signal_data):
         """Fallback implementation"""
         return True
+
 
 # Initialize logger first
 logger = logging.getLogger(__name__)
@@ -207,19 +210,29 @@ def register_respiratory_callbacks(app):
     @app.callback(
         [Output("resp-signal-type", "value")],
         [Input("url", "pathname")],
+        [State("resp-signal-type", "value")],
         prevent_initial_call=True,
     )
-    def auto_select_resp_signal_type(pathname):
+    def auto_select_resp_signal_type(pathname, current_signal_type):
         """Auto-select signal type based on uploaded data."""
         logger.info("=== AUTO-SELECT RESP SIGNAL TYPE CALLBACK TRIGGERED ===")
-        logger.info(f"Pathname: {pathname}")
+        logger.info(f"Pathname: {pathname}, Current selection: {current_signal_type}")
 
         if pathname != "/respiratory":
             logger.info("Not on respiratory page, preventing update")
             raise PreventUpdate
 
+        # If user has already made a selection, preserve it
+        if current_signal_type is not None:
+            logger.info(
+                f"User has existing signal type selection: {current_signal_type}, preserving it"
+            )
+            raise PreventUpdate
+
         try:
-            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
             data_service = get_enhanced_data_service()
             if not data_service:
@@ -356,8 +369,12 @@ def register_respiratory_callbacks(app):
             Input("resp-btn-nudge-p10", "n_clicks"),
         ],
         [
-            State("resp-start-position-slider", "value"),  # NEW: start position instead of time-range-slider
-            State("resp-duration-select", "value"),  # NEW: duration instead of start-time/end-time
+            State(
+                "resp-start-position-slider", "value"
+            ),  # NEW: start position instead of time-range-slider
+            State(
+                "resp-duration-select", "value"
+            ),  # NEW: duration instead of start-time/end-time
             State("resp-signal-type", "value"),
             State("resp-estimation-methods", "value"),
             State("resp-advanced-options", "value"),
@@ -367,7 +384,9 @@ def register_respiratory_callbacks(app):
             State("resp-min-breath-duration", "value"),
             State("resp-max-breath-duration", "value"),
             State("resp-ensemble-method", "value"),
-            State("store-filtered-signal", "data"),  # NEW: Access to filtered signal from filtering page
+            State(
+                "store-filtered-signal", "data"
+            ),  # NEW: Access to filtered signal from filtering page
         ],
     )
     def respiratory_analysis_callback(
@@ -431,7 +450,9 @@ def register_respiratory_callbacks(app):
         try:
             # Get data from the data service
             logger.info("Attempting to get data service...")
-            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
             data_service = get_enhanced_data_service()
             logger.info("Data service retrieved successfully")
@@ -515,11 +536,11 @@ def register_respiratory_callbacks(app):
                 if trigger_id == "resp-btn-nudge-m10":
                     start_position = max(0, start_position - 10)  # -10%
                 elif trigger_id == "resp-btn-nudge-m1":
-                    start_position = max(0, start_position - 5)   # -5%
+                    start_position = max(0, start_position - 5)  # -5%
                 elif trigger_id == "resp-btn-nudge-p1":
                     start_position = min(100, start_position + 5)  # +5%
                 elif trigger_id == "resp-btn-nudge-p10":
-                    start_position = min(100, start_position + 10) # +10%
+                    start_position = min(100, start_position + 10)  # +10%
 
                 logger.info(f"Position adjusted: {start_position}%")
 
@@ -528,7 +549,7 @@ def register_respiratory_callbacks(app):
             if time_column and time_column in df.columns:
                 time_diff = df[time_column].iloc[-1] - df[time_column].iloc[0]
                 # Convert Timedelta to seconds if necessary
-                if hasattr(time_diff, 'total_seconds'):
+                if hasattr(time_diff, "total_seconds"):
                     total_duration = time_diff.total_seconds()
                 else:
                     total_duration = float(time_diff)
@@ -585,19 +606,29 @@ def register_respiratory_callbacks(app):
                 f"Signal data range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}"
             )
             logger.info(f"Signal data mean: {np.mean(signal_data):.3f}")
-            
+
             # Data validation: Check for extreme values that indicate data corruption
             signal_range = np.max(signal_data) - np.min(signal_data)
             signal_std = np.std(signal_data)
-            
+
             # Check for suspiciously large values (likely data corruption)
-            if signal_range > 1e6 or signal_std > 1e6 or np.any(np.abs(signal_data) > 1e6):
-                logger.error(f"⚠️  DETECTED EXTREME SIGNAL VALUES - Possible data corruption!")
+            if (
+                signal_range > 1e6
+                or signal_std > 1e6
+                or np.any(np.abs(signal_data) > 1e6)
+            ):
+                logger.error(
+                    f"⚠️  DETECTED EXTREME SIGNAL VALUES - Possible data corruption!"
+                )
                 logger.error(f"   Signal range: {signal_range:.3e}")
                 logger.error(f"   Signal std: {signal_std:.3e}")
-                logger.error(f"   Max absolute value: {np.max(np.abs(signal_data)):.3e}")
-                logger.error(f"   This suggests data corruption or incorrect data type conversion")
-                
+                logger.error(
+                    f"   Max absolute value: {np.max(np.abs(signal_data)):.3e}"
+                )
+                logger.error(
+                    f"   This suggests data corruption or incorrect data type conversion"
+                )
+
                 # Try to fix by normalizing the signal
                 logger.info("Attempting to fix by normalizing signal...")
                 try:
@@ -607,50 +638,81 @@ def register_respiratory_callbacks(app):
                         scale_factor = 1e6 / np.max(np.abs(signal_data))
                         signal_data = signal_data * scale_factor
                         logger.info(f"Scaled signal down by factor {scale_factor:.3e}")
-                        logger.info(f"New signal range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
+                        logger.info(
+                            f"New signal range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}"
+                        )
                     else:
                         # If values are still reasonable, just normalize
-                        signal_data = (signal_data - np.mean(signal_data)) / np.std(signal_data)
+                        signal_data = (signal_data - np.mean(signal_data)) / np.std(
+                            signal_data
+                        )
                         logger.info("Normalized signal to zero mean and unit variance")
-                        logger.info(f"New signal range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}")
+                        logger.info(
+                            f"New signal range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}"
+                        )
                 except Exception as e:
                     logger.error(f"Failed to fix signal data: {e}")
                     logger.error("Using original data (may cause analysis issues)")
             else:
-                logger.info("✓ Signal data validation passed - values are within reasonable range")
+                logger.info(
+                    "✓ Signal data validation passed - values are within reasonable range"
+                )
 
             # Check for filtered signal from filtering page
             if filtered_signal_data is not None:
                 logger.info("Checking for filtered signal from filtering page store...")
                 try:
-                    if isinstance(filtered_signal_data, dict) and "signal" in filtered_signal_data:
+                    if (
+                        isinstance(filtered_signal_data, dict)
+                        and "signal" in filtered_signal_data
+                    ):
                         filtered_signal = np.array(filtered_signal_data["signal"])
-                        logger.info(f"Retrieved filtered signal from filtering page store: {filtered_signal.shape}")
+                        logger.info(
+                            f"Retrieved filtered signal from filtering page store: {filtered_signal.shape}"
+                        )
 
                         # Use filtered signal if it matches our time window
                         # The filtered signal should be the full signal, so we need to window it
                         if len(filtered_signal) >= end_sample:
                             signal_data = filtered_signal[start_sample:end_sample]
-                            logger.info(f"Using filtered signal data (windowed): {signal_data.shape}")
-                            
+                            logger.info(
+                                f"Using filtered signal data (windowed): {signal_data.shape}"
+                            )
+
                             # Validate filtered signal data as well
                             filtered_range = np.max(signal_data) - np.min(signal_data)
                             filtered_std = np.std(signal_data)
-                            
-                            if filtered_range > 1e6 or filtered_std > 1e6 or np.any(np.abs(signal_data) > 1e6):
-                                logger.error(f"⚠️  FILTERED SIGNAL ALSO HAS EXTREME VALUES!")
-                                logger.error(f"   Filtered signal range: {filtered_range:.3e}")
-                                logger.error(f"   Filtered signal std: {filtered_std:.3e}")
-                                logger.error(f"   This suggests the filtering process created corrupted data")
-                                
+
+                            if (
+                                filtered_range > 1e6
+                                or filtered_std > 1e6
+                                or np.any(np.abs(signal_data) > 1e6)
+                            ):
+                                logger.error(
+                                    f"⚠️  FILTERED SIGNAL ALSO HAS EXTREME VALUES!"
+                                )
+                                logger.error(
+                                    f"   Filtered signal range: {filtered_range:.3e}"
+                                )
+                                logger.error(
+                                    f"   Filtered signal std: {filtered_std:.3e}"
+                                )
+                                logger.error(
+                                    f"   This suggests the filtering process created corrupted data"
+                                )
+
                                 # Try to fix the filtered signal
                                 try:
                                     if np.max(np.abs(signal_data)) > 1e6:
                                         scale_factor = 1e6 / np.max(np.abs(signal_data))
                                         signal_data = signal_data * scale_factor
-                                        logger.info(f"Scaled filtered signal down by factor {scale_factor:.3e}")
+                                        logger.info(
+                                            f"Scaled filtered signal down by factor {scale_factor:.3e}"
+                                        )
                                     else:
-                                        signal_data = (signal_data - np.mean(signal_data)) / np.std(signal_data)
+                                        signal_data = (
+                                            signal_data - np.mean(signal_data)
+                                        ) / np.std(signal_data)
                                         logger.info("Normalized filtered signal")
                                 except Exception as e:
                                     logger.error(f"Failed to fix filtered signal: {e}")
@@ -659,7 +721,9 @@ def register_respiratory_callbacks(app):
                             else:
                                 logger.info("✓ Filtered signal data validation passed")
                         else:
-                            logger.warning(f"Filtered signal too short ({len(filtered_signal)} < {end_sample}), using original")
+                            logger.warning(
+                                f"Filtered signal too short ({len(filtered_signal)} < {end_sample}), using original"
+                            )
                 except Exception as e:
                     logger.error(f"Error retrieving filtered signal: {e}")
                     logger.info("Falling back to original signal data")
@@ -675,24 +739,42 @@ def register_respiratory_callbacks(app):
             # Extract respiratory signal from ECG/PPG if needed
             respiratory_signal = signal_data.copy()
             if signal_type in ["ecg", "ppg"]:
-                logger.info(f"Extracting respiratory signal from {signal_type.upper()}...")
+                logger.info(
+                    f"Extracting respiratory signal from {signal_type.upper()}..."
+                )
                 try:
                     # Use vitalDSP's respiratory_filtering function
-                    from vitalDSP.preprocess.preprocess_operations import respiratory_filtering
+                    from vitalDSP.preprocess.preprocess_operations import (
+                        respiratory_filtering,
+                    )
 
                     # Convert breath duration constraints to frequency cutoffs
                     # Frequency (Hz) = 1 / Duration (s)
                     # Default: min_duration=1.2s → max_freq=0.833Hz, max_duration=6.0s → min_freq=0.167Hz
-                    min_duration = min_breath_duration if min_breath_duration else 1.2  # Default 1.2s (50 BPM)
-                    max_duration = max_breath_duration if max_breath_duration else 6.0  # Default 6.0s (10 BPM)
+                    min_duration = (
+                        min_breath_duration if min_breath_duration else 1.2
+                    )  # Default 1.2s (50 BPM)
+                    max_duration = (
+                        max_breath_duration if max_breath_duration else 6.0
+                    )  # Default 6.0s (10 BPM)
 
                     # Calculate frequency range from breath duration constraints
-                    highcut_freq = 1.0 / min_duration  # Shortest breath → highest frequency
-                    lowcut_freq = 1.0 / max_duration   # Longest breath → lowest frequency
+                    highcut_freq = (
+                        1.0 / min_duration
+                    )  # Shortest breath → highest frequency
+                    lowcut_freq = (
+                        1.0 / max_duration
+                    )  # Longest breath → lowest frequency
 
-                    logger.info(f"Breath duration constraints: {min_duration:.1f}s to {max_duration:.1f}s")
-                    logger.info(f"Respiratory frequency range: {lowcut_freq:.3f} Hz to {highcut_freq:.3f} Hz")
-                    logger.info(f"Respiratory rate range: {60/max_duration:.1f} to {60/min_duration:.1f} BPM")
+                    logger.info(
+                        f"Breath duration constraints: {min_duration:.1f}s to {max_duration:.1f}s"
+                    )
+                    logger.info(
+                        f"Respiratory frequency range: {lowcut_freq:.3f} Hz to {highcut_freq:.3f} Hz"
+                    )
+                    logger.info(
+                        f"Respiratory rate range: {60/max_duration:.1f} to {60/min_duration:.1f} BPM"
+                    )
 
                     # Apply respiratory filtering with user-specified breath duration constraints
                     respiratory_signal = respiratory_filtering(
@@ -700,31 +782,49 @@ def register_respiratory_callbacks(app):
                         sampling_freq,
                         lowcut=lowcut_freq,
                         highcut=highcut_freq,
-                        order=4
+                        order=4,
                     )
 
-                    logger.info(f"Successfully extracted respiratory signal from {signal_type.upper()} using vitalDSP")
-                    logger.info(f"  - Signal range: {np.min(respiratory_signal):.3f} to {np.max(respiratory_signal):.3f}")
-                    logger.info(f"  - Signal mean: {np.mean(respiratory_signal):.3f}, std: {np.std(respiratory_signal):.3f}")
-                    
+                    logger.info(
+                        f"Successfully extracted respiratory signal from {signal_type.upper()} using vitalDSP"
+                    )
+                    logger.info(
+                        f"  - Signal range: {np.min(respiratory_signal):.3f} to {np.max(respiratory_signal):.3f}"
+                    )
+                    logger.info(
+                        f"  - Signal mean: {np.mean(respiratory_signal):.3f}, std: {np.std(respiratory_signal):.3f}"
+                    )
+
                     # Validate extracted respiratory signal
                     resp_range = np.max(respiratory_signal) - np.min(respiratory_signal)
                     resp_std = np.std(respiratory_signal)
-                    
-                    if resp_range > 1e6 or resp_std > 1e6 or np.any(np.abs(respiratory_signal) > 1e6):
-                        logger.error(f"⚠️  RESPIRATORY EXTRACTION CREATED EXTREME VALUES!")
+
+                    if (
+                        resp_range > 1e6
+                        or resp_std > 1e6
+                        or np.any(np.abs(respiratory_signal) > 1e6)
+                    ):
+                        logger.error(
+                            f"⚠️  RESPIRATORY EXTRACTION CREATED EXTREME VALUES!"
+                        )
                         logger.error(f"   Respiratory signal range: {resp_range:.3e}")
                         logger.error(f"   Respiratory signal std: {resp_std:.3e}")
-                        logger.error(f"   This suggests the respiratory_filtering function has issues")
-                        
+                        logger.error(
+                            f"   This suggests the respiratory_filtering function has issues"
+                        )
+
                         # Try to fix the respiratory signal
                         try:
                             if np.max(np.abs(respiratory_signal)) > 1e6:
                                 scale_factor = 1e6 / np.max(np.abs(respiratory_signal))
                                 respiratory_signal = respiratory_signal * scale_factor
-                                logger.info(f"Scaled respiratory signal down by factor {scale_factor:.3e}")
+                                logger.info(
+                                    f"Scaled respiratory signal down by factor {scale_factor:.3e}"
+                                )
                             else:
-                                respiratory_signal = (respiratory_signal - np.mean(respiratory_signal)) / np.std(respiratory_signal)
+                                respiratory_signal = (
+                                    respiratory_signal - np.mean(respiratory_signal)
+                                ) / np.std(respiratory_signal)
                                 logger.info("Normalized respiratory signal")
                         except Exception as e:
                             logger.error(f"Failed to fix respiratory signal: {e}")
@@ -738,7 +838,9 @@ def register_respiratory_callbacks(app):
                     logger.info("Falling back to original signal")
                     respiratory_signal = signal_data
             else:
-                logger.info(f"Signal type '{signal_type}' is already respiratory signal, no extraction needed")
+                logger.info(
+                    f"Signal type '{signal_type}' is already respiratory signal, no extraction needed"
+                )
 
             logger.info(f"Estimation methods: {estimation_methods}")
             logger.info(f"Advanced options: {advanced_options}")
@@ -857,7 +959,9 @@ def register_respiratory_callbacks(app):
 
         try:
             # Get data from the data service
-            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
             data_service = get_enhanced_data_service()
 
@@ -1015,10 +1119,12 @@ def create_respiratory_signal_plot(
             time_axis,
             signal_data,
             max_duration=300,  # 5 minutes max
-            max_points=10000   # 10K points max
+            max_points=10000,  # 10K points max
         )
 
-        logger.info(f"Plot data limited: {len(signal_data)} → {len(signal_data_plot)} points")
+        logger.info(
+            f"Plot data limited: {len(signal_data)} → {len(signal_data_plot)} points"
+        )
 
         # Create the main signal plot (using limited data)
         fig.add_trace(
@@ -1274,7 +1380,9 @@ def generate_comprehensive_respiratory_analysis(
         # Signal data received here is already filtered from store-filtered-signal
         # VitalDSP algorithms will work on the pre-filtered signal
         preprocess_config = None
-        logger.info("Using pre-filtered signal from filtering page (no additional preprocessing)")
+        logger.info(
+            "Using pre-filtered signal from filtering page (no additional preprocessing)"
+        )
 
         # Respiratory Rate Estimation using multiple methods
         logger.info(f"Processing estimation methods: {estimation_methods}")
@@ -3726,10 +3834,12 @@ def create_comprehensive_respiratory_plots(
             time_axis,
             signal_data,
             max_duration=300,  # 5 minutes max
-            max_points=10000   # 10K points max
+            max_points=10000,  # 10K points max
         )
 
-        logger.info(f"Comprehensive plots data limited: {len(signal_data)} → {len(signal_data_plot)} points")
+        logger.info(
+            f"Comprehensive plots data limited: {len(signal_data)} → {len(signal_data_plot)} points"
+        )
 
         # Create subplots for different analyses
         logger.info("Creating subplots...")
@@ -3938,7 +4048,9 @@ def create_comprehensive_respiratory_plots(
                     for start, end in all_apnea_events:
                         start_idx = int(start * sampling_freq)
                         end_idx = int(end * sampling_freq)
-                        if start_idx < len(time_axis_plot) and end_idx < len(time_axis_plot):
+                        if start_idx < len(time_axis_plot) and end_idx < len(
+                            time_axis_plot
+                        ):
                             fig.add_trace(
                                 go.Scatter(
                                     x=time_axis_plot[start_idx:end_idx],
@@ -4030,7 +4142,10 @@ def create_comprehensive_respiratory_plots(
                     try:
                         # Create a mini-ensemble visualization
                         ensemble_window = int(2.0 * sampling_freq)  # 2-second windows
-                        if ensemble_window > 0 and len(signal_data_plot) > ensemble_window:
+                        if (
+                            ensemble_window > 0
+                            and len(signal_data_plot) > ensemble_window
+                        ):
                             # Calculate local statistics in windows
                             n_windows = len(signal_data_plot) // ensemble_window
                             window_means = []
@@ -4094,18 +4209,102 @@ def create_comprehensive_respiratory_plots(
 
         # Update axes labels with gridlines for better visibility
         logger.info("Updating axes labels and gridlines...")
-        fig.update_xaxes(title_text="Time (s)", showgrid=True, gridwidth=1, gridcolor='LightGray', row=1, col=1)
-        fig.update_yaxes(title_text="Amplitude", showgrid=True, gridwidth=1, gridcolor='LightGray', row=1, col=1)
-        fig.update_xaxes(title_text="Frequency (Hz)", showgrid=True, gridwidth=1, gridcolor='LightGray', row=1, col=2)
-        fig.update_yaxes(title_text="Magnitude", showgrid=True, gridwidth=1, gridcolor='LightGray', row=1, col=2)
-        fig.update_xaxes(title_text="Time (s)", showgrid=True, gridwidth=1, gridcolor='LightGray', row=2, col=1)
-        fig.update_yaxes(title_text="Amplitude", showgrid=True, gridwidth=1, gridcolor='LightGray', row=2, col=1)
-        fig.update_xaxes(title_text="Time (s)", showgrid=True, gridwidth=1, gridcolor='LightGray', row=2, col=2)
-        fig.update_yaxes(title_text="Interval (s) / RR (BPM)", showgrid=True, gridwidth=1, gridcolor='LightGray', row=2, col=2)
-        fig.update_xaxes(title_text="Time (s)", showgrid=True, gridwidth=1, gridcolor='LightGray', row=3, col=1)
-        fig.update_yaxes(title_text="Amplitude", showgrid=True, gridwidth=1, gridcolor='LightGray', row=3, col=1)
-        fig.update_xaxes(title_text="Time (s)", showgrid=True, gridwidth=1, gridcolor='LightGray', row=3, col=2)
-        fig.update_yaxes(title_text="Statistics", showgrid=True, gridwidth=1, gridcolor='LightGray', row=3, col=2)
+        fig.update_xaxes(
+            title_text="Time (s)",
+            showgrid=True,
+            gridwidth=1,
+            gridcolor="LightGray",
+            row=1,
+            col=1,
+        )
+        fig.update_yaxes(
+            title_text="Amplitude",
+            showgrid=True,
+            gridwidth=1,
+            gridcolor="LightGray",
+            row=1,
+            col=1,
+        )
+        fig.update_xaxes(
+            title_text="Frequency (Hz)",
+            showgrid=True,
+            gridwidth=1,
+            gridcolor="LightGray",
+            row=1,
+            col=2,
+        )
+        fig.update_yaxes(
+            title_text="Magnitude",
+            showgrid=True,
+            gridwidth=1,
+            gridcolor="LightGray",
+            row=1,
+            col=2,
+        )
+        fig.update_xaxes(
+            title_text="Time (s)",
+            showgrid=True,
+            gridwidth=1,
+            gridcolor="LightGray",
+            row=2,
+            col=1,
+        )
+        fig.update_yaxes(
+            title_text="Amplitude",
+            showgrid=True,
+            gridwidth=1,
+            gridcolor="LightGray",
+            row=2,
+            col=1,
+        )
+        fig.update_xaxes(
+            title_text="Time (s)",
+            showgrid=True,
+            gridwidth=1,
+            gridcolor="LightGray",
+            row=2,
+            col=2,
+        )
+        fig.update_yaxes(
+            title_text="Interval (s) / RR (BPM)",
+            showgrid=True,
+            gridwidth=1,
+            gridcolor="LightGray",
+            row=2,
+            col=2,
+        )
+        fig.update_xaxes(
+            title_text="Time (s)",
+            showgrid=True,
+            gridwidth=1,
+            gridcolor="LightGray",
+            row=3,
+            col=1,
+        )
+        fig.update_yaxes(
+            title_text="Amplitude",
+            showgrid=True,
+            gridwidth=1,
+            gridcolor="LightGray",
+            row=3,
+            col=1,
+        )
+        fig.update_xaxes(
+            title_text="Time (s)",
+            showgrid=True,
+            gridwidth=1,
+            gridcolor="LightGray",
+            row=3,
+            col=2,
+        )
+        fig.update_yaxes(
+            title_text="Statistics",
+            showgrid=True,
+            gridwidth=1,
+            gridcolor="LightGray",
+            row=3,
+            col=2,
+        )
 
         logger.info("=== CREATE COMPREHENSIVE RESPIRATORY PLOTS COMPLETED ===")
         return fig

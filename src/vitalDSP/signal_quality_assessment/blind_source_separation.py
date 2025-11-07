@@ -103,7 +103,7 @@ def whiten_signal(signal):
     return whitened_signal, whitening_matrix
 
 
-def create_synthetic_components(signal, n_components=3, method='derivatives'):
+def create_synthetic_components(signal, n_components=3, method="derivatives"):
     """
     Create synthetic signal components from a 1D signal for ICA processing.
 
@@ -147,7 +147,9 @@ def create_synthetic_components(signal, n_components=3, method='derivatives'):
     >>> print(synthetic.shape)  # (3, 1000)
     """
     if signal.ndim > 1:
-        raise ValueError("Input must be a 1D signal. Use signals directly if multi-channel.")
+        raise ValueError(
+            "Input must be a 1D signal. Use signals directly if multi-channel."
+        )
 
     if n_components < 2:
         raise ValueError("n_components must be at least 2 for ICA to work.")
@@ -156,7 +158,7 @@ def create_synthetic_components(signal, n_components=3, method='derivatives'):
     n_samples = len(signal)
     components = []
 
-    if method == 'derivatives':
+    if method == "derivatives":
         # Component 1: Original signal
         components.append(signal)
 
@@ -180,6 +182,7 @@ def create_synthetic_components(signal, n_components=3, method='derivatives'):
         # Component 5: Smoothed version (captures baseline)
         if n_components >= 5:
             from scipy.ndimage import gaussian_filter1d
+
             smoothed = gaussian_filter1d(signal, sigma=max(1, n_samples // 100))
             components.append(smoothed)
 
@@ -190,7 +193,7 @@ def create_synthetic_components(signal, n_components=3, method='derivatives'):
             delayed[:delay] = delayed[delay]
             components.append(delayed)
 
-    elif method == 'frequency':
+    elif method == "frequency":
         # Component 1: Original signal
         components.append(signal)
 
@@ -202,21 +205,22 @@ def create_synthetic_components(signal, n_components=3, method='derivatives'):
 
         # Define frequency bands
         bands = [
-            (0.5, 5),    # Very low frequency (baseline)
-            (5, 15),     # Low frequency
-            (15, 40),    # Mid frequency
-            (40, 100),   # High frequency
+            (0.5, 5),  # Very low frequency (baseline)
+            (5, 15),  # Low frequency
+            (15, 40),  # Mid frequency
+            (40, 100),  # High frequency
         ]
 
-        for low, high in bands[:n_components-1]:
+        for low, high in bands[: n_components - 1]:
             try:
                 nyq = fs / 2
                 low_norm = low / nyq
                 high_norm = high / nyq
-                b, a = butter(2, [low_norm, high_norm], btype='band')
+                b, a = butter(2, [low_norm, high_norm], btype="band")
                 filtered = filtfilt(b, a, signal)
                 components.append(filtered)
-            except:
+            except Exception as err:
+                print(f"Error creating synthetic components: {err}")
                 # Fallback to derivative if filtering fails
                 components.append(np.gradient(signal))
 
@@ -236,7 +240,9 @@ def create_synthetic_components(signal, n_components=3, method='derivatives'):
     return synthetic_signals
 
 
-def ica_artifact_removal(signals, max_iter=1000, tol=1e-5, auto_synthetic=True, n_components=3):
+def ica_artifact_removal(
+    signals, max_iter=1000, tol=1e-5, auto_synthetic=True, n_components=3
+):
     """
     Perform ICA to separate sources and remove artifacts.
 
@@ -303,7 +309,9 @@ def ica_artifact_removal(signals, max_iter=1000, tol=1e-5, auto_synthetic=True, 
             )
 
         # Create synthetic components
-        signals = create_synthetic_components(signals, n_components=n_components, method='derivatives')
+        signals = create_synthetic_components(
+            signals, n_components=n_components, method="derivatives"
+        )
 
     signals = np.atleast_2d(signals)
 

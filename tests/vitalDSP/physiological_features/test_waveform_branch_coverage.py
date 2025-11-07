@@ -937,5 +937,3 @@ class TestAdditionalEdgeCases:
             assert isinstance(t_peaks, np.ndarray)
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

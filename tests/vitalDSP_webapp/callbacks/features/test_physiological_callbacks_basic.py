@@ -396,5 +396,3 @@ class TestPhysiologicalDataExport:
         assert len(report['data_info']['channels']) > 0
 
 
-if __name__ == "__main__":
-    pytest.main([__file__])

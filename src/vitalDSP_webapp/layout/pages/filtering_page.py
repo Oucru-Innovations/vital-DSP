@@ -92,7 +92,10 @@ def filtering_layout():
                                                     75: "75%",
                                                     100: "100%",
                                                 },
-                                                tooltip={"placement": "bottom", "always_visible": True},
+                                                tooltip={
+                                                    "placement": "bottom",
+                                                    "always_visible": True,
+                                                },
                                                 className="mb-2",
                                             ),
                                         ],
@@ -154,6 +157,66 @@ def filtering_layout():
                                         ],
                                         md=3,
                                     ),
+                                ],
+                                className="mb-2",
+                            ),
+                            # Second Row: Signal Source and Filter Count
+                            dbc.Row(
+                                [
+                                    # Signal Source Selector
+                                    dbc.Col(
+                                        [
+                                            html.Label(
+                                                "Signal Source:",
+                                                className="form-label mb-1",
+                                            ),
+                                            dbc.Select(
+                                                id="filter-signal-source",
+                                                options=[
+                                                    {
+                                                        "label": "Original Signal",
+                                                        "value": "original",
+                                                    },
+                                                    {
+                                                        "label": "Filtered Signal (Iterative)",
+                                                        "value": "filtered",
+                                                    },
+                                                ],
+                                                value="original",
+                                                size="sm",
+                                            ),
+                                            html.Small(
+                                                "Select 'Filtered' to apply filter on already filtered signal",
+                                                className="text-muted d-block",
+                                            ),
+                                        ],
+                                        md=4,
+                                    ),
+                                    # Filter Application Count
+                                    dbc.Col(
+                                        [
+                                            html.Label(
+                                                "Apply Filter (n times):",
+                                                className="form-label mb-1",
+                                            ),
+                                            dbc.Input(
+                                                id="filter-application-count",
+                                                type="number",
+                                                value=1,
+                                                min=1,
+                                                max=10,
+                                                step=1,
+                                                size="sm",
+                                            ),
+                                            html.Small(
+                                                "Number of times to apply the filter (1-10)",
+                                                className="text-muted d-block",
+                                            ),
+                                        ],
+                                        md=3,
+                                    ),
+                                    # Empty column for spacing
+                                    dbc.Col(md=3),
                                     # Apply Filter Button
                                     dbc.Col(
                                         [
@@ -260,7 +323,7 @@ def filtering_layout():
                                     ),
                                 ],
                                 className="g-2",
-                            )
+                            ),
                         ]
                     )
                 ],
@@ -588,12 +651,18 @@ def filtering_layout():
                                                     # Kalman Filter Parameters
                                                     html.Div(
                                                         [
-                                                            html.H6("Kalman Parameters", className="mb-2 text-primary"),
+                                                            html.H6(
+                                                                "Kalman Parameters",
+                                                                className="mb-2 text-primary",
+                                                            ),
                                                             dbc.Row(
                                                                 [
                                                                     dbc.Col(
                                                                         [
-                                                                            html.Label("R (Measurement Noise):", className="form-label"),
+                                                                            html.Label(
+                                                                                "R (Measurement Noise):",
+                                                                                className="form-label",
+                                                                            ),
                                                                             dbc.Input(
                                                                                 id="kalman-r",
                                                                                 type="number",
@@ -603,13 +672,19 @@ def filtering_layout():
                                                                                 step=0.01,
                                                                                 size="sm",
                                                                             ),
-                                                                            html.Small("Lower = trust measurements more", className="text-muted"),
+                                                                            html.Small(
+                                                                                "Lower = trust measurements more",
+                                                                                className="text-muted",
+                                                                            ),
                                                                         ],
                                                                         width=6,
                                                                     ),
                                                                     dbc.Col(
                                                                         [
-                                                                            html.Label("Q (Process Noise):", className="form-label"),
+                                                                            html.Label(
+                                                                                "Q (Process Noise):",
+                                                                                className="form-label",
+                                                                            ),
                                                                             dbc.Input(
                                                                                 id="kalman-q",
                                                                                 type="number",
@@ -619,7 +694,10 @@ def filtering_layout():
                                                                                 step=0.01,
                                                                                 size="sm",
                                                                             ),
-                                                                            html.Small("Lower = trust model more", className="text-muted"),
+                                                                            html.Small(
+                                                                                "Lower = trust model more",
+                                                                                className="text-muted",
+                                                                            ),
                                                                         ],
                                                                         width=6,
                                                                     ),
@@ -632,21 +710,45 @@ def filtering_layout():
                                                     # Optimization-Based Parameters
                                                     html.Div(
                                                         [
-                                                            html.H6("Optimization Parameters", className="mb-2 text-primary"),
+                                                            html.H6(
+                                                                "Optimization Parameters",
+                                                                className="mb-2 text-primary",
+                                                            ),
                                                             dbc.Row(
                                                                 [
                                                                     dbc.Col(
                                                                         [
-                                                                            html.Label("Loss Function:", className="form-label"),
+                                                                            html.Label(
+                                                                                "Loss Function:",
+                                                                                className="form-label",
+                                                                            ),
                                                                             dbc.Select(
                                                                                 id="optimization-loss-type",
                                                                                 options=[
-                                                                                    {"label": "MSE (Mean Squared Error)", "value": "mse"},
-                                                                                    {"label": "MAE (Mean Absolute Error)", "value": "mae"},
-                                                                                    {"label": "Huber Loss", "value": "huber"},
-                                                                                    {"label": "Smooth L1", "value": "smooth_l1"},
-                                                                                    {"label": "Log-Cosh", "value": "log_cosh"},
-                                                                                    {"label": "Quantile Loss", "value": "quantile"},
+                                                                                    {
+                                                                                        "label": "MSE (Mean Squared Error)",
+                                                                                        "value": "mse",
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "MAE (Mean Absolute Error)",
+                                                                                        "value": "mae",
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Huber Loss",
+                                                                                        "value": "huber",
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Smooth L1",
+                                                                                        "value": "smooth_l1",
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Log-Cosh",
+                                                                                        "value": "log_cosh",
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Quantile Loss",
+                                                                                        "value": "quantile",
+                                                                                    },
                                                                                 ],
                                                                                 value="mse",
                                                                                 size="sm",
@@ -656,7 +758,10 @@ def filtering_layout():
                                                                     ),
                                                                     dbc.Col(
                                                                         [
-                                                                            html.Label("Initial Guess:", className="form-label"),
+                                                                            html.Label(
+                                                                                "Initial Guess:",
+                                                                                className="form-label",
+                                                                            ),
                                                                             dbc.Input(
                                                                                 id="optimization-initial-guess",
                                                                                 type="number",
@@ -674,7 +779,10 @@ def filtering_layout():
                                                                 [
                                                                     dbc.Col(
                                                                         [
-                                                                            html.Label("Learning Rate:", className="form-label"),
+                                                                            html.Label(
+                                                                                "Learning Rate:",
+                                                                                className="form-label",
+                                                                            ),
                                                                             dbc.Input(
                                                                                 id="optimization-learning-rate",
                                                                                 type="number",
@@ -689,7 +797,10 @@ def filtering_layout():
                                                                     ),
                                                                     dbc.Col(
                                                                         [
-                                                                            html.Label("Iterations:", className="form-label"),
+                                                                            html.Label(
+                                                                                "Iterations:",
+                                                                                className="form-label",
+                                                                            ),
                                                                             dbc.Input(
                                                                                 id="optimization-iterations",
                                                                                 type="number",
@@ -712,12 +823,18 @@ def filtering_layout():
                                                     # Gradient Descent Parameters
                                                     html.Div(
                                                         [
-                                                            html.H6("Gradient Descent Parameters", className="mb-2 text-primary"),
+                                                            html.H6(
+                                                                "Gradient Descent Parameters",
+                                                                className="mb-2 text-primary",
+                                                            ),
                                                             dbc.Row(
                                                                 [
                                                                     dbc.Col(
                                                                         [
-                                                                            html.Label("Learning Rate:", className="form-label"),
+                                                                            html.Label(
+                                                                                "Learning Rate:",
+                                                                                className="form-label",
+                                                                            ),
                                                                             dbc.Input(
                                                                                 id="gradient-learning-rate",
                                                                                 type="number",
@@ -732,7 +849,10 @@ def filtering_layout():
                                                                     ),
                                                                     dbc.Col(
                                                                         [
-                                                                            html.Label("Iterations:", className="form-label"),
+                                                                            html.Label(
+                                                                                "Iterations:",
+                                                                                className="form-label",
+                                                                            ),
                                                                             dbc.Input(
                                                                                 id="gradient-iterations",
                                                                                 type="number",
@@ -755,18 +875,33 @@ def filtering_layout():
                                                     # Convolution Parameters
                                                     html.Div(
                                                         [
-                                                            html.H6("Convolution Parameters", className="mb-2 text-primary"),
+                                                            html.H6(
+                                                                "Convolution Parameters",
+                                                                className="mb-2 text-primary",
+                                                            ),
                                                             dbc.Row(
                                                                 [
                                                                     dbc.Col(
                                                                         [
-                                                                            html.Label("Kernel Type:", className="form-label"),
+                                                                            html.Label(
+                                                                                "Kernel Type:",
+                                                                                className="form-label",
+                                                                            ),
                                                                             dbc.Select(
                                                                                 id="convolution-kernel-type",
                                                                                 options=[
-                                                                                    {"label": "Smoothing", "value": "smoothing"},
-                                                                                    {"label": "Sharpening", "value": "sharpening"},
-                                                                                    {"label": "Edge Detection", "value": "edge_detection"},
+                                                                                    {
+                                                                                        "label": "Smoothing",
+                                                                                        "value": "smoothing",
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Sharpening",
+                                                                                        "value": "sharpening",
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Edge Detection",
+                                                                                        "value": "edge_detection",
+                                                                                    },
                                                                                 ],
                                                                                 value="smoothing",
                                                                                 size="sm",
@@ -776,7 +911,10 @@ def filtering_layout():
                                                                     ),
                                                                     dbc.Col(
                                                                         [
-                                                                            html.Label("Kernel Size:", className="form-label"),
+                                                                            html.Label(
+                                                                                "Kernel Size:",
+                                                                                className="form-label",
+                                                                            ),
                                                                             dbc.Input(
                                                                                 id="convolution-kernel-size",
                                                                                 type="number",
@@ -786,7 +924,10 @@ def filtering_layout():
                                                                                 step=2,
                                                                                 size="sm",
                                                                             ),
-                                                                            html.Small("Must be odd number", className="text-muted"),
+                                                                            html.Small(
+                                                                                "Must be odd number",
+                                                                                className="text-muted",
+                                                                            ),
                                                                         ],
                                                                         width=6,
                                                                     ),
@@ -800,19 +941,37 @@ def filtering_layout():
                                                     # Attention-Based Parameters
                                                     html.Div(
                                                         [
-                                                            html.H6("Attention Parameters", className="mb-2 text-primary"),
+                                                            html.H6(
+                                                                "Attention Parameters",
+                                                                className="mb-2 text-primary",
+                                                            ),
                                                             dbc.Row(
                                                                 [
                                                                     dbc.Col(
                                                                         [
-                                                                            html.Label("Attention Type:", className="form-label"),
+                                                                            html.Label(
+                                                                                "Attention Type:",
+                                                                                className="form-label",
+                                                                            ),
                                                                             dbc.Select(
                                                                                 id="attention-type",
                                                                                 options=[
-                                                                                    {"label": "Uniform", "value": "uniform"},
-                                                                                    {"label": "Linear", "value": "linear"},
-                                                                                    {"label": "Gaussian", "value": "gaussian"},
-                                                                                    {"label": "Exponential", "value": "exponential"},
+                                                                                    {
+                                                                                        "label": "Uniform",
+                                                                                        "value": "uniform",
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Linear",
+                                                                                        "value": "linear",
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Gaussian",
+                                                                                        "value": "gaussian",
+                                                                                    },
+                                                                                    {
+                                                                                        "label": "Exponential",
+                                                                                        "value": "exponential",
+                                                                                    },
                                                                                 ],
                                                                                 value="uniform",
                                                                                 size="sm",
@@ -822,7 +981,10 @@ def filtering_layout():
                                                                     ),
                                                                     dbc.Col(
                                                                         [
-                                                                            html.Label("Window Size:", className="form-label"),
+                                                                            html.Label(
+                                                                                "Window Size:",
+                                                                                className="form-label",
+                                                                            ),
                                                                             dbc.Input(
                                                                                 id="attention-size",
                                                                                 type="number",
@@ -844,7 +1006,10 @@ def filtering_layout():
                                                                     [
                                                                         dbc.Col(
                                                                             [
-                                                                                html.Label("Sigma (σ):", className="form-label"),
+                                                                                html.Label(
+                                                                                    "Sigma (σ):",
+                                                                                    className="form-label",
+                                                                                ),
                                                                                 dbc.Input(
                                                                                     id="attention-sigma",
                                                                                     type="number",
@@ -861,7 +1026,9 @@ def filtering_layout():
                                                                     className="mb-2",
                                                                 ),
                                                                 id="attention-gaussian-params",
-                                                                style={"display": "none"},
+                                                                style={
+                                                                    "display": "none"
+                                                                },
                                                             ),
                                                             # Linear/Exponential-specific parameters
                                                             html.Div(
@@ -869,12 +1036,21 @@ def filtering_layout():
                                                                     [
                                                                         dbc.Col(
                                                                             [
-                                                                                html.Label("Direction:", className="form-label"),
+                                                                                html.Label(
+                                                                                    "Direction:",
+                                                                                    className="form-label",
+                                                                                ),
                                                                                 dbc.Select(
                                                                                     id="attention-ascending",
                                                                                     options=[
-                                                                                        {"label": "Ascending", "value": "true"},
-                                                                                        {"label": "Descending", "value": "false"},
+                                                                                        {
+                                                                                            "label": "Ascending",
+                                                                                            "value": "true",
+                                                                                        },
+                                                                                        {
+                                                                                            "label": "Descending",
+                                                                                            "value": "false",
+                                                                                        },
                                                                                     ],
                                                                                     value="true",
                                                                                     size="sm",
@@ -886,7 +1062,9 @@ def filtering_layout():
                                                                     className="mb-2",
                                                                 ),
                                                                 id="attention-linear-params",
-                                                                style={"display": "none"},
+                                                                style={
+                                                                    "display": "none"
+                                                                },
                                                             ),
                                                             # Exponential-specific parameter
                                                             html.Div(
@@ -894,7 +1072,10 @@ def filtering_layout():
                                                                     [
                                                                         dbc.Col(
                                                                             [
-                                                                                html.Label("Base:", className="form-label"),
+                                                                                html.Label(
+                                                                                    "Base:",
+                                                                                    className="form-label",
+                                                                                ),
                                                                                 dbc.Input(
                                                                                     id="attention-base",
                                                                                     type="number",
@@ -911,7 +1092,9 @@ def filtering_layout():
                                                                     className="mb-2",
                                                                 ),
                                                                 id="attention-exponential-params",
-                                                                style={"display": "none"},
+                                                                style={
+                                                                    "display": "none"
+                                                                },
                                                             ),
                                                         ],
                                                         id="attention-params",
@@ -920,12 +1103,18 @@ def filtering_layout():
                                                     # Adaptive Filter Parameters
                                                     html.Div(
                                                         [
-                                                            html.H6("Adaptive (LMS) Parameters", className="mb-2 text-primary"),
+                                                            html.H6(
+                                                                "Adaptive (LMS) Parameters",
+                                                                className="mb-2 text-primary",
+                                                            ),
                                                             dbc.Row(
                                                                 [
                                                                     dbc.Col(
                                                                         [
-                                                                            html.Label("Step Size (μ):", className="form-label"),
+                                                                            html.Label(
+                                                                                "Step Size (μ):",
+                                                                                className="form-label",
+                                                                            ),
                                                                             dbc.Input(
                                                                                 id="adaptive-mu",
                                                                                 type="number",
@@ -940,7 +1129,10 @@ def filtering_layout():
                                                                     ),
                                                                     dbc.Col(
                                                                         [
-                                                                            html.Label("Filter Order:", className="form-label"),
+                                                                            html.Label(
+                                                                                "Filter Order:",
+                                                                                className="form-label",
+                                                                            ),
                                                                             dbc.Input(
                                                                                 id="adaptive-order",
                                                                                 type="number",

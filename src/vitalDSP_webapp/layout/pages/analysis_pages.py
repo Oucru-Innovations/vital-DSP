@@ -8,9 +8,6 @@ from dash import html, dcc
 import dash_bootstrap_components as dbc
 
 
-
-
-
 def filtering_layout():
     """Create the comprehensive signal filtering page layout with optimized space usage."""
     return html.Div(
@@ -95,7 +92,10 @@ def filtering_layout():
                                                     75: "75%",
                                                     100: "100%",
                                                 },
-                                                tooltip={"placement": "bottom", "always_visible": True},
+                                                tooltip={
+                                                    "placement": "bottom",
+                                                    "always_visible": True,
+                                                },
                                                 className="mb-2",
                                             ),
                                         ],
@@ -1564,9 +1564,6 @@ def features_layout():
     )
 
 
-
-
-
 def health_report_layout():
     """Create the comprehensive health report generation layout."""
     return html.Div(
@@ -2366,8 +2363,6 @@ def settings_layout():
                                                                         id="settings-quality-threshold",
                                                                         type="number",
                                                                         value=0.7,
-                                                                        min=0.1,
-                                                                        max=1.0,
                                                                         step=0.1,
                                                                         placeholder="0.7",
                                                                     ),

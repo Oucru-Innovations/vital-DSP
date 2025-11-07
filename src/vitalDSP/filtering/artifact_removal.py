@@ -365,44 +365,141 @@ class ArtifactRemoval:
         return smoothed_signal
 
     def adaptive_filtering(
-        self, reference_signal, learning_rate=0.01, num_iterations=100
+        self, reference_signal=None, learning_rate=0.01, num_iterations=100
     ):
         """
         Use an adaptive filter to remove artifacts correlated with a reference signal.
 
-        Adaptive filtering is particularly useful for removing artifacts that are correlated
-        with another signal, such as EOG artifacts in EEG recordings.
+        This method uses Least Mean Squares (LMS) adaptive filtering to iteratively adjust
+        the signal to minimize the error between the filtered signal and a reference signal.
+        It is particularly useful for removing artifacts that are correlated with another signal,
+        such as EOG artifacts in EEG recordings, motion artifacts in PPG, or respiratory artifacts.
+
+        If no reference signal is provided, the filter adapts towards zero (artifact removal/denoising).
 
         Parameters
         ----------
-        reference_signal : numpy.ndarray
-            The reference signal correlated with the artifact.
-        learning_rate : float
-            The learning rate for the adaptive filter.
-        num_iterations : int
-            The number of iterations for adaptation.
+        reference_signal : numpy.ndarray, optional
+            The reference signal correlated with the artifact. If None, adapts towards zero
+            (removes DC offset and baseline drift). Must have the same length as the input signal.
+        learning_rate : float, default=0.01
+            The learning rate (step size) for the adaptive filter. Controls convergence speed.
+            Typical range: 0.001 - 0.5
+            - Lower values (0.001-0.01): Slower convergence, more stable
+            - Higher values (0.1-0.5): Faster convergence, may oscillate
+        num_iterations : int, default=100
+            The number of iterations for adaptation. More iterations = better convergence.
 
         Returns
         -------
         clean_signal : numpy.ndarray
-            The artifact-removed signal.
+            The artifact-removed signal with the same length as the input.
+
+        Raises
+        ------
+        ValueError
+            If reference_signal length doesn't match signal length.
+
+        Notes
+        -----
+        **Algorithm**: Least Mean Squares (LMS) adaptive filtering
+        - The filter iteratively adjusts the signal based on the error
+        - Error = filtered_signal - reference_signal
+        - Update rule: filtered_signal -= learning_rate * error
+
+        **Use Cases**:
+        1. **With reference signal**: Remove correlated artifacts (EOG from EEG, motion from PPG)
+        2. **Without reference signal**: General denoising and DC offset removal
+
+        **Convergence**:
+        - Monitor the error reduction to ensure proper convergence
+        - If the filter diverges (error increases), reduce the learning rate
+        - Typical convergence: 50-200 iterations with learning_rate=0.01
+
+        See Also
+        --------
+        baseline_correction : For simple baseline drift removal
+        mean_subtraction : For DC offset removal
 
         Examples
         --------
-        >>> signal = np.array([1, 2, 3, 4, 5])
-        >>> reference_signal = np.array([1, 1, 1, 1, 1])
+        **Example 1: Remove EOG artifacts from EEG using reference EOG signal**
+
+        >>> import numpy as np
+        >>> # Simulate EEG contaminated with EOG
+        >>> eeg_clean = np.sin(2*np.pi*10*np.linspace(0, 1, 1000))  # 10 Hz alpha wave
+        >>> eog_artifact = 2 * np.sin(2*np.pi*2*np.linspace(0, 1, 1000))  # 2 Hz eye movement
+        >>> eeg_contaminated = eeg_clean + 0.5 * eog_artifact
+        >>>
+        >>> # Remove EOG artifact using reference EOG channel
+        >>> ar = ArtifactRemoval(eeg_contaminated)
+        >>> eeg_cleaned = ar.adaptive_filtering(
+        ...     reference_signal=eog_artifact,
+        ...     learning_rate=0.05,
+        ...     num_iterations=150
+        ... )
+        >>> print(f"Original SNR: {10*np.log10(np.var(eeg_clean)/np.var(eeg_contaminated-eeg_clean)):.2f} dB")
+        >>> print(f"Cleaned SNR: {10*np.log10(np.var(eeg_clean)/np.var(eeg_cleaned-eeg_clean)):.2f} dB")
+
+        **Example 2: Remove motion artifacts from PPG using accelerometer reference**
+
+        >>> # Simulate PPG with motion artifact
+        >>> ppg_signal = np.sin(2*np.pi*1.2*np.linspace(0, 10, 1000))  # Heart rate ~72 bpm
+        >>> motion_artifact = 0.8 * np.sin(2*np.pi*0.5*np.linspace(0, 10, 1000))  # Motion
+        >>> ppg_contaminated = ppg_signal + motion_artifact
+        >>>
+        >>> # Remove motion using accelerometer as reference
+        >>> ar = ArtifactRemoval(ppg_contaminated)
+        >>> ppg_cleaned = ar.adaptive_filtering(
+        ...     reference_signal=motion_artifact,
+        ...     learning_rate=0.02,
+        ...     num_iterations=100
+        ... )
+
+        **Example 3: General denoising without reference signal**
+
+        >>> # Noisy signal
+        >>> signal = np.sin(2*np.pi*5*np.linspace(0, 2, 500)) + 0.3*np.random.randn(500)
         >>> ar = ArtifactRemoval(signal)
-        >>> clean_signal = ar.adaptive_filtering(reference_signal, learning_rate=0.01, num_iterations=100)
-        >>> print(clean_signal)
+        >>> denoised = ar.adaptive_filtering(learning_rate=0.01, num_iterations=100)
+        >>> print(f"DC offset removed: {np.mean(signal):.3f} -> {np.mean(denoised):.3f}")
+
+        **Example 4: Respiratory artifact removal from ECG**
+
+        >>> # ECG with respiratory baseline wander
+        >>> ecg = np.sin(2*np.pi*1.2*np.linspace(0, 5, 1000))  # Heart rate
+        >>> respiratory = 0.4 * np.sin(2*np.pi*0.3*np.linspace(0, 5, 1000))  # Breathing
+        >>> ecg_with_resp = ecg + respiratory
+        >>>
+        >>> # Remove using respiratory belt signal as reference
+        >>> ar = ArtifactRemoval(ecg_with_resp)
+        >>> ecg_cleaned = ar.adaptive_filtering(
+        ...     reference_signal=respiratory,
+        ...     learning_rate=0.03,
+        ...     num_iterations=120
+        ... )
         """
-        filtered_signal = self.signal.copy()
         # Ensure the signal is cast to float64 for numerical stability
         filtered_signal = self.signal.astype(np.float64)
-        reference_signal = reference_signal.astype(np.float64)
 
+        # Handle reference signal
+        if reference_signal is None:
+            # Adapt towards zero (denoising/DC removal)
+            reference_signal = np.zeros_like(filtered_signal, dtype=np.float64)
+        else:
+            # Validate and convert reference signal
+            reference_signal = np.asarray(reference_signal, dtype=np.float64)
+            if len(reference_signal) != len(self.signal):
+                raise ValueError(
+                    f"Reference signal length ({len(reference_signal)}) must match "
+                    f"signal length ({len(self.signal)})"
+                )
+
+        # LMS adaptive filtering
         for _ in range(num_iterations):
             error = filtered_signal - reference_signal
             filtered_signal -= learning_rate * error
+
         return filtered_signal
 
     def notch_filter(self, freq=50, fs=1000, Q=30):
@@ -612,7 +709,9 @@ class ArtifactRemoval:
         """
         # Use enhanced ICA from blind_source_separation for 1D signals
         if self.signal.ndim == 1 and not (window_size and step_size):
-            from vitalDSP.signal_quality_assessment.blind_source_separation import ica_artifact_removal as enhanced_ica
+            from vitalDSP.signal_quality_assessment.blind_source_separation import (
+                ica_artifact_removal as enhanced_ica,
+            )
 
             # Use the enhanced ICA that handles 1D signals with synthetic components
             clean_signal = enhanced_ica(
@@ -620,7 +719,9 @@ class ArtifactRemoval:
                 max_iter=max_iterations,
                 tol=tol,
                 auto_synthetic=True,
-                n_components=max(3, num_components + 2)  # Ensure enough components for good separation
+                n_components=max(
+                    3, num_components + 2
+                ),  # Ensure enough components for good separation
             )
 
             return clean_signal

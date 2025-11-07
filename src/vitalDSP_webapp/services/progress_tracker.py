@@ -17,6 +17,7 @@ from enum import Enum
 # Import LoadingProgress for enhanced data service integration
 try:
     from vitalDSP_webapp.services.data.enhanced_data_service import LoadingProgress
+
     LOADING_PROGRESS_AVAILABLE = True
 except ImportError:
     LOADING_PROGRESS_AVAILABLE = False
@@ -359,7 +360,9 @@ class ProgressTracker:
                     "chunks_processed": loading_progress.get("chunks_processed", 0),
                     "total_chunks": loading_progress.get("total_chunks", 0),
                     "current_chunk_size": loading_progress.get("current_chunk_size", 0),
-                    "loading_strategy": loading_progress.get("loading_strategy", "standard"),
+                    "loading_strategy": loading_progress.get(
+                        "loading_strategy", "standard"
+                    ),
                     "data_preview": loading_progress.get("data_preview"),
                 },
             )
@@ -380,7 +383,9 @@ class ProgressTracker:
                     "chunks_processed": loading_progress.get("chunks_processed", 0),
                     "total_chunks": loading_progress.get("total_chunks", 0),
                     "current_chunk_size": loading_progress.get("current_chunk_size", 0),
-                    "loading_strategy": loading_progress.get("loading_strategy", "standard"),
+                    "loading_strategy": loading_progress.get(
+                        "loading_strategy", "standard"
+                    ),
                     "data_preview": loading_progress.get("data_preview"),
                 },
             )

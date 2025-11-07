@@ -589,8 +589,12 @@ def register_respiratory_callbacks(app):
             Input("resp-btn-nudge-p10", "n_clicks"),
         ],
         [
-            State("resp-start-position-slider", "value"),  # NEW: start position instead of time-range-slider
-            State("resp-duration-select", "value"),  # NEW: duration instead of start-time/end-time
+            State(
+                "resp-start-position-slider", "value"
+            ),  # NEW: start position instead of time-range-slider
+            State(
+                "resp-duration-select", "value"
+            ),  # NEW: duration instead of start-time/end-time
             State("resp-signal-type", "value"),
             State("resp-signal-source-select", "value"),
             State("resp-estimation-methods", "value"),
@@ -656,7 +660,9 @@ def register_respiratory_callbacks(app):
         try:
             # Get data from the data service
             logger.info("Attempting to get data service...")
-            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
             data_service = get_enhanced_data_service()
             logger.info("Data service retrieved successfully")
@@ -724,34 +730,40 @@ def register_respiratory_callbacks(app):
             logger.info(f"Sampling frequency: {sampling_freq}")
 
             # Handle time window adjustments for nudge buttons
+            # Note: Using start_position and duration from function parameters
             if trigger_id in [
                 "resp-btn-nudge-m10",
                 "resp-btn-nudge-m1",
                 "resp-btn-nudge-p1",
                 "resp-btn-nudge-p10",
             ]:
-                if not start_time or not end_time:
-                    start_time, end_time = 0, 10
+                # Initialize from parameters if not set
+                if start_position is None:
+                    start_position = 0
+                if duration is None:
+                    duration = 10
 
                 if trigger_id == "resp-btn-nudge-m10":
-                    start_time = max(0, start_time - 10)
-                    end_time = max(10, end_time - 10)
+                    start_position = max(0, start_position - 10)
                 elif trigger_id == "resp-btn-nudge-m1":
-                    start_time = max(0, start_time - 1)
-                    end_time = max(1, end_time - 1)
+                    start_position = max(0, start_position - 1)
                 elif trigger_id == "resp-btn-nudge-p1":
-                    start_time = start_time + 1
-                    end_time = end_time + 1
+                    start_position = start_position + 1
                 elif trigger_id == "resp-btn-nudge-p10":
-                    start_time = start_time + 10
-                    end_time = end_time + 10
+                    start_position = start_position + 10
 
-                logger.info(f"Time window adjusted: {start_time} to {end_time}")
+                logger.info(f"Time window adjusted: start={start_position}, duration={duration}")
 
             # Set default time window if not specified
-            if not start_time or not end_time:
-                start_time, end_time = 0, 10
-                logger.info(f"Using default time window: {start_time} to {end_time}")
+            if start_position is None:
+                start_position = 0
+            if duration is None:
+                duration = 10
+
+            # Calculate end time from start_position and duration
+            start_time = start_position
+            end_time = start_position + duration
+            logger.info(f"Using time window: {start_time} to {end_time}")
 
             # Apply time window
             start_sample = int(start_time * sampling_freq)
@@ -1037,7 +1049,9 @@ def register_respiratory_callbacks(app):
 
         try:
             # Get data from the data service
-            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
             data_service = get_enhanced_data_service()
 

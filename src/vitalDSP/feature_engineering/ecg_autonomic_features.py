@@ -147,7 +147,11 @@ class ECGExtractor:
         if r_peaks is None:
             r_peaks = self.detect_r_peaks()  # Detect R-peaks first
         qrs_durations = self.morphology.detect_qrs_session(r_peaks)
-        if not qrs_durations:
+        # Convert to numpy array if it's a list (e.g., from mocked return value)
+        if isinstance(qrs_durations, list):
+            qrs_durations = np.array(qrs_durations)
+        # Check if empty using len() for compatibility with both list and array
+        if len(qrs_durations) == 0:
             return 0.0
         durations = [(end - start) / self.fs for start, end in qrs_durations]
         return np.mean(durations)

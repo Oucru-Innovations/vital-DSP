@@ -15,18 +15,44 @@ import dash_bootstrap_components as dbc
 from scipy import signal
 import logging
 
+logger = logging.getLogger(__name__)
+
 # Import plot utilities for performance optimization
 try:
     from vitalDSP_webapp.utils.plot_utils import limit_plot_data, check_plot_data_size
 except ImportError:
     # Fallback if plot_utils not available
-    def limit_plot_data(time_axis, signal_data, max_duration=300, max_points=10000, start_time=None):
+    def limit_plot_data(
+        time_axis, signal_data, max_duration=300, max_points=10000, start_time=None
+    ):
         """Fallback implementation of limit_plot_data"""
         return time_axis, signal_data
 
     def check_plot_data_size(time_axis, signal_data):
         """Fallback implementation"""
         return True
+
+
+# Import create_empty_figure for error handling
+try:
+    from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import (
+        create_empty_figure,
+    )
+except ImportError:
+    # Fallback if import fails
+    def create_empty_figure():
+        """Fallback implementation of create_empty_figure"""
+        fig = go.Figure()
+        fig.add_annotation(
+            text="No data available",
+            xref="paper",
+            yref="paper",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+        )
+        return fig
+
 
 # Import filtering functions from signal filtering callbacks
 from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
@@ -169,61 +195,62 @@ def apply_filter(
             logger.error(f"Scipy fallback also failed: {fallback_error}")
             return signal_data
 
+    # def detect_peaks(signal_data, sampling_freq):
+    #     """Detect peaks in the signal."""
+    #     try:
+    #         # Calculate adaptive threshold
+    #         mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
+    #         std_val = np.std(signal_data) if len(signal_data) > 0 else 0
+    #         threshold = mean_val + 2 * std_val
 
-# def detect_peaks(signal_data, sampling_freq):
-#     """Detect peaks in the signal."""
-#     try:
-#         # Calculate adaptive threshold
-#         mean_val = np.mean(signal_data) if len(signal_data) > 0 else 0
-#         std_val = np.std(signal_data) if len(signal_data) > 0 else 0
-#         threshold = mean_val + 2 * std_val
+    #         # Find peaks with minimum distance constraint
+    #         min_distance = int(sampling_freq * 0.1)  # Minimum 0.1 seconds between peaks
+    #         peaks, _ = signal.find_peaks(
+    #             signal_data, height=threshold, distance=min_distance
+    #         )
 
-#         # Find peaks with minimum distance constraint
-#         min_distance = int(sampling_freq * 0.1)  # Minimum 0.1 seconds between peaks
-#         peaks, _ = signal.find_peaks(
-#             signal_data, height=threshold, distance=min_distance
-#         )
+    #         return peaks
 
-#         return peaks
+    #     except Exception as e:
+    #         logger.error(f"Error detecting peaks: {e}")
+    #         return np.array([])
 
-#     except Exception as e:
-#         logger.error(f"Error detecting peaks: {e}")
-#         return np.array([])
-
-
-
-    @app.callback(
-        [
-            Output("fft-params", "style"),
-            Output("psd-params", "style"),
-            Output("stft-params", "style"),
-            Output("wavelet-params", "style"),
-        ],
-        [Input("freq-analysis-type", "value")],
-    )
-    def toggle_frequency_params(analysis_type):
-        """Show/hide parameter sections based on selected analysis type."""
-        # Default style (hidden)
-        hidden_style = {"display": "none"}
-        visible_style = {"display": "block"}
-
-        # Initialize all as hidden
-        fft_style = hidden_style
-        psd_style = hidden_style
-        stft_style = hidden_style
-        wavelet_style = hidden_style
-
-        # Show relevant section based on analysis type
-        if analysis_type == "fft":
-            fft_style = visible_style
-        elif analysis_type == "psd":
-            psd_style = visible_style
-        elif analysis_type == "stft":
-            stft_style = visible_style
-        elif analysis_type == "wavelet":
-            wavelet_style = visible_style
-
-        return fft_style, psd_style, stft_style, wavelet_style
+    # NOTE: This callback has been commented out as it's orphaned
+    # If needed, it should be moved to the appropriate callbacks file
+    # and registered in a register_*_callbacks(app) function
+    #
+    # @app.callback(
+    #     [
+    #         Output("fft-params", "style"),
+    #         Output("psd-params", "style"),
+    #         Output("stft-params", "style"),
+    #         Output("wavelet-params", "style"),
+    #     ],
+    #     [Input("freq-analysis-type", "value")],
+    # )
+    # def toggle_frequency_params(analysis_type):
+    #     """Show/hide parameter sections based on selected analysis type."""
+    #     # Default style (hidden)
+    #     hidden_style = {"display": "none"}
+    #     visible_style = {"display": "block"}
+    #
+    #     # Initialize all as hidden
+    #     fft_style = hidden_style
+    #     psd_style = hidden_style
+    #     stft_style = hidden_style
+    #     wavelet_style = hidden_style
+    #
+    #     # Show relevant section based on analysis type
+    #     if analysis_type == "fft":
+    #         fft_style = visible_style
+    #     elif analysis_type == "psd":
+    #         psd_style = visible_style
+    #     elif analysis_type == "stft":
+    #         stft_style = visible_style
+    #     elif analysis_type == "wavelet":
+    #         wavelet_style = visible_style
+    #
+    #     return fft_style, psd_style, stft_style, wavelet_style
 
 
 def create_fft_plot(
@@ -478,7 +505,9 @@ def create_enhanced_psd_plot(
         window_samples = int(window_sec * sampling_freq)
 
         # Use vitalDSP's SignalPowerAnalysis for PSD computation
-        from vitalDSP.physiological_features.signal_power_analysis import SignalPowerAnalysis
+        from vitalDSP.physiological_features.signal_power_analysis import (
+            SignalPowerAnalysis,
+        )
 
         # Create SignalPowerAnalysis instance
         spa = SignalPowerAnalysis(signal_data)
@@ -584,7 +613,9 @@ def create_enhanced_spectrogram_plot(
         from vitalDSP.transforms.stft import STFT
 
         hop_size = window_size - int(window_size * overlap)
-        stft_obj = STFT(signal_data, window_size=window_size, hop_size=hop_size, n_fft=window_size)
+        stft_obj = STFT(
+            signal_data, window_size=window_size, hop_size=hop_size, n_fft=window_size
+        )
         stft_matrix = stft_obj.compute_stft()
 
         # Convert STFT to magnitude spectrogram
@@ -592,7 +623,7 @@ def create_enhanced_spectrogram_plot(
 
         # Create time and frequency axes
         times = np.arange(Sxx.shape[1]) * hop_size / sampling_freq
-        freqs = np.fft.rfftfreq(window_size, 1/sampling_freq)
+        freqs = np.fft.rfftfreq(window_size, 1 / sampling_freq)
 
         # Apply frequency range filter
         if freq_max:
@@ -690,10 +721,14 @@ def generate_frequency_analysis_results(
 
         elif analysis_type == "psd":
             # PSD specific analysis
-            from vitalDSP.physiological_features.signal_power_analysis import SignalPowerAnalysis
+            from vitalDSP.physiological_features.signal_power_analysis import (
+                SignalPowerAnalysis,
+            )
 
             spa = SignalPowerAnalysis(signal_data)
-            freqs, psd = spa.compute_psd(fs=sampling_freq, nperseg=min(256, len(signal_data)//2))
+            freqs, psd = spa.compute_psd(
+                fs=sampling_freq, nperseg=min(256, len(signal_data) // 2)
+            )
 
             # Find peak frequency
             peak_freq_idx = np.argmax(psd)
@@ -811,10 +846,14 @@ def create_frequency_band_power_table(
         }
 
         # Compute PSD using vitalDSP's SignalPowerAnalysis
-        from vitalDSP.physiological_features.signal_power_analysis import SignalPowerAnalysis
+        from vitalDSP.physiological_features.signal_power_analysis import (
+            SignalPowerAnalysis,
+        )
 
         spa = SignalPowerAnalysis(signal_data)
-        freqs, psd = spa.compute_psd(fs=sampling_freq, nperseg=min(256, len(signal_data) // 2))
+        freqs, psd = spa.compute_psd(
+            fs=sampling_freq, nperseg=min(256, len(signal_data) // 2)
+        )
 
         # Calculate band powers
         band_powers = {}
@@ -919,7 +958,9 @@ def create_frequency_harmonics_table(
                 from vitalDSP.physiological_features.waveform import WaveformMorphology
 
                 wm = WaveformMorphology(
-                    fft_magnitude_pos, fs=sampling_freq, signal_type=signal_type.upper()  # noqa: F821
+                    fft_magnitude_pos,
+                    fs=sampling_freq,
+                    signal_type=signal_type.upper(),  # noqa: F821
                 )
                 if signal_type.lower() == "ecg":  # noqa: F821
                     peaks = wm.r_peaks
@@ -987,7 +1028,7 @@ def create_frequency_harmonics_table(
 def register_vitaldsp_callbacks(app):
     """
     Register vitalDSP core callbacks.
-    
+
     Note: Time domain callbacks have been migrated to time_domain_callbacks.py.
     This file now only contains helper functions for frequency domain analysis.
     No callbacks are registered here anymore.
@@ -995,5 +1036,7 @@ def register_vitaldsp_callbacks(app):
     # Time domain callbacks moved to register_time_domain_callbacks()
     # This function is kept for compatibility but registers nothing
     logger = logging.getLogger(__name__)
-    logger.info("register_vitaldsp_callbacks called - no callbacks to register (migrated to time_domain_callbacks)")
+    logger.info(
+        "register_vitaldsp_callbacks called - no callbacks to register (migrated to time_domain_callbacks)"
+    )
     pass

@@ -424,7 +424,9 @@ def transforms_layout():
             # Data Storage
             dcc.Store(id="store-transforms-data"),
             dcc.Store(id="store-transforms-results"),
-            dcc.Store(id="store-filtered-signal"),  # Access to filtered signal from filtering page
+            dcc.Store(
+                id="store-filtered-signal"
+            ),  # Access to filtered signal from filtering page
             # Hidden components for compatibility with filtering/time-domain pages
             # These are needed because filtering page callbacks may reference these IDs
             html.Div(id="filter-btn-apply", style={"display": "none"}),
@@ -517,8 +519,10 @@ def transforms_layout():
             html.Button(id="btn-nudge-p10", style={"display": "none"}),
             # Hidden time window controls for signal_filtering_callbacks compatibility
             html.Div(
-                children=[dcc.Slider(id="start-position-slider", min=0, max=100, value=0)],
-                style={"display": "none"}
+                children=[
+                    dcc.Slider(id="start-position-slider", min=0, max=100, value=0)
+                ],
+                style={"display": "none"},
             ),
             dcc.Dropdown(id="duration-select", style={"display": "none"}),
         ]

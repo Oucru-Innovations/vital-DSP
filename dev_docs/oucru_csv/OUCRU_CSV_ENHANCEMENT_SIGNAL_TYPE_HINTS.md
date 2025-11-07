@@ -401,7 +401,6 @@ Successfully enhanced OUCRU CSV loader with **signal type hints** and **default 
 
 ---
 
-**Author**: Claude (vitalDSP Enhancement)
 **Version**: 1.1.0
 **Date**: 2025-01-11
 **Status**: Complete ✅

@@ -41,7 +41,7 @@ class TestCreateSignalSourceTableBranches:
 
     def test_traditional_filter_with_family_and_response(self):
         """Test traditional filter with both family and response (lines 129-156)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "traditional",
@@ -56,7 +56,7 @@ class TestCreateSignalSourceTableBranches:
 
     def test_traditional_filter_with_freq_range(self):
         """Test traditional filter with frequency range (lines 158-172)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "traditional",
@@ -73,7 +73,7 @@ class TestCreateSignalSourceTableBranches:
 
     def test_traditional_filter_with_swapped_frequencies(self):
         """Test traditional filter with swapped frequencies (lines 162-164)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "traditional",
@@ -91,7 +91,7 @@ class TestCreateSignalSourceTableBranches:
 
     def test_traditional_filter_with_order(self):
         """Test traditional filter with order (lines 174-184)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "traditional",
@@ -107,7 +107,7 @@ class TestCreateSignalSourceTableBranches:
 
     def test_advanced_filter_with_method(self):
         """Test advanced filter with method (lines 186-200)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "advanced",
@@ -121,7 +121,7 @@ class TestCreateSignalSourceTableBranches:
 
     def test_advanced_filter_with_artifact_type(self):
         """Test advanced filter with artifact type (lines 202-214)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "advanced",
@@ -135,7 +135,7 @@ class TestCreateSignalSourceTableBranches:
 
     def test_ensemble_filter_with_method(self):
         """Test ensemble filter with method (lines 216-230)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "ensemble",
@@ -155,7 +155,7 @@ class TestCreateSignalComparisonPlotBranches:
 
     def test_comparison_ppg_with_waveform_morphology(self, sample_ppg_signal):
         """Test PPG comparison with WaveformMorphology (lines 338-446)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, sampling_freq = sample_ppg_signal
         filtered_signal = original_signal * 0.9
@@ -184,7 +184,7 @@ class TestCreateSignalComparisonPlotBranches:
 
     def test_comparison_ppg_systolic_peaks_only(self, sample_ppg_signal):
         """Test PPG with only systolic peaks (lines 388-406)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, sampling_freq = sample_ppg_signal
         filtered_signal = original_signal * 0.9
@@ -212,7 +212,7 @@ class TestCreateSignalComparisonPlotBranches:
 
     def test_comparison_ppg_dicrotic_notches(self, sample_ppg_signal):
         """Test PPG dicrotic notches detection (lines 408-427)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, sampling_freq = sample_ppg_signal
         filtered_signal = original_signal * 0.9
@@ -238,7 +238,7 @@ class TestCreateSignalComparisonPlotBranches:
 
     def test_comparison_ppg_diastolic_peaks(self, sample_ppg_signal):
         """Test PPG diastolic peaks detection (lines 429-446)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, sampling_freq = sample_ppg_signal
         filtered_signal = original_signal * 0.9
@@ -266,7 +266,7 @@ class TestCreateSignalComparisonPlotBranches:
 
     def test_comparison_ecg_r_peaks(self, sample_ecg_signal):
         """Test ECG R peaks detection (lines 448-468)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, sampling_freq = sample_ecg_signal
         filtered_signal = original_signal * 0.9
@@ -290,7 +290,7 @@ class TestCreateSignalComparisonPlotBranches:
 
     def test_comparison_ecg_p_peaks(self, sample_ecg_signal):
         """Test ECG P peaks detection (lines 470-487)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, sampling_freq = sample_ecg_signal
         filtered_signal = original_signal * 0.9
@@ -316,7 +316,7 @@ class TestCreateSignalComparisonPlotBranches:
 
     def test_comparison_ecg_t_peaks(self, sample_ecg_signal):
         """Test ECG T peaks detection (lines 489-506)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, sampling_freq = sample_ecg_signal
         filtered_signal = original_signal * 0.9
@@ -344,7 +344,7 @@ class TestCreateSignalComparisonPlotBranches:
 
     def test_comparison_ecg_q_s_points(self, sample_ecg_signal):
         """Test ECG Q and S points detection (lines 508-544)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, sampling_freq = sample_ecg_signal
         filtered_signal = original_signal * 0.9
@@ -376,7 +376,7 @@ class TestCreateSignalComparisonPlotBranches:
 
     def test_comparison_general_signal_basic_peaks(self, sample_ppg_signal):
         """Test general signal with basic peak detection (lines 544-569)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, sampling_freq = sample_ppg_signal
         filtered_signal = original_signal * 0.9
@@ -393,7 +393,7 @@ class TestCreateSignalComparisonPlotBranches:
 
     def test_comparison_filtered_ppg_all_features(self, sample_ppg_signal):
         """Test filtered PPG with all features (lines 585-643)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, sampling_freq = sample_ppg_signal
         filtered_signal = original_signal * 0.9
@@ -417,7 +417,7 @@ class TestCreateSignalComparisonPlotBranches:
 
     def test_comparison_filtered_ecg_all_features(self, sample_ecg_signal):
         """Test filtered ECG with all features (lines 645-741)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, sampling_freq = sample_ecg_signal
         filtered_signal = original_signal * 0.9
@@ -449,7 +449,7 @@ class TestExtractStatisticalFeatures:
 
     def test_extract_statistical_basic(self, sample_ppg_signal):
         """Test basic statistical feature extraction"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import generate_time_domain_stats
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import generate_time_domain_stats
 
         _, signal, _ = sample_ppg_signal
 
@@ -464,7 +464,7 @@ class TestExtractStatisticalFeatures:
 
     def test_extract_statistical_empty_signal(self):
         """Test statistical extraction with empty signal"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import generate_time_domain_stats
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import generate_time_domain_stats
 
         empty_signal = np.array([])
 
@@ -478,7 +478,7 @@ class TestExtractStatisticalFeatures:
 
     def test_extract_statistical_constant_signal(self):
         """Test statistical extraction with constant signal"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import generate_time_domain_stats
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import generate_time_domain_stats
 
         constant_signal = np.ones(1000)
 
@@ -497,7 +497,7 @@ class TestAllBranchEdgeCases:
 
     def test_waveform_morphology_exception_handling(self, sample_ppg_signal):
         """Test WaveformMorphology exception handling (lines 358-361)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_comparison_plot
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_comparison_plot
 
         time_axis, original_signal, _ = sample_ppg_signal
 
@@ -553,7 +553,7 @@ class TestHiguchiFractalDimensionEdgeCases:
 
     def test_higuchi_with_different_k_max_values(self):
         """Test Higuchi with various k_max values"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import higuchi_fractal_dimension
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import higuchi_fractal_dimension
 
         signal = np.random.randn(1000)
 
@@ -566,7 +566,7 @@ class TestHiguchiFractalDimensionEdgeCases:
 
     def test_higuchi_with_periodic_signal(self):
         """Test Higuchi with periodic signal"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import higuchi_fractal_dimension
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import higuchi_fractal_dimension
 
         t = np.linspace(0, 10, 1000)
         signal = np.sin(2 * np.pi * t)
@@ -579,7 +579,7 @@ class TestHiguchiFractalDimensionEdgeCases:
 
     def test_higuchi_with_random_walk(self):
         """Test Higuchi with random walk signal"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import higuchi_fractal_dimension
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import higuchi_fractal_dimension
 
         signal = np.cumsum(np.random.randn(1000))
 
@@ -590,5 +590,3 @@ class TestHiguchiFractalDimensionEdgeCases:
             assert True
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

@@ -731,7 +731,6 @@ The framework is modular, extensible, well-documented, and ready for both resear
 
 ---
 
-**Author**: Claude (vitalDSP Enhancement Project)
 **Date**: 2025-01-11
 **Version**: 1.0.0
 **Status**: Phase 2 Complete

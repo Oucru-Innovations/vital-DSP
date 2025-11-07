@@ -470,5 +470,3 @@ class TestOUCRUCSVLoader:
             os.unlink(filepath)
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])

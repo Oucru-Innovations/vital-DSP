@@ -50,12 +50,7 @@ References:
 3. Bandt, C., & Pompe, B. (2002). Permutation entropy: a natural complexity
    measure for time series. Physical review letters, 88(17), 174102.
 
-Author: Claude (Sonnet 4.5)
-Date: October 10, 2025
-Version: 1.0
-"""
 
-"""
 Physiological Features Module for Physiological Signal Processing
 
 This module provides comprehensive capabilities for physiological
@@ -85,6 +80,7 @@ Basic usage:
 
 
 import numpy as np
+import math
 from collections import Counter
 from itertools import permutations, product
 from typing import List, Dict, Tuple, Optional
@@ -712,7 +708,7 @@ class SymbolicDynamics:
         perm_entropy = -np.sum(probabilities * np.log2(probabilities + 1e-10))
 
         # Normalize by maximum possible entropy
-        max_entropy = np.log2(np.math.factorial(order))
+        max_entropy = np.log2(math.factorial(order))
         normalized_pe = perm_entropy / max_entropy if max_entropy > 0 else 0
 
         return normalized_pe

@@ -36,7 +36,10 @@ def register_transform_callbacks(app):
                             [
                                 html.Label("Window Type", className="form-label"),
                                 dbc.Select(
-                                    id={"type": "transform-param", "param": "fft-window"},
+                                    id={
+                                        "type": "transform-param",
+                                        "param": "fft-window",
+                                    },
                                     options=[
                                         {"label": "Rectangular", "value": "boxcar"},
                                         {"label": "Hamming", "value": "hamming"},
@@ -54,7 +57,10 @@ def register_transform_callbacks(app):
                             [
                                 html.Label("N Points", className="form-label"),
                                 dbc.Input(
-                                    id={"type": "transform-param", "param": "fft-npoints"},
+                                    id={
+                                        "type": "transform-param",
+                                        "param": "fft-npoints",
+                                    },
                                     type="number",
                                     value=1024,
                                     min=64,
@@ -78,7 +84,10 @@ def register_transform_callbacks(app):
                             [
                                 html.Label("Window Size", className="form-label"),
                                 dbc.Input(
-                                    id={"type": "transform-param", "param": "stft-windowsize"},
+                                    id={
+                                        "type": "transform-param",
+                                        "param": "stft-windowsize",
+                                    },
                                     type="number",
                                     value=256,
                                     min=32,
@@ -92,7 +101,10 @@ def register_transform_callbacks(app):
                             [
                                 html.Label("Overlap (%)", className="form-label"),
                                 dbc.Input(
-                                    id={"type": "transform-param", "param": "stft-overlap"},
+                                    id={
+                                        "type": "transform-param",
+                                        "param": "stft-overlap",
+                                    },
                                     type="number",
                                     value=50,
                                     min=0,
@@ -112,7 +124,10 @@ def register_transform_callbacks(app):
                             [
                                 html.Label("Window Type", className="form-label"),
                                 dbc.Select(
-                                    id={"type": "transform-param", "param": "stft-window"},
+                                    id={
+                                        "type": "transform-param",
+                                        "param": "stft-window",
+                                    },
                                     options=[
                                         {"label": "Hann", "value": "hann"},
                                         {"label": "Hamming", "value": "hamming"},
@@ -137,7 +152,10 @@ def register_transform_callbacks(app):
                             [
                                 html.Label("Wavelet Type", className="form-label"),
                                 dbc.Select(
-                                    id={"type": "transform-param", "param": "wavelet-type"},
+                                    id={
+                                        "type": "transform-param",
+                                        "param": "wavelet-type",
+                                    },
                                     options=[
                                         {"label": "Morlet", "value": "morl"},
                                         {"label": "Mexican Hat", "value": "mexh"},
@@ -155,7 +173,10 @@ def register_transform_callbacks(app):
                             [
                                 html.Label("Scales", className="form-label"),
                                 dbc.Input(
-                                    id={"type": "transform-param", "param": "wavelet-scales"},
+                                    id={
+                                        "type": "transform-param",
+                                        "param": "wavelet-scales",
+                                    },
                                     type="number",
                                     value=64,
                                     min=8,
@@ -187,9 +208,14 @@ def register_transform_callbacks(app):
                     [
                         dbc.Col(
                             [
-                                html.Label("N MFCC Coefficients", className="form-label"),
+                                html.Label(
+                                    "N MFCC Coefficients", className="form-label"
+                                ),
                                 dbc.Input(
-                                    id={"type": "transform-param", "param": "mfcc-ncoeffs"},
+                                    id={
+                                        "type": "transform-param",
+                                        "param": "mfcc-ncoeffs",
+                                    },
                                     type="number",
                                     value=13,
                                     min=5,
@@ -204,7 +230,10 @@ def register_transform_callbacks(app):
                             [
                                 html.Label("N FFT", className="form-label"),
                                 dbc.Input(
-                                    id={"type": "transform-param", "param": "mfcc-nfft"},
+                                    id={
+                                        "type": "transform-param",
+                                        "param": "mfcc-nfft",
+                                    },
                                     type="number",
                                     value=512,
                                     min=128,
@@ -225,8 +254,10 @@ def register_transform_callbacks(app):
     @app.callback(
         Output("store-transforms-data", "data"),
         [Input({"type": "transform-param", "param": ALL}, "value")],
-        [State({"type": "transform-param", "param": ALL}, "id"),
-         State("transforms-type", "value")],
+        [
+            State({"type": "transform-param", "param": ALL}, "id"),
+            State("transforms-type", "value"),
+        ],
         prevent_initial_call=True,
     )
     def store_parameters(param_values, param_ids, transform_type):
@@ -330,22 +361,36 @@ def register_transform_callbacks(app):
                 y=0.5,
                 showarrow=False,
             )
-            return empty_fig, empty_fig, html.Div("No data available"), html.Div("N/A"), html.Div("N/A"), None
+            return (
+                empty_fig,
+                empty_fig,
+                html.Div("No data available"),
+                html.Div("N/A"),
+                html.Div("N/A"),
+                None,
+            )
 
         try:
             # Get data from the data service
             logger.info("Attempting to get data service...")
-            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
+
             data_service = get_enhanced_data_service()
             logger.info("Data service retrieved successfully")
 
             # Get the most recent data
             logger.info("Retrieving all data from service...")
             all_data = data_service.get_all_data()
-            logger.info(f"All data keys: {list(all_data.keys()) if all_data else 'None'}")
+            logger.info(
+                f"All data keys: {list(all_data.keys()) if all_data else 'None'}"
+            )
 
             if not all_data:
-                raise ValueError("No data available. Please upload and process data first.")
+                raise ValueError(
+                    "No data available. Please upload and process data first."
+                )
 
             # Get the most recent data entry (data_service returns dict with IDs as keys)
             latest_data_id = list(all_data.keys())[-1]
@@ -397,7 +442,9 @@ def register_transform_callbacks(app):
                 # Get signal column based on signal type
                 signal_col = None
                 if signal_type == "PPG":
-                    signal_col = column_mapping.get("signal") or column_mapping.get("ppg")
+                    signal_col = column_mapping.get("signal") or column_mapping.get(
+                        "ppg"
+                    )
                 elif signal_type == "ECG":
                     signal_col = column_mapping.get("ecg")
 
@@ -426,7 +473,9 @@ def register_transform_callbacks(app):
                     time_data = df[time_col].values
                 else:
                     # Generate time data based on sampling frequency
-                    sampling_freq = latest_data.get("info", {}).get("sampling_freq", 100)
+                    sampling_freq = latest_data.get("info", {}).get(
+                        "sampling_freq", 100
+                    )
                     time_data = np.arange(len(signal_data)) / sampling_freq
 
             # Ensure time and signal have same length
@@ -441,7 +490,9 @@ def register_transform_callbacks(app):
             # Check if time data is in Unix timestamp format (very large values)
             # If so, normalize it to start from 0
             if time_data[0] > 1e9:  # Likely Unix timestamp
-                logger.info(f"Detected Unix timestamp format, normalizing time data (first value: {time_data[0]:.2e})")
+                logger.info(
+                    f"Detected Unix timestamp format, normalizing time data (first value: {time_data[0]:.2e})"
+                )
 
                 # Normalize to start from 0 FIRST (to get relative time)
                 time_data = time_data - time_data[0]
@@ -463,7 +514,9 @@ def register_transform_callbacks(app):
                     time_data = time_data / 1000.0
 
             total_duration = float(time_data[-1] - time_data[0])
-            logger.info(f"Loaded data: {len(signal_data)} samples, duration: {total_duration:.2f}s")
+            logger.info(
+                f"Loaded data: {len(signal_data)} samples, duration: {total_duration:.2f}s"
+            )
 
             # Calculate start time from position percentage
             start_position = float(start_position) if start_position is not None else 0
@@ -474,7 +527,9 @@ def register_transform_callbacks(app):
             # Find indices for time window
             mask = (time_data >= start_time) & (time_data <= end_time)
             if not np.any(mask):
-                raise ValueError(f"No data in time window {start_time:.1f}-{end_time:.1f}s")
+                raise ValueError(
+                    f"No data in time window {start_time:.1f}-{end_time:.1f}s"
+                )
 
             windowed_time = time_data[mask]
             windowed_signal = signal_data[mask]
@@ -580,4 +635,11 @@ def register_transform_callbacks(app):
                 ],
                 className="alert alert-danger",
             )
-            return error_fig, error_fig, error_msg, html.Div("Error"), html.Div("Error"), None
+            return (
+                error_fig,
+                error_fig,
+                error_msg,
+                html.Div("Error"),
+                html.Div("Error"),
+                None,
+            )

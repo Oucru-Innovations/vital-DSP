@@ -227,7 +227,10 @@ def physiological_layout():
                                                     75: "75%",
                                                     100: "100%",
                                                 },
-                                                tooltip={"placement": "bottom", "always_visible": True},
+                                                tooltip={
+                                                    "placement": "bottom",
+                                                    "always_visible": True,
+                                                },
                                                 className="mb-3",
                                             ),
                                             # Duration Dropdown - NEW PATTERN
@@ -242,12 +245,27 @@ def physiological_layout():
                                             dbc.Select(
                                                 id="physio-duration-select",
                                                 options=[
-                                                    {"label": "10 seconds", "value": 10},
-                                                    {"label": "30 seconds", "value": 30},
+                                                    {
+                                                        "label": "10 seconds",
+                                                        "value": 10,
+                                                    },
+                                                    {
+                                                        "label": "30 seconds",
+                                                        "value": 30,
+                                                    },
                                                     {"label": "1 minute", "value": 60},
-                                                    {"label": "2 minutes", "value": 120},
-                                                    {"label": "5 minutes", "value": 300},
-                                                    {"label": "10 minutes", "value": 600},
+                                                    {
+                                                        "label": "2 minutes",
+                                                        "value": 120,
+                                                    },
+                                                    {
+                                                        "label": "5 minutes",
+                                                        "value": 300,
+                                                    },
+                                                    {
+                                                        "label": "10 minutes",
+                                                        "value": 600,
+                                                    },
                                                 ],
                                                 value=60,  # Default to 1 minute
                                                 className="mb-3",

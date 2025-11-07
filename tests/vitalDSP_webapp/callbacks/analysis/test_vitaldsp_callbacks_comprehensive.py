@@ -37,14 +37,14 @@ class TestFormatLargeNumber:
 
     def test_format_zero(self):
         """Test formatting zero (line 27-28)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import format_large_number
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import format_large_number
 
         result = format_large_number(0)
         assert result == "0"
 
     def test_format_scientific_large(self):
         """Test scientific notation for large numbers (line 32-34)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import format_large_number
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import format_large_number
 
         result = format_large_number(1e9, use_scientific=True)
         assert 'e' in result
@@ -54,7 +54,7 @@ class TestFormatLargeNumber:
 
     def test_format_thousands(self):
         """Test thousands notation (line 35-38)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import format_large_number
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import format_large_number
 
         result = format_large_number(5000, precision=2)
         assert 'k' in result
@@ -62,7 +62,7 @@ class TestFormatLargeNumber:
 
     def test_format_regular_decimal(self):
         """Test regular decimal notation (line 39-41)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import format_large_number
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import format_large_number
 
         result = format_large_number(123.456, precision=2)
         assert 'k' not in result
@@ -70,14 +70,14 @@ class TestFormatLargeNumber:
 
     def test_format_millis(self):
         """Test millis notation (line 42-45)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import format_large_number
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import format_large_number
 
         result = format_large_number(0.005, precision=2)
         assert 'm' in result
 
     def test_format_scientific_small(self):
         """Test scientific notation for very small numbers (line 46-48)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import format_large_number
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import format_large_number
 
         result = format_large_number(1e-6)
         assert 'e' in result
@@ -88,7 +88,7 @@ class TestCreateSignalSourceTable:
 
     def test_table_without_filter_info(self):
         """Test table creation without filter info (line 106-119)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         result = create_signal_source_table(
             signal_source_info="Uploaded File",
@@ -101,7 +101,7 @@ class TestCreateSignalSourceTable:
 
     def test_table_with_traditional_filter(self):
         """Test table with traditional filter info (lines 127-266)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "traditional",
@@ -125,7 +125,7 @@ class TestCreateSignalSourceTable:
 
     def test_table_with_advanced_filter(self):
         """Test table with advanced filter info (lines 290-292)"""
-        from vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks import create_signal_source_table
+        from vitalDSP_webapp.callbacks.analysis.time_domain_callbacks import create_signal_source_table
 
         filter_info = {
             "filter_type": "advanced",
@@ -370,8 +370,9 @@ class TestQualityMetricsCallbacks:
         mock_app.callback = mock_callback
         register_vitaldsp_callbacks(mock_app)
 
-        # Test callbacks are registered
-        assert len(captured_callbacks) > 0
+        # Note: register_vitaldsp_callbacks no longer registers callbacks
+        # (callbacks were migrated to time_domain_callbacks.py)
+        assert len(captured_callbacks) == 0
 
 
 class TestStatisticalAnalysisCallbacks:
@@ -434,8 +435,9 @@ class TestStatisticalAnalysisCallbacks:
         mock_app.callback = mock_callback
         register_vitaldsp_callbacks(mock_app)
 
-        # Test callbacks registered
-        assert len(captured_callbacks) > 0
+        # Note: register_vitaldsp_callbacks no longer registers callbacks
+        # (callbacks were migrated to time_domain_callbacks.py)
+        assert len(captured_callbacks) == 0
 
 
 class TestVisualizationCallbacks:
@@ -484,8 +486,9 @@ class TestVisualizationCallbacks:
         mock_app.callback = mock_callback
         register_vitaldsp_callbacks(mock_app)
 
-        # Test callbacks registered
-        assert len(captured_callbacks) > 0
+        # Note: register_vitaldsp_callbacks no longer registers callbacks
+        # (callbacks were migrated to time_domain_callbacks.py)
+        assert len(captured_callbacks) == 0
 
 
 class TestExportCallbacks:
@@ -548,8 +551,9 @@ class TestExportCallbacks:
         mock_app.callback = mock_callback
         register_vitaldsp_callbacks(mock_app)
 
-        # Test callbacks registered
-        assert len(captured_callbacks) > 0
+        # Note: register_vitaldsp_callbacks no longer registers callbacks
+        # (callbacks were migrated to time_domain_callbacks.py)
+        assert len(captured_callbacks) == 0
 
 
 class TestReportGenerationCallbacks:
@@ -598,8 +602,9 @@ class TestReportGenerationCallbacks:
         mock_app.callback = mock_callback
         register_vitaldsp_callbacks(mock_app)
 
-        # Test callbacks registered
-        assert len(captured_callbacks) > 0
+        # Note: register_vitaldsp_callbacks no longer registers callbacks
+        # (callbacks were migrated to time_domain_callbacks.py)
+        assert len(captured_callbacks) == 0
 
 
 class TestComparisonCallbacks:
@@ -648,8 +653,9 @@ class TestComparisonCallbacks:
         mock_app.callback = mock_callback
         register_vitaldsp_callbacks(mock_app)
 
-        # Test callbacks registered
-        assert len(captured_callbacks) > 0
+        # Note: register_vitaldsp_callbacks no longer registers callbacks
+        # (callbacks were migrated to time_domain_callbacks.py)
+        assert len(captured_callbacks) == 0
 
 
 class TestAnnotationCallbacks:
@@ -698,5 +704,6 @@ class TestAnnotationCallbacks:
         mock_app.callback = mock_callback
         register_vitaldsp_callbacks(mock_app)
 
-        # Test callbacks registered
-        assert len(captured_callbacks) > 0
+        # Note: register_vitaldsp_callbacks no longer registers callbacks
+        # (callbacks were migrated to time_domain_callbacks.py)
+        assert len(captured_callbacks) == 0

@@ -48,7 +48,6 @@ References:
    effects of indirect connections on causality estimation. Journal of
    neuroscience methods, 184(1), 152-160.
 
-Author: Claude (Sonnet 4.5)
 Date: October 10, 2025
 Version: 1.0
 """
@@ -587,8 +586,8 @@ class TransferEntropy:
         te_backward_analyzer = TransferEntropy(
             self.target,
             self.source,
-            k=self.l,
-            l=self.k,  # Swap k and l
+            k_coef=self.l,
+            l_coef=self.k,  # Swap k and l
             delay=self.delay,
             k_neighbors=self.k_neighbors,
         )
@@ -646,8 +645,8 @@ class TransferEntropy:
             te_analyzer = TransferEntropy(
                 self.source,
                 self.target,
-                k=self.k,
-                l=self.l,
+                k_coef=self.k,
+                l_coef=self.l,
                 delay=delay_val,
                 k_neighbors=self.k_neighbors,
             )
@@ -786,8 +785,8 @@ class TransferEntropy:
             te_surrogate_analyzer = TransferEntropy(
                 surrogate_source,
                 self.target,
-                k=self.k,
-                l=self.l,
+                k_coef=self.k,
+                l_coef=self.l,
                 delay=self.delay,
                 k_neighbors=self.k_neighbors,
             )

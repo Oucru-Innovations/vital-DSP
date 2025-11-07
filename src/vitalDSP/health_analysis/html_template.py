@@ -823,6 +823,46 @@ def _get_description_interpretation_template():
                     </div>
                     {% endif %}
                 </div>
+
+                <!-- Clinical References Section -->
+                {% if interpretation.get('references') %}
+                <div class="content-block" style="margin-top: 16px; background: linear-gradient(135deg, #e8f0fe 0%, #f0f4f8 100%); border-left: 4px solid #4285f4;">
+                    <p class="highlight" style="color: #1a73e8; margin-bottom: 12px;">📚 Clinical References:</p>
+                    <ul style="margin: 0; padding-left: 20px; font-size: 0.9rem; line-height: 1.7; color: #2c3e50;">
+                        {% for reference in interpretation['references'] %}
+                        <li style="margin-bottom: 8px;">{{ reference }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- Clinical Interpretation Section -->
+                {% if interpretation.get('clinical_interpretation') %}
+                <div class="content-block" style="margin-top: 16px; background: linear-gradient(135deg, #fff3e0 0%, #fce4ec 100%); border-left: 4px solid #ff6f00;">
+                    <p class="highlight" style="color: #e65100; margin-bottom: 12px;">🩺 Clinical Interpretation:</p>
+
+                    {% if interpretation['clinical_interpretation'].get('pathophysiology') %}
+                    <div style="margin-bottom: 12px;">
+                        <strong style="color: #d84315; font-size: 0.95rem;">Pathophysiology:</strong>
+                        <p style="margin: 4px 0 0 0; font-size: 0.9rem; line-height: 1.6; color: #37474f;">{{ interpretation['clinical_interpretation']['pathophysiology'] }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if interpretation['clinical_interpretation'].get('clinical_significance') %}
+                    <div style="margin-bottom: 12px;">
+                        <strong style="color: #d84315; font-size: 0.95rem;">Clinical Significance:</strong>
+                        <p style="margin: 4px 0 0 0; font-size: 0.9rem; line-height: 1.6; color: #37474f;">{{ interpretation['clinical_interpretation']['clinical_significance'] }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if interpretation['clinical_interpretation'].get('age_factors') %}
+                    <div style="margin-bottom: 0;">
+                        <strong style="color: #d84315; font-size: 0.95rem;">Age & Population Factors:</strong>
+                        <p style="margin: 4px 0 0 0; font-size: 0.9rem; line-height: 1.6; color: #37474f;">{{ interpretation['clinical_interpretation']['age_factors'] }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
     """
 
 
@@ -863,11 +903,11 @@ def _get_range_interpretation_template():
                         <div class="value-summary">
                             <div class="value-box">
                                 <p class="label">Median</p>
-                                <p class="value">{{ '{:.3f}'.format(interpretation.get('median', 'N/A')) }}</p>
+                                <p class="value">{{ '{:.3f}'.format(interpretation.get('median')) if interpretation.get('median') is not none and interpretation.get('median') != 'N/A' else 'N/A' }}</p>
                             </div>
                             <div class="value-box">
                                 <p class="label">Standard Deviation</p>
-                                <p class="value">{{ '{:.3f}'.format(interpretation.get('stddev', 0)) if interpretation.get('stddev') is not none else 'N/A' }}</p>
+                                <p class="value">{{ '{:.3f}'.format(interpretation.get('stddev')) if interpretation.get('stddev') is not none and interpretation.get('stddev') != 'N/A' else 'N/A' }}</p>
                             </div>
                         </div>
                     </div>
@@ -885,13 +925,13 @@ def _get_range_interpretation_template():
                                     {% set left_position = ((value - min_range) / (max_range - min_range) * 100) %}
                                     {% if value >= min_range and value <= max_range %}
                                         <div class="current-value-marker-modern" style="left: {{ left_position }}%;"></div>
-                                        <div class="current-value-label-modern" style="left: {{ left_position }}%;">{{ '{:.3f}'.format(value) }}</div>
+                                        <div class="current-value-label-modern" style="left: {{ left_position }}%;">{{ '{:.3f}'.format(value) if value is not none and value != 'N/A' else 'N/A' }}</div>
                                     {% elif value < min_range %}
                                         <div class="current-value-marker-modern" style="left: 0%;"></div>
-                                        <div class="current-value-label-modern" style="left: 0%;">{{ '{:.3f}'.format(value) }}</div>
+                                        <div class="current-value-label-modern" style="left: 0%;">{{ '{:.3f}'.format(value) if value is not none and value != 'N/A' else 'N/A' }}</div>
                                     {% else %}
                                         <div class="current-value-marker-modern" style="left: 100%;"></div>
-                                        <div class="current-value-label-modern" style="left: 100%;">{{ '{:.3f}'.format(value) }}</div>
+                                        <div class="current-value-label-modern" style="left: 100%;">{{ '{:.3f}'.format(value) if value is not none and value != 'N/A' else 'N/A' }}</div>
                                     {% endif %}
                                 {% else %}
                                     <div class="current-value-marker-modern" style="left: 50%;"></div>

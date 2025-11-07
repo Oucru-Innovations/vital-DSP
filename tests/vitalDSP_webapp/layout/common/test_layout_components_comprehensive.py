@@ -339,9 +339,9 @@ class TestSidebar:
         resp_link = features_links.children[1]
         assert resp_link.href == "/respiratory"
         
-        # Test advanced features link
-        adv_link = features_links.children[2]
-        assert adv_link.href == "/features"
+        # Test transforms link (third link in features section)
+        transforms_link = features_links.children[2]
+        assert transforms_link.href == "/transforms"
         
     def test_sidebar_other_section(self):
         """Test Sidebar other section"""
@@ -502,9 +502,10 @@ class TestLayoutIntegration:
         extract_hrefs(sidebar)
         
         # Test that all expected pages are linked
+        # Note: /features was merged into /advanced
         expected_pages = {
             "/upload", "/time-domain", "/frequency", "/filtering",
-            "/physiological", "/respiratory", "/features",
+            "/physiological", "/respiratory", "/advanced",
             "/preview", "/settings"
         }
         

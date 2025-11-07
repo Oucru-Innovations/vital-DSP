@@ -98,11 +98,16 @@ class TestHealthReportGenerationCallback:
             sections=["summary", "analysis"],
             customization=None,
             format_type="html",
-            style="professional"
+            style="professional",
+            data_selection="all"
         )
 
-        # Should return empty strings and None values
-        assert result == ("", "", "", "", "", None, None)
+        # Should return initial content (Div) when no trigger
+        assert isinstance(result, tuple)
+        assert len(result) >= 7
+        # First element should be a Div with welcome content
+        from dash import html
+        assert isinstance(result[0], html.Div)
 
     @patch('vitalDSP_webapp.services.data.data_service.get_data_service', create=True)
     @patch('vitalDSP_webapp.callbacks.analysis.health_report_callbacks.callback_context')
@@ -142,7 +147,8 @@ class TestHealthReportGenerationCallback:
             sections=["summary", "analysis"],
             customization=None,
             format_type="html",
-            style="professional"
+            style="professional",
+            data_selection="all"
         )
 
         # Should return error content
@@ -194,7 +200,8 @@ class TestHealthReportGenerationCallback:
             sections=["summary", "analysis"],
             customization=None,
             format_type="html",
-            style="professional"
+            style="professional",
+            data_selection="all"
         )
 
         # Should return error content
@@ -243,7 +250,8 @@ class TestHealthReportGenerationCallback:
             sections=["summary", "analysis", "recommendations"],
             customization={"include_charts": True},
             format_type="html",
-            style="professional"
+            style="professional",
+            data_selection="all"
         )
 
         # Should return health report content
@@ -294,7 +302,8 @@ class TestHealthReportGenerationCallback:
                 sections=["summary"],
                 customization=None,
                 format_type="html",
-                style="professional"
+                style="professional",
+                data_selection="all"
             )
 
             # Should return valid result tuple
@@ -343,7 +352,8 @@ class TestHealthReportGenerationCallback:
                 sections=["summary"],
                 customization=None,
                 format_type=format_type,
-                style="professional"
+                style="professional",
+                data_selection="all"
             )
 
             # Should return valid result tuple
@@ -392,7 +402,8 @@ class TestHealthReportGenerationCallback:
                 sections=["summary"],
                 customization=None,
                 format_type="html",
-                style=style
+                style=style,
+                data_selection="all"
             )
 
             # Should return valid result tuple
@@ -437,7 +448,8 @@ class TestHealthReportGenerationCallback:
             sections=["summary"],
             customization=None,
             format_type="html",
-            style="professional"
+            style="professional",
+            data_selection="all"
         )
 
         # Should return error content or empty strings
@@ -483,7 +495,8 @@ class TestHealthReportGenerationCallback:
             sections=["summary"],
             customization=None,
             format_type="html",
-            style="professional"
+            style="professional",
+            data_selection="all"
         )
 
         # Should return error content
@@ -492,5 +505,3 @@ class TestHealthReportGenerationCallback:
         assert isinstance(result[0], html.Div)
 
 
-if __name__ == "__main__":
-    pytest.main([__file__])

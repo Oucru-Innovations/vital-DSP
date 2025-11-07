@@ -322,12 +322,12 @@ class PhysiologicalFeatureExtractor:
                         slope_type="systolic",
                         window=(
                             peak_config["window_size"]
-                            if "window_size" in peak_config
+                            if peak_config and "window_size" in peak_config
                             else 5
                         ),
                         slope_unit=(
                             peak_config["slope_unit"]
-                            if "slope_unit" in peak_config
+                            if peak_config and "slope_unit" in peak_config
                             else "radians"
                         ),
                     ),
@@ -335,12 +335,12 @@ class PhysiologicalFeatureExtractor:
                         slope_type="diastolic",
                         window=(
                             peak_config["window_size"]
-                            if "window_size" in peak_config
+                            if peak_config and "window_size" in peak_config
                             else 5
                         ),
                         slope_unit=(
                             peak_config["slope_unit"]
-                            if "slope_unit" in peak_config
+                            if peak_config and "slope_unit" in peak_config
                             else "radians"
                         ),
                     ),

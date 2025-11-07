@@ -211,38 +211,138 @@ class AdvancedSignalFiltering:
 
         return self.signal - x
 
-    def gradient_descent_filter(self, target, learning_rate=0.01, iterations=100):
+    def gradient_descent_filter(self, target=None, learning_rate=0.01, iterations=100):
         """
-        Apply a gradient descent filter to adaptively filter the signal towards a target.
+        Apply a gradient descent adaptive filter to the signal.
 
         This method uses gradient descent to iteratively minimize the difference between the signal and a
         target signal. It is useful in scenarios where the signal needs to be progressively adjusted to match
-        a desired outcome.
+        a desired outcome. If no target is provided, the filter will adapt towards zero (denoising).
+
+        **Adaptive Filtering:**
+        This is a true adaptive filter that adjusts the signal iteratively based on the gradient of the
+        error between the filtered signal and the target. The learning rate controls how quickly the
+        filter adapts, and the number of iterations determines convergence.
 
         Parameters
         ----------
-        target : numpy.ndarray
-            The target signal to adapt to.
-        learning_rate : float
+        target : numpy.ndarray, optional
+            The target signal to adapt to. If None, adapts towards zero (removes DC offset and trends).
+            Must have the same length as the input signal.
+        learning_rate : float, default=0.01
             Learning rate for the gradient descent, controlling how much the signal is adjusted at each step.
-        iterations : int
+            Typical range: 0.001 - 0.5
+            - Lower values (0.001-0.01): Slower convergence, more stable
+            - Higher values (0.1-0.5): Faster convergence, may oscillate
+        iterations : int, default=100
             Number of iterations for the gradient descent process.
+            More iterations = better convergence to target, but slower processing
 
         Returns
         -------
         filtered_signal : numpy.ndarray
-            The filtered signal after applying gradient descent.
+            The filtered signal after applying gradient descent adaptive filtering.
+
+        Raises
+        ------
+        ValueError
+            If target is provided but has different length than signal
 
         Examples
         --------
-        >>> signal = np.array([1, 2, 3, 4, 5])
-        >>> target = np.array([1, 2, 2.5, 3, 3.5])
+        **Example 1: Adaptive filtering towards a target (basic)**
+
+        >>> import numpy as np
+        >>> from vitalDSP.filtering.advanced_signal_filtering import AdvancedSignalFiltering
+        >>>
+        >>> # Create noisy ECG-like signal
+        >>> t = np.linspace(0, 2, 200)
+        >>> clean_signal = np.sin(2 * np.pi * 1.2 * t)  # Simulated ECG
+        >>> noisy_signal = clean_signal + 0.3 * np.random.randn(len(t))  # Add noise
+        >>>
+        >>> # Apply adaptive filtering
+        >>> af = AdvancedSignalFiltering(noisy_signal)
+        >>> filtered = af.gradient_descent_filter(target=clean_signal, learning_rate=0.1, iterations=100)
+        >>>
+        >>> print(f"Original signal std: {np.std(noisy_signal):.3f}")
+        >>> print(f"Filtered signal std: {np.std(filtered):.3f}")
+        >>> print(f"MSE reduction: {np.mean((noisy_signal - clean_signal)**2) / np.mean((filtered - clean_signal)**2):.2f}x")
+
+        **Example 2: Denoising without target (remove DC and trends)**
+
+        >>> # Signal with DC offset and noise
+        >>> signal = np.sin(2 * np.pi * 0.5 * np.linspace(0, 4, 200)) + 2.0  # DC offset = 2.0
+        >>> signal += 0.2 * np.random.randn(len(signal))  # Add noise
+        >>>
         >>> af = AdvancedSignalFiltering(signal)
-        >>> filtered_signal = af.gradient_descent_filter(target, learning_rate=0.1, iterations=50)
-        >>> print(filtered_signal)
+        >>> denoised = af.gradient_descent_filter(learning_rate=0.05, iterations=200)
+        >>>
+        >>> print(f"Original mean (DC): {np.mean(signal):.3f}")
+        >>> print(f"Filtered mean (DC removed): {np.mean(denoised):.3f}")
+
+        **Example 3: Real-time PPG signal processing**
+
+        >>> # Simulated PPG signal with baseline wander
+        >>> t = np.linspace(0, 10, 1000)
+        >>> ppg_clean = np.sin(2 * np.pi * 1.0 * t)  # Heart rate ~60 BPM
+        >>> baseline_wander = 0.3 * np.sin(2 * np.pi * 0.1 * t)  # Slow drift
+        >>> ppg_noisy = ppg_clean + baseline_wander + 0.1 * np.random.randn(len(t))
+        >>>
+        >>> # Remove baseline using adaptive filter
+        >>> af = AdvancedSignalFiltering(ppg_noisy)
+        >>> ppg_filtered = af.gradient_descent_filter(
+        ...     target=ppg_clean,
+        ...     learning_rate=0.08,
+        ...     iterations=150
+        ... )
+        >>>
+        >>> # Calculate improvement
+        >>> snr_before = 10 * np.log10(np.var(ppg_clean) / np.var(ppg_noisy - ppg_clean))
+        >>> snr_after = 10 * np.log10(np.var(ppg_clean) / np.var(ppg_filtered - ppg_clean))
+        >>> print(f"SNR improvement: {snr_after - snr_before:.2f} dB")
+
+        **Example 4: Respiratory signal adaptive filtering**
+
+        >>> # Respiratory signal from PPG/ECG amplitude modulation
+        >>> t = np.linspace(0, 30, 3000)  # 30 seconds at 100 Hz
+        >>> respiratory = 0.2 * np.sin(2 * np.pi * 0.25 * t)  # 15 breaths/min
+        >>> noise = 0.1 * np.random.randn(len(t))
+        >>> signal = respiratory + noise
+        >>>
+        >>> # Adaptive filtering to extract respiratory pattern
+        >>> af = AdvancedSignalFiltering(signal)
+        >>> filtered = af.gradient_descent_filter(
+        ...     target=respiratory,
+        ...     learning_rate=0.05,
+        ...     iterations=100
+        ... )
+        >>>
+        >>> print(f"Respiratory rate estimation error: {abs(np.mean(filtered) - np.mean(respiratory)):.4f}")
+
+        Notes
+        -----
+        - The gradient descent filter is a simple adaptive filter that works well for gradual changes
+        - For rapid signal changes, use lower learning rates and more iterations
+        - This implementation uses the sign of the gradient (sign function) which makes it robust to outliers
+        - For better results with complex signals, consider using Kalman filtering or ensemble methods
+        - The filter converges to the target signal as iterations increase
+        - If target is None, the filter will remove trends and DC offset (adapt towards zero)
+
+        See Also
+        --------
+        kalman_filter : For optimal estimation with known noise characteristics
+        ensemble_filtering : For combining multiple adaptive filters
+        optimization_based_filtering : For custom loss functions
         """
+        # Handle None target - adapt towards zero (denoising/DC removal)
         if target is None:
-            target = np.zeros_like(target, dtype=np.float64)
+            target = np.zeros_like(self.signal, dtype=np.float64)
+        else:
+            target = np.asarray(target, dtype=np.float64)
+            if len(target) != len(self.signal):
+                raise ValueError(
+                    f"Target length ({len(target)}) must match signal length ({len(self.signal)})"
+                )
 
         signal = self.signal.astype(np.float64)
         filtered_signal = signal.copy()

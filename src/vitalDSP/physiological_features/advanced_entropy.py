@@ -45,7 +45,6 @@ References:
 4. Ahmed, M. U., & Mandic, D. P. (2011). Multivariate multiscale entropy: A tool for
    complexity analysis of multichannel data. Physical Review E, 84(6), 061918.
 
-Author: Claude (Sonnet 4.5)
 Date: October 10, 2025
 Version: 1.0
 """

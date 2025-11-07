@@ -242,6 +242,11 @@ class WaveletTransform:
         approx_conv = convolve(approximation, self.low_pass, mode="full")
         detail_conv = convolve(detail, self.high_pass, mode="full")
 
+        # Ensure both convolutions have the same length
+        min_length = min(len(approx_conv), len(detail_conv))
+        approx_conv = approx_conv[:min_length]
+        detail_conv = detail_conv[:min_length]
+
         # Combine the convolved signals and scale appropriately
         data = (approx_conv + detail_conv) / np.sqrt(2)
 

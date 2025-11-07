@@ -123,15 +123,15 @@ class TestPageRoutingCallbacks:
         mock_respiratory_layout.assert_called_once()
         assert result == mock_layout
 
-    @patch('vitalDSP_webapp.callbacks.core.page_routing_callbacks.features_layout')
-    def test_display_page_features(self, mock_features_layout):
-        """Test display_page function for features path"""
-        mock_layout = html.Div("Features Layout")
-        mock_features_layout.return_value = mock_layout
+    @patch('vitalDSP_webapp.callbacks.core.page_routing_callbacks.advanced_layout')
+    def test_display_page_features(self, mock_advanced_layout):
+        """Test display_page function for features path (redirects to /advanced)"""
+        mock_layout = html.Div("Advanced Layout")
+        mock_advanced_layout.return_value = mock_layout
         
         result = display_page("/features")
         
-        mock_features_layout.assert_called_once()
+        mock_advanced_layout.assert_called_once()
         assert result == mock_layout
 
     @patch('vitalDSP_webapp.callbacks.core.page_routing_callbacks.transforms_layout')

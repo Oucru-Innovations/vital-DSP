@@ -661,7 +661,8 @@ class DynamicConfig:
                 "VITALDSP_QUALITY_THRESHOLD"
             ]
 
-        config._optimize_for_environment()
+        # Don't call _optimize_for_environment() again as it would override
+        # the environment variable settings. It's already been called in __post_init__
         config._validate_configuration()
 
         return config

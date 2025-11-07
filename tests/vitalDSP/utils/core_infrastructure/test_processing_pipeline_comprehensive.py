@@ -541,5 +541,3 @@ class TestProcessingStage:
             assert stage.value == stage_name
 
 
-if __name__ == "__main__":
-    pytest.main([__file__])

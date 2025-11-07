@@ -782,7 +782,9 @@ class SignalFiltering:
             normal_cutoff = cutoff / nyquist
 
         # Design Chebyshev Type II filter
-        b, a = sp_signal.cheby2(order, stopband_attenuation, normal_cutoff, btype=btype, analog=False)
+        b, a = sp_signal.cheby2(
+            order, stopband_attenuation, normal_cutoff, btype=btype, analog=False
+        )
 
         # Apply filter iteratively
         filtered_signal = self.signal.copy()
@@ -850,7 +852,9 @@ class SignalFiltering:
 
         # Design Bessel filter
         # Note: Bessel filter is also known as Thomson filter
-        b, a = sp_signal.bessel(order, normal_cutoff, btype=btype, analog=False, norm='phase')
+        b, a = sp_signal.bessel(
+            order, normal_cutoff, btype=btype, analog=False, norm="phase"
+        )
 
         # Apply filter iteratively
         filtered_signal = self.signal.copy()
@@ -904,9 +908,11 @@ class SignalFiltering:
             if filter_type == "butter":
                 b, a = self.butter(order, [lowcut, highcut], btype="band", fs=fs)
             elif filter_type == "cheby":
-                b, a = self.chebyshev(order, [lowcut, highcut], btype="band", fs=fs)
+                # chebyshev signature: (cutoff, fs, order=4, btype="low", ...)
+                b, a = self.chebyshev([lowcut, highcut], fs, order=order, btype="band")
             elif filter_type == "elliptic":
-                b, a = self.elliptic(order, [lowcut, highcut], btype="band", fs=fs)
+                # elliptic signature: (cutoff, fs, order=4, btype="low", ...)
+                b, a = self.elliptic([lowcut, highcut], fs, order=order, btype="band")
             else:
                 raise ValueError(
                     "Unsupported filter type. Choose from 'butter', 'cheby', or 'elliptic'."

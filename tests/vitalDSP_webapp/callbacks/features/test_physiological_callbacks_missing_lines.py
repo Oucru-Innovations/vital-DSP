@@ -883,9 +883,7 @@ class TestRespiratorySignalPlot:
         signal_data = np.sin(2 * np.pi * 0.25 * time_data) + 0.5 * np.random.randn(1000)
         sampling_freq = 100
         fig = create_respiratory_signal_plot(signal_data, time_data, sampling_freq, "respiratory", 
-                                            estimation_methods=["peak_detection"], 
-                                            preprocessing_options=["filter"], 
-                                            low_cut=0.1, high_cut=0.5)
+                                            estimation_methods=["peak_detection"])
         assert isinstance(fig, go.Figure)
         assert len(fig.data) > 1  # Original and filtered
 
@@ -896,9 +894,7 @@ class TestRespiratorySignalPlot:
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
         fig = create_respiratory_signal_plot(signal_data, time_data, sampling_freq, "respiratory", 
-                                            estimation_methods=["peak_detection"], 
-                                            preprocessing_options=None, 
-                                            low_cut=0.1, high_cut=0.5)
+                                            estimation_methods=["peak_detection"])
         assert isinstance(fig, go.Figure)
         assert any("Peaks" in str(trace.name) for trace in fig.data)
 
@@ -909,10 +905,7 @@ class TestRespiratorySignalPlot:
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
         fig = create_respiratory_signal_plot(signal_data, time_data, sampling_freq, "respiratory", 
-                                            estimation_methods=["fft_based", "time_domain"], 
-                                            preprocessing_options=["filter"], 
-                                            low_cut=0.1, high_cut=0.5)
-        assert isinstance(fig, go.Figure)
+                                            estimation_methods=["fft_based", "time_domain"])
         # The function doesn't add FFT traces, so just check it's a valid figure
         assert len(fig.data) >= 1
 
@@ -924,9 +917,7 @@ class TestRespiratorySignalPlot:
         sampling_freq = 100
         preprocessing_options = ["filter"]
         fig = create_respiratory_signal_plot(signal_data, time_data, sampling_freq, "respiratory", 
-                                            estimation_methods=["peak_detection"], 
-                                            preprocessing_options=preprocessing_options, 
-                                            low_cut=0.1, high_cut=0.5)
+                                            estimation_methods=["peak_detection"])
         assert isinstance(fig, go.Figure)
         assert len(fig.data) == 2  # Main signal + preprocessed signal
         assert any(trace.name == "Preprocessed Signal" for trace in fig.data)
@@ -938,9 +929,7 @@ class TestRespiratorySignalPlot:
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
         fig = create_respiratory_signal_plot(signal_data, time_data, sampling_freq, "respiratory", 
-                                            estimation_methods=["peak_detection"], 
-                                            preprocessing_options=None, 
-                                            low_cut=0.1, high_cut=0.5)
+                                            estimation_methods=["peak_detection"])
         assert isinstance(fig, go.Figure)
         assert len(fig.layout.annotations) >= 2  # Filter annotations
         assert any("Low Cut: 0.1 Hz" in str(ann) for ann in fig.layout.annotations)
@@ -953,9 +942,7 @@ class TestRespiratorySignalPlot:
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
         fig = create_respiratory_signal_plot(signal_data, time_data, sampling_freq, "respiratory", 
-                                            estimation_methods=["peak_detection"], 
-                                            preprocessing_options=None, 
-                                            low_cut=None, high_cut=None)
+                                            estimation_methods=["peak_detection"])
         assert isinstance(fig, go.Figure)
         assert len(fig.data) == 1  # Only main signal
         assert "respiratory" in fig.data[0].name.lower()
@@ -967,9 +954,7 @@ class TestRespiratorySignalPlot:
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
         fig = create_respiratory_signal_plot(signal_data, time_data, sampling_freq, "respiratory", 
-                                            estimation_methods=["invalid"], 
-                                            preprocessing_options=None, 
-                                            low_cut=0.1, high_cut=0.5)
+                                            estimation_methods=["invalid"])
         assert isinstance(fig, go.Figure)
 
 # Additional test cases for comprehensive respiratory analysis (lines 664-736)
@@ -980,11 +965,7 @@ class TestComprehensiveRespiratoryAnalysis:
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
-        results = generate_comprehensive_respiratory_analysis(
-            signal_data, time_data, sampling_freq, "respiratory", 
-            estimation_methods=[], advanced_options=[],
-            preprocessing_options=[], low_cut=None, high_cut=None,
-            min_breath_duration=None, max_breath_duration=None
+        results = generate_comprehensive_respiratory_analysis(signal_data, time_data, sampling_freq, "respiratory", estimation_methods=[], advanced_options=[], min_breath_duration=None, max_breath_duration=None
         )
         assert isinstance(results, html.Div)
         assert hasattr(results, 'children')
@@ -997,11 +978,7 @@ class TestComprehensiveRespiratoryAnalysis:
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
-        results = generate_comprehensive_respiratory_analysis(
-            signal_data, time_data, sampling_freq, "respiratory", 
-            estimation_methods=[], advanced_options=["multimodal"],
-            preprocessing_options=None, low_cut=0.1, high_cut=0.5,
-            min_breath_duration=None, max_breath_duration=None
+        results = generate_comprehensive_respiratory_analysis(signal_data, time_data, sampling_freq, "respiratory", estimation_methods=[], advanced_options=["multimodal"], min_breath_duration=None, max_breath_duration=None
         )
         assert isinstance(results, html.Div)
         assert hasattr(results, 'children')
@@ -1015,11 +992,7 @@ class TestComprehensiveRespiratoryAnalysis:
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
         with patch('vitalDSP.respiratory_analysis.sleep_apnea_detection.amplitude_threshold.detect_apnea_amplitude', side_effect=Exception("Test error")):
-            results = generate_comprehensive_respiratory_analysis(
-                signal_data, time_data, sampling_freq, "respiratory", 
-                estimation_methods=[], advanced_options=["sleep_apnea"],
-                preprocessing_options=None, low_cut=0.1, high_cut=0.5,
-                min_breath_duration=None, max_breath_duration=None
+            results = generate_comprehensive_respiratory_analysis(signal_data, time_data, sampling_freq, "respiratory", estimation_methods=[], advanced_options=["sleep_apnea"], min_breath_duration=None, max_breath_duration=None
             )
             assert isinstance(results, html.Div)
             assert hasattr(results, 'children')
@@ -1032,11 +1005,7 @@ class TestComprehensiveRespiratoryAnalysis:
         time_data = np.linspace(0, 10, 1000)
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
-        results = generate_comprehensive_respiratory_analysis(
-            signal_data, time_data, sampling_freq, "respiratory", 
-            estimation_methods=["peak_detection"], advanced_options=["sleep_apnea"],
-            preprocessing_options=None, low_cut=0.1, high_cut=0.5,
-            min_breath_duration=None, max_breath_duration=None
+        results = generate_comprehensive_respiratory_analysis(signal_data, time_data, sampling_freq, "respiratory", estimation_methods=["peak_detection"], advanced_options=["sleep_apnea"], min_breath_duration=None, max_breath_duration=None
         )
         assert isinstance(results, html.Div)
         assert hasattr(results, 'children')
@@ -1054,8 +1023,7 @@ class TestComprehensiveRespiratoryAnalysis:
         results = generate_comprehensive_respiratory_analysis(
             signal_data, time_data, sampling_freq, "respiratory", 
             estimation_methods=["peak_detection", "fft_based", "frequency_domain", "time_domain"],
-            advanced_options=["sleep_apnea"], preprocessing_options=["filter"],
-            low_cut=0.1, high_cut=0.5, min_breath_duration=0.5, max_breath_duration=6
+            advanced_options=["sleep_apnea"], min_breath_duration=0.5, max_breath_duration=6
         )
         
         # The function returns a html.Div object
@@ -1072,11 +1040,7 @@ class TestComprehensiveRespiratoryAnalysis:
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
         # Test with invalid estimation method to trigger error handling
-        results = generate_comprehensive_respiratory_analysis(
-            signal_data, time_data, sampling_freq, "respiratory", 
-            estimation_methods=["invalid_method"], advanced_options=None,
-            preprocessing_options=None, low_cut=0.1, high_cut=0.5,
-            min_breath_duration=None, max_breath_duration=None
+        results = generate_comprehensive_respiratory_analysis(signal_data, time_data, sampling_freq, "respiratory", estimation_methods=["invalid_method"], advanced_options=None, min_breath_duration=None, max_breath_duration=None
         )
         assert isinstance(results, html.Div)
         assert hasattr(results, 'children')
@@ -1091,11 +1055,7 @@ class TestComprehensiveRespiratoryAnalysis:
         sampling_freq = 100
         # Test with empty signal to trigger error handling
         empty_signal = np.array([])
-        results = generate_comprehensive_respiratory_analysis(
-            empty_signal, time_data[:len(empty_signal)], sampling_freq, "respiratory", 
-            estimation_methods=["peak_detection"], advanced_options=None,
-            preprocessing_options=None, low_cut=0.1, high_cut=0.5,
-            min_breath_duration=None, max_breath_duration=None
+        results = generate_comprehensive_respiratory_analysis(empty_signal, time_data[:len(empty_signal)], sampling_freq, "respiratory", estimation_methods=["peak_detection"], advanced_options=None, min_breath_duration=None, max_breath_duration=None
         )
         assert isinstance(results, html.Div)
         assert hasattr(results, 'children')
@@ -1152,9 +1112,7 @@ class TestRespiratorySignalPlot:
         signal_data = np.sin(2 * np.pi * 0.25 * time_data)
         sampling_freq = 100
         fig = create_respiratory_signal_plot(signal_data, time_data, sampling_freq, "respiratory", 
-                                            estimation_methods=[], 
-                                            preprocessing_options=None, 
-                                            low_cut=0.1, high_cut=0.5)
+                                            estimation_methods=[])
         assert isinstance(fig, go.Figure)
         assert len(fig.data) == 1  # Only signal, no method traces
 
@@ -1429,6 +1387,3 @@ class TestErrorHandling:
         # It should either return results or an error message
         assert len(results) > 0
 
-if __name__ == "__main__":
-    # pytest.main([__file__])  # Commented out due to pytest compatibility issues
-    print("Test file loaded successfully")

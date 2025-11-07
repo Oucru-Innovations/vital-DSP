@@ -45,8 +45,8 @@ class TestFormatLargeNumber:
         assert format_large_number(1500) == "1.500k"
         assert format_large_number(1000000) == "1.000e+06"
         
-        # Test small numbers
-        assert format_large_number(0.001) == "1.000m"
+        # Test small numbers (0.001 to 1.0 use regular decimal notation, no 'm' suffix)
+        assert format_large_number(0.001) == "0.001"
         assert format_large_number(0.000001) == "1.000e-06"
 
     def test_format_large_number_with_options(self):
@@ -231,5 +231,3 @@ class TestNormalizeSignalType:
         assert normalize_signal_type('invalid') == 'PPG'
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

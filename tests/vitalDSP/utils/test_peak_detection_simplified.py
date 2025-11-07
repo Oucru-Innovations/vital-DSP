@@ -374,5 +374,3 @@ class TestPerformanceScenarios:
             assert isinstance(peaks, (list, np.ndarray))
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

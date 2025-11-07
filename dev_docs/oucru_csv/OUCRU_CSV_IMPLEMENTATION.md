@@ -598,6 +598,5 @@ The OUCRU format loader integrates seamlessly with existing vitalDSP modules and
 
 ---
 
-**Author**: Claude (vitalDSP Enhancement)
 **Date**: 2025-01-11
 **Version**: 1.0.0

@@ -212,7 +212,10 @@ def quality_layout():
                                             ),
                                             html.Hr(),
                                             # SQI Type Selection
-                                            html.H6("Signal Quality Index (SQI) Type", className="mb-3"),
+                                            html.H6(
+                                                "Signal Quality Index (SQI) Type",
+                                                className="mb-3",
+                                            ),
                                             dbc.Select(
                                                 id="quality-sqi-type",
                                                 options=[
@@ -346,7 +349,9 @@ def quality_layout():
                                         [
                                             dcc.Graph(
                                                 id="quality-main-plot",
-                                                style={"height": "1100px"},  # Increased to show both subplots clearly
+                                                style={
+                                                    "height": "1100px"
+                                                },  # Increased to show both subplots clearly
                                                 config={
                                                     "displayModeBar": True,
                                                     "displaylogo": False,
@@ -382,11 +387,26 @@ def quality_layout():
                                                             dbc.Select(
                                                                 id="quality-metrics-bins",
                                                                 options=[
-                                                                    {"label": "10", "value": 10},
-                                                                    {"label": "20", "value": 20},
-                                                                    {"label": "30", "value": 30},
-                                                                    {"label": "50", "value": 50},
-                                                                    {"label": "100", "value": 100},
+                                                                    {
+                                                                        "label": "10",
+                                                                        "value": 10,
+                                                                    },
+                                                                    {
+                                                                        "label": "20",
+                                                                        "value": 20,
+                                                                    },
+                                                                    {
+                                                                        "label": "30",
+                                                                        "value": 30,
+                                                                    },
+                                                                    {
+                                                                        "label": "50",
+                                                                        "value": 50,
+                                                                    },
+                                                                    {
+                                                                        "label": "100",
+                                                                        "value": 100,
+                                                                    },
                                                                 ],
                                                                 value=30,
                                                                 size="sm",
@@ -551,7 +571,9 @@ def quality_layout():
             dcc.Store(id="store-quality-data"),
             dcc.Store(id="store-quality-results"),
             dcc.Store(id="store-quality-sqi-params"),  # Store for SQI parameters
-            dcc.Store(id="store-filtered-signal"),  # Access to filtered signal from filtering page
+            dcc.Store(
+                id="store-filtered-signal"
+            ),  # Access to filtered signal from filtering page
             # Hidden components for compatibility with filtering/time-domain pages
             # These are needed because filtering page callbacks may reference these IDs
             html.Div(id="filter-btn-apply", style={"display": "none"}),
@@ -644,8 +666,10 @@ def quality_layout():
             html.Button(id="btn-nudge-p10", style={"display": "none"}),
             # Hidden time window controls for signal_filtering_callbacks compatibility
             html.Div(
-                children=[dcc.Slider(id="start-position-slider", min=0, max=100, value=0)],
-                style={"display": "none"}
+                children=[
+                    dcc.Slider(id="start-position-slider", min=0, max=100, value=0)
+                ],
+                style={"display": "none"},
             ),
             dcc.Dropdown(id="duration-select", style={"display": "none"}),
         ]

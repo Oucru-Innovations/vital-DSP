@@ -74,8 +74,9 @@ def display_page(pathname: str) -> html.Div:
             logger.info("Returning respiratory layout")
             return respiratory_layout()
         elif pathname == "/features":
-            logger.info("Returning features layout")
-            return features_layout()
+            # PHASE 5: Redirect /features to /advanced (merged pages)
+            logger.info("Redirecting /features to /advanced (merged)")
+            return advanced_layout()
         elif pathname == "/transforms":
             logger.info("Returning transforms layout")
             return transforms_layout()

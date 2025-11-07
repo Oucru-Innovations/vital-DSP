@@ -20,13 +20,16 @@ try:
     from vitalDSP_webapp.utils.plot_utils import limit_plot_data, check_plot_data_size
 except ImportError:
     # Fallback if plot_utils not available
-    def limit_plot_data(time_axis, signal_data, max_duration=300, max_points=10000, start_time=None):
+    def limit_plot_data(
+        time_axis, signal_data, max_duration=300, max_points=10000, start_time=None
+    ):
         """Fallback implementation of limit_plot_data"""
         return time_axis, signal_data
 
     def check_plot_data_size(time_axis, signal_data):
         """Fallback implementation"""
         return True
+
 
 # Import filtering functions from signal filtering callbacks
 from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
@@ -406,18 +409,17 @@ def create_signal_comparison_plot(
                 time_axis_plot,
                 original_signal_trimmed,
                 max_duration=300,  # 5 minutes max
-                max_points=10000   # 10K points max
+                max_points=10000,  # 10K points max
             )
 
             # Apply same limiting to filtered signal
             _, filtered_signal_plot = limit_plot_data(
-                time_axis_plot,
-                filtered_signal_plot,
-                max_duration=300,
-                max_points=10000
+                time_axis_plot, filtered_signal_plot, max_duration=300, max_points=10000
             )
 
-            logger.info(f"Comparison plot data limited: {len(original_signal_trimmed)} → {len(original_signal_plot)} points")
+            logger.info(
+                f"Comparison plot data limited: {len(original_signal_trimmed)} → {len(original_signal_plot)} points"
+            )
 
             # Detect critical points for both signals using vitalDSP waveform module (same as filtering screen)
             try:
@@ -923,10 +925,12 @@ def create_time_domain_plot(
             time_axis,
             signal_data,
             max_duration=300,  # 5 minutes max
-            max_points=10000   # 10K points max
+            max_points=10000,  # 10K points max
         )
 
-        logger.info(f"Time domain plot data limited: {len(signal_data)} → {len(signal_data_plot)} points")
+        logger.info(
+            f"Time domain plot data limited: {len(signal_data)} → {len(signal_data_plot)} points"
+        )
 
         fig = go.Figure()
 
@@ -2482,7 +2486,12 @@ def generate_analysis_results(
 
 
 def create_peak_analysis_table(
-    selected_signal, time_axis, sampling_freq, analysis_options, signal_source_info, signal_type=None
+    selected_signal,
+    time_axis,
+    sampling_freq,
+    analysis_options,
+    signal_source_info,
+    signal_type=None,
 ):
     """Create comprehensive peak analysis table for the selected signal."""
     try:
@@ -2860,7 +2869,12 @@ def create_peak_analysis_table(
 
 
 def create_signal_quality_table(
-    selected_signal, time_axis, sampling_freq, analysis_options, signal_source_info, signal_type=None
+    selected_signal,
+    time_axis,
+    sampling_freq,
+    analysis_options,
+    signal_source_info,
+    signal_type=None,
 ):
     """Create comprehensive signal quality assessment table for the selected signal."""
     try:
@@ -3469,7 +3483,13 @@ def create_signal_quality_table(
 
 
 def create_filtering_results_table(
-    raw_data, filtered_data, time_axis, sampling_freq, analysis_options, column_mapping, signal_type=None
+    raw_data,
+    filtered_data,
+    time_axis,
+    sampling_freq,
+    analysis_options,
+    column_mapping,
+    signal_type=None,
 ):
     """Create comprehensive filtering results table."""
     try:
@@ -4127,7 +4147,12 @@ def create_filtering_results_table(
 
 
 def create_additional_metrics_table(
-    selected_signal, time_axis, sampling_freq, analysis_options, signal_source_info, signal_type=None
+    selected_signal,
+    time_axis,
+    sampling_freq,
+    analysis_options,
+    signal_source_info,
+    signal_type=None,
 ):
     """Create comprehensive additional metrics table for the selected signal."""
     try:
@@ -4228,11 +4253,15 @@ def create_additional_metrics_table(
 
         try:
             # Detect peaks (local maxima) using relative extrema method
-            peak_detector_max = PeakDetection(signal_data, method='rel_extrema', order=3)
+            peak_detector_max = PeakDetection(
+                signal_data, method="rel_extrema", order=3
+            )
             local_maxima = peak_detector_max.detect_peaks()
 
             # Detect troughs (local minima) by inverting the signal
-            peak_detector_min = PeakDetection(-signal_data, method='rel_extrema', order=3)
+            peak_detector_min = PeakDetection(
+                -signal_data, method="rel_extrema", order=3
+            )
             local_minima = peak_detector_min.detect_peaks()
 
             complexity_score = (len(local_maxima) + len(local_minima)) / len(
@@ -4852,7 +4881,6 @@ def generate_time_domain_stats(
         )
 
 
-
 def register_time_domain_callbacks(app):
     """Register all time domain analysis callbacks."""
 
@@ -4882,12 +4910,18 @@ def register_time_domain_callbacks(app):
         ],
         [
             State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
-            State("start-position-slider", "value"),  # NEW: start position instead of time-range-slider
-            State("duration-select", "value"),  # NEW: duration instead of start-time/end-time
+            State(
+                "start-position-slider", "value"
+            ),  # NEW: start position instead of time-range-slider
+            State(
+                "duration-select", "value"
+            ),  # NEW: duration instead of start-time/end-time
             State("signal-source-select", "value"),
             State("analysis-options", "value"),
             State("signal-type-select", "value"),
-            State("store-filtered-signal", "data"),  # NEW: Access to filtered signal from filtering page
+            State(
+                "store-filtered-signal", "data"
+            ),  # NEW: Access to filtered signal from filtering page
         ],
     )
     def analyze_time_domain(
@@ -4943,7 +4977,9 @@ def register_time_domain_callbacks(app):
         try:
             # Get data from the data service
             logger.info("Attempting to get data service...")
-            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
             data_service = get_enhanced_data_service()
             logger.info("Data service retrieved successfully")
@@ -5064,14 +5100,20 @@ def register_time_domain_callbacks(app):
                 logger.info(f"Start position adjusted: {start_position}")
 
             # Set default values if not specified
-            logger.info(f"DEBUG: Checking values - start_position: {start_position} (is None: {start_position is None}), duration: {duration} (is None: {duration is None})")
+            logger.info(
+                f"DEBUG: Checking values - start_position: {start_position} (is None: {start_position is None}), duration: {duration} (is None: {duration is None})"
+            )
             if start_position is None or duration is None:
                 start_position, duration = 0, 10
-                logger.info(f"Using default values: start_position={start_position}, duration={duration}")
+                logger.info(
+                    f"Using default values: start_position={start_position}, duration={duration}"
+                )
 
             # Ensure values are numbers
             try:
-                start_position = float(start_position) if start_position is not None else 0
+                start_position = (
+                    float(start_position) if start_position is not None else 0
+                )
                 duration = float(duration) if duration is not None else 10
                 logger.info(
                     f"Converted values: start_position={start_position:.3f}, duration={duration:.3f}"
@@ -5085,7 +5127,9 @@ def register_time_domain_callbacks(app):
             data_duration = len(df) / sampling_freq
             start_time_actual = (start_position / 100.0) * data_duration
             end_time = start_time_actual + duration
-            logger.info(f"Calculated time window: {start_time_actual:.3f}s to {end_time:.3f}s")
+            logger.info(
+                f"Calculated time window: {start_time_actual:.3f}s to {end_time:.3f}s"
+            )
 
             # Apply time window
             start_sample = int(start_time_actual * sampling_freq)
@@ -5116,7 +5160,9 @@ def register_time_domain_callbacks(app):
             time_axis = np.linspace(start_time_actual, end_time, len(windowed_data))
             logger.info(f"Time axis shape: {time_axis.shape}")
             logger.info(f"Time axis range: {time_axis[0]:.3f} to {time_axis[-1]:.3f}")
-            logger.info(f"Requested time window: {start_time_actual:.3f} to {end_time:.3f}")
+            logger.info(
+                f"Requested time window: {start_time_actual:.3f} to {end_time:.3f}"
+            )
             logger.info(
                 f"Actual time axis range: {time_axis[0]:.3f} to {time_axis[-1]:.3f}"
             )
@@ -5210,26 +5256,45 @@ def register_time_domain_callbacks(app):
                 logger.info("Attempting to load filtered signal...")
                 filtered_signal = data_service.get_filtered_data(latest_data_id)
                 filter_info = data_service.get_filter_info(latest_data_id)
-                
+
                 # Also check for filtered signal from filtering page
                 if filtered_signal is None and filtered_signal_data is not None:
-                    logger.info("No filtered signal from data service, checking filtering page store...")
+                    logger.info(
+                        "No filtered signal from data service, checking filtering page store..."
+                    )
                     try:
-                        if isinstance(filtered_signal_data, dict) and "signal" in filtered_signal_data:
+                        if (
+                            isinstance(filtered_signal_data, dict)
+                            and "signal" in filtered_signal_data
+                        ):
                             filtered_signal = np.array(filtered_signal_data["signal"])
-                            logger.info(f"Retrieved filtered signal from filtering page store: {filtered_signal.shape}")
-                            
+                            logger.info(
+                                f"Retrieved filtered signal from filtering page store: {filtered_signal.shape}"
+                            )
+
                             # Extract filter info from the store data
                             if "filter_params" in filtered_signal_data:
                                 filter_info = {
-                                    "filter_type": filtered_signal_data.get("filter_type", "unknown"),
-                                    "parameters": filtered_signal_data.get("filter_params", {}),
-                                    "signal_type": filtered_signal_data.get("signal_type", "unknown"),
-                                    "sampling_freq": filtered_signal_data.get("sampling_freq", 100)
+                                    "filter_type": filtered_signal_data.get(
+                                        "filter_type", "unknown"
+                                    ),
+                                    "parameters": filtered_signal_data.get(
+                                        "filter_params", {}
+                                    ),
+                                    "signal_type": filtered_signal_data.get(
+                                        "signal_type", "unknown"
+                                    ),
+                                    "sampling_freq": filtered_signal_data.get(
+                                        "sampling_freq", 100
+                                    ),
                                 }
-                                logger.info(f"Retrieved filter info from filtering page store: {filter_info}")
+                                logger.info(
+                                    f"Retrieved filter info from filtering page store: {filter_info}"
+                                )
                     except Exception as e:
-                        logger.error(f"Error retrieving filtered signal from filtering page store: {e}")
+                        logger.error(
+                            f"Error retrieving filtered signal from filtering page store: {e}"
+                        )
                         filtered_signal = None
                         filter_info = None
 
@@ -5271,11 +5336,17 @@ def register_time_domain_callbacks(app):
                             # Apply filter using the same method as filtering screen
                             # Apply detrending if it was applied in the filtering screen
                             if detrending_applied:
-                                from vitalDSP.transforms.vital_transformation import VitalTransformation
+                                from vitalDSP.transforms.vital_transformation import (
+                                    VitalTransformation,
+                                )
 
                                 # Use vitalDSP's detrending implementation
-                                transformer = VitalTransformation(signal_data, fs=sampling_freq, signal_type='ECG')
-                                transformer.apply_detrending(options={'detrend_type': 'linear'})
+                                transformer = VitalTransformation(
+                                    signal_data, fs=sampling_freq, signal_type="ECG"
+                                )
+                                transformer.apply_detrending(
+                                    options={"detrend_type": "linear"}
+                                )
                                 signal_data_detrended = transformer.signal
                                 logger.info("Applied vitalDSP detrending to signal")
                             else:
@@ -5441,7 +5512,7 @@ def register_time_domain_callbacks(app):
 
             # Create filtered DataFrame with both raw and filtered signals for comparison
             filtered_df = windowed_data.copy()
-            
+
             if filtered_signal is not None:
                 # Only add filtered signal if it matches the windowed data length
                 if len(filtered_signal) == len(windowed_data):
@@ -5643,7 +5714,9 @@ def register_time_domain_callbacks(app):
             return no_update, no_update, no_update
 
         try:
-            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
             data_service = get_enhanced_data_service()
             all_data = data_service.get_all_data()

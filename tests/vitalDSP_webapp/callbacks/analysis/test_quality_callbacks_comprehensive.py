@@ -114,18 +114,19 @@ class TestQualityAssessmentCallback:
         # Call with wrong pathname
         result = quality_callback(
             n_clicks=1,
+            bins_count=30,
+            metrics_scope="segment",
             pathname="/other-page",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
             start_position=0,
             duration=10,
             signal_type="ecg",
-            quality_metrics=["snr", "artifacts"],
-            snr_threshold=10,
-            artifact_threshold=0.5,
-            advanced_options=None
+            signal_source="original",
+            sqi_type="snr",
+            analysis_options=["snr", "artifacts"],
+            sqi_params={},
+            filtered_signal_data=None,
+            stored_quality_data=None,
+            stored_quality_results=None
         )
 
         # Should return empty figures with message
@@ -135,10 +136,12 @@ class TestQualityAssessmentCallback:
         assert result[2] == "Navigate to Quality page"
 
     @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
-    def test_callback_data_service_none(self, mock_get_data_service, mock_app):
+    @patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context')
+    def test_callback_data_service_none(self, mock_ctx, mock_get_data_service, mock_app):
         """Test callback behavior when data service is None."""
         # Setup mocks
         mock_get_data_service.return_value = None
+        mock_ctx.triggered = [{"prop_id": "quality-analyze-btn.n_clicks", "value": 1}]
 
         # Register callbacks and capture them
         captured_callbacks = []
@@ -163,18 +166,19 @@ class TestQualityAssessmentCallback:
         # Call with None data service
         result = quality_callback(
             n_clicks=1,
+            bins_count=30,
+            metrics_scope="segment",
             pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
             start_position=0,
             duration=10,
             signal_type="ecg",
-            quality_metrics=["snr", "artifacts"],
-            snr_threshold=10,
-            artifact_threshold=0.5,
-            advanced_options=None
+            signal_source="original",
+            sqi_type="snr",
+            analysis_options=["snr", "artifacts"],
+            sqi_params={},
+            filtered_signal_data=None,
+            stored_quality_data=None,
+            stored_quality_results=None
         )
 
         # Should return data service not available message
@@ -183,12 +187,14 @@ class TestQualityAssessmentCallback:
         assert "Data service not available" in result[2]
 
     @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
-    def test_callback_no_data_available(self, mock_get_data_service, mock_app):
+    @patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context')
+    def test_callback_no_data_available(self, mock_ctx, mock_get_data_service, mock_app):
         """Test callback behavior when no data is available."""
         # Setup mocks
         mock_data_service = Mock()
         mock_data_service.get_all_data.return_value = {}  # No data
         mock_get_data_service.return_value = mock_data_service
+        mock_ctx.triggered = [{"prop_id": "quality-analyze-btn.n_clicks", "value": 1}]
 
         # Register callbacks and capture them
         captured_callbacks = []
@@ -213,18 +219,19 @@ class TestQualityAssessmentCallback:
         # Call with no data
         result = quality_callback(
             n_clicks=1,
+            bins_count=30,
+            metrics_scope="segment",
             pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
             start_position=0,
             duration=10,
             signal_type="ecg",
-            quality_metrics=["snr", "artifacts"],
-            snr_threshold=10,
-            artifact_threshold=0.5,
-            advanced_options=None
+            signal_source="original",
+            sqi_type="snr",
+            analysis_options=["snr", "artifacts"],
+            sqi_params={},
+            filtered_signal_data=None,
+            stored_quality_data=None,
+            stored_quality_results=None
         )
 
         # Should return message about no data
@@ -233,9 +240,11 @@ class TestQualityAssessmentCallback:
         assert "No data available" in result[2]
 
     @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
-    def test_callback_no_button_click(self, mock_get_data_service, mock_app, sample_dataframe):
+    @patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context')
+    def test_callback_no_button_click(self, mock_ctx, mock_get_data_service, mock_app, sample_dataframe):
         """Test callback behavior when button not clicked."""
         # Setup mocks
+        mock_ctx.triggered = []  # No trigger
         mock_data_service = Mock()
         mock_data_service.get_all_data.return_value = {"data_1": sample_dataframe}
         mock_data_service.has_data.return_value = True
@@ -264,18 +273,19 @@ class TestQualityAssessmentCallback:
         # Call with no button click (n_clicks=None)
         result = quality_callback(
             n_clicks=None,
+            bins_count=30,
+            metrics_scope="segment",
             pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
             start_position=0,
             duration=10,
             signal_type="ecg",
-            quality_metrics=["snr", "artifacts"],
-            snr_threshold=10,
-            artifact_threshold=0.5,
-            advanced_options=None
+            signal_source="original",
+            sqi_type="snr",
+            analysis_options=["snr", "artifacts"],
+            sqi_params={},
+            filtered_signal_data=None,
+            stored_quality_data=None,
+            stored_quality_results=None
         )
 
         # Should return message to click button since button not clicked
@@ -284,9 +294,11 @@ class TestQualityAssessmentCallback:
         assert "Click" in result[2] and "Assess Signal Quality" in result[2]
 
     @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
-    def test_callback_no_column_mapping(self, mock_get_data_service, mock_app, sample_dataframe):
+    @patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context')
+    def test_callback_no_column_mapping(self, mock_ctx, mock_get_data_service, mock_app, sample_dataframe):
         """Test callback behavior when no column mapping exists."""
         # Setup mocks
+        mock_ctx.triggered = [{"prop_id": "quality-analyze-btn.n_clicks", "value": 1}]
         mock_data_service = Mock()
         mock_data_service.get_all_data.return_value = {"data_1": sample_dataframe}
         mock_data_service.get_column_mapping.return_value = None  # No mapping
@@ -315,18 +327,19 @@ class TestQualityAssessmentCallback:
         # Call with no column mapping
         result = quality_callback(
             n_clicks=1,
+            bins_count=30,
+            metrics_scope="segment",
             pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
             start_position=0,
             duration=10,
             signal_type="ecg",
-            quality_metrics=["snr", "artifacts"],
-            snr_threshold=10,
-            artifact_threshold=0.5,
-            advanced_options=None
+            signal_source="original",
+            sqi_type="snr",
+            analysis_options=["snr", "artifacts"],
+            sqi_params={},
+            filtered_signal_data=None,
+            stored_quality_data=None,
+            stored_quality_results=None
         )
 
         # Should return message about processing needed
@@ -334,9 +347,11 @@ class TestQualityAssessmentCallback:
         assert len(result) == 8
 
     @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
-    def test_callback_with_valid_data(self, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
+    @patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context')
+    def test_callback_with_valid_data(self, mock_ctx, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
         """Test callback behavior with valid data."""
         # Setup mocks
+        mock_ctx.triggered = [{"prop_id": "quality-analyze-btn.n_clicks", "value": 1}]
         mock_data_service = Mock()
         mock_data_service.get_all_data.return_value = {"data_1": sample_dataframe}
         mock_data_service.get_column_mapping.return_value = sample_column_mapping
@@ -366,18 +381,19 @@ class TestQualityAssessmentCallback:
         # Call with valid data
         result = quality_callback(
             n_clicks=1,
+            bins_count=30,
+            metrics_scope="segment",
             pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
             start_position=0,
             duration=10,
             signal_type="ecg",
-            quality_metrics=["snr", "artifacts", "baseline"],
-            snr_threshold=10,
-            artifact_threshold=0.5,
-            advanced_options=["detailed_analysis"]
+            signal_source="original",
+            sqi_type="snr",
+            analysis_options=["snr", "artifacts", "baseline"],
+            sqi_params={},
+            filtered_signal_data=None,
+            stored_quality_data=None,
+            stored_quality_results=None
         )
 
         # Should return quality assessment results
@@ -388,7 +404,8 @@ class TestQualityAssessmentCallback:
         assert isinstance(result[1], go.Figure)
 
     @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
-    def test_callback_with_different_quality_metrics(self, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
+    @patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context')
+    def test_callback_with_different_quality_metrics(self, mock_ctx, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
         """Test callback with different quality metrics combinations."""
         metrics_combinations = [
             ["snr"],
@@ -402,6 +419,7 @@ class TestQualityAssessmentCallback:
 
         for metrics in metrics_combinations:
             # Setup mocks
+            mock_ctx.triggered = [{"prop_id": "quality-analyze-btn.n_clicks", "value": 1}]
             mock_data_service = Mock()
             mock_data_service.get_all_data.return_value = {"data_1": sample_dataframe}
             mock_data_service.get_column_mapping.return_value = sample_column_mapping
@@ -430,32 +448,35 @@ class TestQualityAssessmentCallback:
 
             # Call with different metrics
             result = quality_callback(
-                n_clicks=1,
-                pathname="/quality",
-                nudge_m10=None,
-                nudge_m1=None,
-                nudge_p1=None,
-                nudge_p10=None,
-                start_position=0,
-                duration=10,
-                signal_type="ecg",
-                quality_metrics=metrics,
-                snr_threshold=10,
-                artifact_threshold=0.5,
-                advanced_options=None
-            )
+            n_clicks=1,
+            bins_count=30,
+            metrics_scope="segment",
+            pathname="/quality",
+            start_position=0,
+            duration=10,
+            signal_type="ecg",
+            signal_source="original",
+            sqi_type="snr",
+            analysis_options=metrics,
+            sqi_params={},
+            filtered_signal_data=None,
+            stored_quality_data=None,
+            stored_quality_results=None
+        )
 
             # Should return valid results
             assert isinstance(result, tuple)
             assert len(result) == 8
 
     @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
-    def test_callback_with_different_signal_types(self, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
+    @patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context')
+    def test_callback_with_different_signal_types(self, mock_ctx, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
         """Test callback with different signal types."""
         signal_types = ["ecg", "ppg", "general"]
 
         for sig_type in signal_types:
             # Setup mocks
+            mock_ctx.triggered = [{"prop_id": "quality-analyze-btn.n_clicks", "value": 1}]
             mock_data_service = Mock()
             mock_data_service.get_all_data.return_value = {"data_1": sample_dataframe}
             mock_data_service.get_column_mapping.return_value = sample_column_mapping
@@ -484,27 +505,29 @@ class TestQualityAssessmentCallback:
 
             # Call with different signal type
             result = quality_callback(
-                n_clicks=1,
-                pathname="/quality",
-                nudge_m10=None,
-                nudge_m1=None,
-                nudge_p1=None,
-                nudge_p10=None,
-                start_position=0,
-                duration=10,
-                signal_type=sig_type,
-                quality_metrics=["snr"],
-                snr_threshold=10,
-                artifact_threshold=0.5,
-                advanced_options=None
-            )
+            n_clicks=1,
+            bins_count=30,
+            metrics_scope="segment",
+            pathname="/quality",
+            start_position=0,
+            duration=10,
+            signal_type=sig_type,
+            signal_source="original",
+            sqi_type="snr",
+            analysis_options=["snr"],
+            sqi_params={},
+            filtered_signal_data=None,
+            stored_quality_data=None,
+            stored_quality_results=None
+        )
 
             # Should return valid results
             assert isinstance(result, tuple)
             assert len(result) == 8
 
     @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
-    def test_callback_with_different_thresholds(self, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
+    @patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context')
+    def test_callback_with_different_thresholds(self, mock_ctx, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
         """Test callback with different threshold values."""
         threshold_combinations = [
             (5, 0.3),
@@ -515,6 +538,7 @@ class TestQualityAssessmentCallback:
 
         for snr_thresh, artifact_thresh in threshold_combinations:
             # Setup mocks
+            mock_ctx.triggered = [{"prop_id": "quality-analyze-btn.n_clicks", "value": 1}]
             mock_data_service = Mock()
             mock_data_service.get_all_data.return_value = {"data_1": sample_dataframe}
             mock_data_service.get_column_mapping.return_value = sample_column_mapping
@@ -544,18 +568,19 @@ class TestQualityAssessmentCallback:
             # Call with different thresholds
             result = quality_callback(
                 n_clicks=1,
+                bins_count=30,
+                metrics_scope="segment",
                 pathname="/quality",
-                nudge_m10=None,
-                nudge_m1=None,
-                nudge_p1=None,
-                nudge_p10=None,
                 start_position=0,
                 duration=10,
                 signal_type="ecg",
-                quality_metrics=["snr", "artifacts"],
-                snr_threshold=snr_thresh,
-                artifact_threshold=artifact_thresh,
-                advanced_options=None
+                signal_source="original",
+                sqi_type="snr",
+                analysis_options=["snr", "artifacts"],
+                sqi_params={},
+                filtered_signal_data=None,
+                stored_quality_data=None,
+                stored_quality_results=None
             )
 
             # Should return valid results
@@ -563,7 +588,8 @@ class TestQualityAssessmentCallback:
             assert len(result) == 8
 
     @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
-    def test_callback_with_advanced_options(self, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
+    @patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context')
+    def test_callback_with_advanced_options(self, mock_ctx, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
         """Test callback with advanced options."""
         advanced_options_combinations = [
             ["detailed_analysis"],
@@ -602,27 +628,29 @@ class TestQualityAssessmentCallback:
 
             # Call with advanced options
             result = quality_callback(
-                n_clicks=1,
-                pathname="/quality",
-                nudge_m10=None,
-                nudge_m1=None,
-                nudge_p1=None,
-                nudge_p10=None,
-                start_position=0,
-                duration=10,
-                signal_type="ecg",
-                quality_metrics=["snr"],
-                snr_threshold=10,
-                artifact_threshold=0.5,
-                advanced_options=adv_options
-            )
+            n_clicks=1,
+            bins_count=30,
+            metrics_scope="segment",
+            pathname="/quality",
+            start_position=0,
+            duration=10,
+            signal_type="ecg",
+            signal_source="original",
+            sqi_type="snr",
+            analysis_options=["snr"],
+            sqi_params={},
+            filtered_signal_data=None,
+            stored_quality_data=None,
+            stored_quality_results=None
+        )
 
             # Should return valid results
             assert isinstance(result, tuple)
             assert len(result) == 8
 
     @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
-    def test_callback_with_time_window_adjustment(self, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
+    @patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context')
+    def test_callback_with_time_window_adjustment(self, mock_ctx, mock_get_data_service, mock_app, sample_dataframe, sample_column_mapping, sample_data_info):
         """Test callback with different time windows."""
         time_windows = [
             (0, 5),
@@ -660,27 +688,29 @@ class TestQualityAssessmentCallback:
 
             # Call with different time window
             result = quality_callback(
-                n_clicks=1,
-                pathname="/quality",
-                nudge_m10=None,
-                nudge_m1=None,
-                nudge_p1=None,
-                nudge_p10=None,
-                start_position=start,
-                duration=end - start,
-                signal_type="ecg",
-                quality_metrics=["snr"],
-                snr_threshold=10,
-                artifact_threshold=0.5,
-                advanced_options=None
-            )
+            n_clicks=1,
+            bins_count=30,
+            metrics_scope="segment",
+            pathname="/quality",
+            start_position=start,
+            duration=end - start,
+            signal_type="ecg",
+            signal_source="original",
+            sqi_type="snr",
+            analysis_options=["snr"],
+            sqi_params={},
+            filtered_signal_data=None,
+            stored_quality_data=None,
+            stored_quality_results=None
+        )
 
             # Should return valid results
             assert isinstance(result, tuple)
             assert len(result) == 8
 
     @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', create=True)
-    def test_callback_exception_handling(self, mock_get_data_service, mock_app):
+    @patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context')
+    def test_callback_exception_handling(self, mock_ctx, mock_get_data_service, mock_app):
         """Test callback exception handling."""
         # Setup mocks to raise an exception
         mock_data_service = Mock()
@@ -710,18 +740,19 @@ class TestQualityAssessmentCallback:
         # Call should handle exception gracefully
         result = quality_callback(
             n_clicks=1,
+            bins_count=30,
+            metrics_scope="segment",
             pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
             start_position=0,
             duration=10,
             signal_type="ecg",
-            quality_metrics=["snr"],
-            snr_threshold=10,
-            artifact_threshold=0.5,
-            advanced_options=None
+            signal_source="original",
+            sqi_type="snr",
+            analysis_options=["snr"],
+            sqi_params={},
+            filtered_signal_data=None,
+            stored_quality_data=None,
+            stored_quality_results=None
         )
 
         # Should return error results
@@ -729,5 +760,3 @@ class TestQualityAssessmentCallback:
         assert len(result) == 8
 
 
-if __name__ == "__main__":
-    pytest.main([__file__])

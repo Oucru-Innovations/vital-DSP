@@ -104,5 +104,3 @@ def test_basic_assertions():
     assert np.std(arr) > 0
 
 
-if __name__ == "__main__":
-    pytest.main([__file__])

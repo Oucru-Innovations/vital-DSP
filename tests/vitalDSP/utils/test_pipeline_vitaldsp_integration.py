@@ -202,5 +202,3 @@ class TestPipelineVitalDSPIntegration:
             assert "segment_features" in feature_results or "path_features" in feature_results
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

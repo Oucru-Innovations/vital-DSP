@@ -193,7 +193,10 @@ def time_domain_layout():
                                                                     75: "75%",
                                                                     100: "100%",
                                                                 },
-                                                                tooltip={"placement": "bottom", "always_visible": True},
+                                                                tooltip={
+                                                                    "placement": "bottom",
+                                                                    "always_visible": True,
+                                                                },
                                                                 className="mb-3",
                                                             ),
                                                         ],
@@ -212,10 +215,22 @@ def time_domain_layout():
                                                             dbc.Select(
                                                                 id="duration-select",
                                                                 options=[
-                                                                    {"label": "30 seconds", "value": 30},
-                                                                    {"label": "1 minute", "value": 60},
-                                                                    {"label": "2 minutes", "value": 120},
-                                                                    {"label": "5 minutes", "value": 300},
+                                                                    {
+                                                                        "label": "30 seconds",
+                                                                        "value": 30,
+                                                                    },
+                                                                    {
+                                                                        "label": "1 minute",
+                                                                        "value": 60,
+                                                                    },
+                                                                    {
+                                                                        "label": "2 minutes",
+                                                                        "value": 120,
+                                                                    },
+                                                                    {
+                                                                        "label": "5 minutes",
+                                                                        "value": 300,
+                                                                    },
                                                                 ],
                                                                 value=60,  # Default to 1 minute
                                                                 className="mb-3",
@@ -540,7 +555,9 @@ def time_domain_layout():
             # Stores for data management
             dcc.Store(id="store-time-domain-data"),
             dcc.Store(id="store-filtered-data"),
-            dcc.Store(id="store-filtered-signal"),  # Access to filtered signal from filtering page
+            dcc.Store(
+                id="store-filtered-signal"
+            ),  # Access to filtered signal from filtering page
             dcc.Store(id="store-analysis-results"),
             dcc.Store(id="store-time-domain-features"),  # For export
             # Download components for export

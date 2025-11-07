@@ -18,7 +18,9 @@ try:
     from vitalDSP_webapp.utils.plot_utils import limit_plot_data, check_plot_data_size
 except ImportError:
     # Fallback if plot_utils not available
-    def limit_plot_data(time_axis, signal_data, max_duration=300, max_points=10000, start_time=None):
+    def limit_plot_data(
+        time_axis, signal_data, max_duration=300, max_points=10000, start_time=None
+    ):
         """Fallback implementation of limit_plot_data"""
         return time_axis, signal_data
 
@@ -94,15 +96,28 @@ def register_frequency_filtering_callbacks(app):
     @app.callback(
         [Output("freq-signal-source-select", "value")],
         [Input("url", "pathname")],
+        [State("freq-signal-source-select", "value")],
         prevent_initial_call=True,
     )
-    def auto_select_freq_signal_source(pathname):
+    def auto_select_freq_signal_source(pathname, current_signal_source):
         """Auto-select signal source based on uploaded data."""
+        logger.info("=== FREQUENCY AUTO-SELECT SIGNAL SOURCE CALLBACK ===")
+        logger.info(f"Pathname: {pathname}, Current selection: {current_signal_source}")
+
         if pathname != "/frequency":
             raise PreventUpdate
 
+        # If user has already made a selection, preserve it
+        if current_signal_source is not None:
+            logger.info(
+                f"User has existing signal source selection: {current_signal_source}, preserving it"
+            )
+            raise PreventUpdate
+
         try:
-            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
             data_service = get_enhanced_data_service()
             if not data_service:
@@ -184,7 +199,9 @@ def register_frequency_filtering_callbacks(app):
             State("freq-min", "value"),
             State("freq-max", "value"),
             State("freq-analysis-options", "value"),
-            State("store-filtered-signal", "data"),  # NEW: Access to filtered signal from filtering page
+            State(
+                "store-filtered-signal", "data"
+            ),  # NEW: Access to filtered signal from filtering page
         ],
     )
     def frequency_domain_callback(
@@ -254,7 +271,9 @@ def register_frequency_filtering_callbacks(app):
         try:
             # Get data from the data service
             logger.info("Attempting to import data service...")
-            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
             logger.info("Data service imported successfully")
 
@@ -360,26 +379,45 @@ def register_frequency_filtering_callbacks(app):
                 # Try to load filtered data from filtering screen
                 filtered_data = data_service.get_filtered_data(data_id)
                 filter_info = data_service.get_filter_info(data_id)
-                
+
                 # Also check for filtered signal from filtering page
                 if filtered_data is None and filtered_signal_data is not None:
-                    logger.info("No filtered signal from data service, checking filtering page store...")
+                    logger.info(
+                        "No filtered signal from data service, checking filtering page store..."
+                    )
                     try:
-                        if isinstance(filtered_signal_data, dict) and "signal" in filtered_signal_data:
+                        if (
+                            isinstance(filtered_signal_data, dict)
+                            and "signal" in filtered_signal_data
+                        ):
                             filtered_data = np.array(filtered_signal_data["signal"])
-                            logger.info(f"Retrieved filtered signal from filtering page store: {filtered_data.shape}")
-                            
+                            logger.info(
+                                f"Retrieved filtered signal from filtering page store: {filtered_data.shape}"
+                            )
+
                             # Extract filter info from the store data
                             if "filter_params" in filtered_signal_data:
                                 filter_info = {
-                                    "filter_type": filtered_signal_data.get("filter_type", "unknown"),
-                                    "parameters": filtered_signal_data.get("filter_params", {}),
-                                    "signal_type": filtered_signal_data.get("signal_type", "unknown"),
-                                    "sampling_freq": filtered_signal_data.get("sampling_freq", 100)
+                                    "filter_type": filtered_signal_data.get(
+                                        "filter_type", "unknown"
+                                    ),
+                                    "parameters": filtered_signal_data.get(
+                                        "filter_params", {}
+                                    ),
+                                    "signal_type": filtered_signal_data.get(
+                                        "signal_type", "unknown"
+                                    ),
+                                    "sampling_freq": filtered_signal_data.get(
+                                        "sampling_freq", 100
+                                    ),
                                 }
-                                logger.info(f"Retrieved filter info from filtering page store: {filter_info}")
+                                logger.info(
+                                    f"Retrieved filter info from filtering page store: {filter_info}"
+                                )
                     except Exception as e:
-                        logger.error(f"Error retrieving filtered signal from filtering page store: {e}")
+                        logger.error(
+                            f"Error retrieving filtered signal from filtering page store: {e}"
+                        )
                         filtered_data = None
                         filter_info = None
 
@@ -430,10 +468,12 @@ def register_frequency_filtering_callbacks(app):
                     start_position = float(start_position)
                     duration = float(duration)
                 except (ValueError, TypeError) as e:
-                    logger.warning(f"Invalid time window values - start: {start_position}, duration: {duration}, using defaults")
+                    logger.warning(
+                        f"Invalid time window values - start: {start_position}, duration: {duration}, using defaults"
+                    )
                     start_position = 0.0
                     duration = 60.0
-                
+
                 # Convert start position (0-100%) to actual time in seconds
                 total_duration = time_data[-1] - time_data[0]
                 actual_start_time = (start_position / 100.0) * total_duration
@@ -710,7 +750,9 @@ def register_frequency_filtering_callbacks(app):
                                 signal_source_info = "Original Signal (Fallback)"
 
                     logger.info("=== TIME WINDOW DEBUG ===")
-                    logger.info(f"Applied time window: {actual_start_time:.2f}s to {actual_end_time:.2f}s (position {start_position}%, duration {duration}s)")
+                    logger.info(
+                        f"Applied time window: {actual_start_time:.2f}s to {actual_end_time:.2f}s (position {start_position}%, duration {duration}s)"
+                    )
                     logger.info(
                         f"Start sample: {start_sample}, End sample: {end_sample}"
                     )
@@ -1028,17 +1070,16 @@ def register_frequency_filtering_callbacks(app):
                 time_axis,
                 selected_signal,
                 max_duration=300,  # 5 minutes max
-                max_points=10000   # 10K points max
+                max_points=10000,  # 10K points max
             )
 
             _, filtered_signal_plot = limit_plot_data(
-                time_axis,
-                filtered_signal,
-                max_duration=300,
-                max_points=10000
+                time_axis, filtered_signal, max_duration=300, max_points=10000
             )
 
-            logger.info(f"Frequency filtering plot data limited: {len(selected_signal)} → {len(selected_signal_plot)} points")
+            logger.info(
+                f"Frequency filtering plot data limited: {len(selected_signal)} → {len(selected_signal_plot)} points"
+            )
 
             # Create filtered signal plot (using limited data)
             signal_fig = go.Figure()
@@ -1146,7 +1187,10 @@ def register_frequency_filtering_callbacks(app):
 
     # Time input update callbacks
     @app.callback(
-        [Output("freq-start-position-slider", "value"), Output("freq-duration-select", "value")],
+        [
+            Output("freq-start-position-slider", "value"),
+            Output("freq-duration-select", "value"),
+        ],
         [
             Input("freq-start-position-slider", "value"),
             Input("freq-duration-select", "value"),
@@ -1155,10 +1199,20 @@ def register_frequency_filtering_callbacks(app):
             Input("freq-btn-nudge-p1", "n_clicks"),
             Input("freq-btn-nudge-p10", "n_clicks"),
         ],
-        [State("freq-start-position-slider", "value"), State("freq-duration-select", "value")],
+        [
+            State("freq-start-position-slider", "value"),
+            State("freq-duration-select", "value"),
+        ],
     )
     def update_freq_time_inputs(
-        start_position, duration, nudge_m10, nudge_m1, nudge_p1, nudge_p10, current_start, current_duration
+        start_position,
+        duration,
+        nudge_m10,
+        nudge_m1,
+        nudge_p1,
+        nudge_p10,
+        current_start,
+        current_duration,
     ):
         """Update time inputs based on nudge buttons."""
         ctx = callback_context
@@ -1611,7 +1665,7 @@ def create_wavelet_plot(
         if wavelet_type is None or wavelet_type == "":
             logger.warning("Wavelet type is None or empty, using default 'db4'")
             wavelet_type = "db4"
-        
+
         wt = WaveletTransform(selected_signal, wavelet_name=wavelet_type)
         # Note: vitalDSP WaveletTransform handles validation internally
 
@@ -1835,8 +1889,10 @@ def create_wavelet_plot(
 
                     # Pad or truncate coefficients to match signal length
                     # Ensure coefficients are real numbers before plotting
-                    real_coeff = np.real(coeffs[i]) if np.iscomplexobj(coeffs[i]) else coeffs[i]
-                    
+                    real_coeff = (
+                        np.real(coeffs[i]) if np.iscomplexobj(coeffs[i]) else coeffs[i]
+                    )
+
                     if len(real_coeff) < len(selected_signal):
                         # Pad with zeros
                         padded_coeff = np.pad(
@@ -2827,10 +2883,17 @@ def perform_wavelet_analysis(
 
         # Store data - ensure all arrays are real numbers only
         freq_data = {
-            "frequencies": np.real(freqs).tolist() if np.iscomplexobj(freqs) else freqs.tolist(),
-            "magnitudes": np.real(magnitudes).tolist() if np.iscomplexobj(magnitudes) else magnitudes.tolist(),
+            "frequencies": (
+                np.real(freqs).tolist() if np.iscomplexobj(freqs) else freqs.tolist()
+            ),
+            "magnitudes": (
+                np.real(magnitudes).tolist()
+                if np.iscomplexobj(magnitudes)
+                else magnitudes.tolist()
+            ),
             "analysis_type": f"Wavelet_{wavelet_type.upper()}",
         }
+
         # Convert coefficients to real numbers only (remove complex parts if any)
         # Handle both individual complex coefficients and arrays with mixed real/complex
         def safe_coeff_to_list(coeff):
@@ -2842,14 +2905,16 @@ def perform_wavelet_analysis(
                     return np.real(coeff).tolist()
                 else:
                     # Check if individual elements are complex
-                    if hasattr(coeff, 'dtype') and np.issubdtype(coeff.dtype, np.complexfloating):
+                    if hasattr(coeff, "dtype") and np.issubdtype(
+                        coeff.dtype, np.complexfloating
+                    ):
                         return np.real(coeff).tolist()
                     else:
                         return coeff.tolist()
             except Exception as e:
                 logger.warning(f"Error converting coefficient to list: {e}")
                 return []
-        
+
         time_freq_data = {
             "levels": levels,
             "wavelet_type": wavelet_type,

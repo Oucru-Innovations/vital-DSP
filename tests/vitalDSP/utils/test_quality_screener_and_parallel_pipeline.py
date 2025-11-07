@@ -707,5 +707,3 @@ class TestIntegration:
         assert results['metadata']['total_segments'] > 0
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

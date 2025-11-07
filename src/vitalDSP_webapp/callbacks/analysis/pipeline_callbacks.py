@@ -91,342 +91,487 @@ def _execute_pipeline_stage(
             return True, result
 
         elif stage == 2:
-            # Stage 2: Quality Screening - Use SignalQualityIndex individual methods
-            from vitalDSP.signal_quality_assessment.signal_quality_index import (
-                SignalQualityIndex,
+            # Stage 2: Quality Screening - Use compute_sqi function from quality page
+            from vitalDSP_webapp.callbacks.analysis.quality_sqi_functions import (
+                compute_sqi,
             )
 
-            # Initialize SignalQualityIndex
-            sqi = SignalQualityIndex(signal_data)
+            # Get parameters from pipeline_data (now using quality page parameter structure)
+            sqi_type = pipeline_data.get("stage2_sqi_type", "snr_sqi")
+            window_size = pipeline_data.get("stage2_window_size", 1000)
+            step_size = pipeline_data.get("stage2_step_size", 500)
+            threshold_type = pipeline_data.get("stage2_threshold_type", "below")
+            threshold = pipeline_data.get("stage2_threshold", 0.7)
+            scale = pipeline_data.get("stage2_scale", "zscore")
 
-            # Get parameters from pipeline_data
-            sqi_methods = pipeline_data.get(
-                "sqi_methods", ["amplitude_variability", "baseline_wander", "snr"]
-            )
-            sqi_window_seconds = pipeline_data.get("sqi_window", 5)
-            sqi_step_seconds = pipeline_data.get("sqi_step", 2.5)
-            quality_threshold = pipeline_data.get("quality_threshold", 0.7)
-            sqi_scale = pipeline_data.get("sqi_scale", "zscore")
-
-            # Define window parameters for segment-based SQIs
-            window_size = int(sqi_window_seconds * fs)
-            step_size = int(sqi_step_seconds * fs)
-
-            # Compute selected SQI metrics
-            quality_results = {}
-            sqi_arrays = {}  # Store full arrays for visualization
-
-            # Map of SQI method names to their functions
-            sqi_function_map = {
-                "amplitude_variability": lambda: sqi.amplitude_variability_sqi(
-                    window_size, step_size, threshold=quality_threshold, scale=sqi_scale
-                ),
-                "baseline_wander": lambda: sqi.baseline_wander_sqi(
-                    window_size, step_size, threshold=quality_threshold, scale=sqi_scale
-                ),
-                "snr": lambda: sqi.snr_sqi(
-                    window_size, step_size, threshold=quality_threshold, scale=sqi_scale
-                ),
-                "zero_crossing": lambda: sqi.zero_crossing_consistency_sqi(
-                    window_size, step_size, threshold=quality_threshold, scale=sqi_scale
-                ),
-                "entropy": lambda: sqi.entropy_sqi(
-                    window_size, step_size, threshold=quality_threshold, scale=sqi_scale
-                ),
-                "kurtosis": lambda: sqi.kurtosis_sqi(
-                    window_size, step_size, threshold=quality_threshold, scale=sqi_scale
-                ),
-                "skewness": lambda: sqi.skewness_sqi(
-                    window_size, step_size, threshold=quality_threshold, scale=sqi_scale
-                ),
+            # Build SQI parameters dictionary
+            sqi_params = {
+                "window_size": window_size,
+                "step_size": step_size,
+                "threshold": threshold,
+                "threshold_type": threshold_type,
+                "scale": scale,
             }
 
-            # Compute selected SQI methods
-            for method in sqi_methods:
-                if method in sqi_function_map:
-                    try:
-                        sqi_array, normal_segs, abnormal_segs = sqi_function_map[
-                            method
-                        ]()
-                        quality_results[f"{method}_sqi"] = float(np.mean(sqi_array))
-                        sqi_arrays[f"{method}_sqi"] = (
-                            sqi_array.tolist()
-                        )  # Store for visualization
-                        logger.info(
-                            f"✓ {method} SQI: {quality_results[f'{method}_sqi']:.3f} (normal: {len(normal_segs)}, abnormal: {len(abnormal_segs)})"
+            logger.info(f"Stage 2 - Computing {sqi_type} with params: {sqi_params}")
+            logger.info(f"Signal length: {len(signal_data)}, Sampling freq: {fs}")
+
+            try:
+                # Use compute_sqi for consistent computation (same as Quality Page)
+                quality_results = compute_sqi(signal_data, sqi_type, sqi_params, fs)
+
+                # Extract results from compute_sqi output
+                sqi_values = quality_results.get("sqi_values", [])
+                normal_segments = quality_results.get("normal_segments", [])
+                abnormal_segments = quality_results.get("abnormal_segments", [])
+                overall_sqi = quality_results.get("overall_sqi", 0.5)
+
+                logger.info(
+                    f"✓ Stage 2 - {sqi_type}: {overall_sqi:.3f} "
+                    f"(normal: {len(normal_segments)}, abnormal: {len(abnormal_segments)})"
+                )
+
+                # Build result structure (compatible with visualization)
+                result = {
+                    "sqi_type": sqi_type,
+                    "quality_scores": {sqi_type: float(overall_sqi)},
+                    "sqi_values": (
+                        sqi_values
+                        if isinstance(sqi_values, list)
+                        else sqi_values.tolist()
+                    ),
+                    "sqi_arrays": {
+                        sqi_type: (
+                            sqi_values
+                            if isinstance(sqi_values, list)
+                            else sqi_values.tolist()
                         )
-                    except Exception as e:
-                        logger.warning(f"{method} SQI failed: {e}")
-                        quality_results[f"{method}_sqi"] = 0.5
-                        sqi_arrays[f"{method}_sqi"] = []
+                    },
+                    "normal_segments": normal_segments,
+                    "abnormal_segments": abnormal_segments,
+                    "overall_quality": float(overall_sqi),
+                    "passed": overall_sqi >= threshold,
+                    "params_used": sqi_params,
+                }
 
-            # Compute overall quality score (average of available SQIs)
-            sqi_values = [
-                v
-                for v in quality_results.values()
-                if isinstance(v, (int, float)) and not np.isnan(v)
-            ]
-            overall_quality = np.mean(sqi_values) if sqi_values else 0.5
+                return True, result
 
-            result = {
-                "quality_scores": quality_results,
-                "sqi_arrays": sqi_arrays,  # Full arrays for visualization
-                "overall_quality": float(overall_quality),
-                "passed": overall_quality >= quality_threshold,
-                "sqi_window": sqi_window_seconds,
-                "sqi_step": sqi_step_seconds,
-                "threshold_used": quality_threshold,
-                "scale_used": sqi_scale,
-                "methods_used": sqi_methods,
-            }
-            return True, result
+            except Exception as e:
+                logger.error(
+                    f"Stage 2 - {sqi_type} computation failed: {e}", exc_info=True
+                )
+                # Return failure result
+                result = {
+                    "sqi_type": sqi_type,
+                    "quality_scores": {sqi_type: 0.5},
+                    "sqi_values": [],
+                    "sqi_arrays": {sqi_type: []},
+                    "normal_segments": [],
+                    "abnormal_segments": [],
+                    "overall_quality": 0.5,
+                    "passed": False,
+                    "params_used": sqi_params,
+                    "error": str(e),
+                }
+                return False, result
 
         elif stage == 3:
-            # Stage 3: Parallel Processing (Filtering + Artifact Removal)
-            from vitalDSP.filtering.signal_filtering import (
-                SignalFiltering,
-                BandpassFilter,
-            )
+            # Stage 3: Parallel Processing (Comprehensive Filtering)
+            from vitalDSP.filtering.signal_filtering import SignalFiltering
             from vitalDSP.filtering.artifact_removal import ArtifactRemoval
-
-            # Get parameters from pipeline_data
-            filter_type = pipeline_data.get("filter_type", "butter")
-            lowcut = pipeline_data.get("filter_lowcut", 0.5)
-            highcut = pipeline_data.get("filter_highcut", 40)
-            filter_order = pipeline_data.get("filter_order", 4)
-            filter_rp = pipeline_data.get("filter_rp", 1)
-            filter_rs = pipeline_data.get("filter_rs", 40)
-
-            artifact_method = pipeline_data.get(
-                "artifact_method", "baseline_correction"
+            from vitalDSP.filtering.advanced_signal_filtering import (
+                AdvancedSignalFiltering,
             )
-            baseline_cutoff = pipeline_data.get("baseline_cutoff", 0.5)
-            median_kernel = pipeline_data.get("median_kernel", 5)
-            wavelet_type = pipeline_data.get("wavelet_type", "db")
-            wavelet_order = pipeline_data.get("wavelet_order", 4)
 
+            # Get comprehensive parameters from pipeline_data
+            stage3_filter_type = pipeline_data.get("stage3_filter_type", "traditional")
+            signal_source = pipeline_data.get("stage3_signal_source", "original")
+            application_count = pipeline_data.get("stage3_application_count", 1)
+            apply_detrend = pipeline_data.get("stage3_detrend", False)
             paths = pipeline_data.get("paths", ["filtered", "preprocessed"])
+
             results = {}
 
             if "raw" in paths:
                 results["raw"] = signal_data.copy()
 
-            if "filtered" in paths or "preprocessed" in paths:
-                # Apply bandpass filtering with selected filter type
-                sf = SignalFiltering(signal_data)
+            # Start with the appropriate source signal
+            working_signal = signal_data.copy()
 
-                # Use the bandpass method with filter_type parameter
-                try:
-                    filtered = sf.bandpass(
-                        lowcut=lowcut,
-                        highcut=highcut,
-                        fs=fs,
-                        order=filter_order,
-                        filter_type=filter_type,
-                    )
-                    logger.info(
-                        f"✓ Applied {filter_type} bandpass filter: {lowcut}-{highcut} Hz, order {filter_order}"
-                    )
-                except Exception as e:
-                    logger.warning(
-                        f"Bandpass filtering with {filter_type} failed: {e}, falling back to butterworth"
-                    )
-                    filtered = sf.bandpass(
-                        lowcut=lowcut,
-                        highcut=highcut,
-                        fs=fs,
-                        order=filter_order,
-                        filter_type="butter",
-                    )
+            # Apply detrending if requested
+            if apply_detrend:
+                from scipy import signal as scipy_signal
 
-                if "filtered" in paths:
-                    results["filtered"] = filtered
+                working_signal = scipy_signal.detrend(working_signal)
+                logger.info("✓ Applied detrending")
 
-                if "preprocessed" in paths:
-                    # Apply selected artifact removal method
-                    ar = ArtifactRemoval(filtered)
+            # Apply filtering based on filter type (with multiple applications if specified)
+            filtered = working_signal.copy()
 
-                    if artifact_method == "baseline_correction":
-                        preprocessed = ar.baseline_correction(
-                            cutoff=baseline_cutoff, fs=fs
+            for iteration in range(application_count):
+                logger.info(f"Filter application {iteration + 1}/{application_count}")
+
+                if stage3_filter_type == "traditional":
+                    # Traditional filter parameters
+                    filter_family = pipeline_data.get("stage3_filter_family", "butter")
+                    filter_response = pipeline_data.get(
+                        "stage3_filter_response", "bandpass"
+                    )
+                    lowcut = pipeline_data.get("stage3_filter_lowcut", 0.5)
+                    highcut = pipeline_data.get("stage3_filter_highcut", 40)
+                    filter_order = pipeline_data.get("stage3_filter_order", 4)
+                    filter_rp = pipeline_data.get("stage3_filter_rp", 1)
+                    filter_rs = pipeline_data.get("stage3_filter_rs", 40)
+
+                    sf = SignalFiltering(filtered)
+
+                    try:
+                        if filter_response == "lowpass":
+                            filtered = sf.lowpass(
+                                cutoff=highcut,
+                                fs=fs,
+                                order=filter_order,
+                                filter_type=filter_family,
+                            )
+                            logger.info(
+                                f"✓ Applied {filter_family} lowpass: {highcut} Hz, order {filter_order}"
+                            )
+                        elif filter_response == "highpass":
+                            filtered = sf.highpass(
+                                cutoff=lowcut,
+                                fs=fs,
+                                order=filter_order,
+                                filter_type=filter_family,
+                            )
+                            logger.info(
+                                f"✓ Applied {filter_family} highpass: {lowcut} Hz, order {filter_order}"
+                            )
+                        elif filter_response == "bandpass":
+                            filtered = sf.bandpass(
+                                lowcut=lowcut,
+                                highcut=highcut,
+                                fs=fs,
+                                order=filter_order,
+                                filter_type=filter_family,
+                            )
+                            logger.info(
+                                f"✓ Applied {filter_family} bandpass: {lowcut}-{highcut} Hz, order {filter_order}"
+                            )
+                        elif filter_response == "bandstop":
+                            filtered = sf.bandstop(
+                                lowcut=lowcut,
+                                highcut=highcut,
+                                fs=fs,
+                                order=filter_order,
+                                filter_type=filter_family,
+                            )
+                            logger.info(
+                                f"✓ Applied {filter_family} bandstop: {lowcut}-{highcut} Hz, order {filter_order}"
+                            )
+                    except Exception as e:
+                        logger.warning(
+                            f"Filter {filter_family} failed: {e}, falling back to butterworth bandpass"
+                        )
+                        filtered = sf.bandpass(
+                            lowcut=lowcut,
+                            highcut=highcut,
+                            fs=fs,
+                            order=filter_order,
+                            filter_type="butter",
+                        )
+
+                    # Apply additional filters if specified
+                    savgol_window = pipeline_data.get("stage3_savgol_window")
+                    if savgol_window and savgol_window >= 3:
+                        savgol_polyorder = pipeline_data.get(
+                            "stage3_savgol_polyorder", 2
+                        )
+                        from scipy.signal import savgol_filter
+
+                        filtered = savgol_filter(
+                            filtered, savgol_window, savgol_polyorder
                         )
                         logger.info(
-                            f"✓ Applied baseline correction: cutoff={baseline_cutoff} Hz"
+                            f"✓ Applied Savitzky-Golay: window={savgol_window}, polyorder={savgol_polyorder}"
                         )
-                    elif artifact_method == "mean_subtraction":
-                        preprocessed = ar.mean_subtraction()
-                        logger.info("✓ Applied mean subtraction")
-                    elif artifact_method == "median_filter":
-                        preprocessed = ar.median_filter_removal(
-                            kernel_size=median_kernel
-                        )
-                        logger.info(
-                            f"✓ Applied median filter: kernel_size={median_kernel}"
-                        )
-                    elif artifact_method == "wavelet":
-                        preprocessed = ar.wavelet_denoising(
-                            wavelet_type=wavelet_type, order=wavelet_order, level=1
+
+                    moving_avg_window = pipeline_data.get("stage3_moving_avg_window")
+                    if moving_avg_window and moving_avg_window >= 3:
+                        filtered = np.convolve(
+                            filtered,
+                            np.ones(moving_avg_window) / moving_avg_window,
+                            mode="same",
                         )
                         logger.info(
-                            f"✓ Applied wavelet denoising: {wavelet_type}{wavelet_order}"
+                            f"✓ Applied Moving Average: window={moving_avg_window}"
+                        )
+
+                    gaussian_sigma = pipeline_data.get("stage3_gaussian_sigma")
+                    if gaussian_sigma and gaussian_sigma > 0:
+                        from scipy.ndimage import gaussian_filter1d
+
+                        filtered = gaussian_filter1d(filtered, sigma=gaussian_sigma)
+                        logger.info(
+                            f"✓ Applied Gaussian filter: sigma={gaussian_sigma}"
+                        )
+
+                elif stage3_filter_type == "advanced":
+                    advanced_method = pipeline_data.get(
+                        "stage3_advanced_method", "kalman"
+                    )
+                    asf = AdvancedSignalFiltering(filtered)
+
+                    if advanced_method == "kalman":
+                        kalman_r = pipeline_data.get("stage3_kalman_r", 1.0)
+                        kalman_q = pipeline_data.get("stage3_kalman_q", 1.0)
+                        filtered = asf.kalman_filter(R=kalman_r, Q=kalman_q)
+                        logger.info(
+                            f"✓ Applied Kalman filter: R={kalman_r}, Q={kalman_q}"
+                        )
+                    elif advanced_method == "adaptive":
+                        adaptive_mu = pipeline_data.get("stage3_adaptive_mu", 0.01)
+                        adaptive_order = pipeline_data.get("stage3_adaptive_order", 4)
+                        filtered = asf.adaptive_filter(
+                            mu=adaptive_mu, order=adaptive_order
+                        )
+                        logger.info(
+                            f"✓ Applied Adaptive filter: μ={adaptive_mu}, order={adaptive_order}"
                         )
                     else:
-                        # Fallback to baseline correction
-                        preprocessed = ar.baseline_correction(
-                            cutoff=baseline_cutoff, fs=fs
-                        )
                         logger.warning(
-                            f"Unknown artifact method '{artifact_method}', using baseline correction"
+                            f"Advanced method '{advanced_method}' not fully supported, applying Kalman"
+                        )
+                        filtered = asf.kalman_filter(R=1.0, Q=1.0)
+
+                elif stage3_filter_type == "artifact":
+                    artifact_type = pipeline_data.get(
+                        "stage3_artifact_type", "baseline"
+                    )
+                    artifact_strength = pipeline_data.get(
+                        "stage3_artifact_strength", 0.5
+                    )
+                    wavelet_type = pipeline_data.get("stage3_wavelet_type", "db4")
+                    wavelet_level = pipeline_data.get("stage3_wavelet_level", 3)
+                    threshold_type = pipeline_data.get("stage3_threshold_type", "soft")
+                    threshold_value = pipeline_data.get("stage3_threshold_value", 0.1)
+
+                    ar = ArtifactRemoval(filtered)
+
+                    if artifact_type == "baseline":
+                        filtered = ar.baseline_correction(
+                            cutoff=artifact_strength, fs=fs
+                        )
+                        logger.info(
+                            f"✓ Applied baseline correction: cutoff={artifact_strength} Hz"
+                        )
+                    elif artifact_type == "spike":
+                        filtered = ar.spike_removal(threshold=threshold_value)
+                        logger.info(
+                            f"✓ Applied spike removal: threshold={threshold_value}"
+                        )
+                    elif artifact_type == "noise":
+                        filtered = ar.wavelet_denoising(
+                            wavelet_type=wavelet_type,
+                            level=wavelet_level,
+                            threshold_type=threshold_type,
+                        )
+                        logger.info(
+                            f"✓ Applied wavelet denoising: {wavelet_type}, level={wavelet_level}, {threshold_type}"
+                        )
+                    elif artifact_type in ["powerline", "pca", "ica"]:
+                        logger.info(
+                            f"Artifact type '{artifact_type}' using wavelet denoising as fallback"
+                        )
+                        filtered = ar.wavelet_denoising(
+                            wavelet_type=wavelet_type,
+                            level=wavelet_level,
+                            threshold_type=threshold_type,
                         )
 
-                    results["preprocessed"] = preprocessed
+                elif stage3_filter_type == "neural":
+                    neural_type = pipeline_data.get("stage3_neural_type", "autoencoder")
+                    neural_complexity = pipeline_data.get(
+                        "stage3_neural_complexity", "medium"
+                    )
+                    logger.info(
+                        f"Neural network filtering ({neural_type}, {neural_complexity}) - using Kalman as fallback"
+                    )
+                    asf = AdvancedSignalFiltering(filtered)
+                    filtered = asf.kalman_filter(R=0.5, Q=1.0)
+
+                elif stage3_filter_type == "ensemble":
+                    ensemble_method = pipeline_data.get(
+                        "stage3_ensemble_method", "mean"
+                    )
+                    ensemble_n_filters = pipeline_data.get(
+                        "stage3_ensemble_n_filters", 3
+                    )
+                    logger.info(
+                        f"Ensemble filtering ({ensemble_method}, n={ensemble_n_filters}) - using adaptive multi-pass as fallback"
+                    )
+                    asf = AdvancedSignalFiltering(filtered)
+                    filtered = asf.kalman_filter(R=0.5, Q=1.0)
+
+            # Store filtered result
+            if "filtered" in paths:
+                results["filtered"] = filtered
+
+            # Create preprocessed version (additional cleanup)
+            if "preprocessed" in paths:
+                ar = ArtifactRemoval(filtered)
+                preprocessed = ar.baseline_correction(cutoff=0.5, fs=fs)
+                results["preprocessed"] = preprocessed
+                logger.info("✓ Created preprocessed signal (baseline corrected)")
 
             result = {
                 "paths": list(results.keys()),
                 "filtered_samples": {k: len(v) for k, v in results.items()},
                 "filter_params": {
-                    "type": filter_type,
-                    "lowcut": lowcut,
-                    "highcut": highcut,
-                    "order": filter_order,
-                    "rp": filter_rp,
-                    "rs": filter_rs,
-                },
-                "artifact_params": {
-                    "method": artifact_method,
-                    "baseline_cutoff": baseline_cutoff,
-                    "median_kernel": median_kernel,
-                    "wavelet_type": wavelet_type,
-                    "wavelet_order": wavelet_order,
+                    "filter_type": stage3_filter_type,
+                    "signal_source": signal_source,
+                    "application_count": application_count,
+                    "detrend": apply_detrend,
                 },
             }
+
             # Store processed signals for next stages
             pipeline_data["processed_signals"] = results
             return True, result
 
         elif stage == 4:
-            # Stage 4: Quality Validation (compare paths using SQI + traditional metrics)
-            from vitalDSP.signal_quality_assessment.signal_quality_index import (
-                SignalQualityIndex,
+            # Stage 4: Quality Validation - Use compute_sqi function from quality page
+            from vitalDSP_webapp.callbacks.analysis.quality_sqi_functions import (
+                compute_sqi,
             )
 
             processed_signals = pipeline_data.get("processed_signals", {})
 
-            # Get parameters from pipeline_data
-            stage4_sqi_methods = pipeline_data.get(
-                "stage4_sqi_methods",
-                ["snr", "amplitude_variability", "baseline_wander"],
-            )
-            sqi_metrics_weight = pipeline_data.get("sqi_metrics_weight", 0.5)
-            snr_method = pipeline_data.get("snr_method", "standard")
-            snr_weight = pipeline_data.get("snr_weight", 0.25)
-            smoothness_weight = pipeline_data.get("smoothness_weight", 0.15)
-            artifact_weight = pipeline_data.get("artifact_weight", 0.1)
+            # Get parameters from pipeline_data (now using quality page parameter structure)
+            sqi_type = pipeline_data.get("stage4_sqi_type", "snr_sqi")
+            window_size = pipeline_data.get("stage4_window_size", 1000)
+            step_size = pipeline_data.get("stage4_step_size", 500)
+            threshold_type = pipeline_data.get("stage4_threshold_type", "below")
+            threshold = pipeline_data.get("stage4_threshold", 0.7)
+            scale = pipeline_data.get("stage4_scale", "zscore")
+
+            # Build SQI parameters dictionary
+            sqi_params = {
+                "window_size": window_size,
+                "step_size": step_size,
+                "threshold": threshold,
+                "threshold_type": threshold_type,
+                "scale": scale,
+            }
 
             quality_metrics = {}
 
-            # Define SQI window parameters
-            sqi_window_seconds = 5
-            window_size = int(sqi_window_seconds * fs)
-            step_size = window_size // 2
+            logger.info(
+                f"Stage 4 - Computing {sqi_type} for {len(processed_signals)} processing paths"
+            )
+            logger.info(f"Stage 4 - Available paths: {list(processed_signals.keys())}")
+            logger.info(f"Stage 4 - SQI parameters: {sqi_params}")
 
+            # Compute SQI for each processing path
             for path_name, path_signal in processed_signals.items():
-                # Initialize SignalQualityIndex for this path
-                sqi = SignalQualityIndex(path_signal)
-
-                # Calculate SQI scores for selected methods
-                sqi_scores = {}
-                sqi_function_map = {
-                    "amplitude_variability": lambda: sqi.amplitude_variability_sqi(
-                        window_size, step_size, threshold=0.7
-                    ),
-                    "baseline_wander": lambda: sqi.baseline_wander_sqi(
-                        window_size, step_size, threshold=0.7
-                    ),
-                    "snr": lambda: sqi.snr_sqi(window_size, step_size, threshold=0.7),
-                    "zero_crossing": lambda: sqi.zero_crossing_consistency_sqi(
-                        window_size, step_size, threshold=0.7
-                    ),
-                    "entropy": lambda: sqi.entropy_sqi(
-                        window_size, step_size, threshold=0.7
-                    ),
-                    "kurtosis": lambda: sqi.kurtosis_sqi(
-                        window_size, step_size, threshold=0.7
-                    ),
-                    "skewness": lambda: sqi.skewness_sqi(
-                        window_size, step_size, threshold=0.7
-                    ),
-                }
-
-                for method in stage4_sqi_methods:
-                    if method in sqi_function_map:
-                        try:
-                            sqi_array, normal_segs, abnormal_segs = sqi_function_map[
-                                method
-                            ]()
-                            sqi_scores[method] = float(np.mean(sqi_array))
-                        except Exception as e:
-                            logger.warning(
-                                f"Stage 4 - {method} SQI failed for {path_name}: {e}"
-                            )
-                            sqi_scores[method] = 0.5
-
-                # Calculate average SQI score
-                avg_sqi_score = (
-                    np.mean(list(sqi_scores.values())) if sqi_scores else 0.5
-                )
-
-                # Calculate traditional SNR based on selected method
-                if snr_method == "standard":
-                    noise = path_signal - signal_data[: len(path_signal)]
-                    snr = float(np.var(path_signal) / (np.var(noise) + 1e-10))
-                elif snr_method == "rms":
-                    noise = path_signal - signal_data[: len(path_signal)]
-                    snr = float(
-                        np.sqrt(np.mean(path_signal**2))
-                        / (np.sqrt(np.mean(noise**2)) + 1e-10)
+                try:
+                    logger.info(
+                        f"Stage 4 - Computing {sqi_type} for path: {path_name} (signal length: {len(path_signal)})"
                     )
-                elif snr_method == "peak":
-                    noise = path_signal - signal_data[: len(path_signal)]
-                    snr = float(
-                        np.max(np.abs(path_signal)) / (np.max(np.abs(noise)) + 1e-10)
+
+                    # Use compute_sqi for consistent computation (same as Quality Page)
+                    path_quality_results = compute_sqi(
+                        path_signal, sqi_type, sqi_params, fs
                     )
-                else:
-                    snr = 1.0
 
-                snr_score = min(1.0, max(0.0, snr / 20.0))
+                    logger.info(
+                        f"Stage 4 - compute_sqi returned: {list(path_quality_results.keys())}"
+                    )
 
-                # Calculate smoothness
-                diff2 = np.diff(np.diff(path_signal))
-                smoothness = 1.0 / (1.0 + np.std(diff2))
-                smoothness_score = min(1.0, max(0.0, smoothness * 10))
+                    # Extract results
+                    sqi_values = path_quality_results.get("sqi_values", [])
+                    normal_segments = path_quality_results.get("normal_segments", [])
+                    abnormal_segments = path_quality_results.get(
+                        "abnormal_segments", []
+                    )
+                    overall_sqi = path_quality_results.get(
+                        "quality_score", 0.5
+                    )  # FIX: Use correct key from compute_sqi
 
-                # Calculate artifact level
-                diff1 = np.diff(path_signal)
-                artifact_ratio = np.sum(np.abs(diff1) > 3 * np.std(diff1)) / len(diff1)
-                artifact_score = 1.0 - min(1.0, artifact_ratio * 5)
+                    logger.info(
+                        f"Stage 4 - {path_name} overall_sqi before additional metrics: {overall_sqi}"
+                    )
 
-                # Weighted combination of all metrics
-                overall_quality = (
-                    sqi_metrics_weight * avg_sqi_score
-                    + snr_weight * snr_score
-                    + smoothness_weight * smoothness_score
-                    + artifact_weight * artifact_score
-                )
+                    # Compute additional quality metrics for visualization
+                    snr_score = 0.0
+                    smoothness_score = 0.0
+                    artifact_score = 0.0
 
-                quality_metrics[path_name] = {
-                    "sqi_scores": sqi_scores,
-                    "avg_sqi_score": float(avg_sqi_score),
-                    "snr": float(snr),
-                    "snr_score": float(snr_score),
-                    "smoothness_score": float(smoothness_score),
-                    "artifact_score": float(artifact_score),
-                    "overall_quality": float(overall_quality),
-                }
+                    try:
+                        # Estimate SNR from signal statistics
+                        signal_mean = np.mean(path_signal)
+                        signal_std = np.std(path_signal)
+                        if signal_std > 0:
+                            snr_score = min(
+                                abs(signal_mean) / signal_std, 1.0
+                            )  # Normalize to 0-1
 
-                logger.info(
-                    f"✓ {path_name}: Avg SQI={avg_sqi_score:.3f}, SNR={snr:.2f}, Overall Quality={overall_quality:.3f}"
-                )
+                        # Estimate smoothness from signal derivative
+                        signal_diff = np.diff(path_signal)
+                        smoothness_score = 1.0 / (
+                            1.0 + np.std(signal_diff)
+                        )  # Higher = smoother
+
+                        # Estimate artifact level (inverse of smoothness and SNR)
+                        artifact_score = 1.0 - (
+                            snr_score * 0.5 + smoothness_score * 0.5
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Could not compute additional metrics for {path_name}: {e}"
+                        )
+
+                    # Store results for this path
+                    quality_metrics[path_name] = {
+                        "sqi_type": sqi_type,
+                        "overall_quality": float(overall_sqi),
+                        "overall_sqi": float(overall_sqi),  # Alias for compatibility
+                        "snr_score": float(snr_score),
+                        "smoothness_score": float(smoothness_score),
+                        "artifact_score": float(artifact_score),
+                        "sqi_values": (
+                            sqi_values
+                            if isinstance(sqi_values, list)
+                            else sqi_values.tolist()
+                        ),
+                        "normal_segments": normal_segments,
+                        "abnormal_segments": abnormal_segments,
+                        "passed": overall_sqi >= threshold,
+                    }
+
+                    logger.info(
+                        f"✓ {path_name}: {sqi_type}={overall_sqi:.3f} "
+                        f"(normal: {len(normal_segments)}, abnormal: {len(abnormal_segments)})"
+                    )
+
+                except Exception as e:
+                    logger.error(
+                        f"Stage 4 - {sqi_type} failed for {path_name}: {e}",
+                        exc_info=True,
+                    )
+                    # Store failure result
+                    quality_metrics[path_name] = {
+                        "sqi_type": sqi_type,
+                        "overall_quality": 0.5,
+                        "overall_sqi": 0.5,
+                        "snr_score": 0.0,
+                        "smoothness_score": 0.0,
+                        "artifact_score": 0.0,
+                        "sqi_values": [],
+                        "normal_segments": [],
+                        "abnormal_segments": [],
+                        "passed": False,
+                        "error": str(e),
+                    }
 
             # Select best path based on overall quality
             best_path = (
@@ -444,14 +589,14 @@ def _execute_pipeline_stage(
                 "quality_metrics": quality_metrics,
                 "best_path": best_path,
                 "confidence": float(best_quality),
-                "snr_method": snr_method,
-                "weights": {
-                    "snr": snr_weight,
-                    "smoothness": smoothness_weight,
-                    "artifact": artifact_weight,
-                },
+                "sqi_type": sqi_type,
+                "sqi_params": sqi_params,
+                "num_paths_evaluated": len(quality_metrics),
             }
             pipeline_data["best_path"] = best_path
+            logger.info(
+                f"✓ Stage 4 - Best path selected: {best_path} (quality: {best_quality:.3f})"
+            )
             return True, result
 
         elif stage == 5:
@@ -528,7 +673,6 @@ def _execute_pipeline_stage(
         elif stage == 6:
             # Stage 6: Feature Extraction
             from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
-            from vitalDSP.transforms.fourier_transform import FourierTransform
 
             segments = pipeline_data.get("segments", [])
 
@@ -576,13 +720,30 @@ def _execute_pipeline_stage(
                     if "mad" in time_features_selected:
                         seg_features["mad"] = float(np.mean(np.abs(seg - np.mean(seg))))
                         feature_names_used.add("mad")
+                    if "energy" in time_features_selected:
+                        seg_features["energy"] = float(np.sum(seg**2))
+                        feature_names_used.add("energy")
+                    if "power" in time_features_selected:
+                        seg_features["power"] = float(np.mean(seg**2))
+                        feature_names_used.add("power")
+                    if "crest_factor" in time_features_selected:
+                        rms_val = np.sqrt(np.mean(seg**2))
+                        crest = (
+                            float(np.max(np.abs(seg)) / rms_val) if rms_val > 0 else 0
+                        )
+                        seg_features["crest_factor"] = crest
+                        feature_names_used.add("crest_factor")
 
                 # Frequency Domain Features
                 if "frequency" in feature_categories:
                     try:
-                        # Compute power spectral density using vitalDSP
-                        ft = FourierTransform(seg, fs=fs)
-                        freqs, psd = ft.compute_psd()
+                        # Compute power spectral density using vitalDSP SignalPowerAnalysis
+                        from vitalDSP.physiological_features.signal_power_analysis import (
+                            SignalPowerAnalysis,
+                        )
+
+                        spa = SignalPowerAnalysis(seg)
+                        freqs, psd = spa.compute_psd(fs=fs)
 
                         if "spectral_centroid" in frequency_features_selected:
                             spectral_centroid = np.sum(freqs * psd) / (
@@ -613,6 +774,33 @@ def _execute_pipeline_stage(
                             # Same as dominant freq
                             seg_features["peak_freq"] = float(freqs[np.argmax(psd)])
                             feature_names_used.add("peak_freq")
+
+                        if "spectral_bandwidth" in frequency_features_selected:
+                            # Calculate spectral bandwidth
+                            spectral_centroid = np.sum(freqs * psd) / (
+                                np.sum(psd) + 1e-10
+                            )
+                            spectral_bandwidth = np.sqrt(
+                                np.sum(((freqs - spectral_centroid) ** 2) * psd)
+                                / (np.sum(psd) + 1e-10)
+                            )
+                            seg_features["spectral_bandwidth"] = float(
+                                spectral_bandwidth
+                            )
+                            feature_names_used.add("spectral_bandwidth")
+
+                        if "spectral_rolloff" in frequency_features_selected:
+                            # Calculate spectral rolloff (85% energy threshold)
+                            cumsum_psd = np.cumsum(psd)
+                            rolloff_threshold = 0.85 * cumsum_psd[-1]
+                            rolloff_idx = np.where(cumsum_psd >= rolloff_threshold)[0]
+                            spectral_rolloff = (
+                                float(freqs[rolloff_idx[0]])
+                                if len(rolloff_idx) > 0
+                                else 0
+                            )
+                            seg_features["spectral_rolloff"] = spectral_rolloff
+                            feature_names_used.add("spectral_rolloff")
                     except Exception as e:
                         logger.warning(
                             f"Frequency feature extraction failed for segment {seg_idx}: {e}"
@@ -620,18 +808,14 @@ def _execute_pipeline_stage(
 
                 # Statistical Features
                 if "statistical" in feature_categories:
-                    tdf = TimeDomainFeatures(seg)
-                    stats_features = tdf.extract_all()
+                    # Use scipy.stats for statistical features (TimeDomainFeatures is for HRV)
+                    from scipy.stats import skew, kurtosis as kurt
 
                     if "skewness" in statistical_features_selected:
-                        seg_features["skewness"] = float(
-                            stats_features.get("skewness", 0)
-                        )
+                        seg_features["skewness"] = float(skew(seg))
                         feature_names_used.add("skewness")
                     if "kurtosis" in statistical_features_selected:
-                        seg_features["kurtosis"] = float(
-                            stats_features.get("kurtosis", 0)
-                        )
+                        seg_features["kurtosis"] = float(kurt(seg))
                         feature_names_used.add("kurtosis")
                     if "variance" in statistical_features_selected:
                         seg_features["variance"] = float(np.var(seg))
@@ -640,7 +824,9 @@ def _execute_pipeline_stage(
                         seg_features["median"] = float(np.median(seg))
                         feature_names_used.add("median")
                     if "iqr" in statistical_features_selected:
-                        seg_features["iqr"] = float(stats_features.get("iqr", 0))
+                        from scipy.stats import iqr
+
+                        seg_features["iqr"] = float(iqr(seg))
                         feature_names_used.add("iqr")
 
                 # Nonlinear Features (computationally expensive - simplified versions)
@@ -675,6 +861,110 @@ def _execute_pipeline_stage(
                         # Placeholder - Higuchi fractal dimension approximation
                         seg_features["fractal_dim"] = float(1.5)  # Placeholder
                         feature_names_used.add("fractal_dim")
+
+                # Morphological Features
+                morphological_features_selected = pipeline_data.get(
+                    "morphological_features", []
+                )
+                if (
+                    "morphological" in feature_categories
+                    and morphological_features_selected
+                ):
+                    try:
+                        from vitalDSP.physiological_features.waveform import (
+                            WaveformMorphology,
+                        )
+
+                        # Get signal type to determine waveform type
+                        signal_type = pipeline_data.get("signal_type", "ecg").upper()
+
+                        # Use WaveformMorphology class for physiological signal-specific peak detection
+                        # Constructor automatically detects peaks based on signal_type
+                        waveform = WaveformMorphology(
+                            seg, fs=fs, signal_type=signal_type
+                        )
+
+                        # Get peaks based on signal type (already detected in constructor)
+                        peaks = None
+                        if signal_type == "ECG":
+                            # For ECG: R-peaks already detected
+                            peaks = waveform.r_peaks
+                        elif signal_type == "PPG":
+                            # For PPG: systolic peaks already detected
+                            peaks = waveform.systolic_peaks
+                        elif signal_type == "EEG":
+                            # For EEG: general peaks
+                            peaks = waveform.eeg_peaks
+                        else:
+                            # For generic signals: use general PeakDetection
+                            from vitalDSP.utils.signal_processing.peak_detection import (
+                                PeakDetection,
+                            )
+
+                            peak_detector = PeakDetection(seg)
+                            peaks = peak_detector.detect_peaks()
+
+                        if (
+                            "num_peaks" in morphological_features_selected
+                            and peaks is not None
+                        ):
+                            seg_features["num_peaks"] = int(len(peaks))
+                            feature_names_used.add("num_peaks")
+
+                        if (
+                            "mean_peak_height" in morphological_features_selected
+                            and peaks is not None
+                            and len(peaks) > 0
+                        ):
+                            seg_features["mean_peak_height"] = float(
+                                np.mean(seg[peaks])
+                            )
+                            feature_names_used.add("mean_peak_height")
+
+                        # Detect valleys (troughs) based on signal type
+                        if any(
+                            f in morphological_features_selected
+                            for f in ["num_valleys", "mean_valley_depth"]
+                        ):
+                            valleys = None
+                            if signal_type == "ECG":
+                                # For ECG: detect S-valleys
+                                valleys = waveform.detect_s_valley()
+                            elif signal_type == "PPG":
+                                # For PPG: detect troughs between systolic peaks
+                                valleys = waveform.detect_troughs(
+                                    systolic_peaks=waveform.systolic_peaks
+                                )
+                            else:
+                                # For other signals: use inverted peak detection
+                                from vitalDSP.utils.signal_processing.peak_detection import (
+                                    PeakDetection,
+                                )
+
+                                valley_detector = PeakDetection(-seg)
+                                valleys = valley_detector.detect_peaks()
+
+                            if (
+                                "num_valleys" in morphological_features_selected
+                                and valleys is not None
+                            ):
+                                seg_features["num_valleys"] = int(len(valleys))
+                                feature_names_used.add("num_valleys")
+
+                            if (
+                                "mean_valley_depth" in morphological_features_selected
+                                and valleys is not None
+                                and len(valleys) > 0
+                            ):
+                                seg_features["mean_valley_depth"] = float(
+                                    np.mean(seg[valleys])
+                                )
+                                feature_names_used.add("mean_valley_depth")
+
+                    except Exception as e:
+                        logger.warning(
+                            f"Morphological feature extraction failed for segment {seg_idx}: {e}"
+                        )
 
                 features.append(seg_features)
 
@@ -923,11 +1213,51 @@ def _execute_pipeline_stage(
             return False, f"Unknown stage: {stage}"
 
     except Exception as e:
-        logger.error(f"Error in stage {stage}: {e}")
+        # Provide detailed error information for debugging
+        stage_names = {
+            1: "Data Ingestion",
+            2: "Quality Screening",
+            3: "Filtering",
+            4: "Quality Validation",
+            5: "Segmentation",
+            6: "Feature Extraction",
+            7: "Intelligent Output",
+            8: "Output Package",
+        }
+        stage_name = stage_names.get(stage, f"Stage {stage}")
+
+        logger.error(f"❌ Error in {stage_name} (Stage {stage}): {e}")
         import traceback
 
-        logger.error(traceback.format_exc())
-        return False, str(e)
+        logger.error(f"Full traceback:\n{traceback.format_exc()}")
+
+        # Return user-friendly error message
+        error_type = type(e).__name__
+        error_msg = str(e)
+
+        # Provide helpful context based on error type
+        if "name" in error_msg and "not defined" in error_msg:
+            return (
+                False,
+                f"{error_type}: {error_msg}\n\nThis is likely a parameter configuration issue. Please report this bug.",
+            )
+        elif "KeyError" in error_type:
+            return (
+                False,
+                f"Missing required parameter: {error_msg}\n\nPlease check stage configuration.",
+            )
+        elif "ValueError" in error_type:
+            return (
+                False,
+                f"Invalid parameter value: {error_msg}\n\nPlease adjust stage parameters.",
+            )
+        elif "TypeError" in error_type:
+            return (
+                False,
+                f"Parameter type mismatch: {error_msg}\n\nPlease check parameter types.",
+            )
+        else:
+            return False, f"{error_type}: {error_msg}"
 
 
 def register_pipeline_callbacks(app):
@@ -939,6 +1269,81 @@ def register_pipeline_callbacks(app):
     app : Dash
         The Dash application instance
     """
+
+    # Stage 3 Filtering - Branching Logic Callback
+    @app.callback(
+        [
+            Output("pipeline-stage3-traditional-params", "style"),
+            Output("pipeline-stage3-advanced-params", "style"),
+            Output("pipeline-stage3-artifact-params", "style"),
+            Output("pipeline-stage3-neural-params", "style"),
+            Output("pipeline-stage3-ensemble-params", "style"),
+        ],
+        Input("pipeline-stage3-filter-type", "value"),
+    )
+    def update_stage3_params_visibility(filter_type):
+        """
+        Update visibility of Stage 3 parameter sections based on filter type selection.
+
+        Parameters
+        ----------
+        filter_type : str
+            Selected filter type ('traditional', 'advanced', 'artifact', 'neural', 'ensemble')
+
+        Returns
+        -------
+        tuple
+            Style dictionaries for each parameter section
+        """
+        # Initialize all sections as hidden
+        styles = {
+            "traditional": {"display": "none"},
+            "advanced": {"display": "none"},
+            "artifact": {"display": "none"},
+            "neural": {"display": "none"},
+            "ensemble": {"display": "none"},
+        }
+
+        # Show the selected filter type's parameters
+        if filter_type in styles:
+            styles[filter_type] = {"display": "block"}
+
+        return (
+            styles["traditional"],
+            styles["advanced"],
+            styles["artifact"],
+            styles["neural"],
+            styles["ensemble"],
+        )
+
+    # Stage 3 Advanced Filter Method - Sub-branching Logic Callback
+    @app.callback(
+        [
+            Output("pipeline-stage3-kalman-params", "style"),
+            Output("pipeline-stage3-adaptive-params", "style"),
+        ],
+        Input("pipeline-stage3-advanced-method", "value"),
+    )
+    def update_advanced_method_params(advanced_method):
+        """
+        Update visibility of advanced method parameters based on selected method.
+
+        Parameters
+        ----------
+        advanced_method : str
+            Selected advanced filter method
+
+        Returns
+        -------
+        tuple
+            Style dictionaries for kalman and adaptive parameter sections
+        """
+        kalman_style = {"display": "block" if advanced_method == "kalman" else "none"}
+        adaptive_style = {
+            "display": "block" if advanced_method == "adaptive" else "none"
+        }
+
+        return kalman_style, adaptive_style
 
     @app.callback(
         [
@@ -960,36 +1365,60 @@ def register_pipeline_callbacks(app):
         ],
         [
             State("pipeline-signal-type", "value"),
-            State("pipeline-paths", "value"),
+            State("pipeline-path-selector", "value"),
             State("pipeline-enable-quality", "value"),
             State("pipeline-current-stage", "data"),
             State("store-uploaded-data", "data"),
             # Stage 2 parameters - Quality Screening
-            State("pipeline-sqi-methods", "value"),
-            State("pipeline-sqi-window", "value"),
-            State("pipeline-sqi-step", "value"),
-            State("pipeline-quality-threshold", "value"),
-            State("pipeline-sqi-scale", "value"),
-            # Stage 3 parameters - Filtering
-            State("pipeline-filter-type", "value"),
-            State("pipeline-filter-lowcut", "value"),
-            State("pipeline-filter-highcut", "value"),
-            State("pipeline-filter-order", "value"),
-            State("pipeline-filter-rp", "value"),
-            State("pipeline-filter-rs", "value"),
-            # Stage 3 parameters - Artifact Removal
-            State("pipeline-artifact-method", "value"),
-            State("pipeline-baseline-cutoff", "value"),
-            State("pipeline-median-kernel", "value"),
-            State("pipeline-wavelet-type", "value"),
-            State("pipeline-wavelet-order", "value"),
+            State("pipeline-stage2-sqi-type", "value"),
+            State("pipeline-stage2-window-size", "value"),
+            State("pipeline-stage2-step-size", "value"),
+            State("pipeline-stage2-threshold-type", "value"),
+            State("pipeline-stage2-threshold", "value"),
+            State("pipeline-stage2-scale", "value"),
+            # Stage 3 parameters - Comprehensive Filtering
+            State("pipeline-stage3-filter-type", "value"),
+            State("pipeline-stage3-detrend", "value"),
+            State("pipeline-stage3-signal-source", "value"),
+            State("pipeline-stage3-application-count", "value"),
+            # Traditional filter parameters
+            State("pipeline-stage3-filter-family", "value"),
+            State("pipeline-stage3-filter-response", "value"),
+            State("pipeline-stage3-filter-lowcut", "value"),
+            State("pipeline-stage3-filter-highcut", "value"),
+            State("pipeline-stage3-filter-order", "value"),
+            State("pipeline-stage3-filter-rp", "value"),
+            State("pipeline-stage3-filter-rs", "value"),
+            State("pipeline-stage3-savgol-window", "value"),
+            State("pipeline-stage3-savgol-polyorder", "value"),
+            State("pipeline-stage3-moving-avg-window", "value"),
+            State("pipeline-stage3-gaussian-sigma", "value"),
+            # Advanced filter parameters
+            State("pipeline-stage3-advanced-method", "value"),
+            State("pipeline-stage3-kalman-r", "value"),
+            State("pipeline-stage3-kalman-q", "value"),
+            State("pipeline-stage3-adaptive-mu", "value"),
+            State("pipeline-stage3-adaptive-order", "value"),
+            # Artifact removal parameters
+            State("pipeline-stage3-artifact-type", "value"),
+            State("pipeline-stage3-artifact-strength", "value"),
+            State("pipeline-stage3-wavelet-type", "value"),
+            State("pipeline-stage3-wavelet-level", "value"),
+            State("pipeline-stage3-threshold-type", "value"),
+            State("pipeline-stage3-threshold-value", "value"),
+            # Neural network parameters
+            State("pipeline-stage3-neural-type", "value"),
+            State("pipeline-stage3-neural-complexity", "value"),
+            # Ensemble parameters
+            State("pipeline-stage3-ensemble-method", "value"),
+            State("pipeline-stage3-ensemble-n-filters", "value"),
             # Stage 4 parameters - Quality Validation
-            State("pipeline-stage4-sqi-methods", "value"),
-            State("pipeline-sqi-metrics-weight", "value"),
-            State("pipeline-snr-method", "value"),
-            State("pipeline-snr-weight", "value"),
-            State("pipeline-smoothness-weight", "value"),
-            State("pipeline-artifact-weight", "value"),
+            State("pipeline-stage4-sqi-type", "value"),
+            State("pipeline-stage4-window-size", "value"),
+            State("pipeline-stage4-step-size", "value"),
+            State("pipeline-stage4-threshold-type", "value"),
+            State("pipeline-stage4-threshold", "value"),
+            State("pipeline-stage4-scale", "value"),
             # Stage 5 parameters - Segmentation
             State("pipeline-window-size", "value"),
             State("pipeline-overlap-ratio", "value"),
@@ -1001,6 +1430,7 @@ def register_pipeline_callbacks(app):
             State("pipeline-frequency-features", "value"),
             State("pipeline-nonlinear-features", "value"),
             State("pipeline-statistical-features", "value"),
+            State("pipeline-morphological-features", "value"),
             # Stage 7 parameters - Intelligent Output
             State("pipeline-selection-criterion", "value"),
             State("pipeline-confidence-threshold", "value"),
@@ -1023,31 +1453,55 @@ def register_pipeline_callbacks(app):
         current_stage,
         uploaded_data,
         # Stage 2 parameters - Quality Screening
-        sqi_methods,
-        sqi_window,
-        sqi_step,
-        quality_threshold,
-        sqi_scale,
-        # Stage 3 parameters - Filtering
-        filter_type,
-        filter_lowcut,
-        filter_highcut,
-        filter_order,
-        filter_rp,
-        filter_rs,
-        # Stage 3 parameters - Artifact Removal
-        artifact_method,
-        baseline_cutoff,
-        median_kernel,
-        wavelet_type,
-        wavelet_order,
+        stage2_sqi_type,
+        stage2_window_size,
+        stage2_step_size,
+        stage2_threshold_type,
+        stage2_threshold,
+        stage2_scale,
+        # Stage 3 parameters - Comprehensive Filtering
+        stage3_filter_type,
+        stage3_detrend,
+        stage3_signal_source,
+        stage3_application_count,
+        # Traditional filter parameters
+        stage3_filter_family,
+        stage3_filter_response,
+        stage3_filter_lowcut,
+        stage3_filter_highcut,
+        stage3_filter_order,
+        stage3_filter_rp,
+        stage3_filter_rs,
+        stage3_savgol_window,
+        stage3_savgol_polyorder,
+        stage3_moving_avg_window,
+        stage3_gaussian_sigma,
+        # Advanced filter parameters
+        stage3_advanced_method,
+        stage3_kalman_r,
+        stage3_kalman_q,
+        stage3_adaptive_mu,
+        stage3_adaptive_order,
+        # Artifact removal parameters
+        stage3_artifact_type,
+        stage3_artifact_strength,
+        stage3_wavelet_type,
+        stage3_wavelet_level,
+        stage3_threshold_type,
+        stage3_threshold_value,
+        # Neural network parameters
+        stage3_neural_type,
+        stage3_neural_complexity,
+        # Ensemble parameters
+        stage3_ensemble_method,
+        stage3_ensemble_n_filters,
         # Stage 4 parameters - Quality Validation
-        stage4_sqi_methods,
-        sqi_metrics_weight,
-        snr_method,
-        snr_weight,
-        smoothness_weight,
-        artifact_weight,
+        stage4_sqi_type,
+        stage4_window_size,
+        stage4_step_size,
+        stage4_threshold_type,
+        stage4_threshold,
+        stage4_scale,
         # Stage 5 parameters - Segmentation
         window_size,
         overlap_ratio,
@@ -1059,6 +1513,7 @@ def register_pipeline_callbacks(app):
         frequency_features,
         nonlinear_features,
         statistical_features,
+        morphological_features,
         # Stage 7 parameters - Intelligent Output
         selection_criterion,
         confidence_threshold,
@@ -1110,7 +1565,9 @@ def register_pipeline_callbacks(app):
 
             # First, try data service (more reliable for large files)
             try:
-                from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+                from vitalDSP_webapp.services.data.enhanced_data_service import (
+                    get_enhanced_data_service,
+                )
 
                 data_service = get_enhanced_data_service()
 
@@ -1148,8 +1605,7 @@ def register_pipeline_callbacks(app):
             # Fallback: try uploaded_data store (for smaller files)
             if not data_loaded and uploaded_data:
                 try:
-                    import pandas as pd
-
+                    # pandas is already imported at the top of the file
                     if isinstance(uploaded_data, list) and len(uploaded_data) > 0:
                         df = pd.DataFrame(uploaded_data)
                         logger.info(
@@ -1245,7 +1701,6 @@ def register_pipeline_callbacks(app):
                 # Store signal data and config in session for pipeline to access
                 # We'll use a simple approach: store in a global dict keyed by a new pipeline_run_id
                 import hashlib
-                import time
 
                 pipeline_run_id = hashlib.md5(f"{time.time()}".encode()).hexdigest()[:8]
 
@@ -1266,33 +1721,55 @@ def register_pipeline_callbacks(app):
                     "total_stages": 8,
                     "results": {},
                     # Stage 2 parameters - Quality Screening
-                    "sqi_methods": sqi_methods
-                    or ["amplitude_variability", "baseline_wander", "snr"],
-                    "sqi_window": sqi_window or 5,
-                    "sqi_step": sqi_step or 2.5,
-                    "quality_threshold": quality_threshold or 0.7,
-                    "sqi_scale": sqi_scale or "zscore",
-                    # Stage 3 parameters - Filtering
-                    "filter_type": filter_type or "butter",
-                    "filter_lowcut": filter_lowcut or 0.5,
-                    "filter_highcut": filter_highcut or 40,
-                    "filter_order": filter_order or 4,
-                    "filter_rp": filter_rp or 1,
-                    "filter_rs": filter_rs or 40,
-                    # Stage 3 parameters - Artifact Removal
-                    "artifact_method": artifact_method or "baseline_correction",
-                    "baseline_cutoff": baseline_cutoff or 0.5,
-                    "median_kernel": median_kernel or 5,
-                    "wavelet_type": wavelet_type or "db",
-                    "wavelet_order": wavelet_order or 4,
+                    "stage2_sqi_type": stage2_sqi_type or "snr_sqi",
+                    "stage2_window_size": stage2_window_size or 1000,
+                    "stage2_step_size": stage2_step_size or 500,
+                    "stage2_threshold_type": stage2_threshold_type or "below",
+                    "stage2_threshold": stage2_threshold or 0.7,
+                    "stage2_scale": stage2_scale or "zscore",
+                    # Stage 3 parameters - Comprehensive Filtering
+                    "stage3_filter_type": stage3_filter_type or "traditional",
+                    "stage3_detrend": "detrend" in (stage3_detrend or []),
+                    "stage3_signal_source": stage3_signal_source or "original",
+                    "stage3_application_count": stage3_application_count or 1,
+                    # Traditional filter parameters
+                    "stage3_filter_family": stage3_filter_family or "butter",
+                    "stage3_filter_response": stage3_filter_response or "bandpass",
+                    "stage3_filter_lowcut": stage3_filter_lowcut or 0.5,
+                    "stage3_filter_highcut": stage3_filter_highcut or 40,
+                    "stage3_filter_order": stage3_filter_order or 4,
+                    "stage3_filter_rp": stage3_filter_rp or 1,
+                    "stage3_filter_rs": stage3_filter_rs or 40,
+                    "stage3_savgol_window": stage3_savgol_window,
+                    "stage3_savgol_polyorder": stage3_savgol_polyorder or 2,
+                    "stage3_moving_avg_window": stage3_moving_avg_window,
+                    "stage3_gaussian_sigma": stage3_gaussian_sigma,
+                    # Advanced filter parameters
+                    "stage3_advanced_method": stage3_advanced_method or "kalman",
+                    "stage3_kalman_r": stage3_kalman_r or 1.0,
+                    "stage3_kalman_q": stage3_kalman_q or 1.0,
+                    "stage3_adaptive_mu": stage3_adaptive_mu or 0.01,
+                    "stage3_adaptive_order": stage3_adaptive_order or 4,
+                    # Artifact removal parameters
+                    "stage3_artifact_type": stage3_artifact_type or "baseline",
+                    "stage3_artifact_strength": stage3_artifact_strength or 0.5,
+                    "stage3_wavelet_type": stage3_wavelet_type or "db4",
+                    "stage3_wavelet_level": stage3_wavelet_level or 3,
+                    "stage3_threshold_type": stage3_threshold_type or "soft",
+                    "stage3_threshold_value": stage3_threshold_value or 0.1,
+                    # Neural network parameters
+                    "stage3_neural_type": stage3_neural_type or "autoencoder",
+                    "stage3_neural_complexity": stage3_neural_complexity or "medium",
+                    # Ensemble parameters
+                    "stage3_ensemble_method": stage3_ensemble_method or "mean",
+                    "stage3_ensemble_n_filters": stage3_ensemble_n_filters or 3,
                     # Stage 4 parameters - Quality Validation
-                    "stage4_sqi_methods": stage4_sqi_methods
-                    or ["snr", "amplitude_variability", "baseline_wander"],
-                    "sqi_metrics_weight": sqi_metrics_weight or 0.5,
-                    "snr_method": snr_method or "standard",
-                    "snr_weight": snr_weight or 0.25,
-                    "smoothness_weight": smoothness_weight or 0.15,
-                    "artifact_weight": artifact_weight or 0.1,
+                    "stage4_sqi_type": stage4_sqi_type or "snr_sqi",
+                    "stage4_window_size": stage4_window_size or 1000,
+                    "stage4_step_size": stage4_step_size or 500,
+                    "stage4_threshold_type": stage4_threshold_type or "below",
+                    "stage4_threshold": stage4_threshold or 0.7,
+                    "stage4_scale": stage4_scale or "zscore",
                     # Stage 5 parameters - Segmentation
                     "window_size": window_size or 30,
                     "overlap_ratio": overlap_ratio or 0.5,
@@ -1306,6 +1783,7 @@ def register_pipeline_callbacks(app):
                     "nonlinear_features": nonlinear_features or ["sample_entropy"],
                     "statistical_features": statistical_features
                     or ["skewness", "kurtosis"],
+                    "morphological_features": morphological_features or [],
                     # Stage 7 parameters - Intelligent Output
                     "selection_criterion": selection_criterion or "best_quality",
                     "confidence_threshold": confidence_threshold or 0.7,
@@ -1550,6 +2028,8 @@ def register_pipeline_callbacks(app):
                             # Mark pipeline as completed
                             pipeline_data["completed"] = True
                             pipeline_data["completion_time"] = time.time()
+                            # Force trigger plot updates by updating current_stage in pipeline_data
+                            pipeline_data["current_stage"] = 8
                             return (
                                 {"display": "block"},
                                 100,
@@ -1559,9 +2039,11 @@ def register_pipeline_callbacks(app):
                                 False,  # Enable export
                                 False,  # Enable report
                                 True,  # Disable interval
-                                pipeline_run_id,
+                                pipeline_run_id,  # Keep pipeline_run_id for consistency
                             )
 
+                        # Update current_stage in pipeline_data
+                        pipeline_data["current_stage"] = new_stage
                         return (
                             {"display": "block"},
                             progress,
@@ -1571,15 +2053,44 @@ def register_pipeline_callbacks(app):
                             True,
                             True,
                             False,  # Keep interval enabled
-                            pipeline_run_id,
+                            pipeline_run_id,  # Keep pipeline_run_id for consistency
                         )
                     else:
-                        # Stage failed
-                        logger.error(f"❌ Stage {new_stage} failed!")
+                        # Stage failed - provide detailed user-friendly error message
+                        stage_names = [
+                            "Data Ingestion",
+                            "Quality Screening",
+                            "Filtering",
+                            "Quality Validation",
+                            "Segmentation",
+                            "Feature Extraction",
+                            "Intelligent Output",
+                            "Output Package",
+                        ]
+                        stage_name = (
+                            stage_names[new_stage - 1]
+                            if new_stage <= 8
+                            else f"Stage {new_stage}"
+                        )
+
+                        # Extract meaningful error message
+                        error_msg = str(result)
+                        if len(error_msg) > 200:
+                            error_msg = error_msg[:200] + "..."
+
+                        user_message = (
+                            f"❌ Error in {stage_name} (Stage {new_stage})\n\n"
+                            f"📋 Details: {error_msg}\n\n"
+                            f"💡 Tip: Check console logs for full details or try adjusting stage parameters."
+                        )
+
+                        logger.error(
+                            f"❌ Stage {new_stage} ({stage_name}) failed: {result}"
+                        )
                         return (
                             {"display": "block"},
                             (current_stage_num / 8) * 100,
-                            f"Error at stage {new_stage}: {result}",
+                            user_message,
                             False,
                             True,
                             True,
@@ -2011,16 +2522,20 @@ def register_pipeline_callbacks(app):
 
         return html.Div("No stage information available.")
 
+    # OLD CALLBACK - Replaced by Phase B update_path_signal_comparison callback
+    # The old pipeline-paths-comparison component was removed and replaced with
+    # the new path-comparison-signal-plot component in Phase B
+    """
     @app.callback(
         Output("pipeline-paths-comparison", "figure"),
         [Input("pipeline-current-stage", "data")],
         [
-            State("pipeline-paths", "value"),
+            State("pipeline-path-selector", "value"),
             State("store-uploaded-data", "data"),
         ],
     )
-    def update_paths_comparison(current_stage, selected_paths, uploaded_data):
-        """
+    def update_paths_comparison_OLD(current_stage, selected_paths, uploaded_data):
+        '''
         Create comparison plot of different processing paths.
         Shows real pipeline data when available, falls back to simulation data.
 
@@ -2031,7 +2546,7 @@ def register_pipeline_callbacks(app):
         - Falls back to simple scaling if vitalDSP not available
         - Limits visualization to first 10 seconds for performance
         - Maintains proper time axis based on data's sampling frequency
-        """
+        '''
         # Only show after stage 3 (parallel processing)
         stage_num = _get_stage_number(current_stage)
         if stage_num < 3:
@@ -2280,6 +2795,7 @@ def register_pipeline_callbacks(app):
                 legend={"x": 0, "y": 1},
             ),
         }
+    """
 
     @app.callback(
         Output("pipeline-quality-results", "children"),
@@ -2912,7 +3428,7 @@ def register_pipeline_callbacks(app):
                 )
 
         fig.update_layout(
-            title=f"Stage 5: Signal Segmentation ({len(segment_positions)} segments)",
+            title=f"Stage 5: Signal Segmentation - {best_path.upper()} Path ({len(segment_positions)} segments)",
             xaxis_title="Time (s)",
             yaxis_title="Amplitude",
             hovermode="x unified",
@@ -2932,7 +3448,11 @@ def register_pipeline_callbacks(app):
     )
     def update_stage6_plot(current_stage):
         """
-        Display Stage 6: Feature Extraction Heatmap.
+        Display Stage 6: Feature Extraction with multiple visualizations.
+        Creates a subplot figure with:
+        1. Feature heatmap across segments
+        2. Feature statistics (mean, std) bar chart
+        3. Feature distribution box plots
         """
         stage_num = _get_stage_number(current_stage)
         if stage_num < 6:
@@ -2951,6 +3471,7 @@ def register_pipeline_callbacks(app):
         features = pipeline_data.get("features", [])
         stage6_results = pipeline_data.get("results", {}).get("stage_6", {})
         feature_names = stage6_results.get("feature_names", [])
+        best_path = pipeline_data.get("best_path", "unknown")
 
         if not features or not feature_names:
             return {}, {"display": "none"}
@@ -2967,24 +3488,144 @@ def register_pipeline_callbacks(app):
 
         feature_matrix = np.array(feature_matrix).T  # Transpose for features as rows
 
-        # Create heatmap
-        fig = go.Figure(
-            data=go.Heatmap(
-                z=feature_matrix,
-                x=[f"Seg {i+1}" for i in range(len(features_limited))],
-                y=feature_names,
-                colorscale="Viridis",
-                hovertemplate="Feature: %{y}<br>Segment: %{x}<br>Value: %{z:.3f}<extra></extra>",
-            )
+        # Calculate feature statistics across all segments
+        all_feature_matrix = []
+        for feat_dict in features:
+            row = [feat_dict.get(fname, 0) for fname in feature_names]
+            all_feature_matrix.append(row)
+        all_feature_matrix = np.array(all_feature_matrix)
+
+        feature_means = np.mean(all_feature_matrix, axis=0)
+        feature_stds = np.std(all_feature_matrix, axis=0)
+
+        # Normalize feature matrix using z-score for better visualization
+        # This handles features with spiking variance
+        feature_matrix_normalized = np.copy(feature_matrix)
+        for i in range(len(feature_names)):
+            feat_mean = feature_means[i]
+            feat_std = feature_stds[i]
+            if feat_std > 1e-10:  # Avoid division by zero
+                feature_matrix_normalized[i, :] = (
+                    feature_matrix[i, :] - feat_mean
+                ) / feat_std
+            else:
+                feature_matrix_normalized[i, :] = 0
+
+        # Calculate coefficient of variation to identify high-variance features
+        cv = np.abs(feature_stds / (feature_means + 1e-10))
+
+        # Create subplots: 2 rows, 2 columns
+        from plotly.subplots import make_subplots
+
+        fig = make_subplots(
+            rows=2,
+            cols=2,
+            subplot_titles=(
+                f"Normalized Heatmap ({best_path.upper()}, Z-scored)",
+                "Mean Values (Log Scale)",
+                "Coefficient of Variation",
+                "Top 10 Variable Features",
+            ),
+            specs=[
+                [{"type": "heatmap"}, {"type": "bar"}],
+                [{"type": "bar"}, {"type": "box"}],
+            ],
+            vertical_spacing=0.18,  # Increased from 0.15
+            horizontal_spacing=0.15,  # Increased from 0.12
         )
 
-        fig.update_layout(
-            title=f"Stage 6: Feature Extraction Heatmap ({len(features)} segments total, showing first 50)",
-            xaxis_title="Segment",
-            yaxis_title="Feature",
-            template="plotly_white",
-            height=max(400, len(feature_names) * 20),
+        # 1. Normalized Feature Heatmap (z-scored)
+        # This ensures all features are on the same scale regardless of magnitude
+        fig.add_trace(
+            go.Heatmap(
+                z=feature_matrix_normalized,
+                x=[f"S{i+1}" for i in range(len(features_limited))],
+                y=feature_names,
+                colorscale="RdBu_r",  # Diverging colorscale for z-scores
+                zmid=0,  # Center at 0 (mean)
+                customdata=feature_matrix,  # Store original values for hover
+                hovertemplate="Feature: %{y}<br>Segment: %{x}<br>Z-score: %{z:.2f}<br>Original: %{customdata:.3f}<extra></extra>",
+                showscale=True,
+                colorbar=dict(x=0.46, len=0.4, y=0.75, title="Z-score"),
+            ),
+            row=1,
+            col=1,
         )
+
+        # 2. Feature Mean Values (Log Scale for better visibility)
+        # Add small epsilon to avoid log(0)
+        feature_means_safe = np.abs(feature_means) + 1e-10
+
+        fig.add_trace(
+            go.Bar(
+                x=feature_names,
+                y=feature_means_safe,
+                marker_color="#3498DB",
+                name="Mean",
+                customdata=feature_means,  # Store original values
+                hovertemplate="Feature: %{x}<br>Mean: %{customdata:.4e}<extra></extra>",
+            ),
+            row=1,
+            col=2,
+        )
+
+        # 3. Coefficient of Variation (shows relative variability)
+        # CV = std/mean, indicates which features vary most relative to their magnitude
+        fig.add_trace(
+            go.Bar(
+                x=feature_names,
+                y=cv,
+                marker_color="#2ECC71",
+                name="CV",
+                hovertemplate="Feature: %{x}<br>CV: %{y:.3f}<br>(High CV = High variability)<extra></extra>",
+            ),
+            row=2,
+            col=1,
+        )
+
+        # 4. Box plots for top 10 most variable features (by CV)
+        top_cv_indices = np.argsort(cv)[-10:][::-1]
+        for idx in top_cv_indices:
+            feat_name = feature_names[idx]
+            feat_values = all_feature_matrix[:, idx]
+
+            fig.add_trace(
+                go.Box(
+                    y=feat_values,
+                    name=feat_name,
+                    boxmean="sd",  # Show mean and std
+                    hovertemplate=f"{feat_name}<br>Value: %{{y:.3f}}<extra></extra>",
+                ),
+                row=2,
+                col=2,
+            )
+
+        # Update layout
+        fig.update_layout(
+            title_text=f"Stage 6: Feature Extraction Analysis - {best_path.upper()} Path ({len(features)} segments, {len(feature_names)} features)",
+            showlegend=False,
+            template="plotly_white",
+            height=1000,  # Increased from 900 to prevent overlap
+            margin=dict(t=120, b=80, l=80, r=80),  # Add margins to prevent clipping
+        )
+
+        # Update x-axes
+        fig.update_xaxes(title_text="Segment", row=1, col=1, tickangle=45)
+        fig.update_xaxes(
+            title_text="Feature", row=1, col=2, tickangle=45, tickfont=dict(size=8)
+        )
+        fig.update_xaxes(
+            title_text="Feature", row=2, col=1, tickangle=45, tickfont=dict(size=8)
+        )
+        fig.update_xaxes(
+            title_text="Feature", row=2, col=2, tickangle=45, tickfont=dict(size=8)
+        )
+
+        # Update y-axes
+        fig.update_yaxes(title_text="Feature", row=1, col=1, tickfont=dict(size=8))
+        fig.update_yaxes(title_text="Mean Value (Log Scale)", row=1, col=2, type="log")
+        fig.update_yaxes(title_text="Coefficient of Variation", row=2, col=1)
+        fig.update_yaxes(title_text="Feature Value", row=2, col=2)
 
         return fig, {"display": "block"}
 
@@ -2999,6 +3640,10 @@ def register_pipeline_callbacks(app):
         """
         Export pipeline results to JSON/CSV files.
         """
+        logger.info(
+            f"Export button clicked: n_clicks={n_clicks}, current_stage={current_stage}"
+        )
+
         if n_clicks is None:
             return no_update
 
@@ -3006,6 +3651,8 @@ def register_pipeline_callbacks(app):
         pipeline_run_id = getattr(
             register_pipeline_callbacks, "current_pipeline_run_id", None
         )
+        logger.info(f"Pipeline run ID for export: {pipeline_run_id}")
+
         if not pipeline_run_id:
             logger.warning("No pipeline run ID found for export")
             return no_update
@@ -3014,16 +3661,177 @@ def register_pipeline_callbacks(app):
         pipeline_data = register_pipeline_callbacks.pipeline_data.get(
             pipeline_run_id, {}
         )
+        logger.info(f"Pipeline data keys: {list(pipeline_data.keys())}")
+
         output_package = pipeline_data.get("output_package", {})
+        logger.info(
+            f"Output package keys: {list(output_package.keys()) if output_package else 'None'}"
+        )
 
         if not output_package:
-            logger.warning("No output package found for export")
-            return no_update
+            logger.warning(
+                "No output package found for export - creating one from results"
+            )
+            # Fallback: create output package from available results
+            output_package = {
+                "results": pipeline_data.get("results", {}),
+                "features": pipeline_data.get("features", []),
+                "segments": pipeline_data.get("segments", []),
+                "metadata": {
+                    "signal_type": pipeline_data.get("signal_type", "unknown"),
+                    "fs": pipeline_data.get("fs", 0),
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                },
+            }
+
+        # Add comprehensive stage configurations to output package
+        stage_configurations = {
+            "pipeline_metadata": {
+                "pipeline_run_id": pipeline_run_id,
+                "signal_type": pipeline_data.get("signal_type", "unknown"),
+                "sampling_frequency": pipeline_data.get("fs", 0),
+                "processing_paths": pipeline_data.get("paths", []),
+                "quality_validation_enabled": pipeline_data.get(
+                    "enable_quality", False
+                ),
+                "export_timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "total_stages": pipeline_data.get("total_stages", 8),
+                "completed_stage": pipeline_data.get("current_stage", 0),
+            },
+            "stage_1_data_ingestion": {
+                "description": "Load and validate input signal data",
+                "signal_length": len(pipeline_data.get("signal_data", [])),
+                "signal_type": pipeline_data.get("signal_type", "unknown"),
+                "sampling_frequency": pipeline_data.get("fs", 0),
+            },
+            "stage_2_quality_screening": {
+                "description": "Initial quality assessment and bad segment detection",
+                "enabled": pipeline_data.get("enable_quality", False),
+                "sqi_type": pipeline_data.get("stage2_sqi_type", "snr_sqi"),
+                "window_size": pipeline_data.get("stage2_window_size", 1000),
+                "step_size": pipeline_data.get("stage2_step_size", 500),
+                "threshold_type": pipeline_data.get("stage2_threshold_type", "below"),
+                "threshold": pipeline_data.get("stage2_threshold", 0.7),
+                "scale": pipeline_data.get("stage2_scale", "zscore"),
+            },
+            "stage_3_comprehensive_filtering": {
+                "description": "Apply filtering and artifact removal to each processing path",
+                "filter_type": pipeline_data.get("stage3_filter_type", "traditional"),
+                "detrend_enabled": pipeline_data.get("stage3_detrend", False),
+                "signal_source": pipeline_data.get("stage3_signal_source", "original"),
+                "application_count": pipeline_data.get("stage3_application_count", 1),
+                "traditional_filter": {
+                    "family": pipeline_data.get("stage3_filter_family", "butter"),
+                    "response_type": pipeline_data.get(
+                        "stage3_filter_response", "bandpass"
+                    ),
+                    "lowcut_frequency": pipeline_data.get("stage3_filter_lowcut", 0.5),
+                    "highcut_frequency": pipeline_data.get("stage3_filter_highcut", 40),
+                    "order": pipeline_data.get("stage3_filter_order", 4),
+                    "passband_ripple": pipeline_data.get("stage3_filter_rp", 1),
+                    "stopband_attenuation": pipeline_data.get("stage3_filter_rs", 40),
+                },
+                "smoothing_filters": {
+                    "savgol_window": pipeline_data.get("stage3_savgol_window"),
+                    "savgol_polyorder": pipeline_data.get("stage3_savgol_polyorder", 2),
+                    "moving_avg_window": pipeline_data.get("stage3_moving_avg_window"),
+                    "gaussian_sigma": pipeline_data.get("stage3_gaussian_sigma"),
+                },
+                "advanced_filter": {
+                    "method": pipeline_data.get("stage3_advanced_method", "kalman"),
+                    "kalman_r": pipeline_data.get("stage3_kalman_r", 1.0),
+                    "kalman_q": pipeline_data.get("stage3_kalman_q", 1.0),
+                    "adaptive_mu": pipeline_data.get("stage3_adaptive_mu", 0.01),
+                    "adaptive_order": pipeline_data.get("stage3_adaptive_order", 4),
+                },
+                "artifact_removal": {
+                    "type": pipeline_data.get("stage3_artifact_type", "baseline"),
+                    "strength": pipeline_data.get("stage3_artifact_strength", 0.5),
+                    "wavelet_type": pipeline_data.get("stage3_wavelet_type", "db4"),
+                    "wavelet_level": pipeline_data.get("stage3_wavelet_level", 3),
+                    "threshold_type": pipeline_data.get(
+                        "stage3_threshold_type", "soft"
+                    ),
+                    "threshold_value": pipeline_data.get("stage3_threshold_value", 0.1),
+                },
+                "neural_network": {
+                    "type": pipeline_data.get("stage3_neural_type", "autoencoder"),
+                    "complexity": pipeline_data.get(
+                        "stage3_neural_complexity", "medium"
+                    ),
+                },
+                "ensemble": {
+                    "method": pipeline_data.get("stage3_ensemble_method", "mean"),
+                    "n_filters": pipeline_data.get("stage3_ensemble_n_filters", 3),
+                },
+            },
+            "stage_4_quality_validation": {
+                "description": "Validate quality of each processing path and select best",
+                "sqi_type": pipeline_data.get("stage4_sqi_type", "snr_sqi"),
+                "window_size": pipeline_data.get("stage4_window_size", 1000),
+                "step_size": pipeline_data.get("stage4_step_size", 500),
+                "threshold_type": pipeline_data.get("stage4_threshold_type", "below"),
+                "threshold": pipeline_data.get("stage4_threshold", 0.7),
+                "scale": pipeline_data.get("stage4_scale", "zscore"),
+            },
+            "stage_5_segmentation": {
+                "description": "Segment signal into analysis windows",
+                "window_size": pipeline_data.get("window_size", 30),
+                "overlap_ratio": pipeline_data.get("overlap_ratio", 0.5),
+                "min_segment_length": pipeline_data.get("min_segment_length", 5),
+                "window_function": pipeline_data.get("window_function", "none"),
+            },
+            "stage_6_feature_extraction": {
+                "description": "Extract features from each segment",
+                "feature_types": pipeline_data.get(
+                    "feature_types", ["time", "frequency"]
+                ),
+                "time_features": pipeline_data.get(
+                    "time_features", ["mean", "std", "rms", "ptp"]
+                ),
+                "frequency_features": pipeline_data.get(
+                    "frequency_features", ["spectral_centroid", "dominant_freq"]
+                ),
+                "nonlinear_features": pipeline_data.get(
+                    "nonlinear_features", ["sample_entropy"]
+                ),
+                "statistical_features": pipeline_data.get(
+                    "statistical_features", ["skewness", "kurtosis"]
+                ),
+                "morphological_features": pipeline_data.get(
+                    "morphological_features", []
+                ),
+            },
+            "stage_7_intelligent_output": {
+                "description": "Select best processing path and generate recommendations",
+                "selection_criterion": pipeline_data.get(
+                    "selection_criterion", "best_quality"
+                ),
+                "confidence_threshold": pipeline_data.get("confidence_threshold", 0.7),
+                "generate_recommendations": pipeline_data.get(
+                    "generate_recommendations", True
+                ),
+            },
+            "stage_8_output_package": {
+                "description": "Package results for export",
+                "output_formats": pipeline_data.get("output_formats", ["json", "csv"]),
+                "output_contents": pipeline_data.get(
+                    "output_contents",
+                    ["processed_signals", "quality_metrics", "features", "metadata"],
+                ),
+                "compress_output": pipeline_data.get("compress_output", True),
+            },
+        }
+
+        # Add configurations to output package
+        output_package["stage_configurations"] = stage_configurations
 
         # Export as JSON
         output_json = json.dumps(output_package, indent=2, default=str)
 
-        logger.info(f"Exporting pipeline results for run: {pipeline_run_id}")
+        logger.info(
+            f"Exporting pipeline results for run: {pipeline_run_id} ({len(output_json)} bytes)"
+        )
 
         return dict(
             content=output_json, filename=f"pipeline_results_{pipeline_run_id}.json"
@@ -3099,6 +3907,10 @@ def register_pipeline_callbacks(app):
         """
         Generate PDF report of pipeline execution.
         """
+        logger.info(
+            f"Report button clicked: n_clicks={n_clicks}, current_stage={current_stage}"
+        )
+
         if n_clicks is None:
             return no_update
 
@@ -3106,6 +3918,8 @@ def register_pipeline_callbacks(app):
         pipeline_run_id = getattr(
             register_pipeline_callbacks, "current_pipeline_run_id", None
         )
+        logger.info(f"Pipeline run ID for report: {pipeline_run_id}")
+
         if not pipeline_run_id:
             logger.warning("No pipeline run ID found for report generation")
             return no_update
@@ -3115,6 +3929,7 @@ def register_pipeline_callbacks(app):
             pipeline_run_id, {}
         )
         results = pipeline_data.get("results", {})
+        logger.info(f"Results keys: {list(results.keys())}")
 
         if not results:
             logger.warning("No results found for report generation")
@@ -3123,50 +3938,307 @@ def register_pipeline_callbacks(app):
         # Generate Markdown report (can be converted to PDF later)
         report_lines = [
             "# VitalDSP Pipeline Analysis Report",
-            f"\n**Pipeline Run ID:** {pipeline_run_id}",
-            f"\n**Generated:** {time.strftime('%Y-%m-%d %H:%M:%S')}",
-            f"\n**Signal Type:** {pipeline_data.get('signal_type', 'Unknown')}",
-            f"\n**Sampling Frequency:** {pipeline_data.get('fs', 0)} Hz",
-            "\n---\n",
+            "",
+            "---",
+            "",
+            "## Pipeline Overview",
+            "",
+            f"- **Pipeline Run ID:** `{pipeline_run_id}`",
+            f"- **Generated:** {time.strftime('%Y-%m-%d %H:%M:%S')}",
+            f"- **Signal Type:** {pipeline_data.get('signal_type', 'Unknown')}",
+            f"- **Sampling Frequency:** {pipeline_data.get('fs', 0)} Hz",
+            f"- **Signal Length:** {len(pipeline_data.get('signal_data', []))} samples",
+            f"- **Duration:** {len(pipeline_data.get('signal_data', [])) / max(pipeline_data.get('fs', 1), 1):.2f} seconds",
+            f"- **Processing Paths:** {', '.join(pipeline_data.get('paths', ['filtered', 'preprocessed']))}",
+            f"- **Quality Validation:** {'Enabled' if pipeline_data.get('enable_quality', False) else 'Disabled'}",
+            f"- **Completed Stages:** {pipeline_data.get('current_stage', 0)}/8",
+            "",
+            "---",
+            "",
         ]
 
-        # Add summary for each stage
-        for stage_num in range(1, 9):
+        # Add detailed stage configurations and results
+        stage_configs = [
+            {
+                "num": 1,
+                "name": "Data Ingestion",
+                "description": "Load and validate input signal data",
+                "config": {
+                    "Signal Type": pipeline_data.get("signal_type", "Unknown"),
+                    "Sampling Frequency": f"{pipeline_data.get('fs', 0)} Hz",
+                    "Signal Length": f"{len(pipeline_data.get('signal_data', []))} samples",
+                },
+            },
+            {
+                "num": 2,
+                "name": "Quality Screening",
+                "description": "Initial quality assessment and bad segment detection",
+                "config": {
+                    "Enabled": pipeline_data.get("enable_quality", False),
+                    "SQI Type": pipeline_data.get("stage2_sqi_type", "snr_sqi"),
+                    "Window Size": pipeline_data.get("stage2_window_size", 1000),
+                    "Step Size": pipeline_data.get("stage2_step_size", 500),
+                    "Threshold": f"{pipeline_data.get('stage2_threshold', 0.7)} ({pipeline_data.get('stage2_threshold_type', 'below')})",
+                    "Scale": pipeline_data.get("stage2_scale", "zscore"),
+                },
+            },
+            {
+                "num": 3,
+                "name": "Comprehensive Filtering",
+                "description": "Apply filtering and artifact removal to each processing path",
+                "config": {
+                    "Filter Type": pipeline_data.get(
+                        "stage3_filter_type", "traditional"
+                    ),
+                    "Signal Source": pipeline_data.get(
+                        "stage3_signal_source", "original"
+                    ),
+                    "Detrend": (
+                        "Enabled"
+                        if pipeline_data.get("stage3_detrend", False)
+                        else "Disabled"
+                    ),
+                    "Application Count": pipeline_data.get(
+                        "stage3_application_count", 1
+                    ),
+                    "Filter Family": pipeline_data.get(
+                        "stage3_filter_family", "butter"
+                    ),
+                    "Response Type": pipeline_data.get(
+                        "stage3_filter_response", "bandpass"
+                    ),
+                    "Frequency Band": f"{pipeline_data.get('stage3_filter_lowcut', 0.5)}-{pipeline_data.get('stage3_filter_highcut', 40)} Hz",
+                    "Filter Order": pipeline_data.get("stage3_filter_order", 4),
+                    "Artifact Removal": pipeline_data.get(
+                        "stage3_artifact_type", "baseline"
+                    ),
+                },
+            },
+            {
+                "num": 4,
+                "name": "Quality Validation",
+                "description": "Validate quality of each processing path and select best",
+                "config": {
+                    "SQI Type": pipeline_data.get("stage4_sqi_type", "snr_sqi"),
+                    "Window Size": pipeline_data.get("stage4_window_size", 1000),
+                    "Step Size": pipeline_data.get("stage4_step_size", 500),
+                    "Threshold": f"{pipeline_data.get('stage4_threshold', 0.7)} ({pipeline_data.get('stage4_threshold_type', 'below')})",
+                    "Scale": pipeline_data.get("stage4_scale", "zscore"),
+                },
+            },
+            {
+                "num": 5,
+                "name": "Segmentation",
+                "description": "Segment signal into analysis windows",
+                "config": {
+                    "Window Size": f"{pipeline_data.get('window_size', 30)} seconds",
+                    "Overlap Ratio": f"{pipeline_data.get('overlap_ratio', 0.5) * 100:.0f}%",
+                    "Min Segment Length": f"{pipeline_data.get('min_segment_length', 5)} seconds",
+                    "Window Function": pipeline_data.get("window_function", "none"),
+                },
+            },
+            {
+                "num": 6,
+                "name": "Feature Extraction",
+                "description": "Extract features from each segment",
+                "config": {
+                    "Feature Types": ", ".join(
+                        pipeline_data.get("feature_types", ["time", "frequency"])
+                    ),
+                    "Time Features": ", ".join(
+                        pipeline_data.get("time_features", ["mean", "std"])
+                    ),
+                    "Frequency Features": ", ".join(
+                        pipeline_data.get("frequency_features", ["spectral_centroid"])
+                    ),
+                    "Nonlinear Features": ", ".join(
+                        pipeline_data.get("nonlinear_features", ["sample_entropy"])
+                    ),
+                    "Statistical Features": ", ".join(
+                        pipeline_data.get("statistical_features", ["skewness"])
+                    ),
+                },
+            },
+            {
+                "num": 7,
+                "name": "Intelligent Output Selection",
+                "description": "Select best processing path and generate recommendations",
+                "config": {
+                    "Selection Criterion": pipeline_data.get(
+                        "selection_criterion", "best_quality"
+                    ),
+                    "Confidence Threshold": pipeline_data.get(
+                        "confidence_threshold", 0.7
+                    ),
+                    "Generate Recommendations": pipeline_data.get(
+                        "generate_recommendations", True
+                    ),
+                },
+            },
+            {
+                "num": 8,
+                "name": "Output Package",
+                "description": "Package results for export",
+                "config": {
+                    "Output Formats": ", ".join(
+                        pipeline_data.get("output_formats", ["json", "csv"])
+                    ),
+                    "Output Contents": ", ".join(
+                        pipeline_data.get(
+                            "output_contents",
+                            [
+                                "processed_signals",
+                                "quality_metrics",
+                                "features",
+                                "metadata",
+                            ],
+                        )
+                    ),
+                    "Compress Output": pipeline_data.get("compress_output", True),
+                },
+            },
+        ]
+
+        for stage_info in stage_configs:
+            stage_num = stage_info["num"]
             stage_key = f"stage_{stage_num}"
+
+            # Add stage header
+            report_lines.append(f"## Stage {stage_num}: {stage_info['name']}")
+            report_lines.append("")
+            report_lines.append(f"**Description:** {stage_info['description']}")
+            report_lines.append("")
+
+            # Add configuration
+            report_lines.append("### Configuration")
+            report_lines.append("")
+            for config_key, config_value in stage_info["config"].items():
+                report_lines.append(f"- **{config_key}:** {config_value}")
+            report_lines.append("")
+
+            # Add results if available
             if stage_key in results:
-                stage_name = (
-                    PIPELINE_STAGES[stage_num]
-                    if stage_num < len(PIPELINE_STAGES)
-                    else f"Stage {stage_num}"
-                )
-                report_lines.append(f"\n## {stage_name}\n")
+                report_lines.append("### Results")
+                report_lines.append("")
 
                 stage_data = results[stage_key]
-                for key, value in stage_data.items():
-                    if isinstance(value, (int, float, str, bool)):
-                        report_lines.append(f"- **{key}:** {value}")
-                    elif isinstance(value, dict):
-                        report_lines.append(f"- **{key}:**")
-                        for sub_key, sub_value in value.items():
-                            if isinstance(sub_value, (int, float, str, bool)):
-                                report_lines.append(f"  - {sub_key}: {sub_value}")
-                    elif (
-                        isinstance(value, list)
-                        and len(value) > 0
-                        and isinstance(value[0], (int, float, str))
-                    ):
-                        report_lines.append(
-                            f"- **{key}:** {', '.join(map(str, value[:5]))}{'...' if len(value) > 5 else ''}"
-                        )
 
-                report_lines.append("\n")
+                # Handle quality metrics specially
+                if stage_num == 4 and "quality_metrics" in stage_data:
+                    quality_metrics = stage_data["quality_metrics"]
+                    report_lines.append("#### Processing Path Quality Comparison")
+                    report_lines.append("")
+                    report_lines.append(
+                        "| Path | Quality Score | Normal Segments | Abnormal Segments | Status |"
+                    )
+                    report_lines.append(
+                        "|------|--------------|-----------------|-------------------|--------|"
+                    )
+                    for path_name, metrics in quality_metrics.items():
+                        quality = metrics.get("overall_quality", 0.0)
+                        normal = len(metrics.get("normal_segments", []))
+                        abnormal = len(metrics.get("abnormal_segments", []))
+                        passed = (
+                            "✅ Passed"
+                            if metrics.get("passed", False)
+                            else "⚠️ Below Threshold"
+                        )
+                        report_lines.append(
+                            f"| {path_name.upper()} | {quality:.3f} | {normal} | {abnormal} | {passed} |"
+                        )
+                    report_lines.append("")
+
+                    if "best_path" in stage_data:
+                        report_lines.append(
+                            f"**Selected Best Path:** {stage_data['best_path'].upper()} ⭐"
+                        )
+                        report_lines.append("")
+
+                # Handle feature extraction specially
+                elif stage_num == 6 and "features" in stage_data:
+                    features = stage_data["features"]
+                    if isinstance(features, list) and len(features) > 0:
+                        report_lines.append(f"**Total Segments:** {len(features)}")
+                        report_lines.append("")
+                        if isinstance(features[0], dict):
+                            feature_names = list(features[0].keys())
+                            report_lines.append(
+                                f"**Extracted Features ({len(feature_names)}):**"
+                            )
+                            report_lines.append("")
+                            for i, name in enumerate(
+                                feature_names[:20], 1
+                            ):  # Show first 20
+                                report_lines.append(f"{i}. {name}")
+                            if len(feature_names) > 20:
+                                report_lines.append(
+                                    f"... and {len(feature_names) - 20} more features"
+                                )
+                            report_lines.append("")
+
+                # Handle other results generically
+                else:
+                    for key, value in stage_data.items():
+                        if key in ["quality_metrics", "features"]:  # Already handled
+                            continue
+                        if isinstance(value, (int, float, str, bool)):
+                            report_lines.append(f"- **{key}:** {value}")
+                        elif isinstance(value, dict):
+                            report_lines.append(f"- **{key}:**")
+                            for sub_key, sub_value in value.items():
+                                if isinstance(sub_value, (int, float, str, bool)):
+                                    report_lines.append(f"  - {sub_key}: {sub_value}")
+                        elif isinstance(value, list) and len(value) > 0:
+                            if isinstance(value[0], (int, float, str)):
+                                report_lines.append(
+                                    f"- **{key}:** {', '.join(map(str, value[:5]))}{'...' if len(value) > 5 else ''}"
+                                )
+                    report_lines.append("")
+            else:
+                report_lines.append("*Stage not completed or no results available*")
+                report_lines.append("")
+
+            report_lines.append("---")
+            report_lines.append("")
 
         # Add recommendations if available
         stage7_results = results.get("stage_7", {})
-        if "recommendations" in stage7_results:
-            report_lines.append("\n## Recommendations\n")
-            for rec in stage7_results["recommendations"]:
-                report_lines.append(f"- {rec}")
+        if "recommendations" in stage7_results and stage7_results["recommendations"]:
+            report_lines.append("## Recommendations")
+            report_lines.append("")
+            for i, rec in enumerate(stage7_results["recommendations"], 1):
+                report_lines.append(f"{i}. {rec}")
+            report_lines.append("")
+            report_lines.append("---")
+            report_lines.append("")
+
+        # Add summary statistics
+        report_lines.append("## Summary")
+        report_lines.append("")
+        report_lines.append(
+            f"- **Pipeline Completed:** {'Yes ✅' if pipeline_data.get('completed', False) else 'No ⚠️'}"
+        )
+        if pipeline_data.get("completion_time"):
+            start_time = pipeline_data.get("start_time", 0)
+            completion_time = pipeline_data.get("completion_time", 0)
+            duration = completion_time - start_time
+            report_lines.append(f"- **Execution Time:** {duration:.2f} seconds")
+
+        # Best path selection
+        best_path = None
+        for stage_key in results:
+            if "best_path" in results[stage_key]:
+                best_path = results[stage_key]["best_path"]
+                break
+        if best_path:
+            report_lines.append(
+                f"- **Selected Processing Path:** {best_path.upper()} ⭐"
+            )
+
+        report_lines.append("")
+        report_lines.append("---")
+        report_lines.append("")
+        report_lines.append("*Report generated by VitalDSP Pipeline Analysis System*")
 
         report_content = "\n".join(report_lines)
 
@@ -3189,5 +4261,770 @@ def register_pipeline_callbacks(app):
             return {"display": "block"}
         else:
             return {"display": "none"}
+
+    # ============================================================================
+    # PIPELINE STATE BUILDER CALLBACK
+    # ============================================================================
+
+    @app.callback(
+        Output("pipeline-state", "data"),
+        [
+            Input("pipeline-current-stage", "data"),
+            Input("pipeline-progress-interval", "n_intervals"),
+        ],
+        prevent_initial_call=True,
+    )
+    def build_pipeline_state(current_stage, n_intervals):
+        """
+        Build pipeline state from pipeline_data for Phase A & B callbacks.
+
+        This callback translates the internal pipeline_data structure into
+        the format expected by the Phase A & B visualization callbacks.
+        """
+        import time
+
+        # Default empty state
+        default_state = {}
+
+        if not current_stage:
+            return default_state
+
+        # Get pipeline_run_id
+        pipeline_run_id = None
+        if isinstance(current_stage, str) and len(current_stage) == 8:
+            pipeline_run_id = current_stage
+        elif hasattr(register_pipeline_callbacks, "current_pipeline_run_id"):
+            pipeline_run_id = register_pipeline_callbacks.current_pipeline_run_id
+
+        if not pipeline_run_id or not hasattr(
+            register_pipeline_callbacks, "pipeline_data"
+        ):
+            return default_state
+
+        pipeline_data = register_pipeline_callbacks.pipeline_data.get(pipeline_run_id)
+        if not pipeline_data:
+            return default_state
+
+        # Build pipeline state
+        current_stage_num = pipeline_data.get("current_stage", 0)
+        results = pipeline_data.get("results", {})
+
+        # Determine status
+        status = "idle"
+        if current_stage_num > 0 and current_stage_num < 8:
+            status = "running"
+        elif current_stage_num >= 8:
+            status = "completed"
+        elif pipeline_data.get("error"):
+            status = "error"
+
+        # Get start time
+        start_timestamp = pipeline_data.get("start_time", time.time())
+        from datetime import datetime
+
+        start_time_str = datetime.fromtimestamp(start_timestamp).strftime("%H:%M:%S")
+
+        # Build quality scores from stage 4 results
+        quality_scores = {}
+        stage4_results = results.get("stage_4", {})
+        if stage4_results:
+            quality_metrics = stage4_results.get("quality_metrics", {})
+            for path_name, metrics in quality_metrics.items():
+                quality_scores[path_name] = metrics.get("overall_quality", 0.5)
+
+            # Add best path
+            best_path = stage4_results.get("best_path")
+            if best_path:
+                quality_scores["best_path"] = best_path
+
+        # Build path progress (estimate based on current stage)
+        path_progress = {}
+        paths = pipeline_data.get("paths", [])
+        if current_stage_num >= 3:
+            # During stage 3-4, paths are being processed
+            for path in paths:
+                if current_stage_num == 3:
+                    path_progress[path] = 50  # In progress
+                elif current_stage_num >= 4:
+                    path_progress[path] = 100  # Complete
+
+        # Determine which paths are completed
+        completed_paths = []
+        if current_stage_num >= 4:
+            completed_paths = paths
+
+        # Build state
+        state = {
+            "run_id": pipeline_run_id,
+            "start_time": start_time_str,
+            "start_timestamp": start_timestamp,
+            "status": status,
+            "current_stage": current_stage_num,
+            "sampling_rate": pipeline_data.get("fs", 1000),
+            "path_progress": path_progress,
+            "completed_paths": completed_paths,
+            "quality_scores": quality_scores,
+        }
+
+        # Add processed signals if available (for path comparison plot)
+        processed_signals = pipeline_data.get("processed_signals", {})
+        if processed_signals:
+            # Limit to first 10000 samples for performance
+            state["path_signals"] = {}
+            for path, signal in processed_signals.items():
+                if isinstance(signal, np.ndarray):
+                    state["path_signals"][path] = (
+                        signal[:10000].tolist()
+                        if len(signal) > 10000
+                        else signal.tolist()
+                    )
+
+        return state
+
+    # ============================================================================
+    # PHASE A: INTERACTIVE FLOW DIAGRAM CALLBACKS
+    # ============================================================================
+
+    @app.callback(
+        [
+            Output("pipeline-current-stage-text", "children"),
+            Output("pipeline-status-text", "children"),
+            Output("pipeline-overall-progress-text", "children"),
+            Output("pipeline-flow-progress-bar", "value"),
+            Output("pipeline-flow-progress-bar", "color"),
+        ]
+        + [Output(f"pipeline-stage-card-{i}", "className") for i in range(1, 9)]
+        + [Output(f"pipeline-stage-icon-{i}", "className") for i in range(1, 9)],
+        [Input("pipeline-state", "data"), Input("pipeline-current-stage", "data")],
+    )
+    def update_flow_diagram(pipeline_state, current_stage):
+        """
+        Update the interactive flow diagram based on pipeline execution state.
+
+        Updates:
+        - Current stage text
+        - Status text
+        - Overall progress percentage
+        - Progress bar value and color
+        - Stage card highlighting
+        - Stage icon status colors
+        """
+        # Default values
+        stage_text = "Ready to Start"
+        status_text = "Configure pipeline and click 'Run Pipeline'"
+        progress_text = "0%"
+        progress_value = 0
+        progress_color = "info"
+
+        # Default card and icon classes
+        card_classes = ["pipeline-stage-box" for _ in range(8)]
+        icon_classes = [
+            f"fas fa-{icon} pipeline-stage-icon"
+            for icon in [
+                "database",
+                "filter",
+                "code-branch",
+                "check-circle",
+                "grip-vertical",
+                "chart-bar",
+                "brain",
+                "box",
+            ]
+        ]
+
+        if not pipeline_state or not current_stage:
+            return (
+                [stage_text, status_text, progress_text, progress_value, progress_color]
+                + card_classes
+                + icon_classes
+            )
+
+        # Get stage number
+        stage_num = _get_stage_number(current_stage)
+
+        if stage_num > 0 and stage_num <= 8:
+            # Update progress
+            progress_value = int((stage_num / 8) * 100)
+            progress_text = f"{progress_value}%"
+            stage_text = f"Stage {stage_num} - {PIPELINE_STAGES[stage_num - 1]}"
+
+            # Determine status and color
+            if pipeline_state.get("status") == "running":
+                status_text = "Processing..."
+                progress_color = "primary"
+            elif pipeline_state.get("status") == "completed":
+                status_text = "✓ Pipeline Complete"
+                progress_color = "success"
+                progress_value = 100
+                progress_text = "100%"
+            elif pipeline_state.get("status") == "error":
+                status_text = "✗ Error Occurred"
+                progress_color = "danger"
+
+            # Highlight active and completed stages
+            for i in range(1, 9):
+                if i < stage_num:
+                    # Completed stages
+                    card_classes[i - 1] = "pipeline-stage-box pipeline-stage-complete"
+                    icon_classes[i - 1] = icon_classes[i - 1].replace(
+                        "pipeline-stage-icon", "pipeline-stage-icon text-success"
+                    )
+                elif i == stage_num:
+                    # Active stage
+                    card_classes[i - 1] = "pipeline-stage-box pipeline-stage-active"
+                    icon_classes[i - 1] = icon_classes[i - 1].replace(
+                        "pipeline-stage-icon", "pipeline-stage-icon text-primary"
+                    )
+                else:
+                    # Pending stages
+                    card_classes[i - 1] = "pipeline-stage-box pipeline-stage-pending"
+                    icon_classes[i - 1] = icon_classes[i - 1].replace(
+                        "pipeline-stage-icon", "pipeline-stage-icon text-muted"
+                    )
+
+        return (
+            [stage_text, status_text, progress_text, progress_value, progress_color]
+            + card_classes
+            + icon_classes
+        )
+
+    @app.callback(
+        [
+            Output("pipeline-paths-status-container", "style"),
+            Output("pipeline-path-raw-progress", "value"),
+            Output("pipeline-path-filtered-progress", "value"),
+            Output("pipeline-path-preprocessed-progress", "value"),
+            Output("pipeline-path-raw-quality", "children"),
+            Output("pipeline-path-filtered-quality", "children"),
+            Output("pipeline-path-preprocessed-quality", "children"),
+        ],
+        [Input("pipeline-state", "data"), Input("pipeline-current-stage", "data")],
+    )
+    def update_path_progress(pipeline_state, current_stage):
+        """
+        Update the path progress bars and quality scores.
+
+        Shows path comparison during stages 3-4 (Parallel Processing & Quality Validation).
+        """
+        # Default: hide path status
+        container_style = {"display": "none"}
+        raw_progress = 0
+        filtered_progress = 0
+        preprocessed_progress = 0
+        raw_quality = "N/A"
+        filtered_quality = "N/A"
+        preprocessed_quality = "N/A"
+
+        if not pipeline_state or not current_stage:
+            return [
+                container_style,
+                raw_progress,
+                filtered_progress,
+                preprocessed_progress,
+                raw_quality,
+                filtered_quality,
+                preprocessed_quality,
+            ]
+
+        stage_num = _get_stage_number(current_stage)
+
+        # Show path status during stages 3-4
+        if stage_num in [3, 4]:
+            container_style = {"display": "block"}
+
+            # Get path progress from pipeline state
+            path_progress = pipeline_state.get("path_progress", {})
+            raw_progress = path_progress.get("raw", 0)
+            filtered_progress = path_progress.get("filtered", 0)
+            preprocessed_progress = path_progress.get("preprocessed", 0)
+
+            # Get quality scores
+            quality_scores = pipeline_state.get("quality_scores", {})
+            if "raw" in quality_scores:
+                raw_quality = f"Quality: {quality_scores['raw']:.2f}"
+            if "filtered" in quality_scores:
+                filtered_quality = f"Quality: {quality_scores['filtered']:.2f}"
+                # Add star if best quality
+                if quality_scores.get("best_path") == "filtered":
+                    filtered_quality += " ⭐"
+            if "preprocessed" in quality_scores:
+                preprocessed_quality = f"Quality: {quality_scores['preprocessed']:.2f}"
+                if quality_scores.get("best_path") == "preprocessed":
+                    preprocessed_quality += " ⭐"
+
+        return [
+            container_style,
+            raw_progress,
+            filtered_progress,
+            preprocessed_progress,
+            raw_quality,
+            filtered_quality,
+            preprocessed_quality,
+        ]
+
+    @app.callback(
+        [
+            Output("pipeline-status-indicator", "children"),
+            Output("pipeline-run-id", "children"),
+            Output("pipeline-start-time", "children"),
+            Output("pipeline-elapsed-time", "children"),
+            Output("pipeline-current-stage-indicator", "children"),
+            Output("pipeline-stage-progress-mini", "value"),
+        ]
+        + [Output(f"pipeline-stage-status-icon-{i}", "className") for i in range(1, 9)]
+        + [
+            Output(f"pipeline-path-status-{path}", "className")
+            for path in ["raw", "filtered", "preprocessed"]
+        ],
+        [
+            Input("pipeline-state", "data"),
+            Input("pipeline-progress-interval", "n_intervals"),
+        ],
+    )
+    def update_live_status_panel(pipeline_state, n_intervals):
+        """
+        Update the live status panel with current pipeline execution information.
+
+        Updates every second when pipeline is running.
+        """
+        # Default values
+        status_indicator = "🔴"
+        run_id = "N/A"
+        start_time = "N/A"
+        elapsed_time = "00:00:00"
+        stage_indicator = "0/8"
+        stage_progress = 0
+
+        # Default stage status icons (all pending)
+        stage_icons = ["fas fa-circle text-muted" for _ in range(8)]
+
+        # Default path status icons (all pending)
+        path_icons = ["fas fa-circle text-muted" for _ in range(3)]
+
+        if not pipeline_state:
+            return (
+                [
+                    status_indicator,
+                    run_id,
+                    start_time,
+                    elapsed_time,
+                    stage_indicator,
+                    stage_progress,
+                ]
+                + stage_icons
+                + path_icons
+            )
+
+        # Update basic info
+        if "run_id" in pipeline_state:
+            run_id = pipeline_state["run_id"]
+
+        if "start_time" in pipeline_state:
+            start_time = pipeline_state["start_time"]
+
+            # Calculate elapsed time
+            if pipeline_state.get("status") == "running":
+                elapsed_seconds = int(
+                    time.time()
+                    - float(pipeline_state.get("start_timestamp", time.time()))
+                )
+                hours = elapsed_seconds // 3600
+                minutes = (elapsed_seconds % 3600) // 60
+                seconds = elapsed_seconds % 60
+                elapsed_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+        # Update status indicator
+        if pipeline_state.get("status") == "running":
+            status_indicator = "🟢"
+        elif pipeline_state.get("status") == "completed":
+            status_indicator = "✅"
+        elif pipeline_state.get("status") == "error":
+            status_indicator = "🔴"
+
+        # Update stage progress
+        current_stage = pipeline_state.get("current_stage", 0)
+        if current_stage > 0:
+            stage_indicator = f"{current_stage}/8"
+            stage_progress = int((current_stage / 8) * 100)
+
+            # Update stage status icons
+            for i in range(1, 9):
+                if i < current_stage:
+                    stage_icons[i - 1] = "fas fa-check-circle text-success"
+                elif i == current_stage:
+                    if pipeline_state.get("status") == "error":
+                        stage_icons[i - 1] = "fas fa-times-circle text-danger"
+                    else:
+                        stage_icons[i - 1] = "fas fa-circle text-primary"
+                else:
+                    stage_icons[i - 1] = "fas fa-circle text-muted"
+
+        # Update path status icons
+        completed_paths = pipeline_state.get("completed_paths", [])
+        path_map = {"raw": 0, "filtered": 1, "preprocessed": 2}
+        for path, idx in path_map.items():
+            if path in completed_paths:
+                path_icons[idx] = "fas fa-check-circle text-success"
+
+        return (
+            [
+                status_indicator,
+                run_id,
+                start_time,
+                elapsed_time,
+                stage_indicator,
+                stage_progress,
+            ]
+            + stage_icons
+            + path_icons
+        )
+
+    # ============================================================================
+    # PHASE B: PATH COMPARISON DASHBOARD CALLBACKS
+    # ============================================================================
+
+    @app.callback(
+        [
+            Output("path-table-raw-quality", "children"),
+            Output("path-table-filtered-quality", "children"),
+            Output("path-table-preprocessed-quality", "children"),
+            Output("path-table-raw-status", "children"),
+            Output("path-table-filtered-status", "children"),
+            Output("path-table-preprocessed-status", "children"),
+            Output("path-metrics-container", "style"),
+            Output("path-signal-viz-container", "style"),
+        ],
+        [Input("pipeline-state", "data")],
+    )
+    def update_path_comparison_table(pipeline_state):
+        """
+        Update the path comparison table with quality scores and status.
+        """
+        # Default values
+        raw_quality = "N/A"
+        filtered_quality = "N/A"
+        preprocessed_quality = "N/A"
+        raw_status = "⚪ Pending"
+        filtered_status = "⚪ Pending"
+        preprocessed_status = "⚪ Pending"
+        metrics_style = {"display": "none"}
+        signal_viz_style = {"display": "none"}
+
+        if not pipeline_state:
+            return [
+                raw_quality,
+                filtered_quality,
+                preprocessed_quality,
+                raw_status,
+                filtered_status,
+                preprocessed_status,
+                metrics_style,
+                signal_viz_style,
+            ]
+
+        # Get quality scores
+        quality_scores = pipeline_state.get("quality_scores", {})
+        if "raw" in quality_scores:
+            raw_quality = f"{quality_scores['raw']:.3f}"
+            if quality_scores.get("best_path") == "raw":
+                raw_quality += " ⭐"
+        if "filtered" in quality_scores:
+            filtered_quality = f"{quality_scores['filtered']:.3f}"
+            if quality_scores.get("best_path") == "filtered":
+                filtered_quality += " ⭐"
+        if "preprocessed" in quality_scores:
+            preprocessed_quality = f"{quality_scores['preprocessed']:.3f}"
+            if quality_scores.get("best_path") == "preprocessed":
+                preprocessed_quality += " ⭐"
+
+        # Get path status
+        completed_paths = pipeline_state.get("completed_paths", [])
+        current_stage = pipeline_state.get("current_stage", 0)
+
+        # Update status icons based on completion
+        if "raw" in completed_paths:
+            raw_status = "✅ Complete"
+        elif current_stage >= 3:
+            raw_status = "🔵 Processing"
+
+        if "filtered" in completed_paths:
+            filtered_status = "✅ Complete"
+        elif current_stage >= 3:
+            filtered_status = "🔵 Processing"
+
+        if "preprocessed" in completed_paths:
+            preprocessed_status = "✅ Complete"
+        elif current_stage >= 3:
+            preprocessed_status = "🔵 Processing"
+
+        # Show metrics and signal visualization after stage 4
+        if current_stage >= 4:
+            metrics_style = {"display": "block"}
+            signal_viz_style = {"display": "block"}
+
+        return [
+            raw_quality,
+            filtered_quality,
+            preprocessed_quality,
+            raw_status,
+            filtered_status,
+            preprocessed_status,
+            metrics_style,
+            signal_viz_style,
+        ]
+
+    @app.callback(
+        [
+            Output("metric-snr-raw", "children"),
+            Output("metric-snr-filtered", "children"),
+            Output("metric-snr-preprocessed", "children"),
+            Output("metric-baseline-raw", "children"),
+            Output("metric-baseline-filtered", "children"),
+            Output("metric-baseline-preprocessed", "children"),
+            Output("metric-artifact-raw", "children"),
+            Output("metric-artifact-filtered", "children"),
+            Output("metric-artifact-preprocessed", "children"),
+        ],
+        [Input("pipeline-state", "data")],
+    )
+    def update_path_metrics(pipeline_state):
+        """
+        Update detailed quality metrics for each path.
+        """
+        # Default values
+        metrics = {
+            "snr": {
+                "raw": "RAW: N/A",
+                "filtered": "FILTERED: N/A",
+                "preprocessed": "PREPROCESSED: N/A",
+            },
+            "baseline": {
+                "raw": "RAW: N/A",
+                "filtered": "FILTERED: N/A",
+                "preprocessed": "PREPROCESSED: N/A",
+            },
+            "artifact": {
+                "raw": "RAW: N/A",
+                "filtered": "FILTERED: N/A",
+                "preprocessed": "PREPROCESSED: N/A",
+            },
+        }
+
+        if not pipeline_state:
+            return [
+                metrics["snr"]["raw"],
+                metrics["snr"]["filtered"],
+                metrics["snr"]["preprocessed"],
+                metrics["baseline"]["raw"],
+                metrics["baseline"]["filtered"],
+                metrics["baseline"]["preprocessed"],
+                metrics["artifact"]["raw"],
+                metrics["artifact"]["filtered"],
+                metrics["artifact"]["preprocessed"],
+            ]
+
+        # Get detailed metrics from pipeline state
+        detailed_metrics = pipeline_state.get("detailed_metrics", {})
+
+        # Update SNR metrics
+        if "snr" in detailed_metrics:
+            snr = detailed_metrics["snr"]
+            if "raw" in snr:
+                metrics["snr"]["raw"] = f"RAW: {snr['raw']:.2f} dB"
+            if "filtered" in snr:
+                metrics["snr"]["filtered"] = f"FILTERED: {snr['filtered']:.2f} dB"
+                if detailed_metrics.get("best_snr") == "filtered":
+                    metrics["snr"]["filtered"] += " ⭐"
+            if "preprocessed" in snr:
+                metrics["snr"][
+                    "preprocessed"
+                ] = f"PREPROCESSED: {snr['preprocessed']:.2f} dB"
+                if detailed_metrics.get("best_snr") == "preprocessed":
+                    metrics["snr"]["preprocessed"] += " ⭐"
+
+        # Update baseline wander metrics
+        if "baseline_wander" in detailed_metrics:
+            baseline = detailed_metrics["baseline_wander"]
+            levels = {0: "Low", 1: "Medium", 2: "High"}
+            if "raw" in baseline:
+                metrics["baseline"][
+                    "raw"
+                ] = f"RAW: {levels.get(baseline['raw'], 'N/A')}"
+            if "filtered" in baseline:
+                metrics["baseline"][
+                    "filtered"
+                ] = f"FILTERED: {levels.get(baseline['filtered'], 'N/A')}"
+                if detailed_metrics.get("best_baseline") == "filtered":
+                    metrics["baseline"]["filtered"] += " ⭐"
+            if "preprocessed" in baseline:
+                metrics["baseline"][
+                    "preprocessed"
+                ] = f"PREPROCESSED: {levels.get(baseline['preprocessed'], 'N/A')}"
+                if detailed_metrics.get("best_baseline") == "preprocessed":
+                    metrics["baseline"]["preprocessed"] += " ⭐"
+
+        # Update artifact level metrics
+        if "artifact_level" in detailed_metrics:
+            artifact = detailed_metrics["artifact_level"]
+            levels = {0: "Very Low", 1: "Low", 2: "Medium", 3: "High"}
+            if "raw" in artifact:
+                metrics["artifact"][
+                    "raw"
+                ] = f"RAW: {levels.get(artifact['raw'], 'N/A')}"
+            if "filtered" in artifact:
+                metrics["artifact"][
+                    "filtered"
+                ] = f"FILTERED: {levels.get(artifact['filtered'], 'N/A')}"
+                if detailed_metrics.get("best_artifact") == "filtered":
+                    metrics["artifact"]["filtered"] += " ⭐"
+            if "preprocessed" in artifact:
+                metrics["artifact"][
+                    "preprocessed"
+                ] = f"PREPROCESSED: {levels.get(artifact['preprocessed'], 'N/A')}"
+                if detailed_metrics.get("best_artifact") == "preprocessed":
+                    metrics["artifact"]["preprocessed"] += " ⭐"
+
+        return [
+            metrics["snr"]["raw"],
+            metrics["snr"]["filtered"],
+            metrics["snr"]["preprocessed"],
+            metrics["baseline"]["raw"],
+            metrics["baseline"]["filtered"],
+            metrics["baseline"]["preprocessed"],
+            metrics["artifact"]["raw"],
+            metrics["artifact"]["filtered"],
+            metrics["artifact"]["preprocessed"],
+        ]
+
+    @app.callback(
+        [
+            Output("path-recommendation-text", "children"),
+            Output("path-recommendation-alert", "color"),
+        ],
+        [Input("pipeline-state", "data")],
+    )
+    def update_path_recommendation(pipeline_state):
+        """
+        Update the path recommendation based on quality analysis.
+        """
+        default_text = "Run pipeline to see path recommendation"
+        default_color = "info"
+
+        if not pipeline_state:
+            return [default_text, default_color]
+
+        # Get recommendation from pipeline state
+        recommendation = pipeline_state.get("recommendation", {})
+        best_path = recommendation.get("best_path")
+
+        if not best_path:
+            # Check if we have quality scores
+            quality_scores = pipeline_state.get("quality_scores", {})
+            if quality_scores:
+                best_path = quality_scores.get("best_path")
+
+        if best_path:
+            path_names = {
+                "raw": "RAW (No filtering)",
+                "filtered": "FILTERED (Bandpass filtering)",
+                "preprocessed": "PREPROCESSED (Filtering + Artifact Removal)",
+            }
+
+            reason = recommendation.get("reason", "Based on quality metrics analysis")
+            confidence = recommendation.get("confidence", 0.0)
+
+            text = [
+                html.Strong(
+                    f"Recommended Path: {path_names.get(best_path, best_path.upper())}"
+                ),
+                html.Br(),
+                html.Span(f"Reason: {reason}"),
+                html.Br(),
+                (
+                    html.Small(f"Confidence: {confidence:.1%}", className="text-muted")
+                    if confidence > 0
+                    else None
+                ),
+            ]
+
+            # Color based on confidence
+            if confidence >= 0.8:
+                color = "success"
+            elif confidence >= 0.6:
+                color = "primary"
+            else:
+                color = "warning"
+
+            return [text, color]
+
+        return [default_text, default_color]
+
+    @app.callback(
+        Output("path-comparison-signal-plot", "figure"),
+        [Input("pipeline-state", "data")],
+    )
+    def update_path_signal_comparison(pipeline_state):
+        """
+        Update the signal comparison plot showing all three paths.
+        """
+        # Default empty figure
+        fig = go.Figure()
+        fig.update_layout(
+            title="Signal Comparison Across Paths",
+            xaxis_title="Time (s)",
+            yaxis_title="Amplitude",
+            template="plotly_white",
+            showlegend=True,
+            hovermode="x unified",
+        )
+
+        if not pipeline_state:
+            fig.add_annotation(
+                text="Run pipeline to see signal comparison",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+                font=dict(size=14, color="gray"),
+            )
+            return fig
+
+        # Get signal data from pipeline state
+        signals = pipeline_state.get("path_signals", {})
+        fs = pipeline_state.get("sampling_rate", 1000)
+
+        if not signals:
+            fig.add_annotation(
+                text="Processing... Signal data will appear here",
+                xref="paper",
+                yref="paper",
+                x=0.5,
+                y=0.5,
+                showarrow=False,
+                font=dict(size=14, color="gray"),
+            )
+            return fig
+
+        # Add traces for each path
+        colors = {"raw": "gray", "filtered": "blue", "preprocessed": "green"}
+        names = {"raw": "RAW", "filtered": "FILTERED", "preprocessed": "PREPROCESSED"}
+
+        for path_name in ["raw", "filtered", "preprocessed"]:
+            if path_name in signals:
+                signal_data = signals[path_name]
+                time_axis = np.arange(len(signal_data)) / fs
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=time_axis,
+                        y=signal_data,
+                        name=names[path_name],
+                        line=dict(color=colors[path_name], width=1),
+                        opacity=0.8,
+                    )
+                )
+
+        return fig
 
     logger.info("Pipeline callbacks registered successfully")

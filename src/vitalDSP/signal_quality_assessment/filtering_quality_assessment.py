@@ -34,7 +34,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-SignalType = Literal['ECG', 'PPG', 'EEG', 'Respiratory', 'General']
+SignalType = Literal["ECG", "PPG", "EEG", "Respiratory", "General"]
 
 
 class FilteringQualityAssessment:
@@ -86,7 +86,7 @@ class FilteringQualityAssessment:
         original_signal: np.ndarray,
         filtered_signal: np.ndarray,
         fs: float = 250.0,
-        signal_type: SignalType = 'General'
+        signal_type: SignalType = "General",
     ):
         """
         Initialize the FilteringQualityAssessment.
@@ -114,10 +114,16 @@ class FilteringQualityAssessment:
             filtered_signal = np.array(filtered_signal)
 
         SignalValidator.validate_signal(
-            original_signal, min_length=10, allow_empty=False, signal_name="original_signal"
+            original_signal,
+            min_length=10,
+            allow_empty=False,
+            signal_name="original_signal",
         )
         SignalValidator.validate_signal(
-            filtered_signal, min_length=10, allow_empty=False, signal_name="filtered_signal"
+            filtered_signal,
+            min_length=10,
+            allow_empty=False,
+            signal_name="filtered_signal",
         )
 
         if len(original_signal) != len(filtered_signal):
@@ -149,45 +155,105 @@ class FilteringQualityAssessment:
         dict
             Nested dictionary with thresholds for each metric
         """
-        if self.signal_type == 'ECG':
+        if self.signal_type == "ECG":
             return {
-                'noise_reduction': {'excellent': 0.3, 'good': 0.15, 'acceptable': 0.05},
-                'smoothness_improvement': {'excellent': 0.2, 'good': 0.1, 'acceptable': 0.05},
-                'peak_preservation': {'excellent': 0.9, 'good': 0.8, 'acceptable': 0.7},
-                'shape_similarity': {'excellent': 0.75, 'good': 0.65, 'acceptable': 0.55},
-                'snr_db': {'excellent': 15, 'good': 10, 'acceptable': 5},
+                "noise_reduction": {"excellent": 0.3, "good": 0.15, "acceptable": 0.05},
+                "smoothness_improvement": {
+                    "excellent": 0.2,
+                    "good": 0.1,
+                    "acceptable": 0.05,
+                },
+                "peak_preservation": {"excellent": 0.9, "good": 0.8, "acceptable": 0.7},
+                "shape_similarity": {
+                    "excellent": 0.75,
+                    "good": 0.65,
+                    "acceptable": 0.55,
+                },
+                "snr_db": {"excellent": 15, "good": 10, "acceptable": 5},
             }
-        elif self.signal_type == 'PPG':
+        elif self.signal_type == "PPG":
             return {
-                'noise_reduction': {'excellent': 0.25, 'good': 0.12, 'acceptable': 0.05},
-                'smoothness_improvement': {'excellent': 0.25, 'good': 0.15, 'acceptable': 0.08},
-                'peak_preservation': {'excellent': 0.92, 'good': 0.85, 'acceptable': 0.75},
-                'shape_similarity': {'excellent': 0.85, 'good': 0.75, 'acceptable': 0.65},
-                'snr_db': {'excellent': 18, 'good': 12, 'acceptable': 7},
+                "noise_reduction": {
+                    "excellent": 0.25,
+                    "good": 0.12,
+                    "acceptable": 0.05,
+                },
+                "smoothness_improvement": {
+                    "excellent": 0.25,
+                    "good": 0.15,
+                    "acceptable": 0.08,
+                },
+                "peak_preservation": {
+                    "excellent": 0.92,
+                    "good": 0.85,
+                    "acceptable": 0.75,
+                },
+                "shape_similarity": {
+                    "excellent": 0.85,
+                    "good": 0.75,
+                    "acceptable": 0.65,
+                },
+                "snr_db": {"excellent": 18, "good": 12, "acceptable": 7},
             }
-        elif self.signal_type == 'EEG':
+        elif self.signal_type == "EEG":
             return {
-                'noise_reduction': {'excellent': 0.4, 'good': 0.2, 'acceptable': 0.1},
-                'smoothness_improvement': {'excellent': 0.15, 'good': 0.08, 'acceptable': 0.03},
-                'peak_preservation': {'excellent': 0.85, 'good': 0.75, 'acceptable': 0.65},
-                'shape_similarity': {'excellent': 0.70, 'good': 0.60, 'acceptable': 0.50},
-                'snr_db': {'excellent': 12, 'good': 8, 'acceptable': 4},
+                "noise_reduction": {"excellent": 0.4, "good": 0.2, "acceptable": 0.1},
+                "smoothness_improvement": {
+                    "excellent": 0.15,
+                    "good": 0.08,
+                    "acceptable": 0.03,
+                },
+                "peak_preservation": {
+                    "excellent": 0.85,
+                    "good": 0.75,
+                    "acceptable": 0.65,
+                },
+                "shape_similarity": {
+                    "excellent": 0.70,
+                    "good": 0.60,
+                    "acceptable": 0.50,
+                },
+                "snr_db": {"excellent": 12, "good": 8, "acceptable": 4},
             }
-        elif self.signal_type == 'Respiratory':
+        elif self.signal_type == "Respiratory":
             return {
-                'noise_reduction': {'excellent': 0.3, 'good': 0.15, 'acceptable': 0.08},
-                'smoothness_improvement': {'excellent': 0.3, 'good': 0.2, 'acceptable': 0.1},
-                'peak_preservation': {'excellent': 0.88, 'good': 0.78, 'acceptable': 0.68},
-                'shape_similarity': {'excellent': 0.80, 'good': 0.70, 'acceptable': 0.60},
-                'snr_db': {'excellent': 16, 'good': 10, 'acceptable': 6},
+                "noise_reduction": {"excellent": 0.3, "good": 0.15, "acceptable": 0.08},
+                "smoothness_improvement": {
+                    "excellent": 0.3,
+                    "good": 0.2,
+                    "acceptable": 0.1,
+                },
+                "peak_preservation": {
+                    "excellent": 0.88,
+                    "good": 0.78,
+                    "acceptable": 0.68,
+                },
+                "shape_similarity": {
+                    "excellent": 0.80,
+                    "good": 0.70,
+                    "acceptable": 0.60,
+                },
+                "snr_db": {"excellent": 16, "good": 10, "acceptable": 6},
             }
         else:  # General
             return {
-                'noise_reduction': {'excellent': 0.3, 'good': 0.15, 'acceptable': 0.08},
-                'smoothness_improvement': {'excellent': 0.2, 'good': 0.1, 'acceptable': 0.05},
-                'peak_preservation': {'excellent': 0.88, 'good': 0.78, 'acceptable': 0.68},
-                'shape_similarity': {'excellent': 0.75, 'good': 0.65, 'acceptable': 0.55},
-                'snr_db': {'excellent': 15, 'good': 10, 'acceptable': 5},
+                "noise_reduction": {"excellent": 0.3, "good": 0.15, "acceptable": 0.08},
+                "smoothness_improvement": {
+                    "excellent": 0.2,
+                    "good": 0.1,
+                    "acceptable": 0.05,
+                },
+                "peak_preservation": {
+                    "excellent": 0.88,
+                    "good": 0.78,
+                    "acceptable": 0.68,
+                },
+                "shape_similarity": {
+                    "excellent": 0.75,
+                    "good": 0.65,
+                    "acceptable": 0.55,
+                },
+                "snr_db": {"excellent": 15, "good": 10, "acceptable": 5},
             }
 
     def calculate_noise_reduction(self) -> Tuple[float, str, str]:
@@ -214,8 +280,8 @@ class FilteringQualityAssessment:
             removed_component = self.original_signal - self.filtered_signal
 
             # Calculate power of original and removed component
-            original_power = np.mean(self.original_signal ** 2)
-            removed_power = np.mean(removed_component ** 2)
+            original_power = np.mean(self.original_signal**2)
+            removed_power = np.mean(removed_component**2)
 
             # Noise reduction ratio
             if original_power > 1e-10:
@@ -224,25 +290,25 @@ class FilteringQualityAssessment:
                 noise_reduction_ratio = 0.0
 
             # Assess quality based on thresholds
-            thresholds = self.thresholds['noise_reduction']
-            if noise_reduction_ratio >= thresholds['excellent']:
-                status = 'Excellent'
-                assessment = f'Excellent noise reduction ({noise_reduction_ratio:.1%} of signal power removed). Filter effectively removed noise while preserving signal.'
-            elif noise_reduction_ratio >= thresholds['good']:
-                status = 'Good'
-                assessment = f'Good noise reduction ({noise_reduction_ratio:.1%} removed). Filter balanced noise removal with signal preservation.'
-            elif noise_reduction_ratio >= thresholds['acceptable']:
-                status = 'Acceptable'
-                assessment = f'Acceptable noise reduction ({noise_reduction_ratio:.1%} removed). Minimal filtering applied, suitable for clean signals.'
+            thresholds = self.thresholds["noise_reduction"]
+            if noise_reduction_ratio >= thresholds["excellent"]:
+                status = "Excellent"
+                assessment = f"Excellent noise reduction ({noise_reduction_ratio:.1%} of signal power removed). Filter effectively removed noise while preserving signal."
+            elif noise_reduction_ratio >= thresholds["good"]:
+                status = "Good"
+                assessment = f"Good noise reduction ({noise_reduction_ratio:.1%} removed). Filter balanced noise removal with signal preservation."
+            elif noise_reduction_ratio >= thresholds["acceptable"]:
+                status = "Acceptable"
+                assessment = f"Acceptable noise reduction ({noise_reduction_ratio:.1%} removed). Minimal filtering applied, suitable for clean signals."
             else:
-                status = 'Poor'
-                assessment = f'Minimal noise reduction ({noise_reduction_ratio:.1%} removed). Filter had little effect - signal may already be clean or filter settings too conservative.'
+                status = "Poor"
+                assessment = f"Minimal noise reduction ({noise_reduction_ratio:.1%} removed). Filter had little effect - signal may already be clean or filter settings too conservative."
 
             return noise_reduction_ratio, status, assessment
 
         except Exception as e:
             logger.error(f"Error calculating noise reduction: {e}")
-            return 0.0, 'Unknown', f'Error: {str(e)}'
+            return 0.0, "Unknown", f"Error: {str(e)}"
 
     def calculate_snr_improvement(self) -> Tuple[float, str, str]:
         """
@@ -265,8 +331,8 @@ class FilteringQualityAssessment:
             noise_estimate = self.original_signal - self.filtered_signal
 
             # Calculate powers
-            signal_power = np.mean(self.filtered_signal ** 2)
-            noise_power = np.mean(noise_estimate ** 2)
+            signal_power = np.mean(self.filtered_signal**2)
+            noise_power = np.mean(noise_estimate**2)
 
             # Calculate SNR in dB
             if noise_power > 1e-10 and signal_power > 1e-10:
@@ -275,25 +341,25 @@ class FilteringQualityAssessment:
                 snr_db = 0.0
 
             # Assess based on thresholds
-            thresholds = self.thresholds['snr_db']
-            if snr_db >= thresholds['excellent']:
-                status = 'Excellent'
-                assessment = f'Excellent SNR ({snr_db:.1f} dB). Very high signal quality after filtering.'
-            elif snr_db >= thresholds['good']:
-                status = 'Good'
-                assessment = f'Good SNR ({snr_db:.1f} dB). Signal quality is good for most applications.'
-            elif snr_db >= thresholds['acceptable']:
-                status = 'Acceptable'
-                assessment = f'Acceptable SNR ({snr_db:.1f} dB). Signal usable but may benefit from additional processing.'
+            thresholds = self.thresholds["snr_db"]
+            if snr_db >= thresholds["excellent"]:
+                status = "Excellent"
+                assessment = f"Excellent SNR ({snr_db:.1f} dB). Very high signal quality after filtering."
+            elif snr_db >= thresholds["good"]:
+                status = "Good"
+                assessment = f"Good SNR ({snr_db:.1f} dB). Signal quality is good for most applications."
+            elif snr_db >= thresholds["acceptable"]:
+                status = "Acceptable"
+                assessment = f"Acceptable SNR ({snr_db:.1f} dB). Signal usable but may benefit from additional processing."
             else:
-                status = 'Poor'
-                assessment = f'Low SNR ({snr_db:.1f} dB). Signal quality may be insufficient for reliable analysis.'
+                status = "Poor"
+                assessment = f"Low SNR ({snr_db:.1f} dB). Signal quality may be insufficient for reliable analysis."
 
             return snr_db, status, assessment
 
         except Exception as e:
             logger.error(f"Error calculating SNR: {e}")
-            return 0.0, 'Unknown', f'Error: {str(e)}'
+            return 0.0, "Unknown", f"Error: {str(e)}"
 
     def calculate_smoothness_improvement(self) -> Tuple[float, str, str]:
         """
@@ -325,25 +391,25 @@ class FilteringQualityAssessment:
                 improvement = 0.0
 
             # Assess based on thresholds
-            thresholds = self.thresholds['smoothness_improvement']
-            if improvement >= thresholds['excellent']:
-                status = 'Excellent'
-                assessment = f'Excellent smoothing ({improvement:.1%} improvement). Filter effectively reduced high-frequency noise.'
-            elif improvement >= thresholds['good']:
-                status = 'Good'
-                assessment = f'Good smoothing ({improvement:.1%} improvement). Signal is smoother while preserving features.'
-            elif improvement >= thresholds['acceptable']:
-                status = 'Acceptable'
-                assessment = f'Acceptable smoothing ({improvement:.1%} improvement). Moderate smoothing applied.'
+            thresholds = self.thresholds["smoothness_improvement"]
+            if improvement >= thresholds["excellent"]:
+                status = "Excellent"
+                assessment = f"Excellent smoothing ({improvement:.1%} improvement). Filter effectively reduced high-frequency noise."
+            elif improvement >= thresholds["good"]:
+                status = "Good"
+                assessment = f"Good smoothing ({improvement:.1%} improvement). Signal is smoother while preserving features."
+            elif improvement >= thresholds["acceptable"]:
+                status = "Acceptable"
+                assessment = f"Acceptable smoothing ({improvement:.1%} improvement). Moderate smoothing applied."
             else:
-                status = 'Poor'
-                assessment = f'Minimal smoothing ({improvement:.1%} improvement). Filter preserved original signal roughness.'
+                status = "Poor"
+                assessment = f"Minimal smoothing ({improvement:.1%} improvement). Filter preserved original signal roughness."
 
             return improvement, status, assessment
 
         except Exception as e:
             logger.error(f"Error calculating smoothness: {e}")
-            return 0.0, 'Unknown', f'Error: {str(e)}'
+            return 0.0, "Unknown", f"Error: {str(e)}"
 
     def calculate_peak_preservation(self) -> Tuple[float, str, str]:
         """
@@ -365,14 +431,26 @@ class FilteringQualityAssessment:
             from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
 
             # Detect peaks in both signals
-            orig_detector = PeakDetection(self.original_signal, method='threshold', height=np.mean(self.original_signal))
-            filt_detector = PeakDetection(self.filtered_signal, method='threshold', height=np.mean(self.filtered_signal))
+            orig_detector = PeakDetection(
+                self.original_signal,
+                method="threshold",
+                height=np.mean(self.original_signal),
+            )
+            filt_detector = PeakDetection(
+                self.filtered_signal,
+                method="threshold",
+                height=np.mean(self.filtered_signal),
+            )
 
             orig_peaks = orig_detector.detect_peaks()
             filt_peaks = filt_detector.detect_peaks()
 
             if len(orig_peaks) == 0:
-                return 1.0, 'Excellent', 'No peaks detected in original signal (signal may be flat or very noisy).'
+                return (
+                    1.0,
+                    "Excellent",
+                    "No peaks detected in original signal (signal may be flat or very noisy).",
+                )
 
             # Calculate how many original peaks were preserved (within tolerance)
             tolerance = int(0.05 * self.fs)  # 50ms tolerance
@@ -386,25 +464,25 @@ class FilteringQualityAssessment:
             preservation_score = preserved_count / len(orig_peaks)
 
             # Assess based on thresholds
-            thresholds = self.thresholds['peak_preservation']
-            if preservation_score >= thresholds['excellent']:
-                status = 'Excellent'
-                assessment = f'Excellent peak preservation ({preservation_score:.1%}). Filter maintained critical signal features.'
-            elif preservation_score >= thresholds['good']:
-                status = 'Good'
-                assessment = f'Good peak preservation ({preservation_score:.1%}). Most important features preserved.'
-            elif preservation_score >= thresholds['acceptable']:
-                status = 'Acceptable'
-                assessment = f'Acceptable peak preservation ({preservation_score:.1%}). Some peaks may have been smoothed.'
+            thresholds = self.thresholds["peak_preservation"]
+            if preservation_score >= thresholds["excellent"]:
+                status = "Excellent"
+                assessment = f"Excellent peak preservation ({preservation_score:.1%}). Filter maintained critical signal features."
+            elif preservation_score >= thresholds["good"]:
+                status = "Good"
+                assessment = f"Good peak preservation ({preservation_score:.1%}). Most important features preserved."
+            elif preservation_score >= thresholds["acceptable"]:
+                status = "Acceptable"
+                assessment = f"Acceptable peak preservation ({preservation_score:.1%}). Some peaks may have been smoothed."
             else:
-                status = 'Poor'
-                assessment = f'Poor peak preservation ({preservation_score:.1%}). Filter may have over-smoothed important features.'
+                status = "Poor"
+                assessment = f"Poor peak preservation ({preservation_score:.1%}). Filter may have over-smoothed important features."
 
             return preservation_score, status, assessment
 
         except Exception as e:
             logger.error(f"Error calculating peak preservation: {e}")
-            return 0.0, 'Unknown', f'Error: {str(e)}'
+            return 0.0, "Unknown", f"Error: {str(e)}"
 
     def calculate_shape_similarity(self) -> Tuple[float, str, str]:
         """
@@ -429,25 +507,25 @@ class FilteringQualityAssessment:
             correlation = pearsonr(self.original_signal, self.filtered_signal)
 
             # Assess based on signal-adaptive thresholds
-            thresholds = self.thresholds['shape_similarity']
-            if correlation >= thresholds['excellent']:
-                status = 'Excellent'
-                assessment = f'Excellent shape preservation ({correlation:.3f}). Filter preserved signal morphology while removing noise.'
-            elif correlation >= thresholds['good']:
-                status = 'Good'
-                assessment = f'Good shape preservation ({correlation:.3f}). Signal structure maintained with noise reduction.'
-            elif correlation >= thresholds['acceptable']:
-                status = 'Acceptable'
-                assessment = f'Acceptable shape preservation ({correlation:.3f}). Moderate filtering with some shape changes.'
+            thresholds = self.thresholds["shape_similarity"]
+            if correlation >= thresholds["excellent"]:
+                status = "Excellent"
+                assessment = f"Excellent shape preservation ({correlation:.3f}). Filter preserved signal morphology while removing noise."
+            elif correlation >= thresholds["good"]:
+                status = "Good"
+                assessment = f"Good shape preservation ({correlation:.3f}). Signal structure maintained with noise reduction."
+            elif correlation >= thresholds["acceptable"]:
+                status = "Acceptable"
+                assessment = f"Acceptable shape preservation ({correlation:.3f}). Moderate filtering with some shape changes."
             else:
-                status = 'Poor'
-                assessment = f'Poor shape preservation ({correlation:.3f}). Filter significantly altered signal morphology.'
+                status = "Poor"
+                assessment = f"Poor shape preservation ({correlation:.3f}). Filter significantly altered signal morphology."
 
             return correlation, status, assessment
 
         except Exception as e:
             logger.error(f"Error calculating shape similarity: {e}")
-            return 0.0, 'Unknown', f'Error: {str(e)}'
+            return 0.0, "Unknown", f"Error: {str(e)}"
 
     def assess_quality(self) -> Dict[str, any]:
         """
@@ -473,14 +551,28 @@ class FilteringQualityAssessment:
         0.25
         """
         # Calculate all metrics
-        noise_reduction_score, noise_status, noise_assessment = self.calculate_noise_reduction()
+        noise_reduction_score, noise_status, noise_assessment = (
+            self.calculate_noise_reduction()
+        )
         snr_db, snr_status, snr_assessment = self.calculate_snr_improvement()
-        smoothness_improvement, smooth_status, smooth_assessment = self.calculate_smoothness_improvement()
-        peak_preservation, peak_status, peak_assessment = self.calculate_peak_preservation()
-        shape_similarity, shape_status, shape_assessment = self.calculate_shape_similarity()
+        smoothness_improvement, smooth_status, smooth_assessment = (
+            self.calculate_smoothness_improvement()
+        )
+        peak_preservation, peak_status, peak_assessment = (
+            self.calculate_peak_preservation()
+        )
+        shape_similarity, shape_status, shape_assessment = (
+            self.calculate_shape_similarity()
+        )
 
         # Calculate overall quality (weighted average of status scores)
-        status_to_score = {'Excellent': 3, 'Good': 2, 'Acceptable': 1, 'Poor': 0, 'Unknown': 0}
+        status_to_score = {
+            "Excellent": 3,
+            "Good": 2,
+            "Acceptable": 1,
+            "Poor": 0,
+            "Unknown": 0,
+        }
 
         scores = [
             status_to_score[noise_status],
@@ -493,48 +585,48 @@ class FilteringQualityAssessment:
         avg_score = np.mean(scores)
 
         if avg_score >= 2.5:
-            overall_quality = 'Excellent'
-            recommendation = 'Filter settings are optimal for this signal type.'
+            overall_quality = "Excellent"
+            recommendation = "Filter settings are optimal for this signal type."
         elif avg_score >= 1.5:
-            overall_quality = 'Good'
-            recommendation = 'Filter performing well. Consider minor adjustments if specific features need better preservation.'
+            overall_quality = "Good"
+            recommendation = "Filter performing well. Consider minor adjustments if specific features need better preservation."
         elif avg_score >= 0.8:
-            overall_quality = 'Acceptable'
-            recommendation = 'Filter is working but could be improved. Consider adjusting cutoff frequencies or filter order.'
+            overall_quality = "Acceptable"
+            recommendation = "Filter is working but could be improved. Consider adjusting cutoff frequencies or filter order."
         else:
-            overall_quality = 'Poor'
-            recommendation = 'Filter settings may be inappropriate for this signal. Review filter parameters and signal characteristics.'
+            overall_quality = "Poor"
+            recommendation = "Filter settings may be inappropriate for this signal. Review filter parameters and signal characteristics."
 
         return {
-            'overall_quality': overall_quality,
-            'recommendation': recommendation,
-            'signal_type': self.signal_type,
-            'sampling_frequency': self.fs,
-            'metrics': {
-                'noise_reduction': {
-                    'score': noise_reduction_score,
-                    'status': noise_status,
-                    'assessment': noise_assessment,
+            "overall_quality": overall_quality,
+            "recommendation": recommendation,
+            "signal_type": self.signal_type,
+            "sampling_frequency": self.fs,
+            "metrics": {
+                "noise_reduction": {
+                    "score": noise_reduction_score,
+                    "status": noise_status,
+                    "assessment": noise_assessment,
                 },
-                'snr_db': {
-                    'value': snr_db,
-                    'status': snr_status,
-                    'assessment': snr_assessment,
+                "snr_db": {
+                    "value": snr_db,
+                    "status": snr_status,
+                    "assessment": snr_assessment,
                 },
-                'smoothness_improvement': {
-                    'score': smoothness_improvement,
-                    'status': smooth_status,
-                    'assessment': smooth_assessment,
+                "smoothness_improvement": {
+                    "score": smoothness_improvement,
+                    "status": smooth_status,
+                    "assessment": smooth_assessment,
                 },
-                'peak_preservation': {
-                    'score': peak_preservation,
-                    'status': peak_status,
-                    'assessment': peak_assessment,
+                "peak_preservation": {
+                    "score": peak_preservation,
+                    "status": peak_status,
+                    "assessment": peak_assessment,
                 },
-                'shape_similarity': {
-                    'score': shape_similarity,
-                    'status': shape_status,
-                    'assessment': shape_assessment,
+                "shape_similarity": {
+                    "score": shape_similarity,
+                    "status": shape_status,
+                    "assessment": shape_assessment,
                 },
-            }
+            },
         }

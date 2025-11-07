@@ -201,9 +201,12 @@ def create_dash_app() -> Dash:
     register_settings_callbacks(app)  # Register settings management callbacks
     register_pipeline_callbacks(app)
     register_tasks_callbacks(app)  # Register pipeline visualization callbacks
-    
+
     # Register export callbacks
-    from vitalDSP_webapp.callbacks.utils.export_callbacks import register_all_export_callbacks
+    from vitalDSP_webapp.callbacks.utils.export_callbacks import (
+        register_all_export_callbacks,
+    )
+
     register_all_export_callbacks(app)
 
     return app

@@ -66,7 +66,7 @@ class TestAutoSelectSignalTypeMissingCoverage:
         mock_data_service.get_data_info.return_value = None
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
-            result = auto_select_callback("/filtering")
+            result = auto_select_callback("/filtering", None, None, None)
             assert result == ("PPG", "traditional", "convolution")
 
     def test_auto_select_stored_signal_type_ppg(self, mock_data_service):
@@ -102,7 +102,7 @@ class TestAutoSelectSignalTypeMissingCoverage:
         mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
-            result = auto_select_callback("/filtering")
+            result = auto_select_callback("/filtering", None, None, None)
             assert result[0] == "PPG"  # Should convert to uppercase
 
     def test_auto_select_stored_signal_type_other(self, mock_data_service):
@@ -138,7 +138,7 @@ class TestAutoSelectSignalTypeMissingCoverage:
         mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
-            result = auto_select_callback("/filtering")
+            result = auto_select_callback("/filtering", None, None, None)
             assert result[0] == "Other"  # Should capitalize
 
     def test_auto_select_stored_signal_type_unknown(self, mock_data_service):
@@ -174,7 +174,7 @@ class TestAutoSelectSignalTypeMissingCoverage:
         mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
-            result = auto_select_callback("/filtering")
+            result = auto_select_callback("/filtering", None, None, None)
             assert result[0] == "UNKNOWN_TYPE"  # Should convert to uppercase
 
     def test_auto_select_auto_detection_branch(self, mock_data_service):
@@ -210,14 +210,14 @@ class TestAutoSelectSignalTypeMissingCoverage:
         mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
-            result = auto_select_callback("/filtering")
+            result = auto_select_callback("/filtering", None, None, None)
             assert result[0] == "PPG"  # Should use default
 
         # Test case 2: signal_type is None
         mock_data_service.get_data_info.return_value = {"signal_type": None}
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
-            result = auto_select_callback("/filtering")
+            result = auto_select_callback("/filtering", None, None, None)
             assert result[0] == "PPG"  # Should use default
 
     def test_auto_select_auto_detection_condition(self, mock_data_service):
@@ -254,7 +254,7 @@ class TestAutoSelectSignalTypeMissingCoverage:
         mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
-            result = auto_select_callback("/filtering")
+            result = auto_select_callback("/filtering", None, None, None)
             # Should trigger auto-detection logic
             assert result[0] == "PPG"
 
@@ -262,7 +262,7 @@ class TestAutoSelectSignalTypeMissingCoverage:
         mock_data_service.get_data_info.return_value = {"signal_type": None}
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
-            result = auto_select_callback("/filtering")
+            result = auto_select_callback("/filtering", None, None, None)
             # Should trigger auto-detection logic
             assert result[0] == "PPG"
 
@@ -306,7 +306,7 @@ class TestSignalFilteringCallbacksEdgeCases:
         mock_data_service.get_data_info.return_value = {"signal_type": "ppg"}
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
-            result = auto_select_callback("/filtering")
+            result = auto_select_callback("/filtering", None, None, None)
             # Should select the highest numbered data ID
             assert result[0] == "PPG"
 
@@ -344,7 +344,7 @@ class TestSignalFilteringCallbacksEdgeCases:
         mock_data_service.get_data_info.return_value = {"signal_type": "ppg"}
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
-            result = auto_select_callback("/filtering")
+            result = auto_select_callback("/filtering", None, None, None)
             # Should handle invalid format gracefully
             assert result[0] == "PPG"
 
@@ -380,7 +380,7 @@ class TestSignalFilteringCallbacksEdgeCases:
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
             with patch('vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks.logger') as mock_logger:
-                result = auto_select_callback("/filtering")
+                result = auto_select_callback("/filtering", None, None, None)
                 # Should log data info keys
                 assert mock_logger.info.called
 
@@ -418,7 +418,7 @@ class TestSignalFilteringCallbacksEdgeCases:
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
             with patch('vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks.logger') as mock_logger:
-                result = auto_select_callback("/filtering")
+                result = auto_select_callback("/filtering", None, None, None)
                 # Should log stored signal type and using stored signal type
                 assert mock_logger.info.called
 
@@ -456,7 +456,7 @@ class TestSignalFilteringCallbacksEdgeCases:
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
             with patch('vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks.logger') as mock_logger:
-                result = auto_select_callback("/filtering")
+                result = auto_select_callback("/filtering", None, None, None)
                 # Should log auto-detection message
                 assert mock_logger.info.called
 
@@ -497,7 +497,7 @@ class TestSignalFilteringCallbacksAdditionalCoverage:
         mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
-            result = auto_select_callback("/filtering")
+            result = auto_select_callback("/filtering", None, None, None)
             assert result[0] == "ECG"
 
     def test_auto_select_default_values(self, mock_data_service):
@@ -533,7 +533,7 @@ class TestSignalFilteringCallbacksAdditionalCoverage:
         mock_data_service.get_column_mapping.return_value = {}  # Mock get_column_mapping method
         
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
-            result = auto_select_callback("/filtering")
+            result = auto_select_callback("/filtering", None, None, None)
             # Should return default values for filter_type and advanced_method
             assert result[1] == "traditional"
             assert result[2] == "convolution"
@@ -566,7 +566,7 @@ class TestSignalFilteringCallbacksAdditionalCoverage:
         
         # Test with different pathname
         with pytest.raises(PreventUpdate):
-            auto_select_callback("/analysis")
+            auto_select_callback("/analysis", None, None, None)
 
     def test_auto_select_no_data_service(self):
         """Test when data service is None (line 46-48)"""
@@ -596,7 +596,7 @@ class TestSignalFilteringCallbacksAdditionalCoverage:
         
         # Test with no data service
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=None, create=True):
-            result = auto_select_callback("/filtering")
+            result = auto_select_callback("/filtering", None, None, None)
             assert result == ("PPG", "traditional", "convolution")
 
     def test_auto_select_no_data_available(self):
@@ -630,7 +630,7 @@ class TestSignalFilteringCallbacksAdditionalCoverage:
         mock_data_service.get_all_data.return_value = {}
 
         with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
-            result = auto_select_callback("/filtering")
+            result = auto_select_callback("/filtering", None, None, None)
             assert result == ("PPG", "traditional", "convolution")
 
 

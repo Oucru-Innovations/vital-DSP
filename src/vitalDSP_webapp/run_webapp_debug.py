@@ -13,10 +13,11 @@ from vitalDSP_webapp.app import create_fastapi_app
 # Create the FastAPI app at module level (like the original script)
 fastapi_app = create_fastapi_app()
 
+
 def setup_logging(debug_mode: bool = False):
     """
     Set up logging configuration based on mode.
-    
+
     Args:
         debug_mode: If True, enables DEBUG level logging for detailed information
     """
@@ -24,11 +25,11 @@ def setup_logging(debug_mode: bool = False):
         # Debug mode: Show all logs including DEBUG level
         logging.basicConfig(
             level=logging.DEBUG,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             handlers=[
                 logging.StreamHandler(sys.stdout),
-                logging.FileHandler('webapp_debug.log')
-            ]
+                logging.FileHandler("webapp_debug.log"),
+            ],
         )
         print("DEBUG MODE: All logs enabled (DEBUG level)")
         print("Debug logs will be saved to: webapp_debug.log")
@@ -36,29 +37,38 @@ def setup_logging(debug_mode: bool = False):
         # Normal mode: Show only INFO and above
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             handlers=[
                 logging.StreamHandler(sys.stdout),
-                logging.FileHandler('webapp.log')
-            ]
+                logging.FileHandler("webapp.log"),
+            ],
         )
         print("NORMAL MODE: Essential logs only (INFO level)")
         print("Logs will be saved to: webapp.log")
-    
+
     # Set specific logger levels for our services
     if debug_mode:
         # Debug mode: Show all enhanced data service logs
-        logging.getLogger('src.vitalDSP_webapp.services.data.enhanced_data_service').setLevel(logging.DEBUG)
-        logging.getLogger('vitalDSP_webapp.services.data.enhanced_data_service').setLevel(logging.DEBUG)
+        logging.getLogger(
+            "src.vitalDSP_webapp.services.data.enhanced_data_service"
+        ).setLevel(logging.DEBUG)
+        logging.getLogger(
+            "vitalDSP_webapp.services.data.enhanced_data_service"
+        ).setLevel(logging.DEBUG)
     else:
         # Normal mode: Only show important enhanced data service logs
-        logging.getLogger('src.vitalDSP_webapp.services.data.enhanced_data_service').setLevel(logging.INFO)
-        logging.getLogger('vitalDSP_webapp.services.data.enhanced_data_service').setLevel(logging.INFO)
+        logging.getLogger(
+            "src.vitalDSP_webapp.services.data.enhanced_data_service"
+        ).setLevel(logging.INFO)
+        logging.getLogger(
+            "vitalDSP_webapp.services.data.enhanced_data_service"
+        ).setLevel(logging.INFO)
+
 
 def run_webapp(debug_mode: bool = False, port: int = None, host: str = "0.0.0.0"):
     """
     Run the webapp with specified configuration.
-    
+
     Args:
         debug_mode: Enable debug logging
         port: Port to run on (defaults to environment PORT or 8000)
@@ -66,40 +76,38 @@ def run_webapp(debug_mode: bool = False, port: int = None, host: str = "0.0.0.0"
     """
     # Set up logging
     setup_logging(debug_mode)
-    
+
     # Get port from environment variable or parameter
     if port is None:
         port = int(os.environ.get("PORT", 8000))
-    
+
     print(f"\nStarting webapp on {host}:{port}")
     print(f"Mode: {'DEBUG' if debug_mode else 'NORMAL'}")
     print(f"Access at: http://localhost:{port}")
     print(f"API docs at: http://localhost:{port}/docs")
-    print("\n" + "="*60)
-    
+    print("\n" + "=" * 60)
+
     # Run the FastAPI app (which also serves the Dash app) using Uvicorn
     uvicorn.run(
-        fastapi_app, 
-        host=host, 
-        port=port,
-        log_level="info"  # Use consistent log level
+        fastapi_app, host=host, port=port, log_level="info"  # Use consistent log level
     )
+
 
 if __name__ == "__main__":
     """
     Main execution point with command line argument support.
-    
+
     Usage:
         python src/vitalDSP_webapp/run_webapp_debug.py          # Normal mode
         python src/vitalDSP_webapp/run_webapp_debug.py --debug  # Debug mode
         python src/vitalDSP_webapp/run_webapp_debug.py --debug --port 8080  # Debug mode on port 8080
     """
-    
+
     # Parse command line arguments
     debug_mode = "--debug" in sys.argv
     port = None
     host = "0.0.0.0"
-    
+
     # Parse port if provided
     if "--port" in sys.argv:
         try:
@@ -108,7 +116,7 @@ if __name__ == "__main__":
         except (IndexError, ValueError):
             print("❌ Error: --port requires a valid port number")
             sys.exit(1)
-    
+
     # Parse host if provided
     if "--host" in sys.argv:
         try:
@@ -117,10 +125,11 @@ if __name__ == "__main__":
         except IndexError:
             print("❌ Error: --host requires a host address")
             sys.exit(1)
-    
+
     # Show help if requested
     if "--help" in sys.argv or "-h" in sys.argv:
-        print("""
+        print(
+            """
 🚀 VitalDSP Webapp Runner
 
 Usage:
@@ -136,8 +145,9 @@ Examples:
     python src/vitalDSP_webapp/run_webapp_debug.py                    # Normal mode
     python src/vitalDSP_webapp/run_webapp_debug.py --debug            # Debug mode
     python src/vitalDSP_webapp/run_webapp_debug.py --debug --port 8080 # Debug mode on port 8080
-        """)
+        """
+        )
         sys.exit(0)
-    
+
     # Run the webapp
     run_webapp(debug_mode=debug_mode, port=port, host=host)

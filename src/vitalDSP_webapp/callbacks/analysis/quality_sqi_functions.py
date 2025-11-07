@@ -130,13 +130,16 @@ def get_sqi_parameters_layout(sqi_type):
     """
 
     # Get SQI description and add as informational alert
-    sqi_desc = SQI_THRESHOLD_DESCRIPTIONS.get(sqi_type, {
-        "description": f"Quality assessment using {sqi_type.replace('_', ' ').title()}",
-        "range": "0.0 - 1.0",
-        "direction": "Custom interpretation",
-        "interpretation": "See documentation for specific interpretation.",
-    })
-    
+    sqi_desc = SQI_THRESHOLD_DESCRIPTIONS.get(
+        sqi_type,
+        {
+            "description": f"Quality assessment using {sqi_type.replace('_', ' ').title()}",
+            "range": "0.0 - 1.0",
+            "direction": "Custom interpretation",
+            "interpretation": "See documentation for specific interpretation.",
+        },
+    )
+
     # Common parameters for all SQIs
     common_params = [
         html.H6(f"{sqi_type.replace('_', ' ').title()} Parameters", className="mb-3"),
@@ -157,103 +160,133 @@ def get_sqi_parameters_layout(sqi_type):
             color="info",
             className="mb-3",
         ),
-        dbc.Row([
-            dbc.Col([
-                html.Label("Window Size (samples)", className="form-label"),
-                dbc.Input(
-                    id={"type": "sqi-param", "param": "window_size"},
-                    type="number",
-                    value=1000,
-                    min=100,
-                    step=100,
-                ),
-            ], md=6),
-            dbc.Col([
-                html.Label("Step Size (samples)", className="form-label"),
-                dbc.Input(
-                    id={"type": "sqi-param", "param": "step_size"},
-                    type="number",
-                    value=500,
-                    min=50,
-                    step=50,
-                ),
-            ], md=6),
-        ], className="mb-3"),
-        dbc.Row([
-            dbc.Col([
-                html.Label("Threshold Type", className="form-label"),
-                dbc.Select(
-                    id={"type": "sqi-param", "param": "threshold_type"},
-                    options=[
-                        {"label": "Below Threshold = Abnormal (values >= threshold are good)", "value": "below"},
-                        {"label": "Above Threshold = Abnormal (values <= threshold are good)", "value": "above"},
-                        {"label": "Range (min-max)", "value": "range"},
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        html.Label("Window Size (samples)", className="form-label"),
+                        dbc.Input(
+                            id={"type": "sqi-param", "param": "window_size"},
+                            type="number",
+                            value=1000,
+                            min=100,
+                            step=100,
+                        ),
                     ],
-                    value="below",
+                    md=6,
                 ),
-            ], md=12),
-        ], className="mb-3"),
+                dbc.Col(
+                    [
+                        html.Label("Step Size (samples)", className="form-label"),
+                        dbc.Input(
+                            id={"type": "sqi-param", "param": "step_size"},
+                            type="number",
+                            value=500,
+                            min=50,
+                            step=50,
+                        ),
+                    ],
+                    md=6,
+                ),
+            ],
+            className="mb-3",
+        ),
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        html.Label("Threshold Type", className="form-label"),
+                        dbc.Select(
+                            id={"type": "sqi-param", "param": "threshold_type"},
+                            options=[
+                                {
+                                    "label": "Below Threshold = Abnormal (values >= threshold are good)",
+                                    "value": "below",
+                                },
+                                {
+                                    "label": "Above Threshold = Abnormal (values <= threshold are good)",
+                                    "value": "above",
+                                },
+                                {"label": "Range (min-max)", "value": "range"},
+                            ],
+                            value="below",
+                        ),
+                    ],
+                    md=12,
+                ),
+            ],
+            className="mb-3",
+        ),
         # Threshold inputs - single value or range
         dbc.Row(
             id={"type": "sqi-param-threshold-row", "param": "single"},
             children=[
-                dbc.Col([
-                    html.Label("Threshold Value", className="form-label"),
-                    dbc.Input(
-                        id={"type": "sqi-param", "param": "threshold"},
-                        type="number",
-                        value=SQI_DEFAULT_THRESHOLDS.get(sqi_type, 0.5),
-                        min=0,
-                        max=1,
-                        step=0.05,
-                    ),
-                ], md=12),
+                dbc.Col(
+                    [
+                        html.Label("Threshold Value", className="form-label"),
+                        dbc.Input(
+                            id={"type": "sqi-param", "param": "threshold"},
+                            type="number",
+                            value=SQI_DEFAULT_THRESHOLDS.get(sqi_type, 0.5),
+                            step=0.05,
+                        ),
+                    ],
+                    md=12,
+                ),
             ],
             className="mb-3",
         ),
         dbc.Row(
             id={"type": "sqi-param-threshold-row", "param": "range"},
             children=[
-                dbc.Col([
-                    html.Label("Threshold Min Value", className="form-label"),
-                    dbc.Input(
-                        id={"type": "sqi-param", "param": "threshold_min"},
-                        type="number",
-                        value=0.2,
-                        min=0,
-                        max=1,
-                        step=0.05,
-                    ),
-                ], md=6),
-                dbc.Col([
-                    html.Label("Threshold Max Value", className="form-label"),
-                    dbc.Input(
-                        id={"type": "sqi-param", "param": "threshold_max"},
-                        type="number",
-                        value=0.8,
-                        min=0,
-                        max=1,
-                        step=0.05,
-                    ),
-                ], md=6),
+                dbc.Col(
+                    [
+                        html.Label("Threshold Min Value", className="form-label"),
+                        dbc.Input(
+                            id={"type": "sqi-param", "param": "threshold_min"},
+                            type="number",
+                            value=0.2,
+                            step=0.05,
+                        ),
+                    ],
+                    md=6,
+                ),
+                dbc.Col(
+                    [
+                        html.Label("Threshold Max Value", className="form-label"),
+                        dbc.Input(
+                            id={"type": "sqi-param", "param": "threshold_max"},
+                            type="number",
+                            value=0.8,
+                            step=0.05,
+                        ),
+                    ],
+                    md=6,
+                ),
             ],
             className="mb-3",
             style={"display": "none"},  # Hidden by default
         ),
-        dbc.Row([
-            dbc.Col([
-                html.Label("Scaling Method", className="form-label"),
-                dbc.Select(
-                    id={"type": "sqi-param", "param": "scale"},
-                    options=[
-                        {"label": "Z-Score", "value": "zscore"},
-                        {"label": "IQR (Interquartile Range)", "value": "iqr"},
-                        {"label": "Min-Max", "value": "minmax"},
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        html.Label("Scaling Method", className="form-label"),
+                        dbc.Select(
+                            id={"type": "sqi-param", "param": "scale"},
+                            options=[
+                                {"label": "Z-Score", "value": "zscore"},
+                                {"label": "IQR (Interquartile Range)", "value": "iqr"},
+                                {"label": "Min-Max", "value": "minmax"},
+                            ],
+                            value="zscore",
+                        ),
                     ],
-                    value="zscore",
+                    md=12,
                 ),
-            ], md=12),
-        ], className="mb-3"),
+            ],
+            className="mb-3",
+        ),
     ]
 
     # SQI-specific parameters
@@ -261,46 +294,69 @@ def get_sqi_parameters_layout(sqi_type):
 
     if sqi_type == "baseline_wander_sqi":
         specific_params = [
-            dbc.Row([
-                dbc.Col([
-                    html.Label("Moving Average Window", className="form-label"),
-                    dbc.Input(
-                        id={"type": "sqi-param", "param": "moving_avg_window"},
-                        type="number",
-                        value=50,
-                        min=10,
-                        step=10,
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            html.Label("Moving Average Window", className="form-label"),
+                            dbc.Input(
+                                id={"type": "sqi-param", "param": "moving_avg_window"},
+                                type="number",
+                                value=50,
+                                min=10,
+                                step=10,
+                            ),
+                        ],
+                        md=12,
                     ),
-                ], md=12),
-            ], className="mb-3"),
+                ],
+                className="mb-3",
+            ),
         ]
 
     elif sqi_type == "waveform_similarity_sqi":
         specific_params = [
-            dbc.Row([
-                dbc.Col([
-                    html.Label("Reference Window Index", className="form-label"),
-                    dbc.Input(
-                        id={"type": "sqi-param", "param": "reference_window_index"},
-                        type="number",
-                        value=0,
-                        min=0,
-                        step=1,
-                    ),
-                ], md=6),
-                dbc.Col([
-                    html.Label("Similarity Metric", className="form-label"),
-                    dbc.Select(
-                        id={"type": "sqi-param", "param": "similarity_metric"},
-                        options=[
-                            {"label": "Correlation", "value": "correlation"},
-                            {"label": "Euclidean Distance", "value": "euclidean"},
-                            {"label": "Cosine Similarity", "value": "cosine"},
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            html.Label(
+                                "Reference Window Index", className="form-label"
+                            ),
+                            dbc.Input(
+                                id={
+                                    "type": "sqi-param",
+                                    "param": "reference_window_index",
+                                },
+                                type="number",
+                                value=0,
+                                min=0,
+                                step=1,
+                            ),
                         ],
-                        value="correlation",
+                        md=6,
                     ),
-                ], md=6),
-            ], className="mb-3"),
+                    dbc.Col(
+                        [
+                            html.Label("Similarity Metric", className="form-label"),
+                            dbc.Select(
+                                id={"type": "sqi-param", "param": "similarity_metric"},
+                                options=[
+                                    {"label": "Correlation", "value": "correlation"},
+                                    {
+                                        "label": "Euclidean Distance",
+                                        "value": "euclidean",
+                                    },
+                                    {"label": "Cosine Similarity", "value": "cosine"},
+                                ],
+                                value="correlation",
+                            ),
+                        ],
+                        md=6,
+                    ),
+                ],
+                className="mb-3",
+            ),
         ]
 
     elif sqi_type == "signal_entropy_sqi":
@@ -322,22 +378,28 @@ def get_sqi_parameters_layout(sqi_type):
 
     elif sqi_type == "eeg_band_power_sqi":
         specific_params = [
-            dbc.Row([
-                dbc.Col([
-                    html.Label("EEG Band", className="form-label"),
-                    dbc.Select(
-                        id={"type": "sqi-param", "param": "band"},
-                        options=[
-                            {"label": "Delta (0.5-4 Hz)", "value": "delta"},
-                            {"label": "Theta (4-8 Hz)", "value": "theta"},
-                            {"label": "Alpha (8-13 Hz)", "value": "alpha"},
-                            {"label": "Beta (13-30 Hz)", "value": "beta"},
-                            {"label": "Gamma (30-100 Hz)", "value": "gamma"},
+            dbc.Row(
+                [
+                    dbc.Col(
+                        [
+                            html.Label("EEG Band", className="form-label"),
+                            dbc.Select(
+                                id={"type": "sqi-param", "param": "band"},
+                                options=[
+                                    {"label": "Delta (0.5-4 Hz)", "value": "delta"},
+                                    {"label": "Theta (4-8 Hz)", "value": "theta"},
+                                    {"label": "Alpha (8-13 Hz)", "value": "alpha"},
+                                    {"label": "Beta (13-30 Hz)", "value": "beta"},
+                                    {"label": "Gamma (30-100 Hz)", "value": "gamma"},
+                                ],
+                                value="alpha",
+                            ),
                         ],
-                        value="alpha",
+                        md=12,
                     ),
-                ], md=12),
-            ], className="mb-3"),
+                ],
+                className="mb-3",
+            ),
         ]
 
     return common_params + specific_params
@@ -357,7 +419,9 @@ def compute_sqi(signal_data, sqi_type, params, sampling_freq=100):
         dict: SQI results including values, segments, and metrics
     """
     try:
-        from vitalDSP.signal_quality_assessment.signal_quality_index import SignalQualityIndex
+        from vitalDSP.signal_quality_assessment.signal_quality_index import (
+            SignalQualityIndex,
+        )
 
         # Initialize SQI
         sqi = SignalQualityIndex(signal_data)
@@ -376,7 +440,7 @@ def compute_sqi(signal_data, sqi_type, params, sampling_freq=100):
             step_size = 500
         threshold_type = params.get("threshold_type", "above")
         scale = params.get("scale", "zscore")
-        
+
         # Handle threshold based on threshold_type
         if threshold_type == "range":
             # For range type, threshold should be a list [min, max]
@@ -384,8 +448,12 @@ def compute_sqi(signal_data, sqi_type, params, sampling_freq=100):
                 threshold_min = params.get("threshold_min")
                 threshold_max = params.get("threshold_max")
                 # Handle None values
-                threshold_min = float(threshold_min) if threshold_min not in [None, ""] else 0.2
-                threshold_max = float(threshold_max) if threshold_max not in [None, ""] else 0.8
+                threshold_min = (
+                    float(threshold_min) if threshold_min not in [None, ""] else 0.2
+                )
+                threshold_max = (
+                    float(threshold_max) if threshold_max not in [None, ""] else 0.8
+                )
                 threshold = [threshold_min, threshold_max]
                 logger.info(f"Using range threshold: {threshold}")
             except (ValueError, TypeError):
@@ -418,7 +486,11 @@ def compute_sqi(signal_data, sqi_type, params, sampling_freq=100):
         elif sqi_type == "baseline_wander_sqi":
             try:
                 moving_avg_window = params.get("moving_avg_window")
-                moving_avg_window = int(moving_avg_window) if moving_avg_window not in [None, ""] else 50
+                moving_avg_window = (
+                    int(moving_avg_window)
+                    if moving_avg_window not in [None, ""]
+                    else 50
+                )
             except (ValueError, TypeError):
                 moving_avg_window = 50
             sqi_values, normal_segments, abnormal_segments = sqi.baseline_wander_sqi(
@@ -431,12 +503,14 @@ def compute_sqi(signal_data, sqi_type, params, sampling_freq=100):
             )
 
         elif sqi_type == "amplitude_variability_sqi":
-            sqi_values, normal_segments, abnormal_segments = sqi.amplitude_variability_sqi(
-                window_size=window_size,
-                step_size=step_size,
-                threshold=threshold,
-                threshold_type=threshold_type,
-                scale=scale,
+            sqi_values, normal_segments, abnormal_segments = (
+                sqi.amplitude_variability_sqi(
+                    window_size=window_size,
+                    step_size=step_size,
+                    threshold=threshold,
+                    threshold_type=threshold_type,
+                    scale=scale,
+                )
             )
 
         elif sqi_type == "zero_crossing_sqi":
@@ -449,18 +523,27 @@ def compute_sqi(signal_data, sqi_type, params, sampling_freq=100):
             )
 
         elif sqi_type == "waveform_similarity_sqi":
-            try:
-                reference_window_index = params.get("reference_window_index")
-                reference_window_index = int(reference_window_index) if reference_window_index not in [None, ""] else 0
-            except (ValueError, TypeError):
-                reference_window_index = 0
-            sqi_values, normal_segments, abnormal_segments = sqi.waveform_similarity_sqi(
-                window_size=window_size,
-                step_size=step_size,
-                threshold=threshold,
-                threshold_type=threshold_type,
-                scale=scale,
-                reference_window_index=reference_window_index,
+            # Extract the first window as reference waveform
+            # The reference_waveform should be a segment of the signal to compare against
+            reference_waveform = (
+                signal_data[:window_size]
+                if len(signal_data) >= window_size
+                else signal_data
+            )
+
+            # Get similarity method from params (default: correlation)
+            similarity_method = params.get("similarity_method", "correlation")
+
+            sqi_values, normal_segments, abnormal_segments = (
+                sqi.waveform_similarity_sqi(
+                    window_size=window_size,
+                    step_size=step_size,
+                    reference_waveform=reference_waveform,
+                    threshold=threshold,
+                    threshold_type=threshold_type,
+                    scale=scale,
+                    similarity_method=similarity_method,
+                )
             )
 
         elif sqi_type == "signal_entropy_sqi":
@@ -502,12 +585,14 @@ def compute_sqi(signal_data, sqi_type, params, sampling_freq=100):
             )
 
         elif sqi_type == "peak_to_peak_amplitude_sqi":
-            sqi_values, normal_segments, abnormal_segments = sqi.peak_to_peak_amplitude_sqi(
-                window_size=window_size,
-                step_size=step_size,
-                threshold=threshold,
-                threshold_type=threshold_type,
-                scale=scale,
+            sqi_values, normal_segments, abnormal_segments = (
+                sqi.peak_to_peak_amplitude_sqi(
+                    window_size=window_size,
+                    step_size=step_size,
+                    threshold=threshold,
+                    threshold_type=threshold_type,
+                    scale=scale,
+                )
             )
 
         elif sqi_type == "ppg_signal_quality_sqi":
@@ -522,58 +607,74 @@ def compute_sqi(signal_data, sqi_type, params, sampling_freq=100):
 
         elif sqi_type == "respiratory_signal_quality_sqi":
             # Respiratory SQI signature: (self, window_size, step_size, threshold=None, threshold_type='below', scale='zscore')
-            sqi_values, normal_segments, abnormal_segments = sqi.respiratory_signal_quality_sqi(
-                window_size=window_size,
-                step_size=step_size,
-                threshold=threshold,
-                threshold_type=threshold_type,
-                scale=scale,
+            sqi_values, normal_segments, abnormal_segments = (
+                sqi.respiratory_signal_quality_sqi(
+                    window_size=window_size,
+                    step_size=step_size,
+                    threshold=threshold,
+                    threshold_type=threshold_type,
+                    scale=scale,
+                )
             )
 
         elif sqi_type == "heart_rate_variability_sqi":
             # HRV SQI signature: (self, rr_intervals, window_size, step_size, threshold=None, threshold_type='below', scale='zscore')
             # Need to compute RR intervals from signal first
             from vitalDSP.utils.config_utilities.common import find_peaks
-            
+
             # Compute RR intervals from signal using peak detection
             # Find peaks with adaptive threshold based on mean and std
             mean_val = np.mean(signal_data)
             std_val = np.std(signal_data)
             height_threshold = mean_val + std_val
-            min_distance = max(1, int(sampling_freq * 0.3))  # Minimum 0.3 seconds between peaks
-            
+            min_distance = max(
+                1, int(sampling_freq * 0.3)
+            )  # Minimum 0.3 seconds between peaks
+
             peaks = find_peaks(
                 signal_data,
                 height=height_threshold,
                 distance=min_distance,
                 prominence=0.5 * std_val,
             )
-            
+
             if len(peaks) < 2:
                 logger.warning("Not enough peaks detected for HRV analysis")
-                raise ValueError("Not enough peaks detected for HRV analysis. Signal may be too short or noisy.")
-            
+                raise ValueError(
+                    "Not enough peaks detected for HRV analysis. Signal may be too short or noisy."
+                )
+
             # Compute RR intervals (in seconds)
             rr_intervals = np.diff(peaks) / sampling_freq
-            
-            logger.info(f"Computed {len(rr_intervals)} RR intervals from {len(peaks)} peaks")
-            
-            sqi_values, normal_segments, abnormal_segments = sqi.heart_rate_variability_sqi(
-                rr_intervals=rr_intervals,
-                window_size=min(window_size, len(rr_intervals) // 2),  # Adjust window to fit RR intervals
-                step_size=min(step_size, len(rr_intervals) // 4),      # Adjust step to fit RR intervals
-                threshold=threshold,
-                threshold_type=threshold_type,
-                scale=scale,
+
+            logger.info(
+                f"Computed {len(rr_intervals)} RR intervals from {len(peaks)} peaks"
+            )
+
+            sqi_values, normal_segments, abnormal_segments = (
+                sqi.heart_rate_variability_sqi(
+                    rr_intervals=rr_intervals,
+                    window_size=min(
+                        window_size, len(rr_intervals) // 2
+                    ),  # Adjust window to fit RR intervals
+                    step_size=min(
+                        step_size, len(rr_intervals) // 4
+                    ),  # Adjust step to fit RR intervals
+                    threshold=threshold,
+                    threshold_type=threshold_type,
+                    scale=scale,
+                )
             )
 
         elif sqi_type == "eeg_band_power_sqi":
             # EEG SQI signature: (self, band_power, window_size, step_size, threshold=None, threshold_type='below', scale='zscore')
             # Need to compute band power from signal first
-            from vitalDSP.frequency_transform.spectral_analysis import compute_band_power
-            
+            from vitalDSP.frequency_transform.spectral_analysis import (
+                compute_band_power,
+            )
+
             band = params.get("band", "alpha")
-            
+
             # Define EEG band frequencies
             band_frequencies = {
                 "delta": (0.5, 4),
@@ -582,18 +683,24 @@ def compute_sqi(signal_data, sqi_type, params, sampling_freq=100):
                 "beta": (13, 30),
                 "gamma": (30, 100),
             }
-            
+
             low_freq, high_freq = band_frequencies.get(band, (8, 13))
-            
+
             # Compute band power for the signal
-            band_power = compute_band_power(signal_data, sampling_freq, low_freq, high_freq)
-            
+            band_power = compute_band_power(
+                signal_data, sampling_freq, low_freq, high_freq
+            )
+
             logger.info(f"Computed {band} band power: {np.mean(band_power):.3f}")
-            
+
             sqi_values, normal_segments, abnormal_segments = sqi.eeg_band_power_sqi(
                 band_power=band_power,
-                window_size=min(window_size, len(band_power) // 2),  # Adjust window to fit band power
-                step_size=min(step_size, len(band_power) // 4),      # Adjust step to fit band power
+                window_size=min(
+                    window_size, len(band_power) // 2
+                ),  # Adjust window to fit band power
+                step_size=min(
+                    step_size, len(band_power) // 4
+                ),  # Adjust step to fit band power
                 threshold=threshold,
                 threshold_type=threshold_type,
                 scale=scale,
@@ -610,7 +717,9 @@ def compute_sqi(signal_data, sqi_type, params, sampling_freq=100):
 
         # Calculate quality score (percentage of normal segments)
         total_segments = len(normal_segments) + len(abnormal_segments)
-        quality_score = len(normal_segments) / total_segments if total_segments > 0 else 0
+        quality_score = (
+            len(normal_segments) / total_segments if total_segments > 0 else 0
+        )
 
         # Determine overall quality
         if quality_score >= 0.8:
@@ -624,7 +733,11 @@ def compute_sqi(signal_data, sqi_type, params, sampling_freq=100):
 
         results = {
             "sqi_type": sqi_type,
-            "sqi_values": sqi_values.tolist() if isinstance(sqi_values, np.ndarray) else sqi_values,
+            "sqi_values": (
+                sqi_values.tolist()
+                if isinstance(sqi_values, np.ndarray)
+                else sqi_values
+            ),
             "normal_segments": normal_segments,
             "abnormal_segments": abnormal_segments,
             "mean_sqi": mean_sqi,
@@ -640,7 +753,9 @@ def compute_sqi(signal_data, sqi_type, params, sampling_freq=100):
             "num_abnormal": len(abnormal_segments),
         }
 
-        logger.info(f"SQI computed successfully: {sqi_type}, Score: {quality_score:.2%}")
+        logger.info(
+            f"SQI computed successfully: {sqi_type}, Score: {quality_score:.2%}"
+        )
         return results
 
     except Exception as e:

@@ -234,5 +234,3 @@ class TestPerformanceScenarios:
         assert isinstance(filtered_2, np.ndarray)
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

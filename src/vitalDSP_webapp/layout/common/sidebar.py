@@ -78,14 +78,8 @@ def Sidebar():
                                 href="/respiratory",
                                 className="nav-link text-white",
                             ),
-                            html.A(
-                                [
-                                    html.I(className="fas fa-chart-bar"),
-                                    " Advanced Features",
-                                ],
-                                href="/features",
-                                className="nav-link text-white",
-                            ),
+                            # PHASE 5: Removed "Advanced Features" entry (merged with Advanced Processing)
+                            # Old entry: html.A([...], " Advanced Features", href="/features", ...)
                             html.A(
                                 [
                                     html.I(className="fas fa-exchange-alt"),
@@ -105,7 +99,7 @@ def Sidebar():
                             html.A(
                                 [
                                     html.I(className="fas fa-brain"),
-                                    " Advanced Processing",
+                                    " Advanced Feature Engineering & Analysis",  # PHASE 5: Updated title
                                 ],
                                 href="/advanced",
                                 className="nav-link text-white",
@@ -233,12 +227,8 @@ def Sidebar():
                                 className="nav-icon text-white",
                                 title="Respiratory",
                             ),
-                            html.A(
-                                html.I(className="fas fa-chart-bar"),
-                                href="/features",
-                                className="nav-icon text-white",
-                                title="Advanced Features",
-                            ),
+                            # PHASE 5: Removed "Advanced Features" icon (merged with Advanced)
+                            # Old: html.A(html.I("fas fa-chart-bar"), href="/features", title="Advanced Features")
                             html.A(
                                 html.I(className="fas fa-exchange-alt"),
                                 href="/transforms",
@@ -255,7 +245,7 @@ def Sidebar():
                                 html.I(className="fas fa-brain"),
                                 href="/advanced",
                                 className="nav-icon text-white",
-                                title="Advanced",
+                                title="Advanced Feature Engineering & Analysis",  # PHASE 5: Updated
                             ),
                             html.A(
                                 html.I(className="fas fa-file-medical"),

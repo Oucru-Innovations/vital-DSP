@@ -90,7 +90,9 @@ def respiratory_layout():
                                                 className="mb-3",
                                             ),
                                             # Time Window Controls - NEW PATTERN
-                                            html.H6("Time Window", className="mb-2 fw-bold"),
+                                            html.H6(
+                                                "Time Window", className="mb-2 fw-bold"
+                                            ),
                                             html.Small(
                                                 "Select analysis window position and duration",
                                                 className="text-muted mb-2 d-block",
@@ -117,7 +119,10 @@ def respiratory_layout():
                                                     75: "75%",
                                                     100: "100%",
                                                 },
-                                                tooltip={"placement": "bottom", "always_visible": True},
+                                                tooltip={
+                                                    "placement": "bottom",
+                                                    "always_visible": True,
+                                                },
                                                 className="mb-3",
                                             ),
                                             # Duration Dropdown
@@ -132,11 +137,23 @@ def respiratory_layout():
                                             dbc.Select(
                                                 id="resp-duration-select",
                                                 options=[
-                                                    {"label": "30 seconds", "value": 30},
+                                                    {
+                                                        "label": "30 seconds",
+                                                        "value": 30,
+                                                    },
                                                     {"label": "1 minute", "value": 60},
-                                                    {"label": "2 minutes", "value": 120},
-                                                    {"label": "5 minutes", "value": 300},
-                                                    {"label": "10 minutes", "value": 600},
+                                                    {
+                                                        "label": "2 minutes",
+                                                        "value": 120,
+                                                    },
+                                                    {
+                                                        "label": "5 minutes",
+                                                        "value": 300,
+                                                    },
+                                                    {
+                                                        "label": "10 minutes",
+                                                        "value": 600,
+                                                    },
                                                 ],
                                                 value=60,  # Default to 1 minute
                                                 className="mb-3",
@@ -183,7 +200,10 @@ def respiratory_layout():
                                                 className="mb-3",
                                             ),
                                             # Signal Type Selection
-                                            html.H6("Signal Type", className="mb-2 mt-3 fw-bold"),
+                                            html.H6(
+                                                "Signal Type",
+                                                className="mb-2 mt-3 fw-bold",
+                                            ),
                                             html.Small(
                                                 "Select respiratory signal type or auto-detect",
                                                 className="text-muted d-block mb-2",
@@ -210,7 +230,10 @@ def respiratory_layout():
                                                 className="mb-3",
                                             ),
                                             # Signal Source Selection
-                                            html.H6("Signal Source", className="mb-2 fw-bold"),
+                                            html.H6(
+                                                "Signal Source",
+                                                className="mb-2 fw-bold",
+                                            ),
                                             dbc.Select(
                                                 id="resp-signal-source-select",
                                                 options=[
@@ -233,7 +256,8 @@ def respiratory_layout():
                                             ),
                                             # Respiratory Rate Estimation Methods
                                             html.H6(
-                                                "Estimation Methods", className="mb-2 mt-3 fw-bold"
+                                                "Estimation Methods",
+                                                className="mb-2 mt-3 fw-bold",
                                             ),
                                             html.Small(
                                                 "Select one or more respiratory rate estimation methods",
@@ -315,7 +339,8 @@ def respiratory_layout():
                                             ),
                                             # Advanced Analysis Options
                                             html.H6(
-                                                "Advanced Analysis", className="mb-2 mt-3 fw-bold"
+                                                "Advanced Analysis",
+                                                className="mb-2 mt-3 fw-bold",
                                             ),
                                             html.Small(
                                                 "Select advanced analysis features",
@@ -514,21 +539,37 @@ def respiratory_layout():
             dcc.Dropdown(id="filter-type-select", style={"display": "none"}),
             dcc.Dropdown(id="filter-family-advanced", style={"display": "none"}),
             dcc.Dropdown(id="filter-response-advanced", style={"display": "none"}),
-            dcc.Input(id="filter-low-freq-advanced", type="number", style={"display": "none"}),
-            dcc.Input(id="filter-high-freq-advanced", type="number", style={"display": "none"}),
-            dcc.Input(id="filter-order-advanced", type="number", style={"display": "none"}),
+            dcc.Input(
+                id="filter-low-freq-advanced", type="number", style={"display": "none"}
+            ),
+            dcc.Input(
+                id="filter-high-freq-advanced", type="number", style={"display": "none"}
+            ),
+            dcc.Input(
+                id="filter-order-advanced", type="number", style={"display": "none"}
+            ),
             dcc.Checklist(id="filter-quality-options", style={"display": "none"}),
             dcc.Dropdown(id="filter-signal-type-select", style={"display": "none"}),
             # Additional filter parameters
             dcc.Dropdown(id="advanced-filter-method", style={"display": "none"}),
-            dcc.Input(id="advanced-iterations", type="number", style={"display": "none"}),
-            dcc.Input(id="advanced-learning-rate", type="number", style={"display": "none"}),
-            dcc.Input(id="advanced-noise-level", type="number", style={"display": "none"}),
-            dcc.Input(id="artifact-removal-strength", type="number", style={"display": "none"}),
+            dcc.Input(
+                id="advanced-iterations", type="number", style={"display": "none"}
+            ),
+            dcc.Input(
+                id="advanced-learning-rate", type="number", style={"display": "none"}
+            ),
+            dcc.Input(
+                id="advanced-noise-level", type="number", style={"display": "none"}
+            ),
+            dcc.Input(
+                id="artifact-removal-strength", type="number", style={"display": "none"}
+            ),
             dcc.Dropdown(id="artifact-type", style={"display": "none"}),
             dcc.Dropdown(id="detrend-option", style={"display": "none"}),
             dcc.Dropdown(id="ensemble-method", style={"display": "none"}),
-            dcc.Input(id="ensemble-n-filters", type="number", style={"display": "none"}),
+            dcc.Input(
+                id="ensemble-n-filters", type="number", style={"display": "none"}
+            ),
             dcc.Dropdown(id="fusion-method", style={"display": "none"}),
             dcc.Input(id="gaussian-sigma", type="number", style={"display": "none"}),
             dcc.Input(id="moving-avg-window", type="number", style={"display": "none"}),
@@ -557,8 +598,10 @@ def respiratory_layout():
             html.Button(id="btn-nudge-p10", style={"display": "none"}),
             # Hidden time window controls for signal_filtering_callbacks compatibility
             html.Div(
-                children=[dcc.Slider(id="start-position-slider", min=0, max=100, value=0)],
-                style={"display": "none"}
+                children=[
+                    dcc.Slider(id="start-position-slider", min=0, max=100, value=0)
+                ],
+                style={"display": "none"},
             ),
             dcc.Dropdown(id="duration-select", style={"display": "none"}),
         ]

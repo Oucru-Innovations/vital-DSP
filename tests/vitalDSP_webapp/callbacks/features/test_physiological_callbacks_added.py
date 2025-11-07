@@ -334,10 +334,10 @@ def test_update_physio_time_inputs_slider(monkeypatch):
     assert (start, end) == (2, 12)
 
 @pytest.mark.parametrize("btn,expected", [
-    ("physio-btn-nudge-m10", (0, 10)),   # floor at 0
-    ("physio-btn-nudge-m1",  (0, 10)),   # from 0..10, minus 1 floors to 0..10
-    ("physio-btn-nudge-p1",  (2, 12)),   # from 1..11 → 2..12
-    ("physio-btn-nudge-p10", (11, 21)),  # from 1..11 → 11..21
+    ("physio-btn-nudge-m10", (0, 10)),   # floor at 0 (start=1-10, but floors to 0)
+    ("physio-btn-nudge-m1",  (0, 10)),   # from 1..11, minus 5 floors to 0..10
+    ("physio-btn-nudge-p1",  (6, 16)),   # from 1..11, plus 5 → 6..16
+    ("physio-btn-nudge-p10", (11, 21)),  # from 1..11, plus 10 → 11..21
 ])
 def test_update_physio_time_inputs_nudges(monkeypatch, btn, expected):
     monkeypatch.setattr(physio, "callback_context", _mock_ctx(btn))
@@ -442,8 +442,8 @@ def test_get_vitaldsp_hrv_analysis_fallback_has_expected_keys():
     res = get_vitaldsp_hrv_analysis(sig, fs, hrv_options=["time_domain", "freq_domain", "nonlinear"], signal_type="ppg")
     # Import will fail in test env -> fallback analyze_hrv path
     assert isinstance(res, dict)
-    # time domain keys
-    for k in ["mean_rr", "std_rr", "rmssd", "nn50", "pnn50"]:
+    # time domain keys (actual keys returned by analyze_hrv)
+    for k in ["mean_rr", "std_nn", "rmssd", "nn50", "pnn50"]:
         assert k in res
     # freq domain keys
     for k in ["total_power", "vlf_power", "lf_power", "hf_power", "lf_hf_ratio"]:
@@ -913,32 +913,31 @@ def test_detect_respiratory_signal_type_and_plot():
     t, s = mk_sine(fs, 20, 0.25, noise=0.01)
     guess = detect_respiratory_signal_type(s, fs)
     assert guess in ("respiratory","ppg","ecg")
-    fig = create_respiratory_signal_plot(s, t, fs, "respiratory", [], [], 0.1, 0.8)
+    from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import create_respiratory_signal_plot
+    fig = create_respiratory_signal_plot(s, t, fs, "respiratory", [])
     assert isinstance(fig, go.Figure)
 
 def test_generate_comprehensive_respiratory_analysis_and_plots():
     fs = 50
     t, s = mk_sine(fs, 30, 0.33, noise=0.02)
     # analysis list-type returns children blocks
+    from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import generate_comprehensive_respiratory_analysis
     result_children = generate_comprehensive_respiratory_analysis(
         s, t, fs,
         signal_type="respiratory",
         estimation_methods=["peak","fft","autocorr"],
         advanced_options=["variability","power_bands"],
-        preprocessing_options=["detrend","smooth"],
-        low_cut=0.1, high_cut=0.8,
         min_breath_duration=1.0, max_breath_duration=10.0
     )
     # The function returns a Div object, not a list
     assert hasattr(result_children, 'children') and len(result_children.children) > 0
 
     # comprehensive respiratory figure
+    from vitalDSP_webapp.callbacks.analysis.respiratory_callbacks import create_comprehensive_respiratory_plots
     fig = create_comprehensive_respiratory_plots(
         s, t, fs, "respiratory",
         ["peak","fft","autocorr"],
-        ["variability","power_bands"],
-        ["detrend","smooth"],
-        0.1, 0.8
+        ["variability","power_bands"]
     )
     assert isinstance(fig, go.Figure)
 

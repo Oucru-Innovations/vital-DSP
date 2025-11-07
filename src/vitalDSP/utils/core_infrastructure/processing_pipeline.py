@@ -445,6 +445,11 @@ class StandardProcessingPipeline:
         metadata: Optional[Dict[str, Any]] = None,
         session_id: Optional[str] = None,
         resume_from_checkpoint: bool = True,
+        stages: Optional[List[ProcessingStage]] = None,
+        enable_quality_screening: Optional[bool] = None,
+        enable_parallel: Optional[bool] = None,
+        enable_validation: Optional[bool] = None,
+        progress_callback: Optional[Callable] = None,
     ) -> Dict[str, Any]:
         """
         Process signal through the complete 8-stage pipeline.
@@ -481,9 +486,17 @@ class StandardProcessingPipeline:
             "results": {},
         }
 
+        # Store additional parameters in context
+        context["stages_to_execute"] = stages if stages is not None else list(ProcessingStage)
+        context["enable_quality_screening"] = enable_quality_screening if enable_quality_screening is not None else True
+        context["enable_parallel"] = enable_parallel if enable_parallel is not None else False
+        context["enable_validation"] = enable_validation if enable_validation is not None else True
+        context["progress_callback"] = progress_callback
+
         try:
-            # Execute all processing stages
-            for stage in ProcessingStage:
+            # Execute all processing stages (or specified stages)
+            stages_to_execute = context["stages_to_execute"]
+            for stage in stages_to_execute:
                 logger.info(f"Executing stage: {stage.value}")
 
                 # Check for existing checkpoint
@@ -505,8 +518,11 @@ class StandardProcessingPipeline:
 
                 # Save checkpoint
                 if stage_result.success:
+                    # Remove non-serializable items from context before saving
+                    checkpoint_context = context.copy()
+                    checkpoint_context.pop("progress_callback", None)  # Remove callback as it can't be pickled
                     self.checkpoint_manager.save_checkpoint(
-                        session_id, stage, stage_result.data, context
+                        session_id, stage, stage_result.data, checkpoint_context
                     )
                     self.stats["checkpoints_saved"] += 1
                 else:
@@ -1406,9 +1422,35 @@ class StandardProcessingPipeline:
 
     def _generate_output_options(self, all_results: Dict[str, Any]) -> Dict[str, Any]:
         """Generate multiple output options for user selection."""
-        segmentation_results = all_results.get(ProcessingStage.SEGMENTATION.value, {})
-        feature_results = all_results.get(ProcessingStage.FEATURE_EXTRACTION.value, {})
-        quality_results = all_results.get(ProcessingStage.QUALITY_SCREENING.value, {})
+        # Extract data from ProcessingResult objects if they are ProcessingResult instances
+        segmentation_result = all_results.get(ProcessingStage.SEGMENTATION.value)
+        feature_result = all_results.get(ProcessingStage.FEATURE_EXTRACTION.value)
+        quality_result = all_results.get(ProcessingStage.QUALITY_SCREENING.value)
+        
+        # Extract the data from ProcessingResult objects
+        segmentation_results = (
+            segmentation_result.data
+            if hasattr(segmentation_result, "data") and segmentation_result is not None
+            else (segmentation_result if segmentation_result is not None else {})
+        )
+        feature_results = (
+            feature_result.data
+            if hasattr(feature_result, "data") and feature_result is not None
+            else (feature_result if feature_result is not None else {})
+        )
+        quality_results = (
+            quality_result.data
+            if hasattr(quality_result, "data") and quality_result is not None
+            else (quality_result if quality_result is not None else {})
+        )
+        
+        # Ensure we have dictionaries to work with
+        if not isinstance(segmentation_results, dict):
+            segmentation_results = {}
+        if not isinstance(feature_results, dict):
+            feature_results = {}
+        if not isinstance(quality_results, dict):
+            quality_results = {}
 
         segments = segmentation_results.get("segments", [])
 
@@ -1480,6 +1522,14 @@ class StandardProcessingPipeline:
         self, all_results: Dict[str, Any], context: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Create comprehensive output package."""
+        # Helper function to extract data from ProcessingResult objects
+        def extract_data(result):
+            if result is None:
+                return {}
+            if hasattr(result, "data"):
+                return result.data if isinstance(result.data, dict) else {}
+            return result if isinstance(result, dict) else {}
+        
         output_package = {
             "processing_summary": {
                 "signal_type": context["signal_type"],
@@ -1489,20 +1539,20 @@ class StandardProcessingPipeline:
                 "stages_completed": self.stats["stages_completed"],
                 "timestamp": datetime.now().isoformat(),
             },
-            "data_ingestion": all_results.get(ProcessingStage.DATA_INGESTION.value, {}),
-            "quality_assessment": all_results.get(
-                ProcessingStage.QUALITY_SCREENING.value, {}
+            "data_ingestion": extract_data(all_results.get(ProcessingStage.DATA_INGESTION.value)),
+            "quality_assessment": extract_data(
+                all_results.get(ProcessingStage.QUALITY_SCREENING.value)
             ),
-            "processing_results": all_results.get(
-                ProcessingStage.PARALLEL_PROCESSING.value, {}
+            "processing_results": extract_data(
+                all_results.get(ProcessingStage.PARALLEL_PROCESSING.value)
             ),
-            "quality_validation": all_results.get(
-                ProcessingStage.QUALITY_VALIDATION.value, {}
+            "quality_validation": extract_data(
+                all_results.get(ProcessingStage.QUALITY_VALIDATION.value)
             ),
-            "segmentation": all_results.get(ProcessingStage.SEGMENTATION.value, {}),
-            "features": all_results.get(ProcessingStage.FEATURE_EXTRACTION.value, {}),
-            "output_options": all_results.get(
-                ProcessingStage.INTELLIGENT_OUTPUT.value, {}
+            "segmentation": extract_data(all_results.get(ProcessingStage.SEGMENTATION.value)),
+            "features": extract_data(all_results.get(ProcessingStage.FEATURE_EXTRACTION.value)),
+            "output_options": extract_data(
+                all_results.get(ProcessingStage.INTELLIGENT_OUTPUT.value)
             ),
             "processing_statistics": self.stats,
             "cache_statistics": self.cache.get_stats(),
@@ -1523,11 +1573,27 @@ class StandardProcessingPipeline:
             "further_analysis": [],
         }
 
-        # Analyze results to generate recommendations
-        quality_results = all_results.get(ProcessingStage.QUALITY_SCREENING.value, {})
-        parallel_results = all_results.get(
-            ProcessingStage.PARALLEL_PROCESSING.value, {}
+        # Extract data from ProcessingResult objects if they are ProcessingResult instances
+        quality_result = all_results.get(ProcessingStage.QUALITY_SCREENING.value)
+        parallel_result = all_results.get(ProcessingStage.PARALLEL_PROCESSING.value)
+        
+        # Extract the data from ProcessingResult objects
+        quality_results = (
+            quality_result.data
+            if hasattr(quality_result, "data") and quality_result is not None
+            else (quality_result if quality_result is not None else {})
         )
+        parallel_results = (
+            parallel_result.data
+            if hasattr(parallel_result, "data") and parallel_result is not None
+            else (parallel_result if parallel_result is not None else {})
+        )
+        
+        # Ensure we have dictionaries to work with
+        if not isinstance(quality_results, dict):
+            quality_results = {}
+        if not isinstance(parallel_results, dict):
+            parallel_results = {}
 
         if quality_results:
             overall_quality = quality_results.get("overall_quality_score", 0.0)
@@ -1797,7 +1863,15 @@ class StandardProcessingPipeline:
         """Generate final processing results."""
         # Get the last successful stage result or create a basic result
         if ProcessingStage.OUTPUT_PACKAGE.value in context["results"]:
-            final_results = context["results"][ProcessingStage.OUTPUT_PACKAGE.value]
+            output_result = context["results"][ProcessingStage.OUTPUT_PACKAGE.value]
+            # Extract data from ProcessingResult if it's a ProcessingResult object
+            if isinstance(output_result, ProcessingResult):
+                final_results = output_result.data if output_result.data is not None else {}
+                # Ensure it's a dictionary
+                if not isinstance(final_results, dict):
+                    final_results = {"output_data": final_results}
+            else:
+                final_results = output_result if isinstance(output_result, dict) else {}
         else:
             # Create a basic result if OUTPUT_PACKAGE stage didn't complete
             final_results = {
@@ -1805,6 +1879,10 @@ class StandardProcessingPipeline:
                 "success": True,
                 "message": "Processing completed with partial results",
             }
+
+        # Ensure final_results is a dictionary before adding metadata
+        if not isinstance(final_results, dict):
+            final_results = {"output_data": final_results}
 
         # Add processing metadata
         final_results["processing_metadata"] = {
@@ -1839,6 +1917,60 @@ class StandardProcessingPipeline:
     def cleanup_checkpoints(self, session_id: str) -> None:
         """Clean up checkpoints for a session."""
         self.checkpoint_manager.cleanup_session(session_id)
+
+    def save_checkpoint(
+        self, stage: ProcessingStage, data: Any, checkpoint_path: Union[str, Path]
+    ) -> None:
+        """
+        Save checkpoint directly (wrapper method for compatibility).
+
+        Args:
+            stage: Processing stage
+            data: Data to checkpoint
+            checkpoint_path: Path to save checkpoint
+        """
+        checkpoint_path = Path(checkpoint_path)
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+
+        checkpoint = ProcessingCheckpoint(
+            stage=stage,
+            timestamp=datetime.now(),
+            data_hash=hashlib.sha256(str(data).encode()).hexdigest(),
+            metadata={},
+            file_path=str(checkpoint_path),
+            success=True,
+        )
+
+        checkpoint_data = {"checkpoint": checkpoint, "data": data}
+
+        with open(checkpoint_path, "wb") as f:
+            pickle.dump(checkpoint_data, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def load_checkpoint(self, checkpoint_path: Union[str, Path]) -> Optional[Any]:
+        """
+        Load checkpoint directly (wrapper method for compatibility).
+
+        Args:
+            checkpoint_path: Path to checkpoint file
+
+        Returns:
+            Checkpoint data or None if not found
+        """
+        checkpoint_path = Path(checkpoint_path)
+        if not checkpoint_path.exists():
+            return None
+
+        try:
+            with open(checkpoint_path, "rb") as f:
+                checkpoint_data = pickle.load(f)
+
+            if "checkpoint" in checkpoint_data:
+                return checkpoint_data["data"]
+            else:
+                return checkpoint_data
+        except Exception as e:
+            logger.error(f"Failed to load checkpoint: {e}")
+            return None
 
 
 # Alias for OptimizedStandardProcessingPipeline

@@ -39,9 +39,12 @@ def mock_data_service():
 class TestQualityAssessmentCallback:
     """Test the main quality_assessment_callback function"""
 
-    def test_callback_not_on_quality_page(self, mock_data_service):
+    @patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context')
+    def test_callback_not_on_quality_page(self, mock_ctx, mock_data_service):
         """Test callback when not on quality page"""
         from vitalDSP_webapp.callbacks.analysis.quality_callbacks import register_quality_callbacks
+        
+        mock_ctx.triggered = []  # No trigger
 
         mock_app = MagicMock()
         callbacks_registered = []
@@ -59,24 +62,29 @@ class TestQualityAssessmentCallback:
             if 'quality_assessment_callback' in cb['func'].__name__:
                 result = cb['func'](
                     n_clicks=None,
+                    bins_count=30,
+
+                    metrics_scope="segment",
+
                     pathname="/other-page",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
-            start_position=0,
-            duration=10,
+                    start_position=0,
+                    duration=10,
                     signal_type="auto",
-                    quality_metrics=["snr", "artifacts"],
-                    snr_threshold=10,
-                    artifact_threshold=0.1,
-                    advanced_options=[]
+                    signal_source="original",
+                    sqi_type="snr",
+                    analysis_options=["snr", "artifacts"],
+                    sqi_params={},
+                    filtered_signal_data=None,
+                    stored_quality_data=None,
+                    stored_quality_results=None
                 )
                 assert result[2] == "Navigate to Quality page"
 
     def test_callback_no_data_service(self):
         """Test callback with no data service"""
-        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=None, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=None, create=True), \
+             patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context') as mock_ctx:
+            mock_ctx.triggered = [{"prop_id": "quality-analyze-btn.n_clicks", "value": 1}]
             from vitalDSP_webapp.callbacks.analysis.quality_callbacks import register_quality_callbacks
 
             mock_app = MagicMock()
@@ -95,18 +103,21 @@ class TestQualityAssessmentCallback:
                 if 'quality_assessment_callback' in cb['func'].__name__:
                     result = cb['func'](
                         n_clicks=1,
-                        pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
+                    bins_count=30,
+
+                    metrics_scope="segment",
+
+                    pathname="/quality",
             start_position=0,
             duration=10,
                         signal_type="auto",
-                        quality_metrics=["snr"],
-                        snr_threshold=10,
-                        artifact_threshold=0.1,
-                        advanced_options=[]
+                        signal_source="original",
+                        sqi_type="snr",
+                        analysis_options=["snr"],
+                        sqi_params={},
+                        filtered_signal_data=None,
+                        stored_quality_data=None,
+                        stored_quality_results=None
                     )
                     assert "Data service not available" in result[2]
 
@@ -114,7 +125,9 @@ class TestQualityAssessmentCallback:
         """Test callback with no data available"""
         mock_data_service.get_all_data.return_value = {}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True), \
+             patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context') as mock_ctx:
+            mock_ctx.triggered = [{"prop_id": "quality-analyze-btn.n_clicks", "value": 1}]
             from vitalDSP_webapp.callbacks.analysis.quality_callbacks import register_quality_callbacks
 
             mock_app = MagicMock()
@@ -133,18 +146,21 @@ class TestQualityAssessmentCallback:
                 if 'quality_assessment_callback' in cb['func'].__name__:
                     result = cb['func'](
                         n_clicks=1,
-                        pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
+                    bins_count=30,
+
+                    metrics_scope="segment",
+
+                    pathname="/quality",
             start_position=0,
             duration=10,
                         signal_type="auto",
-                        quality_metrics=["snr"],
-                        snr_threshold=10,
-                        artifact_threshold=0.1,
-                        advanced_options=[]
+                        signal_source="original",
+                        sqi_type="snr",
+                        analysis_options=["snr"],
+                        sqi_params={},
+                        filtered_signal_data=None,
+                        stored_quality_data=None,
+                        stored_quality_results=None
                     )
                     assert "No data available" in result[2]
 
@@ -153,7 +169,9 @@ class TestQualityAssessmentCallback:
         df, fs = sample_signal_data
         mock_data_service.get_all_data.return_value = {"data_1": {"info": {"sampling_freq": fs}}}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True), \
+             patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context') as mock_ctx:
+            mock_ctx.triggered = []  # No trigger when button not clicked
             from vitalDSP_webapp.callbacks.analysis.quality_callbacks import register_quality_callbacks
 
             mock_app = MagicMock()
@@ -172,18 +190,21 @@ class TestQualityAssessmentCallback:
                 if 'quality_assessment_callback' in cb['func'].__name__:
                     result = cb['func'](
                         n_clicks=None,
-                        pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
+                    bins_count=30,
+
+                    metrics_scope="segment",
+
+                    pathname="/quality",
             start_position=0,
             duration=10,
                         signal_type="auto",
-                        quality_metrics=["snr"],
-                        snr_threshold=10,
-                        artifact_threshold=0.1,
-                        advanced_options=[]
+                        signal_source="original",
+                        sqi_type="snr",
+                        analysis_options=["snr"],
+                        sqi_params={},
+                        filtered_signal_data=None,
+                        stored_quality_data=None,
+                        stored_quality_results=None
                     )
                     assert "Click" in result[2] and "Assess Signal Quality" in result[2]
 
@@ -193,7 +214,9 @@ class TestQualityAssessmentCallback:
         mock_data_service.get_all_data.return_value = {"data_1": {"info": {"sampling_freq": fs}}}
         mock_data_service.get_column_mapping.return_value = None
 
-        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True), \
+             patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context') as mock_ctx:
+            mock_ctx.triggered = [{"prop_id": "quality-analyze-btn.n_clicks", "value": 1}]
             from vitalDSP_webapp.callbacks.analysis.quality_callbacks import register_quality_callbacks
 
             mock_app = MagicMock()
@@ -212,20 +235,23 @@ class TestQualityAssessmentCallback:
                 if 'quality_assessment_callback' in cb['func'].__name__:
                     result = cb['func'](
                         n_clicks=1,
-                        pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
+                    bins_count=30,
+
+                    metrics_scope="segment",
+
+                    pathname="/quality",
             start_position=0,
             duration=10,
                         signal_type="auto",
-                        quality_metrics=["snr"],
-                        snr_threshold=10,
-                        artifact_threshold=0.1,
-                        advanced_options=[]
+                        signal_source="original",
+                        sqi_type="snr",
+                        analysis_options=["snr"],
+                        sqi_params={},
+                        filtered_signal_data=None,
+                        stored_quality_data=None,
+                        stored_quality_results=None
                     )
-                    assert "configure column mapping" in result[2]
+                    assert "column mapping" in result[2].lower() or "upload data" in result[2].lower()
 
     def test_callback_with_different_metrics(self, mock_data_service, sample_signal_data):
         """Test callback with different quality metrics"""
@@ -267,19 +293,22 @@ class TestQualityAssessmentCallback:
                         try:
                             result = cb['func'](
                                 n_clicks=1,
-                                pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
+                    bins_count=30,
+
+                    metrics_scope="segment",
+
+                    pathname="/quality",
             start_position=0,
             duration=10,
                                 signal_type="ecg",
-                                quality_metrics=metrics,
-                                snr_threshold=10,
-                                artifact_threshold=0.1,
-                                advanced_options=[]
-                            )
+                        signal_source="original",
+                        sqi_type="snr",
+                        analysis_options=metrics,
+                        sqi_params={},
+                        filtered_signal_data=None,
+                        stored_quality_data=None,
+                        stored_quality_results=None
+                    )
                             assert result is not None
                         except Exception:
                             # If quality assessment fails, that's acceptable
@@ -315,19 +344,22 @@ class TestQualityAssessmentCallback:
                         try:
                             result = cb['func'](
                                 n_clicks=1,
-                                pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
+                    bins_count=30,
+
+                    metrics_scope="segment",
+
+                    pathname="/quality",
             start_position=0,
             duration=10,
                                 signal_type=signal_type,
-                                quality_metrics=["snr"],
-                                snr_threshold=10,
-                                artifact_threshold=0.1,
-                                advanced_options=[]
-                            )
+                        signal_source="original",
+                        sqi_type="snr",
+                        analysis_options=["snr"],
+                        sqi_params={},
+                        filtered_signal_data=None,
+                        stored_quality_data=None,
+                        stored_quality_results=None
+                    )
                             assert result is not None
                         except Exception:
                             assert True
@@ -369,19 +401,22 @@ class TestQualityAssessmentCallback:
                         try:
                             result = cb['func'](
                                 n_clicks=1,
-                                pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
+                    bins_count=30,
+
+                    metrics_scope="segment",
+
+                    pathname="/quality",
             start_position=0,
             duration=10,
                                 signal_type="ecg",
-                                quality_metrics=["snr", "artifacts"],
-                                snr_threshold=snr_th,
-                                artifact_threshold=artifact_th,
-                                advanced_options=[]
-                            )
+                        signal_source="original",
+                        sqi_type="snr",
+                        analysis_options=["snr", "artifacts"],
+                        sqi_params={},
+                        filtered_signal_data=None,
+                        stored_quality_data=None,
+                        stored_quality_results=None
+                    )
                             assert result is not None
                         except Exception:
                             assert True
@@ -424,19 +459,22 @@ class TestQualityAssessmentCallback:
                         try:
                             result = cb['func'](
                                 n_clicks=1,
-                                pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
+                    bins_count=30,
+
+                    metrics_scope="segment",
+
+                    pathname="/quality",
             start_position=0,
             duration=10,
                                 signal_type="ecg",
-                                quality_metrics=["snr"],
-                                snr_threshold=10,
-                                artifact_threshold=0.1,
-                                advanced_options=advanced_options
-                            )
+                        signal_source="original",
+                        sqi_type="snr",
+                        analysis_options=["snr"],
+                        sqi_params={},
+                        filtered_signal_data=None,
+                        stored_quality_data=None,
+                        stored_quality_results=None
+                    )
                             assert result is not None
                         except Exception:
                             assert True
@@ -477,20 +515,22 @@ class TestQualityAssessmentCallback:
                         try:
                             result = cb['func'](
                                 n_clicks=1,
+                    bins_count=30,
+
+                    metrics_scope="segment",
+
                                 pathname="/quality",
-                                slider_value=slider_value,
-                                nudge_m10=None,
-                                nudge_m1=None,
-                                nudge_p1=None,
-                                nudge_p10=None,
-                                start_time=slider_value[0],
-                                end_time=slider_value[1],
+                                start_position=0,
+                                duration=10,
                                 signal_type="ecg",
-                                quality_metrics=["snr"],
-                                snr_threshold=10,
-                                artifact_threshold=0.1,
-                                advanced_options=[]
-                            )
+                        signal_source="original",
+                        sqi_type="snr",
+                        analysis_options=["snr"],
+                        sqi_params={},
+                        filtered_signal_data=None,
+                        stored_quality_data=None,
+                        stored_quality_results=None
+                    )
                             assert result is not None
                         except Exception:
                             assert True
@@ -530,20 +570,22 @@ class TestQualityAssessmentCallback:
                         try:
                             result = cb['func'](
                                 n_clicks=1,
+                    bins_count=30,
+
+                    metrics_scope="segment",
+
                                 pathname="/quality",
-                                slider_value=[0, 10],
-                                nudge_m10=nudge_m10,
-                                nudge_m1=nudge_m1,
-                                nudge_p1=nudge_p1,
-                                nudge_p10=nudge_p10,
-                                start_time=0,
-                                end_time=10,
+                                start_position=0,
+                                duration=10,
                                 signal_type="ecg",
-                                quality_metrics=["snr"],
-                                snr_threshold=10,
-                                artifact_threshold=0.1,
-                                advanced_options=[]
-                            )
+                        signal_source="original",
+                        sqi_type="snr",
+                        analysis_options=["snr"],
+                        sqi_params={},
+                        filtered_signal_data=None,
+                        stored_quality_data=None,
+                        stored_quality_results=None
+                    )
                             assert result is not None
                         except Exception:
                             assert True
@@ -552,7 +594,9 @@ class TestQualityAssessmentCallback:
         """Test callback handles exceptions gracefully"""
         mock_data_service.get_all_data.side_effect = Exception("Test error")
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True), \
+             patch('vitalDSP_webapp.callbacks.analysis.quality_callbacks.callback_context') as mock_ctx:
+            mock_ctx.triggered = [{"prop_id": "quality-analyze-btn.n_clicks", "value": 1}]
             from vitalDSP_webapp.callbacks.analysis.quality_callbacks import register_quality_callbacks
 
             mock_app = MagicMock()
@@ -571,18 +615,21 @@ class TestQualityAssessmentCallback:
                 if 'quality_assessment_callback' in cb['func'].__name__:
                     result = cb['func'](
                         n_clicks=1,
-                        pathname="/quality",
-            nudge_m10=None,
-            nudge_m1=None,
-            nudge_p1=None,
-            nudge_p10=None,
+                    bins_count=30,
+
+                    metrics_scope="segment",
+
+                    pathname="/quality",
             start_position=0,
             duration=10,
                         signal_type="ecg",
-                        quality_metrics=["snr"],
-                        snr_threshold=10,
-                        artifact_threshold=0.1,
-                        advanced_options=[]
+                        signal_source="original",
+                        sqi_type="snr",
+                        analysis_options=["snr"],
+                        sqi_params={},
+                        filtered_signal_data=None,
+                        stored_quality_data=None,
+                        stored_quality_results=None
                     )
                     # Should handle error gracefully
                     assert result is not None
@@ -634,5 +681,3 @@ class TestImportVitalDSPModules:
             assert True
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

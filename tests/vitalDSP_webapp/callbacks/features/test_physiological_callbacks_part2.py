@@ -640,5 +640,3 @@ class TestAdditionalEdgeCases:
         assert signal_std > pleth_std * 10
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

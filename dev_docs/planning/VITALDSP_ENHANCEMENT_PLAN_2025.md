@@ -1,6 +1,5 @@
 # VitalDSP Enhancement Plan 2025
 
-**Author:** Claude (Sonnet 4.5)
 **Date:** October 10, 2025
 **Version:** 1.0
 **Status:** Comprehensive Analysis Complete
@@ -882,5 +881,4 @@ The enhancement plan outlined above provides a roadmap for:
 ---
 
 *Generated: October 10, 2025*
-*Author: Claude (Sonnet 4.5)*
 *Version: 1.0*

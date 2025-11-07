@@ -228,6 +228,12 @@ class EMD:
             if np.max(np.abs(signal)) < stop_criterion * 10:
                 break
 
+        # Add final residual as the last IMF
+        # The residual represents the trend or DC component of the signal
+        # Without this, reconstruction will have significant error
+        if np.max(np.abs(signal)) > stop_criterion:
+            imfs.append(signal)
+
         return imfs
 
     def _find_peaks(self, signal):

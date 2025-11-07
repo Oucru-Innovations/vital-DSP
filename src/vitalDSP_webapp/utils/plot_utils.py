@@ -126,7 +126,9 @@ def smart_downsample(
         return time_axis, signal_data
 
     # Calculate window size for downsampling
-    window_size = len(signal_data) // (target_points // 2)  # Divide by 2 for min-max pairs
+    window_size = len(signal_data) // (
+        target_points // 2
+    )  # Divide by 2 for min-max pairs
 
     if window_size < 2:
         # Use simple decimation if window too small

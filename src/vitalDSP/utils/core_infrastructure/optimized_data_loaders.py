@@ -209,6 +209,7 @@ class OptimizedChunkedDataLoader:
 
             # Process chunks
             prev_chunk = None
+            chunks_yielded = 0  # Track actual chunks yielded
             for chunk_idx, chunk in enumerate(reader):
                 # Check cancellation
                 self.cancellation_token.throw_if_cancelled()
@@ -261,6 +262,7 @@ class OptimizedChunkedDataLoader:
                 # Yield chunk
                 yield chunk
                 prev_chunk = chunk
+                chunks_yielded += 1
 
                 # Update performance stats
                 self._update_performance_stats(
@@ -268,11 +270,11 @@ class OptimizedChunkedDataLoader:
                 )
 
                 # Check max_chunks limit
-                if max_chunks and chunks_processed >= max_chunks:
+                if max_chunks and chunks_yielded >= max_chunks:
                     break
 
                 # Memory management
-                if chunks_processed % 10 == 0:  # Every 10 chunks
+                if chunks_yielded % 10 == 0:  # Every 10 chunks
                     gc.collect()
 
         except InterruptedError:

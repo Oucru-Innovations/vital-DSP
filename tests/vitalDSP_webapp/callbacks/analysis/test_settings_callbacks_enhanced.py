@@ -610,5 +610,3 @@ class TestSettingsValidation:
             assert fmt in valid_formats
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

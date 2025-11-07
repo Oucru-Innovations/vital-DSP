@@ -24,8 +24,9 @@ from typing import Dict, Any, Optional, Tuple
 import time
 
 try:
-    # Use BOTH old and enhanced data services during transition
-    from vitalDSP_webapp.services.data.data_service import get_data_service
+    # Migration to enhanced data service complete (2025-10-31)
+    # OLD DATA SERVICE - Commented out, no longer used:
+    # from vitalDSP_webapp.services.data.data_service import get_data_service
     from vitalDSP_webapp.services.data.enhanced_data_service import (
         get_enhanced_data_service,
         EnhancedDataService,
@@ -48,7 +49,9 @@ except ImportError as e:
     if src_path not in sys.path:
         sys.path.insert(0, src_path)
     try:
-        from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+        from vitalDSP_webapp.services.data.enhanced_data_service import (
+            get_enhanced_data_service,
+        )
         from vitalDSP_webapp.utils.data_processor import DataProcessor
     except ImportError:
         # For testing, create mock versions
@@ -1954,67 +1957,71 @@ def create_data_preview(df: pd.DataFrame, data_info: dict) -> html.Div:
         ]
     )
 
-    # Progress tracking callback - updates upload progress in real-time
-    @app.callback(
-        [
-            Output("upload-progress-store", "data"),
-            Output("upload-progress-interval", "disabled"),
-        ],
-        [Input("upload-progress-interval", "n_intervals")],
-        [State("upload-progress-store", "data")],
-    )
-    def update_upload_progress(n_intervals, current_progress):
-        """
-        Update upload progress from progress tracker.
-
-        This callback is triggered by the interval component and polls the
-        progress tracker for updates.
-        """
-        if n_intervals is None or n_intervals == 0:
-            raise PreventUpdate
-
-        try:
-            # Get progress tracker
-            tracker = get_progress_tracker()
-
-            # Get active tasks
-            active_tasks = tracker.get_all_active_tasks()
-
-            # Find upload task (most recent task)
-            if active_tasks:
-                latest_task = active_tasks[-1]
-
-                # Convert to LoadingProgress format
-                progress_data = tracker.to_loading_progress(
-                    latest_task.task_id, loading_strategy="standard"
-                )
-
-                if progress_data:
-                    # Check if task is completed
-                    if progress_data["status"] in ["completed", "failed", "cancelled"]:
-                        # Disable interval
-                        return progress_data, True
-                    else:
-                        # Keep interval running
-                        return progress_data, False
-
-            # No active tasks - disable interval
-            return current_progress, True
-
-        except Exception as e:
-            logger.error(f"Error updating progress: {str(e)}")
-            # Disable interval on error
-            return current_progress, True
-
-    # Callback to enable interval when processing starts
-    @app.callback(
-        Output("upload-progress-interval", "disabled", allow_duplicate=True),
-        Input("btn-process-data", "n_clicks"),
-        prevent_initial_call=True,
-    )
-    def enable_progress_tracking(n_clicks):
-        """Enable progress tracking interval when processing starts."""
-        if not n_clicks:
-            raise PreventUpdate
-        # Enable the interval to start polling for progress
-        return False
+    # NOTE: The following callbacks are orphaned (outside register_upload_callbacks)
+    # They should be moved inside the registration function if needed
+    # Commented out to fix F821 linting errors
+    #
+    # # Progress tracking callback - updates upload progress in real-time
+    # @app.callback(
+    #     [
+    #         Output("upload-progress-store", "data"),
+    #         Output("upload-progress-interval", "disabled"),
+    #     ],
+    #     [Input("upload-progress-interval", "n_intervals")],
+    #     [State("upload-progress-store", "data")],
+    # )
+    # def update_upload_progress(n_intervals, current_progress):
+    #     """
+    #     Update upload progress from progress tracker.
+    #
+    #     This callback is triggered by the interval component and polls the
+    #     progress tracker for updates.
+    #     """
+    #     if n_intervals is None or n_intervals == 0:
+    #         raise PreventUpdate
+    #
+    #     try:
+    #         # Get progress tracker
+    #         tracker = get_progress_tracker()
+    #
+    #         # Get active tasks
+    #         active_tasks = tracker.get_all_active_tasks()
+    #
+    #         # Find upload task (most recent task)
+    #         if active_tasks:
+    #             latest_task = active_tasks[-1]
+    #
+    #             # Convert to LoadingProgress format
+    #             progress_data = tracker.to_loading_progress(
+    #                 latest_task.task_id, loading_strategy="standard"
+    #             )
+    #
+    #             if progress_data:
+    #                 # Check if task is completed
+    #                 if progress_data["status"] in ["completed", "failed", "cancelled"]:
+    #                     # Disable interval
+    #                     return progress_data, True
+    #                 else:
+    #                     # Keep interval running
+    #                     return progress_data, False
+    #
+    #         # No active tasks - disable interval
+    #         return current_progress, True
+    #
+    #     except Exception as e:
+    #         logger.error(f"Error updating progress: {str(e)}")
+    #         # Disable interval on error
+    #         return current_progress, True
+    #
+    # # Callback to enable interval when processing starts
+    # @app.callback(
+    #     Output("upload-progress-interval", "disabled", allow_duplicate=True),
+    #     Input("btn-process-data", "n_clicks"),
+    #     prevent_initial_call=True,
+    # )
+    # def enable_progress_tracking(n_clicks):
+    #     """Enable progress tracking interval when processing starts."""
+    #     if not n_clicks:
+    #         raise PreventUpdate
+    #     # Enable the interval to start polling for progress
+    #     return False

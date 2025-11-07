@@ -764,6 +764,8 @@ class DataLoader:
                     if n_samples_per_row is None:
                         n_samples_per_row = len(signal_array)
                         if fs is None:
+                            # No sampling_rate_column and no provided sampling_rate
+                            # Infer from array length
                             fs = n_samples_per_row
                             import sys
 
@@ -771,26 +773,20 @@ class DataLoader:
                                 warnings.warn(
                                     f"Sampling rate inferred from array length: {fs} Hz"
                                 )
-                        elif fs != n_samples_per_row:
-                            import sys
-
-                            if "pytest" not in sys.modules:
-                                warnings.warn(
-                                    f"Array length ({n_samples_per_row}) does not match "
-                                    f"sampling rate ({fs} Hz). Using array length."
+                        # If fs is provided (from self.sampling_rate or parameter),
+                        # use it even if it doesn't match array length
+                        # The array length will be used for padding/truncation
+                    else:
+                        # Pad/truncate if needed to ensure all arrays have same length
+                        if len(signal_array) != n_samples_per_row:
+                            if len(signal_array) < n_samples_per_row:
+                                signal_array = np.pad(
+                                    signal_array,
+                                    (0, n_samples_per_row - len(signal_array)),
+                                    mode="edge",
                                 )
-                            fs = n_samples_per_row
-
-                    # Pad/truncate if needed
-                    elif len(signal_array) != n_samples_per_row:
-                        if len(signal_array) < n_samples_per_row:
-                            signal_array = np.pad(
-                                signal_array,
-                                (0, n_samples_per_row - len(signal_array)),
-                                mode="edge",
-                            )
-                        else:
-                            signal_array = signal_array[:n_samples_per_row]
+                            else:
+                                signal_array = signal_array[:n_samples_per_row]
 
                     chunk_signal_arrays.append(signal_array)
                     chunk_timestamps.append(row[time_column])
