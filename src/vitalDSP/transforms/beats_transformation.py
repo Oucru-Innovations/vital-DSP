@@ -116,7 +116,7 @@ class RRTransformation:
         Returns
         -------
         rr_intervals : np.array
-            The RR intervals computed from the detected peaks.
+            The RR intervals computed from the detected peaks (in milliseconds).
         """
         if preprocess_config is None:
             preprocess_config = PreprocessConfig()
@@ -155,7 +155,10 @@ class RRTransformation:
             )
 
         # Compute RR intervals from the detected peaks
-        rr_intervals = np.diff(peaks) / self.fs  # Time between peaks (in seconds)
+        # CRITICAL FIX: Return in milliseconds (clinical standard) instead of seconds
+        rr_intervals = (
+            np.diff(peaks) / self.fs * 1000
+        )  # Time between peaks (in milliseconds)
 
         if len(rr_intervals) == 0:
             raise ValueError(
@@ -167,8 +170,8 @@ class RRTransformation:
     def remove_invalid_rr_intervals(
         self,
         rr_intervals,
-        min_rr=0.3,
-        max_rr=2.0,
+        min_rr=300,
+        max_rr=2000,
         std_dev_factor=2.0,
         sudden_change_threshold=0.2,
     ):
@@ -179,11 +182,11 @@ class RRTransformation:
         Parameters
         ----------
         rr_intervals : np.array
-            The array of RR intervals (in seconds).
+            The array of RR intervals (in milliseconds).
         min_rr : float, optional
-            The minimum allowable RR interval (default is 0.3 seconds).
+            The minimum allowable RR interval (default is 300 milliseconds = 200 bpm max).
         max_rr : float, optional
-            The maximum allowable RR interval (default is 2.0 seconds).
+            The maximum allowable RR interval (default is 2000 milliseconds = 30 bpm min).
         std_dev_factor : float, optional
             The factor used for standard deviation filtering (default is 2.0).
         sudden_change_threshold : float, optional
@@ -192,7 +195,7 @@ class RRTransformation:
         Returns
         -------
         np.array
-            The array of RR intervals with invalid intervals removed (or marked as NaN).
+            The array of RR intervals with invalid intervals removed (or marked as NaN), in milliseconds.
 
         Example
         -------

@@ -487,10 +487,18 @@ class StandardProcessingPipeline:
         }
 
         # Store additional parameters in context
-        context["stages_to_execute"] = stages if stages is not None else list(ProcessingStage)
-        context["enable_quality_screening"] = enable_quality_screening if enable_quality_screening is not None else True
-        context["enable_parallel"] = enable_parallel if enable_parallel is not None else False
-        context["enable_validation"] = enable_validation if enable_validation is not None else True
+        context["stages_to_execute"] = (
+            stages if stages is not None else list(ProcessingStage)
+        )
+        context["enable_quality_screening"] = (
+            enable_quality_screening if enable_quality_screening is not None else True
+        )
+        context["enable_parallel"] = (
+            enable_parallel if enable_parallel is not None else False
+        )
+        context["enable_validation"] = (
+            enable_validation if enable_validation is not None else True
+        )
         context["progress_callback"] = progress_callback
 
         try:
@@ -520,7 +528,9 @@ class StandardProcessingPipeline:
                 if stage_result.success:
                     # Remove non-serializable items from context before saving
                     checkpoint_context = context.copy()
-                    checkpoint_context.pop("progress_callback", None)  # Remove callback as it can't be pickled
+                    checkpoint_context.pop(
+                        "progress_callback", None
+                    )  # Remove callback as it can't be pickled
                     self.checkpoint_manager.save_checkpoint(
                         session_id, stage, stage_result.data, checkpoint_context
                     )
@@ -1426,7 +1436,7 @@ class StandardProcessingPipeline:
         segmentation_result = all_results.get(ProcessingStage.SEGMENTATION.value)
         feature_result = all_results.get(ProcessingStage.FEATURE_EXTRACTION.value)
         quality_result = all_results.get(ProcessingStage.QUALITY_SCREENING.value)
-        
+
         # Extract the data from ProcessingResult objects
         segmentation_results = (
             segmentation_result.data
@@ -1443,7 +1453,7 @@ class StandardProcessingPipeline:
             if hasattr(quality_result, "data") and quality_result is not None
             else (quality_result if quality_result is not None else {})
         )
-        
+
         # Ensure we have dictionaries to work with
         if not isinstance(segmentation_results, dict):
             segmentation_results = {}
@@ -1522,6 +1532,7 @@ class StandardProcessingPipeline:
         self, all_results: Dict[str, Any], context: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Create comprehensive output package."""
+
         # Helper function to extract data from ProcessingResult objects
         def extract_data(result):
             if result is None:
@@ -1529,7 +1540,7 @@ class StandardProcessingPipeline:
             if hasattr(result, "data"):
                 return result.data if isinstance(result.data, dict) else {}
             return result if isinstance(result, dict) else {}
-        
+
         output_package = {
             "processing_summary": {
                 "signal_type": context["signal_type"],
@@ -1539,7 +1550,9 @@ class StandardProcessingPipeline:
                 "stages_completed": self.stats["stages_completed"],
                 "timestamp": datetime.now().isoformat(),
             },
-            "data_ingestion": extract_data(all_results.get(ProcessingStage.DATA_INGESTION.value)),
+            "data_ingestion": extract_data(
+                all_results.get(ProcessingStage.DATA_INGESTION.value)
+            ),
             "quality_assessment": extract_data(
                 all_results.get(ProcessingStage.QUALITY_SCREENING.value)
             ),
@@ -1549,8 +1562,12 @@ class StandardProcessingPipeline:
             "quality_validation": extract_data(
                 all_results.get(ProcessingStage.QUALITY_VALIDATION.value)
             ),
-            "segmentation": extract_data(all_results.get(ProcessingStage.SEGMENTATION.value)),
-            "features": extract_data(all_results.get(ProcessingStage.FEATURE_EXTRACTION.value)),
+            "segmentation": extract_data(
+                all_results.get(ProcessingStage.SEGMENTATION.value)
+            ),
+            "features": extract_data(
+                all_results.get(ProcessingStage.FEATURE_EXTRACTION.value)
+            ),
             "output_options": extract_data(
                 all_results.get(ProcessingStage.INTELLIGENT_OUTPUT.value)
             ),
@@ -1576,7 +1593,7 @@ class StandardProcessingPipeline:
         # Extract data from ProcessingResult objects if they are ProcessingResult instances
         quality_result = all_results.get(ProcessingStage.QUALITY_SCREENING.value)
         parallel_result = all_results.get(ProcessingStage.PARALLEL_PROCESSING.value)
-        
+
         # Extract the data from ProcessingResult objects
         quality_results = (
             quality_result.data
@@ -1588,7 +1605,7 @@ class StandardProcessingPipeline:
             if hasattr(parallel_result, "data") and parallel_result is not None
             else (parallel_result if parallel_result is not None else {})
         )
-        
+
         # Ensure we have dictionaries to work with
         if not isinstance(quality_results, dict):
             quality_results = {}
@@ -1866,7 +1883,9 @@ class StandardProcessingPipeline:
             output_result = context["results"][ProcessingStage.OUTPUT_PACKAGE.value]
             # Extract data from ProcessingResult if it's a ProcessingResult object
             if isinstance(output_result, ProcessingResult):
-                final_results = output_result.data if output_result.data is not None else {}
+                final_results = (
+                    output_result.data if output_result.data is not None else {}
+                )
                 # Ensure it's a dictionary
                 if not isinstance(final_results, dict):
                     final_results = {"output_data": final_results}

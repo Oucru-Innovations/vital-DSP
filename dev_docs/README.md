@@ -1,191 +1,207 @@
-# VitalDSP Development Documentation
+# 🔧 Developer Documentation
 
-**Last Updated**: October 23, 2025  
-**Status**: ✅ Production Ready  
-**Total Documents**: 50+ organized files  
+**Last Updated**: November 3, 2025  
+**Status**: Organized & Current
 
-This folder contains all development and technical documentation for the VitalDSP project, organized by category for easy navigation and reference.
-
----
-
-## 📁 Current Organization Structure
-
-### 🎯 **Current Status** (`current_status/`)
-**Location**: `current_status/`
-- **CURRENT_IMPLEMENTATION_STATUS.md** - Complete implementation status and metrics
-- **FINAL_FIXES_SUMMARY.md** - Summary of all recent fixes and improvements
-
-### ⚡ **Performance Optimization** (`performance_optimization/`)
-**Location**: `performance_optimization/`
-- **PERFORMANCE_OPTIMIZATION_COMPLETE.md** - Complete performance optimization guide
-- **WEBAPP_PERFORMANCE_ROOT_ISSUES.md** - Detailed root cause analysis
-- **WEBAPP_CALLBACK_LOOPS_REAL_FIXES.md** - Callback loop fixes documentation
-- **PERFORMANCE_FIXES_COMPLETE.md** - Complete performance fixes summary
-
-### 👥 **User Guides** (`user_guides/`)
-**Location**: `user_guides/`
-- **USER_GUIDE_COMPLETE.md** - Comprehensive user guide
-- **WEBAPP_RUN_MODES.md** - Webapp run modes and configuration
-
-### 🏗️ **Architecture & Design** (`architecture/`)
-**Location**: `architecture/`
-- **LARGE_DATA_PROCESSING_ARCHITECTURE.md** - Comprehensive architecture for large datasets
-- **LARGE_DATA_PROCESSING_PIPELINE_DESIGN.md** - Detailed pipeline design
-- **ADVANCED_FEATURES_GUIDE.md** - Guide to advanced features
-
-### 🔧 **Implementation Guides** (`implementation/`)
-**Location**: `implementation/`
-- **DATA_LOADER_IMPLEMENTATION_SUMMARY.md** - Data loader implementation
-- **DATA_LOADER_README.md** - Data loader usage and API
-- **EXPORT_FUNCTIONALITY_IMPLEMENTATION.md** - Export functionality
-- **WEBAPP_INTEGRATION_GUIDE.md** - Webapp integration guide
-- **UTILS_RESTRUCTURING_COMPLETE_REPORT.md** - Utils restructuring
-- **SESSION_SUMMARY_20251012.md** - Development session summary
-
-### 📊 **Analysis Reports** (`analysis_reports/`)
-**Location**: `analysis_reports/`
-- **COMPLETE_ANALYSIS_SUMMARY.md** - Complete analysis summary
-- **SIGNAL_PROCESSING_ANALYSIS_REPORT.md** - Signal processing analysis
-- **VITALDSP_COMPREHENSIVE_ANALYSIS_REPORT.md** - Comprehensive analysis
-- **VITALDSP_COMPREHENSIVE_ACCURACY_ANALYSIS_REPORT.md** - Accuracy analysis
-- **VITALDSP_EFFECTIVENESS_AND_ACCURACY.md** - Effectiveness analysis
-- **VITALDSP_EDGE_CASE_ANALYSIS_REPORT.md** - Edge case analysis
-- **VITALDSP_PERFORMANCE_ANALYSIS_REPORT.md** - Performance analysis
-
-### 🔧 **Fix Reports** (`fix_reports/`)
-**Location**: `fix_reports/`
-- **VITALDSP_CRITICAL_FIXES_REPORT.md** - Critical fixes
-- **VITALDSP_MEDIUM_PRIORITY_FIXES_REPORT.md** - Medium priority fixes
-- **VITALDSP_IMPLEMENTATION_CORRECTNESS_REPORT.md** - Implementation correctness
-- **VITALDSP_FUNCTION_ACCURACY_ANALYSIS_REPORT.md** - Function accuracy
-- **TEST_FIXES_SUMMARY.md** - Test fixes summary
-
-### ⚡ **Complexity & Optimization** (`complexity_optimization/`)
-**Location**: `complexity_optimization/`
-- **VITALDSP_COMPUTATIONAL_COMPLEXITY_ANALYSIS_REPORT.md** - Complexity analysis
-- **VITALDSP_COMPUTATIONAL_COMPLEXITY_OPTIMIZATION_IMPLEMENTATION_REPORT.md** - Optimization implementation
-
-### 📋 **Planning Documents** (`planning/`)
-**Location**: `planning/`
-- **VITALDSP_ENHANCEMENT_PLAN_2025.md** - Enhancement plan for 2025
-- **VITALDSP_ENHANCEMENT_VERIFICATION_REPORT.md** - Enhancement verification
-
-### 🤖 **ML/DL Documentation** (`ml_dl/`)
-**Location**: `ml_dl/`
-- **ML_DL_COMPREHENSIVE_IMPLEMENTATION_GUIDE.md** - ML/DL implementation guide
-- **ML_DL_IMPLEMENTATION_STATUS.md** - ML/DL implementation status
-
-### 📊 **OUCRU CSV Documentation** (`oucru_csv/`)
-**Location**: `oucru_csv/`
-- **OUCRU_CSV_IMPLEMENTATION.md** - OUCRU CSV implementation
-- **OUCRU_CSV_ENHANCEMENT_SIGNAL_TYPE_HINTS.md** - Signal type hints
-- **OUCRU_CSV_FINAL_SUMMARY.md** - Final summary
-
-### 👨‍💻 **Developer Guides** (`developer_guides/`)
-**Location**: `developer_guides/`
-- **PERFORMANCE_TUNING_GUIDE.md** - Performance tuning guide
-- **PHASE1_3_API_REFERENCE.md** - API reference
+Welcome to the vital-DSP developer documentation! This directory contains all technical documentation for developers.
 
 ---
 
-## 📦 **Archive** (`archive/`)
+## 📁 Directory Structure
+
+```
+dev_docs/
+├── README.md                           # This file
+│
+├── current/                            # ⭐ Current & Active Documentation
+│   ├── integration/                    # Integration reports
+│   ├── refactoring/                    # Refactoring documentation (Phase 1-4)
+│   ├── pipeline/                       # Pipeline processing
+│   └── testing/                        # Testing guides
+│
+├── guides/                             # Developer & User Guides
+│   ├── user_guides/                    # End-user guides
+│   ├── developer_guides/               # Developer-specific guides
+│   └── testing/                        # Testing documentation
+│
+├── reference/                          # Reference Materials
+│   ├── architecture/                   # Architecture documentation
+│   ├── analysis_reports/               # Analysis reports
+│   └── planning/                       # Planning documents
+│
+└── archive/                            # Historical Documentation
+    ├── 2024/                           # Year-based archiving
+    ├── 2025_q1/
+    ├── 2025_q2/
+    ├── 2025_q3/
+    └── 2025_q4/
+```
+
+---
+
+## ⭐ Current & Active
+
+**Location**: `current/`
+
+This directory contains the most up-to-date and relevant documentation for ongoing work.
+
+### Integration (current/integration/)
+- [WEBAPP_VITALDSP_INTEGRATION_AUDIT_REPORT.md](current/integration/WEBAPP_VITALDSP_INTEGRATION_AUDIT_REPORT.md)
+  - **Status**: 90% integration (A-)
+  - Component-by-component analysis
+  - Recommendations for next steps
+
+### Refactoring (current/refactoring/)
+
+**Phase 1-4 Comprehensive Refactoring** (November 2025)
+
+- [COMPLETE_SESSION_SUMMARY_NOV_3_2025.md](current/refactoring/COMPLETE_SESSION_SUMMARY_NOV_3_2025.md)
+  - ⭐ **Start here** for overview of all phases
+  
+- [TRANSFORM_FUNCTIONS_REFACTORING_REPORT.md](current/refactoring/TRANSFORM_FUNCTIONS_REFACTORING_REPORT.md)
+  - Phase 1: Transform Functions (FFT, STFT, Wavelet, Hilbert, MFCC)
+  - 100% integration achieved
+  
+- [FEATURE_EXTRACTION_REFACTORING_REPORT.md](current/refactoring/FEATURE_EXTRACTION_REFACTORING_REPORT.md)
+  - Phase 2: Feature Extraction (temporal, morphological)
+  - 100% integration achieved
+  
+- [PHASE_3_4_COMPLETION_REPORT.md](current/refactoring/PHASE_3_4_COMPLETION_REPORT.md)
+  - Phase 3: Filtering Consolidation (98% integration)
+  - Phase 4: ML/DL (90% integration)
+  
+- [PHASE_3_4_ANALYSIS_REPORT.md](current/refactoring/PHASE_3_4_ANALYSIS_REPORT.md)
+  - Detailed analysis of Phases 3 & 4
+
+- [SESSION_PROGRESS_SUMMARY.md](current/refactoring/SESSION_PROGRESS_SUMMARY.md)
+  - Detailed progress tracking
+
+### Pipeline (current/pipeline/)
+- [PIPELINE_COMPREHENSIVE_REVIEW_REPORT_UPDATED.md](current/pipeline/PIPELINE_COMPREHENSIVE_REVIEW_REPORT_UPDATED.md)
+  - Pipeline architecture and design
+  - Processing workflow
+
+### Testing (current/testing/)
+- [TRANSFORM_REFACTORING_TESTING_GUIDE.md](current/testing/TRANSFORM_REFACTORING_TESTING_GUIDE.md)
+  - Unit and integration testing guide
+  - How to run tests
+  
+- [TEST_ORGANIZATION_SUMMARY.md](current/testing/TEST_ORGANIZATION_SUMMARY.md)
+  - Test structure and organization
+
+---
+
+## 📖 Guides
+
+**Location**: `guides/`
+
+### User Guides (guides/user_guides/)
+
+**Pipeline & Processing**:
+- [FEATURE_EXTRACTION_PIPELINE_USER_GUIDE.md](guides/user_guides/FEATURE_EXTRACTION_PIPELINE_USER_GUIDE.md)
+- [PIPELINE_QUICK_REFERENCE.md](guides/user_guides/PIPELINE_QUICK_REFERENCE.md)
+- [PIPELINE_VISUAL_WORKFLOW.md](guides/user_guides/PIPELINE_VISUAL_WORKFLOW.md)
+- [LARGE_FILE_PROCESSING_GUIDE.md](guides/user_guides/LARGE_FILE_PROCESSING_GUIDE.md)
+
+**General**:
+- [USER_GUIDE_COMPLETE.md](guides/user_guides/USER_GUIDE_COMPLETE.md)
+- [WEBAPP_RUN_MODES.md](guides/user_guides/WEBAPP_RUN_MODES.md)
+
+### Developer Guides (guides/developer_guides/)
+- [PERFORMANCE_TUNING_GUIDE.md](guides/developer_guides/PERFORMANCE_TUNING_GUIDE.md)
+- [PHASE1_3_API_REFERENCE.md](guides/developer_guides/PHASE1_3_API_REFERENCE.md)
+
+### Testing Guides (guides/testing/)
+- [WEBAPP_TESTING_GUIDE.md](guides/testing/WEBAPP_TESTING_GUIDE.md)
+  - Comprehensive webapp testing guide
+
+---
+
+## 📚 Reference Materials
+
+**Location**: `reference/`
+
+### Architecture (reference/architecture/)
+- [ADVANCED_FEATURES_GUIDE.md](reference/architecture/ADVANCED_FEATURES_GUIDE.md)
+- [LARGE_DATA_PROCESSING_ARCHITECTURE.md](reference/architecture/LARGE_DATA_PROCESSING_ARCHITECTURE.md)
+- [LARGE_DATA_PROCESSING_PIPELINE_DESIGN.md](reference/architecture/LARGE_DATA_PROCESSING_PIPELINE_DESIGN.md)
+
+### Analysis Reports (reference/analysis_reports/)
+- [COMPLETE_ANALYSIS_SUMMARY.md](reference/analysis_reports/COMPLETE_ANALYSIS_SUMMARY.md)
+- [VITALDSP_COMPREHENSIVE_ANALYSIS_REPORT.md](reference/analysis_reports/VITALDSP_COMPREHENSIVE_ANALYSIS_REPORT.md)
+- [VITALDSP_PERFORMANCE_ANALYSIS_REPORT.md](reference/analysis_reports/VITALDSP_PERFORMANCE_ANALYSIS_REPORT.md)
+- [VITALDSP_EFFECTIVENESS_AND_ACCURACY.md](reference/analysis_reports/VITALDSP_EFFECTIVENESS_AND_ACCURACY.md)
+- And more...
+
+### Planning (reference/planning/)
+- [VITALDSP_ENHANCEMENT_PLAN_2025.md](reference/planning/VITALDSP_ENHANCEMENT_PLAN_2025.md)
+- [VITALDSP_ENHANCEMENT_VERIFICATION_REPORT.md](reference/planning/VITALDSP_ENHANCEMENT_VERIFICATION_REPORT.md)
+
+---
+
+## 🗄️ Archive
+
 **Location**: `archive/`
 
-### **Old Implementation** (`archive/old_implementation/`)
-- **COMPREHENSIVE_IMPLEMENTATION_STATUS_REPORT.md** - Old implementation status
-- **COMPREHENSIVE_PHASE1-3_REVIEW_AND_FIXES.md** - Old phase review
-- **PHASE_1-3_COMPLETION_REPORT.md** - Old completion report
-- **PHASE_1-3_IMPLEMENTATION_ANALYSIS_REPORT.md** - Old implementation analysis
-- **IMPLEMENTATION_SUMMARY.md** - Old implementation summary
-- **README_REFACTORED.md** - Old refactored README
-- **REFACTORING_SUMMARY.md** - Old refactoring summary
+Historical documentation organized by year and quarter:
+- `2024/` - Documentation from 2024
+- `2025_q1/` - Q1 2025 (Jan-Mar)
+- `2025_q2/` - Q2 2025 (Apr-Jun)
+- `2025_q3/` - Q3 2025 (Jul-Sep)
+- `2025_q4/` - Q4 2025 (Oct-Dec)
 
-### **Old Performance** (`archive/old_performance/`)
-- **PERFORMANCE_FIXES.md** - Old performance fixes
-- **PERFORMANCE_FIXES_APPLIED.md** - Old performance fixes applied
-- **PERFORMANCE_ANALYSIS.md** - Old performance analysis
-
-### **Superseded Docs** (`archive/superseded_docs/`)
-- **CALLBACK_LOOP_FIX.md** - Superseded callback fix
-- **ALL_CALLBACK_FIXES_SUMMARY.md** - Superseded callback fixes
-- **RESPIRATORY_RR_ESTIMATION_FIXES_DOCUMENTATION.md** - Superseded RR fixes
-- **RESPIRATORY_RR_ESTIMATION_REVIEW_REPORT.md** - Superseded RR review
-- **RR_ESTIMATION_FIXES_SUMMARY.md** - Superseded RR fixes summary
-- **RR_FIXES_COMPLETION_REPORT.md** - Superseded RR completion
-- **PIPELINE_COMPREHENSIVE_REVIEW_REPORT.md** - Superseded pipeline review
+Also includes:
+- `old_analysis/` - Old analysis reports
+- `old_implementation/` - Old implementation docs
+- `old_performance/` - Old performance docs
+- `superseded_docs/` - Replaced documents
 
 ---
 
-## 📊 Documentation Statistics
+## 🔍 Quick Reference
 
-- **Total Files**: 50+ markdown documents
-- **Total Lines**: ~15,000 lines of documentation
-- **Categories**: 8 organized categories + archive
-- **Last Updated**: October 23, 2025
-- **Status**: ✅ Production Ready
+### I want to...
 
----
+**Understand latest refactoring (Phase 1-4)**
+→ Read [COMPLETE_SESSION_SUMMARY_NOV_3_2025.md](current/refactoring/COMPLETE_SESSION_SUMMARY_NOV_3_2025.md)
 
-## 🚀 Quick Navigation
+**Check integration status**
+→ See [WEBAPP_VITALDSP_INTEGRATION_AUDIT_REPORT.md](current/integration/WEBAPP_VITALDSP_INTEGRATION_AUDIT_REPORT.md)
 
-### **For Users**
-- Start with [USER_GUIDE_COMPLETE.md](user_guides/USER_GUIDE_COMPLETE.md)
-- Check [WEBAPP_RUN_MODES.md](user_guides/WEBAPP_RUN_MODES.md) for configuration
-- Review [CURRENT_IMPLEMENTATION_STATUS.md](current_status/CURRENT_IMPLEMENTATION_STATUS.md) for status
+**Run tests**
+→ Read [TRANSFORM_REFACTORING_TESTING_GUIDE.md](current/testing/TRANSFORM_REFACTORING_TESTING_GUIDE.md)
 
-### **For Developers**
-- Start with [CURRENT_IMPLEMENTATION_STATUS.md](current_status/CURRENT_IMPLEMENTATION_STATUS.md)
-- Check [PERFORMANCE_OPTIMIZATION_COMPLETE.md](performance_optimization/PERFORMANCE_OPTIMIZATION_COMPLETE.md) for performance
-- Review [architecture/](architecture/) for system design
+**Understand pipeline**
+→ Check [PIPELINE_COMPREHENSIVE_REVIEW_REPORT_UPDATED.md](current/pipeline/PIPELINE_COMPREHENSIVE_REVIEW_REPORT_UPDATED.md)
 
-### **For Researchers**
-- Focus on [analysis_reports/](analysis_reports/) for performance metrics
-- Check [ml_dl/](ml_dl/) for machine learning features
-- Review [oucru_csv/](oucru_csv/) for data format specifications
+**Optimize performance**
+→ See [PERFORMANCE_TUNING_GUIDE.md](guides/developer_guides/PERFORMANCE_TUNING_GUIDE.md)
 
-### **For Project Managers**
-- Check [current_status/](current_status/) for project status
-- Review [planning/](planning/) for roadmap and plans
-- Monitor [fix_reports/](fix_reports/) for issue resolution
+**Find architecture docs**
+→ Check `reference/architecture/`
 
 ---
 
-## 📝 Contributing
+## 📊 Key Statistics
+
+**Integration Score**: 90% (A-) - Excellent!  
+**Test Coverage**: 100% (18/18 tests passing)  
+**Phases Complete**: 4/4 (100%)  
+**Active Docs**: ~15 current documents  
+**Archived Docs**: Organized by year/quarter
+
+---
+
+## 🤝 Contributing
 
 When adding new documentation:
-
-1. **Choose the appropriate category folder**
-2. **Use descriptive filenames** with consistent naming convention
-3. **Update this README** if adding new categories
-4. **Include file descriptions** and line counts
-5. **Keep documentation current** and accurate
+1. **Current work** → `current/` (by category)
+2. **Guides** → `guides/` (user or developer)
+3. **Reference** → `reference/` (architecture, analysis, planning)
+4. **Old docs** → `archive/` (year-based)
 
 ---
 
-## 🔍 Search Tips
+**Need help?** Check the [master documentation index](../DOCUMENTATION_INDEX.md)!
 
-- Use `grep -r "keyword" .` to search across all documentation
-- Check file modification dates for recent updates
-- Look for TODO/FIXME comments in implementation docs
-- Review analysis reports for performance benchmarks
-
----
-
-## 📈 Recent Changes
-
-### **October 23, 2025 - Documentation Reorganization**
-- ✅ **Consolidated redundant documents** into comprehensive guides
-- ✅ **Moved outdated documents** to archive folders
-- ✅ **Created organized structure** by topic and relevance
-- ✅ **Updated main README** to reflect new organization
-- ✅ **Maintained all important information** while reducing clutter
-
-### **Key Consolidations**
-- **Performance Optimization**: 6 documents → 1 comprehensive guide
-- **Callback Fixes**: 4 documents → 1 comprehensive guide
-- **RR Estimation**: 5 documents → 1 comprehensive guide
-- **Implementation Status**: 4 documents → 1 comprehensive guide
-
----
-
-*This documentation structure was reorganized on October 23, 2025, to improve developer experience and project maintainability. All important information has been preserved while eliminating redundancy and outdated content.*
+**Last Reorganized**: November 3, 2025

@@ -121,15 +121,16 @@ class HRVFeatures:
         self.signal = np.array(signals)
         self.fs = fs
 
-    def compute_all_features(self, include_complex_methods=False, **kwargs):
+    def compute_all_features(self, include_complex_methods=None, **kwargs):
         """
         Computes all nonlinear features of the signal, with an option to skip
         time-consuming methods.
 
         Args:
-            include_complex_methods (bool): Whether to compute the time-consuming
+            include_complex_methods (bool, optional): Whether to compute the time-consuming
                 methods: compute_sample_entropy, compute_approximate_entropy, and
-                compute_recurrence_features.
+                compute_recurrence_features. If None (default), automatically enables for
+                signals with ≥50 NN intervals.
             **kwargs: Additional parameters for specific feature computations.
 
         Returns:
@@ -145,6 +146,11 @@ class HRVFeatures:
         >>> print(all_features)
         """
         features = {}
+
+        # Auto-determine whether to include complex methods
+        if include_complex_methods is None:
+            # Enable complex methods if we have sufficient data (≥50 intervals)
+            include_complex_methods = len(self.nn_intervals) >= 50
 
         # Time-domain features
         time_features = TimeDomainFeatures(self.nn_intervals)
@@ -198,15 +204,15 @@ class HRVFeatures:
             ("dfa", nonlinear_features.compute_dfa),
             (
                 "poincare",
-                lambda: nonlinear_features.compute_poincare_features(self.nn_intervals),
+                lambda: nonlinear_features.compute_poincare_features(),
             ),
             # ("recurrence", nonlinear_features.compute_recurrence_features),
         ]:
             try:
                 if feature == "poincare":
-                    poincare_sd1, poincare_sd2 = method()
-                    features["poincare_sd1"] = poincare_sd1
-                    features["poincare_sd2"] = poincare_sd2
+                    poincare_result = method()
+                    features["poincare_sd1"] = poincare_result["sd1"]
+                    features["poincare_sd2"] = poincare_result["sd2"]
                 else:
                     features[feature] = method()
             except Exception as e:

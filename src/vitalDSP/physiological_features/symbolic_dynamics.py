@@ -78,7 +78,6 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
-
 import numpy as np
 import math
 from collections import Counter
@@ -712,6 +711,49 @@ class SymbolicDynamics:
         normalized_pe = perm_entropy / max_entropy if max_entropy > 0 else 0
 
         return normalized_pe
+
+    def compute_symbolic_features(self) -> Dict[str, float]:
+        """
+        Convenience method that computes all symbolic dynamics features.
+
+        Returns:
+            dict: Dictionary containing all symbolic dynamics metrics:
+                - 'shannon_entropy': Shannon entropy of symbol distribution
+                - 'renyi_entropy': Renyi entropy (alpha=2)
+                - 'permutation_entropy': Permutation entropy (order=3)
+                - 'num_words': Total number of words in symbol sequence
+                - 'num_forbidden_words': Number of forbidden word patterns
+
+        Example:
+            >>> nn_intervals = [800, 810, 790, 805, 795, 820, 780, 815]
+            >>> sd = SymbolicDynamics(nn_intervals)
+            >>> features = sd.compute_symbolic_features()
+            >>> print(f"Shannon Entropy: {features['shannon_entropy']:.3f}")
+        """
+        # Ensure symbolization is performed
+        if (
+            not hasattr(self, "symbols")
+            or self.symbols is None
+            or len(self.symbols) == 0
+        ):
+            self.symbolize()
+
+        # Compute all features
+        features = {
+            "shannon_entropy": self.compute_shannon_entropy(),
+            "renyi_entropy": self.compute_renyi_entropy(alpha=2.0),
+            "permutation_entropy": self.compute_permutation_entropy(order=3),
+        }
+
+        # Word distribution
+        word_dist = self.compute_word_distribution()
+        features["num_words"] = len(word_dist)
+
+        # Forbidden words
+        forbidden_words = self.detect_forbidden_words()
+        features["num_forbidden_words"] = len(forbidden_words)
+
+        return features
 
 
 # Export main class

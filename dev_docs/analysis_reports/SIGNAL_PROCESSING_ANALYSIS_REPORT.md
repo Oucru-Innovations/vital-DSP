@@ -2,7 +2,6 @@
 ## vitalDSP Core Library vs. vitalDSP_webapp Implementation
 
 **Date:** October 9, 2025
-**Analyzed by:** Claude (Sonnet 4.5)
 **Repository:** vital-DSP
 **Branch:** readthedocs
 

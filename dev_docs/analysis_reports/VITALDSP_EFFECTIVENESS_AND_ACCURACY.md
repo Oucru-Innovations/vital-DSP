@@ -2,7 +2,6 @@
 
 **Version:** 1.0
 **Date:** October 9, 2025
-**Analyzed by:** Claude (Sonnet 4.5)
 **Library Version:** vitalDSP v1.x
 
 ---

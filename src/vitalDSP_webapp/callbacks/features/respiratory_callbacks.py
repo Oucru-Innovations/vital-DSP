@@ -752,7 +752,9 @@ def register_respiratory_callbacks(app):
                 elif trigger_id == "resp-btn-nudge-p10":
                     start_position = start_position + 10
 
-                logger.info(f"Time window adjusted: start={start_position}, duration={duration}")
+                logger.info(
+                    f"Time window adjusted: start={start_position}, duration={duration}"
+                )
 
             # Set default time window if not specified
             if start_position is None:

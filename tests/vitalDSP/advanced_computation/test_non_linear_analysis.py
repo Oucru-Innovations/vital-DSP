@@ -18,7 +18,8 @@ def nonlinear_analysis(test_signal):
 
 def test_lyapunov_exponent(nonlinear_analysis):
     # Test Lyapunov exponent calculation
-    lyapunov = nonlinear_analysis.lyapunov_exponent(max_iter=100, epsilon=1e-8)
+    # Reduce max_iter to be less than signal length (100)
+    lyapunov = nonlinear_analysis.lyapunov_exponent(max_iter=50, epsilon=1e-8)
     assert isinstance(lyapunov, float)
     # Ensure the exponent is calculated (it might be positive or negative depending on signal dynamics)
     assert lyapunov != 0

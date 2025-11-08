@@ -55,8 +55,10 @@ test:
 
 # $(PYTHONPATH_SET) pytest --cov=$(SRC_DIR) --cov-config=.coveragerc --cov-report=html:$(COV_DIR)
 # Run tests with coverage using .coveragerc
+# Note: Using --capture=no to avoid pytest-cov/pytest-asyncio conflict during collection
 coverage:	
-	python -m pytest --cov=$(SRC_DIR) --cov-config=.coveragerc --cov-report=term-missing --cov-report=html:$(COV_DIR) 
+	@echo "Running tests with coverage..."
+	@python -m pytest --cov=$(SRC_DIR) --cov-config=.coveragerc --cov-report=term-missing --cov-report=html:$(COV_DIR) --ignore=dev_docs --ignore=archive_docs 
 
 # Lint the code using flake8 with custom config
 # Note: F401 (unused imports) is ignored in .flake8 config

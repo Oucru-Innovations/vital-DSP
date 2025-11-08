@@ -550,11 +550,28 @@ class DataLoader:
 
                 signal_arrays.append(signal_array)
 
-            # Concatenate all signal arrays
-            signal_data = np.concatenate(signal_arrays)
-
             # Parse timestamps with type detection and conversion
             timestamps = self._parse_timestamps_with_conversion(data[time_column])
+
+            # Check for NaT (Not a Time) values in timestamps and filter before concatenation
+            if timestamps is not None and timestamps.isna().any():
+                nat_count = timestamps.isna().sum()
+                nat_indices = timestamps[timestamps.isna()].index.tolist()
+                warnings.warn(
+                    f"Found {nat_count} NaT (Not a Time) values in timestamps at indices {nat_indices[:10]}... "
+                    f"Removing these rows to prevent conversion errors."
+                )
+                # Remove rows with NaT timestamps BEFORE concatenating signal arrays
+                valid_mask = ~timestamps.isna()
+                timestamps = timestamps[valid_mask].reset_index(drop=True)
+                data = data[valid_mask].reset_index(drop=True)
+                # Filter signal arrays using the valid mask
+                signal_arrays = [
+                    signal_arrays[i] for i, valid in enumerate(valid_mask) if valid
+                ]
+
+            # Concatenate all signal arrays (after filtering if necessary)
+            signal_data = np.concatenate(signal_arrays)
 
             # Generate interpolated timestamps for each sample
             if interpolate_time and timestamps is not None:
@@ -568,8 +585,20 @@ class DataLoader:
                 total_samples = n_rows * n_samples_per_row
 
                 # Create base timestamp in seconds (convert timestamps to numeric)
+                # Handle timezone-aware datetime objects by converting to UTC first
+                if hasattr(timestamps.dtype, "tz") and timestamps.dtype.tz is not None:
+                    # Timezone-aware: convert to UTC then remove timezone for conversion
+                    logger.info(
+                        "Converting timezone-aware timestamps to UTC naive for interpolation"
+                    )
+                    timestamps_for_conversion = timestamps.dt.tz_convert(
+                        "UTC"
+                    ).dt.tz_localize(None)
+                else:
+                    timestamps_for_conversion = timestamps
+
                 base_timestamps_sec = (
-                    timestamps.astype("int64") / 1e9
+                    timestamps_for_conversion.astype("int64") / 1e9
                 )  # Convert to seconds
 
                 # Create offset array: [0, 1/fs, 2/fs, ..., (n_samples_per_row-1)/fs] repeated for each row
@@ -814,6 +843,29 @@ class DataLoader:
                 pd.concat(all_timestamps, ignore_index=True) if all_timestamps else None
             )
 
+            # Check for NaT (Not a Time) values in timestamps
+            if timestamps is not None and timestamps.isna().any():
+                nat_count = timestamps.isna().sum()
+                nat_indices = timestamps[timestamps.isna()].index.tolist()
+                warnings.warn(
+                    f"Found {nat_count} NaT (Not a Time) values in timestamps at indices {nat_indices[:10]}... "
+                    f"Removing these samples to prevent conversion errors."
+                )
+                # Remove samples corresponding to NaT timestamps
+                # Each timestamp corresponds to n_samples_per_row samples
+                valid_timestamp_mask = ~timestamps.isna()
+                valid_sample_indices = []
+                for i, valid in enumerate(valid_timestamp_mask):
+                    if valid:
+                        start_idx = i * n_samples_per_row
+                        end_idx = start_idx + n_samples_per_row
+                        valid_sample_indices.extend(
+                            range(start_idx, min(end_idx, len(signal_data)))
+                        )
+
+                signal_data = signal_data[valid_sample_indices]
+                timestamps = timestamps[valid_timestamp_mask].reset_index(drop=True)
+
             # Generate interpolated timestamps using vectorized method
             if interpolate_time and timestamps is not None:
                 # OPTIMIZATION: Vectorized timestamp generation
@@ -821,7 +873,16 @@ class DataLoader:
                 n_rows = len(timestamps)
 
                 # Convert timestamps to seconds
-                base_timestamps_sec = timestamps.astype("int64") / 1e9
+                # Handle timezone-aware datetime objects by converting to UTC first
+                if hasattr(timestamps.dtype, "tz") and timestamps.dtype.tz is not None:
+                    # Timezone-aware: convert to UTC then remove timezone for conversion
+                    timestamps_for_conversion = timestamps.dt.tz_convert(
+                        "UTC"
+                    ).dt.tz_localize(None)
+                else:
+                    timestamps_for_conversion = timestamps
+
+                base_timestamps_sec = timestamps_for_conversion.astype("int64") / 1e9
 
                 # Create vectorized arrays
                 sample_offsets = np.tile(time_deltas_per_row, n_rows)

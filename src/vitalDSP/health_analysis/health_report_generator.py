@@ -56,20 +56,20 @@ from unittest.mock import MagicMock
 def _make_config_picklable(config):
     """
     Convert config to a picklable format by removing MagicMock objects and other unpicklable items.
-    
+
     Args:
         config: The config object (may contain MagicMock or other unpicklable objects)
-        
+
     Returns:
         dict: A picklable dictionary representation of the config
     """
     if config is None:
         return {}
-    
+
     # Check if config itself is a MagicMock
     if isinstance(config, MagicMock):
         return {}
-    
+
     # If config is already a dict, process it
     if isinstance(config, dict):
         picklable_config = {}
@@ -94,7 +94,7 @@ def _make_config_picklable(config):
                     elif isinstance(item, (str, int, float, bool, type(None))):
                         picklable_list.append(item)
                 picklable_config[key] = picklable_list
-            elif hasattr(value, '__dict__'):
+            elif hasattr(value, "__dict__"):
                 # Try to convert object to dict recursively
                 try:
                     picklable_config[key] = _make_config_picklable(value.__dict__)
@@ -103,11 +103,11 @@ def _make_config_picklable(config):
                     continue
             # Skip other complex objects that might not be picklable
         return picklable_config
-    
+
     # If config is an object with attributes, try to convert to dict
-    if hasattr(config, '__dict__'):
+    if hasattr(config, "__dict__"):
         return _make_config_picklable(config.__dict__)
-    
+
     # Fallback: return empty dict
     return {}
 
@@ -400,7 +400,7 @@ class HealthReportGenerator:
             # Submit all tasks using the module-level function
             # Make config picklable before passing to multiprocessing
             picklable_config = _make_config_picklable(visualizer.config)
-            
+
             future_to_feature = {
                 executor.submit(
                     process_single_feature_visualization,

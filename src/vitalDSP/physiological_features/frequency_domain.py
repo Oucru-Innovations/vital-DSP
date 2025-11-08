@@ -88,13 +88,21 @@ class FrequencyDomainFeatures:
         power in ULF, VLF, LF, and HF bands.
 
         Returns:
-            tuple: ULF, VLF, LF, and HF power values.
+            dict: Dictionary containing frequency domain HRV metrics:
+                - 'ulf_power': Ultra-Low Frequency power (ms²)
+                - 'vlf_power': Very-Low Frequency power (ms²)
+                - 'lf_power': Low Frequency power (ms²)
+                - 'hf_power': High Frequency power (ms²)
+                - 'lf_hf_ratio': LF/HF ratio
+                - 'total_power': Total spectral power (ms²)
+                - 'frequencies': Frequency array
+                - 'psd': Power spectral density array
 
         Example:
             >>> nn_intervals = [800, 810, 790, 805, 795]
             >>> fdf = FrequencyDomainFeatures(nn_intervals)
-            >>> ulf, vlf, lf, hf = fdf.compute_psd()
-            >>> print(f"ULF: {ulf}, VLF: {vlf}, LF: {lf}, HF: {hf}")
+            >>> psd_result = fdf.compute_psd()
+            >>> print(f"LF: {psd_result['lf_power']}, HF: {psd_result['hf_power']}")
         """
         f, psd = welch(
             self.nn_intervals - np.mean(self.nn_intervals),
@@ -126,7 +134,23 @@ class FrequencyDomainFeatures:
             f[(f >= hf_band[0]) & (f <= hf_band[1])],
         )
 
-        return ulf_power, vlf_power, lf_power, hf_power
+        # Calculate LF/HF ratio
+        lf_hf_ratio = lf_power / hf_power if hf_power > 0 else 0.0
+
+        # Calculate total power
+        total_power = ulf_power + vlf_power + lf_power + hf_power
+
+        # Return as dictionary for API compatibility
+        return {
+            "ulf_power": ulf_power,
+            "vlf_power": vlf_power,
+            "lf_power": lf_power,
+            "hf_power": hf_power,
+            "lf_hf_ratio": lf_hf_ratio,
+            "total_power": total_power,
+            "frequencies": f,
+            "psd": psd,
+        }
 
     def compute_lf(self):
         """
@@ -141,8 +165,8 @@ class FrequencyDomainFeatures:
             >>> lf = fdf.compute_lf()
             >>> print(f"LF: {lf}")
         """
-        ulf_power, vlf_power, lf_power, hf_power = self.compute_psd()
-        return lf_power
+        psd_result = self.compute_psd()
+        return psd_result["lf_power"]
 
     def compute_hf(self):
         """
@@ -157,8 +181,8 @@ class FrequencyDomainFeatures:
             >>> hf = fdf.compute_hf()
             >>> print(f"HF: {hf}")
         """
-        ulf_power, vlf_power, lf_power, hf_power = self.compute_psd()
-        return hf_power
+        psd_result = self.compute_psd()
+        return psd_result["hf_power"]
 
     def compute_lf_hf_ratio(self):
         """
@@ -173,10 +197,8 @@ class FrequencyDomainFeatures:
             >>> lf_hf_ratio = fdf.compute_lf_hf_ratio()
             >>> print(f"LF/HF Ratio: {lf_hf_ratio}")
         """
-        ulf_power, vlf_power, lf, hf = self.compute_psd()
-        if hf == 0:
-            return np.inf  # Avoid division by zero
-        return lf / hf
+        psd_result = self.compute_psd()
+        return psd_result["lf_hf_ratio"]
 
     def compute_ulf(self):
         """
@@ -241,10 +263,8 @@ class FrequencyDomainFeatures:
             >>> total_power = fdf.compute_total_power()
             >>> print(f"Total Power: {total_power}")
         """
-        ulf = self.compute_ulf()
-        vlf = self.compute_vlf()
-        ulf_power, vlf_power, lf, hf = self.compute_psd()
-        return ulf + vlf + lf + hf
+        psd_result = self.compute_psd()
+        return psd_result["total_power"]
 
     def compute_lfnu(self):
         """
@@ -259,7 +279,9 @@ class FrequencyDomainFeatures:
             >>> lfnu = fdf.compute_lfnu()
             >>> print(f"LFnu: {lfnu}")
         """
-        ulf_power, vlf_power, lf, hf = self.compute_psd()
+        psd_result = self.compute_psd()
+        lf = psd_result["lf_power"]
+        hf = psd_result["hf_power"]
         total_lf_hf = lf + hf
         if total_lf_hf == 0:
             return 0
@@ -278,7 +300,9 @@ class FrequencyDomainFeatures:
             >>> hfnu = fdf.compute_hfnu()
             >>> print(f"HFnu: {hfnu}")
         """
-        ulf_power, vlf_power, lf, hf = self.compute_psd()
+        psd_result = self.compute_psd()
+        lf = psd_result["lf_power"]
+        hf = psd_result["hf_power"]
         total_lf_hf = lf + hf
         if total_lf_hf == 0:
             return 0

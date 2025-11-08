@@ -6968,7 +6968,9 @@ def get_vitaldsp_advanced_computation(
                 mapped_results["bayesian_prior_mean"] = np.mean(signal_data)
                 mapped_results["bayesian_prior_std"] = np.std(signal_data)
             except Exception as e:
-                logger.warning(f"vitalDSP bayesian analysis failed: {e}, using fallback")
+                logger.warning(
+                    f"vitalDSP bayesian analysis failed: {e}, using fallback"
+                )
                 mapped_results["bayesian_prior_mean"] = np.mean(signal_data)
                 mapped_results["bayesian_prior_std"] = np.std(signal_data)
 
@@ -8578,7 +8580,11 @@ def physiological_analysis_callback(
         ]:
             # Use start_time as start_position (they're the same conceptually)
             start_position = start_time if start_time is not None else 0
-            duration = (end_time - start_time) if (end_time is not None and start_time is not None) else 10
+            duration = (
+                (end_time - start_time)
+                if (end_time is not None and start_time is not None)
+                else 10
+            )
 
             if trigger_id == "physio-btn-nudge-m10":
                 start_position = max(0, start_position - 10)
@@ -8591,7 +8597,11 @@ def physiological_analysis_callback(
         else:
             # For non-nudge triggers, initialize from parameters
             start_position = start_time if start_time is not None else 0
-            duration = (end_time - start_time) if (end_time is not None and start_time is not None) else 10
+            duration = (
+                (end_time - start_time)
+                if (end_time is not None and start_time is not None)
+                else 10
+            )
 
         # Set default values if not provided
         start_position = start_position or 0

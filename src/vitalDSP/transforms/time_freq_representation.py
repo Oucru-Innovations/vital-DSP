@@ -94,7 +94,7 @@ class TimeFreqRepresentation:
             return stft.compute_stft()
         elif self.method == "wavelet":
             # Extract level parameter if present (it goes to perform_wavelet_transform, not __init__)
-            level = self.kwargs.pop('level', 1)
+            level = self.kwargs.pop("level", 1)
             wavelet_transform = WaveletTransform(self.signal, **self.kwargs)
             return wavelet_transform.perform_wavelet_transform(level=level)
         else:

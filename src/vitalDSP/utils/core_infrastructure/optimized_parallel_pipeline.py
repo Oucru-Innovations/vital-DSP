@@ -545,9 +545,9 @@ class OptimizedParallelPipeline:
     def process_signal(
         self,
         signal_data: Union[np.ndarray, pd.DataFrame],
-        processing_function: Optional[Callable[
-            [np.ndarray, Dict[str, Any]], Tuple[np.ndarray, Dict[str, Any]]
-        ]] = None,
+        processing_function: Optional[
+            Callable[[np.ndarray, Dict[str, Any]], Tuple[np.ndarray, Dict[str, Any]]]
+        ] = None,
         processing_params: Optional[Dict[str, Any]] = None,
         progress_callback: Optional[Callable[[ProgressInfo], None]] = None,
         enable_quality_screening: bool = True,
@@ -579,15 +579,17 @@ class OptimizedParallelPipeline:
 
         # Default processing function (identity if not provided)
         if processing_function is None:
+
             def default_processing_function(signal_chunk, params):
                 return signal_chunk, {}
+
             processing_function = default_processing_function
 
         # Add sampling_rate to processing_params if provided
         if sampling_rate is not None:
             if processing_params is None:
                 processing_params = {}
-            processing_params['sampling_rate'] = sampling_rate
+            processing_params["sampling_rate"] = sampling_rate
 
         # Override strategy if enable_parallel is explicitly set
         if enable_parallel is not None:

@@ -207,7 +207,7 @@ class NeuralNetworkFiltering:
             window_size = 10
             X, y = [], []
             for i in range(len(signal) - window_size):
-                X.append(signal[i:i+window_size])
+                X.append(signal[i : i + window_size])
                 y.append(signal[i + window_size])
             if len(X) == 0:
                 # Fallback for very short signals
@@ -215,7 +215,7 @@ class NeuralNetworkFiltering:
                 y.append(signal[-1])
                 # Pad X to have 10 features if needed
                 if len(X[0]) < 10:
-                    padded = np.pad(X[0], (0, 10 - len(X[0])), mode='edge')
+                    padded = np.pad(X[0], (0, 10 - len(X[0])), mode="edge")
                     X = [padded]
             X = np.array(X)
             # Reshape to (batch, time_steps, features) where time_steps=1, features=10
@@ -267,13 +267,13 @@ class NeuralNetworkFiltering:
             window_size = 10
             X = []
             for i in range(len(signal) - window_size + 1):
-                X.append(signal[i:i+window_size])
+                X.append(signal[i : i + window_size])
             if len(X) == 0:
                 # Fallback for very short signals
                 X.append(signal)
                 # Pad X to have 10 features if needed
                 if len(X[0]) < 10:
-                    padded = np.pad(X[0], (0, 10 - len(X[0])), mode='edge')
+                    padded = np.pad(X[0], (0, 10 - len(X[0])), mode="edge")
                     X = [padded]
             X = np.array(X)
             # Reshape to (batch, time_steps, features) where time_steps=1, features=10
@@ -416,7 +416,10 @@ class ConvolutionalNetwork:
         # Initialize weights on first forward pass based on actual input size
         if not self._weights_initialized:
             conv_output_size = A.shape[1]
-            self.weights = [np.random.randn(conv_output_size, 64), np.random.randn(64, 1)]
+            self.weights = [
+                np.random.randn(conv_output_size, 64),
+                np.random.randn(64, 1),
+            ]
             self.biases = [np.random.randn(64), np.random.randn(1)]
             self._weights_initialized = True
 
@@ -463,7 +466,10 @@ class ConvolutionalNetwork:
         # Initialize weights on first predict if not already initialized
         if not self._weights_initialized:
             conv_output_size = A.shape[1]
-            self.weights = [np.random.randn(conv_output_size, 64), np.random.randn(64, 1)]
+            self.weights = [
+                np.random.randn(conv_output_size, 64),
+                np.random.randn(64, 1),
+            ]
             self.biases = [np.random.randn(64), np.random.randn(1)]
             self._weights_initialized = True
 

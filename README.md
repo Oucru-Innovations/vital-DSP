@@ -275,6 +275,22 @@ vitalDSP is designed to address real-world healthcare challenges across multiple
 
 ## Quick Start
 
+### Installation
+
+Install VitalDSP from PyPI (recommended for most users):
+
+```bash
+pip install vitalDSP
+```
+
+Or install from source for the latest features:
+
+```bash
+git clone https://github.com/Oucru-Innovations/vital-DSP.git
+cd vital-DSP
+pip install -e .
+```
+
 ### Basic Usage Example
 
 ```python
@@ -319,9 +335,141 @@ When working with these sample files, make sure to use the correct sampling rate
 
 **[Launch Web Application](https://vital-dsp-1.onrender.com/)** - Perfect for exploring vitalDSP capabilities before local installation.
 
+### Running the Web Application Locally
+
+VitalDSP includes a production-ready web application with three deployment modes:
+
+```bash
+# Option 1: Quick start (Normal mode)
+python src/vitalDSP_webapp/run_webapp.py
+
+# Option 2: Development mode (with auto-reload and debug logging)
+python src/vitalDSP_webapp/run_webapp.py --debug
+
+# Option 3: Production mode (optimized performance)
+python src/vitalDSP_webapp/run_webapp.py --production
+
+# Option 4: Interactive menu (Windows)
+run_webapp.bat
+
+# Option 5: Interactive menu (Linux/Mac)
+bash run_webapp.sh
+```
+
+**Access the application**: Open your browser to `http://localhost:8000`
+
+**Command-line Options**:
+- `--debug` / `-d`: Enable debug mode with auto-reload
+- `--production` / `-p`: Enable production mode (optimized)
+- `--port PORT`: Custom port (default: 8000)
+- `--host HOST`: Custom host (default: 0.0.0.0)
+- `--help` / `-h`: Show help message
+
 ### Advanced Usage
 
 For comprehensive examples and detailed API documentation, please visit our [official documentation](https://vital-DSP.readthedocs.io/en/latest/?badge=latest).
+
+## Deployment Options
+
+VitalDSP offers flexible deployment options for different use cases:
+
+### 🐳 Docker Deployment (Recommended for Production)
+
+**Quick Start with Docker Compose**:
+
+```bash
+# Clone repository
+git clone https://github.com/Oucru-Innovations/vital-DSP.git
+cd vital-DSP
+
+# Deploy with Docker Compose (includes nginx)
+docker-compose up -d
+
+# Access at http://localhost:8000
+```
+
+**Standard Docker**:
+
+```bash
+# Build image
+docker build -t vitaldsp:latest .
+
+# Run container
+docker run -p 8000:8000 -e PORT=8000 vitaldsp:latest
+
+# Run with mounted volumes
+docker run -p 8000:8000 \
+  -v $(pwd)/uploads:/app/uploads \
+  -v $(pwd)/logs:/app/logs \
+  -e PORT=8000 \
+  vitaldsp:latest
+```
+
+**Production Docker** (multi-stage build, optimized):
+
+```bash
+# Build production image
+docker build -f Dockerfile.production -t vitaldsp:production .
+
+# Run production container
+docker run -p 8000:8000 vitaldsp:production
+```
+
+### ☁️ Cloud Deployment
+
+**Render.com** (Currently deployed: https://vital-dsp-1.onrender.com/)
+
+1. Fork the repository to your GitHub account
+2. Sign up at https://render.com and create a new Web Service
+3. Connect your GitHub repository
+4. Configure:
+   - **Build Command**: `pip install -r requirements.txt && pip install -r src/vitalDSP_webapp/requirements.txt && pip install -e .`
+   - **Start Command**: `gunicorn -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT vitalDSP_webapp.run_webapp:app`
+   - **Environment**: Python 3
+5. Deploy!
+
+**AWS EC2** / **Google Cloud** / **Azure**:
+
+See our comprehensive [Deployment Guide](https://vital-dsp.readthedocs.io/en/latest/deployment.html) for detailed instructions on deploying to major cloud platforms.
+
+### 🖥️ Local/Server Deployment
+
+**Production Server Setup** (Ubuntu/Debian):
+
+```bash
+# 1. Install dependencies
+sudo apt update && sudo apt install -y python3.10 python3-pip python3-venv git gcc g++ nginx
+
+# 2. Clone and setup
+git clone https://github.com/Oucru-Innovations/vital-DSP.git
+cd vital-DSP
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+pip install -r src/vitalDSP_webapp/requirements.txt
+pip install -e .
+
+# 3. Run in production mode
+python src/vitalDSP_webapp/run_webapp.py --production
+
+# 4. (Optional) Setup as systemd service for auto-start
+# See deployment guide for systemd configuration
+```
+
+**Key Deployment Modes**:
+- **Development**: `--debug` (auto-reload, verbose logging)
+- **Testing**: default mode (standard logging)
+- **Production**: `--production` (optimized, minimal logging)
+
+### 🔒 Security Considerations for Production
+
+1. **SSL/TLS**: Use nginx or cloud provider SSL termination
+2. **Environment Variables**: Store sensitive config in `.env` file
+3. **Firewall**: Open only necessary ports (80, 443, SSH)
+4. **Regular Updates**: Keep dependencies updated
+5. **Monitoring**: Use health checks at `/api/health`
+
+For detailed deployment instructions, troubleshooting, and best practices, see our **[Comprehensive Deployment Guide](https://vital-dsp.readthedocs.io/en/latest/deployment.html)**.
 
 ## Interactive Examples
 

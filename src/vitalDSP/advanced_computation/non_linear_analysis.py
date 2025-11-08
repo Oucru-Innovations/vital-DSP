@@ -133,6 +133,7 @@ class NonlinearAnalysis:
                 signal = (signal - signal_mean) / signal_std
             else:
                 import warnings
+
                 warnings.warn(
                     "Signal has zero or very low variance. Lyapunov exponent may not be meaningful."
                 )
@@ -164,6 +165,7 @@ class NonlinearAnalysis:
         # Check if we have enough valid data points
         if len(distances) == 0:
             import warnings
+
             warnings.warn(
                 "No valid distance calculations obtained. Signal may have too many "
                 "repeated values or be unsuitable for Lyapunov exponent estimation. "
@@ -173,6 +175,7 @@ class NonlinearAnalysis:
 
         if skipped_points > (n - max_iter) * 0.5:
             import warnings
+
             warnings.warn(
                 f"Skipped {skipped_points}/{n-max_iter} points due to near-zero distances. "
                 f"Results may be unreliable. Consider signal preprocessing."
@@ -185,6 +188,7 @@ class NonlinearAnalysis:
         # Validate result
         if not np.isfinite(lyapunov):
             import warnings
+
             warnings.warn(
                 f"Lyapunov exponent is {lyapunov}. This indicates numerical issues. "
                 f"Try signal normalization or different epsilon value."
@@ -290,6 +294,7 @@ class NonlinearAnalysis:
                 signal = (signal - signal_mean) / signal_std
             else:
                 import warnings
+
                 warnings.warn(
                     "Signal has zero or very low variance. "
                     "Correlation dimension may not be meaningful."
@@ -328,6 +333,7 @@ class NonlinearAnalysis:
         # Validate result
         if correlation_dim < 0:
             import warnings
+
             warnings.warn(
                 f"Negative correlation dimension ({correlation_dim:.4f}) suggests "
                 f"inappropriate radius selection or unsuitable signal. "
@@ -341,6 +347,7 @@ class NonlinearAnalysis:
 
         if not np.isfinite(correlation_dim):
             import warnings
+
             warnings.warn(
                 f"Correlation dimension is {correlation_dim}. This indicates numerical issues."
             )

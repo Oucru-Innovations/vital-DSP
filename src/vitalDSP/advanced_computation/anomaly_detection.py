@@ -127,7 +127,8 @@ class AnomalyDetection:
             return self._z_score_anomaly_detection(kwargs.get("threshold", 3.0))
         elif method == "moving_average":
             return self._moving_average_anomaly_detection(
-                kwargs.get("window_size", 5), kwargs.get("threshold", 'auto')  # Changed to 'auto'
+                kwargs.get("window_size", 5),
+                kwargs.get("threshold", "auto"),  # Changed to 'auto'
             )
         elif method == "lof":
             return self._lof_anomaly_detection(kwargs.get("n_neighbors", 20))
@@ -223,7 +224,7 @@ class AnomalyDetection:
         residuals = np.abs(self.signal[window_size - 1 :] - moving_avg)
 
         # Adaptive threshold calculation
-        if threshold is None or threshold == 'auto':
+        if threshold is None or threshold == "auto":
             # Default: 3 standard deviations (catches ~0.3% of points in normal distribution)
             threshold_value = 3.0 * np.std(residuals)
         elif isinstance(threshold, (int, float)):

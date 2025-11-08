@@ -1,929 +1,852 @@
 Deployment Guide
 =================
 
-This guide provides comprehensive instructions for deploying VitalDSP in various environments, from development to production.
+This comprehensive guide provides detailed instructions for deploying VitalDSP in various environments, from local development to production cloud deployments.
+
+.. contents:: Table of Contents
+   :local:
+   :depth: 3
 
 Deployment Overview
 ====================
 
-VitalDSP can be deployed in multiple configurations:
+VitalDSP offers flexible deployment options:
 
-* **Development Environment**: Local development and testing
-* **Staging Environment**: Pre-production testing and validation
-* **Production Environment**: Live deployment for end users
-* **Cloud Deployment**: Scalable cloud-based deployment
-* **Containerized Deployment**: Docker-based deployment
-* **Edge Deployment**: Embedded and IoT device deployment
+* **🐛 Development Mode**: Local development with hot-reload and debug logging
+* **ℹ️  Normal Mode**: Standard testing environment with INFO-level logging
+* **✅ Production Mode**: Optimized for deployment with minimal logging
+* **🐳 Docker Deployment**: Containerized deployment with Docker/Kubernetes
+* **☁️  Cloud Deployment**: AWS, GCP, Azure, and Render.com
+* **🔧 Edge Deployment**: Raspberry Pi and IoT devices
 
 Prerequisites
 ==============
 
-**System Requirements**
+System Requirements
+-------------------
 
-* Python 3.8 or higher
-* 4GB RAM minimum (8GB recommended)
-* 10GB disk space minimum
+**Minimum Requirements**
+
+* Python 3.9 or higher (3.10+ recommended)
+* 4GB RAM minimum (8GB recommended for production)
+* 10GB disk space minimum (50GB recommended for large datasets)
 * Network connectivity for cloud deployments
 
-**Software Dependencies**
+**Recommended Production Requirements**
 
-* Git (for source code deployment)
-* Docker (for containerized deployment)
-* Nginx (for production web server)
-* SSL certificates (for HTTPS)
+* Python 3.10+
+* 16GB RAM
+* 100GB SSD storage
+* Multi-core CPU (4+ cores)
+* HTTPS/SSL certificates
+
+Software Dependencies
+---------------------
+
+**System Packages**
+
+.. code-block:: bash
+
+   # Ubuntu/Debian
+   sudo apt update
+   sudo apt install -y python3.10 python3-pip python3-venv git gcc g++ curl
+
+   # CentOS/RHEL
+   sudo yum install -y python3.10 python3-pip python3-venv git gcc gcc-c++ curl
+
+   # macOS (with Homebrew)
+   brew install python@3.10 git
 
 **Python Dependencies**
 
-* vital-DSP
-* dash
-* plotly
-* pandas
-* numpy
-* scipy
-* scikit-learn
+All Python dependencies are managed through ``requirements.txt`` and installed automatically.
 
-Development Deployment
+Quick Start Deployment
 =======================
 
-**Local Development Setup**
+Local Development (Fastest)
+----------------------------
 
-1. **Clone the repository:**
-   .. code-block:: bash
-   
-      git clone https://github.com/Oucru-Innovations/vital-DSP.git
-      cd vital-DSP
+**Step 1: Clone and Install**
 
-2. **Create virtual environment:**
-   .. code-block:: bash
-   
-      python -m venv vitaldsp_env
-      source vitaldsp_env/bin/activate  # On Windows: vitaldsp_env\Scripts\activate
+.. code-block:: bash
 
-3. **Install dependencies:**
-   .. code-block:: bash
-   
-      pip install -r requirements.txt
-      pip install -e .
+   git clone https://github.com/Oucru-Innovations/vital-DSP.git
+   cd vital-DSP
+   pip install -e .
+   pip install -r src/vitalDSP_webapp/requirements.txt
 
-4. **Run the web application:**
-   .. code-block:: bash
-   
-      python -m vitalDSP_webapp.run_webapp
+**Step 2: Run in Development Mode**
 
-5. **Access the application:**
-   Open your browser and navigate to `http://localhost:8050`
+.. code-block:: bash
 
-**Development Configuration**
+   # Option 1: Using Python directly
+   python src/vitalDSP_webapp/run_webapp.py --debug
 
-.. code-block:: python
+   # Option 2: Using convenience scripts
+   # On Windows:
+   run_webapp.bat     # Interactive menu
 
-   # config/development.py
-   import os
-   
-   class DevelopmentConfig:
-       DEBUG = True
-       HOST = 'localhost'
-       PORT = 8050
-       SECRET_KEY = 'dev-secret-key'
-       
-       # Database
-       DATABASE_URL = 'sqlite:///dev.db'
-       
-       # Logging
-       LOG_LEVEL = 'DEBUG'
-       LOG_FILE = 'logs/dev.log'
-       
-       # File uploads
-       MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
-       UPLOAD_FOLDER = 'uploads/'
-       
-       # CORS
-       CORS_ORIGINS = ['http://localhost:3000', 'http://localhost:8080']
+   # On Linux/Mac:
+   bash run_webapp.sh # Interactive menu
 
-Staging Deployment
-===================
+**Step 3: Access Application**
 
-**Staging Environment Setup**
+Open your browser to ``http://localhost:8000``
 
-1. **Create staging server:**
-   .. code-block:: bash
-   
-      # Create staging directory
-      mkdir -p /opt/vitaldsp/staging
-      cd /opt/vitaldsp/staging
-      
-      # Clone repository
-      git clone https://github.com/Oucru-Innovations/vital-DSP.git .
-      
-      # Create virtual environment
-      python -m venv venv
-      source venv/bin/activate
-      
-      # Install dependencies
-      pip install -r requirements.txt
-      pip install -e .
+Available Deployment Modes
+============================
 
-2. **Configure staging environment:**
-   .. code-block:: python
+The unified ``run_webapp.py`` script supports multiple deployment modes:
 
-   # config/staging.py
-   import os
-   
-   class StagingConfig:
-       DEBUG = False
-       HOST = '0.0.0.0'
-       PORT = 8050
-       SECRET_KEY = os.environ.get('SECRET_KEY', 'staging-secret-key')
-       
-       # Database
-       DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://user:pass@localhost/vitaldsp_staging')
-       
-       # Logging
-       LOG_LEVEL = 'INFO'
-       LOG_FILE = '/var/log/vitaldsp/staging.log'
-       
-       # File uploads
-       MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
-       UPLOAD_FOLDER = '/opt/vitaldsp/staging/uploads/'
-       
-       # CORS
-       CORS_ORIGINS = ['https://staging.vitaldsp.com']
+Debug Mode (Development)
+-------------------------
 
-3. **Create systemd service:**
-   .. code-block:: ini
+**Purpose**: Local development with comprehensive logging and auto-reload
 
-   # /etc/systemd/system/vitaldsp-staging.service
-   [Unit]
-   Description=VitalDSP Staging Application
-   After=network.target
-   
-   [Service]
-   Type=simple
-   User=vitaldsp
-   Group=vitaldsp
-   WorkingDirectory=/opt/vitaldsp/staging
-   Environment=PATH=/opt/vitaldsp/staging/venv/bin
-   ExecStart=/opt/vitaldsp/staging/venv/bin/python -m vitalDSP_webapp.run_webapp
-   Restart=always
-   RestartSec=10
-   
-   [Install]
-   WantedBy=multi-user.target
+**Features**:
 
-4. **Start the service:**
-   .. code-block:: bash
-   
-      sudo systemctl daemon-reload
-      sudo systemctl enable vitaldsp-staging
-      sudo systemctl start vitaldsp-staging
+* DEBUG-level logging with detailed traces
+* Auto-reload on code changes
+* Detailed error messages
+* Logs saved to ``logs/webapp_debug.log``
 
-Production Deployment
-======================
+**Usage**:
 
-**Production Environment Setup**
+.. code-block:: bash
 
-1. **Create production server:**
-   .. code-block:: bash
-   
-      # Create production directory
-      sudo mkdir -p /opt/vitaldsp/production
-      sudo chown vitaldsp:vitaldsp /opt/vitaldsp/production
-      cd /opt/vitaldsp/production
-      
-      # Clone repository
-      git clone https://github.com/Oucru-Innovations/vital-DSP.git .
-      
-      # Create virtual environment
-      python -m venv venv
-      source venv/bin/activate
-      
-      # Install production dependencies
-      pip install -r requirements.txt
-      pip install -e .
-      pip install gunicorn
+   # Command-line
+   python src/vitalDSP_webapp/run_webapp.py --debug
 
-2. **Configure production environment:**
-   .. code-block:: python
+   # With custom port
+   python src/vitalDSP_webapp/run_webapp.py --debug --port 8080
 
-   # config/production.py
-   import os
-   
-   class ProductionConfig:
-       DEBUG = False
-       HOST = '0.0.0.0'
-       PORT = 8050
-       SECRET_KEY = os.environ.get('SECRET_KEY')
-       
-       # Database
-       DATABASE_URL = os.environ.get('DATABASE_URL')
-       
-       # Logging
-       LOG_LEVEL = 'WARNING'
-       LOG_FILE = '/var/log/vitaldsp/production.log'
-       
-       # File uploads
-       MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
-       UPLOAD_FOLDER = '/opt/vitaldsp/production/uploads/'
-       
-       # CORS
-       CORS_ORIGINS = ['https://vitaldsp.com']
-       
-       # Security
-       SESSION_COOKIE_SECURE = True
-       SESSION_COOKIE_HTTPONLY = True
-       SESSION_COOKIE_SAMESITE = 'Lax'
+   # With custom host
+   python src/vitalDSP_webapp/run_webapp.py --debug --host 127.0.0.1
 
-3. **Create Gunicorn configuration:**
-   .. code-block:: python
+Normal Mode (Testing)
+----------------------
 
-   # gunicorn.conf.py
-   import multiprocessing
-   
-   # Server socket
-   bind = "0.0.0.0:8050"
-   backlog = 2048
-   
-   # Worker processes
-   workers = multiprocessing.cpu_count() * 2 + 1
-   worker_class = "sync"
-   worker_connections = 1000
-   timeout = 30
-   keepalive = 2
-   
-   # Restart workers after this many requests, to help prevent memory leaks
-   max_requests = 1000
-   max_requests_jitter = 50
-   
-   # Logging
-   accesslog = "/var/log/vitaldsp/access.log"
-   errorlog = "/var/log/vitaldsp/error.log"
-   loglevel = "info"
-   access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
-   
-   # Process naming
-   proc_name = 'vitaldsp'
-   
-   # Server mechanics
-   daemon = False
-   pidfile = '/var/run/vitaldsp.pid'
-   user = 'vitaldsp'
-   group = 'vitaldsp'
-   tmp_upload_dir = None
-   
-   # SSL
-   keyfile = '/etc/ssl/private/vitaldsp.key'
-   certfile = '/etc/ssl/certs/vitaldsp.crt'
+**Purpose**: Standard testing and local deployment
 
-4. **Create systemd service:**
-   .. code-block:: ini
+**Features**:
 
-   # /etc/systemd/system/vitaldsp.service
-   [Unit]
-   Description=VitalDSP Production Application
-   After=network.target
-   
-   [Service]
-   Type=simple
-   User=vitaldsp
-   Group=vitaldsp
-   WorkingDirectory=/opt/vitaldsp/production
-   Environment=PATH=/opt/vitaldsp/production/venv/bin
-   ExecStart=/opt/vitaldsp/production/venv/bin/gunicorn --config gunicorn.conf.py vitalDSP_webapp.app:app
-   Restart=always
-   RestartSec=10
-   
-   [Install]
-   WantedBy=multi-user.target
+* INFO-level logging
+* No auto-reload (more stable)
+* Standard error messages
+* Logs saved to ``logs/webapp.log``
 
-5. **Configure Nginx:**
-   .. code-block:: nginx
+**Usage**:
 
-   # /etc/nginx/sites-available/vitaldsp
-   server {
-       listen 80;
-       server_name vitaldsp.com www.vitaldsp.com;
-       return 301 https://$server_name$request_uri;
-   }
-   
-   server {
-       listen 443 ssl http2;
-       server_name vitaldsp.com www.vitaldsp.com;
-   
-       ssl_certificate /etc/ssl/certs/vitaldsp.crt;
-       ssl_certificate_key /etc/ssl/private/vitaldsp.key;
-   
-       ssl_protocols TLSv1.2 TLSv1.3;
-       ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384;
-       ssl_prefer_server_ciphers off;
-   
-       location / {
-           proxy_pass http://127.0.0.1:8050;
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-           proxy_set_header X-Forwarded-Proto $scheme;
-       }
-   
-       location /static {
-           alias /opt/vitaldsp/production/static;
-           expires 1y;
-           add_header Cache-Control "public, immutable";
-       }
-   
-       location /uploads {
-           alias /opt/vitaldsp/production/uploads;
-           expires 1d;
-           add_header Cache-Control "public";
-       }
-   }
+.. code-block:: bash
 
-6. **Start the services:**
-   .. code-block:: bash
-   
-      # Enable and start Nginx
-      sudo systemctl enable nginx
-      sudo systemctl start nginx
-      
-      # Enable and start VitalDSP
-      sudo systemctl daemon-reload
-      sudo systemctl enable vitaldsp
-      sudo systemctl start vitaldsp
+   # Default mode (no flags needed)
+   python src/vitalDSP_webapp/run_webapp.py
 
-Cloud Deployment
-=================
+   # With custom port
+   python src/vitalDSP_webapp/run_webapp.py --port 8080
 
-**AWS Deployment**
+Production Mode (Deployment)
+-----------------------------
 
-1. **Create EC2 instance:**
-   .. code-block:: bash
-   
-      # Launch EC2 instance (Ubuntu 20.04 LTS)
-      # Instance type: t3.medium or larger
-      # Security group: Allow HTTP (80), HTTPS (443), SSH (22)
+**Purpose**: Optimized for production deployment
 
-2. **Install dependencies:**
-   .. code-block:: bash
-   
-      # Update system
-      sudo apt update && sudo apt upgrade -y
-      
-      # Install Python and dependencies
-      sudo apt install python3 python3-pip python3-venv nginx git -y
-      
-      # Install SSL certificate
-      sudo apt install certbot python3-certbot-nginx -y
+**Features**:
 
-3. **Deploy application:**
-   .. code-block:: bash
-   
-      # Create application directory
-      sudo mkdir -p /opt/vitaldsp
-      sudo chown ubuntu:ubuntu /opt/vitaldsp
-      cd /opt/vitaldsp
-      
-      # Clone repository
-      git clone https://github.com/Oucru-Innovations/vital-DSP.git .
-      
-      # Create virtual environment
-      python3 -m venv venv
-      source venv/bin/activate
-      
-      # Install dependencies
-      pip install -r requirements.txt
-      pip install -e .
-      pip install gunicorn
+* WARNING-level logging only (minimal overhead)
+* Optimized performance
+* Access logs disabled for better performance
+* Logs saved to ``logs/webapp_production.log``
 
-4. **Configure SSL:**
-   .. code-block:: bash
-   
-      # Get SSL certificate
-      sudo certbot --nginx -d vitaldsp.com -d www.vitaldsp.com
+**Usage**:
 
-**Google Cloud Platform Deployment**
+.. code-block:: bash
 
-1. **Create Compute Engine instance:**
-   .. code-block:: bash
-   
-      # Create instance
-      gcloud compute instances create vitaldsp-server \
-          --image-family=ubuntu-2004-lts \
-          --image-project=ubuntu-os-cloud \
-          --machine-type=e2-medium \
-          --zone=us-central1-a \
-          --tags=http-server,https-server
+   # Production mode
+   python src/vitalDSP_webapp/run_webapp.py --production
 
-2. **Deploy application:**
-   .. code-block:: bash
-   
-      # SSH into instance
-      gcloud compute ssh vitaldsp-server
-      
-      # Follow AWS deployment steps 2-4
+   # With environment variable port (for cloud platforms)
+   PORT=8000 python src/vitalDSP_webapp/run_webapp.py --production
 
-**Azure Deployment**
+Command-Line Options
+--------------------
 
-1. **Create Virtual Machine:**
-   .. code-block:: bash
-   
-      # Create VM
-      az vm create \
-          --resource-group vitaldsp-rg \
-          --name vitaldsp-vm \
-          --image UbuntuLTS \
-          --size Standard_B2s \
-          --admin-username azureuser \
-          --generate-ssh-keys
+.. code-block:: bash
 
-2. **Deploy application:**
-   .. code-block:: bash
-   
-      # SSH into VM
-      ssh azureuser@<vm-ip>
-      
-      # Follow AWS deployment steps 2-4
+   python src/vitalDSP_webapp/run_webapp.py [OPTIONS]
 
-Containerized Deployment
-=========================
+**Available Options**:
 
-**Docker Deployment**
+* ``-d, --debug``: Enable debug mode (DEBUG logging + auto-reload)
+* ``-p, --production``: Enable production mode (optimized, minimal logs)
+* ``--port PORT``: Specify port number (default: 8000)
+* ``--host HOST``: Specify host address (default: 0.0.0.0)
+* ``--reload``: Force enable auto-reload
+* ``-h, --help``: Show help message
 
-1. **Create Dockerfile:**
-   .. code-block:: dockerfile
+**Examples**:
 
-   # Dockerfile
-   FROM python:3.9-slim
-   
-   # Set working directory
+.. code-block:: bash
+
+   # Development with auto-reload
+   python src/vitalDSP_webapp/run_webapp.py --debug
+
+   # Testing on custom port
+   python src/vitalDSP_webapp/run_webapp.py --port 8080
+
+   # Production deployment
+   python src/vitalDSP_webapp/run_webapp.py --production
+
+   # Custom host binding
+   python src/vitalDSP_webapp/run_webapp.py --host 127.0.0.1 --port 3000
+
+Interactive Scripts
+-------------------
+
+**Windows (run_webapp.bat)**
+
+.. code-block:: batch
+
+   # Run the script
+   run_webapp.bat
+
+   # Choose from menu:
+   # 1. Normal Mode
+   # 2. Debug Mode
+   # 3. Production Mode
+   # 4. Custom Mode (enter your own options)
+
+**Linux/Mac (run_webapp.sh)**
+
+.. code-block:: bash
+
+   # Make executable
+   chmod +x run_webapp.sh
+
+   # Run the script
+   ./run_webapp.sh
+
+   # Choose from menu:
+   # 1. Normal Mode
+   # 2. Debug Mode
+   # 3. Production Mode
+   # 4. Custom Mode (enter your own options)
+
+Docker Deployment
+==================
+
+VitalDSP provides two Dockerfiles for different use cases:
+
+Standard Docker Deployment
+--------------------------
+
+**Dockerfile**: Optimized for Render.com and similar platforms
+
+**Build and Run**:
+
+.. code-block:: bash
+
+   # Build the image
+   docker build -t vitaldsp:latest .
+
+   # Run the container
+   docker run -p 8000:8000 -e PORT=8000 vitaldsp:latest
+
+   # Run with mounted volumes
+   docker run -p 8000:8000 \
+     -v $(pwd)/uploads:/app/uploads \
+     -v $(pwd)/logs:/app/logs \
+     -e PORT=8000 \
+     vitaldsp:latest
+
+**Dockerfile Configuration**:
+
+.. code-block:: dockerfile
+
+   FROM python:3.10-slim
+
+   ENV PYTHONUNBUFFERED=1
+   ENV PYTHONDONTWRITEBYTECODE=1
+   ENV PYTHONPATH=/app:/app/src:/app/src/vitalDSP_webapp
+
    WORKDIR /app
-   
-   # Install system dependencies
-   RUN apt-get update && apt-get install -y \
-       gcc \
-       g++ \
-       && rm -rf /var/lib/apt/lists/*
-   
-   # Copy requirements
-   COPY requirements.txt .
-   
-   # Install Python dependencies
-   RUN pip install --no-cache-dir -r requirements.txt
-   
-   # Copy application code
-   COPY . .
-   
-   # Install application
+
+   # Install dependencies
+   RUN apt-get update && apt-get install -y --no-install-recommends \
+       gcc g++ curl && rm -rf /var/lib/apt/lists/*
+
+   # Copy and install requirements
+   COPY requirements.txt /app/requirements.txt
+   COPY src/vitalDSP_webapp/requirements.txt /app/webapp_requirements.txt
+   RUN pip install --no-cache-dir -U pip && \
+       pip install --no-cache-dir -r /app/requirements.txt && \
+       pip install --no-cache-dir -r /app/webapp_requirements.txt
+
+   # Copy application
+   COPY . /app
    RUN pip install -e .
-   
-   # Create non-root user
-   RUN useradd -m -u 1000 vitaldsp && chown -R vitaldsp:vitaldsp /app
-   USER vitaldsp
-   
-   # Expose port
-   EXPOSE 8050
-   
-   # Run application
-   CMD ["python", "-m", "vitalDSP_webapp.run_webapp", "--host", "0.0.0.0", "--port", "8050"]
+   RUN mkdir -p /app/uploads /app/logs
 
-2. **Create docker-compose.yml:**
-   .. code-block:: yaml
+   EXPOSE 8000
 
-   # docker-compose.yml
+   # Run with Gunicorn for production
+   CMD exec gunicorn -k uvicorn.workers.UvicornWorker \
+       --bind 0.0.0.0:${PORT:-8000} \
+       -w 1 --timeout 120 \
+       --access-logfile - --error-logfile - \
+       --log-level debug \
+       vitalDSP_webapp.run_webapp:app
+
+Production Docker Deployment
+-----------------------------
+
+**Dockerfile.production**: Multi-stage build for optimized production
+
+**Features**:
+
+* Multi-stage build (smaller image)
+* Non-root user for security
+* Health checks included
+* Optimized for performance
+
+**Build and Run**:
+
+.. code-block:: bash
+
+   # Build production image
+   docker build -f Dockerfile.production -t vitaldsp:production .
+
+   # Run production container
+   docker run -p 8000:8000 \
+     -e PORT=8000 \
+     -e PYTHONPATH=/app:/app/src \
+     vitaldsp:production
+
+Docker Compose Deployment
+--------------------------
+
+**docker-compose.yml** provides a complete stack with nginx reverse proxy:
+
+.. code-block:: yaml
+
    version: '3.8'
-   
+
    services:
-     vitaldsp:
-       build: .
+     vitaldsp-webapp:
+       build:
+         context: .
+         dockerfile: Dockerfile.production
+       container_name: vitaldsp-webapp
        ports:
-         - "8050:8050"
+         - "8000:8000"
        environment:
-         - FLASK_ENV=production
-         - SECRET_KEY=your-secret-key
+         - PORT=8000
+         - PYTHONPATH=/app:/app/src
+         - PYTHONUNBUFFERED=1
        volumes:
          - ./uploads:/app/uploads
          - ./logs:/app/logs
        restart: unless-stopped
-   
+       healthcheck:
+         test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+         interval: 30s
+         timeout: 10s
+         retries: 3
+         start_period: 40s
+       networks:
+         - vitaldsp-network
+
+     # Optional: nginx reverse proxy
      nginx:
        image: nginx:alpine
+       container_name: vitaldsp-nginx
        ports:
          - "80:80"
          - "443:443"
        volumes:
-         - ./nginx.conf:/etc/nginx/nginx.conf
-         - ./ssl:/etc/ssl
+         - ./nginx.conf:/etc/nginx/nginx.conf:ro
+         - ./ssl:/etc/nginx/ssl:ro
        depends_on:
-         - vitaldsp
+         - vitaldsp-webapp
        restart: unless-stopped
+       networks:
+         - vitaldsp-network
 
-3. **Build and run:**
-   .. code-block:: bash
-   
-      # Build image
-      docker build -t vitaldsp .
-      
-      # Run with docker-compose
-      docker-compose up -d
+   networks:
+     vitaldsp-network:
+       driver: bridge
 
-**Kubernetes Deployment**
+**Deploy with Docker Compose**:
 
-1. **Create deployment.yaml:**
-   .. code-block:: yaml
+.. code-block:: bash
 
-   # deployment.yaml
-   apiVersion: apps/v1
-   kind: Deployment
-   metadata:
-     name: vitaldsp
-   spec:
-     replicas: 3
-     selector:
-       matchLabels:
-         app: vitaldsp
-     template:
-       metadata:
-         labels:
-           app: vitaldsp
-       spec:
-         containers:
-         - name: vitaldsp
-           image: vitaldsp:latest
-           ports:
-           - containerPort: 8050
-           env:
-           - name: FLASK_ENV
-             value: "production"
-           - name: SECRET_KEY
-             valueFrom:
-               secretKeyRef:
-                 name: vitaldsp-secrets
-                 key: secret-key
-           resources:
-             requests:
-               memory: "512Mi"
-               cpu: "250m"
-             limits:
-               memory: "1Gi"
-               cpu: "500m"
-   
-   ---
-   apiVersion: v1
-   kind: Service
-   metadata:
-     name: vitaldsp-service
-   spec:
-     selector:
-       app: vitaldsp
-     ports:
-     - port: 80
-       targetPort: 8050
-     type: LoadBalancer
+   # Start all services
+   docker-compose up -d
 
-2. **Deploy to Kubernetes:**
-   .. code-block:: bash
-   
-      # Apply deployment
-      kubectl apply -f deployment.yaml
-      
-      # Check status
-      kubectl get pods
-      kubectl get services
+   # View logs
+   docker-compose logs -f vitaldsp-webapp
 
-Edge Deployment
-================
+   # Stop all services
+   docker-compose down
 
-**Raspberry Pi Deployment**
+   # Rebuild and restart
+   docker-compose up -d --build
 
-1. **Prepare Raspberry Pi:**
-   .. code-block:: bash
-   
-      # Update system
-      sudo apt update && sudo apt upgrade -y
-      
-      # Install Python and dependencies
-      sudo apt install python3 python3-pip python3-venv git -y
+Cloud Platform Deployment
+==========================
 
-2. **Deploy application:**
-   .. code-block:: bash
-   
-      # Create application directory
-      mkdir -p /home/pi/vitaldsp
-      cd /home/pi/vitaldsp
-      
-      # Clone repository
-      git clone https://github.com/Oucru-Innovations/vital-DSP.git .
-      
-      # Create virtual environment
-      python3 -m venv venv
-      source venv/bin/activate
-      
-      # Install dependencies
-      pip install -r requirements.txt
-      pip install -e .
+Render.com Deployment
+---------------------
 
-3. **Create startup script:**
-   .. code-block:: bash
+VitalDSP is **currently deployed** on Render.com: https://vital-dsp-1.onrender.com/
 
-   # startup.sh
-   #!/bin/bash
-   cd /home/pi/vitaldsp
+**Step 1: Connect Repository**
+
+1. Sign up at https://render.com
+2. Click "New +" → "Web Service"
+3. Connect your GitHub repository
+
+**Step 2: Configure Service**
+
+.. code-block:: yaml
+
+   # render.yaml (optional, for automatic deployment)
+   services:
+     - type: web
+       name: vitaldsp
+       env: python
+       plan: free  # or starter/standard
+       buildCommand: pip install -r requirements.txt && pip install -r src/vitalDSP_webapp/requirements.txt && pip install -e .
+       startCommand: gunicorn -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT vitalDSP_webapp.run_webapp:app
+       envVars:
+         - key: PYTHON_VERSION
+           value: 3.10.0
+         - key: PYTHONPATH
+           value: /opt/render/project/src:/opt/render/project/src/vitalDSP_webapp
+
+**Manual Configuration**:
+
+* **Build Command**: ``pip install -r requirements.txt && pip install -r src/vitalDSP_webapp/requirements.txt && pip install -e .``
+* **Start Command**: ``gunicorn -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT vitalDSP_webapp.run_webapp:app``
+* **Environment**: Python 3
+* **Plan**: Free tier works for testing
+
+**Important Notes for Render Free Tier**:
+
+* Services spin down after 15 minutes of inactivity
+* Cold start takes 30-60 seconds
+* Upgrade to paid tier for production use
+
+AWS EC2 Deployment
+------------------
+
+**Step 1: Launch EC2 Instance**
+
+.. code-block:: bash
+
+   # Launch Ubuntu 22.04 LTS instance
+   # Instance type: t3.medium or larger recommended
+   # Security group: Allow HTTP (80), HTTPS (443), SSH (22)
+
+**Step 2: Connect and Install**
+
+.. code-block:: bash
+
+   # SSH into instance
+   ssh -i your-key.pem ubuntu@your-instance-ip
+
+   # Update system
+   sudo apt update && sudo apt upgrade -y
+
+   # Install Python and dependencies
+   sudo apt install -y python3.10 python3-pip python3-venv git gcc g++ curl nginx
+
+   # Install SSL/TLS support
+   sudo apt install -y certbot python3-certbot-nginx
+
+**Step 3: Deploy Application**
+
+.. code-block:: bash
+
+   # Create application directory
+   sudo mkdir -p /opt/vitaldsp
+   sudo chown ubuntu:ubuntu /opt/vitaldsp
+   cd /opt/vitaldsp
+
+   # Clone repository
+   git clone https://github.com/Oucru-Innovations/vital-DSP.git .
+
+   # Create virtual environment
+   python3.10 -m venv venv
    source venv/bin/activate
-   python -m vitalDSP_webapp.run_webapp --host 0.0.0.0 --port 8050
 
-4. **Configure auto-start:**
-   .. code-block:: bash
-   
-      # Add to crontab
-      crontab -e
-      # Add: @reboot /home/pi/vitaldsp/startup.sh
-
-**IoT Device Deployment**
-
-1. **Optimize for resource constraints:**
-   .. code-block:: python
-
-   # config/iot.py
-   import os
-   
-   class IoTConfig:
-       DEBUG = False
-       HOST = '0.0.0.0'
-       PORT = 8050
-       SECRET_KEY = os.environ.get('SECRET_KEY', 'iot-secret-key')
-       
-       # Optimize for low memory
-       MAX_CONTENT_LENGTH = 4 * 1024 * 1024  # 4MB
-       
-       # Disable features not needed on IoT
-       ENABLE_ADVANCED_FEATURES = False
-       ENABLE_MACHINE_LEARNING = False
-       
-       # Use lightweight processing
-       USE_LIGHTWEIGHT_FILTERS = True
-       MAX_SIGNAL_LENGTH = 10000  # 10k samples max
-
-2. **Create lightweight version:**
-   .. code-block:: python
-
-   # iot_app.py
-   from vitalDSP_webapp.app import create_app
-   
-   app = create_app('iot')
-   
-   if __name__ == '__main__':
-       app.run(host='0.0.0.0', port=8050, debug=False)
-
-Monitoring and Maintenance
-===========================
-
-**Health Checks**
-
-1. **Create health check endpoint:**
-   .. code-block:: python
-
-   # health_check.py
-   from flask import Flask, jsonify
-   import psutil
-   import os
-   
-   app = Flask(__name__)
-   
-   @app.route('/health')
-   def health_check():
-       """Health check endpoint."""
-       
-       # Check system resources
-       cpu_percent = psutil.cpu_percent()
-       memory = psutil.virtual_memory()
-       disk = psutil.disk_usage('/')
-       
-       # Check application status
-       status = 'healthy'
-       if cpu_percent > 90:
-           status = 'unhealthy'
-       if memory.percent > 90:
-           status = 'unhealthy'
-       if disk.percent > 90:
-           status = 'unhealthy'
-       
-       return jsonify({
-           'status': status,
-           'cpu_percent': cpu_percent,
-           'memory_percent': memory.percent,
-           'disk_percent': disk.percent
-       })
-
-2. **Configure monitoring:**
-   .. code-block:: bash
-   
-      # Add to nginx.conf
-      location /health {
-          proxy_pass http://127.0.0.1:8050/health;
-      }
-
-**Logging**
-
-1. **Configure logging:**
-   .. code-block:: python
-
-   # logging_config.py
-   import logging
-   import logging.handlers
-   import os
-   
-   def setup_logging():
-       """Setup application logging."""
-       
-       # Create logs directory
-       os.makedirs('/var/log/vitaldsp', exist_ok=True)
-       
-       # Configure logging
-       logging.basicConfig(
-           level=logging.INFO,
-           format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-           handlers=[
-               logging.handlers.RotatingFileHandler(
-                   '/var/log/vitaldsp/app.log',
-                   maxBytes=10*1024*1024,  # 10MB
-                   backupCount=5
-               ),
-               logging.StreamHandler()
-           ]
-       )
-
-**Backup and Recovery**
-
-1. **Create backup script:**
-   .. code-block:: bash
-
-   # backup.sh
-   #!/bin/bash
-   
-   BACKUP_DIR="/opt/backups/vitaldsp"
-   DATE=$(date +%Y%m%d_%H%M%S)
-   
-   # Create backup directory
-   mkdir -p $BACKUP_DIR
-   
-   # Backup application data
-   tar -czf $BACKUP_DIR/vitaldsp_$DATE.tar.gz /opt/vitaldsp/production
-   
-   # Backup database
-   pg_dump vitaldsp > $BACKUP_DIR/database_$DATE.sql
-   
-   # Clean old backups (keep last 7 days)
-   find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
-   find $BACKUP_DIR -name "*.sql" -mtime +7 -delete
-
-2. **Schedule backups:**
-   .. code-block:: bash
-   
-      # Add to crontab
-      crontab -e
-      # Add: 0 2 * * * /opt/vitaldsp/backup.sh
-
-**Updates and Maintenance**
-
-1. **Create update script:**
-   .. code-block:: bash
-
-   # update.sh
-   #!/bin/bash
-   
-   cd /opt/vitaldsp/production
-   
-   # Backup current version
-   tar -czf ../backup_$(date +%Y%m%d_%H%M%S).tar.gz .
-   
-   # Pull latest changes
-   git pull origin main
-   
-   # Update dependencies
-   source venv/bin/activate
+   # Install dependencies
    pip install -r requirements.txt
+   pip install -r src/vitalDSP_webapp/requirements.txt
    pip install -e .
-   
-   # Restart services
-   sudo systemctl restart vitaldsp
+   pip install gunicorn
 
-2. **Schedule updates:**
-   .. code-block:: bash
-   
-      # Add to crontab
-      crontab -e
-      # Add: 0 3 * * 0 /opt/vitaldsp/update.sh
+**Step 4: Create Systemd Service**
 
-Security Considerations
-========================
+.. code-block:: ini
+
+   # /etc/systemd/system/vitaldsp.service
+   [Unit]
+   Description=VitalDSP Web Application
+   After=network.target
+
+   [Service]
+   Type=simple
+   User=ubuntu
+   Group=ubuntu
+   WorkingDirectory=/opt/vitaldsp
+   Environment="PATH=/opt/vitaldsp/venv/bin"
+   Environment="PYTHONPATH=/opt/vitaldsp:/opt/vitaldsp/src"
+   ExecStart=/opt/vitaldsp/venv/bin/python src/vitalDSP_webapp/run_webapp.py --production --port 8000
+   Restart=always
+   RestartSec=10
+
+   [Install]
+   WantedBy=multi-user.target
+
+**Step 5: Configure Nginx**
+
+.. code-block:: nginx
+
+   # /etc/nginx/sites-available/vitaldsp
+   server {
+       listen 80;
+       server_name your-domain.com;
+
+       location / {
+           proxy_pass http://127.0.0.1:8000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+
+           # WebSocket support
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection "upgrade";
+
+           # Timeouts
+           proxy_connect_timeout 60s;
+           proxy_send_timeout 60s;
+           proxy_read_timeout 60s;
+       }
+
+       location /static {
+           alias /opt/vitaldsp/static;
+           expires 1y;
+           add_header Cache-Control "public, immutable";
+       }
+   }
+
+.. code-block:: bash
+
+   # Enable site and SSL
+   sudo ln -s /etc/nginx/sites-available/vitaldsp /etc/nginx/sites-enabled/
+   sudo certbot --nginx -d your-domain.com
+   sudo systemctl restart nginx
+
+   # Start VitalDSP service
+   sudo systemctl enable vitaldsp
+   sudo systemctl start vitaldsp
+
+Google Cloud Platform (GCP)
+----------------------------
+
+**Using Cloud Run (Recommended)**
+
+.. code-block:: bash
+
+   # Build and push to Container Registry
+   gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/vitaldsp
+
+   # Deploy to Cloud Run
+   gcloud run deploy vitaldsp \
+     --image gcr.io/YOUR_PROJECT_ID/vitaldsp \
+     --platform managed \
+     --region us-central1 \
+     --allow-unauthenticated \
+     --memory 2Gi \
+     --cpu 2 \
+     --port 8000
+
+**Using Compute Engine**
+
+.. code-block:: bash
+
+   # Create instance
+   gcloud compute instances create vitaldsp-server \
+     --image-family=ubuntu-2204-lts \
+     --image-project=ubuntu-os-cloud \
+     --machine-type=e2-medium \
+     --zone=us-central1-a \
+     --tags=http-server,https-server
+
+   # SSH and follow AWS EC2 deployment steps
+
+Azure Deployment
+----------------
+
+**Using Azure App Service**
+
+.. code-block:: bash
+
+   # Create resource group
+   az group create --name vitaldsp-rg --location eastus
+
+   # Create App Service plan
+   az appservice plan create \
+     --name vitaldsp-plan \
+     --resource-group vitaldsp-rg \
+     --sku B1 \
+     --is-linux
+
+   # Create web app
+   az webapp create \
+     --resource-group vitaldsp-rg \
+     --plan vitaldsp-plan \
+     --name vitaldsp-app \
+     --runtime "PYTHON:3.10"
+
+   # Deploy from GitHub
+   az webapp deployment source config \
+     --name vitaldsp-app \
+     --resource-group vitaldsp-rg \
+     --repo-url https://github.com/Oucru-Innovations/vital-DSP \
+     --branch main
+
+Production Best Practices
+==========================
+
+Environment Variables
+---------------------
+
+Create a ``.env`` file for configuration:
+
+.. code-block:: bash
+
+   # .env
+   PORT=8000
+   PYTHONPATH=/app:/app/src
+   PYTHONUNBUFFERED=1
+   SECRET_KEY=your-secret-key-here
+   LOG_LEVEL=WARNING
+   MAX_UPLOAD_SIZE=16777216  # 16MB
+   ENABLE_CORS=false
+
+Monitoring and Logging
+----------------------
+
+**Log Rotation**
+
+.. code-block:: bash
+
+   # /etc/logrotate.d/vitaldsp
+   /opt/vitaldsp/logs/*.log {
+       daily
+       missingok
+       rotate 14
+       compress
+       delaycompress
+       notifempty
+       create 0640 ubuntu ubuntu
+       sharedscripts
+       postrotate
+           systemctl reload vitaldsp > /dev/null 2>&1 || true
+       endscript
+   }
+
+**Health Monitoring**
+
+The application includes a health check endpoint at ``/api/health``:
+
+.. code-block:: bash
+
+   # Test health endpoint
+   curl http://localhost:8000/api/health
+
+**Uptime Monitoring**
+
+Use services like:
+
+* UptimeRobot (https://uptimerobot.com/)
+* Pingdom (https://www.pingdom.com/)
+* StatusCake (https://www.statuscake.com/)
+
+Security Configuration
+----------------------
 
 **SSL/TLS Configuration**
 
-1. **Generate SSL certificates:**
-   .. code-block:: bash
-   
-      # Generate private key
-      openssl genrsa -out vitaldsp.key 2048
-      
-      # Generate certificate
-      openssl req -new -x509 -key vitaldsp.key -out vitaldsp.crt -days 365
+.. code-block:: bash
 
-2. **Configure HTTPS:**
-   .. code-block:: nginx
+   # Generate Let's Encrypt certificate
+   sudo certbot --nginx -d your-domain.com -d www.your-domain.com
 
-   # nginx.conf
-   server {
-       listen 443 ssl;
-       server_name vitaldsp.com;
-       
-       ssl_certificate /etc/ssl/certs/vitaldsp.crt;
-       ssl_certificate_key /etc/ssl/private/vitaldsp.key;
-       
-       ssl_protocols TLSv1.2 TLSv1.3;
-       ssl_ciphers ECDHE-RSA-AES256-GCM-SHA512:DHE-RSA-AES256-GCM-SHA512;
-       ssl_prefer_server_ciphers off;
+   # Auto-renewal
+   sudo systemctl enable certbot.timer
+
+**Firewall Configuration**
+
+.. code-block:: bash
+
+   # UFW (Ubuntu)
+   sudo ufw allow 22    # SSH
+   sudo ufw allow 80    # HTTP
+   sudo ufw allow 443   # HTTPS
+   sudo ufw enable
+
+Performance Optimization
+------------------------
+
+**Gunicorn Workers**
+
+.. code-block:: bash
+
+   # Calculate optimal workers: (2 x CPU cores) + 1
+   gunicorn -k uvicorn.workers.UvicornWorker \
+     --bind 0.0.0.0:8000 \
+     --workers 5 \
+     --worker-class uvicorn.workers.UvicornWorker \
+     --worker-connections 1000 \
+     --timeout 120 \
+     --max-requests 1000 \
+     --max-requests-jitter 50 \
+     vitalDSP_webapp.run_webapp:app
+
+**Nginx Caching**
+
+.. code-block:: nginx
+
+   # Add to nginx.conf
+   proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=vitaldsp_cache:10m max_size=1g;
+
+   location / {
+       proxy_cache vitaldsp_cache;
+       proxy_cache_valid 200 1h;
+       proxy_cache_key $scheme$request_method$host$request_uri;
    }
 
-**Access Control**
+Backup and Recovery
+-------------------
 
-1. **Configure firewall:**
-   .. code-block:: bash
-   
-      # Allow only necessary ports
-      sudo ufw allow 22    # SSH
-      sudo ufw allow 80     # HTTP
-      sudo ufw allow 443    # HTTPS
-      sudo ufw enable
+**Automated Backup Script**
 
-2. **Implement authentication:**
-   .. code-block:: python
+.. code-block:: bash
 
-   # auth.py
-   from flask import Flask, request, jsonify
-   import jwt
-   import datetime
-   
-   def generate_token(user_id):
-       """Generate JWT token."""
-       payload = {
-           'user_id': user_id,
-           'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
-       }
-       return jwt.encode(payload, SECRET_KEY, algorithm='HS256')
-   
-   def verify_token(token):
-       """Verify JWT token."""
-       try:
-           payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-           return payload['user_id']
-       except jwt.ExpiredSignatureError:
-           return None
-       except jwt.InvalidTokenError:
-           return None
+   #!/bin/bash
+   # /opt/vitaldsp/backup.sh
 
-**Data Protection**
+   BACKUP_DIR="/backup/vitaldsp"
+   DATE=$(date +%Y%m%d_%H%M%S)
 
-1. **Encrypt sensitive data:**
-   .. code-block:: python
+   # Create backup directory
+   mkdir -p $BACKUP_DIR
 
-   # encryption.py
-   from cryptography.fernet import Fernet
-   
-   def encrypt_data(data):
-       """Encrypt sensitive data."""
-       key = Fernet.generate_key()
-       f = Fernet(key)
-       encrypted = f.encrypt(data.encode())
-       return encrypted, key
-   
-   def decrypt_data(encrypted_data, key):
-       """Decrypt sensitive data."""
-       f = Fernet(key)
-       decrypted = f.decrypt(encrypted_data)
-       return decrypted.decode()
+   # Backup application
+   tar -czf $BACKUP_DIR/vitaldsp_$DATE.tar.gz \
+     /opt/vitaldsp \
+     --exclude='*.log' \
+     --exclude='__pycache__' \
+     --exclude='venv'
 
-2. **Secure file uploads:**
-   .. code-block:: python
+   # Keep last 7 days
+   find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
 
-   # file_upload.py
-   import os
-   import uuid
-   
-   def secure_file_upload(file):
-       """Securely handle file uploads."""
-       
-       # Validate file type
-       allowed_extensions = {'csv', 'xlsx', 'json'}
-       if not file.filename.lower().endswith(tuple(allowed_extensions)):
-           raise ValueError('Invalid file type')
-       
-       # Generate secure filename
-       filename = str(uuid.uuid4()) + '.' + file.filename.split('.')[-1]
-       
-       # Save to secure location
-       file_path = os.path.join(UPLOAD_FOLDER, filename)
-       file.save(file_path)
-       
-       return file_path
+**Schedule Backups**
 
-This deployment guide provides comprehensive instructions for deploying VitalDSP in various environments. Choose the deployment method that best fits your requirements and infrastructure.
+.. code-block:: bash
 
-For additional support with deployment, consult our support team or check the GitHub issues page.
+   # Add to crontab
+   crontab -e
+   # Add: 0 2 * * * /opt/vitaldsp/backup.sh
+
+Troubleshooting
+===============
+
+Common Issues
+-------------
+
+**Port Already in Use**
+
+.. code-block:: bash
+
+   # Find process using port 8000
+   lsof -i :8000
+
+   # Kill process
+   kill -9 <PID>
+
+   # Or use a different port
+   python src/vitalDSP_webapp/run_webapp.py --port 8001
+
+**Import Errors**
+
+.. code-block:: bash
+
+   # Ensure PYTHONPATH is set correctly
+   export PYTHONPATH=/path/to/vital-DSP:/path/to/vital-DSP/src
+   python src/vitalDSP_webapp/run_webapp.py
+
+**Memory Issues**
+
+.. code-block:: bash
+
+   # Reduce workers in production
+   gunicorn -w 2 ...  # Instead of 4-8 workers
+
+   # Limit upload size
+   MAX_CONTENT_LENGTH=8388608  # 8MB instead of 16MB
+
+**Cold Start Delays (Render Free Tier)**
+
+* Upgrade to paid tier for always-on service
+* Use a ping service to keep app warm
+* Accept 30-60s cold start time for free tier
+
+Debugging
+---------
+
+**Check Logs**
+
+.. code-block:: bash
+
+   # Application logs
+   tail -f logs/webapp.log
+
+   # Systemd service logs
+   sudo journalctl -u vitaldsp -f
+
+   # Nginx logs
+   sudo tail -f /var/log/nginx/error.log
+
+**Test in Debug Mode**
+
+.. code-block:: bash
+
+   # Run in debug mode for detailed error messages
+   python src/vitalDSP_webapp/run_webapp.py --debug
+
+Support and Resources
+=====================
+
+* **Documentation**: https://vital-dsp.readthedocs.io/
+* **GitHub Issues**: https://github.com/Oucru-Innovations/vital-DSP/issues
+* **Live Demo**: https://vital-dsp-1.onrender.com/
+* **Community**: GitHub Discussions
+
+Conclusion
+==========
+
+This deployment guide covers multiple deployment scenarios from local development to production cloud deployment. Choose the method that best fits your requirements:
+
+* **Quick Testing**: Use ``--debug`` mode locally
+* **Small Projects**: Deploy on Render.com free tier
+* **Production**: Use AWS/GCP/Azure with Docker and nginx
+* **Enterprise**: Use Kubernetes with multiple replicas
+
+For additional support, please consult our GitHub repository or reach out to the community.

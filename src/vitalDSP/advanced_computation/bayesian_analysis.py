@@ -447,7 +447,7 @@ class BayesianOptimization:
         best_index = np.argmax(self.Y_samples)
         best_x = self.X_samples[best_index]
         best_y = self.Y_samples[best_index]
-        
+
         # Ensure best_y is a numpy scalar (not Python float) for consistency with test expectations
         best_y = np.float64(best_y)
 

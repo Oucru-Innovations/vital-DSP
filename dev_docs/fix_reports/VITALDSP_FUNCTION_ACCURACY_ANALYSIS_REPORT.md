@@ -1,7 +1,6 @@
 # vitalDSP Function Accuracy Analysis Report
 
 **Analysis Date:** January 2025  
-**Analyzed by:** Claude (Sonnet 4.5)  
 **Source:** VITALDSP_EFFECTIVENESS_AND_ACCURACY.md  
 **Library Version:** vitalDSP v1.x  
 

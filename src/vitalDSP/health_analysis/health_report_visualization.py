@@ -561,7 +561,7 @@ class HealthReportVisualizer:
         try:
             # Convert values to numpy array
             values = np.array(values)
-            
+
             # Validate minimum data length
             min_required = max(nperseg, nfft)
             if len(values) < min_required:
@@ -573,7 +573,7 @@ class HealthReportVisualizer:
             frequencies, times, Sxx = spectrogram(
                 values, fs=sampling_rate, nfft=nfft, nperseg=nperseg, noverlap=noverlap
             )
-            
+
             # Validate spectrogram output shape
             if Sxx.shape[0] < 2 or Sxx.shape[1] < 2:
                 raise ValueError(
@@ -1060,7 +1060,7 @@ class HealthReportVisualizer:
         try:
             # Ensure values are converted to a numpy array for indexing
             values = np.array(values)
-            
+
             # Validate data length
             if len(values) <= lags:
                 raise ValueError(
@@ -1135,9 +1135,7 @@ class HealthReportVisualizer:
             )
 
             # Labels and title
-            plt.title(
-                f"Enhanced Lag Plot of {feature} with Lag = {lags}", fontsize=16
-            )
+            plt.title(f"Enhanced Lag Plot of {feature} with Lag = {lags}", fontsize=16)
             plt.xlabel(f"{feature} (t)", fontsize=14)
             plt.ylabel(f"{feature} (t+{lags})", fontsize=14)
 

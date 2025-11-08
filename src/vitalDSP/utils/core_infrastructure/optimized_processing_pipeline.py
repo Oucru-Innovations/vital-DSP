@@ -553,9 +553,7 @@ class OptimizedCheckpointManager:
         import zlib
 
         decompressed_data = checkpoint_data.copy()
-        if "data" in decompressed_data and isinstance(
-            decompressed_data["data"], dict
-        ):
+        if "data" in decompressed_data and isinstance(decompressed_data["data"], dict):
             decompressed_data["data"] = self._decompress_data_dict(
                 decompressed_data["data"]
             )
@@ -710,7 +708,9 @@ class OptimizedCheckpointManager:
                         checkpoint_file.unlink()
                         logger.info(f"Removed checkpoint: {checkpoint_file}")
                     except Exception as e:
-                        logger.warning(f"Failed to remove checkpoint {checkpoint_file}: {e}")
+                        logger.warning(
+                            f"Failed to remove checkpoint {checkpoint_file}: {e}"
+                        )
         except Exception as e:
             logger.error(f"Failed to cleanup session {session_id}: {e}")
 
@@ -758,7 +758,7 @@ class OptimizedStandardProcessingPipeline:
             self.config, checkpoint_dir
         )
         # QualityScreener expects keyword arguments, not config object
-        self.quality_screener = QualityScreener(signal_type='generic')
+        self.quality_screener = QualityScreener(signal_type="generic")
         # ParallelPipeline expects config object (PipelineConfig) or None
         self.parallel_pipeline = ParallelPipeline()
 
@@ -836,8 +836,12 @@ class OptimizedStandardProcessingPipeline:
             self.stats["memory_optimizations_applied"] += 1
 
         # Store additional parameters in context
-        context["stages_to_execute"] = stages if stages is not None else list(ProcessingStage)
-        context["enable_quality_screening"] = enable_quality_screening if enable_quality_screening is not None else True
+        context["stages_to_execute"] = (
+            stages if stages is not None else list(ProcessingStage)
+        )
+        context["enable_quality_screening"] = (
+            enable_quality_screening if enable_quality_screening is not None else True
+        )
         context["progress_callback"] = progress_callback
 
         try:
@@ -942,8 +946,13 @@ class OptimizedStandardProcessingPipeline:
         # Add more stages based on context
         if context.get("results", {}):
             # If we have previous results, more stages become independent
-            additional_stages = [ProcessingStage.SEGMENTATION, ProcessingStage.FEATURE_EXTRACTION]
-            independent_stages.extend([s for s in additional_stages if s in stages_to_execute])
+            additional_stages = [
+                ProcessingStage.SEGMENTATION,
+                ProcessingStage.FEATURE_EXTRACTION,
+            ]
+            independent_stages.extend(
+                [s for s in additional_stages if s in stages_to_execute]
+            )
 
         return independent_stages
 
@@ -974,7 +983,9 @@ class OptimizedStandardProcessingPipeline:
             if stage_result.success:
                 # Remove non-serializable items from context before saving
                 checkpoint_context = context.copy()
-                checkpoint_context.pop("progress_callback", None)  # Remove callback as it can't be pickled
+                checkpoint_context.pop(
+                    "progress_callback", None
+                )  # Remove callback as it can't be pickled
                 self.checkpoint_manager.save_checkpoint(
                     context["session_id"], stage, stage_result.data, checkpoint_context
                 )
@@ -1146,7 +1157,9 @@ class OptimizedStandardProcessingPipeline:
             return "high"
 
     # Additional optimized stage methods - delegate to base class for now
-    def _stage_quality_screening_optimized(self, context: Dict[str, Any]) -> ProcessingResult:
+    def _stage_quality_screening_optimized(
+        self, context: Dict[str, Any]
+    ) -> ProcessingResult:
         """Optimized Stage 2: Quality Screening."""
         # For now, use the standard quality screening
         # This can be optimized later with parallel processing
@@ -1201,7 +1214,9 @@ class OptimizedStandardProcessingPipeline:
             data=quality_data,
         )
 
-    def _stage_parallel_processing_optimized(self, context: Dict[str, Any]) -> ProcessingResult:
+    def _stage_parallel_processing_optimized(
+        self, context: Dict[str, Any]
+    ) -> ProcessingResult:
         """Optimized Stage 3: Parallel Processing."""
         # Use parallel pipeline for processing
         signal = context["signal"]
@@ -1212,7 +1227,9 @@ class OptimizedStandardProcessingPipeline:
             data=result_data,
         )
 
-    def _stage_quality_validation_optimized(self, context: Dict[str, Any]) -> ProcessingResult:
+    def _stage_quality_validation_optimized(
+        self, context: Dict[str, Any]
+    ) -> ProcessingResult:
         """Optimized Stage 4: Quality Validation."""
         result_data = {"validated": True}
         return ProcessingResult(
@@ -1221,7 +1238,9 @@ class OptimizedStandardProcessingPipeline:
             data=result_data,
         )
 
-    def _stage_segmentation_optimized(self, context: Dict[str, Any]) -> ProcessingResult:
+    def _stage_segmentation_optimized(
+        self, context: Dict[str, Any]
+    ) -> ProcessingResult:
         """Optimized Stage 5: Segmentation."""
         result_data = {"segmented": True}
         return ProcessingResult(
@@ -1230,7 +1249,9 @@ class OptimizedStandardProcessingPipeline:
             data=result_data,
         )
 
-    def _stage_feature_extraction_optimized(self, context: Dict[str, Any]) -> ProcessingResult:
+    def _stage_feature_extraction_optimized(
+        self, context: Dict[str, Any]
+    ) -> ProcessingResult:
         """Optimized Stage 6: Feature Extraction."""
         result_data = {"features_extracted": True}
         return ProcessingResult(
@@ -1239,7 +1260,9 @@ class OptimizedStandardProcessingPipeline:
             data=result_data,
         )
 
-    def _stage_intelligent_output_optimized(self, context: Dict[str, Any]) -> ProcessingResult:
+    def _stage_intelligent_output_optimized(
+        self, context: Dict[str, Any]
+    ) -> ProcessingResult:
         """Optimized Stage 7: Intelligent Output."""
         result_data = {"output_generated": True}
         return ProcessingResult(
@@ -1248,7 +1271,9 @@ class OptimizedStandardProcessingPipeline:
             data=result_data,
         )
 
-    def _stage_output_package_optimized(self, context: Dict[str, Any]) -> ProcessingResult:
+    def _stage_output_package_optimized(
+        self, context: Dict[str, Any]
+    ) -> ProcessingResult:
         """Optimized Stage 8: Output Package."""
         result_data = {
             "output_package": {
@@ -1373,7 +1398,9 @@ class OptimizedStandardProcessingPipeline:
 
             # Handle both compressed and uncompressed formats
             if checkpoint_data.get("_compressed", False):
-                checkpoint_data = self.checkpoint_manager._decompress_checkpoint_data(checkpoint_data)
+                checkpoint_data = self.checkpoint_manager._decompress_checkpoint_data(
+                    checkpoint_data
+                )
 
             if "checkpoint" in checkpoint_data:
                 return checkpoint_data["data"]

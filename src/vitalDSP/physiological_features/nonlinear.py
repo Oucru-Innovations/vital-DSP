@@ -420,21 +420,24 @@ class NonlinearFeatures:
         dfa_alpha = np.polyfit(log_scales, log_fluctuation_sizes, 1)[0]
         return dfa_alpha
 
-    def compute_poincare_features(self, nn_intervals):
+    def compute_poincare_features(self):
         """
         Computes the SD1 and SD2 features from the Poincaré plot of the NN intervals. SD1 reflects
         short-term HRV, while SD2 reflects long-term HRV.
 
         Returns:
-            tuple: SD1 (short-term HRV), SD2 (long-term HRV).
+            dict: Dictionary containing Poincaré plot features:
+                - 'sd1': Short-term HRV variability
+                - 'sd2': Long-term HRV variability
+                - 'sd_ratio': SD1/SD2 ratio
 
         Example:
-            >>> nf = NonlinearFeatures(signal)
             >>> nn_intervals = [800, 810, 790, 805, 795]
-            >>> sd1, sd2 = nf.compute_poincare_features(nn_intervals=nn_intervals)
-            >>> print(f"SD1: {sd1}, SD2: {sd2}")
+            >>> nf = NonlinearFeatures(nn_intervals)
+            >>> poincare = nf.compute_poincare_features()
+            >>> print(f"SD1: {poincare['sd1']}, SD2: {poincare['sd2']}")
         """
-        nn_intervals = np.asarray(nn_intervals)
+        nn_intervals = np.asarray(self.signal)
         x1 = nn_intervals[:-1]
         x2 = nn_intervals[1:]
 
@@ -453,7 +456,10 @@ class NonlinearFeatures:
         sd2_arg = 2 * var_nn - var_diff / 2
         sd2 = np.sqrt(np.maximum(sd2_arg, 0))  # Ensure non-negative
 
-        return sd1, sd2
+        # Calculate SD1/SD2 ratio
+        sd_ratio = sd1 / sd2 if sd2 > 0 else 0
+
+        return {"sd1": sd1, "sd2": sd2, "sd_ratio": sd_ratio}
 
     def compute_recurrence_features(self, threshold=0.2, sample_size=10000):
         """
