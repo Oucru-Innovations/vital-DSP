@@ -96,8 +96,9 @@ def test_imports():
     
     if tests_failed == 0:
         print("SUCCESS: All imports verified!")
-        return 0
     else:
         print(f"FAILURE: {tests_failed} tests failed")
-        return 1
+    
+    # Use assertion instead of return value
+    assert tests_failed == 0, f"{tests_failed} import tests failed"
 

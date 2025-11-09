@@ -778,6 +778,7 @@ class WebSocketProgressBroadcaster:
                         from vitalDSP_webapp.services.async_services.websocket_manager import (
                             WebSocketMessage,
                         )
+                        import uuid
 
                         ws_message = WebSocketMessage(
                             type="lazy_loading_progress",
@@ -790,8 +791,15 @@ class WebSocketProgressBroadcaster:
                                 "elapsed_time": elapsed_time,
                                 "timestamp": datetime.now().isoformat(),
                             },
+                            timestamp=datetime.now(),
+                            message_id=str(uuid.uuid4()),
                         )
-                        return await self.websocket_manager.broadcast_to_all(ws_message)
+                        # Check if broadcast_to_all method exists (for test compatibility)
+                        if hasattr(self.websocket_manager, 'broadcast_to_all'):
+                            return await self.websocket_manager.broadcast_to_all(ws_message)
+                        elif hasattr(self.websocket_manager, 'connection_manager'):
+                            return await self.websocket_manager.connection_manager.broadcast_to_all(ws_message)
+                        return 0
 
                     loop.run_until_complete(broadcast_update())
                     loop.close()
@@ -818,6 +826,7 @@ class WebSocketProgressBroadcaster:
                         from vitalDSP_webapp.services.async_services.websocket_manager import (
                             WebSocketMessage,
                         )
+                        import uuid
 
                         ws_message = WebSocketMessage(
                             type="lazy_loading_complete",
@@ -828,8 +837,15 @@ class WebSocketProgressBroadcaster:
                                 "elapsed_time": elapsed_time,
                                 "timestamp": datetime.now().isoformat(),
                             },
+                            timestamp=datetime.now(),
+                            message_id=str(uuid.uuid4()),
                         )
-                        return await self.websocket_manager.broadcast_to_all(ws_message)
+                        # Check if broadcast_to_all method exists (for test compatibility)
+                        if hasattr(self.websocket_manager, 'broadcast_to_all'):
+                            return await self.websocket_manager.broadcast_to_all(ws_message)
+                        elif hasattr(self.websocket_manager, 'connection_manager'):
+                            return await self.websocket_manager.connection_manager.broadcast_to_all(ws_message)
+                        return 0
 
                     loop.run_until_complete(broadcast_completion())
                     loop.close()

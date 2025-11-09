@@ -85,6 +85,7 @@ def test_heavy_data_filtering_service():
         stats = service.get_statistics()
         logger.info(f"✅ Service statistics: {stats}")
         
+        # Return True for success
         return True
         
     except Exception as e:
@@ -131,6 +132,7 @@ def test_lazy_loading_solution():
         stats = loader.get_statistics()
         logger.info(f"✅ Loader statistics: {stats}")
         
+        # Return True for success (even if chunks couldn't be loaded in test environment)
         return True
         
     except Exception as e:
@@ -176,6 +178,7 @@ def test_enhanced_filtering_callbacks():
         stats = callback.get_processing_statistics()
         logger.info(f"✅ Callback statistics: {stats}")
         
+        # Return True for success
         return True
         
     except Exception as e:
@@ -218,10 +221,11 @@ def test_integration():
         else:
             logger.info("\n⚠️  SOME TESTS FAILED - Check logs for details")
         
-        return all_passed
+        # Use assertion instead of return
+        assert all_passed, "Some integration tests failed"
         
     except Exception as e:
         logger.error(f"❌ Integration test failed: {e}")
-        return False
+        raise AssertionError(f"Integration test failed: {e}")
 
 

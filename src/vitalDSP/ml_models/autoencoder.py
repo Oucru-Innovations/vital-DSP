@@ -1142,25 +1142,71 @@ class VariationalAutoencoder(BaseAutoencoder):
         self.decoder = Model(decoder_input, decoder_output, name="decoder")
 
         # Full VAE
-        outputs = self.decoder(self.encoder(encoder_input)[2])
+        z_mean_output, z_log_var_output, z_output = self.encoder(encoder_input)
+        outputs = self.decoder(z_output)
         self.model = Model(encoder_input, outputs, name="vae")
 
-        # Custom loss
-        reconstruction_loss = tf.reduce_mean(
-            tf.reduce_sum(
-                tf.square(encoder_input - outputs),
-                axis=list(range(1, len(self.input_shape) + 1)),
+        # Custom loss using Lambda layers to avoid KerasTensor issues
+        def vae_loss_fn(inputs):
+            encoder_input_inner, outputs_inner, z_mean_inner, z_log_var_inner = inputs
+            
+            # Reconstruction loss
+            reconstruction_loss = keras.backend.mean(
+                keras.backend.sum(
+                    keras.backend.square(encoder_input_inner - outputs_inner),
+                    axis=list(range(1, len(self.input_shape) + 1)),
+                )
             )
-        )
-
-        kl_loss = -0.5 * tf.reduce_mean(
-            tf.reduce_sum(1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var), axis=1)
-        )
-
-        vae_loss = reconstruction_loss + self.beta * kl_loss
+            
+            # KL divergence loss
+            kl_loss = -0.5 * keras.backend.mean(
+                keras.backend.sum(
+                    1 + z_log_var_inner - keras.backend.square(z_mean_inner) - keras.backend.exp(z_log_var_inner),
+                    axis=1
+                )
+            )
+            
+            return reconstruction_loss + self.beta * kl_loss
+        
+        # Compute loss
+        vae_loss = layers.Lambda(
+            vae_loss_fn, 
+            name='vae_loss'
+        )([encoder_input, outputs, z_mean_output, z_log_var_output])
+        
         self.model.add_loss(vae_loss)
-        self.model.add_metric(reconstruction_loss, name="reconstruction_loss")
-        self.model.add_metric(kl_loss, name="kl_loss")
+        
+        # Add metrics using Lambda layers
+        def reconstruction_loss_fn(inputs):
+            encoder_input_inner, outputs_inner = inputs
+            return keras.backend.mean(
+                keras.backend.sum(
+                    keras.backend.square(encoder_input_inner - outputs_inner),
+                    axis=list(range(1, len(self.input_shape) + 1)),
+                )
+            )
+        
+        def kl_loss_fn(inputs):
+            z_mean_inner, z_log_var_inner = inputs
+            return -0.5 * keras.backend.mean(
+                keras.backend.sum(
+                    1 + z_log_var_inner - keras.backend.square(z_mean_inner) - keras.backend.exp(z_log_var_inner),
+                    axis=1
+                )
+            )
+        
+        reconstruction_loss_metric = layers.Lambda(
+            reconstruction_loss_fn,
+            name='reconstruction_loss_metric'
+        )([encoder_input, outputs])
+        
+        kl_loss_metric = layers.Lambda(
+            kl_loss_fn,
+            name='kl_loss_metric'
+        )([z_mean_output, z_log_var_output])
+        
+        self.model.add_metric(reconstruction_loss_metric, name="reconstruction_loss")
+        self.model.add_metric(kl_loss_metric, name="kl_loss")
 
     def _build_pytorch_model(self):
         """Build PyTorch model."""

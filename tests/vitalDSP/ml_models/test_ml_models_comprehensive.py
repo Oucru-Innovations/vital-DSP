@@ -36,12 +36,16 @@ class TestFeatureExtractor:
         try:
             from vitalDSP.ml_models.feature_extractor import extract_features
             
-            # Create sample signal data
-            signal_data = np.random.randn(1000, 1)
-            
-            # Test feature extraction
-            features = extract_features(signal_data)
-            assert isinstance(features, (dict, np.ndarray, pd.DataFrame))
+            # Suppress numpy warnings for edge cases (empty slices, NaN values)
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=RuntimeWarning)
+                
+                # Create sample signal data
+                signal_data = np.random.randn(1000, 1)
+                
+                # Test feature extraction
+                features = extract_features(signal_data)
+                assert isinstance(features, (dict, np.ndarray, pd.DataFrame))
             
         except ImportError:
             pytest.skip("extract_features not available")
