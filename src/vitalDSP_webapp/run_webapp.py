@@ -127,7 +127,9 @@ def run_webapp(
     print("\n" + "=" * 70)
     print("🚀 VitalDSP Web Application")
     print("=" * 70)
-    print(f"   Mode:        {'🐛 DEBUG' if debug_mode else '✅ PRODUCTION' if production_mode else 'ℹ️  NORMAL'}")
+    print(
+        f"   Mode:        {'🐛 DEBUG' if debug_mode else '✅ PRODUCTION' if production_mode else 'ℹ️  NORMAL'}"
+    )
     print(f"   Host:        {host}")
     print(f"   Port:        {port}")
     print(f"   Auto-reload: {'✓ Enabled' if auto_reload else '✗ Disabled'}")
@@ -217,11 +219,11 @@ DEPLOYMENT MODES:
     🐛 DEBUG MODE (Development)
     └─ Debug logging, auto-reload, detailed error traces
     └─ Command: python src/vitalDSP_webapp/run_webapp.py --debug
-    
+
     ℹ️  NORMAL MODE (Testing)
     └─ Standard logging, no auto-reload, suitable for local testing
     └─ Command: python src/vitalDSP_webapp/run_webapp.py
-    
+
     ✅ PRODUCTION MODE (Deployment)
     └─ Minimal logging, optimized performance, no reload
     └─ Command: python src/vitalDSP_webapp/run_webapp.py --production

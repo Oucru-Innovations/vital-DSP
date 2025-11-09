@@ -795,10 +795,14 @@ class WebSocketProgressBroadcaster:
                             message_id=str(uuid.uuid4()),
                         )
                         # Check if broadcast_to_all method exists (for test compatibility)
-                        if hasattr(self.websocket_manager, 'broadcast_to_all'):
-                            return await self.websocket_manager.broadcast_to_all(ws_message)
-                        elif hasattr(self.websocket_manager, 'connection_manager'):
-                            return await self.websocket_manager.connection_manager.broadcast_to_all(ws_message)
+                        if hasattr(self.websocket_manager, "broadcast_to_all"):
+                            return await self.websocket_manager.broadcast_to_all(
+                                ws_message
+                            )
+                        elif hasattr(self.websocket_manager, "connection_manager"):
+                            return await self.websocket_manager.connection_manager.broadcast_to_all(
+                                ws_message
+                            )
                         return 0
 
                     loop.run_until_complete(broadcast_update())
@@ -841,10 +845,14 @@ class WebSocketProgressBroadcaster:
                             message_id=str(uuid.uuid4()),
                         )
                         # Check if broadcast_to_all method exists (for test compatibility)
-                        if hasattr(self.websocket_manager, 'broadcast_to_all'):
-                            return await self.websocket_manager.broadcast_to_all(ws_message)
-                        elif hasattr(self.websocket_manager, 'connection_manager'):
-                            return await self.websocket_manager.connection_manager.broadcast_to_all(ws_message)
+                        if hasattr(self.websocket_manager, "broadcast_to_all"):
+                            return await self.websocket_manager.broadcast_to_all(
+                                ws_message
+                            )
+                        elif hasattr(self.websocket_manager, "connection_manager"):
+                            return await self.websocket_manager.connection_manager.broadcast_to_all(
+                                ws_message
+                            )
                         return 0
 
                     loop.run_until_complete(broadcast_completion())

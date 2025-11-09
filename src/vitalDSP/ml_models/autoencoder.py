@@ -194,7 +194,7 @@ class BaseAutoencoder:
             raise ValueError("Model not built. Call fit() first.")
 
         # Handle empty input gracefully
-        if X.size == 0 or (hasattr(X, 'shape') and X.shape[0] == 0):
+        if X.size == 0 or (hasattr(X, "shape") and X.shape[0] == 0):
             # Return empty array with correct output shape
             output_shape = (0,) + self.input_shape
             return np.empty(output_shape, dtype=np.float32)
@@ -1116,22 +1116,24 @@ class VariationalAutoencoder(BaseAutoencoder):
         import tensorflow as tf
         from tensorflow import keras
         from tensorflow.keras import layers
-        
+
         # Encoder
-        encoder_input = layers.Input(shape=self.input_shape, name='encoder_input')
-        
+        encoder_input = layers.Input(shape=self.input_shape, name="encoder_input")
+
         x = encoder_input
         for i, units in enumerate(self.hidden_dims):
-            x = layers.Dense(units, activation=self.activation, name=f'encoder_dense_{i}')(x)
+            x = layers.Dense(
+                units, activation=self.activation, name=f"encoder_dense_{i}"
+            )(x)
             if self.use_batch_norm:
-                x = layers.BatchNormalization(name=f'encoder_bn_{i}')(x)
+                x = layers.BatchNormalization(name=f"encoder_bn_{i}")(x)
             if self.dropout_rate > 0:
-                x = layers.Dropout(self.dropout_rate, name=f'encoder_dropout_{i}')(x)
-        
+                x = layers.Dropout(self.dropout_rate, name=f"encoder_dropout_{i}")(x)
+
         # Latent space
-        z_mean = layers.Dense(self.latent_dim, name='z_mean')(x)
-        z_log_var = layers.Dense(self.latent_dim, name='z_log_var')(x)
-        
+        z_mean = layers.Dense(self.latent_dim, name="z_mean")(x)
+        z_log_var = layers.Dense(self.latent_dim, name="z_log_var")(x)
+
         # Sampling layer using Keras backend
         def sampling(args):
             z_mean, z_log_var = args
@@ -1139,32 +1141,40 @@ class VariationalAutoencoder(BaseAutoencoder):
             dim = keras.backend.shape(z_mean)[1]
             epsilon = keras.backend.random_normal(shape=(batch, dim))
             return z_mean + keras.backend.exp(0.5 * z_log_var) * epsilon
-        
-        z = layers.Lambda(sampling, name='z')([z_mean, z_log_var])
-        
+
+        z = layers.Lambda(sampling, name="z")([z_mean, z_log_var])
+
         # Decoder
-        decoder_input = layers.Input(shape=(self.latent_dim,), name='decoder_input')
-        
+        decoder_input = layers.Input(shape=(self.latent_dim,), name="decoder_input")
+
         x_dec = decoder_input
         for i, units in enumerate(reversed(self.hidden_dims)):
-            x_dec = layers.Dense(units, activation=self.activation, name=f'decoder_dense_{i}')(x_dec)
+            x_dec = layers.Dense(
+                units, activation=self.activation, name=f"decoder_dense_{i}"
+            )(x_dec)
             if self.use_batch_norm:
-                x_dec = layers.BatchNormalization(name=f'decoder_bn_{i}')(x_dec)
+                x_dec = layers.BatchNormalization(name=f"decoder_bn_{i}")(x_dec)
             if self.dropout_rate > 0:
-                x_dec = layers.Dropout(self.dropout_rate, name=f'decoder_dropout_{i}')(x_dec)
-        
-        decoder_output = layers.Dense(np.prod(self.input_shape), activation='sigmoid', name='decoder_output')(x_dec)
+                x_dec = layers.Dropout(self.dropout_rate, name=f"decoder_dropout_{i}")(
+                    x_dec
+                )
+
+        decoder_output = layers.Dense(
+            np.prod(self.input_shape), activation="sigmoid", name="decoder_output"
+        )(x_dec)
         if len(self.input_shape) > 1:
             decoder_output = layers.Reshape(self.input_shape)(decoder_output)
-        
+
         # Build encoder and decoder models
-        self.encoder = keras.Model(encoder_input, [z_mean, z_log_var, z], name='encoder')
-        self.decoder = keras.Model(decoder_input, decoder_output, name='decoder')
-        
+        self.encoder = keras.Model(
+            encoder_input, [z_mean, z_log_var, z], name="encoder"
+        )
+        self.decoder = keras.Model(decoder_input, decoder_output, name="decoder")
+
         # Build VAE model
         outputs = self.decoder(self.encoder(encoder_input)[2])
-        self.model = keras.Model(encoder_input, outputs, name='vae')
-        
+        self.model = keras.Model(encoder_input, outputs, name="vae")
+
         # Create a custom training step to handle the VAE loss
         class VAEModel(keras.Model):
             def __init__(self, encoder, decoder, beta, **kwargs):
@@ -1173,7 +1183,9 @@ class VariationalAutoencoder(BaseAutoencoder):
                 self.decoder = decoder
                 self.beta = beta
                 self.total_loss_tracker = keras.metrics.Mean(name="total_loss")
-                self.reconstruction_loss_tracker = keras.metrics.Mean(name="reconstruction_loss")
+                self.reconstruction_loss_tracker = keras.metrics.Mean(
+                    name="reconstruction_loss"
+                )
                 self.kl_loss_tracker = keras.metrics.Mean(name="kl_loss")
 
             @property
@@ -1193,32 +1205,35 @@ class VariationalAutoencoder(BaseAutoencoder):
                 with tf.GradientTape() as tape:
                     z_mean, z_log_var, z = self.encoder(x, training=True)
                     reconstruction = self.decoder(z, training=True)
-                    
+
                     # Reconstruction loss
                     reconstruction_loss = keras.backend.mean(
                         keras.backend.sum(
                             keras.backend.square(x - reconstruction),
-                            axis=list(range(1, len(x.shape)))
+                            axis=list(range(1, len(x.shape))),
                         )
                     )
-                    
+
                     # KL divergence loss
                     kl_loss = -0.5 * keras.backend.mean(
                         keras.backend.sum(
-                            1 + z_log_var - keras.backend.square(z_mean) - keras.backend.exp(z_log_var),
-                            axis=1
+                            1
+                            + z_log_var
+                            - keras.backend.square(z_mean)
+                            - keras.backend.exp(z_log_var),
+                            axis=1,
                         )
                     )
-                    
+
                     total_loss = reconstruction_loss + self.beta * kl_loss
 
                 grads = tape.gradient(total_loss, self.trainable_weights)
                 self.optimizer.apply_gradients(zip(grads, self.trainable_weights))
-                
+
                 self.total_loss_tracker.update_state(total_loss)
                 self.reconstruction_loss_tracker.update_state(reconstruction_loss)
                 self.kl_loss_tracker.update_state(kl_loss)
-                
+
                 return {
                     "loss": self.total_loss_tracker.result(),
                     "reconstruction_loss": self.reconstruction_loss_tracker.result(),
@@ -1233,25 +1248,28 @@ class VariationalAutoencoder(BaseAutoencoder):
                     x = data
                 z_mean, z_log_var, z = self.encoder(x, training=False)
                 reconstruction = self.decoder(z, training=False)
-                
+
                 # Reconstruction loss
                 reconstruction_loss = keras.backend.mean(
                     keras.backend.sum(
                         keras.backend.square(x - reconstruction),
-                        axis=list(range(1, len(x.shape)))
+                        axis=list(range(1, len(x.shape))),
                     )
                 )
-                
+
                 # KL divergence loss
                 kl_loss = -0.5 * keras.backend.mean(
                     keras.backend.sum(
-                        1 + z_log_var - keras.backend.square(z_mean) - keras.backend.exp(z_log_var),
-                        axis=1
+                        1
+                        + z_log_var
+                        - keras.backend.square(z_mean)
+                        - keras.backend.exp(z_log_var),
+                        axis=1,
                     )
                 )
-                
+
                 total_loss = reconstruction_loss + self.beta * kl_loss
-                
+
                 return {
                     "loss": total_loss,
                     "reconstruction_loss": reconstruction_loss,
@@ -1260,8 +1278,10 @@ class VariationalAutoencoder(BaseAutoencoder):
 
         # Create the custom VAE model
         self.vae_model = VAEModel(self.encoder, self.decoder, self.beta)
-        self.vae_model.compile(optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate))
-        
+        self.vae_model.compile(
+            optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate)
+        )
+
         # Store references for encoding/decoding
         self.z_mean_output = z_mean
         self.z_log_var_output = z_log_var
@@ -1353,12 +1373,12 @@ class VariationalAutoencoder(BaseAutoencoder):
     def sample(self, n_samples: int = 1) -> np.ndarray:
         """
         Generate new samples from the learned latent distribution.
-        
+
         Parameters
         ----------
         n_samples : int, default=1
             Number of samples to generate
-            
+
         Returns
         -------
         np.ndarray
