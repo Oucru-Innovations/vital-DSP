@@ -50,6 +50,14 @@ setup(
         'uvicorn>=0.15.0'   # Uvicorn for serving FastAPI
         # Add other dependencies here
     ],
+    extras_require={
+        'tensorflow': [
+            'tensorflow>=2.10.0',  # TensorFlow for deep learning models
+        ],
+        'all': [
+            'tensorflow>=2.10.0',  # Include all optional dependencies
+        ],
+    },
     entry_points={
         'console_scripts': [
             'vitalDSP-webapp = vitalDSP.webapp.run_webapp:main',  # Entry point for the Dash web app

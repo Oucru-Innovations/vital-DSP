@@ -206,8 +206,19 @@ vitalDSP can be installed using two different methods depending on your needs:
 
 For the most stable and tested version, install directly from the Python Package Index:
 
+**Basic Installation** (without TensorFlow):
 ```bash
 pip install vitalDSP
+```
+
+**Full Installation** (with TensorFlow for deep learning models):
+```bash
+pip install vitalDSP[tensorflow]
+```
+
+**Complete Installation** (all optional dependencies):
+```bash
+pip install vitalDSP[all]
 ```
 
 This method provides:
@@ -230,6 +241,8 @@ cd vital-DSP
 ```
 
 **Step 3: Install the Package**
+
+Basic installation:
 ```bash
 python setup.py install
 ```
@@ -237,6 +250,17 @@ python setup.py install
 Or for development installation:
 ```bash
 pip install -e .
+```
+
+With TensorFlow support:
+```bash
+pip install -e .[tensorflow]
+```
+
+Or install TensorFlow separately:
+```bash
+pip install -e .
+pip install -r requirements-tensorflow.txt
 ```
 
 ### System Requirements
@@ -248,6 +272,12 @@ pip install -e .
 - Plotly >= 4.14.3
 - Dash >= 2.0.0 (for web applications)
 - FastAPI >= 0.68.0 (for API endpoints)
+
+### Optional Dependencies
+
+- TensorFlow >= 2.10.0 (for deep learning models including autoencoders, LSTM, CNN, etc.)
+
+**Note**: TensorFlow is optional and only required if you plan to use the advanced deep learning models in `vitalDSP.ml_models`. The core signal processing and machine learning features work without TensorFlow.
 
 ## Healthcare Applications
 
@@ -279,8 +309,14 @@ vitalDSP is designed to address real-world healthcare challenges across multiple
 
 Install VitalDSP from PyPI (recommended for most users):
 
+**Basic Installation**:
 ```bash
 pip install vitalDSP
+```
+
+**With TensorFlow** (for deep learning models):
+```bash
+pip install vitalDSP[tensorflow]
 ```
 
 Or install from source for the latest features:
@@ -288,7 +324,7 @@ Or install from source for the latest features:
 ```bash
 git clone https://github.com/Oucru-Innovations/vital-DSP.git
 cd vital-DSP
-pip install -e .
+pip install -e .[tensorflow]  # Include [tensorflow] for deep learning support
 ```
 
 ### Basic Usage Example
@@ -423,7 +459,7 @@ docker run -p 8000:8000 vitaldsp:production
 2. Sign up at https://render.com and create a new Web Service
 3. Connect your GitHub repository
 4. Configure:
-   - **Build Command**: `pip install -r requirements.txt && pip install -r src/vitalDSP_webapp/requirements.txt && pip install -e .`
+   - **Build Command**: `pip install -r requirements.txt && pip install -r requirements-tensorflow.txt && pip install -r src/vitalDSP_webapp/requirements.txt && pip install -e .`
    - **Start Command**: `gunicorn -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT vitalDSP_webapp.run_webapp:app`
    - **Environment**: Python 3
 5. Deploy!
@@ -446,6 +482,7 @@ cd vital-DSP
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+pip install -r requirements-tensorflow.txt
 pip install -r src/vitalDSP_webapp/requirements.txt
 pip install -e .
 
