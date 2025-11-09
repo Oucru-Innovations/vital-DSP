@@ -25,7 +25,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v3
         with:
-          python-version: '3.x'
+          python-version: '3.11'  # Use Python 3.11 for TensorFlow compatibility
 
       - name: Install dependencies
         run: |
@@ -37,6 +37,15 @@ jobs:
           pip install setuptools wheel twine sphinx coveralls responses
           pip install dash dash[testing]
           pip install selenium webdriver-manager
+      
+      - name: Verify TensorFlow Installation
+        run: |
+          echo "Python version:"
+          python --version
+          echo "TensorFlow version:"
+          python -c "import tensorflow as tf; print(f'TensorFlow {tf.__version__} installed successfully')"
+          echo "Available packages:"
+          pip list | grep -i tensorflow
       
       - name: Install Chrome and ChromeDriver
         run: |
