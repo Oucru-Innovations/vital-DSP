@@ -1,20 +1,43 @@
 """
-time_domain.py
+Time Domain Features Module for Physiological Signal Processing
 
-This module provides a TimeDomainFeatures class for extracting time-domain features
-from physiological signals such as ECG and PPG. The class includes methods for
-standard HRV metrics like SDNN, RMSSD, NN50, pNN50, and additional time-domain
-metrics such as median NN intervals and interquartile range (IQR).
+This module provides comprehensive time-domain feature extraction capabilities for
+physiological signals such as ECG and PPG. It implements standard Heart Rate Variability
+(HRV) metrics and additional time-domain analysis methods for characterizing signal
+variability and patterns.
 
-Class:
-    - TimeDomainFeatures: A class to compute various time-domain features for physiological signals.
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
 
-Example usage:
-    >>> nn_intervals = [800, 810, 790, 805, 795]
+Key Features:
+- Standard HRV metrics (SDNN, RMSSD, NN50, pNN50)
+- Advanced time-domain statistics (median, IQR, CVNN)
+- HRV Triangular Index and TINN computation
+- Successive difference analysis (SDSD)
+- Comprehensive NN interval analysis
+
+Examples:
+--------
+Basic HRV analysis:
+    >>> import numpy as np
+    >>> from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
+    >>> nn_intervals = [800, 810, 790, 805, 795, 820, 780, 815, 800, 810]
     >>> tdf = TimeDomainFeatures(nn_intervals)
     >>> sdnn = tdf.compute_sdnn()
     >>> rmssd = tdf.compute_rmssd()
-    >>> print(f"SDNN: {sdnn}, RMSSD: {rmssd}")
+    >>> print(f"SDNN: {sdnn:.2f} ms, RMSSD: {rmssd:.2f} ms")
+
+Advanced metrics:
+    >>> pnn50 = tdf.compute_pnn50()
+    >>> cvnn = tdf.compute_cvnn()
+    >>> hrv_triangular = tdf.compute_hrv_triangular_index()
+    >>> print(f"pNN50: {pnn50:.2f}%, CVNN: {cvnn:.2f}")
+
+Statistical analysis:
+    >>> median_nn = tdf.compute_median_nn()
+    >>> iqr_nn = tdf.compute_iqr_nn()
+    >>> print(f"Median NN: {median_nn:.2f} ms, IQR: {iqr_nn:.2f} ms")
 """
 
 import numpy as np
@@ -109,6 +132,12 @@ class TimeDomainFeatures:
             >>> tdf.compute_pnn50()
             20.0
         """
+        # Input validation to prevent division by zero
+        if len(self.nn_intervals) == 0:
+            return 0.0
+        if len(self.nn_intervals) == 1:
+            return 0.0  # No differences possible with single interval
+
         nn50 = self.compute_nn50()
         return 100.0 * nn50 / len(self.nn_intervals)
 
@@ -182,6 +211,12 @@ class TimeDomainFeatures:
             >>> tdf.compute_pnn20()
             40.0
         """
+        # Input validation to prevent division by zero
+        if len(self.nn_intervals) == 0:
+            return 0.0
+        if len(self.nn_intervals) == 1:
+            return 0.0  # No differences possible with single interval
+
         diff_nn_intervals = np.abs(np.diff(self.nn_intervals))
         nn20 = np.sum(diff_nn_intervals > 20)
         return 100.0 * nn20 / len(self.nn_intervals)
@@ -199,7 +234,14 @@ class TimeDomainFeatures:
             >>> tdf.compute_cvnn()
             0.009354143466934854
         """
+        # Input validation to prevent division by zero
+        if len(self.nn_intervals) == 0:
+            return 0.0
+
         mean_nn = self.compute_mean_nn()
+        if mean_nn == 0:
+            return 0.0  # Avoid division by zero
+
         sdnn = self.compute_sdnn()
         return sdnn / mean_nn
 

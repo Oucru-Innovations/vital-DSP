@@ -51,7 +51,9 @@ def detect_respiratory_signal_type(signal_data, sampling_freq):
         fft_magnitude = np.abs(fft_result[positive_mask])
 
         # Check for constant or near-constant signals
-        if np.std(signal_data) < 1e-10:  # Very small standard deviation indicates constant signal
+        if (
+            np.std(signal_data) < 1e-10
+        ):  # Very small standard deviation indicates constant signal
             return "unknown"
 
         # Find dominant frequency
@@ -211,12 +213,23 @@ def generate_comprehensive_respiratory_analysis(
             )
             from vitalDSP.preprocess.preprocess_operations import PreprocessConfig
 
-            # Create preprocessing configuration
+            # Create preprocessing configuration with proper respiratory parameters
             preprocess_config = PreprocessConfig()
             if preprocessing_options and "filter" in preprocessing_options:
                 preprocess_config.filter_type = "bandpass"
                 preprocess_config.lowcut = low_cut or 0.1
-                preprocess_config.highcut = high_cut or 0.8
+                preprocess_config.highcut = (
+                    high_cut or 0.5
+                )  # Fixed: was 0.8, should be 0.5 for respiratory
+                preprocess_config.respiratory_mode = (
+                    True  # Enable respiratory-specific preprocessing
+                )
+            else:
+                # Even without explicit filtering, use respiratory-appropriate defaults
+                preprocess_config.filter_type = "bandpass"
+                preprocess_config.lowcut = 0.1
+                preprocess_config.highcut = 0.5
+                preprocess_config.respiratory_mode = True
 
             # Initialize respiratory analysis
             ra = RespiratoryAnalysis(signal_data, sampling_freq)
@@ -263,13 +276,117 @@ def generate_comprehensive_respiratory_analysis(
                                 html.P(f"• Time Domain: {rr:.2f} breaths/min")
                             )
 
+                        elif method == "counting":
+                            rr = ra.compute_respiratory_rate(
+                                method="counting",
+                                min_breath_duration=min_breath_duration or 0.1,
+                                max_breath_duration=max_breath_duration or 6,
+                                preprocess_config=preprocess_config,
+                            )
+                            results.append(html.P(f"• Counting: {rr:.2f} breaths/min"))
+
+                        elif method == "zero_crossing":
+                            rr = ra.compute_respiratory_rate(
+                                method="zero_crossing",
+                                min_breath_duration=min_breath_duration or 0.1,
+                                max_breath_duration=max_breath_duration or 6,
+                                preprocess_config=preprocess_config,
+                            )
+                            results.append(
+                                html.P(f"• Zero Crossing: {rr:.2f} breaths/min")
+                            )
+
                     except Exception as e:
                         logger.warning(f"Failed to compute RR using {method}: {e}")
                         results.append(
-                            html.P(f"• {method.replace('_', ' ').title()}: Failed")
+                            html.P(
+                                f"• {method.replace('_', ' ').title()}: Failed - {str(e)}"
+                            )
                         )
 
-            # Advanced analysis if selected
+            # Add comparison with fallback implementation for debugging
+            results.append(html.Hr())
+            results.append(html.H6("🔍 Debug: Fallback vs vitalDSP Comparison"))
+
+            # Fallback FFT implementation (the one giving good results)
+            try:
+                fft_signal = np.fft.fft(signal_data)
+                freqs = np.fft.fftfreq(len(signal_data), 1 / sampling_freq)
+
+                # Focus on respiratory frequency range (0.1-0.5 Hz = 6-30 BPM)
+                resp_mask = (freqs > 0.1) & (freqs < 0.5)
+                resp_freqs = freqs[resp_mask]
+                resp_fft = np.abs(fft_signal[resp_mask])
+
+                if len(resp_freqs) > 0:
+                    dominant_freq_idx = np.argmax(resp_fft)
+                    dominant_freq = resp_freqs[dominant_freq_idx]
+                    rr_fallback = dominant_freq * 60  # Convert to BPM
+                    results.append(
+                        html.P(
+                            f"• Fallback FFT: {rr_fallback:.2f} breaths/min",
+                            className="text-info",
+                        )
+                    )
+                else:
+                    results.append(
+                        html.P(
+                            "• Fallback FFT: No frequencies in range",
+                            className="text-warning",
+                        )
+                    )
+            except Exception as e:
+                results.append(
+                    html.P(
+                        f"• Fallback FFT: Failed - {str(e)}", className="text-danger"
+                    )
+                )
+
+            # Fallback peak detection
+            try:
+                peaks, _ = signal.find_peaks(
+                    signal_data,
+                    height=np.mean(signal_data) + np.std(signal_data),
+                    distance=int(0.5 * sampling_freq),
+                )
+                if len(peaks) > 1:
+                    intervals = np.diff(peaks) / sampling_freq
+                    rr_fallback_peaks = 60 / np.mean(intervals)
+                    results.append(
+                        html.P(
+                            f"• Fallback Peak Detection: {rr_fallback_peaks:.2f} breaths/min",
+                            className="text-info",
+                        )
+                    )
+                else:
+                    results.append(
+                        html.P(
+                            "• Fallback Peak Detection: Insufficient peaks",
+                            className="text-warning",
+                        )
+                    )
+            except Exception as e:
+                results.append(
+                    html.P(
+                        f"• Fallback Peak Detection: Failed - {str(e)}",
+                        className="text-danger",
+                    )
+                )
+
+            # Signal quality assessment
+            results.append(html.Hr())
+            results.append(html.H6("📊 Signal Quality Assessment"))
+            results.append(html.P(f"Signal Length: {len(signal_data)} samples"))
+            results.append(
+                html.P(f"Duration: {len(signal_data)/sampling_freq:.2f} seconds")
+            )
+            results.append(html.P(f"Mean: {np.mean(signal_data):.4f}"))
+            results.append(html.P(f"Std: {np.std(signal_data):.4f}"))
+            results.append(
+                html.P(
+                    f"SNR Estimate: {np.std(signal_data)/np.mean(np.abs(signal_data)):.2f}"
+                )
+            )
             if advanced_options:
                 results.append(html.Hr())
                 results.append(html.H6("Advanced Analysis"))
@@ -466,15 +583,18 @@ def register_respiratory_callbacks(app):
         [
             Input("url", "pathname"),
             Input("resp-analyze-btn", "n_clicks"),
-            Input("resp-time-range-slider", "value"),
             Input("resp-btn-nudge-m10", "n_clicks"),
             Input("resp-btn-nudge-m1", "n_clicks"),
             Input("resp-btn-nudge-p1", "n_clicks"),
             Input("resp-btn-nudge-p10", "n_clicks"),
         ],
         [
-            State("resp-start-time", "value"),
-            State("resp-end-time", "value"),
+            State(
+                "resp-start-position-slider", "value"
+            ),  # NEW: start position instead of time-range-slider
+            State(
+                "resp-duration-select", "value"
+            ),  # NEW: duration instead of start-time/end-time
             State("resp-signal-type", "value"),
             State("resp-signal-source-select", "value"),
             State("resp-estimation-methods", "value"),
@@ -489,13 +609,12 @@ def register_respiratory_callbacks(app):
     def respiratory_analysis_callback(
         pathname,
         n_clicks,
-        slider_value,
         nudge_m10,
         nudge_m1,
         nudge_p1,
         nudge_p10,
-        start_time,
-        end_time,
+        start_position,  # NEW: start position instead of slider_value
+        duration,  # NEW: duration instead of start_time/end_time
         signal_type,
         signal_source,
         estimation_methods,
@@ -541,9 +660,11 @@ def register_respiratory_callbacks(app):
         try:
             # Get data from the data service
             logger.info("Attempting to get data service...")
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
             logger.info("Data service retrieved successfully")
 
             # Get the most recent data
@@ -609,34 +730,42 @@ def register_respiratory_callbacks(app):
             logger.info(f"Sampling frequency: {sampling_freq}")
 
             # Handle time window adjustments for nudge buttons
+            # Note: Using start_position and duration from function parameters
             if trigger_id in [
                 "resp-btn-nudge-m10",
                 "resp-btn-nudge-m1",
                 "resp-btn-nudge-p1",
                 "resp-btn-nudge-p10",
             ]:
-                if not start_time or not end_time:
-                    start_time, end_time = 0, 10
+                # Initialize from parameters if not set
+                if start_position is None:
+                    start_position = 0
+                if duration is None:
+                    duration = 10
 
                 if trigger_id == "resp-btn-nudge-m10":
-                    start_time = max(0, start_time - 10)
-                    end_time = max(10, end_time - 10)
+                    start_position = max(0, start_position - 10)
                 elif trigger_id == "resp-btn-nudge-m1":
-                    start_time = max(0, start_time - 1)
-                    end_time = max(1, end_time - 1)
+                    start_position = max(0, start_position - 1)
                 elif trigger_id == "resp-btn-nudge-p1":
-                    start_time = start_time + 1
-                    end_time = end_time + 1
+                    start_position = start_position + 1
                 elif trigger_id == "resp-btn-nudge-p10":
-                    start_time = start_time + 10
-                    end_time = end_time + 10
+                    start_position = start_position + 10
 
-                logger.info(f"Time window adjusted: {start_time} to {end_time}")
+                logger.info(
+                    f"Time window adjusted: start={start_position}, duration={duration}"
+                )
 
             # Set default time window if not specified
-            if not start_time or not end_time:
-                start_time, end_time = 0, 10
-                logger.info(f"Using default time window: {start_time} to {end_time}")
+            if start_position is None:
+                start_position = 0
+            if duration is None:
+                duration = 10
+
+            # Calculate end time from start_position and duration
+            start_time = start_position
+            end_time = start_position + duration
+            logger.info(f"Using time window: {start_time} to {end_time}")
 
             # Apply time window
             start_sample = int(start_time * sampling_freq)
@@ -901,21 +1030,13 @@ def register_respiratory_callbacks(app):
                 None,
             )
 
-    @app.callback(
-        [Output("resp-start-time", "value"), Output("resp-end-time", "value")],
-        [Input("resp-time-range-slider", "value")],
-    )
-    def update_resp_time_inputs(slider_value):
-        """Update time input fields based on slider."""
-        if not slider_value:
-            return no_update, no_update
-        return slider_value[0], slider_value[1]
+    # Removed update_resp_time_inputs callback - no longer needed with start/duration approach
 
     @app.callback(
         [
-            Output("resp-time-range-slider", "min"),
-            Output("resp-time-range-slider", "max"),
-            Output("resp-time-range-slider", "value"),
+            Output("resp-start-position-slider", "min"),
+            Output("resp-start-position-slider", "max"),
+            Output("resp-start-position-slider", "value"),
         ],
         [Input("url", "pathname")],
     )
@@ -930,9 +1051,11 @@ def register_respiratory_callbacks(app):
 
         try:
             # Get data from the data service
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
 
             # Get the most recent data
             all_data = data_service.get_all_data()

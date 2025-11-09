@@ -1,5 +1,52 @@
+"""
+ECG Autonomic Features Module for Physiological Signal Processing
+
+This module provides comprehensive ECG feature extraction capabilities focusing
+on autonomic nervous system analysis. It implements advanced algorithms for
+detecting ECG waveform components, computing intervals, and identifying
+arrhythmias for cardiovascular health assessment.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- P-wave analysis (duration, amplitude)
+- PR Interval computation (P-wave to QRS onset)
+- QRS Complex analysis (width, amplitude)
+- ST Segment analysis (elevation, depression)
+- QT Interval computation (QRS onset to T-wave end)
+- Arrhythmia detection (AFib, VTach, Bradycardia)
+- Waveform morphology analysis
+- Comprehensive ECG feature extraction
+
+Examples:
+--------
+Basic ECG feature extraction:
+    >>> import numpy as np
+    >>> from vitalDSP.feature_engineering.ecg_autonomic_features import ECGExtractor
+    >>> ecg_signal = np.random.rand(1000)  # Replace with actual ECG signal
+    >>> fs = 250  # Sampling frequency in Hz
+    >>> extractor = ECGExtractor(ecg_signal, fs)
+    >>> p_wave_duration = extractor.compute_p_wave_duration()
+    >>> pr_interval = extractor.compute_pr_interval()
+    >>> qrs_width = extractor.compute_qrs_width()
+    >>> print(f"P-wave Duration: {p_wave_duration}, PR Interval: {pr_interval}")
+
+Advanced ECG analysis:
+    >>> qt_interval = extractor.compute_qt_interval()
+    >>> st_segment = extractor.compute_st_segment()
+    >>> arrhythmias = extractor.detect_arrhythmias()
+    >>> print(f"QT Interval: {qt_interval}, ST Segment: {st_segment}")
+    >>> print(f"Arrhythmias detected: {arrhythmias}")
+
+Comprehensive feature extraction:
+    >>> all_features = extractor.extract_all_features()
+    >>> print(f"Extracted {len(all_features)} ECG features")
+"""
+
 import numpy as np
-from vitalDSP.utils.peak_detection import PeakDetection
+from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
 from vitalDSP.physiological_features.waveform import WaveformMorphology
 
 
@@ -100,7 +147,11 @@ class ECGExtractor:
         if r_peaks is None:
             r_peaks = self.detect_r_peaks()  # Detect R-peaks first
         qrs_durations = self.morphology.detect_qrs_session(r_peaks)
-        if not qrs_durations:
+        # Convert to numpy array if it's a list (e.g., from mocked return value)
+        if isinstance(qrs_durations, list):
+            qrs_durations = np.array(qrs_durations)
+        # Check if empty using len() for compatibility with both list and array
+        if len(qrs_durations) == 0:
             return 0.0
         durations = [(end - start) / self.fs for start, end in qrs_durations]
         return np.mean(durations)

@@ -1,9 +1,9 @@
 import pytest
 import numpy as np
-from vitalDSP.utils.peak_detection import PeakDetection
+from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
 from vitalDSP.physiological_features.waveform import WaveformMorphology
 from unittest.mock import MagicMock
-from vitalDSP.utils.synthesize_data import generate_ecg_signal, generate_synthetic_ppg
+from vitalDSP.utils.data_processing.synthesize_data import generate_ecg_signal, generate_synthetic_ppg
 from scipy.stats import linregress
 import warnings
 

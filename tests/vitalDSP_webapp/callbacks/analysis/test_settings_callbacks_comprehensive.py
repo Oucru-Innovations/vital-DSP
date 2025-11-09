@@ -464,5 +464,3 @@ class TestEdgeCases:
             # If handling fails, that's acceptable
             assert True
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

@@ -81,9 +81,8 @@ class TestPhysiologicalAnalysisCallback:
                         cb['func'](
                             pathname="/physiological",
                             n_clicks=None,
-                            slider_value=[0, 10],
                             nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                            start_time=0, end_time=10,
+                            start_position=0, duration=10,
                             signal_type="PPG",
                             signal_source="original",
                             analysis_categories=["hrv"],
@@ -100,7 +99,7 @@ class TestPhysiologicalAnalysisCallback:
     def test_callback_not_on_physiological_page(self, mock_data_service_with_data):
         """Test callback when not on physiological page (lines 911-919)"""
         with patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context') as mock_ctx, \
-             patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service_with_data, create=True):
+             patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service_with_data, create=True):
 
             mock_ctx.triggered = [{"prop_id": "url.pathname", "value": "/other"}]
 
@@ -123,9 +122,8 @@ class TestPhysiologicalAnalysisCallback:
                     result = cb['func'](
                         pathname="/other-page",
                         n_clicks=1,
-                        slider_value=[0, 10],
-                        nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                        start_time=0, end_time=10,
+                            nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
+                            start_position=0, duration=10,
                         signal_type="PPG",
                         signal_source="original",
                         analysis_categories=["hrv"],
@@ -146,7 +144,7 @@ class TestPhysiologicalAnalysisCallback:
         mock_service.get_all_data.return_value = {}
 
         with patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context') as mock_ctx, \
-             patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_service, create=True):
+             patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_service, create=True):
 
             mock_ctx.triggered = [{"prop_id": "physio-btn-update-analysis.n_clicks", "value": 1}]
 
@@ -169,9 +167,8 @@ class TestPhysiologicalAnalysisCallback:
                     result = cb['func'](
                         pathname="/physiological",
                         n_clicks=1,
-                        slider_value=[0, 10],
-                        nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                        start_time=0, end_time=10,
+                            nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
+                            start_position=0, duration=10,
                         signal_type="PPG",
                         signal_source="original",
                         analysis_categories=["hrv"],
@@ -194,7 +191,7 @@ class TestPhysiologicalAnalysisCallback:
         mock_service.get_column_mapping.return_value = None
 
         with patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context') as mock_ctx, \
-             patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_service, create=True):
+             patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_service, create=True):
 
             mock_ctx.triggered = [{"prop_id": "physio-btn-update-analysis.n_clicks", "value": 1}]
 
@@ -217,9 +214,8 @@ class TestPhysiologicalAnalysisCallback:
                     result = cb['func'](
                         pathname="/physiological",
                         n_clicks=1,
-                        slider_value=[0, 10],
-                        nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                        start_time=0, end_time=10,
+                            nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
+                            start_position=0, duration=10,
                         signal_type="PPG",
                         signal_source="original",
                         analysis_categories=["hrv"],
@@ -242,7 +238,7 @@ class TestPhysiologicalAnalysisCallback:
         mock_service.get_column_mapping.return_value = {"time": "time", "signal": "signal"}
 
         with patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context') as mock_ctx, \
-             patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_service, create=True):
+             patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_service, create=True):
 
             mock_ctx.triggered = [{"prop_id": "physio-btn-update-analysis.n_clicks", "value": 1}]
 
@@ -265,9 +261,8 @@ class TestPhysiologicalAnalysisCallback:
                     result = cb['func'](
                         pathname="/physiological",
                         n_clicks=1,
-                        slider_value=[0, 10],
-                        nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                        start_time=0, end_time=10,
+                            nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
+                            start_position=0, duration=10,
                         signal_type="PPG",
                         signal_source="original",
                         analysis_categories=["hrv"],
@@ -285,7 +280,7 @@ class TestPhysiologicalAnalysisCallback:
     def test_callback_nudge_button_m10(self, mock_data_service_with_data):
         """Test callback with nudge -10 button (lines 983-988)"""
         with patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context') as mock_ctx, \
-             patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service_with_data, create=True):
+             patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service_with_data, create=True):
 
             mock_ctx.triggered = [{"prop_id": "physio-btn-nudge-m10.n_clicks", "value": 1}]
 
@@ -309,9 +304,8 @@ class TestPhysiologicalAnalysisCallback:
                         result = cb['func'](
                             pathname="/physiological",
                             n_clicks=None,
-                            slider_value=None,
                             nudge_m10=1, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                            start_time=20, end_time=30,
+                            start_position=20, duration=10,
                             signal_type="PPG",
                             signal_source="original",
                             analysis_categories=["hrv"],
@@ -333,7 +327,7 @@ class TestPhysiologicalAnalysisCallback:
     def test_callback_nudge_button_m1(self, mock_data_service_with_data):
         """Test callback with nudge -1 button (lines 989-991)"""
         with patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context') as mock_ctx, \
-             patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service_with_data, create=True):
+             patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service_with_data, create=True):
 
             mock_ctx.triggered = [{"prop_id": "physio-btn-nudge-m1.n_clicks", "value": 1}]
 
@@ -357,9 +351,8 @@ class TestPhysiologicalAnalysisCallback:
                         result = cb['func'](
                             pathname="/physiological",
                             n_clicks=None,
-                            slider_value=None,
                             nudge_m10=None, nudge_m1=1, nudge_p1=None, nudge_p10=None,
-                            start_time=5, end_time=15,
+                            start_position=5, duration=10,
                             signal_type="PPG",
                             signal_source="original",
                             analysis_categories=["hrv"],
@@ -379,7 +372,7 @@ class TestPhysiologicalAnalysisCallback:
     def test_callback_nudge_button_p1(self, mock_data_service_with_data):
         """Test callback with nudge +1 button (lines 992-994)"""
         with patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context') as mock_ctx, \
-             patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service_with_data, create=True):
+             patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service_with_data, create=True):
 
             mock_ctx.triggered = [{"prop_id": "physio-btn-nudge-p1.n_clicks", "value": 1}]
 
@@ -403,9 +396,8 @@ class TestPhysiologicalAnalysisCallback:
                         result = cb['func'](
                             pathname="/physiological",
                             n_clicks=None,
-                            slider_value=None,
                             nudge_m10=None, nudge_m1=None, nudge_p1=1, nudge_p10=None,
-                            start_time=0, end_time=10,
+                            start_position=0, duration=10,
                             signal_type="PPG",
                             signal_source="original",
                             analysis_categories=["hrv"],
@@ -425,7 +417,7 @@ class TestPhysiologicalAnalysisCallback:
     def test_callback_nudge_button_p10(self, mock_data_service_with_data):
         """Test callback with nudge +10 button (lines 995-997)"""
         with patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context') as mock_ctx, \
-             patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service_with_data, create=True):
+             patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service_with_data, create=True):
 
             mock_ctx.triggered = [{"prop_id": "physio-btn-nudge-p10.n_clicks", "value": 1}]
 
@@ -449,9 +441,8 @@ class TestPhysiologicalAnalysisCallback:
                         result = cb['func'](
                             pathname="/physiological",
                             n_clicks=None,
-                            slider_value=None,
                             nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=1,
-                            start_time=0, end_time=10,
+                            start_position=0, duration=10,
                             signal_type="PPG",
                             signal_source="original",
                             analysis_categories=["hrv"],
@@ -471,7 +462,7 @@ class TestPhysiologicalAnalysisCallback:
     def test_callback_slider_value(self, mock_data_service_with_data):
         """Test callback with slider value (lines 1000-1001)"""
         with patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context') as mock_ctx, \
-             patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service_with_data, create=True):
+             patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service_with_data, create=True):
 
             mock_ctx.triggered = [{"prop_id": "physio-time-range-slider.value", "value": [2, 8]}]
 
@@ -495,9 +486,8 @@ class TestPhysiologicalAnalysisCallback:
                         result = cb['func'](
                             pathname="/physiological",
                             n_clicks=None,
-                            slider_value=[2, 8],
                             nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                            start_time=0, end_time=10,
+                            start_position=2, duration=6,
                             signal_type="PPG",
                             signal_source="original",
                             analysis_categories=["hrv"],
@@ -526,7 +516,7 @@ class TestPhysiologicalAnalysisCallback:
         mock_service.get_filter_info.return_value = {"filter_type": "lowpass"}
 
         with patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context') as mock_ctx, \
-             patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_service, create=True):
+             patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_service, create=True):
 
             mock_ctx.triggered = [{"prop_id": "physio-btn-update-analysis.n_clicks", "value": 1}]
 
@@ -550,9 +540,8 @@ class TestPhysiologicalAnalysisCallback:
                         result = cb['func'](
                             pathname="/physiological",
                             n_clicks=1,
-                            slider_value=[0, 10],
                             nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                            start_time=0, end_time=10,
+                            start_position=0, duration=10,
                             signal_type="PPG",
                             signal_source="filtered",
                             analysis_categories=["hrv"],
@@ -572,7 +561,7 @@ class TestPhysiologicalAnalysisCallback:
     def test_callback_with_default_values(self, mock_data_service_with_data):
         """Test callback with None values (uses defaults) (lines 1003-1043)"""
         with patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context') as mock_ctx, \
-             patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service_with_data, create=True):
+             patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service_with_data, create=True):
 
             mock_ctx.triggered = [{"prop_id": "physio-btn-update-analysis.n_clicks", "value": 1}]
 
@@ -596,9 +585,8 @@ class TestPhysiologicalAnalysisCallback:
                         result = cb['func'](
                             pathname="/physiological",
                             n_clicks=1,
-                            slider_value=None,
                             nudge_m10=None, nudge_m1=None, nudge_p1=None, nudge_p10=None,
-                            start_time=None, end_time=None,
+                            start_position=None, duration=None,
                             signal_type=None,
                             signal_source="original",
                             analysis_categories=None,
@@ -621,23 +609,21 @@ class TestAdditionalEdgeCases:
 
     def test_nudge_with_none_times(self):
         """Test nudge buttons with None start/end times"""
-        start_time = None
-        end_time = None
+        start_position = None
+        duration = None
         # Lines 983-984
-        if not start_time or not end_time:
-            start_time, end_time = 0, 10
-        assert start_time == 0
-        assert end_time == 10
+        if not start_position or not duration:
+            start_position, duration = 0, 10
+        assert start_position == 0
+        assert duration == 10
 
     def test_negative_time_after_nudge(self):
         """Test that negative times are clamped to 0"""
-        start_time = 5
-        end_time = 15
+        start_position = 5
+        duration = 10
         # Nudge -10 should clamp to 0
-        start_time = max(0, start_time - 10)
-        end_time = max(10, end_time - 10)
-        assert start_time == 0
-        assert end_time == 10  # Should be 10, not 5, due to max(10, 5) = 10
+        start_position = max(0, start_position - 10)
+        assert start_position == 0
 
     def test_signal_with_low_variance(self):
         """Test signal column with very low variance (lines 1109-1126)"""
@@ -654,5 +640,3 @@ class TestAdditionalEdgeCases:
         assert signal_std > pleth_std * 10
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

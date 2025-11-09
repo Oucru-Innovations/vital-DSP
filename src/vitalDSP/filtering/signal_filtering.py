@@ -1,8 +1,53 @@
+"""
+Signal Filtering Module for Physiological Signal Processing
+
+This module provides comprehensive signal filtering capabilities for physiological
+signals including ECG, PPG, EEG, and other vital signs. It implements various
+filtering techniques including bandpass, lowpass, highpass, and notch filters
+with multiple filter types and adaptive parameter optimization.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Multiple filter types (Butterworth, Chebyshev, Elliptic, Bessel)
+- Bandpass, lowpass, highpass, and notch filtering
+- Adaptive parameter optimization
+- Signal validation and error handling
+- Real-time filtering capabilities
+- Comprehensive filter design options
+
+Examples:
+--------
+Basic bandpass filtering:
+    >>> import numpy as np
+    >>> from vitalDSP.filtering.signal_filtering import SignalFiltering, BandpassFilter
+    >>> signal = np.random.randn(1000) + np.sin(np.linspace(0, 10, 1000))
+    >>> filter_obj = SignalFiltering(signal, fs=250)
+    >>> filtered = filter_obj.bandpass_filter(low=0.5, high=40)
+    >>> print(f"Filtered signal shape: {filtered.shape}")
+
+Advanced filtering with different types:
+    >>> bp_filter = BandpassFilter(band_type="butter", fs=250)
+    >>> butter_filtered = bp_filter.filter(signal, lowcut=0.5, highcut=40)
+    >>> cheby_filter = BandpassFilter(band_type="cheby1", fs=250)
+    >>> cheby_filtered = cheby_filter.filter(signal, lowcut=0.5, highcut=40)
+
+Notch filtering for power line interference:
+    >>> notch_filtered = filter_obj.notch_filter(freq=50, quality_factor=30)
+    >>> print(f"Notch filtered signal shape: {notch_filtered.shape}")
+"""
+
 import numpy as np
 
 # from scipy.signal import lfilter
 from scipy import signal
 import warnings
+from vitalDSP.utils.data_processing.validation import SignalValidator
+from vitalDSP.utils.config_utilities.adaptive_parameters import (
+    optimize_filtering_parameters,
+)
 
 warnings.filterwarnings("ignore")
 
@@ -224,9 +269,21 @@ class SignalFiltering:
         ------
         TypeError
             If the input signal is not a numpy array, it will be converted.
+        ValueError
+            If the signal is empty or invalid.
         """
         if not isinstance(signal, np.ndarray):
             signal = np.array(signal)
+
+        # Validate signal - allow NaN values for transformation contexts
+        SignalValidator.validate_signal(
+            signal,
+            min_length=2,
+            allow_empty=False,
+            allow_nan=True,
+            signal_name="signal",
+        )
+
         self.signal = signal
 
     @staticmethod
@@ -422,7 +479,9 @@ class SignalFiltering:
         kernel = kernel / np.sum(kernel)
         return kernel
 
-    def butterworth(self, cutoff, fs, order=4, btype="low", iterations=1):
+    def butterworth(
+        self, cutoff, fs, order=4, btype="low", iterations=1, adaptive=True
+    ):
         """
         Apply a Butterworth filter to the signal.
 
@@ -438,6 +497,8 @@ class SignalFiltering:
             Type of filter - 'low' or 'high'. Default is 'low'.
         iterations : int, optional
             The number of times to apply the Butterworth filter for additional filtering. Default is 1.
+        adaptive : bool, optional
+            Whether to use adaptive parameter adjustment. Default is True.
 
         Returns
         -------
@@ -454,9 +515,35 @@ class SignalFiltering:
         >>> filtered_signal = sf.butterworth(cutoff, fs, order=4)
         >>> print(filtered_signal)
         """
+        # Input validation
+        SignalValidator.validate_signal(
+            self.signal, min_length=10, signal_name="input signal"
+        )
+        cutoff, fs = SignalValidator.validate_frequency_parameters(cutoff, fs)
+        order = SignalValidator.validate_filter_order(order)
+
+        if iterations < 1:
+            raise ValueError("Iterations must be positive")
+
+        # Adaptive parameter adjustment
+        if adaptive:
+            base_params = {
+                "cutoff": cutoff,
+                "fs": fs,
+                "order": order,
+                "iterations": iterations,
+            }
+            optimized_params = optimize_filtering_parameters(
+                self.signal, fs, base_params
+            )
+            cutoff = optimized_params["cutoff"]
+            fs = optimized_params["fs"]
+            order = optimized_params["order"]
+            iterations = optimized_params["iterations"]
+
         nyquist = 0.5 * fs
         normal_cutoff = cutoff / nyquist
-        b, a = self.butter(order, normal_cutoff, btype=btype)
+        b, a = self.butter(order, normal_cutoff, btype=btype, fs=fs)
         filtered_signal = self.signal.copy()
 
         for _ in range(iterations):
@@ -490,8 +577,14 @@ class SignalFiltering:
         >>> b, a = SignalFiltering().butter(4, 0.3, btype='low', fs=1.0)
         >>> print(b, a)
         """
-        nyquist = 0.5 * fs
-        normalized_cutoff = np.array(cutoff) / nyquist
+        # Check if cutoff is already normalized (between 0 and 1)
+        if np.all(np.array(cutoff) <= 1.0):
+            # Cutoff is already normalized
+            normalized_cutoff = np.array(cutoff)
+        else:
+            # Cutoff needs normalization
+            nyquist = 0.5 * fs
+            normalized_cutoff = np.array(cutoff) / nyquist
         b, a = signal.butter(order, normalized_cutoff, btype=btype, analog=False)
         # if btype == "low":
         #     poles = np.exp(
@@ -638,6 +731,138 @@ class SignalFiltering:
 
         return filtered_signal
 
+    def chebyshev2(
+        self, cutoff, fs, order=4, btype="low", stopband_attenuation=40, iterations=1
+    ):
+        """
+        Chebyshev Type II filter implementation.
+
+        The Chebyshev Type II filter has a flat passband and equiripple stopband attenuation.
+        Unlike Type I, it has zeros in the stopband which provides sharper roll-off
+        characteristics. This filter is useful when you need better stopband attenuation
+        with acceptable passband characteristics.
+
+        Parameters
+        ----------
+        cutoff : float or list
+            Cutoff frequency of the filter. For bandpass/bandstop, provide [low, high].
+        fs : float
+            Sampling frequency of the signal.
+        order : int, optional
+            Order of the Chebyshev Type II filter. Default is 4.
+        btype : str, optional
+            Type of filter - 'low', 'high', 'band', or 'bandstop'. Default is 'low'.
+        stopband_attenuation : float, optional
+            Minimum attenuation required in the stopband in dB. Default is 40 dB.
+        iterations : int, optional
+            The number of times to apply the filter. Default is 1.
+
+        Returns
+        -------
+        filtered_signal : numpy.ndarray
+            The filtered signal.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from vitalDSP.filtering.signal_filtering import SignalFiltering
+        >>> signal = np.random.randn(1000)
+        >>> sf = SignalFiltering(signal)
+        >>> filtered = sf.chebyshev2(cutoff=50, fs=250, order=4, btype='low', stopband_attenuation=40)
+        >>> print(f"Filtered signal shape: {filtered.shape}")
+        """
+        from scipy import signal as sp_signal
+
+        nyquist = fs / 2
+
+        # Normalize cutoff frequency
+        if isinstance(cutoff, list):
+            normal_cutoff = [c / nyquist for c in cutoff]
+        else:
+            normal_cutoff = cutoff / nyquist
+
+        # Design Chebyshev Type II filter
+        b, a = sp_signal.cheby2(
+            order, stopband_attenuation, normal_cutoff, btype=btype, analog=False
+        )
+
+        # Apply filter iteratively
+        filtered_signal = self.signal.copy()
+        for _ in range(iterations):
+            filtered_signal = sp_signal.filtfilt(b, a, filtered_signal)
+
+        return filtered_signal
+
+    def bessel(self, cutoff, fs, order=4, btype="low", iterations=1):
+        """
+        Bessel (Thomson) filter implementation.
+
+        The Bessel filter has a maximally flat group delay, which means it preserves
+        the waveform shape of filtered signals in the passband. This makes it ideal
+        for applications where maintaining pulse shape is critical, such as ECG and
+        PPG signal processing.
+
+        Parameters
+        ----------
+        cutoff : float or list
+            Cutoff frequency of the filter. For bandpass/bandstop, provide [low, high].
+        fs : float
+            Sampling frequency of the signal.
+        order : int, optional
+            Order of the Bessel filter. Default is 4.
+        btype : str, optional
+            Type of filter - 'low', 'high', 'band', or 'bandstop'. Default is 'low'.
+        iterations : int, optional
+            The number of times to apply the filter. Default is 1.
+
+        Returns
+        -------
+        filtered_signal : numpy.ndarray
+            The filtered signal.
+
+        Notes
+        -----
+        The Bessel filter is particularly useful for:
+        - ECG signal processing (preserves QRS complex shape)
+        - PPG signal processing (preserves pulse waveform)
+        - Applications requiring linear phase response
+        - Situations where overshoot and ringing must be minimized
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from vitalDSP.filtering.signal_filtering import SignalFiltering
+        >>> # ECG-like signal with sharp peaks
+        >>> t = np.linspace(0, 1, 1000)
+        >>> ecg_signal = np.sin(2 * np.pi * 1.2 * t) + 0.5 * np.sin(2 * np.pi * 60 * t)
+        >>> sf = SignalFiltering(ecg_signal)
+        >>> # Apply Bessel lowpass to remove high-frequency noise while preserving peak shape
+        >>> filtered = sf.bessel(cutoff=50, fs=1000, order=4, btype='low')
+        >>> print(f"Filtered signal shape: {filtered.shape}")
+        """
+        from scipy import signal as sp_signal
+
+        nyquist = fs / 2
+
+        # Normalize cutoff frequency
+        if isinstance(cutoff, list):
+            normal_cutoff = [c / nyquist for c in cutoff]
+        else:
+            normal_cutoff = cutoff / nyquist
+
+        # Design Bessel filter
+        # Note: Bessel filter is also known as Thomson filter
+        b, a = sp_signal.bessel(
+            order, normal_cutoff, btype=btype, analog=False, norm="phase"
+        )
+
+        # Apply filter iteratively
+        filtered_signal = self.signal.copy()
+        for _ in range(iterations):
+            filtered_signal = sp_signal.filtfilt(b, a, filtered_signal)
+
+        return filtered_signal
+
     def bandpass(
         self, lowcut, highcut, fs, order=4, filter_type="butter", iterations=1
     ):
@@ -683,9 +908,11 @@ class SignalFiltering:
             if filter_type == "butter":
                 b, a = self.butter(order, [lowcut, highcut], btype="band", fs=fs)
             elif filter_type == "cheby":
-                b, a = self.chebyshev(order, [lowcut, highcut], btype="band", fs=fs)
+                # chebyshev signature: (cutoff, fs, order=4, btype="low", ...)
+                b, a = self.chebyshev([lowcut, highcut], fs, order=order, btype="band")
             elif filter_type == "elliptic":
-                b, a = self.elliptic(order, [lowcut, highcut], btype="band", fs=fs)
+                # elliptic signature: (cutoff, fs, order=4, btype="low", ...)
+                b, a = self.elliptic([lowcut, highcut], fs, order=order, btype="band")
             else:
                 raise ValueError(
                     "Unsupported filter type. Choose from 'butter', 'cheby', or 'elliptic'."

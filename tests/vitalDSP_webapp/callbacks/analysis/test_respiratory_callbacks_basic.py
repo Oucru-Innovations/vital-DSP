@@ -38,21 +38,23 @@ class TestBasicFunctions:
         assert len(signal_type) > 0
     
     def test_create_respiratory_signal_plot(self):
-        fig = create_respiratory_signal_plot(SAMPLE_DATA, SAMPLE_TIME, SAMPLE_FREQ, "PPG", [], [], 0.1, 0.8)
+        fig = create_respiratory_signal_plot(
+            SAMPLE_DATA, SAMPLE_TIME, SAMPLE_FREQ, "PPG", []
+        )
         assert isinstance(fig, go.Figure)
         assert len(fig.data) > 0
     
     def test_generate_comprehensive_respiratory_analysis(self):
         analysis = generate_comprehensive_respiratory_analysis(
             SAMPLE_DATA, SAMPLE_TIME, SAMPLE_FREQ, "PPG", 
-            ["time_domain"], [], [], 0.1, 0.8, 30, 30
+            ["time_domain"], [], 0.1, 6.0
         )
         assert isinstance(analysis, html.Div)
     
     def test_create_comprehensive_respiratory_plots(self):
         fig = create_comprehensive_respiratory_plots(
             SAMPLE_DATA, SAMPLE_TIME, SAMPLE_FREQ, "PPG", 
-            ["time_domain"], [], [], 0.1, 0.8
+            ["time_domain"], []
         )
         assert isinstance(fig, go.Figure)
     
@@ -77,12 +79,12 @@ class TestErrorHandling:
     def test_analysis_with_empty_data(self):
         analysis = generate_comprehensive_respiratory_analysis(
             np.array([]), np.array([]), SAMPLE_FREQ, "PPG", 
-            ["time_domain"], [], [], 0.1, 0.8, 30, 30
+            ["time_domain"], [], 0.1, 6.0
         )
         assert isinstance(analysis, html.Div)
     
     def test_plot_with_empty_data(self):
-        fig = create_respiratory_signal_plot(np.array([]), np.array([]), SAMPLE_FREQ, "PPG", [], [], 0.1, 0.8)
+        fig = create_respiratory_signal_plot(np.array([]), np.array([]), SAMPLE_FREQ, "PPG", [])
         assert isinstance(fig, go.Figure)
     
     def test_detect_signal_type_empty(self):
@@ -95,11 +97,11 @@ class TestDifferentSignalTypes:
         for signal_type in ["PPG", "ECG", "Respiratory"]:
             analysis = generate_comprehensive_respiratory_analysis(
                 SAMPLE_DATA, SAMPLE_TIME, SAMPLE_FREQ, signal_type, 
-                ["time_domain"], [], [], 0.1, 0.8, 30, 30
+                ["time_domain"], [], 0.1, 6.0
             )
             assert isinstance(analysis, html.Div)
     
     def test_plot_different_types(self):
         for signal_type in ["PPG", "ECG", "Respiratory"]:
-            fig = create_respiratory_signal_plot(SAMPLE_DATA, SAMPLE_TIME, SAMPLE_FREQ, signal_type, [], [], 0.1, 0.8)
+            fig = create_respiratory_signal_plot(SAMPLE_DATA, SAMPLE_TIME, SAMPLE_FREQ, signal_type, [])
             assert isinstance(fig, go.Figure)

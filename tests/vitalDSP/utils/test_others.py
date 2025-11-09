@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from vitalDSP.utils.normalization import z_score_normalization, min_max_normalization
+from vitalDSP.utils.signal_processing.normalization import z_score_normalization, min_max_normalization
 
 
 def test_z_score_normalization():

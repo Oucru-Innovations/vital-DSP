@@ -1,3 +1,48 @@
+"""
+Signal Quality Assessment Module for Physiological Signal Processing
+
+This module provides comprehensive signal quality assessment capabilities for
+physiological signals including ECG, PPG, and other vital signs. It implements
+various quality metrics such as Signal-to-Noise Ratio (SNR), Peak Signal-to-Noise
+Ratio (PSNR), and Mean Square Error (MSE) to evaluate signal quality and the
+impact of noise or processing artifacts.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Signal-to-Noise Ratio (SNR) computation
+- Peak Signal-to-Noise Ratio (PSNR) calculation
+- Mean Square Error (MSE) assessment
+- Noise-based SNR estimation
+- Comprehensive quality metrics for signal evaluation
+
+Examples:
+--------
+Basic signal quality assessment:
+    >>> import numpy as np
+    >>> from vitalDSP.signal_quality_assessment.signal_quality import SignalQuality
+    >>> original_signal = np.sin(np.linspace(0, 10, 1000))
+    >>> noise = np.random.normal(0, 0.1, 1000)
+    >>> noisy_signal = original_signal + noise
+    >>> sq = SignalQuality(original_signal, noisy_signal)
+    >>> print(f"SNR: {sq.snr():.2f} dB")
+    >>> print(f"PSNR: {sq.psnr():.2f} dB")
+    >>> print(f"MSE: {sq.mse():.6f}")
+
+Quality assessment with different noise levels:
+    >>> high_noise = np.random.normal(0, 0.5, 1000)
+    >>> very_noisy_signal = original_signal + high_noise
+    >>> sq_high_noise = SignalQuality(original_signal, very_noisy_signal)
+    >>> print(f"High noise SNR: {sq_high_noise.snr():.2f} dB")
+
+Using noise signal directly:
+    >>> sq_noise = SignalQuality(original_signal)
+    >>> snr_from_noise = sq_noise.snr_of_noise(noise)
+    >>> print(f"SNR from noise: {snr_from_noise:.2f} dB")
+"""
+
 import numpy as np
 
 

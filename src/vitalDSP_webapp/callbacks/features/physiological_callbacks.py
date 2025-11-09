@@ -16,8 +16,26 @@ import logging
 
 
 # Helper function for formatting large numbers
-def format_large_number(value, precision=3, use_scientific=False, as_integer=False):
-    """Format large numbers with appropriate scaling and units."""
+def format_large_number(
+    value, precision=3, use_scientific=False, as_integer=False, unit=None
+):
+    """
+    Format large numbers with appropriate scaling and units.
+
+    Args:
+        value: Numerical value to format
+        precision: Number of decimal places
+        use_scientific: Force scientific notation
+        as_integer: Format as integer (for counts)
+        unit: Explicit unit string (e.g., 'ms', 'Hz'). If provided, no unit conversion is applied.
+
+    Returns:
+        Formatted string with appropriate scaling
+
+    Note:
+        When unit is specified (e.g., 'ms'), the function assumes the value is already in the
+        correct unit and will NOT apply scaling conversions (no m/k prefixes).
+    """
     if value == 0:
         return "0"
 
@@ -27,6 +45,20 @@ def format_large_number(value, precision=3, use_scientific=False, as_integer=Fal
 
     abs_value = abs(value)
 
+    # If unit is explicitly provided (e.g., 'ms'), don't apply unit scaling
+    # Just format the number with appropriate notation
+    if unit is not None:
+        if use_scientific or abs_value >= 1e6:
+            return f"{value:.{precision}e}"
+        elif abs_value >= 1e3:
+            # Use thousands (k) notation
+            scaled_value = value / 1e3
+            return f"{scaled_value:.{precision}f}k"
+        else:
+            # Regular decimal notation - value is already in correct unit
+            return f"{value:.{precision}f}"
+
+    # Original behavior when no unit specified (for backward compatibility)
     if use_scientific or abs_value >= 1e6:
         # Use scientific notation for very large numbers
         return f"{value:.{precision}e}"
@@ -38,11 +70,11 @@ def format_large_number(value, precision=3, use_scientific=False, as_integer=Fal
         # Regular decimal notation
         return f"{value:.{precision}f}"
     elif abs_value >= 1e-3:
-        # Use millis (m) notation
-        scaled_value = value * 1e3
-        return f"{scaled_value:.{precision}f}m"
+        # For small values (0.001 to 1.0), just use regular decimal notation
+        # Do NOT add 'm' suffix as these might be dimensionless values (correlation, ratio, etc.)
+        return f"{value:.{precision}f}"
     else:
-        # Use scientific notation for very small numbers
+        # Use scientific notation for very small numbers (< 0.001)
         return f"{value:.{precision}e}"
 
 
@@ -57,8 +89,14 @@ def create_hrv_poincare_plot(rr_intervals, hrv_metrics):
         return go.Figure()
 
     # Prepare data for Poincaré plot (RR_n vs RR_n+1)
-    rr_n = rr_intervals[:-1]
-    rr_n1 = rr_intervals[1:]
+    # Filter out infinite values before creating Poincaré plot
+    finite_mask = np.isfinite(rr_intervals)
+    if np.sum(finite_mask) < 2:
+        return create_empty_figure()
+
+    finite_rr_intervals = rr_intervals[finite_mask]
+    rr_n = finite_rr_intervals[:-1]
+    rr_n1 = finite_rr_intervals[1:]
 
     fig = go.Figure()
 
@@ -96,7 +134,7 @@ def create_hrv_poincare_plot(rr_intervals, hrv_metrics):
     if "poincare_sd1" in hrv_metrics and "poincare_sd2" in hrv_metrics:
         sd1 = hrv_metrics["poincare_sd1"]
         sd2 = hrv_metrics["poincare_sd2"]
-        mean_rr = np.mean(rr_intervals)
+        mean_rr = np.mean(rr_intervals) if len(rr_intervals) > 0 else 0
 
         # Create ellipse for SD1 and SD2
         theta = np.linspace(0, 2 * np.pi, 100)
@@ -705,21 +743,31 @@ def register_physiological_callbacks(app):
     @app.callback(
         [Output("physio-signal-type", "value")],
         [Input("url", "pathname")],
+        [State("physio-signal-type", "value")],
         prevent_initial_call=True,
     )
-    def auto_select_physio_signal_type(pathname):
+    def auto_select_physio_signal_type(pathname, current_signal_type):
         """Auto-select signal type based on uploaded data."""
         logger.info("=== AUTO-SELECT PHYSIO SIGNAL TYPE CALLBACK TRIGGERED ===")
-        logger.info(f"Pathname: {pathname}")
+        logger.info(f"Pathname: {pathname}, Current selection: {current_signal_type}")
 
         if pathname != "/physiological":
             logger.info("Not on physiological page, preventing update")
             raise PreventUpdate
 
-        try:
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+        # If user has already made a selection, preserve it
+        if current_signal_type is not None:
+            logger.info(
+                f"User has existing signal type selection: {current_signal_type}, preserving it"
+            )
+            raise PreventUpdate
 
-            data_service = get_data_service()
+        try:
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
+
+            data_service = get_enhanced_data_service()
             if not data_service:
                 logger.warning("Data service not available")
                 return ["PPG"]
@@ -841,15 +889,18 @@ def register_physiological_callbacks(app):
         [
             Input("url", "pathname"),
             Input("physio-btn-update-analysis", "n_clicks"),
-            Input("physio-time-range-slider", "value"),
             Input("physio-btn-nudge-m10", "n_clicks"),
             Input("physio-btn-nudge-m1", "n_clicks"),
             Input("physio-btn-nudge-p1", "n_clicks"),
             Input("physio-btn-nudge-p10", "n_clicks"),
         ],
         [
-            State("physio-start-time", "value"),
-            State("physio-end-time", "value"),
+            State(
+                "physio-start-position-slider", "value"
+            ),  # NEW: start position instead of time-range-slider
+            State(
+                "physio-duration-select", "value"
+            ),  # NEW: duration instead of start-time/end-time
             State("physio-signal-type", "value"),
             State("physio-signal-source-select", "value"),
             State("physio-analysis-categories", "value"),
@@ -866,13 +917,12 @@ def register_physiological_callbacks(app):
     def physiological_analysis_callback(
         pathname,
         n_clicks,
-        slider_value,
         nudge_m10,
         nudge_m1,
         nudge_p1,
         nudge_p10,
-        start_time,
-        end_time,
+        start_position,  # NEW: start position instead of slider_value
+        duration,  # NEW: duration instead of start_time/end_time
         signal_type,
         signal_source,
         analysis_categories,
@@ -920,9 +970,11 @@ def register_physiological_callbacks(app):
 
         try:
             # Get data from the data service
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
 
             # Get the most recent data
             all_data = data_service.get_all_data()
@@ -973,36 +1025,9 @@ def register_physiological_callbacks(app):
             sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)
             logger.info(f"Sampling frequency: {sampling_freq}")
 
-            # Handle time window adjustments for nudge buttons
-            if trigger_id in [
-                "physio-btn-nudge-m10",
-                "physio-btn-nudge-m1",
-                "physio-btn-nudge-p1",
-                "physio-btn-nudge-p10",
-            ]:
-                if not start_time or not end_time:
-                    start_time, end_time = 0, 10
-
-                if trigger_id == "physio-btn-nudge-m10":
-                    start_time = max(0, start_time - 10)
-                    end_time = max(10, end_time - 10)
-                elif trigger_id == "physio-btn-nudge-m1":
-                    start_time = max(0, start_time - 1)
-                    end_time = max(1, end_time - 1)
-                elif trigger_id == "physio-btn-nudge-p1":
-                    start_time = start_time + 1
-                    end_time = end_time + 1
-                elif trigger_id == "physio-btn-nudge-p10":
-                    start_time = start_time + 10
-                    end_time = end_time + 10
-
-            # Handle time window from slider
-            if trigger_id == "physio-time-range-slider" and slider_value:
-                start_time, end_time = slider_value[0], slider_value[1]
-
             # Set default values if not provided
-            start_time = start_time or 0
-            end_time = end_time or 10
+            start_position = start_position or 0
+            duration = duration or 60  # Default to 1 minute instead of 10 seconds
             signal_type = signal_type or "auto"
             analysis_categories = analysis_categories or [
                 "hrv",
@@ -1042,7 +1067,41 @@ def register_physiological_callbacks(app):
                 "filtering",
             ]
 
-            logger.info(f"Time window: {start_time} - {end_time}")
+            # Convert duration to numeric (Select returns string)
+            try:
+                duration = float(duration) if duration is not None else 60
+            except (ValueError, TypeError):
+                duration = 60  # Default to 1 minute if conversion fails
+
+            # Convert start_position to numeric
+            try:
+                start_position = (
+                    float(start_position) if start_position is not None else 0
+                )
+            except (ValueError, TypeError):
+                start_position = 0
+
+            # Handle nudge buttons for start_position adjustments
+            if trigger_id in [
+                "physio-btn-nudge-m10",
+                "physio-btn-nudge-m1",
+                "physio-btn-nudge-p1",
+                "physio-btn-nudge-p10",
+            ]:
+                # Adjust start position by percentage
+                if trigger_id == "physio-btn-nudge-m10":
+                    start_position = max(0, start_position - 10)
+                elif trigger_id == "physio-btn-nudge-m1":
+                    start_position = max(0, start_position - 5)
+                elif trigger_id == "physio-btn-nudge-p1":
+                    start_position = min(100, start_position + 5)
+                elif trigger_id == "physio-btn-nudge-p10":
+                    start_position = min(100, start_position + 10)
+                logger.info(f"Adjusted start position via nudge: {start_position}%")
+
+            # Handle start_position as percentage (0-100) - convert to time
+            # start_position is now a percentage of the data length
+            logger.info(f"Start position: {start_position}%, Duration: {duration}s")
             logger.info(f"Signal type: {signal_type}")
             logger.info(f"Analysis categories: {analysis_categories}")
             logger.info(f"HRV options: {hrv_options}")
@@ -1185,29 +1244,38 @@ def register_physiological_callbacks(app):
                     time_data_seconds = (
                         (df[time_col] - first_timestamp).dt.total_seconds().values
                     )
-                    logger.info("Time data converted to seconds from first timestamp")
+                    time_range_seconds = time_data_seconds[-1] - time_data_seconds[0]
+                    logger.info(
+                        f"Time data converted to seconds from first timestamp. Range: {time_range_seconds:.2f}s"
+                    )
                 elif time_range > 1000:  # Likely milliseconds
                     logger.info(
                         "Time data appears to be in milliseconds, converting to seconds"
                     )
                     time_data_seconds = time_data / 1000.0
-                    # Adjust default time window for seconds
-                    if start_time == 0 and end_time == 10:
-                        start_time = 0
-                        end_time = min(
-                            60, time_range / 1000.0
-                        )  # Use up to 60 seconds or full range
-                        logger.info(
-                            f"Adjusted time window to: {start_time} - {end_time} seconds"
-                        )
+                    time_range_seconds = time_range / 1000.0
                 else:
                     # Time data is already in seconds
                     time_data_seconds = time_data
+                    time_range_seconds = time_range
                     logger.info("Time data is already in seconds")
 
+                # Convert start_position percentage to actual time
+                start_time_actual = (start_position / 100.0) * time_range_seconds
+                end_time_actual = start_time_actual + duration
+
+                # Ensure end_time doesn't exceed data range
+                if end_time_actual > time_range_seconds:
+                    end_time_actual = time_range_seconds
+                    start_time_actual = max(0, end_time_actual - duration)
+
+                logger.info(
+                    f"Time window: {start_time_actual:.2f}s to {end_time_actual:.2f}s"
+                )
+
                 # Apply time window
-                start_idx = np.searchsorted(time_data_seconds, start_time)
-                end_idx = np.searchsorted(time_data_seconds, end_time)
+                start_idx = np.searchsorted(time_data_seconds, start_time_actual)
+                end_idx = np.searchsorted(time_data_seconds, end_time_actual)
 
                 # Ensure minimum signal length for analysis (at least 5 seconds worth of data)
                 min_samples = max(
@@ -1496,54 +1564,64 @@ def register_physiological_callbacks(app):
 
     # Time input update callbacks
     @app.callback(
-        [Output("physio-start-time", "value"), Output("physio-end-time", "value")],
         [
-            Input("physio-time-range-slider", "value"),
+            Output("physio-start-position-slider", "value"),
+            Output("physio-duration-select", "value"),
+        ],
+        [
+            Input("physio-start-position-slider", "value"),
+            Input("physio-duration-select", "value"),
             Input("physio-btn-nudge-m10", "n_clicks"),
             Input("physio-btn-nudge-m1", "n_clicks"),
             Input("physio-btn-nudge-p1", "n_clicks"),
             Input("physio-btn-nudge-p10", "n_clicks"),
         ],
-        [State("physio-start-time", "value"), State("physio-end-time", "value")],
+        [
+            State("physio-start-position-slider", "value"),
+            State("physio-duration-select", "value"),
+        ],
     )
     def update_physio_time_inputs(
-        slider_value, nudge_m10, nudge_m1, nudge_p1, nudge_p10, start_time, end_time
+        start_position,
+        duration,
+        nudge_m10,
+        nudge_m1,
+        nudge_p1,
+        nudge_p10,
+        current_start,
+        current_duration,
     ):
-        """Update time inputs based on slider or nudge buttons."""
+        """Update time inputs based on nudge buttons."""
         ctx = callback_context
         if not ctx.triggered:
-            raise Exception("No trigger detected")
+            raise PreventUpdate
 
         trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-        if trigger_id == "physio-time-range-slider" and slider_value:
-            return slider_value[0], slider_value[1]
+        # Use current values if available, otherwise defaults
+        start_pos = current_start if current_start is not None else 0
+        dur = current_duration if current_duration is not None else 10
 
-        # Handle nudge buttons
-        time_window = end_time - start_time if start_time and end_time else 10
-
+        # Handle nudge buttons (percentage-based)
         if trigger_id == "physio-btn-nudge-m10":
-            new_start = max(0, start_time - 10) if start_time else 0
-            new_end = new_start + time_window
-            return new_start, new_end
+            new_start = max(0, start_pos - 10)  # Decrease by 10%
+            return new_start, dur
         elif trigger_id == "physio-btn-nudge-m1":
-            new_start = max(0, start_time - 1) if start_time else 0
-            new_end = new_start + time_window
-            return new_start, new_end
+            new_start = max(0, start_pos - 5)  # Decrease by 5%
+            return new_start, dur
         elif trigger_id == "physio-btn-nudge-p1":
-            new_start = start_time + 1 if start_time else 1
-            new_end = new_start + time_window
-            return new_start, new_end
+            new_start = min(100, start_pos + 5)  # Increase by 5%
+            return new_start, dur
         elif trigger_id == "physio-btn-nudge-p10":
-            new_start = start_time + 10 if start_time else 10
-            new_end = new_start + time_window
-            return new_start, new_end
+            new_start = min(100, start_pos + 10)  # Increase by 10%
+            return new_start, dur
 
-        return no_update, no_update
+        # Return current values for other triggers
+        return start_pos, dur
 
     # Time slider range update callback
     @app.callback(
-        Output("physio-time-range-slider", "max"),
+        Output("physio-start-position-slider", "max"),
         [Input("store-uploaded-data", "data")],
     )
     def update_physio_time_slider_range(data_store):
@@ -1572,6 +1650,8 @@ def update_physio_time_inputs(
     slider_value, nudge_m10, nudge_m1, nudge_p1, nudge_p10, start_time, end_time
 ):
     """Update time inputs based on slider or nudge buttons."""
+    # NOTE: This function appears to be legacy code for old start/end time pattern
+    # It's kept for backward compatibility but may not be used in the new start/duration pattern
     ctx = callback_context
     if not ctx.triggered:
         raise Exception("No trigger detected")
@@ -1581,7 +1661,7 @@ def update_physio_time_inputs(
     if trigger_id == "physio-time-range-slider" and slider_value:
         return slider_value[0], slider_value[1]
 
-    # Handle nudge buttons
+    # Handle nudge buttons (legacy - using percentage-based adjustments now)
     time_window = end_time - start_time if start_time and end_time else 10
 
     if trigger_id == "physio-btn-nudge-m10":
@@ -1589,11 +1669,11 @@ def update_physio_time_inputs(
         new_end = new_start + time_window
         return new_start, new_end
     elif trigger_id == "physio-btn-nudge-m1":
-        new_start = max(0, start_time - 1) if start_time else 0
+        new_start = max(0, start_time - 5) if start_time else 0  # Changed to 5
         new_end = new_start + time_window
         return new_start, new_end
     elif trigger_id == "physio-btn-nudge-p1":
-        new_start = start_time + 1 if start_time else 1
+        new_start = start_time + 5 if start_time else 5  # Changed to 5
         new_end = new_start + time_window
         return new_start, new_end
     elif trigger_id == "physio-btn-nudge-p10":
@@ -1650,9 +1730,13 @@ def detect_physiological_signal_type(signal_data, sampling_freq):
         mean_val = np.mean(signal_data)
         std_val = np.std(signal_data)
 
-        # Find peaks for frequency analysis
-        peaks, _ = signal.find_peaks(
-            signal_data, height=mean_val + std_val, distance=int(sampling_freq * 0.3)
+        # Find peaks for frequency analysis using scipy
+        from scipy import signal as sp_signal
+
+        peaks, _ = sp_signal.find_peaks(
+            signal_data,
+            height=mean_val + std_val,
+            distance=int(sampling_freq * 0.3),
         )
 
         if len(peaks) > 1:
@@ -1703,12 +1787,17 @@ def create_physiological_signal_plot(
                 sampling_freq * 0.3
             )  # Minimum 0.3 seconds between peaks
 
-            peaks, properties = signal.find_peaks(
-                signal_data,
-                height=height_threshold,
-                distance=distance_threshold,
-                prominence=np.std(signal_data) * 0.5,
+            # Use vitalDSP for ECG/PPG peak detection
+            from vitalDSP.physiological_features.waveform import WaveformMorphology
+
+            wm = WaveformMorphology(
+                signal_data, fs=sampling_freq, signal_type=signal_type.upper()
             )
+            if signal_type.lower() == "ecg":
+                peaks = wm.r_peaks
+            elif signal_type.lower() == "ppg":
+                peaks = wm.systolic_peaks
+            properties = {}
 
             if len(peaks) > 0:
                 # Add peak markers with red arrows
@@ -1894,22 +1983,26 @@ def perform_physiological_analysis(
         # Morphology Analysis
         if "morphology" in analysis_categories:
             results["morphology_metrics"] = analyze_morphology(
-                signal_data, sampling_freq, morphology_options
+                signal_data, sampling_freq, morphology_options, signal_type
             )
 
         # Beat-to-Beat Analysis
         if "beat2beat" in analysis_categories:
             results["beat2beat_metrics"] = analyze_beat_to_beat(
-                signal_data, sampling_freq
+                signal_data, sampling_freq, signal_type
             )
 
         # Energy Analysis
         if "energy" in analysis_categories:
-            results["energy_metrics"] = analyze_energy(signal_data, sampling_freq)
+            results["energy_metrics"] = analyze_energy(
+                signal_data, sampling_freq, signal_type
+            )
 
         # Envelope Detection
         if "envelope" in analysis_categories:
-            results["envelope_metrics"] = analyze_envelope(signal_data, sampling_freq)
+            results["envelope_metrics"] = analyze_envelope(
+                signal_data, sampling_freq, signal_type
+            )
 
         # Signal Segmentation
         if "segmentation" in analysis_categories:
@@ -2002,12 +2095,25 @@ def create_physiological_analysis_plots(
         height_threshold = np.mean(signal_data) + 1.5 * np.std(signal_data)
         distance_threshold = int(sampling_freq * 0.3)
 
-        peaks, _ = signal.find_peaks(
-            signal_data,
-            height=height_threshold,
-            distance=distance_threshold,
-            prominence=np.std(signal_data) * 0.5,
-        )
+        # Use vitalDSP for ECG/PPG peak detection, scipy for others
+        if signal_type and signal_type.lower() in ["ecg", "ppg"]:
+            from vitalDSP.physiological_features.waveform import WaveformMorphology
+
+            wm = WaveformMorphology(
+                signal_data, fs=sampling_freq, signal_type=signal_type.upper()
+            )
+            if signal_type.lower() == "ecg":
+                peaks = wm.r_peaks
+            elif signal_type.lower() == "ppg":
+                peaks = wm.systolic_peaks
+        else:
+            # Use scipy for other signal types
+            peaks, _ = signal.find_peaks(
+                signal_data,
+                height=height_threshold,
+                distance=distance_threshold,
+                prominence=np.std(signal_data) * 0.5,
+            )
 
         # Create a 2x2 subplot layout for comprehensive analysis view
         fig = make_subplots(
@@ -2160,8 +2266,8 @@ def create_physiological_analysis_plots(
             )
 
             # Add interval statistics
-            mean_interval = np.mean(beat_intervals)
-            std_interval = np.std(beat_intervals)
+            mean_interval = np.mean(beat_intervals) if len(beat_intervals) > 0 else 0
+            std_interval = np.std(beat_intervals) if len(beat_intervals) > 0 else 0
             heart_rate = 60 / mean_interval if mean_interval > 0 else 0
 
             fig.add_hline(
@@ -2339,22 +2445,26 @@ def create_physiological_analysis_plots(
                 )  # Convert to milliseconds
 
                 # Create Poincaré plot (RR_n vs RR_{n+1})
-                fig.add_trace(
-                    go.Scatter(
-                        x=rr_intervals[:-1],
-                        y=rr_intervals[1:],
-                        mode="markers",
-                        name="Poincaré Plot",
-                        marker=dict(
-                            color="rgba(156, 39, 176, 0.7)",
-                            size=8,
-                            symbol="circle",
-                            line=dict(color="rgba(156, 39, 176, 1)", width=1),
+                # Filter out infinite values
+                finite_mask = np.isfinite(rr_intervals)
+                if np.sum(finite_mask) >= 2:
+                    finite_rr_intervals = rr_intervals[finite_mask]
+                    fig.add_trace(
+                        go.Scatter(
+                            x=finite_rr_intervals[:-1],
+                            y=finite_rr_intervals[1:],
+                            mode="markers",
+                            name="Poincaré Plot",
+                            marker=dict(
+                                color="rgba(156, 39, 176, 0.7)",
+                                size=8,
+                                symbol="circle",
+                                line=dict(color="rgba(156, 39, 176, 1)", width=1),
+                            ),
                         ),
-                    ),
-                    row=2,
-                    col=2,
-                )
+                        row=2,
+                        col=2,
+                    )
 
                 # Calculate Poincaré plot statistics
                 diff_rr = np.diff(rr_intervals)
@@ -2362,9 +2472,21 @@ def create_physiological_analysis_plots(
                 sd2 = np.std(rr_intervals) * np.sqrt(2)
 
                 # Add SD1 and SD2 ellipses
-                center_x, center_y = np.mean(rr_intervals[:-1]), np.mean(
-                    rr_intervals[1:]
-                )
+                finite_mask = np.isfinite(rr_intervals)
+                if np.sum(finite_mask) >= 2:
+                    finite_rr_intervals = rr_intervals[finite_mask]
+                    center_x, center_y = (
+                        (
+                            np.mean(finite_rr_intervals[:-1])
+                            if len(finite_rr_intervals) > 1
+                            else 0
+                        ),
+                        (
+                            np.mean(finite_rr_intervals[1:])
+                            if len(finite_rr_intervals) > 1
+                            else 0
+                        ),
+                    )
 
                 # Create SD1 ellipse points
                 theta = np.linspace(0, 2 * np.pi, 100)
@@ -2556,6 +2678,69 @@ def create_physiological_analysis_plots(
         return create_empty_figure()
 
 
+def analyze_hrv_fallback(signal_data, sampling_freq, hrv_options):
+    """Fallback HRV analysis when vitalDSP is not available."""
+    try:
+        # Check if signal is long enough for HRV analysis
+        min_samples_for_hrv = 5 * sampling_freq  # At least 5 seconds
+        if len(signal_data) < min_samples_for_hrv:
+            logger.warning(
+                f"Signal too short for HRV analysis ({len(signal_data)} samples, need at least {min_samples_for_hrv})"
+            )
+            return {
+                "error": f"Signal too short for HRV analysis. Need at least {min_samples_for_hrv} samples."
+            }
+
+        # Fallback to basic analysis if vitalDSP not available
+        logger.warning("vitalDSP HRV features not available, using basic analysis")
+
+        # Find peaks using scipy (simpler fallback)
+        peaks, _ = signal.find_peaks(
+            signal_data,
+            height=np.mean(signal_data) + np.std(signal_data),
+            distance=int(sampling_freq * 0.3),
+        )
+
+        if len(peaks) < 2:
+            return {"error": "Insufficient peaks for HRV analysis"}
+
+        # Calculate RR intervals
+        rr_intervals = np.diff(peaks) / sampling_freq * 1000  # Convert to milliseconds
+
+        hrv_metrics = {}
+
+        if "time_domain" in hrv_options:
+            hrv_metrics.update(
+                {
+                    "mean_rr": (np.mean(rr_intervals) if len(rr_intervals) > 0 else 0),
+                    "std_rr": np.std(rr_intervals) if len(rr_intervals) > 0 else 0,
+                    "rmssd": (
+                        np.sqrt(np.mean(np.diff(rr_intervals) ** 2))
+                        if len(rr_intervals) > 1
+                        else 0
+                    ),
+                    "nn50": (
+                        np.sum(np.abs(np.diff(rr_intervals)) > 50)
+                        if len(rr_intervals) > 1
+                        else 0
+                    ),
+                    "pnn50": (
+                        np.sum(np.abs(np.diff(rr_intervals)) > 50)
+                        / len(rr_intervals)
+                        * 100
+                        if len(rr_intervals) > 1
+                        else 0
+                    ),
+                }
+            )
+
+        return hrv_metrics
+
+    except Exception as e:
+        logger.error(f"Error in HRV fallback analysis: {e}")
+        return {"error": f"HRV fallback analysis failed: {str(e)}"}
+
+
 def analyze_hrv(signal_data, sampling_freq, hrv_options):
     """Analyze Heart Rate Variability using vitalDSP."""
     try:
@@ -2570,15 +2755,18 @@ def analyze_hrv(signal_data, sampling_freq, hrv_options):
             # Create HRV features object
             hrv_features = HRVFeatures(signal_data, sampling_freq)
 
-            hrv_metrics = {}
+            # Compute all HRV features
+            hrv_result = hrv_features.compute_all_features()
+
+            # Map vitalDSP results to our format
+            mapped_results = {}
 
             if "time_domain" in hrv_options:
-                # Get time domain features
-                time_domain_features = hrv_features.get_time_domain_features()
-                hrv_metrics.update(
+                time_domain_features = hrv_result.get("time_domain", {})
+                mapped_results.update(
                     {
-                        "mean_rr": time_domain_features.get("mean_rr", 0),
-                        "std_rr": time_domain_features.get("std_rr", 0),
+                        "mean_rr": time_domain_features.get("mean_nn", 0),
+                        "std_rr": time_domain_features.get("std_nn", 0),
                         "rmssd": time_domain_features.get("rmssd", 0),
                         "nn50": time_domain_features.get("nn50", 0),
                         "pnn50": time_domain_features.get("pnn50", 0),
@@ -2586,9 +2774,8 @@ def analyze_hrv(signal_data, sampling_freq, hrv_options):
                 )
 
             if "frequency_domain" in hrv_options or "freq_domain" in hrv_options:
-                # Get frequency domain features
-                freq_domain_features = hrv_features.get_frequency_domain_features()
-                hrv_metrics.update(
+                freq_domain_features = hrv_result.get("frequency_domain", {})
+                mapped_results.update(
                     {
                         "total_power": freq_domain_features.get("total_power", 0),
                         "vlf_power": freq_domain_features.get("vlf_power", 0),
@@ -2598,82 +2785,20 @@ def analyze_hrv(signal_data, sampling_freq, hrv_options):
                     }
                 )
 
+            return mapped_results
+
         except ImportError:
-            # Fallback to basic analysis if vitalDSP not available
-            logger.warning("vitalDSP HRV features not available, using basic analysis")
-
-            # Find peaks
-            peaks, _ = signal.find_peaks(
-                signal_data,
-                height=np.mean(signal_data) + np.std(signal_data),
-                distance=int(sampling_freq * 0.3),
-            )
-
-            if len(peaks) < 2:
-                return {"error": "Insufficient peaks for HRV analysis"}
-
-            # Calculate RR intervals
-            rr_intervals = (
-                np.diff(peaks) / sampling_freq * 1000
-            )  # Convert to milliseconds
-
-            hrv_metrics = {}
-
-            if "time_domain" in hrv_options:
-                hrv_metrics.update(
-                    {
-                        "mean_rr": np.mean(rr_intervals),
-                        "std_rr": np.std(rr_intervals),
-                        "rmssd": np.sqrt(np.mean(np.diff(rr_intervals) ** 2)),
-                        "nn50": np.sum(np.abs(np.diff(rr_intervals)) > 50),
-                        "pnn50": (
-                            np.sum(np.abs(np.diff(rr_intervals)) > 50)
-                            / len(rr_intervals)
-                        )
-                        * 100,
-                    }
-                )
-
-            if "frequency_domain" in hrv_options or "freq_domain" in hrv_options:
-                # Simple frequency domain analysis
-                freqs, psd = signal.welch(rr_intervals, fs=1000 / np.mean(rr_intervals))
-                hrv_metrics.update(
-                    {
-                        "total_power": np.sum(psd),
-                        "vlf_power": np.sum(psd[freqs < 0.04]),
-                        "lf_power": np.sum(psd[(freqs >= 0.04) & (freqs < 0.15)]),
-                        "hf_power": np.sum(psd[(freqs >= 0.15) & (freqs < 0.4)]),
-                        "lf_hf_ratio": np.sum(psd[(freqs >= 0.04) & (freqs < 0.15)])
-                        / np.sum(psd[(freqs >= 0.15) & (freqs < 0.4)]),
-                    }
-                )
-
-        if "nonlinear" in hrv_options:
-            # Nonlinear HRV analysis
-            try:
-                # Poincaré plot analysis
-                if len(rr_intervals) > 1:
-                    rr_diff = np.diff(rr_intervals)
-                    sd1 = np.std(rr_diff) / np.sqrt(2)
-                    sd2 = np.sqrt(2 * np.var(rr_intervals) - np.var(rr_diff) / 2)
-
-                    hrv_metrics.update(
-                        {"poincare_sd1": float(sd1), "poincare_sd2": float(sd2)}
-                    )
-                else:
-                    hrv_metrics.update({"poincare_sd1": 0.0, "poincare_sd2": 0.0})
-            except Exception as e:
-                logger.warning(f"Nonlinear HRV analysis failed: {e}")
-                hrv_metrics.update({"poincare_sd1": 0.0, "poincare_sd2": 0.0})
-
-        return hrv_metrics
+            # Use fallback implementation
+            return analyze_hrv_fallback(signal_data, sampling_freq, hrv_options)
 
     except Exception as e:
         logger.error(f"Error in HRV analysis: {e}")
         return {"error": f"HRV analysis failed: {str(e)}"}
 
 
-def analyze_morphology(signal_data, sampling_freq, morphology_options):
+def analyze_morphology(
+    signal_data, sampling_freq, morphology_options, signal_type=None
+):
     """Analyze signal morphology using vitalDSP."""
     try:
         morphology_metrics = {}
@@ -2719,26 +2844,8 @@ def analyze_morphology(signal_data, sampling_freq, morphology_options):
                 morphology_metrics.update(duration_features)
 
         except ImportError:
-            # Fallback to basic analysis if vitalDSP not available
-            logger.warning(
-                "vitalDSP morphology features not available, using basic analysis"
-            )
-
-            if "peak_detection" in morphology_options or "peaks" in morphology_options:
-                peaks, properties = signal.find_peaks(
-                    signal_data,
-                    height=np.mean(signal_data) + np.std(signal_data),
-                    distance=int(sampling_freq * 0.3),
-                )
-                morphology_metrics.update(
-                    {
-                        "num_peaks": len(peaks),
-                        "peak_heights": (
-                            signal_data[peaks].tolist() if len(peaks) > 0 else []
-                        ),
-                        "peak_positions": peaks.tolist() if len(peaks) > 0 else [],
-                    }
-                )
+            logger.warning("vitalDSP morphology features not available")
+            return {"error": "Morphology analysis not available"}
 
             if "amplitude" in morphology_options:
                 morphology_metrics.update(
@@ -2867,18 +2974,67 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                     if key.endswith("_db"):
                         formatted_value = f"{value:.1f} dB"
                     elif key.endswith("_ratio") or key.endswith("_strength"):
-                        formatted_value = f"{value:.3f}"
+                        # Handle infinity and NaN values
+                        if np.isinf(value):
+                            formatted_value = "N/A (HF power = 0)"
+                        elif np.isnan(value):
+                            formatted_value = "N/A"
+                        else:
+                            formatted_value = f"{value:.3f}"
                     elif key.endswith("_freq") or key.endswith("_frequency"):
                         formatted_value = f"{value:.3f} Hz"
+                    elif key == "pnn50" or key == "pnn_20" or key.startswith("pnn_"):
+                        # Percentage values (pNN50, pNN20, etc.)
+                        formatted_value = f"{value:.2f}%"
+                    elif key.endswith("nu_power") or key.endswith("_normalized"):
+                        # Normalized power values (LFnu, HFnu)
+                        formatted_value = f"{value:.3f} (n.u.)"
+                    elif key == "cvnn":
+                        # Coefficient of variation (percentage)
+                        formatted_value = f"{value:.2f}%"
+                    elif (
+                        key.endswith("_entropy")
+                        or key == "sample_entropy"
+                        or key == "approximate_entropy"
+                    ):
+                        # Entropy values
+                        if value is None or np.isnan(value):
+                            formatted_value = "N/A"
+                        else:
+                            formatted_value = f"{value:.3f}"
+                    elif (
+                        key.startswith("dfa_")
+                        or key.endswith("_alpha1")
+                        or key.endswith("_alpha2")
+                    ):
+                        # DFA alpha values (dimensionless)
+                        formatted_value = f"{value:.3f}"
+                    elif key == "fractal_dimension" or key == "lyapunov_exponent":
+                        # Nonlinear features
+                        formatted_value = f"{value:.3f}"
                     elif (
                         key.endswith("_ms")
                         or key == "mean_rr"
                         or key == "rmssd"
-                        or key == "mean_beat_interval"
-                        or key == "beat_variability"
-                        or key == "beat_regularity"
+                        or key == "sdnn"
+                        or key == "std_nn"
+                        or key == "median_nn"
+                        or key == "iqr_nn"
+                        or key == "sdsd"
+                        or key == "poincare_sd1"
+                        or key == "poincare_sd2"
                     ):
-                        formatted_value = f"{format_large_number(value)} ms"
+                        # Values are already in milliseconds - don't apply unit conversion
+                        formatted_value = f"{format_large_number(value, unit='ms')} ms"
+                    elif key == "mean_beat_interval" or key == "beat_variability":
+                        # Convert from seconds to milliseconds
+                        value_ms = value * 1000
+                        formatted_value = (
+                            f"{format_large_number(value_ms, unit='ms')} ms"
+                        )
+                    elif key == "beat_regularity":
+                        # Regularity is dimensionless
+                        formatted_value = f"{value:.3f}"
                     elif (
                         key.endswith("_peaks")
                         or key.endswith("_beats")
@@ -2888,6 +3044,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                         or key == "zero_crossings"
                         or key == "envelope_peaks"
                         or key == "anomalies_detected"
+                        or key == "nn50"
                     ):
                         # Integer formatting for counts
                         formatted_value = format_large_number(value, as_integer=True)
@@ -2982,23 +3139,85 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 className="h-100 border-0 shadow-sm",
             )
 
-        # HRV Results
+        # HRV Results - Time Domain
         if "hrv_metrics" in results and "error" not in results["hrv_metrics"]:
-            hrv_metrics = {
+            hrv_time_metrics = {
                 "mean_rr": results["hrv_metrics"].get("mean_rr", 0),
+                "sdnn": results["hrv_metrics"].get("sdnn", 0),
                 "rmssd": results["hrv_metrics"].get("rmssd", 0),
+                "nn50": results["hrv_metrics"].get("nn50", 0),
                 "pnn50": results["hrv_metrics"].get("pnn50", 0),
+                "pnn_20": results["hrv_metrics"].get("pnn_20", 0),
+            }
+            hrv_time_card = create_metric_card(
+                "HRV - Time Domain", "💓", hrv_time_metrics, "danger"
+            )
+            if hrv_time_card:
+                sections.append(
+                    html.Div(
+                        hrv_time_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"
+                    )
+                )
+
+            # HRV Results - Frequency Domain
+            hrv_freq_metrics = {
+                "total_power": results["hrv_metrics"].get("total_power", 0),
+                "ulf_power": results["hrv_metrics"].get("ulf_power", 0),
+                "vlf_power": results["hrv_metrics"].get("vlf_power", 0),
                 "lf_power": results["hrv_metrics"].get("lf_power", 0),
                 "hf_power": results["hrv_metrics"].get("hf_power", 0),
                 "lf_hf_ratio": results["hrv_metrics"].get("lf_hf_ratio", 0),
+                "lfnu_power": results["hrv_metrics"].get("lfnu_power", 0),
+                "hfnu_power": results["hrv_metrics"].get("hfnu_power", 0),
             }
-            hrv_card = create_metric_card(
-                "Heart Rate Variability", "💓", hrv_metrics, "danger"
+            hrv_freq_card = create_metric_card(
+                "HRV - Frequency Domain", "📡", hrv_freq_metrics, "warning"
             )
-            if hrv_card:
+            if hrv_freq_card:
                 sections.append(
-                    html.Div(hrv_card, className="col-lg-4 col-md-6 col-sm-12 mb-3")
+                    html.Div(
+                        hrv_freq_card, className="col-lg-4 col-md-6 col-sm-12 mb-3"
+                    )
                 )
+
+            # HRV Results - Nonlinear
+            hrv_nonlinear_metrics = {}
+            if results["hrv_metrics"].get("poincare_sd1") is not None:
+                hrv_nonlinear_metrics["poincare_sd1"] = results["hrv_metrics"].get(
+                    "poincare_sd1", 0
+                )
+            if results["hrv_metrics"].get("poincare_sd2") is not None:
+                hrv_nonlinear_metrics["poincare_sd2"] = results["hrv_metrics"].get(
+                    "poincare_sd2", 0
+                )
+            if results["hrv_metrics"].get("poincare_sd1_sd2_ratio") is not None:
+                hrv_nonlinear_metrics["poincare_sd1_sd2_ratio"] = results[
+                    "hrv_metrics"
+                ].get("poincare_sd1_sd2_ratio", 0)
+            if results["hrv_metrics"].get("dfa_alpha1") is not None:
+                hrv_nonlinear_metrics["dfa_alpha1"] = results["hrv_metrics"].get(
+                    "dfa_alpha1", 0
+                )
+            if results["hrv_metrics"].get("sample_entropy") is not None:
+                hrv_nonlinear_metrics["sample_entropy"] = results["hrv_metrics"].get(
+                    "sample_entropy", 0
+                )
+            if results["hrv_metrics"].get("approximate_entropy") is not None:
+                hrv_nonlinear_metrics["approximate_entropy"] = results[
+                    "hrv_metrics"
+                ].get("approximate_entropy", 0)
+
+            if hrv_nonlinear_metrics:
+                hrv_nonlinear_card = create_metric_card(
+                    "HRV - Nonlinear", "🌀", hrv_nonlinear_metrics, "info"
+                )
+                if hrv_nonlinear_card:
+                    sections.append(
+                        html.Div(
+                            hrv_nonlinear_card,
+                            className="col-lg-4 col-md-6 col-sm-12 mb-3",
+                        )
+                    )
 
         # Morphology Results
         if (
@@ -3367,19 +3586,35 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
         )
 
 
-def create_hrv_plots(time_data, signal_data, sampling_freq, hrv_options):
+def create_hrv_plots(
+    time_data, signal_data, sampling_freq, hrv_options, signal_type=None
+):
     """Create HRV-specific plots with enhanced visualization and analysis."""
     try:
         # Find peaks for RR intervals with enhanced detection
         height_threshold = np.mean(signal_data) + 1.5 * np.std(signal_data)
         distance_threshold = int(sampling_freq * 0.3)
 
-        peaks, properties = signal.find_peaks(
-            signal_data,
-            height=height_threshold,
-            distance=distance_threshold,
-            prominence=np.std(signal_data) * 0.5,
-        )
+        # Use vitalDSP for ECG/PPG peak detection, scipy for others
+        if signal_type and signal_type.lower() in ["ecg", "ppg"]:
+            from vitalDSP.physiological_features.waveform import WaveformMorphology
+
+            wm = WaveformMorphology(
+                signal_data, fs=sampling_freq, signal_type=signal_type.upper()
+            )
+            if signal_type.lower() == "ecg":
+                peaks = wm.r_peaks
+            elif signal_type.lower() == "ppg":
+                peaks = wm.systolic_peaks
+            properties = {}
+        else:
+            # Use scipy for other signal types
+            peaks, properties = signal.find_peaks(
+                signal_data,
+                height=height_threshold,
+                distance=distance_threshold,
+                prominence=np.std(signal_data) * 0.5,
+            )
 
         if len(peaks) < 2:
             return create_empty_figure()
@@ -3428,8 +3663,8 @@ def create_hrv_plots(time_data, signal_data, sampling_freq, hrv_options):
         )
 
         # Add RR interval statistics
-        mean_rr = np.mean(rr_intervals)
-        std_rr = np.std(rr_intervals)
+        mean_rr = np.mean(rr_intervals) if len(rr_intervals) > 0 else 0
+        std_rr = np.std(rr_intervals) if len(rr_intervals) > 0 else 0
 
         fig.add_hline(
             y=mean_rr,
@@ -3586,22 +3821,26 @@ def create_hrv_plots(time_data, signal_data, sampling_freq, hrv_options):
         # Nonlinear analysis with enhanced Poincaré plot
         if "nonlinear" in hrv_options:
             # Poincaré plot with enhanced styling
-            fig.add_trace(
-                go.Scatter(
-                    x=rr_intervals[:-1],
-                    y=rr_intervals[1:],
-                    mode="markers",
-                    name="Poincaré Plot",
-                    marker=dict(
-                        color="rgba(156, 39, 176, 0.7)",
-                        size=8,
-                        symbol="circle",
-                        line=dict(color="rgba(156, 39, 176, 1)", width=1),
+            # Filter out infinite values
+            finite_mask = np.isfinite(rr_intervals)
+            if np.sum(finite_mask) >= 2:
+                finite_rr_intervals = rr_intervals[finite_mask]
+                fig.add_trace(
+                    go.Scatter(
+                        x=finite_rr_intervals[:-1],
+                        y=finite_rr_intervals[1:],
+                        mode="markers",
+                        name="Poincaré Plot",
+                        marker=dict(
+                            color="rgba(156, 39, 176, 0.7)",
+                            size=8,
+                            symbol="circle",
+                            line=dict(color="rgba(156, 39, 176, 1)", width=1),
+                        ),
                     ),
-                ),
-                row=current_row,
-                col=1,
-            )
+                    row=current_row,
+                    col=1,
+                )
 
             # Add Poincaré plot statistics
             try:
@@ -3611,9 +3850,21 @@ def create_hrv_plots(time_data, signal_data, sampling_freq, hrv_options):
                 sd2 = np.std(rr_intervals) * np.sqrt(2)
 
                 # Add ellipses
-                center_x, center_y = np.mean(rr_intervals[:-1]), np.mean(
-                    rr_intervals[1:]
-                )
+                finite_mask = np.isfinite(rr_intervals)
+                if np.sum(finite_mask) >= 2:
+                    finite_rr_intervals = rr_intervals[finite_mask]
+                    center_x, center_y = (
+                        (
+                            np.mean(finite_rr_intervals[:-1])
+                            if len(finite_rr_intervals) > 1
+                            else 0
+                        ),
+                        (
+                            np.mean(finite_rr_intervals[1:])
+                            if len(finite_rr_intervals) > 1
+                            else 0
+                        ),
+                    )
 
                 # Create ellipse points
                 theta = np.linspace(0, 2 * np.pi, 100)
@@ -3694,19 +3945,35 @@ def create_hrv_plots(time_data, signal_data, sampling_freq, hrv_options):
         return create_empty_figure()
 
 
-def create_morphology_plots(time_data, signal_data, sampling_freq, morphology_options):
+def create_morphology_plots(
+    time_data, signal_data, sampling_freq, morphology_options, signal_type=None
+):
     """Create enhanced morphology-specific plots with red arrows and comprehensive analysis."""
     try:
         # Enhanced peak detection
         height_threshold = np.mean(signal_data) + 1.5 * np.std(signal_data)
         distance_threshold = int(sampling_freq * 0.3)
 
-        peaks, properties = signal.find_peaks(
-            signal_data,
-            height=height_threshold,
-            distance=distance_threshold,
-            prominence=np.std(signal_data) * 0.5,
-        )
+        # Use vitalDSP for ECG/PPG peak detection, scipy for others
+        if signal_type and signal_type.lower() in ["ecg", "ppg"]:
+            from vitalDSP.physiological_features.waveform import WaveformMorphology
+
+            wm = WaveformMorphology(
+                signal_data, fs=sampling_freq, signal_type=signal_type.upper()
+            )
+            if signal_type.lower() == "ecg":
+                peaks = wm.r_peaks
+            elif signal_type.lower() == "ppg":
+                peaks = wm.systolic_peaks
+            properties = {}
+        else:
+            # Use scipy for other signal types
+            peaks, properties = signal.find_peaks(
+                signal_data,
+                height=height_threshold,
+                distance=distance_threshold,
+                prominence=np.std(signal_data) * 0.5,
+            )
 
         # Determine number of subplots based on options
         num_plots = 1  # Always show main signal
@@ -3868,8 +4135,8 @@ def create_morphology_plots(time_data, signal_data, sampling_freq, morphology_op
             )
 
             # Add interval statistics
-            mean_interval = np.mean(beat_intervals)
-            std_interval = np.std(beat_intervals)
+            mean_interval = np.mean(beat_intervals) if len(beat_intervals) > 0 else 0
+            std_interval = np.std(beat_intervals) if len(beat_intervals) > 0 else 0
 
             fig.add_hline(
                 y=mean_interval,
@@ -3996,15 +4263,28 @@ def create_morphology_plots(time_data, signal_data, sampling_freq, morphology_op
 # New Analysis Functions for Comprehensive Physiological Features
 
 
-def analyze_beat_to_beat(signal_data, sampling_freq):
+def analyze_beat_to_beat(signal_data, sampling_freq, signal_type=None):
     """Analyze beat-to-beat characteristics."""
     try:
         # Find peaks for beat analysis
-        peaks, _ = signal.find_peaks(
-            signal_data,
-            height=np.mean(signal_data) + np.std(signal_data),
-            distance=int(sampling_freq * 0.3),
-        )
+        # Use vitalDSP for ECG/PPG peak detection, scipy for others
+        if signal_type and signal_type.lower() in ["ecg", "ppg"]:
+            from vitalDSP.physiological_features.waveform import WaveformMorphology
+
+            wm = WaveformMorphology(
+                signal_data, fs=sampling_freq, signal_type=signal_type.upper()
+            )
+            if signal_type.lower() == "ecg":
+                peaks = wm.r_peaks
+            elif signal_type.lower() == "ppg":
+                peaks = wm.systolic_peaks
+        else:
+            # Use scipy for other signal types
+            peaks, _ = signal.find_peaks(
+                signal_data,
+                height=np.mean(signal_data) + np.std(signal_data),
+                distance=int(sampling_freq * 0.3),
+            )
 
         if len(peaks) < 2:
             return {"error": "Insufficient beats for analysis"}
@@ -4018,7 +4298,9 @@ def analyze_beat_to_beat(signal_data, sampling_freq):
 
         return {
             "num_beats": len(peaks),
-            "mean_beat_interval": np.mean(beat_intervals),
+            "mean_beat_interval": (
+                np.mean(beat_intervals) if len(beat_intervals) > 0 else 0
+            ),
             "beat_variability": beat_variability,
             "beat_regularity": beat_regularity,
             "beat_intervals": beat_intervals.tolist(),
@@ -4028,7 +4310,7 @@ def analyze_beat_to_beat(signal_data, sampling_freq):
         return {"error": f"Beat-to-beat analysis failed: {str(e)}"}
 
 
-def analyze_energy(signal_data, sampling_freq):
+def analyze_energy(signal_data, sampling_freq, signal_type=None):
     """Analyze signal energy characteristics."""
     try:
         # Calculate energy metrics
@@ -4056,7 +4338,7 @@ def analyze_energy(signal_data, sampling_freq):
         return {"error": f"Energy analysis failed: {str(e)}"}
 
 
-def analyze_envelope(signal_data, sampling_freq):
+def analyze_envelope(signal_data, sampling_freq, signal_type=None):
     """Analyze signal envelope characteristics."""
     try:
         # Calculate analytic signal using Hilbert transform
@@ -4170,13 +4452,19 @@ def analyze_frequency(signal_data, sampling_freq):
         # Calculate power spectral density
         freqs, psd = signal.welch(signal_data, fs=sampling_freq)
 
-        # Calculate frequency domain metrics
+        # Calculate frequency domain metrics with safety checks
         total_power = np.sum(psd)
         dominant_freq = freqs[np.argmax(psd)]
-        spectral_centroid = np.sum(freqs * psd) / total_power
-        spectral_bandwidth = np.sqrt(
-            np.sum(((freqs - spectral_centroid) ** 2) * psd) / total_power
-        )
+
+        # Avoid divide by zero warning
+        if total_power > 0:
+            spectral_centroid = np.sum(freqs * psd) / total_power
+            spectral_bandwidth = np.sqrt(
+                np.sum(((freqs - spectral_centroid) ** 2) * psd) / total_power
+            )
+        else:
+            spectral_centroid = 0
+            spectral_bandwidth = 0
 
         # Power in different frequency bands
         power_bands = {
@@ -4280,6 +4568,154 @@ def analyze_signal_quality_advanced(signal_data, sampling_freq, quality_options=
             except Exception:
                 quality_metrics["complexity"] = 0.0
 
+        if "blind_source" in quality_options:
+            # Blind Source Separation using vitalDSP
+            try:
+                from vitalDSP.signal_quality_assessment.blind_source_separation import (
+                    center_signal,
+                    whiten_signal,
+                    fast_ica,
+                )
+
+                # For single-channel signal, create multi-channel by time-delayed versions
+                # This simulates multi-channel data for BSS demonstration
+                n_channels = 3
+                delay_samples = max(1, len(signal_data) // 100)
+
+                # Create delayed versions
+                multi_channel = np.zeros((n_channels, len(signal_data)))
+                multi_channel[0, :] = signal_data
+                multi_channel[1, delay_samples:] = signal_data[:-delay_samples]
+                if len(signal_data) > delay_samples * 2:
+                    multi_channel[2, delay_samples * 2 :] = signal_data[
+                        : -delay_samples * 2
+                    ]
+
+                # Center the signals
+                centered_signal, mean_signal = center_signal(multi_channel)
+
+                # Whiten the signals
+                whitened_signal, whitening_matrix = whiten_signal(centered_signal.T)
+
+                # Apply FastICA
+                try:
+                    sources, mixing_matrix, unmixing_matrix = fast_ica(
+                        whitened_signal.T, n_components=n_channels, max_iter=200
+                    )
+
+                    quality_metrics["blind_source_separation"] = {
+                        "n_components": n_channels,
+                        "sources_shape": sources.shape,
+                        "mixing_matrix_shape": mixing_matrix.shape,
+                        "separation_quality": float(
+                            np.mean(np.abs(np.corrcoef(sources)))
+                        ),
+                        "status": "success",
+                    }
+                except Exception as ica_error:
+                    logger.warning(f"FastICA failed: {ica_error}")
+                    quality_metrics["blind_source_separation"] = {
+                        "status": "failed",
+                        "error": str(ica_error),
+                    }
+
+            except ImportError:
+                logger.warning(
+                    "vitalDSP blind_source_separation not available, skipping BSS"
+                )
+                quality_metrics["blind_source_separation"] = {
+                    "status": "module_not_available"
+                }
+            except Exception as e:
+                logger.warning(f"Blind source separation failed: {e}")
+                quality_metrics["blind_source_separation"] = {
+                    "status": "error",
+                    "error": str(e),
+                }
+
+        if "multimodal_artifacts" in quality_options:
+            # Multi-modal Artifact Detection using vitalDSP
+            try:
+                from vitalDSP.filtering.artifact_removal import ArtifactRemoval
+                from vitalDSP.signal_quality_assessment.artifact_detection import (
+                    z_score_artifact_detection,
+                    adaptive_threshold_artifact_detection,
+                    moving_average_artifact_detection,
+                )
+
+                # Method 1: Z-score based detection
+                artifacts_zscore = z_score_artifact_detection(
+                    signal_data, z_threshold=3.0
+                )
+                zscore_ratio = np.sum(artifacts_zscore) / len(artifacts_zscore)
+
+                # Method 2: Adaptive threshold detection
+                artifacts_adaptive = adaptive_threshold_artifact_detection(
+                    signal_data, window_size=max(50, len(signal_data) // 20)
+                )
+                adaptive_ratio = np.sum(artifacts_adaptive) / len(artifacts_adaptive)
+
+                # Method 3: Moving average detection
+                artifacts_ma = moving_average_artifact_detection(
+                    signal_data, window_size=max(50, len(signal_data) // 20)
+                )
+                ma_ratio = np.sum(artifacts_ma) / len(artifacts_ma)
+
+                # Method 4: Baseline wander detection
+                ar = ArtifactRemoval(signal_data)
+                baseline_removed = ar.baseline_correction(cutoff=0.5, fs=sampling_freq)
+                baseline_artifacts = np.abs(signal_data - baseline_removed) > (
+                    3 * np.std(signal_data)
+                )
+                baseline_ratio = np.sum(baseline_artifacts) / len(baseline_artifacts)
+
+                # Consensus detection (artifact if detected by at least 2 methods)
+                consensus_artifacts = (
+                    artifacts_zscore.astype(int)
+                    + artifacts_adaptive.astype(int)
+                    + artifacts_ma.astype(int)
+                    + baseline_artifacts.astype(int)
+                ) >= 2
+                consensus_ratio = np.sum(consensus_artifacts) / len(consensus_artifacts)
+
+                quality_metrics["multimodal_artifacts"] = {
+                    "zscore_artifact_ratio": float(zscore_ratio),
+                    "adaptive_artifact_ratio": float(adaptive_ratio),
+                    "moving_average_artifact_ratio": float(ma_ratio),
+                    "baseline_artifact_ratio": float(baseline_ratio),
+                    "consensus_artifact_ratio": float(consensus_ratio),
+                    "total_artifacts_detected": int(np.sum(consensus_artifacts)),
+                    "clean_signal_percentage": float((1 - consensus_ratio) * 100),
+                    "methods_used": [
+                        "z_score",
+                        "adaptive_threshold",
+                        "moving_average",
+                        "baseline_wander",
+                    ],
+                    "status": "success",
+                }
+
+            except ImportError:
+                logger.warning(
+                    "vitalDSP artifact detection modules not available, using basic detection"
+                )
+                # Fallback to simple threshold-based detection
+                threshold = np.mean(signal_data) + 3 * np.std(signal_data)
+                artifacts = np.abs(signal_data) > threshold
+                artifact_ratio = np.sum(artifacts) / len(artifacts)
+
+                quality_metrics["multimodal_artifacts"] = {
+                    "artifact_ratio": float(artifact_ratio),
+                    "total_artifacts_detected": int(np.sum(artifacts)),
+                    "status": "fallback_simple",
+                }
+            except Exception as e:
+                logger.warning(f"Multimodal artifact detection failed: {e}")
+                quality_metrics["multimodal_artifacts"] = {
+                    "status": "error",
+                    "error": str(e),
+                }
+
         return quality_metrics
     except Exception as e:
         logger.error(f"Error in advanced quality analysis: {e}")
@@ -4287,7 +4723,7 @@ def analyze_signal_quality_advanced(signal_data, sampling_freq, quality_options=
 
 
 def analyze_transforms(signal_data, sampling_freq, transform_options):
-    """Analyze signal transforms."""
+    """Analyze signal transforms using vitalDSP."""
     try:
         transform_metrics = {}
 
@@ -4300,16 +4736,52 @@ def analyze_transforms(signal_data, sampling_freq, transform_options):
             return {"error": "Insufficient data for transform analysis"}
 
         if "wavelet" in transform_options:
-            # Simple wavelet-like analysis
-            # This is a simplified version - in practice you'd use proper wavelet transforms
-            transform_metrics["wavelet_energy"] = float(np.sum(signal_data**2))
+            # Enhanced wavelet analysis using vitalDSP
+            try:
+                from vitalDSP.transforms.wavelet_transform import WaveletTransform
+
+                wt = WaveletTransform(signal_data, wavelet_name="db4")
+                coeffs = wt.perform_wavelet_transform(level=3)
+
+                # Calculate energy distribution across levels
+                if isinstance(coeffs, (list, tuple)):
+                    energies = [float(np.sum(c**2)) for c in coeffs]
+                    transform_metrics["wavelet_energy_total"] = float(sum(energies))
+                    transform_metrics["wavelet_energy_per_level"] = energies
+                    transform_metrics["wavelet_levels"] = len(coeffs)
+                else:
+                    transform_metrics["wavelet_energy"] = float(np.sum(coeffs**2))
+
+            except ImportError:
+                logger.warning("vitalDSP WaveletTransform not available, using basic")
+                transform_metrics["wavelet_energy"] = float(np.sum(signal_data**2))
+            except Exception as e:
+                logger.warning(f"Wavelet transform failed: {e}")
+                transform_metrics["wavelet_energy"] = float(np.sum(signal_data**2))
 
         if "fourier" in transform_options:
-            # Fourier transform analysis
+            # Enhanced Fourier transform using vitalDSP
             try:
+                from vitalDSP.transforms.fourier_transform import FourierTransform
+
+                ft = FourierTransform(signal_data, fs=sampling_freq)
+                freqs, psd = ft.compute_psd()
+
+                # Find dominant frequency
+                if len(psd) > 1:
+                    dominant_idx = np.argmax(psd[1 : len(psd) // 2]) + 1
+                    transform_metrics["fourier_peak_frequency"] = float(
+                        freqs[dominant_idx]
+                    )
+                    transform_metrics["fourier_peak_power"] = float(psd[dominant_idx])
+                    transform_metrics["fourier_total_power"] = float(np.sum(psd))
+                else:
+                    transform_metrics["fourier_peak_frequency"] = 0.0
+
+            except ImportError:
+                logger.warning("vitalDSP FourierTransform not available, using numpy")
                 fft_result = np.fft.fft(signal_data)
                 fft_magnitude = np.abs(fft_result)
-                # Find dominant frequency (avoid DC component)
                 if len(fft_magnitude) > 1:
                     dominant_freq_idx = (
                         np.argmax(fft_magnitude[1 : len(fft_magnitude) // 2]) + 1
@@ -4324,9 +4796,29 @@ def analyze_transforms(signal_data, sampling_freq, transform_options):
                 transform_metrics["fourier_peak"] = 0.0
 
         if "hilbert" in transform_options:
-            # Hilbert transform analysis
+            # Enhanced Hilbert transform using vitalDSP
             try:
-                # Ensure signal is not all zeros or constant
+                from vitalDSP.transforms.hilbert_transform import HilbertTransform
+
+                ht = HilbertTransform(signal_data)
+                analytic_signal = ht.compute_hilbert()
+                instantaneous_phase = ht.compute_instantaneous_phase()
+                instantaneous_frequency = ht.compute_instantaneous_frequency(
+                    sampling_freq
+                )
+
+                transform_metrics["hilbert_mean_phase"] = float(
+                    np.mean(instantaneous_phase)
+                )
+                transform_metrics["hilbert_mean_frequency"] = float(
+                    np.mean(instantaneous_frequency)
+                )
+                transform_metrics["hilbert_phase_std"] = float(
+                    np.std(instantaneous_phase)
+                )
+
+            except ImportError:
+                logger.warning("vitalDSP HilbertTransform not available, using scipy")
                 if np.std(signal_data) > 0:
                     analytic_signal = signal.hilbert(signal_data)
                     transform_metrics["hilbert_phase"] = float(
@@ -4337,6 +4829,174 @@ def analyze_transforms(signal_data, sampling_freq, transform_options):
             except Exception as e:
                 logger.warning(f"Hilbert transform failed: {e}")
                 transform_metrics["hilbert_phase"] = 0.0
+
+        if "stft" in transform_options:
+            # STFT Analysis using vitalDSP
+            try:
+                from vitalDSP.transforms.stft import STFT
+
+                stft_obj = STFT(
+                    signal_data,
+                    fs=sampling_freq,
+                    window="hann",
+                    nperseg=min(256, len(signal_data) // 4),
+                )
+                freqs, times, Zxx = stft_obj.compute_stft()
+
+                transform_metrics["stft_time_bins"] = len(times)
+                transform_metrics["stft_freq_bins"] = len(freqs)
+                transform_metrics["stft_peak_energy"] = float(np.max(np.abs(Zxx)))
+                transform_metrics["stft_mean_energy"] = float(np.mean(np.abs(Zxx)))
+
+            except ImportError:
+                logger.warning("vitalDSP STFT not available")
+            except Exception as e:
+                logger.warning(f"STFT analysis failed: {e}")
+
+        if "chroma" in transform_options:
+            # Chroma STFT using vitalDSP
+            try:
+                from vitalDSP.transforms.chroma_stft import ChromaSTFT
+
+                chroma_obj = ChromaSTFT(signal_data, fs=sampling_freq)
+                chroma = chroma_obj.compute_chroma()
+
+                if chroma is not None and chroma.size > 0:
+                    transform_metrics["chroma_mean"] = float(np.mean(chroma))
+                    transform_metrics["chroma_std"] = float(np.std(chroma))
+                    transform_metrics["chroma_shape"] = list(chroma.shape)
+
+            except ImportError:
+                logger.warning("vitalDSP ChromaSTFT not available")
+            except Exception as e:
+                logger.warning(f"Chroma STFT failed: {e}")
+
+        if "mfcc" in transform_options:
+            # MFCC Features using vitalDSP
+            try:
+                from vitalDSP.transforms.mfcc import MFCC
+
+                mfcc_obj = MFCC(signal_data, fs=sampling_freq, n_mfcc=13)
+                mfcc_features = mfcc_obj.compute_mfcc()
+
+                if mfcc_features is not None and mfcc_features.size > 0:
+                    transform_metrics["mfcc_mean"] = float(np.mean(mfcc_features))
+                    transform_metrics["mfcc_std"] = float(np.std(mfcc_features))
+                    transform_metrics["mfcc_shape"] = list(mfcc_features.shape)
+
+            except ImportError:
+                logger.warning("vitalDSP MFCC not available")
+            except Exception as e:
+                logger.warning(f"MFCC computation failed: {e}")
+
+        if "pca_ica" in transform_options:
+            # PCA/ICA Decomposition using vitalDSP
+            try:
+                from vitalDSP.transforms.pca_ica_signal_decomposition import (
+                    PCAICADecomposition,
+                )
+
+                # Create multi-channel signal from time delays
+                n_channels = 3
+                delay = max(1, len(signal_data) // 100)
+                multi_channel = np.zeros((n_channels, len(signal_data)))
+                multi_channel[0, :] = signal_data
+                multi_channel[1, delay:] = signal_data[:-delay]
+                if len(signal_data) > delay * 2:
+                    multi_channel[2, delay * 2 :] = signal_data[: -delay * 2]
+
+                decomp = PCAICADecomposition(multi_channel.T)
+                pca_result = decomp.apply_pca(n_components=n_channels)
+                ica_result = decomp.apply_ica(n_components=n_channels)
+
+                transform_metrics["pca_variance_explained"] = float(
+                    np.sum(decomp.pca_variance_ratio)
+                )
+                transform_metrics["pca_components"] = n_channels
+                transform_metrics["ica_components"] = ica_result.shape[1]
+
+            except ImportError:
+                logger.warning("vitalDSP PCAICADecomposition not available")
+            except Exception as e:
+                logger.warning(f"PCA/ICA decomposition failed: {e}")
+
+        # NEW: Discrete Cosine Transform
+        if "dct" in transform_options:
+            try:
+                from vitalDSP.transforms.discrete_cosine_transform import DCT
+
+                dct_obj = DCT(signal_data)
+                dct_coeffs = dct_obj.compute_dct()
+
+                transform_metrics["dct_energy"] = float(np.sum(dct_coeffs**2))
+                transform_metrics["dct_coeffs_count"] = len(dct_coeffs)
+
+            except ImportError:
+                logger.warning("vitalDSP DCT not available")
+            except Exception as e:
+                logger.warning(f"DCT computation failed: {e}")
+
+        # NEW: DCT-Wavelet Fusion
+        if "dct_wavelet_fusion" in transform_options:
+            try:
+                from vitalDSP.transforms.dct_wavelet_fusion import DCTWaveletFusion
+
+                fusion_obj = DCTWaveletFusion(
+                    signal_data, wavelet_name="db4", dct_type=2
+                )
+                fused_coeffs = fusion_obj.fuse()
+
+                transform_metrics["dct_wavelet_fusion_energy"] = float(
+                    np.sum(fused_coeffs**2)
+                )
+                transform_metrics["dct_wavelet_fusion_coeffs"] = len(fused_coeffs)
+
+            except ImportError:
+                logger.warning("vitalDSP DCTWaveletFusion not available")
+            except Exception as e:
+                logger.warning(f"DCT-Wavelet fusion failed: {e}")
+
+        # NEW: Event Related Potential
+        if "erp" in transform_options:
+            try:
+                from vitalDSP.transforms.event_related_potential import ERP
+
+                # Create mock events for demonstration
+                n_events = min(10, len(signal_data) // 100)
+                event_times = np.linspace(
+                    100, len(signal_data) - 100, n_events, dtype=int
+                )
+
+                erp_obj = ERP(signal_data, fs=sampling_freq)
+                erp_avg, erp_std = erp_obj.compute_erp(event_times, window_duration=0.5)
+
+                transform_metrics["erp_peak_amplitude"] = float(np.max(np.abs(erp_avg)))
+                transform_metrics["erp_mean_amplitude"] = float(np.mean(erp_avg))
+                transform_metrics["erp_variability"] = float(np.mean(erp_std))
+
+            except ImportError:
+                logger.warning("vitalDSP ERP not available")
+            except Exception as e:
+                logger.warning(f"ERP computation failed: {e}")
+
+        # NEW: Beats Transformation
+        if "beats" in transform_options:
+            try:
+                from vitalDSP.transforms.beats_transformation import BeatsTransformation
+
+                beats_obj = BeatsTransformation(signal_data, fs=sampling_freq)
+                beat_spectrum = beats_obj.compute_beat_spectrum()
+
+                if beat_spectrum is not None and beat_spectrum.size > 0:
+                    transform_metrics["beats_peak_frequency"] = float(
+                        np.argmax(beat_spectrum) * sampling_freq / len(signal_data)
+                    )
+                    transform_metrics["beats_energy"] = float(np.sum(beat_spectrum**2))
+
+            except ImportError:
+                logger.warning("vitalDSP BeatsTransformation not available")
+            except Exception as e:
+                logger.warning(f"Beats transformation failed: {e}")
 
         return transform_metrics
     except Exception as e:
@@ -4477,7 +5137,7 @@ def analyze_advanced_features(signal_data, sampling_freq, advanced_features):
 
 
 def analyze_preprocessing(signal_data, sampling_freq, preprocessing):
-    """Analyze preprocessing options."""
+    """Analyze preprocessing options using vitalDSP."""
     try:
         preprocess_metrics = {}
 
@@ -4486,17 +5146,100 @@ def analyze_preprocessing(signal_data, sampling_freq, preprocessing):
             preprocessing = ["noise_reduction", "baseline_correction", "filtering"]
 
         if "noise_reduction" in preprocessing:
-            # Simple noise reduction analysis
-            preprocess_metrics["noise_level"] = np.std(signal_data)
+            # Enhanced noise reduction using vitalDSP
+            try:
+                from vitalDSP.preprocess.noise_reduction import (
+                    wavelet_denoising,
+                    savgol_denoising,
+                    median_denoising,
+                )
+
+                # Calculate original noise level
+                noise_level = float(np.std(signal_data))
+                preprocess_metrics["noise_level"] = noise_level
+                preprocess_metrics["original_noise_level"] = noise_level
+
+                # Apply wavelet denoising
+                denoised_wavelet = wavelet_denoising(
+                    signal_data, wavelet_name="db4", level=3
+                )
+                preprocess_metrics["wavelet_denoised_noise_level"] = float(
+                    np.std(signal_data - denoised_wavelet)
+                )
+                preprocess_metrics["wavelet_snr_improvement"] = float(
+                    20
+                    * np.log10(
+                        np.std(signal_data)
+                        / (np.std(signal_data - denoised_wavelet) + 1e-10)
+                    )
+                )
+
+                # Apply Savitzky-Golay denoising
+                window_length = min(51, len(signal_data) // 10)
+                if window_length % 2 == 0:
+                    window_length += 1
+                denoised_savgol = savgol_denoising(
+                    signal_data, window_length=window_length, polyorder=3
+                )
+                preprocess_metrics["savgol_denoised_noise_level"] = float(
+                    np.std(signal_data - denoised_savgol)
+                )
+
+                # Apply median denoising
+                kernel_size = min(5, len(signal_data) // 100)
+                if kernel_size < 3:
+                    kernel_size = 3
+                denoised_median = median_denoising(signal_data, kernel_size=kernel_size)
+                preprocess_metrics["median_denoised_noise_level"] = float(
+                    np.std(signal_data - denoised_median)
+                )
+
+                preprocess_metrics["denoising_methods_available"] = [
+                    "wavelet",
+                    "savgol",
+                    "median",
+                ]
+
+            except ImportError:
+                logger.warning(
+                    "vitalDSP noise_reduction not available, using basic analysis"
+                )
+                preprocess_metrics["noise_level"] = float(np.std(signal_data))
+            except Exception as e:
+                logger.warning(f"Noise reduction analysis failed: {e}")
+                preprocess_metrics["noise_level"] = float(np.std(signal_data))
 
         if "baseline_correction" in preprocessing:
-            # Simple baseline analysis
-            baseline = np.mean(signal_data)
-            preprocess_metrics["baseline_offset"] = baseline
+            # Enhanced baseline correction using vitalDSP
+            try:
+                from vitalDSP.filtering.artifact_removal import ArtifactRemoval
+
+                baseline = np.mean(signal_data)
+                preprocess_metrics["baseline_offset"] = float(baseline)
+
+                # Apply baseline correction
+                ar = ArtifactRemoval(signal_data)
+                corrected_signal = ar.baseline_correction(cutoff=0.5, fs=sampling_freq)
+                preprocess_metrics["baseline_corrected_offset"] = float(
+                    np.mean(corrected_signal)
+                )
+                preprocess_metrics["baseline_correction_applied"] = True
+
+            except ImportError:
+                logger.warning(
+                    "vitalDSP artifact_removal not available, using basic analysis"
+                )
+                baseline = np.mean(signal_data)
+                preprocess_metrics["baseline_offset"] = float(baseline)
+            except Exception as e:
+                logger.warning(f"Baseline correction analysis failed: {e}")
+                baseline = np.mean(signal_data)
+                preprocess_metrics["baseline_offset"] = float(baseline)
 
         if "filtering" in preprocessing:
-            # Simple filtering analysis
-            preprocess_metrics["signal_bandwidth"] = sampling_freq / 2
+            # Enhanced filtering analysis
+            preprocess_metrics["signal_bandwidth"] = float(sampling_freq / 2)
+            preprocess_metrics["nyquist_frequency"] = float(sampling_freq / 2)
 
         return preprocess_metrics
     except Exception as e:
@@ -4507,7 +5250,7 @@ def analyze_preprocessing(signal_data, sampling_freq, preprocessing):
 # Plot Creation Functions for New Analysis Types
 
 
-def create_beat_to_beat_plots(time_data, signal_data, sampling_freq):
+def create_beat_to_beat_plots(time_data, signal_data, sampling_freq, signal_type=None):
     """Create beat-to-beat analysis plots."""
     try:
         fig = make_subplots(
@@ -4531,11 +5274,24 @@ def create_beat_to_beat_plots(time_data, signal_data, sampling_freq):
         )
 
         # Add beat markers
-        peaks, _ = signal.find_peaks(
-            signal_data,
-            height=np.mean(signal_data) + np.std(signal_data),
-            distance=int(sampling_freq * 0.3),
-        )
+        # Use vitalDSP for ECG/PPG peak detection, scipy for others
+        if signal_type and signal_type.lower() in ["ecg", "ppg"]:
+            from vitalDSP.physiological_features.waveform import WaveformMorphology
+
+            wm = WaveformMorphology(
+                signal_data, fs=sampling_freq, signal_type=signal_type.upper()
+            )
+            if signal_type.lower() == "ecg":
+                peaks = wm.r_peaks
+            elif signal_type.lower() == "ppg":
+                peaks = wm.systolic_peaks
+        else:
+            # Use scipy for other signal types
+            peaks, _ = signal.find_peaks(
+                signal_data,
+                height=np.mean(signal_data) + np.std(signal_data),
+                distance=int(sampling_freq * 0.3),
+            )
         if len(peaks) > 0:
             fig.add_trace(
                 go.Scatter(
@@ -5231,18 +5987,67 @@ def register_additional_physiological_callbacks(app):
                     if key.endswith("_db"):
                         formatted_value = f"{value:.1f} dB"
                     elif key.endswith("_ratio") or key.endswith("_strength"):
-                        formatted_value = f"{value:.3f}"
+                        # Handle infinity and NaN values
+                        if np.isinf(value):
+                            formatted_value = "N/A (HF power = 0)"
+                        elif np.isnan(value):
+                            formatted_value = "N/A"
+                        else:
+                            formatted_value = f"{value:.3f}"
                     elif key.endswith("_freq") or key.endswith("_frequency"):
                         formatted_value = f"{value:.3f} Hz"
+                    elif key == "pnn50" or key == "pnn_20" or key.startswith("pnn_"):
+                        # Percentage values (pNN50, pNN20, etc.)
+                        formatted_value = f"{value:.2f}%"
+                    elif key.endswith("nu_power") or key.endswith("_normalized"):
+                        # Normalized power values (LFnu, HFnu)
+                        formatted_value = f"{value:.3f} (n.u.)"
+                    elif key == "cvnn":
+                        # Coefficient of variation (percentage)
+                        formatted_value = f"{value:.2f}%"
+                    elif (
+                        key.endswith("_entropy")
+                        or key == "sample_entropy"
+                        or key == "approximate_entropy"
+                    ):
+                        # Entropy values
+                        if value is None or np.isnan(value):
+                            formatted_value = "N/A"
+                        else:
+                            formatted_value = f"{value:.3f}"
+                    elif (
+                        key.startswith("dfa_")
+                        or key.endswith("_alpha1")
+                        or key.endswith("_alpha2")
+                    ):
+                        # DFA alpha values (dimensionless)
+                        formatted_value = f"{value:.3f}"
+                    elif key == "fractal_dimension" or key == "lyapunov_exponent":
+                        # Nonlinear features
+                        formatted_value = f"{value:.3f}"
                     elif (
                         key.endswith("_ms")
                         or key == "mean_rr"
                         or key == "rmssd"
-                        or key == "mean_beat_interval"
-                        or key == "beat_variability"
-                        or key == "beat_regularity"
+                        or key == "sdnn"
+                        or key == "std_nn"
+                        or key == "median_nn"
+                        or key == "iqr_nn"
+                        or key == "sdsd"
+                        or key == "poincare_sd1"
+                        or key == "poincare_sd2"
                     ):
-                        formatted_value = f"{format_large_number(value)} ms"
+                        # Values are already in milliseconds - don't apply unit conversion
+                        formatted_value = f"{format_large_number(value, unit='ms')} ms"
+                    elif key == "mean_beat_interval" or key == "beat_variability":
+                        # Convert from seconds to milliseconds
+                        value_ms = value * 1000
+                        formatted_value = (
+                            f"{format_large_number(value_ms, unit='ms')} ms"
+                        )
+                    elif key == "beat_regularity":
+                        # Regularity is dimensionless
+                        formatted_value = f"{value:.3f}"
                     elif (
                         key.endswith("_peaks")
                         or key.endswith("_beats")
@@ -5252,6 +6057,7 @@ def register_additional_physiological_callbacks(app):
                         or key == "zero_crossings"
                         or key == "envelope_peaks"
                         or key == "anomalies_detected"
+                        or key == "nn50"
                     ):
                         # Integer formatting for counts
                         formatted_value = format_large_number(value, as_integer=True)
@@ -5597,41 +6403,125 @@ def get_vitaldsp_hrv_analysis(
             logger.info(
                 "vitalDSP HRV module not available, using fallback implementation"
             )
-            return analyze_hrv(signal_data, sampling_freq, hrv_options)
+            return analyze_hrv_fallback(signal_data, sampling_freq, hrv_options)
         hrv_result = hrv_features.compute_all_features()
 
         # Map vitalDSP results to our format
         mapped_results = {}
 
         if "time_domain" in hrv_options:
+            # IMPORTANT: vitalDSP returns NN intervals in SECONDS, but HRV metrics should be in MILLISECONDS
+            # We need to multiply time-domain metrics by 1000 (except counts and percentages)
             mapped_results.update(
                 {
-                    "mean_rr": hrv_result.get("mean_nn", 0),
-                    "std_rr": hrv_result.get("std_nn", 0),
-                    "rmssd": hrv_result.get("rmssd", 0),
-                    "nn50": hrv_result.get("nn50", 0),
-                    "pnn50": hrv_result.get("pnn50", 0),
+                    "mean_rr": hrv_result.get("mean_nn", 0)
+                    * 1000,  # Convert seconds to milliseconds
+                    "sdnn": hrv_result.get("sdnn", 0)
+                    * 1000,  # Convert seconds to milliseconds
+                    "std_nn": hrv_result.get("std_nn", 0)
+                    * 1000,  # Convert seconds to milliseconds
+                    "rmssd": hrv_result.get("rmssd", 0)
+                    * 1000,  # Convert seconds to milliseconds
+                    "nn50": hrv_result.get("nn50", 0),  # Count - no conversion needed
+                    "pnn50": hrv_result.get(
+                        "pnn50", 0
+                    ),  # Percentage - no conversion needed
+                    "median_nn": hrv_result.get("median_nn", 0)
+                    * 1000,  # Convert seconds to milliseconds
+                    "iqr_nn": hrv_result.get("iqr_nn", 0)
+                    * 1000,  # Convert seconds to milliseconds
+                    "cvnn": hrv_result.get(
+                        "cvnn", 0
+                    ),  # Coefficient of variation - dimensionless, no conversion
+                    "sdsd": hrv_result.get("sdsd", 0)
+                    * 1000,  # Convert seconds to milliseconds
+                    "pnn_20": hrv_result.get(
+                        "pnn_20", 0
+                    ),  # Percentage - no conversion needed
                 }
             )
 
         if "freq_domain" in hrv_options:
+            # Check signal duration for frequency domain analysis
+            signal_duration = len(signal_data) / sampling_freq  # Duration in seconds
+            min_duration_for_freq = (
+                120  # 2 minutes recommended for frequency domain HRV
+            )
+
+            if signal_duration < min_duration_for_freq:
+                logger.warning(
+                    f"Signal duration ({signal_duration:.1f}s) is shorter than recommended for frequency domain HRV "
+                    f"(minimum {min_duration_for_freq}s). Results may be unreliable."
+                )
+                # Add warning to results
+                mapped_results["freq_domain_warning"] = (
+                    f"Signal too short ({signal_duration:.1f}s) for reliable frequency domain HRV. "
+                    f"Recommend ≥{min_duration_for_freq}s (2-5 minutes)."
+                )
+
+            # Get power values
+            total_power = hrv_result.get("total_power", 0)
+            ulf_power = hrv_result.get("ulf_power", 0)
+            vlf_power = hrv_result.get("vlf_power", 0)
+            lf_power = hrv_result.get("lf_power", 0)
+            hf_power = hrv_result.get("hf_power", 0)
+
+            # Calculate normalized powers (LFnu and HFnu)
+            lf_hf_sum = lf_power + hf_power
+            lfnu = (lf_power / lf_hf_sum) if lf_hf_sum > 0 else 0
+            hfnu = (hf_power / lf_hf_sum) if lf_hf_sum > 0 else 0
+
             mapped_results.update(
                 {
-                    "total_power": hrv_result.get("total_power", 0),
-                    "vlf_power": hrv_result.get("vlf_power", 0),
-                    "lf_power": hrv_result.get("lf_power", 0),
-                    "hf_power": hrv_result.get("hf_power", 0),
+                    "total_power": total_power,
+                    "ulf_power": ulf_power,
+                    "vlf_power": vlf_power,
+                    "lf_power": lf_power,
+                    "hf_power": hf_power,
                     "lf_hf_ratio": hrv_result.get("lf_hf_ratio", 0),
+                    "lfnu_power": hrv_result.get(
+                        "lfnu_power", lfnu
+                    ),  # Use vitalDSP value or calculated
+                    "hfnu_power": hrv_result.get(
+                        "hfnu_power", hfnu
+                    ),  # Use vitalDSP value or calculated
                 }
             )
 
         if "nonlinear" in hrv_options:
+            # Poincaré SD1/SD2 are also in seconds, need to convert to milliseconds
+            poincare_sd1 = (
+                hrv_result.get("poincare_sd1", 0) * 1000
+            )  # Convert to milliseconds
+            poincare_sd2 = (
+                hrv_result.get("poincare_sd2", 0) * 1000
+            )  # Convert to milliseconds
+
             mapped_results.update(
                 {
-                    "poincare_sd1": hrv_result.get("poincare_sd1", 0),
-                    "poincare_sd2": hrv_result.get("poincare_sd2", 0),
-                    "dfa_alpha1": hrv_result.get("dfa", 0),
-                    "dfa_alpha2": 0,  # vitalDSP doesn't provide alpha2
+                    "poincare_sd1": poincare_sd1,
+                    "poincare_sd2": poincare_sd2,
+                    "poincare_sd1_sd2_ratio": (
+                        poincare_sd1 / poincare_sd2 if poincare_sd2 != 0 else 0
+                    ),
+                    "dfa_alpha1": hrv_result.get(
+                        "dfa", 0
+                    ),  # Dimensionless - no conversion
+                    "dfa_alpha2": hrv_result.get(
+                        "dfa_alpha2", 0
+                    ),  # Dimensionless - no conversion
+                    "sample_entropy": hrv_result.get(
+                        "sample_entropy", None
+                    ),  # Dimensionless - no conversion
+                    "approximate_entropy": hrv_result.get(
+                        "approximate_entropy", None
+                    ),  # Dimensionless - no conversion
+                    "fractal_dimension": hrv_result.get(
+                        "fractal_dimension", 0
+                    ),  # Dimensionless - no conversion
+                    "lyapunov_exponent": hrv_result.get(
+                        "lyapunov_exponent", 0
+                    ),  # Dimensionless - no conversion
                 }
             )
 
@@ -5682,14 +6572,26 @@ def get_vitaldsp_morphology_analysis(
         mapped_results = {}
 
         if "peaks" in morphology_options:
-            # Use basic peak detection as fallback since vitalDSP doesn't return peak counts directly
-            from scipy import signal
+            # Use vitalDSP for ECG/PPG peak detection, scipy for others
+            if signal_type_upper and signal_type_upper.lower() in ["ecg", "ppg"]:
+                from vitalDSP.physiological_features.waveform import WaveformMorphology
 
-            peaks, _ = signal.find_peaks(
-                signal_data,
-                height=np.mean(signal_data) + np.std(signal_data),
-                distance=int(sampling_freq * 0.3),
-            )
+                wm = WaveformMorphology(
+                    signal_data, fs=sampling_freq, signal_type=signal_type_upper
+                )
+                if signal_type_upper.lower() == "ecg":
+                    peaks = wm.r_peaks
+                elif signal_type_upper.lower() == "ppg":
+                    peaks = wm.systolic_peaks
+            else:
+                # Use scipy for other signal types
+                from scipy import signal
+
+                peaks, _ = signal.find_peaks(
+                    signal_data,
+                    height=np.mean(signal_data) + np.std(signal_data),
+                    distance=int(sampling_freq * 0.3),
+                )
             mapped_results.update(
                 {
                     "num_peaks": len(peaks),
@@ -5784,8 +6686,24 @@ def get_vitaldsp_signal_quality(
                     window_size = len(signal_data) // 2
                     step_size = max(1, window_size // 2)
 
-                sqi_values, _, _ = sqi.amplitude_variability_sqi(window_size, step_size)
-                overall_score = np.mean(sqi_values) if len(sqi_values) > 0 else 0
+                # Use 'minmax' scaling instead of 'zscore' to get values in [0, 1] range
+                sqi_values, _, _ = sqi.amplitude_variability_sqi(
+                    window_size, step_size, scale="minmax"
+                )
+
+                # Convert to 0-1 range if not already
+                if len(sqi_values) > 0:
+                    sqi_min = np.min(sqi_values)
+                    sqi_max = np.max(sqi_values)
+                    if sqi_max > sqi_min:
+                        # Normalize to 0-1 range
+                        sqi_normalized = (sqi_values - sqi_min) / (sqi_max - sqi_min)
+                        overall_score = float(np.mean(sqi_normalized))
+                    else:
+                        # All values are the same - use median approach
+                        overall_score = 0.5  # Neutral quality
+                else:
+                    overall_score = 0
 
                 mapped_results.update(
                     {
@@ -5815,13 +6733,38 @@ def get_vitaldsp_signal_quality(
                 mapped_results.update({"artifacts_detected": 0, "artifact_ratio": 0})
 
         if "snr_estimation" in quality_options:
-            # Use basic SNR estimation
+            # Use improved SNR estimation for filtered signals
             try:
-                signal_power = np.mean(signal_data**2)
-                noise_power = np.var(signal_data)
+                # For filtered signals, estimate noise from high-frequency residuals
+                # Detrend signal to remove baseline
+                from scipy import signal as scipy_signal
+
+                detrended = scipy_signal.detrend(signal_data)
+
+                # Use smoothed signal as "clean" signal estimate
+                # Apply Savitzky-Golay filter for smoothing
+                window_length = min(51, len(signal_data) // 2 * 2 + 1)  # Must be odd
+                if window_length >= 5:
+                    from scipy.signal import savgol_filter
+
+                    smoothed = savgol_filter(detrended, window_length, polyorder=3)
+                    # Noise is the residual
+                    noise = detrended - smoothed
+                    signal_power = np.var(smoothed)
+                    noise_power = np.var(noise)
+                else:
+                    # Fallback for very short signals
+                    signal_power = np.var(detrended)
+                    noise_power = signal_power * 0.1  # Assume 10% noise
+
                 snr_db = (
-                    10 * np.log10(signal_power / noise_power) if noise_power > 0 else 0
+                    10 * np.log10(signal_power / noise_power)
+                    if noise_power > 0
+                    else 40.0
                 )
+
+                # Clip to reasonable range (0-60 dB)
+                snr_db = float(np.clip(snr_db, 0, 60))
 
                 mapped_results.update({"snr_db": snr_db, "adaptive_snr": snr_db})
             except Exception as e:
@@ -5992,7 +6935,8 @@ def get_vitaldsp_advanced_computation(
                 )
 
                 # Use vitalDSP bayesian analysis with class-based approach
-                gp = GaussianProcess(length_scale=1.0, noise=1e-10)
+                # Use noise=1e-5 for better numerical stability (not 1e-10)
+                gp = GaussianProcess(length_scale=1.0, noise=1e-5)
 
                 # Create simple training data for demonstration
                 X_train = np.array([[0.1], [0.4], [0.7]])
@@ -6018,10 +6962,15 @@ def get_vitaldsp_advanced_computation(
                 mapped_results["bayesian_prior_std"] = float(np.sqrt(variance[0]))
 
             except ImportError:
+                logger.info(
+                    "vitalDSP bayesian_analysis not available, using basic statistics"
+                )
                 mapped_results["bayesian_prior_mean"] = np.mean(signal_data)
                 mapped_results["bayesian_prior_std"] = np.std(signal_data)
             except Exception as e:
-                logger.warning(f"vitalDSP bayesian analysis failed: {e}")
+                logger.warning(
+                    f"vitalDSP bayesian analysis failed: {e}, using fallback"
+                )
                 mapped_results["bayesian_prior_mean"] = np.mean(signal_data)
                 mapped_results["bayesian_prior_std"] = np.std(signal_data)
 
@@ -7167,12 +8116,25 @@ def create_comprehensive_dashboard(
             height_threshold = np.mean(signal_data) + 1.5 * np.std(signal_data)
             distance_threshold = int(sampling_freq * 0.3)
 
-            peaks, _ = signal.find_peaks(
-                signal_data,
-                height=height_threshold,
-                distance=distance_threshold,
-                prominence=np.std(signal_data) * 0.5,
-            )
+            # Use vitalDSP for ECG/PPG peak detection, scipy for others
+            if signal_type and signal_type.lower() in ["ecg", "ppg"]:
+                from vitalDSP.physiological_features.waveform import WaveformMorphology
+
+                wm = WaveformMorphology(
+                    signal_data, fs=sampling_freq, signal_type=signal_type.upper()
+                )
+                if signal_type.lower() == "ecg":
+                    peaks = wm.r_peaks
+                elif signal_type.lower() == "ppg":
+                    peaks = wm.systolic_peaks
+            else:
+                # Use scipy for other signal types
+                peaks, _ = signal.find_peaks(
+                    signal_data,
+                    height=height_threshold,
+                    distance=distance_threshold,
+                    prominence=np.std(signal_data) * 0.5,
+                )
 
             if len(peaks) > 0:
                 fig.add_trace(
@@ -7562,9 +8524,11 @@ def physiological_analysis_callback(
 
     try:
         # Get data from the data service
-        from vitalDSP_webapp.services.data.data_service import get_data_service
+        from vitalDSP_webapp.services.data.enhanced_data_service import (
+            get_enhanced_data_service,
+        )
 
-        data_service = get_data_service()
+        data_service = get_enhanced_data_service()
 
         # Get the most recent data
         all_data = data_service.get_all_data()
@@ -7606,35 +8570,42 @@ def physiological_analysis_callback(
         sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)
 
         # Handle time window adjustments for nudge buttons
+        # Note: Using start_time/end_time from function parameters
+        # Calculate duration from start_time and end_time if available
         if trigger_id in [
             "physio-btn-nudge-m10",
             "physio-btn-nudge-m1",
             "physio-btn-nudge-p1",
             "physio-btn-nudge-p10",
         ]:
-            if not start_time or not end_time:
-                start_time, end_time = 0, 10
+            # Use start_time as start_position (they're the same conceptually)
+            start_position = start_time if start_time is not None else 0
+            duration = (
+                (end_time - start_time)
+                if (end_time is not None and start_time is not None)
+                else 10
+            )
 
             if trigger_id == "physio-btn-nudge-m10":
-                start_time = max(0, start_time - 10)
-                end_time = max(10, end_time - 10)
+                start_position = max(0, start_position - 10)
             elif trigger_id == "physio-btn-nudge-m1":
-                start_time = max(0, start_time - 1)
-                end_time = max(1, end_time - 1)
+                start_position = max(0, start_position - 1)
             elif trigger_id == "physio-btn-nudge-p1":
-                start_time = start_time + 1
-                end_time = end_time + 1
+                start_position = start_position + 1
             elif trigger_id == "physio-btn-nudge-p10":
-                start_time = start_time + 10
-                end_time = end_time + 10
-
-        # Handle time window from slider
-        if trigger_id == "physio-time-range-slider" and slider_value:
-            start_time, end_time = slider_value[0], slider_value[1]
+                start_position = start_position + 10
+        else:
+            # For non-nudge triggers, initialize from parameters
+            start_position = start_time if start_time is not None else 0
+            duration = (
+                (end_time - start_time)
+                if (end_time is not None and start_time is not None)
+                else 10
+            )
 
         # Set default values if not provided
-        start_time = start_time or 0
-        end_time = end_time or 10
+        start_position = start_position or 0
+        duration = duration or 10
         signal_type = signal_type or "auto"
         analysis_categories = analysis_categories or ["hrv", "morphology"]
         hrv_options = hrv_options or ["time_domain"]
@@ -7817,7 +8788,7 @@ def physiological_analysis_callback(
             analysis_plots_fig = analysis_plots[0]
 
         # Generate results text
-        results_text = f"Comprehensive analysis completed for {signal_type} signal from {start_time}s to {end_time}s"
+        results_text = f"Comprehensive analysis completed for {signal_type} signal from {start_position}s to {start_position + duration}s"
         if analysis_results:
             feature_count = sum(
                 len(metrics)

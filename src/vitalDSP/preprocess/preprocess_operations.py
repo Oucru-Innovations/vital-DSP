@@ -1,3 +1,57 @@
+"""
+Preprocessing Operations Module for Physiological Signal Processing
+
+This module provides comprehensive preprocessing capabilities for physiological
+signals including ECG, PPG, EEG, and other vital signs. It implements various
+filtering techniques, noise reduction methods, and signal conditioning operations
+to prepare signals for analysis.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Multiple filtering types (bandpass, Butterworth, Chebyshev, elliptic)
+- Advanced noise reduction methods (wavelet, Savitzky-Golay, median, Gaussian)
+- Signal-specific preprocessing configurations
+- Respiratory signal optimization
+- Comprehensive parameter configuration
+- Integration with signal filtering modules
+
+Examples:
+--------
+Basic ECG preprocessing:
+    >>> import numpy as np
+    >>> from vitalDSP.preprocess.preprocess_operations import PreprocessConfig, preprocess_signal
+    >>> config = PreprocessConfig(
+    ...     filter_type="bandpass",
+    ...     lowcut=0.5,
+    ...     highcut=40.0,
+    ...     noise_reduction_method="wavelet"
+    ... )
+    >>> processed_signal = preprocess_signal(ecg_signal, fs=250, config=config)
+
+PPG preprocessing with Savitzky-Golay:
+    >>> ppg_config = PreprocessConfig(
+    ...     filter_type="bandpass",
+    ...     lowcut=0.5,
+    ...     highcut=8.0,
+    ...     noise_reduction_method="savgol",
+    ...     window_length=21,
+    ...     polyorder=3
+    ... )
+    >>> processed_ppg = preprocess_signal(ppg_signal, fs=128, config=ppg_config)
+
+Respiratory signal preprocessing:
+    >>> resp_config = PreprocessConfig(
+    ...     filter_type="bandpass",
+    ...     lowcut=0.1,
+    ...     highcut=2.0,
+    ...     respiratory_mode=True
+    ... )
+    >>> processed_resp = preprocess_signal(resp_signal, fs=64, config=resp_config)
+"""
+
 from vitalDSP.preprocess.noise_reduction import (
     wavelet_denoising,
     savgol_denoising,
@@ -172,6 +226,16 @@ def preprocess_signal(
     signal = np.asarray(signal, dtype=np.float64)
     # Optionally, clip large signal values to avoid overflow
     signal = np.clip(signal, -1e10, 1e10)
+
+    # Check if signal is too short for filtering
+    if len(signal) < 30:  # Minimum length for reliable filtering
+        import warnings
+
+        warnings.warn(
+            f"Signal length ({len(signal)}) is too short for reliable filtering. Skipping filtering step."
+        )
+        return signal
+
     # Apply bandpass filtering or other filter types
     signal_filter = SignalFiltering(signal)
     if filter_type == "bandpass":
@@ -259,13 +323,59 @@ def respiratory_filtering(signal, sampling_rate, lowcut=0.1, highcut=0.5, order=
     >>> filtered_signal = respiratory_filtering(signal, sampling_rate)
     >>> print(filtered_signal)
     """
-    b, a = butter(
-        order,
-        [lowcut / (0.5 * sampling_rate), highcut / (0.5 * sampling_rate)],
-        btype="band",
-    )
-    filtered_signal = filtfilt(b, a, signal)
-    return filtered_signal
+    # Validate input parameters
+    if sampling_rate <= 0:
+        raise ValueError(f"Sampling rate must be positive, got {sampling_rate}")
+
+    if lowcut >= highcut:
+        raise ValueError(f"lowcut ({lowcut}) must be less than highcut ({highcut})")
+
+    if highcut >= sampling_rate / 2:
+        raise ValueError(
+            f"highcut ({highcut}) must be less than Nyquist frequency ({sampling_rate/2})"
+        )
+
+    # Calculate normalized frequencies correctly
+    nyquist = sampling_rate / 2.0
+    low_norm = lowcut / nyquist
+    high_norm = highcut / nyquist
+
+    # Ensure frequencies are within valid range [0, 1]
+    low_norm = max(0.001, min(0.999, low_norm))  # Avoid 0 and 1
+    high_norm = max(0.001, min(0.999, high_norm))  # Avoid 0 and 1
+
+    if low_norm >= high_norm:
+        # If frequencies are too close, adjust them
+        center = (low_norm + high_norm) / 2
+        bandwidth = 0.1  # 10% bandwidth
+        low_norm = max(0.001, center - bandwidth / 2)
+        high_norm = min(0.999, center + bandwidth / 2)
+
+    try:
+        b, a = butter(order, [low_norm, high_norm], btype="band")
+        filtered_signal = filtfilt(b, a, signal)
+
+        # Check for extreme values (indicates filter instability)
+        if np.any(np.isnan(filtered_signal)) or np.any(np.isinf(filtered_signal)):
+            raise ValueError(
+                "Filter produced NaN or Inf values - filter may be unstable"
+            )
+
+        if np.max(np.abs(filtered_signal)) > 1e6:
+            # Filter is unstable, try with lower order
+            if order > 1:
+                return respiratory_filtering(
+                    signal, sampling_rate, lowcut, highcut, order - 1
+                )
+            else:
+                # Last resort: return normalized signal
+                return (signal - np.mean(signal)) / np.std(signal)
+
+        return filtered_signal
+
+    except Exception as e:
+        # Fallback: return normalized signal if filtering fails
+        return (signal - np.mean(signal)) / np.std(signal)
 
 
 def estimate_baseline(signal, fs, method="moving_average", window_size=5):

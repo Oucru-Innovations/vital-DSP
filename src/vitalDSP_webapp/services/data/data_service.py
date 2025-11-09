@@ -75,10 +75,10 @@ class DataService:
                 "time_unit": time_unit,
                 "duration": duration,
                 "signal_length": len(signal_data),
-                "mean": float(np.mean(signal_data)),
-                "std": float(np.std(signal_data)),
-                "min": float(np.min(signal_data)),
-                "max": float(np.max(signal_data)),
+                "mean": float(np.mean(signal_data)) if len(signal_data) > 0 else 0.0,
+                "std": float(np.std(signal_data)) if len(signal_data) > 0 else 0.0,
+                "min": float(np.min(signal_data)) if len(signal_data) > 0 else 0.0,
+                "max": float(np.max(signal_data)) if len(signal_data) > 0 else 0.0,
             }
 
         except Exception as e:
@@ -210,7 +210,9 @@ class DataService:
             single_col = df.columns[0]
             mapping["time"] = single_col
             mapping["signal"] = single_col
-            logger.info(f"Single column detected, mapping both time and signal to: {single_col}")
+            logger.info(
+                f"Single column detected, mapping both time and signal to: {single_col}"
+            )
 
         logger.info(f"Auto-detected column mapping: {mapping}")
         return mapping

@@ -1,14 +1,42 @@
+"""
+Signal Transforms Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- SciPy integration for advanced signal processing
+- Configurable parameters and settings
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.transforms.beats_transformation import BeatsTransformation
+    >>> signal = np.random.randn(1000)
+    >>> processor = BeatsTransformation(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
 import numpy as np
 
 # from scipy.signal import find_peaks
-# from vitalDSP.utils.common import find_peaks
+# from vitalDSP.utils.config_utilities.common import find_peaks
 from vitalDSP.physiological_features.waveform import WaveformMorphology
 from vitalDSP.transforms.vital_transformation import VitalTransformation
 from vitalDSP.preprocess.preprocess_operations import (
     PreprocessConfig,
     preprocess_signal,
 )
-from vitalDSP.utils.interpolations import (
+from vitalDSP.utils.signal_processing.interpolations import (
     linear_interpolation,
     spline_interpolation,
     mean_imputation,
@@ -88,7 +116,7 @@ class RRTransformation:
         Returns
         -------
         rr_intervals : np.array
-            The RR intervals computed from the detected peaks.
+            The RR intervals computed from the detected peaks (in milliseconds).
         """
         if preprocess_config is None:
             preprocess_config = PreprocessConfig()
@@ -127,7 +155,10 @@ class RRTransformation:
             )
 
         # Compute RR intervals from the detected peaks
-        rr_intervals = np.diff(peaks) / self.fs  # Time between peaks (in seconds)
+        # CRITICAL FIX: Return in milliseconds (clinical standard) instead of seconds
+        rr_intervals = (
+            np.diff(peaks) / self.fs * 1000
+        )  # Time between peaks (in milliseconds)
 
         if len(rr_intervals) == 0:
             raise ValueError(
@@ -139,8 +170,8 @@ class RRTransformation:
     def remove_invalid_rr_intervals(
         self,
         rr_intervals,
-        min_rr=0.3,
-        max_rr=2.0,
+        min_rr=300,
+        max_rr=2000,
         std_dev_factor=2.0,
         sudden_change_threshold=0.2,
     ):
@@ -151,11 +182,11 @@ class RRTransformation:
         Parameters
         ----------
         rr_intervals : np.array
-            The array of RR intervals (in seconds).
+            The array of RR intervals (in milliseconds).
         min_rr : float, optional
-            The minimum allowable RR interval (default is 0.3 seconds).
+            The minimum allowable RR interval (default is 300 milliseconds = 200 bpm max).
         max_rr : float, optional
-            The maximum allowable RR interval (default is 2.0 seconds).
+            The maximum allowable RR interval (default is 2000 milliseconds = 30 bpm min).
         std_dev_factor : float, optional
             The factor used for standard deviation filtering (default is 2.0).
         sudden_change_threshold : float, optional
@@ -164,7 +195,7 @@ class RRTransformation:
         Returns
         -------
         np.array
-            The array of RR intervals with invalid intervals removed (or marked as NaN).
+            The array of RR intervals with invalid intervals removed (or marked as NaN), in milliseconds.
 
         Example
         -------

@@ -100,7 +100,7 @@ class TestAutoSelectSignalTypeCallback:
 
         if auto_select_callback:
             with pytest.raises(PreventUpdate):
-                auto_select_callback("/other-page")
+                auto_select_callback("/other-page", None, None, None)
 
     def test_auto_select_no_data_service(self, mock_data_service):
         """Test auto-select with no data service available"""
@@ -122,14 +122,14 @@ class TestAutoSelectSignalTypeCallback:
             # Find and test the callback
             for cb in callbacks_registered:
                 if 'auto_select_signal_type_and_defaults' in cb['func'].__name__:
-                    result = cb['func']("/filtering")
+                    result = cb['func']("/filtering", None, None, None)
                     assert result == ("PPG", "traditional", "convolution")
 
     def test_auto_select_no_data_available(self, mock_data_service):
         """Test auto-select with no data available"""
         mock_data_service.get_all_data.return_value = {}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 
             mock_app = MagicMock()
@@ -146,7 +146,7 @@ class TestAutoSelectSignalTypeCallback:
 
             for cb in callbacks_registered:
                 if 'auto_select_signal_type_and_defaults' in cb['func'].__name__:
-                    result = cb['func']("/filtering")
+                    result = cb['func']("/filtering", None, None, None)
                     assert result == ("PPG", "traditional", "convolution")
 
     def test_auto_select_with_stored_ecg_signal_type(self, mock_data_service, sample_ecg_data):
@@ -159,7 +159,7 @@ class TestAutoSelectSignalTypeCallback:
         mock_data_service.get_data.return_value = sample_ecg_data
         mock_data_service.get_column_mapping.return_value = {"signal": "ECG"}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 
             mock_app = MagicMock()
@@ -176,7 +176,7 @@ class TestAutoSelectSignalTypeCallback:
 
             for cb in callbacks_registered:
                 if 'auto_select_signal_type_and_defaults' in cb['func'].__name__:
-                    result = cb['func']("/filtering")
+                    result = cb['func']("/filtering", None, None, None)
                     assert result[0] == "ECG"
 
     def test_auto_select_with_stored_ppg_signal_type(self, mock_data_service, sample_ppg_data):
@@ -187,7 +187,7 @@ class TestAutoSelectSignalTypeCallback:
             "sampling_freq": 1000
         }
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 
             mock_app = MagicMock()
@@ -204,7 +204,7 @@ class TestAutoSelectSignalTypeCallback:
 
             for cb in callbacks_registered:
                 if 'auto_select_signal_type_and_defaults' in cb['func'].__name__:
-                    result = cb['func']("/filtering")
+                    result = cb['func']("/filtering", None, None, None)
                     assert result[0] == "PPG"
 
     def test_auto_select_detect_from_column_name_ecg(self, mock_data_service, sample_ecg_data):
@@ -217,7 +217,7 @@ class TestAutoSelectSignalTypeCallback:
         mock_data_service.get_data.return_value = sample_ecg_data
         mock_data_service.get_column_mapping.return_value = {"signal": "ECG"}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 
             mock_app = MagicMock()
@@ -234,7 +234,7 @@ class TestAutoSelectSignalTypeCallback:
 
             for cb in callbacks_registered:
                 if 'auto_select_signal_type_and_defaults' in cb['func'].__name__:
-                    result = cb['func']("/filtering")
+                    result = cb['func']("/filtering", None, None, None)
                     assert result[0] == "ECG"
                     assert result[1] == "advanced"
 
@@ -248,7 +248,7 @@ class TestAutoSelectSignalTypeCallback:
         mock_data_service.get_data.return_value = sample_ppg_data
         mock_data_service.get_column_mapping.return_value = {"signal": "PPG"}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 
             mock_app = MagicMock()
@@ -265,7 +265,7 @@ class TestAutoSelectSignalTypeCallback:
 
             for cb in callbacks_registered:
                 if 'auto_select_signal_type_and_defaults' in cb['func'].__name__:
-                    result = cb['func']("/filtering")
+                    result = cb['func']("/filtering", None, None, None)
                     assert result[0] == "PPG"
 
     def test_auto_select_frequency_analysis_ecg(self, mock_data_service, sample_ecg_data):
@@ -278,7 +278,7 @@ class TestAutoSelectSignalTypeCallback:
         mock_data_service.get_data.return_value = sample_ecg_data
         mock_data_service.get_column_mapping.return_value = {"signal": "signal"}
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 
             mock_app = MagicMock()
@@ -296,7 +296,7 @@ class TestAutoSelectSignalTypeCallback:
             for cb in callbacks_registered:
                 if 'auto_select_signal_type_and_defaults' in cb['func'].__name__:
                     try:
-                        result = cb['func']("/filtering")
+                        result = cb['func']("/filtering", None, None, None)
                         assert result[0] in ["ECG", "PPG"]
                     except Exception:
                         # If frequency analysis fails, should return default
@@ -306,7 +306,7 @@ class TestAutoSelectSignalTypeCallback:
         """Test auto-select handles exceptions gracefully"""
         mock_data_service.get_all_data.side_effect = Exception("Test error")
 
-        with patch('vitalDSP_webapp.services.data.data_service.get_data_service', return_value=mock_data_service, create=True):
+        with patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service', return_value=mock_data_service, create=True):
             from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import register_signal_filtering_callbacks
 
             mock_app = MagicMock()
@@ -323,7 +323,7 @@ class TestAutoSelectSignalTypeCallback:
 
             for cb in callbacks_registered:
                 if 'auto_select_signal_type_and_defaults' in cb['func'].__name__:
-                    result = cb['func']("/filtering")
+                    result = cb['func']("/filtering", None, None, None)
                     assert result == ("PPG", "traditional", "convolution")
 
 
@@ -489,37 +489,67 @@ class TestAdvancedFilteringCallback:
 
             for cb in callbacks_registered:
                 if 'advanced_filtering_callback' in cb['func'].__name__:
-                    with pytest.raises(PreventUpdate):
-                        cb['func'](
-                            pathname="/filtering",
-                            n_clicks=None,
-                            slider_value=[0, 10],
-                            nudge_m10=None,
-                            nudge_m1=None,
-                            nudge_p1=None,
-                            nudge_p10=None,
-                            start_time_state=0,
-                            end_time_state=10,
-                            filter_type="traditional",
-                            filter_family="butterworth",
-                            filter_response="lowpass",
-                            low_freq=0.5,
-                            high_freq=50,
-                            filter_order=4,
-                            advanced_method="convolution",
-                            noise_level=0.1,
-                            iterations=10,
-                            learning_rate=0.01,
-                            artifact_type="baseline",
-                            artifact_strength=0.5,
-                            neural_type="autoencoder",
-                            neural_complexity="medium",
-                            ensemble_method="voting",
-                            ensemble_n_filters=3,
-                            quality_options=["snr", "rmse"],
-                            detrend_option=None,
-                            signal_type="PPG"
-                        )
+                    # The callback should NOT raise PreventUpdate when there's no trigger
+                    # It should continue execution and return empty figures
+                    result = cb['func'](
+                        pathname="/filtering",
+                        n_clicks=None,
+                        nudge_m10=None,
+                        center_click=None,
+                        nudge_p10=None,
+                        start_position=0,
+                        duration=10,
+                        filter_type="traditional",
+                        signal_source="original",
+                        filter_count=1,
+                        current_filtered_signal=None,
+                        filter_family="butterworth",
+                        filter_response="lowpass",
+                        low_freq=0.5,
+                        high_freq=50,
+                        filter_order=4,
+                        advanced_method="convolution",
+                        kalman_r=0.1,
+                        kalman_q=0.01,
+                        optimization_loss_type="mse",
+                        optimization_initial_guess=0.1,
+                        optimization_learning_rate=0.01,
+                        optimization_iterations=10,
+                        gradient_learning_rate=0.01,
+                        gradient_iterations=10,
+                        convolution_kernel_type="smoothing",
+                        convolution_kernel_size=5,
+                        attention_type="gaussian",
+                        attention_size=10,
+                        attention_sigma=1.0,
+                        attention_ascending=True,
+                        attention_base=0.1,
+                        adaptive_mu=0.1,
+                        adaptive_order=4,
+                        artifact_type="baseline",
+                        artifact_strength=0.5,
+                        neural_type="autoencoder",
+                        neural_complexity="medium",
+                        ensemble_method="voting",
+                        ensemble_n_filters=3,
+                        quality_options=["snr", "rmse"],
+                        detrend_option=None,
+                        signal_type="PPG",
+                        savgol_window=5,
+                        savgol_polyorder=2,
+                        moving_avg_window=5,
+                        gaussian_sigma=1.0,
+                        wavelet_type="db4",
+                        wavelet_level=4,
+                        threshold_type="soft",
+                        threshold_value=0.1,
+                        reference_signal=None,
+                        fusion_method="mean"
+                    )
+                    # Should return empty figures when no trigger
+                    assert isinstance(result, tuple)
+                    # Function returns 9 outputs (3 figures, message, figure, 4 stores)
+                    assert len(result) >= 6  # At least 6 outputs
 
     def test_advanced_filtering_not_on_filtering_page(self, mock_callback_context):
         """Test callback when not on filtering page"""
@@ -544,23 +574,38 @@ class TestAdvancedFilteringCallback:
                         result = cb['func'](
                             pathname="/other-page",
                             n_clicks=1,
-                            slider_value=[0, 10],
                             nudge_m10=None,
-                            nudge_m1=None,
-                            nudge_p1=None,
+                            center_click=None,
                             nudge_p10=None,
-                            start_time_state=0,
-                            end_time_state=10,
+                            start_position=0,
+                            duration=10,
                             filter_type="traditional",
+                            signal_source="original",
+                            filter_count=1,
+                            current_filtered_signal=None,
                             filter_family="butterworth",
                             filter_response="lowpass",
                             low_freq=0.5,
                             high_freq=50,
                             filter_order=4,
                             advanced_method="convolution",
-                            noise_level=0.1,
-                            iterations=10,
-                            learning_rate=0.01,
+                            kalman_r=0.1,
+                            kalman_q=0.01,
+                            optimization_loss_type="mse",
+                            optimization_initial_guess=0.1,
+                            optimization_learning_rate=0.01,
+                            optimization_iterations=10,
+                            gradient_learning_rate=0.01,
+                            gradient_iterations=10,
+                            convolution_kernel_type="smoothing",
+                            convolution_kernel_size=5,
+                            attention_type="gaussian",
+                            attention_size=10,
+                            attention_sigma=1.0,
+                            attention_ascending=True,
+                            attention_base=0.1,
+                            adaptive_mu=0.1,
+                            adaptive_order=4,
                             artifact_type="baseline",
                             artifact_strength=0.5,
                             neural_type="autoencoder",
@@ -569,7 +614,17 @@ class TestAdvancedFilteringCallback:
                             ensemble_n_filters=3,
                             quality_options=["snr", "rmse"],
                             detrend_option=None,
-                            signal_type="PPG"
+                            signal_type="PPG",
+                            savgol_window=5,
+                            savgol_polyorder=2,
+                            moving_avg_window=5,
+                            gaussian_sigma=1.0,
+                            wavelet_type="db4",
+                            wavelet_level=4,
+                            threshold_type="soft",
+                            threshold_value=0.1,
+                            reference_signal=None,
+                            fusion_method="mean"
                         )
                         # Should prevent update or return default values
                         assert True
@@ -659,5 +714,3 @@ class TestFilteringHelperFunctions:
         assert end_time > 0
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

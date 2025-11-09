@@ -58,8 +58,8 @@ class TestMainExecution:
         """Test that main execution calls uvicorn.run"""
         # Import and execute the module as main
         with patch.dict('sys.modules', {'__main__': run_webapp_module}):
-            # Simulate running the module as main
-            exec(compile(open(run_webapp_module.__file__).read(), run_webapp_module.__file__, 'exec'))
+            # Simulate running the module as main (use UTF-8 encoding to handle emojis)
+            exec(compile(open(run_webapp_module.__file__, encoding='utf-8').read(), run_webapp_module.__file__, 'exec'))
             
         # Should not call uvicorn.run in test environment
         # (because __name__ is not '__main__' during testing)

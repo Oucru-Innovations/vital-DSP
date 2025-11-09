@@ -551,5 +551,3 @@ class TestFeatureErrorHandling:
                 pytest.skip(f"Constant signal handling failed: {e}")
 
 
-if __name__ == "__main__":
-    pytest.main([__file__])

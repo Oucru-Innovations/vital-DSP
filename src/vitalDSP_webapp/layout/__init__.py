@@ -12,19 +12,19 @@ from .common.footer import Footer
 
 # Page layouts
 from .pages.upload_page import upload_layout
+from .pages.time_domain_page import time_domain_layout
+from .pages.frequency_page import frequency_layout
+from .pages.respiratory_page import respiratory_layout
+from .pages.physiological_page import physiological_layout
+from .pages.transform_page import transforms_layout
+from .pages.quality_page import quality_layout
 from .pages.analysis_pages import (
-    time_domain_layout,
-    frequency_layout,
     filtering_layout,
-    physiological_layout,
-    respiratory_layout,
     features_layout,
-    transforms_layout,
-    quality_layout,
-    advanced_layout,
     health_report_layout,
     settings_layout,
 )
+from .pages.advanced_page import advanced_layout
 
 __all__ = [
     # Common components

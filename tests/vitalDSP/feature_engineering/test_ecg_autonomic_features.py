@@ -189,6 +189,10 @@ def test_qrs_detection_with_no_intervals(generate_ecg_signal, mocker):
     mocker.patch.object(
         extractor.morphology, "detect_qrs_session", return_value=[]
     )
+    # Mock detect_r_peaks to avoid the "No R-peaks detected" error
+    mocker.patch.object(
+        extractor, "detect_r_peaks", return_value=np.array([100, 200, 300])
+    )
     qrs_duration = extractor.compute_qrs_duration()
     assert qrs_duration == 0.0, "QRS duration should be zero for empty intervals"
 
@@ -197,6 +201,10 @@ def test_qt_interval_with_skipped_t_peak(generate_ecg_signal, mocker):
     ecg_signal, fs = generate_ecg_signal
     extractor = ECGExtractor(ecg_signal, fs)
 
+    # Mock detect_r_peaks to avoid the "No R-peaks detected" error
+    mocker.patch.object(
+        extractor, "detect_r_peaks", return_value=np.array([100, 200, 300])
+    )
     # Mock morphology to return an out-of-order first t_peak
     mocker.patch.object(extractor.morphology, "detect_q_valley", return_value=[10, 50])
     mocker.patch.object(extractor.morphology, "detect_t_peak", return_value=[5, 60])
@@ -209,6 +217,10 @@ def test_st_interval_with_skipped_t_peak(generate_ecg_signal, mocker):
     ecg_signal, fs = generate_ecg_signal
     extractor = ECGExtractor(ecg_signal, fs)
 
+    # Mock detect_r_peaks to avoid the "No R-peaks detected" error
+    mocker.patch.object(
+        extractor, "detect_r_peaks", return_value=np.array([100, 200, 300])
+    )
     # Mock morphology to return an out-of-order first t_peak
     mocker.patch.object(extractor.morphology, "detect_s_valley", return_value=[10, 50])
     mocker.patch.object(extractor.morphology, "detect_t_peak", return_value=[5, 60])

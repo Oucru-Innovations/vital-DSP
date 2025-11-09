@@ -789,5 +789,3 @@ class TestFilterErrorHandling:
             pytest.skip(f"Invalid filter parameters test failed: {e}")
 
 
-if __name__ == "__main__":
-    pytest.main([__file__])

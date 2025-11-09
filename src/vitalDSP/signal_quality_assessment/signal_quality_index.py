@@ -1,6 +1,35 @@
+"""
+Signal Quality Assessment Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- SciPy integration for advanced signal processing
+- Signal validation and error handling
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.signal_quality_assessment.signal_quality_index import SignalQualityIndex
+    >>> signal = np.random.randn(1000)
+    >>> processor = SignalQualityIndex(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
 import numpy as np
 from scipy.stats import pearsonr
 from scipy.stats import zscore, iqr, kurtosis, skew
+from vitalDSP.utils.data_processing.validation import SignalValidator
 
 
 class SignalQualityIndex:
@@ -19,6 +48,11 @@ class SignalQualityIndex:
         signal : numpy.ndarray
             The input signal to assess for quality.
 
+        Raises
+        ------
+        ValueError
+            If the signal is empty or invalid.
+
         Examples
         --------
         >>> signal = np.array([1, 2, 3, 4, 5])
@@ -26,6 +60,12 @@ class SignalQualityIndex:
         """
         if not isinstance(signal, np.ndarray):
             signal = np.array(signal)
+
+        # Validate signal - don't allow empty signals
+        SignalValidator.validate_signal(
+            signal, min_length=1, allow_empty=False, signal_name="signal"
+        )
+
         self.signal = signal
 
     def _scale_sqi(self, sqi_values, scale="zscore"):
@@ -45,10 +85,22 @@ class SignalQualityIndex:
             Scaled SQI values.
         """
         if scale == "zscore":
-            return zscore(sqi_values)
+            # Use manual z-score calculation to avoid precision loss warnings
+            mean_val = np.mean(sqi_values)
+            std_val = np.std(sqi_values)
+            if (
+                std_val > 1e-10
+            ):  # Use a small threshold to avoid division by tiny numbers
+                return (sqi_values - mean_val) / std_val
+            else:
+                return sqi_values  # Return original values if all are identical
         elif scale == "iqr":
             median = np.median(sqi_values)
-            return (sqi_values - median) / iqr(sqi_values)
+            iqr_val = iqr(sqi_values)
+            if iqr_val > 0:
+                return (sqi_values - median) / iqr_val
+            else:
+                return np.zeros_like(sqi_values)
         elif scale == "minmax":
             min_val = np.min(sqi_values)
             max_val = np.max(sqi_values)
@@ -150,6 +202,7 @@ class SignalQualityIndex:
         threshold=None,
         threshold_type="below",
         scale="zscore",
+        aggregate=True,
     ):
         """
         Compute the amplitude variability SQI over segments of the signal.
@@ -166,21 +219,25 @@ class SignalQualityIndex:
             The type of thresholding ('below', 'above', 'range'). Default is 'below'.
         scale : str, optional
             The scaling method to apply to SQI values ('zscore', 'iqr', 'minmax'). Default is 'zscore'.
+        aggregate : bool, optional
+            If True (default), returns the mean SQI value as a single float.
+            If False, returns detailed tuple (sqi_values, normal_segments, abnormal_segments).
 
         Returns
         -------
-        sqi_values : numpy.ndarray
-            Array of SQI values for each segment.
-        normal_segments : list of tuples
-            List of (start, end) indices for normal segments.
-        abnormal_segments : list of tuples
-            List of (start, end) indices for abnormal segments.
+        float or tuple
+            If aggregate=True: Mean SQI value as float.
+            If aggregate=False: Tuple of (sqi_values, normal_segments, abnormal_segments).
 
         Examples
         --------
         >>> signal = np.array([1, 2, 3, 4, 5, 1, 2, 3, 4, 5])
         >>> sqi = SignalQualityIndex(signal)
-        >>> sqi_values, normal_segments, abnormal_segments = sqi.amplitude_variability_sqi(window_size=5, step_size=2, threshold=0.8)
+        >>> # Get single aggregated score (default)
+        >>> quality_score = sqi.amplitude_variability_sqi(window_size=5, step_size=2)
+        >>> # Get detailed results
+        >>> sqi_values, normal_segments, abnormal_segments = sqi.amplitude_variability_sqi(
+        ...     window_size=5, step_size=2, threshold=0.8, aggregate=False)
         """
 
         def compute_sqi(segment):
@@ -190,7 +247,7 @@ class SignalQualityIndex:
             range_signal = max_signal - min_signal
             return variability / (range_signal + 1e-2)
 
-        return self._process_segments(
+        sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
             window_size,
             step_size,
@@ -198,6 +255,13 @@ class SignalQualityIndex:
             threshold_type=threshold_type,
             scale=scale,
         )
+
+        if aggregate:
+            # Return mean SQI value for ease of use
+            return float(np.mean(sqi_values))
+        else:
+            # Return detailed results for advanced analysis
+            return (sqi_values, normal_segments, abnormal_segments)
 
     def baseline_wander_sqi(
         self,
@@ -207,6 +271,7 @@ class SignalQualityIndex:
         threshold_type="below",
         scale="zscore",
         moving_avg_window=50,
+        aggregate=True,
     ):
         """
         Compute the baseline wander SQI.
@@ -230,12 +295,11 @@ class SignalQualityIndex:
 
         Returns
         -------
-        sqi_values : numpy.ndarray
-            Array of SQI values for each segment.
-        normal_segments : list of tuples
-            List of (start, end) indices for normal segments.
-        abnormal_segments : list of tuples
-            List of (start, end) indices for abnormal segments.
+        float or tuple
+            If aggregate=True: Mean SQI value as float.
+            If aggregate=False: Tuple of (sqi_values, normal_segments, abnormal_segments)
+            where sqi_values is array of SQI values for each segment, normal_segments and
+            abnormal_segments are lists of (start, end) indices.
 
         Examples
         --------
@@ -253,7 +317,7 @@ class SignalQualityIndex:
             sqi_value = 1 - (wander / max_signal)
             return sqi_value
 
-        return self._process_segments(
+        sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
             window_size,
             step_size,
@@ -262,6 +326,13 @@ class SignalQualityIndex:
             scale=scale,
         )
 
+        if aggregate:
+            # Return mean SQI value for ease of use
+            return float(np.mean(sqi_values))
+        else:
+            # Return detailed results for advanced analysis
+            return (sqi_values, normal_segments, abnormal_segments)
+
     def zero_crossing_sqi(
         self,
         window_size,
@@ -269,6 +340,7 @@ class SignalQualityIndex:
         threshold=None,
         threshold_type="below",
         scale="zscore",
+        aggregate=True,
     ):
         """
         Compute the zero-crossing SQI.
@@ -290,12 +362,11 @@ class SignalQualityIndex:
 
         Returns
         -------
-        sqi_values : numpy.ndarray
-            Array of SQI values for each segment.
-        normal_segments : list of tuples
-            List of (start, end) indices for normal segments.
-        abnormal_segments : list of tuples
-            List of (start, end) indices for abnormal segments.
+        float or tuple
+            If aggregate=True: Mean SQI value as float.
+            If aggregate=False: Tuple of (sqi_values, normal_segments, abnormal_segments)
+            where sqi_values is array of SQI values for each segment, normal_segments and
+            abnormal_segments are lists of (start, end) indices.
 
         Examples
         --------
@@ -307,12 +378,16 @@ class SignalQualityIndex:
         def compute_sqi(segment):
             zero_crossings = np.sum(np.diff(np.sign(segment)) != 0)
             expected_crossings = len(segment) / 2
-            sqi_value = (
-                1 - np.abs(zero_crossings - expected_crossings) / expected_crossings
-            )
+            # Avoid divide by zero
+            if expected_crossings > 0:
+                sqi_value = (
+                    1 - np.abs(zero_crossings - expected_crossings) / expected_crossings
+                )
+            else:
+                sqi_value = 1.0  # Perfect score for very short segments
             return sqi_value
 
-        return self._process_segments(
+        sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
             window_size,
             step_size,
@@ -320,6 +395,13 @@ class SignalQualityIndex:
             threshold_type=threshold_type,
             scale=scale,
         )
+
+        if aggregate:
+            # Return mean SQI value for ease of use
+            return float(np.mean(sqi_values))
+        else:
+            # Return detailed results for advanced analysis
+            return (sqi_values, normal_segments, abnormal_segments)
 
     def waveform_similarity_sqi(
         self,
@@ -330,6 +412,7 @@ class SignalQualityIndex:
         threshold_type="below",
         scale="zscore",
         similarity_method="correlation",
+        aggregate=True,
     ):
         """
         Compute the waveform similarity SQI using various similarity metrics.
@@ -355,12 +438,11 @@ class SignalQualityIndex:
 
         Returns
         -------
-        sqi_values : numpy.ndarray
-            Array of SQI values for each segment.
-        normal_segments : list of tuples
-            List of (start, end) indices for normal segments.
-        abnormal_segments : list of tuples
-            List of (start, end) indices for abnormal segments.
+        float or tuple
+            If aggregate=True: Mean SQI value as float.
+            If aggregate=False: Tuple of (sqi_values, normal_segments, abnormal_segments)
+            where sqi_values is array of SQI values for each segment, normal_segments and
+            abnormal_segments are lists of (start, end) indices.
 
         Examples
         --------
@@ -383,7 +465,7 @@ class SignalQualityIndex:
             else:
                 raise ValueError(f"Unknown similarity method: {similarity_method}")
 
-        return self._process_segments(
+        sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
             window_size,
             step_size,
@@ -393,6 +475,13 @@ class SignalQualityIndex:
             scale=scale,
         )
 
+        if aggregate:
+            # Return mean SQI value for ease of use
+            return float(np.mean(sqi_values))
+        else:
+            # Return detailed results for advanced analysis
+            return (sqi_values, normal_segments, abnormal_segments)
+
     def signal_entropy_sqi(
         self,
         window_size,
@@ -400,6 +489,7 @@ class SignalQualityIndex:
         threshold=None,
         threshold_type="below",
         scale="zscore",
+        aggregate=True,
     ):
         """
         Compute the signal entropy SQI.
@@ -421,12 +511,11 @@ class SignalQualityIndex:
 
         Returns
         -------
-        sqi_values : numpy.ndarray
-            Array of SQI values for each segment.
-        normal_segments : list of tuples
-            List of (start, end) indices for normal segments.
-        abnormal_segments : list of tuples
-            List of (start, end) indices for abnormal segments.
+        float or tuple
+            If aggregate=True: Mean SQI value as float.
+            If aggregate=False: Tuple of (sqi_values, normal_segments, abnormal_segments)
+            where sqi_values is array of SQI values for each segment, normal_segments and
+            abnormal_segments are lists of (start, end) indices.
 
         Examples
         --------
@@ -440,10 +529,13 @@ class SignalQualityIndex:
             entropy = -np.sum(
                 probability_distribution * np.log2(probability_distribution + 1e-8)
             )
+            # Prevent division by zero
+            if len(segment) <= 1:
+                return 0.0
             normalized_entropy = entropy / np.log2(len(segment))
             return normalized_entropy
 
-        return self._process_segments(
+        sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
             window_size,
             step_size,
@@ -452,6 +544,13 @@ class SignalQualityIndex:
             scale=scale,
         )
 
+        if aggregate:
+            # Return mean SQI value for ease of use
+            return float(np.mean(sqi_values))
+        else:
+            # Return detailed results for advanced analysis
+            return (sqi_values, normal_segments, abnormal_segments)
+
     def skewness_sqi(
         self,
         window_size,
@@ -459,6 +558,7 @@ class SignalQualityIndex:
         threshold=None,
         threshold_type="below",
         scale="zscore",
+        aggregate=True,
     ):
         """
         Compute the skewness SQI.
@@ -480,12 +580,11 @@ class SignalQualityIndex:
 
         Returns
         -------
-        sqi_values : numpy.ndarray
-            Array of SQI values for each segment.
-        normal_segments : list of tuples
-            List of (start, end) indices for normal segments.
-        abnormal_segments : list of tuples
-            List of (start, end) indices for abnormal segments.
+        float or tuple
+            If aggregate=True: Mean SQI value as float.
+            If aggregate=False: Tuple of (sqi_values, normal_segments, abnormal_segments)
+            where sqi_values is array of SQI values for each segment, normal_segments and
+            abnormal_segments are lists of (start, end) indices.
 
         Examples
         --------
@@ -497,7 +596,7 @@ class SignalQualityIndex:
         def compute_sqi(segment):
             return skew(segment)
 
-        return self._process_segments(
+        sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
             window_size,
             step_size,
@@ -506,6 +605,13 @@ class SignalQualityIndex:
             scale=scale,
         )
 
+        if aggregate:
+            # Return mean SQI value for ease of use
+            return float(np.mean(sqi_values))
+        else:
+            # Return detailed results for advanced analysis
+            return (sqi_values, normal_segments, abnormal_segments)
+
     def kurtosis_sqi(
         self,
         window_size,
@@ -513,6 +619,7 @@ class SignalQualityIndex:
         threshold=None,
         threshold_type="below",
         scale="zscore",
+        aggregate=True,
     ):
         """
         Compute the kurtosis SQI.
@@ -534,12 +641,11 @@ class SignalQualityIndex:
 
         Returns
         -------
-        sqi_values : numpy.ndarray
-            Array of SQI values for each segment.
-        normal_segments : list of tuples
-            List of (start, end) indices for normal segments.
-        abnormal_segments : list of tuples
-            List of (start, end) indices for abnormal segments.
+        float or tuple
+            If aggregate=True: Mean SQI value as float.
+            If aggregate=False: Tuple of (sqi_values, normal_segments, abnormal_segments)
+            where sqi_values is array of SQI values for each segment, normal_segments and
+            abnormal_segments are lists of (start, end) indices.
 
         Examples
         --------
@@ -551,7 +657,7 @@ class SignalQualityIndex:
         def compute_sqi(segment):
             return kurtosis(segment)
 
-        return self._process_segments(
+        sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
             window_size,
             step_size,
@@ -560,6 +666,13 @@ class SignalQualityIndex:
             scale=scale,
         )
 
+        if aggregate:
+            # Return mean SQI value for ease of use
+            return float(np.mean(sqi_values))
+        else:
+            # Return detailed results for advanced analysis
+            return (sqi_values, normal_segments, abnormal_segments)
+
     def peak_to_peak_amplitude_sqi(
         self,
         window_size,
@@ -567,6 +680,7 @@ class SignalQualityIndex:
         threshold=None,
         threshold_type="below",
         scale="zscore",
+        aggregate=True,
     ):
         """
         Compute the peak-to-peak amplitude SQI.
@@ -588,12 +702,11 @@ class SignalQualityIndex:
 
         Returns
         -------
-        sqi_values : numpy.ndarray
-            Array of SQI values for each segment.
-        normal_segments : list of tuples
-            List of (start, end) indices for normal segments.
-        abnormal_segments : list of tuples
-            List of (start, end) indices for abnormal segments.
+        float or tuple
+            If aggregate=True: Mean SQI value as float.
+            If aggregate=False: Tuple of (sqi_values, normal_segments, abnormal_segments)
+            where sqi_values is array of SQI values for each segment, normal_segments and
+            abnormal_segments are lists of (start, end) indices.
 
         Examples
         --------
@@ -605,7 +718,7 @@ class SignalQualityIndex:
         def compute_sqi(segment):
             return np.max(segment) - np.min(segment)
 
-        return self._process_segments(
+        sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
             window_size,
             step_size,
@@ -614,6 +727,13 @@ class SignalQualityIndex:
             scale=scale,
         )
 
+        if aggregate:
+            # Return mean SQI value for ease of use
+            return float(np.mean(sqi_values))
+        else:
+            # Return detailed results for advanced analysis
+            return (sqi_values, normal_segments, abnormal_segments)
+
     def snr_sqi(
         self,
         window_size,
@@ -621,6 +741,7 @@ class SignalQualityIndex:
         threshold=None,
         threshold_type="below",
         scale="zscore",
+        aggregate=True,
     ):
         """
         Compute the Signal-to-Noise Ratio (SNR) SQI.
@@ -642,12 +763,11 @@ class SignalQualityIndex:
 
         Returns
         -------
-        sqi_values : numpy.ndarray
-            Array of SQI values for each segment.
-        normal_segments : list of tuples
-            List of (start, end) indices for normal segments.
-        abnormal_segments : list of tuples
-            List of (start, end) indices for abnormal segments.
+        float or tuple
+            If aggregate=True: Mean SQI value as float.
+            If aggregate=False: Tuple of (sqi_values, normal_segments, abnormal_segments)
+            where sqi_values is array of SQI values for each segment, normal_segments and
+            abnormal_segments are lists of (start, end) indices.
 
         Examples
         --------
@@ -661,7 +781,7 @@ class SignalQualityIndex:
             noise_power = np.var(segment)
             return 10 * np.log10(signal_power / (noise_power + 1e-8))
 
-        return self._process_segments(
+        sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
             window_size,
             step_size,
@@ -670,6 +790,13 @@ class SignalQualityIndex:
             scale=scale,
         )
 
+        if aggregate:
+            # Return mean SQI value for ease of use
+            return float(np.mean(sqi_values))
+        else:
+            # Return detailed results for advanced analysis
+            return (sqi_values, normal_segments, abnormal_segments)
+
     def energy_sqi(
         self,
         window_size,
@@ -677,6 +804,7 @@ class SignalQualityIndex:
         threshold=None,
         threshold_type="below",
         scale="zscore",
+        aggregate=True,
     ):
         """
         Compute the energy SQI.
@@ -698,12 +826,11 @@ class SignalQualityIndex:
 
         Returns
         -------
-        sqi_values : numpy.ndarray
-            Array of SQI values for each segment.
-        normal_segments : list of tuples
-            List of (start, end) indices for normal segments.
-        abnormal_segments : list of tuples
-            List of (start, end) indices for abnormal segments.
+        float or tuple
+            If aggregate=True: Mean SQI value as float.
+            If aggregate=False: Tuple of (sqi_values, normal_segments, abnormal_segments)
+            where sqi_values is array of SQI values for each segment, normal_segments and
+            abnormal_segments are lists of (start, end) indices.
 
         Examples
         --------
@@ -715,7 +842,7 @@ class SignalQualityIndex:
         def compute_sqi(segment):
             return np.sum(segment**2)
 
-        return self._process_segments(
+        sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
             window_size,
             step_size,
@@ -723,6 +850,13 @@ class SignalQualityIndex:
             threshold_type=threshold_type,
             scale=scale,
         )
+
+        if aggregate:
+            # Return mean SQI value for ease of use
+            return float(np.mean(sqi_values))
+        else:
+            # Return detailed results for advanced analysis
+            return (sqi_values, normal_segments, abnormal_segments)
 
     def heart_rate_variability_sqi(
         self,
@@ -732,6 +866,7 @@ class SignalQualityIndex:
         threshold=None,
         threshold_type="below",
         scale="zscore",
+        aggregate=True,
     ):
         """
         Compute the heart rate variability (HRV) SQI.
@@ -755,12 +890,11 @@ class SignalQualityIndex:
 
         Returns
         -------
-        sqi_values : numpy.ndarray
-            Array of SQI values for each segment.
-        normal_segments : list of tuples
-            List of (start, end) indices for normal segments.
-        abnormal_segments : list of tuples
-            List of (start, end) indices for abnormal segments.
+        float or tuple
+            If aggregate=True: Mean SQI value as float.
+            If aggregate=False: Tuple of (sqi_values, normal_segments, abnormal_segments)
+            where sqi_values is array of SQI values for each segment, normal_segments and
+            abnormal_segments are lists of (start, end) indices.
 
         Examples
         --------
@@ -771,10 +905,14 @@ class SignalQualityIndex:
 
         def compute_sqi(segment):
             rmssd = np.sqrt(np.mean(np.diff(segment) ** 2))
-            normalized_rmssd = rmssd / np.mean(segment)
+            mean_segment = np.mean(segment)
+            # Prevent division by zero
+            if mean_segment == 0:
+                return 0.0
+            normalized_rmssd = rmssd / mean_segment
             return normalized_rmssd
 
-        return self._process_segments(
+        sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
             window_size,
             step_size,
@@ -783,6 +921,13 @@ class SignalQualityIndex:
             scale=scale,
         )
 
+        if aggregate:
+            # Return mean SQI value for ease of use
+            return float(np.mean(sqi_values))
+        else:
+            # Return detailed results for advanced analysis
+            return (sqi_values, normal_segments, abnormal_segments)
+
     def ppg_signal_quality_sqi(
         self,
         window_size,
@@ -790,6 +935,7 @@ class SignalQualityIndex:
         threshold=None,
         threshold_type="below",
         scale="zscore",
+        aggregate=True,
     ):
         """
         Compute the PPG signal quality SQI.
@@ -811,12 +957,11 @@ class SignalQualityIndex:
 
         Returns
         -------
-        sqi_values : numpy.ndarray
-            Array of SQI values for each segment.
-        normal_segments : list of tuples
-            List of (start, end) indices for normal segments.
-        abnormal_segments : list of tuples
-            List of (start, end) indices for abnormal segments.
+        float or tuple
+            If aggregate=True: Mean SQI value as float.
+            If aggregate=False: Tuple of (sqi_values, normal_segments, abnormal_segments)
+            where sqi_values is array of SQI values for each segment, normal_segments and
+            abnormal_segments are lists of (start, end) indices.
 
         Examples
         --------
@@ -832,7 +977,7 @@ class SignalQualityIndex:
             range_signal = max_signal - min_signal
             return amplitude_variability / (range_signal + 1e-2)
 
-        return self._process_segments(
+        sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
             window_size,
             step_size,
@@ -840,6 +985,13 @@ class SignalQualityIndex:
             threshold_type=threshold_type,
             scale=scale,
         )
+
+        if aggregate:
+            # Return mean SQI value for ease of use
+            return float(np.mean(sqi_values))
+        else:
+            # Return detailed results for advanced analysis
+            return (sqi_values, normal_segments, abnormal_segments)
 
     def eeg_band_power_sqi(
         self,
@@ -849,6 +1001,7 @@ class SignalQualityIndex:
         threshold=None,
         threshold_type="below",
         scale="zscore",
+        aggregate=True,
     ):
         """
         Compute the EEG band power SQI.
@@ -872,12 +1025,11 @@ class SignalQualityIndex:
 
         Returns
         -------
-        sqi_values : numpy.ndarray
-            Array of SQI values for each segment.
-        normal_segments : list of tuples
-            List of (start, end) indices for normal segments.
-        abnormal_segments : list of tuples
-            List of (start, end) indices for abnormal segments.
+        float or tuple
+            If aggregate=True: Mean SQI value as float.
+            If aggregate=False: Tuple of (sqi_values, normal_segments, abnormal_segments)
+            where sqi_values is array of SQI values for each segment, normal_segments and
+            abnormal_segments are lists of (start, end) indices.
 
         Examples
         --------
@@ -891,7 +1043,7 @@ class SignalQualityIndex:
             mean_power = np.mean(segment)
             return power_variability / (mean_power + 1e-2)
 
-        return self._process_segments(
+        sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
             window_size,
             step_size,
@@ -900,6 +1052,13 @@ class SignalQualityIndex:
             scale=scale,
         )
 
+        if aggregate:
+            # Return mean SQI value for ease of use
+            return float(np.mean(sqi_values))
+        else:
+            # Return detailed results for advanced analysis
+            return (sqi_values, normal_segments, abnormal_segments)
+
     def respiratory_signal_quality_sqi(
         self,
         window_size,
@@ -907,6 +1066,7 @@ class SignalQualityIndex:
         threshold=None,
         threshold_type="below",
         scale="zscore",
+        aggregate=True,
     ):
         """
         Compute the respiratory signal quality SQI.
@@ -928,12 +1088,11 @@ class SignalQualityIndex:
 
         Returns
         -------
-        sqi_values : numpy.ndarray
-            Array of SQI values for each segment.
-        normal_segments : list of tuples
-            List of (start, end) indices for normal segments.
-        abnormal_segments : list of tuples
-            List of (start, end) indices for abnormal segments.
+        float or tuple
+            If aggregate=True: Mean SQI value as float.
+            If aggregate=False: Tuple of (sqi_values, normal_segments, abnormal_segments)
+            where sqi_values is array of SQI values for each segment, normal_segments and
+            abnormal_segments are lists of (start, end) indices.
 
         Examples
         --------
@@ -951,7 +1110,7 @@ class SignalQualityIndex:
             )
             return amplitude_variability * zero_crossing_consistency
 
-        return self._process_segments(
+        sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
             window_size,
             step_size,
@@ -959,3 +1118,10 @@ class SignalQualityIndex:
             threshold_type=threshold_type,
             scale=scale,
         )
+
+        if aggregate:
+            # Return mean SQI value for ease of use
+            return float(np.mean(sqi_values))
+        else:
+            # Return detailed results for advanced analysis
+            return (sqi_values, normal_segments, abnormal_segments)

@@ -60,9 +60,11 @@ def register_features_callbacks(app):
 
         # Check if data is available first
         try:
-            from vitalDSP_webapp.services.data.data_service import get_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
 
-            data_service = get_data_service()
+            data_service = get_enhanced_data_service()
 
             if data_service is None:
                 logger.error("Data service is None")
@@ -386,11 +388,29 @@ def detect_signal_type(signal_data, sampling_freq):
 def apply_preprocessing(
     signal_data, preprocessing_options, sampling_freq, filter_info=None
 ):
-    """Apply preprocessing to the signal."""
+    """
+    Apply preprocessing to the signal.
+
+    PHASE B: Now supports both list format (legacy) and dict format with parameters.
+
+    Args:
+        signal_data: Signal data array
+        preprocessing_options: Either a list of option names (legacy) or dict of {operation: params}
+        sampling_freq: Sampling frequency in Hz
+        filter_info: Optional filter info from filtering screen
+    """
     processed_signal = signal_data.copy()
 
     try:
-        for option in preprocessing_options:
+        # PHASE B: Handle both list and dict formats
+        if isinstance(preprocessing_options, dict):
+            # New dict format: {operation: {param: value, ...}}
+            options_iter = preprocessing_options.items()
+        else:
+            # Legacy list format: ["detrend", "normalize", ...]
+            options_iter = [(opt, {}) for opt in preprocessing_options]
+
+        for option, params in options_iter:
             if option == "detrend":
                 # Use vitalDSP detrending when available
                 try:
@@ -402,13 +422,15 @@ def apply_preprocessing(
                     )
 
                     preprocess_config = PreprocessConfig()
-                    preprocess_config.detrend_type = "linear"
+                    # PHASE B: Use user-specified detrend type
+                    detrend_type = params.get("type", "linear")
+                    preprocess_config.detrend_type = detrend_type
 
                     preprocess_ops = PreprocessOperations(
                         processed_signal, preprocess_config
                     )
                     processed_signal = preprocess_ops.apply_detrending()
-                    logger.info("Applied vitalDSP detrending")
+                    logger.info(f"Applied vitalDSP detrending (type={detrend_type})")
 
                 except Exception as e:
                     logger.warning(f"vitalDSP detrending failed, using scipy: {e}")
@@ -425,20 +447,33 @@ def apply_preprocessing(
                     )
 
                     preprocess_config = PreprocessConfig()
-                    preprocess_config.normalization_type = "z_score"
+                    # PHASE B: Use user-specified normalization type
+                    normalization_type = params.get("type", "z_score")
+                    preprocess_config.normalization_type = normalization_type
 
                     preprocess_ops = PreprocessOperations(
                         processed_signal, preprocess_config
                     )
                     processed_signal = preprocess_ops.apply_normalization()
-                    logger.info("Applied vitalDSP normalization")
+                    logger.info(
+                        f"Applied vitalDSP normalization (type={normalization_type})"
+                    )
 
                 except Exception as e:
                     logger.warning(f"vitalDSP normalization failed, using basic: {e}")
-                    # Fallback to basic normalization
-                    processed_signal = (
-                        processed_signal - np.mean(processed_signal)
-                    ) / np.std(processed_signal)
+                    # Fallback to basic normalization with safety checks
+                    # Handle infinite values
+                    processed_signal = np.where(
+                        np.isfinite(processed_signal), processed_signal, 0
+                    )
+                    signal_mean = np.mean(processed_signal)
+                    signal_std = np.std(processed_signal)
+                    if signal_std > 0:
+                        processed_signal = (processed_signal - signal_mean) / signal_std
+                    else:
+                        processed_signal = (
+                            processed_signal - signal_mean
+                        )  # Just center if std is 0
             elif option == "filter":
                 # Use filter parameters from filtering screen if available
                 if filter_info is not None:
@@ -477,14 +512,130 @@ def apply_preprocessing(
                             f"Using original signal for filter type: {filter_type}"
                         )
                 else:
-                    # Fallback to default low-pass filter
+                    # PHASE D: Enhanced user-specified filter parameters with advanced options
+                    filter_family = params.get("family", "butterworth")
+                    filter_type = params.get("type", "lowpass")
+                    filter_order = params.get("order", 4)
+                    filter_ripple = params.get("ripple", 0.5)
+                    low_freq = params.get("low_freq", 0.5)
+                    high_freq = params.get("high_freq", 50)
+
                     logger.info(
-                        "No filter info available, using default low-pass filter"
+                        f"Applying {filter_family} {filter_type} filter: low={low_freq}, high={high_freq}, order={filter_order}"
                     )
                     nyquist = sampling_freq / 2
-                    cutoff = min(nyquist * 0.8, 50)  # 80% of Nyquist or 50 Hz
-                    b, a = signal.butter(4, cutoff / nyquist, btype="low")
-                    processed_signal = signal.filtfilt(b, a, processed_signal)
+
+                    # Map filter family names
+                    family_map = {
+                        "butterworth": "butter",
+                        "chebyshev1": "cheby1",
+                        "chebyshev2": "cheby2",
+                        "elliptic": "ellip",
+                        "bessel": "bessel",
+                    }
+                    scipy_family = family_map.get(filter_family, "butter")
+
+                    # Build filter based on type and family
+                    try:
+                        if filter_type in ["lowpass"]:
+                            cutoff_normalized = min(high_freq / nyquist, 0.99)
+                            if scipy_family in ["cheby1", "ellip"]:
+                                b, a = getattr(signal, scipy_family)(
+                                    filter_order,
+                                    filter_ripple,
+                                    cutoff_normalized,
+                                    btype=filter_type,
+                                )
+                            elif scipy_family == "cheby2":
+                                b, a = signal.cheby2(
+                                    filter_order,
+                                    filter_ripple,
+                                    cutoff_normalized,
+                                    btype=filter_type,
+                                )
+                            else:
+                                b, a = getattr(signal, scipy_family)(
+                                    filter_order, cutoff_normalized, btype=filter_type
+                                )
+
+                        elif filter_type in ["highpass"]:
+                            cutoff_normalized = max(low_freq / nyquist, 0.01)
+                            if scipy_family in ["cheby1", "ellip"]:
+                                b, a = getattr(signal, scipy_family)(
+                                    filter_order,
+                                    filter_ripple,
+                                    cutoff_normalized,
+                                    btype=filter_type,
+                                )
+                            elif scipy_family == "cheby2":
+                                b, a = signal.cheby2(
+                                    filter_order,
+                                    filter_ripple,
+                                    cutoff_normalized,
+                                    btype=filter_type,
+                                )
+                            else:
+                                b, a = getattr(signal, scipy_family)(
+                                    filter_order, cutoff_normalized, btype=filter_type
+                                )
+
+                        elif filter_type in ["bandpass", "bandstop"]:
+                            low_normalized = max(low_freq / nyquist, 0.01)
+                            high_normalized = min(high_freq / nyquist, 0.99)
+                            if scipy_family in ["cheby1", "ellip"]:
+                                b, a = getattr(signal, scipy_family)(
+                                    filter_order,
+                                    filter_ripple,
+                                    [low_normalized, high_normalized],
+                                    btype=filter_type,
+                                )
+                            elif scipy_family == "cheby2":
+                                b, a = signal.cheby2(
+                                    filter_order,
+                                    filter_ripple,
+                                    [low_normalized, high_normalized],
+                                    btype=filter_type,
+                                )
+                            else:
+                                b, a = getattr(signal, scipy_family)(
+                                    filter_order,
+                                    [low_normalized, high_normalized],
+                                    btype=filter_type,
+                                )
+                        else:
+                            # Default to butterworth lowpass
+                            cutoff_normalized = min(high_freq / nyquist, 0.99)
+                            b, a = signal.butter(
+                                filter_order, cutoff_normalized, btype="low"
+                            )
+
+                        processed_signal = signal.filtfilt(b, a, processed_signal)
+                        logger.info(f"Filter applied successfully")
+                    except Exception as e:
+                        logger.warning(
+                            f"Advanced filter failed: {e}, falling back to butterworth"
+                        )
+                        # Fallback to simple butterworth
+                        if filter_type in ["lowpass"]:
+                            cutoff_normalized = min(high_freq / nyquist, 0.99)
+                            b, a = signal.butter(
+                                filter_order, cutoff_normalized, btype=filter_type
+                            )
+                        elif filter_type in ["highpass"]:
+                            cutoff_normalized = max(low_freq / nyquist, 0.01)
+                            b, a = signal.butter(
+                                filter_order, cutoff_normalized, btype=filter_type
+                            )
+                        else:
+                            b, a = signal.butter(
+                                filter_order,
+                                [
+                                    max(low_freq / nyquist, 0.01),
+                                    min(high_freq / nyquist, 0.99),
+                                ],
+                                btype=filter_type,
+                            )
+                        processed_signal = signal.filtfilt(b, a, processed_signal)
             elif option == "outlier_removal":
                 # Use vitalDSP outlier removal when available
                 try:
@@ -496,14 +647,19 @@ def apply_preprocessing(
                     )
 
                     preprocess_config = PreprocessConfig()
-                    preprocess_config.outlier_method = "iqr"
-                    preprocess_config.outlier_threshold = 1.5
+                    # PHASE B: Use user-specified outlier removal parameters
+                    outlier_method = params.get("method", "iqr")
+                    outlier_threshold = params.get("threshold", 1.5)
+                    preprocess_config.outlier_method = outlier_method
+                    preprocess_config.outlier_threshold = outlier_threshold
 
                     preprocess_ops = PreprocessOperations(
                         processed_signal, preprocess_config
                     )
                     processed_signal = preprocess_ops.apply_outlier_removal()
-                    logger.info("Applied vitalDSP outlier removal")
+                    logger.info(
+                        f"Applied vitalDSP outlier removal (method={outlier_method}, threshold={outlier_threshold})"
+                    )
 
                 except Exception as e:
                     logger.warning(
@@ -534,18 +690,37 @@ def apply_preprocessing(
                     )
 
                     preprocess_config = PreprocessConfig()
-                    preprocess_config.smoothing_type = "savgol"
-                    preprocess_config.smoothing_window = min(
-                        21, len(processed_signal) // 10
+                    # PHASE B: Use user-specified smoothing parameters
+                    smoothing_method = params.get("method", "moving_average")
+                    smoothing_window = params.get("window", 5)
+
+                    # Map method names to vitalDSP types
+                    method_map = {
+                        "moving_average": "moving_average",
+                        "savgol": "savgol",
+                        "gaussian": "gaussian",
+                    }
+                    preprocess_config.smoothing_type = method_map.get(
+                        smoothing_method, "savgol"
                     )
-                    if preprocess_config.smoothing_window % 2 == 0:
-                        preprocess_config.smoothing_window += 1
+
+                    # Ensure window is odd and within valid range
+                    smoothing_window = (
+                        min(smoothing_window, len(processed_signal) // 10)
+                        if len(processed_signal) >= 10
+                        else 3
+                    )
+                    if smoothing_window % 2 == 0:
+                        smoothing_window += 1
+                    preprocess_config.smoothing_window = smoothing_window
 
                     preprocess_ops = PreprocessOperations(
                         processed_signal, preprocess_config
                     )
                     processed_signal = preprocess_ops.apply_smoothing()
-                    logger.info("Applied vitalDSP smoothing")
+                    logger.info(
+                        f"Applied vitalDSP smoothing (method={smoothing_method}, window={smoothing_window})"
+                    )
 
                 except Exception as e:
                     logger.warning(f"vitalDSP smoothing failed, using scipy: {e}")
@@ -951,17 +1126,28 @@ def extract_temporal_features(signal_data, sampling_freq, vitaldsp_available=Fal
     try:
         if vitaldsp_available:
             try:
-                # Try to use vitalDSP temporal features
-                from vitalDSP.physiological_features.time_domain import (
-                    TimeDomainFeatures,
+                # Use vitalDSP PeakDetection for robust peak detection
+                from vitalDSP.utils.signal_processing.peak_detection import (
+                    PeakDetection,
                 )
 
-                # For temporal features, we need to detect peaks first
-                peaks, _ = signal.find_peaks(
+                logger.info("[vitalDSP] Using PeakDetection for temporal features")
+
+                # Use threshold-based peak detection with appropriate parameters
+                peak_detector = PeakDetection(
                     signal_data,
+                    method="threshold",
                     height=np.mean(signal_data) + np.std(signal_data),
                     distance=int(sampling_freq * 0.3),
                 )
+                peaks = peak_detector.detect_peaks()
+
+                temporal_features = {
+                    "signal_duration": len(signal_data) / sampling_freq,
+                    "sampling_frequency": sampling_freq,
+                    "num_samples": len(signal_data),
+                    "vitaldsp_used": True,
+                }
 
                 if len(peaks) > 1:
                     # Convert to NN intervals for HRV analysis
@@ -969,25 +1155,16 @@ def extract_temporal_features(signal_data, sampling_freq, vitaldsp_available=Fal
                         np.diff(peaks) / sampling_freq * 1000
                     )  # Convert to milliseconds
 
-                    temporal_features = {
-                        "signal_duration": len(signal_data) / sampling_freq,
-                        "sampling_frequency": sampling_freq,
-                        "num_samples": len(signal_data),
-                        "num_peaks": len(peaks),
-                        "mean_interval": np.mean(intervals)
-                        / 1000,  # Convert back to seconds
-                        "std_interval": np.std(intervals) / 1000,
-                        "min_interval": np.min(intervals) / 1000,
-                        "max_interval": np.max(intervals) / 1000,
-                        "vitaldsp_used": True,
-                    }
-                else:
-                    temporal_features = {
-                        "signal_duration": len(signal_data) / sampling_freq,
-                        "sampling_frequency": sampling_freq,
-                        "num_samples": len(signal_data),
-                        "vitaldsp_used": True,
-                    }
+                    temporal_features.update(
+                        {
+                            "num_peaks": len(peaks),
+                            "mean_interval": np.mean(intervals)
+                            / 1000,  # Convert back to seconds
+                            "std_interval": np.std(intervals) / 1000,
+                            "min_interval": np.min(intervals) / 1000,
+                            "max_interval": np.max(intervals) / 1000,
+                        }
+                    )
 
                 return temporal_features
 
@@ -999,6 +1176,7 @@ def extract_temporal_features(signal_data, sampling_freq, vitaldsp_available=Fal
 
         # Fallback to scipy implementation
         if not vitaldsp_available:
+            logger.info("[scipy fallback] Using scipy.signal for temporal features")
             # Find peaks
             peaks, _ = signal.find_peaks(
                 signal_data,
@@ -1010,6 +1188,7 @@ def extract_temporal_features(signal_data, sampling_freq, vitaldsp_available=Fal
                 "signal_duration": len(signal_data) / sampling_freq,
                 "sampling_frequency": sampling_freq,
                 "num_samples": len(signal_data),
+                "vitaldsp_used": False,
             }
 
             if len(peaks) > 1:
@@ -1024,7 +1203,6 @@ def extract_temporal_features(signal_data, sampling_freq, vitaldsp_available=Fal
                     }
                 )
 
-            temporal_features["vitaldsp_used"] = False
             return temporal_features
 
     except Exception as e:
@@ -1039,20 +1217,30 @@ def extract_morphological_features(
     try:
         if vitaldsp_available:
             try:
-                # Try to use vitalDSP morphological features
-                from vitalDSP.physiological_features.waveform import WaveformMorphology
+                # Use vitalDSP PeakDetection for robust peak and valley detection
+                from vitalDSP.utils.signal_processing.peak_detection import (
+                    PeakDetection,
+                )
 
-                # Find peaks and valleys using vitalDSP
-                peaks, _ = signal.find_peaks(
+                logger.info("[vitalDSP] Using PeakDetection for morphological features")
+
+                # Find peaks using vitalDSP
+                peak_detector = PeakDetection(
                     signal_data,
+                    method="threshold",
                     height=np.mean(signal_data) + np.std(signal_data),
                     distance=int(sampling_freq * 0.3),
                 )
-                valleys, _ = signal.find_peaks(
+                peaks = peak_detector.detect_peaks()
+
+                # Find valleys by inverting the signal
+                valley_detector = PeakDetection(
                     -signal_data,
+                    method="threshold",
                     height=np.mean(-signal_data) + np.std(-signal_data),
                     distance=int(sampling_freq * 0.3),
                 )
+                valleys = valley_detector.detect_peaks()
 
                 morphological_features = {
                     "num_peaks": len(peaks),
@@ -1076,6 +1264,16 @@ def extract_morphological_features(
                         }
                     )
 
+                if len(valleys) > 0:
+                    morphological_features.update(
+                        {
+                            "mean_valley_height": np.mean(signal_data[valleys]),
+                            "std_valley_height": np.std(signal_data[valleys]),
+                            "max_valley_height": np.max(signal_data[valleys]),
+                            "min_valley_height": np.min(signal_data[valleys]),
+                        }
+                    )
+
                 return morphological_features
 
             except Exception as e:
@@ -1086,6 +1284,9 @@ def extract_morphological_features(
 
         # Fallback to scipy implementation
         if not vitaldsp_available:
+            logger.info(
+                "[scipy fallback] Using scipy.signal for morphological features"
+            )
             # Find peaks and valleys
             peaks, peak_properties = signal.find_peaks(
                 signal_data,
@@ -1105,6 +1306,7 @@ def extract_morphological_features(
                 "valley_heights": (
                     signal_data[valleys].tolist() if len(valleys) > 0 else []
                 ),
+                "vitaldsp_used": False,
             }
 
             if len(peaks) > 0:
@@ -1117,7 +1319,6 @@ def extract_morphological_features(
                     }
                 )
 
-            morphological_features["vitaldsp_used"] = False
             return morphological_features
 
     except Exception as e:

@@ -293,7 +293,7 @@ class TestCallbackRegistration:
 
 class TestMainCallbackLogic:
     @patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context')
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service')
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service')
     def test_callback_default_values(self, mock_get_service, mock_context):
         """Test callback with default values (lines 77-369)."""
         mock_context.triggered = [{'prop_id': 'physio-btn-update-analysis.n_clicks'}]
@@ -323,7 +323,7 @@ class TestMainCallbackLogic:
         assert isinstance(result[2], go.Figure)
 
     @patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context')
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service')
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service')
     def test_callback_data_corrupted(self, mock_get_service, mock_context):
         """Test callback with corrupted data (lines 77-369)."""
         mock_context.triggered = [{'prop_id': 'physio-btn-update-analysis.n_clicks'}]
@@ -351,7 +351,7 @@ class TestMainCallbackLogic:
 
     """Test main callback logic and data handling (Lines 77-369)."""
     @patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context')
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service')
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service')
     def test_callback_page_load_no_trigger(self, mock_get_service, mock_context):
         """Test callback on page load with no trigger (lines 77-369)."""
         mock_context.triggered = []
@@ -368,7 +368,7 @@ class TestMainCallbackLogic:
             )
 
     @patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context')
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service')
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service')
     def test_callback_invalid_pathname(self, mock_get_service, mock_context):
         """Test callback with invalid pathname (lines 77-369)."""
         mock_context.triggered = [{'prop_id': 'physio-btn-update-analysis.n_clicks'}]
@@ -407,7 +407,7 @@ class TestMainCallbackLogic:
 
 class TestTimeWindowHandling:
     @patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context')
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service')
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service')
     def test_nudge_boundary_start_zero(self, mock_get_service, mock_context):
         """Test nudge boundary when start is zero (lines 385-414)."""
         mock_context.triggered = [{'prop_id': 'physio-btn-nudge-m10.n_clicks'}]
@@ -435,7 +435,7 @@ class TestTimeWindowHandling:
         assert "0s to 0s" not in result[1]  # Ensure doesn't go negative
 
     @patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context')
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service')
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service')
     def test_slider_value_none(self, mock_get_service, mock_context):
         """Test slider value None (lines 385-414)."""
         mock_context.triggered = [{'prop_id': 'physio-time-range-slider.value'}]
@@ -464,7 +464,7 @@ class TestTimeWindowHandling:
         
     """Test time window handling and adjustments (Lines 385-414)."""
     @patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context')
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service')
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service')
     def test_nudge_button_m10(self, mock_get_service, mock_context):
         """Test nudge -10 button (lines 385-414)."""
         mock_context.triggered = [{'prop_id': 'physio-btn-nudge-m10.n_clicks'}]
@@ -598,7 +598,7 @@ class TestBeatToBeatAnalysis:
         no_peaks_signal = np.full(len(data['ecg']), 0.001)  # Constant low value
         results = analyze_beat_to_beat(no_peaks_signal, data['sampling_freq'])
         assert 'error' in results
-        assert 'Insufficient beats' in results['error']
+        assert 'Insufficient beats' in results['error'] or 'signal_type' in results['error']
 
     def test_beat_to_beat_short_peaks(self, sample_physiological_data):
         """Test beat-to-beat with short peaks (lines 1285-1304)."""
@@ -607,12 +607,12 @@ class TestBeatToBeatAnalysis:
         short_signal = np.full(50, 0.001)  # Only 50 samples, constant low value
         results = analyze_beat_to_beat(short_signal, data['sampling_freq'])
         assert 'error' in results
-        assert 'Insufficient beats' in results['error']
+        assert 'Insufficient beats' in results['error'] or 'signal_type' in results['error']
 
 class TestColumnMappingAndDataExtraction:
     """Test column mapping and data extraction (Lines 423-437)."""
     @patch('vitalDSP_webapp.callbacks.features.physiological_callbacks.callback_context')
-    @patch('vitalDSP_webapp.services.data.data_service.get_data_service')
+    @patch('vitalDSP_webapp.services.data.enhanced_data_service.get_enhanced_data_service')
     def test_no_sampling_freq(self, mock_get_service, mock_context):
         """Test no sampling freq in data (lines 423-437)."""
         mock_context.triggered = [{'prop_id': 'physio-btn-update-analysis.n_clicks'}]

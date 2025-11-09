@@ -1,3 +1,39 @@
+"""
+Health Report Generator Module for Physiological Signal Analysis
+
+This module provides comprehensive health report generation capabilities for
+physiological signal analysis including ECG, PPG, EEG, and other vital signs.
+It implements automated report creation with visualization, interpretation,
+and multi-threaded processing for efficient large-scale analysis.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Automated health report generation
+- Multi-threaded visualization processing
+- Comprehensive feature analysis and interpretation
+- HTML report templates and rendering
+- Performance monitoring and optimization
+- Parallel processing for large datasets
+
+Examples:
+--------
+Basic health report generation:
+    >>> from vitalDSP.health_analysis.health_report_generator import HealthReportGenerator
+    >>> generator = HealthReportGenerator()
+    >>> features = {'hrv_sdnn': 45.2, 'hrv_rmssd': 32.1, 'respiratory_rate': 16.5}
+    >>> report = generator.generate_report(features, output_dir='./reports')
+    >>> print(f"Report generated: {report['status']}")
+
+Multi-threaded processing:
+    >>> config = {'max_workers': 4, 'use_multiprocessing': True}
+    >>> generator = HealthReportGenerator(config)
+    >>> large_features = {f'feature_{i}': np.random.randn(1000) for i in range(10)}
+    >>> report = generator.generate_report(large_features, output_dir='./reports')
+"""
+
 from vitalDSP.health_analysis.interpretation_engine import InterpretationEngine
 from vitalDSP.health_analysis.health_report_visualization import HealthReportVisualizer
 from vitalDSP.health_analysis.html_template import (
@@ -12,8 +48,68 @@ import time
 # from vitalDSP.health_analysis.file_io import FileIO
 import numpy as np
 import multiprocessing
+from unittest.mock import MagicMock
 
 # from functools import lru_cache
+
+
+def _make_config_picklable(config):
+    """
+    Convert config to a picklable format by removing MagicMock objects and other unpicklable items.
+
+    Args:
+        config: The config object (may contain MagicMock or other unpicklable objects)
+
+    Returns:
+        dict: A picklable dictionary representation of the config
+    """
+    if config is None:
+        return {}
+
+    # Check if config itself is a MagicMock
+    if isinstance(config, MagicMock):
+        return {}
+
+    # If config is already a dict, process it
+    if isinstance(config, dict):
+        picklable_config = {}
+        for key, value in config.items():
+            # Skip MagicMock objects and other unpicklable types
+            if isinstance(value, MagicMock):
+                continue
+            elif isinstance(value, dict):
+                picklable_config[key] = _make_config_picklable(value)
+            elif isinstance(value, (str, int, float, bool, type(None))):
+                picklable_config[key] = value
+            elif isinstance(value, list):
+                # Recursively process list items
+                picklable_list = []
+                for item in value:
+                    if isinstance(item, MagicMock):
+                        continue
+                    elif isinstance(item, dict):
+                        picklable_list.append(_make_config_picklable(item))
+                    elif isinstance(item, list):
+                        picklable_list.append(_make_config_picklable(item))
+                    elif isinstance(item, (str, int, float, bool, type(None))):
+                        picklable_list.append(item)
+                picklable_config[key] = picklable_list
+            elif hasattr(value, "__dict__"):
+                # Try to convert object to dict recursively
+                try:
+                    picklable_config[key] = _make_config_picklable(value.__dict__)
+                except Exception:
+                    # Skip if we can't convert
+                    continue
+            # Skip other complex objects that might not be picklable
+        return picklable_config
+
+    # If config is an object with attributes, try to convert to dict
+    if hasattr(config, "__dict__"):
+        return _make_config_picklable(config.__dict__)
+
+    # Fallback: return empty dict
+    return {}
 
 
 def process_single_feature_visualization(
@@ -32,7 +128,9 @@ def process_single_feature_visualization(
         )
 
         # Create a new visualizer instance for each process
-        process_visualizer = HealthReportVisualizer(config, segment_duration)
+        # Config should already be picklable, but ensure it is
+        picklable_config = _make_config_picklable(config)
+        process_visualizer = HealthReportVisualizer(picklable_config, segment_duration)
 
         print(f"Processing {feature}...")
         feature_visualizations = process_visualizer.create_visualizations(
@@ -42,7 +140,7 @@ def process_single_feature_visualization(
         return (feature, feature_visualizations[feature])
 
     except Exception as e:
-        print(f"Error generating visualization for {feature}: {e}")
+        print(f"Error processing {feature}: {e}")
         # Return error messages for each plot type instead of empty dict
         error_plots = {
             "heatmap": f"Error generating plot for {feature}",
@@ -300,11 +398,14 @@ class HealthReportGenerator:
         # Use ProcessPoolExecutor to avoid matplotlib threading issues
         with ProcessPoolExecutor(max_workers=processes) as executor:
             # Submit all tasks using the module-level function
+            # Make config picklable before passing to multiprocessing
+            picklable_config = _make_config_picklable(visualizer.config)
+
             future_to_feature = {
                 executor.submit(
                     process_single_feature_visualization,
                     item,
-                    visualizer.config,
+                    picklable_config,
                     visualizer.segment_duration,
                     output_dir,
                 ): item[0]

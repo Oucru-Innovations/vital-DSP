@@ -1013,5 +1013,3 @@ class TestRespiratoryAdvancedAnalysis:
             pytest.skip(f"Logging and debugging test failed: {e}")
 
 
-if __name__ == "__main__":
-    pytest.main([__file__])

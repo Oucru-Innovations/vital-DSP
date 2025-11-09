@@ -491,5 +491,3 @@ def test_apply_advanced_filtering(transformer):
         transformer.apply_advanced_filtering(options={"filter_type": "unknown"})
 
 
-if __name__ == "__main__":
-    pytest.main()

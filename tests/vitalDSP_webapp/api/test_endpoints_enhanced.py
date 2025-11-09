@@ -32,7 +32,7 @@ class TestSignalDataModelAdvanced:
         signal_data = SignalData(data=data)
         
         # Should be serializable
-        json_data = signal_data.dict()
+        json_data = signal_data.model_dump()
         assert isinstance(json_data, dict)
         assert json_data['data'] == data
         

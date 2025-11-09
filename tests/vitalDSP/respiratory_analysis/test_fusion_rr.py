@@ -36,5 +36,3 @@ def test_respiratory_cardiac_fusion():
     assert 12 <= rr_fusion <= 40
 
 
-if __name__ == "__main__":
-    pytest.main()

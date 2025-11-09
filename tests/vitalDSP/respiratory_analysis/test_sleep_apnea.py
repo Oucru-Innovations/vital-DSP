@@ -43,5 +43,3 @@ def test_detect_apnea_pauses():
     assert 25 <= apnea_events[0][1] <= 35  # End time
 
 
-if __name__ == "__main__":
-    pytest.main()

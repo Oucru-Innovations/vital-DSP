@@ -9,16 +9,18 @@ import dash_bootstrap_components as dbc
 
 # Import the modules we need to test
 try:
+    # Import layouts from their respective modules
+    from vitalDSP_webapp.layout.pages.time_domain_page import time_domain_layout
+    from vitalDSP_webapp.layout.pages.frequency_page import frequency_layout
+    from vitalDSP_webapp.layout.pages.filtering_page import filtering_layout
+    from vitalDSP_webapp.layout.pages.physiological_page import physiological_layout
+    from vitalDSP_webapp.layout.pages.respiratory_page import respiratory_layout
+    from vitalDSP_webapp.layout.pages.transform_page import transforms_layout
+    from vitalDSP_webapp.layout.pages.quality_page import quality_layout
+    from vitalDSP_webapp.layout.pages.advanced_page import advanced_layout
+    # Import from analysis_pages module
     from vitalDSP_webapp.layout.pages.analysis_pages import (
-        time_domain_layout,
-        frequency_layout,
-        filtering_layout,
-        physiological_layout,
-        respiratory_layout,
         features_layout,
-        transforms_layout,
-        quality_layout,
-        advanced_layout,
         health_report_layout,
         settings_layout
     )
@@ -31,16 +33,18 @@ except ImportError:
     src_path = os.path.join(project_root, 'src')
     if src_path not in sys.path:
         sys.path.insert(0, src_path)
+    # Import layouts from their respective modules
+    from vitalDSP_webapp.layout.pages.time_domain_page import time_domain_layout
+    from vitalDSP_webapp.layout.pages.frequency_page import frequency_layout
+    from vitalDSP_webapp.layout.pages.filtering_page import filtering_layout
+    from vitalDSP_webapp.layout.pages.physiological_page import physiological_layout
+    from vitalDSP_webapp.layout.pages.respiratory_page import respiratory_layout
+    from vitalDSP_webapp.layout.pages.transform_page import transforms_layout
+    from vitalDSP_webapp.layout.pages.quality_page import quality_layout
+    from vitalDSP_webapp.layout.pages.advanced_page import advanced_layout
+    # Import from analysis_pages module
     from vitalDSP_webapp.layout.pages.analysis_pages import (
-        time_domain_layout,
-        frequency_layout,
-        filtering_layout,
-        physiological_layout,
-        respiratory_layout,
         features_layout,
-        transforms_layout,
-        quality_layout,
-        advanced_layout,
         health_report_layout,
         settings_layout
     )

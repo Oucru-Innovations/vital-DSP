@@ -48,5 +48,3 @@ def test_frequency_domain_rr():
     assert 12 <= rr <= 40
 
 
-if __name__ == "__main__":
-    pytest.main()

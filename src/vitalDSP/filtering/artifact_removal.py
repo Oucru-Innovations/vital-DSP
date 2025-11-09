@@ -1,7 +1,34 @@
+"""
+Signal Filtering Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- SciPy integration for advanced signal processing
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.filtering.artifact_removal import ArtifactRemoval
+    >>> signal = np.random.randn(1000)
+    >>> processor = ArtifactRemoval(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
 import numpy as np
 from scipy.signal import butter, filtfilt, convolve, medfilt
 from scipy.signal.windows import gaussian
-from vitalDSP.utils.mother_wavelets import Wavelet
+from vitalDSP.utils.signal_processing.mother_wavelets import Wavelet
 from sklearn.decomposition import IncrementalPCA
 
 
@@ -229,9 +256,9 @@ class ArtifactRemoval:
         for i in reversed(range(level)):
             # Upsample
             upsampled_approx = np.zeros(len(approx_coeffs) * 2)
-            upsampled_approx[::2] = approx_coeffs
+            upsampled_approx[::2] = np.real(approx_coeffs)
             upsampled_detail = np.zeros(len(detail_coeffs[i]) * 2)
-            upsampled_detail[::2] = detail_coeffs[i]
+            upsampled_detail[::2] = np.real(detail_coeffs[i])
 
             # Truncate to the same length before summing
             upsampled_approx = upsampled_approx[: len(upsampled_detail)]
@@ -338,44 +365,141 @@ class ArtifactRemoval:
         return smoothed_signal
 
     def adaptive_filtering(
-        self, reference_signal, learning_rate=0.01, num_iterations=100
+        self, reference_signal=None, learning_rate=0.01, num_iterations=100
     ):
         """
         Use an adaptive filter to remove artifacts correlated with a reference signal.
 
-        Adaptive filtering is particularly useful for removing artifacts that are correlated
-        with another signal, such as EOG artifacts in EEG recordings.
+        This method uses Least Mean Squares (LMS) adaptive filtering to iteratively adjust
+        the signal to minimize the error between the filtered signal and a reference signal.
+        It is particularly useful for removing artifacts that are correlated with another signal,
+        such as EOG artifacts in EEG recordings, motion artifacts in PPG, or respiratory artifacts.
+
+        If no reference signal is provided, the filter adapts towards zero (artifact removal/denoising).
 
         Parameters
         ----------
-        reference_signal : numpy.ndarray
-            The reference signal correlated with the artifact.
-        learning_rate : float
-            The learning rate for the adaptive filter.
-        num_iterations : int
-            The number of iterations for adaptation.
+        reference_signal : numpy.ndarray, optional
+            The reference signal correlated with the artifact. If None, adapts towards zero
+            (removes DC offset and baseline drift). Must have the same length as the input signal.
+        learning_rate : float, default=0.01
+            The learning rate (step size) for the adaptive filter. Controls convergence speed.
+            Typical range: 0.001 - 0.5
+            - Lower values (0.001-0.01): Slower convergence, more stable
+            - Higher values (0.1-0.5): Faster convergence, may oscillate
+        num_iterations : int, default=100
+            The number of iterations for adaptation. More iterations = better convergence.
 
         Returns
         -------
         clean_signal : numpy.ndarray
-            The artifact-removed signal.
+            The artifact-removed signal with the same length as the input.
+
+        Raises
+        ------
+        ValueError
+            If reference_signal length doesn't match signal length.
+
+        Notes
+        -----
+        **Algorithm**: Least Mean Squares (LMS) adaptive filtering
+        - The filter iteratively adjusts the signal based on the error
+        - Error = filtered_signal - reference_signal
+        - Update rule: filtered_signal -= learning_rate * error
+
+        **Use Cases**:
+        1. **With reference signal**: Remove correlated artifacts (EOG from EEG, motion from PPG)
+        2. **Without reference signal**: General denoising and DC offset removal
+
+        **Convergence**:
+        - Monitor the error reduction to ensure proper convergence
+        - If the filter diverges (error increases), reduce the learning rate
+        - Typical convergence: 50-200 iterations with learning_rate=0.01
+
+        See Also
+        --------
+        baseline_correction : For simple baseline drift removal
+        mean_subtraction : For DC offset removal
 
         Examples
         --------
-        >>> signal = np.array([1, 2, 3, 4, 5])
-        >>> reference_signal = np.array([1, 1, 1, 1, 1])
+        **Example 1: Remove EOG artifacts from EEG using reference EOG signal**
+
+        >>> import numpy as np
+        >>> # Simulate EEG contaminated with EOG
+        >>> eeg_clean = np.sin(2*np.pi*10*np.linspace(0, 1, 1000))  # 10 Hz alpha wave
+        >>> eog_artifact = 2 * np.sin(2*np.pi*2*np.linspace(0, 1, 1000))  # 2 Hz eye movement
+        >>> eeg_contaminated = eeg_clean + 0.5 * eog_artifact
+        >>>
+        >>> # Remove EOG artifact using reference EOG channel
+        >>> ar = ArtifactRemoval(eeg_contaminated)
+        >>> eeg_cleaned = ar.adaptive_filtering(
+        ...     reference_signal=eog_artifact,
+        ...     learning_rate=0.05,
+        ...     num_iterations=150
+        ... )
+        >>> print(f"Original SNR: {10*np.log10(np.var(eeg_clean)/np.var(eeg_contaminated-eeg_clean)):.2f} dB")
+        >>> print(f"Cleaned SNR: {10*np.log10(np.var(eeg_clean)/np.var(eeg_cleaned-eeg_clean)):.2f} dB")
+
+        **Example 2: Remove motion artifacts from PPG using accelerometer reference**
+
+        >>> # Simulate PPG with motion artifact
+        >>> ppg_signal = np.sin(2*np.pi*1.2*np.linspace(0, 10, 1000))  # Heart rate ~72 bpm
+        >>> motion_artifact = 0.8 * np.sin(2*np.pi*0.5*np.linspace(0, 10, 1000))  # Motion
+        >>> ppg_contaminated = ppg_signal + motion_artifact
+        >>>
+        >>> # Remove motion using accelerometer as reference
+        >>> ar = ArtifactRemoval(ppg_contaminated)
+        >>> ppg_cleaned = ar.adaptive_filtering(
+        ...     reference_signal=motion_artifact,
+        ...     learning_rate=0.02,
+        ...     num_iterations=100
+        ... )
+
+        **Example 3: General denoising without reference signal**
+
+        >>> # Noisy signal
+        >>> signal = np.sin(2*np.pi*5*np.linspace(0, 2, 500)) + 0.3*np.random.randn(500)
         >>> ar = ArtifactRemoval(signal)
-        >>> clean_signal = ar.adaptive_filtering(reference_signal, learning_rate=0.01, num_iterations=100)
-        >>> print(clean_signal)
+        >>> denoised = ar.adaptive_filtering(learning_rate=0.01, num_iterations=100)
+        >>> print(f"DC offset removed: {np.mean(signal):.3f} -> {np.mean(denoised):.3f}")
+
+        **Example 4: Respiratory artifact removal from ECG**
+
+        >>> # ECG with respiratory baseline wander
+        >>> ecg = np.sin(2*np.pi*1.2*np.linspace(0, 5, 1000))  # Heart rate
+        >>> respiratory = 0.4 * np.sin(2*np.pi*0.3*np.linspace(0, 5, 1000))  # Breathing
+        >>> ecg_with_resp = ecg + respiratory
+        >>>
+        >>> # Remove using respiratory belt signal as reference
+        >>> ar = ArtifactRemoval(ecg_with_resp)
+        >>> ecg_cleaned = ar.adaptive_filtering(
+        ...     reference_signal=respiratory,
+        ...     learning_rate=0.03,
+        ...     num_iterations=120
+        ... )
         """
-        filtered_signal = self.signal.copy()
         # Ensure the signal is cast to float64 for numerical stability
         filtered_signal = self.signal.astype(np.float64)
-        reference_signal = reference_signal.astype(np.float64)
 
+        # Handle reference signal
+        if reference_signal is None:
+            # Adapt towards zero (denoising/DC removal)
+            reference_signal = np.zeros_like(filtered_signal, dtype=np.float64)
+        else:
+            # Validate and convert reference signal
+            reference_signal = np.asarray(reference_signal, dtype=np.float64)
+            if len(reference_signal) != len(self.signal):
+                raise ValueError(
+                    f"Reference signal length ({len(reference_signal)}) must match "
+                    f"signal length ({len(self.signal)})"
+                )
+
+        # LMS adaptive filtering
         for _ in range(num_iterations):
             error = filtered_signal - reference_signal
             filtered_signal -= learning_rate * error
+
         return filtered_signal
 
     def notch_filter(self, freq=50, fs=1000, Q=30):
@@ -520,16 +644,22 @@ class ArtifactRemoval:
         batch_size=1000,
     ):
         """
-        Use Independent Component Analysis (ICA) to remove artifacts using IncrementalPCA.
+        Use Independent Component Analysis (ICA) to remove artifacts.
 
-        This method separates the signal into independent components and allows for the
-        removal of specific components identified as artifacts. ICA is particularly useful
-        for separating mixed signals into their independent sources.
+        This enhanced version automatically handles 1D signals by creating synthetic
+        components. ICA separates the signal into independent components and allows
+        for the removal of specific components identified as artifacts.
+
+        For 1D signals (single channel), synthetic components are automatically
+        generated using derivatives and delayed versions, enabling ICA to separate
+        artifacts from the underlying physiological signal.
 
         Parameters
         ----------
         num_components : int
             The number of independent components to retain.
+            For 1D signals, this determines how many synthetic components to generate.
+            Recommended: 3-5 for good artifact separation.
         max_iterations : int
             The maximum number of iterations for convergence.
         tol : float
@@ -537,25 +667,66 @@ class ArtifactRemoval:
         seed : int
             The seed for random number generation to ensure reproducibility.
         window_size : int, optional
-            The size of the sliding window to create a multi-dimensional signal. If None, no windowing is applied.
+            The size of the sliding window to create a multi-dimensional signal.
+            If None, automatic synthetic component generation is used for 1D signals.
         step_size : int, optional
-            The step size for the sliding window. Must be used with window_size. If None, no windowing is applied.
+            The step size for the sliding window. Must be used with window_size.
         batch_size : int, optional
-            The batch size for IncrementalPCA to manage memory usage.
+            The batch size for IncrementalPCA to manage memory usage (legacy parameter).
 
         Returns
         -------
         clean_signal : numpy.ndarray
-            The artifact-removed signal.
+            The artifact-removed signal (same shape as input).
+
+        Notes
+        -----
+        **For 1D Signals (Single Channel)**:
+        The method automatically creates synthetic components from:
+        - Original signal
+        - First derivative (captures rapid changes/spikes)
+        - Delayed version (captures temporal patterns)
+        - Second derivative (captures acceleration/motion artifacts)
+        - Smoothed version (captures baseline trends)
+
+        **For Multi-Channel Signals**:
+        Uses traditional windowing approach if window_size is specified.
 
         Examples
         --------
+        >>> # Example 1: 1D signal (most common case)
+        >>> import numpy as np
+        >>> signal_1d = np.sin(2*np.pi*np.linspace(0,10,1000)) + 0.1*np.random.randn(1000)
+        >>> ar = ArtifactRemoval(signal_1d)
+        >>> clean = ar.ica_artifact_removal(num_components=3)
+        >>> print(clean.shape)  # (1000,)
+        >>>
+        >>> # Example 2: With windowing (for backward compatibility)
         >>> signal = np.array([1, 2, 3, 4, 5, 6, 7, 8])
         >>> ar = ArtifactRemoval(signal)
-        >>> clean_signal = ar.ica_artifact_removal(num_components=1, window_size=4, step_size=2)
-        >>> print(clean_signal)
+        >>> clean = ar.ica_artifact_removal(num_components=1, window_size=4, step_size=2)
+        >>> print(clean.shape)  # (8,)
         """
-        # Apply windowing if window_size and step_size are provided
+        # Use enhanced ICA from blind_source_separation for 1D signals
+        if self.signal.ndim == 1 and not (window_size and step_size):
+            from vitalDSP.signal_quality_assessment.blind_source_separation import (
+                ica_artifact_removal as enhanced_ica,
+            )
+
+            # Use the enhanced ICA that handles 1D signals with synthetic components
+            clean_signal = enhanced_ica(
+                self.signal,
+                max_iter=max_iterations,
+                tol=tol,
+                auto_synthetic=True,
+                n_components=max(
+                    3, num_components + 2
+                ),  # Ensure enough components for good separation
+            )
+
+            return clean_signal
+
+        # Legacy path: Apply windowing if window_size and step_size are provided
         if window_size and step_size:
             segments = [
                 self.signal[i : i + window_size]
@@ -563,13 +734,18 @@ class ArtifactRemoval:
             ]
             multi_dimensional_signal = np.array(segments).T
         else:
-            multi_dimensional_signal = self.signal.reshape(-1, 1)
+            # Fallback for edge case
+            raise ValueError(
+                "For 1D signals without windowing, ICA will use automatic synthetic components. "
+                "This should not be reached. Please report this as a bug."
+            )
 
         # Validate the number of components based on the signal's dimensionality
         n_features = multi_dimensional_signal.shape[1]
         if num_components > n_features:
             raise ValueError(
-                f"n_components={num_components} invalid for n_features={n_features}. Ensure the signal has sufficient dimensionality for PCA."
+                f"n_components={num_components} invalid for n_features={n_features}. "
+                f"For 1D signals, omit window_size/step_size to use automatic synthetic components."
             )
 
         # Center the signal

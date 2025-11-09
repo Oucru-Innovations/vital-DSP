@@ -10,19 +10,25 @@ import logging
 
 # Import layouts from the new modular structure
 from vitalDSP_webapp.layout.pages.upload_page import upload_layout
+from vitalDSP_webapp.layout.pages.filtering_page import filtering_layout
+from vitalDSP_webapp.layout.pages.time_domain_page import time_domain_layout
+from vitalDSP_webapp.layout.pages.frequency_page import frequency_layout
+from vitalDSP_webapp.layout.pages.respiratory_page import respiratory_layout
 from vitalDSP_webapp.layout.pages.analysis_pages import (
-    time_domain_layout,
-    frequency_layout,
-    filtering_layout,
-    physiological_layout,
-    respiratory_layout,
+    # physiological_layout,
     features_layout,
-    transforms_layout,
-    quality_layout,
-    advanced_layout,
+    # transforms_layout,
+    # quality_layout,
+    # advanced_layout,
     health_report_layout,
     settings_layout,
 )
+from vitalDSP_webapp.layout.pages.advanced_page import advanced_layout
+from vitalDSP_webapp.layout.pages.quality_page import quality_layout
+from vitalDSP_webapp.layout.pages.transform_page import transforms_layout
+from vitalDSP_webapp.layout.pages.physiological_page import physiological_layout
+from vitalDSP_webapp.layout.pages.pipeline_page import pipeline_layout
+from vitalDSP_webapp.layout.pages.tasks_page import tasks_layout
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +74,9 @@ def display_page(pathname: str) -> html.Div:
             logger.info("Returning respiratory layout")
             return respiratory_layout()
         elif pathname == "/features":
-            logger.info("Returning features layout")
-            return features_layout()
+            # PHASE 5: Redirect /features to /advanced (merged pages)
+            logger.info("Redirecting /features to /advanced (merged)")
+            return advanced_layout()
         elif pathname == "/transforms":
             logger.info("Returning transforms layout")
             return transforms_layout()
@@ -85,6 +92,12 @@ def display_page(pathname: str) -> html.Div:
         elif pathname == "/settings":
             logger.info("Returning settings layout")
             return settings_layout()
+        elif pathname == "/pipeline":
+            logger.info("Returning pipeline layout")
+            return pipeline_layout()
+        elif pathname == "/tasks":
+            logger.info("Returning tasks layout")
+            return tasks_layout()
         else:
             logger.info("Returning default welcome page")
             return _get_welcome_layout()

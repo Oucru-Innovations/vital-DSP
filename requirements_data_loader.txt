@@ -1,0 +1,29 @@
+# vitalDSP Data Loader Requirements
+# Optional dependencies for extended format support
+
+# Core requirements (always needed)
+numpy>=1.19.0
+pandas>=1.1.0
+
+# Excel support
+openpyxl>=3.0.0
+
+# HDF5 support
+h5py>=3.0.0
+tables>=3.6.0
+
+# Medical formats
+pyedflib>=0.1.22  # European Data Format (EDF)
+wfdb>=3.4.0       # PhysioNet WFDB format
+
+# MATLAB support
+scipy>=1.5.0
+
+# Parquet support (efficient columnar format)
+pyarrow>=5.0.0
+
+# Real-time streaming
+pyserial>=3.5     # Serial port communication
+
+# Additional utilities
+requests>=2.25.0  # For API streaming

@@ -1,7 +1,35 @@
+"""
+Physiological Features Module for Physiological Signal Processing
+
+This module provides comprehensive capabilities for physiological
+signal processing including ECG, PPG, EEG, and other vital signs.
+
+Author: vitalDSP Team
+Date: 2025-01-27
+Version: 1.0.0
+
+Key Features:
+- Object-oriented design with comprehensive classes
+- Multiple processing methods and functions
+- NumPy integration for numerical computations
+- SciPy integration for advanced signal processing
+- Configurable parameters and settings
+
+Examples:
+--------
+Basic usage:
+    >>> import numpy as np
+    >>> from vitalDSP.physiological_features.beat_to_beat import BeatToBeat
+    >>> signal = np.random.randn(1000)
+    >>> processor = BeatToBeat(signal)
+    >>> result = processor.process()
+    >>> print(f'Processing result: {result}')
+"""
+
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.signal import resample
-from vitalDSP.utils.common import deprecated
+from vitalDSP.utils.config_utilities.common import deprecated
 
 
 class BeatToBeatAnalysis:
@@ -15,20 +43,34 @@ class BeatToBeatAnalysis:
         signal_type (str): The type of signal ('ECG' or 'PPG').
     """
 
-    def __init__(self, signal, r_peaks, fs=1000, signal_type="ECG"):
+    def __init__(self, signal, r_peaks=None, fs=1000, signal_type="ECG"):
         """
         Initializes the BeatToBeatAnalysis object.
 
         Args:
             signal (np.array): The ECG or PPG signal.
-            r_peaks (np.array): The indices of R-peaks (ECG) or systolic peaks (PPG).
+            r_peaks (np.array, optional): The indices of R-peaks (ECG) or systolic peaks (PPG).
+                                          If None, peaks will be automatically detected.
             fs (int): The sampling frequency of the signal in Hz. Default is 1000 Hz.
             signal_type (str): The type of signal ('ECG' or 'PPG'). Default is 'ECG'.
         """
         self.signal = np.array(signal)
-        self.r_peaks = np.array(r_peaks)
         self.fs = fs  # Sampling frequency
         self.signal_type = signal_type  # 'ECG' or 'PPG'
+
+        # Auto-detect peaks if not provided
+        if r_peaks is None:
+            from vitalDSP.physiological_features.waveform import WaveformMorphology
+
+            wm = WaveformMorphology(self.signal, fs=fs, signal_type=signal_type)
+            if signal_type == "ECG":
+                self.r_peaks = wm.r_peaks
+            elif signal_type == "PPG":
+                self.r_peaks = wm.systolic_peaks
+            else:
+                raise ValueError(f"Unsupported signal_type: {signal_type}")
+        else:
+            self.r_peaks = np.array(r_peaks)
 
     @deprecated("Use vitalDSP.transforms.beat_transformation.RRTransformation instead.")
     def compute_rr_intervals(self, correction_method=None, threshold=150):

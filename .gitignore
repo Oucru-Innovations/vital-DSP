@@ -9,6 +9,10 @@ __pycache__/
 _static/*
 images/*
 
+dev_docs/
+archive_docs/
+performance/
+
 # C extensions
 *.so
 

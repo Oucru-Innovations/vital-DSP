@@ -553,5 +553,3 @@ class TestPerformanceScenarios:
         assert isinstance(s_sessions, (list, np.ndarray, dict))
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

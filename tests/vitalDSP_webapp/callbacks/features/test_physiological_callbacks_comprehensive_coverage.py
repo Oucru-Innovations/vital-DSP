@@ -104,7 +104,8 @@ class TestFormatLargeNumberFunction:
         from vitalDSP_webapp.callbacks.features.physiological_callbacks import format_large_number
         
         result = format_large_number(0.001)
-        assert "m" in result  # Should use m notation
+        # Values >= 0.001 use regular decimal notation, not 'm' suffix
+        assert result == "0.001"
 
     def test_format_large_number_scientific_small(self):
         """Test scientific notation for very small numbers (line 44-46)"""

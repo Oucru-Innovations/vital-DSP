@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from vitalDSP.physiological_features.cross_correlation import CrossCorrelationFeatures
-from vitalDSP.utils.peak_detection import PeakDetection
+from vitalDSP.utils.signal_processing.peak_detection import PeakDetection
 
 
 # Mock the PeakDetection class to avoid actual peak detection logic in the tests

@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 import warnings
-from vitalDSP.utils.common import (
+from vitalDSP.utils.config_utilities.common import (
     argrelextrema,
     find_peaks,
     filtfilt,
