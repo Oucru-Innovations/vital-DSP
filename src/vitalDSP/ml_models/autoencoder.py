@@ -176,6 +176,38 @@ class BaseAutoencoder:
                 reconstructed = self.decoder(latent_tensor)
                 return reconstructed.cpu().numpy()
 
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """
+        Predict (reconstruct) signals.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Input signals of shape (n_samples, length) or (n_samples, length, n_channels)
+
+        Returns
+        -------
+        np.ndarray
+            Reconstructed signals
+        """
+        if self.model is None:
+            raise ValueError("Model not built. Call fit() first.")
+
+        # Handle empty input gracefully
+        if X.size == 0 or (hasattr(X, 'shape') and X.shape[0] == 0):
+            # Return empty array with correct output shape
+            output_shape = (0,) + self.input_shape
+            return np.empty(output_shape, dtype=np.float32)
+
+        if self.backend == "tensorflow":
+            return self.model.predict(X, verbose=0)
+        else:  # pytorch
+            self.model.eval()
+            with torch.no_grad():
+                X_tensor = torch.FloatTensor(X)
+                reconstructed = self.model(X_tensor)
+                return reconstructed.cpu().numpy()
+
     def compute_reconstruction_error(
         self, X: np.ndarray, metric: str = "mse"
     ) -> np.ndarray:
@@ -196,7 +228,7 @@ class BaseAutoencoder:
         """
         # Get reconstructions
         if self.backend == "tensorflow":
-            X_reconstructed = self.model.predict(X, verbose=0)
+            X_reconstructed = self.predict(X)
         else:  # pytorch
             self.model.eval()
             with torch.no_grad():
