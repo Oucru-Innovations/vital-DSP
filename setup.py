@@ -52,10 +52,15 @@ setup(
     ],
     extras_require={
         'tensorflow': [
-            'tensorflow>=2.10.0',  # TensorFlow for deep learning models
+            'tensorflow>=2.8.0,<2.17.0; platform_system != "Darwin" and python_version < "3.13"',  # TensorFlow for Linux/Windows
+            'tensorflow-macos>=2.8.0,<2.17.0; platform_system == "Darwin" and platform_machine == "arm64" and python_version < "3.13"',  # Apple Silicon
+            'tensorflow>=2.8.0,<2.17.0; platform_system == "Darwin" and platform_machine != "arm64" and python_version < "3.13"',  # macOS Intel
+            # For Python 3.13+, users need to manually install tf-nightly or use Python 3.8-3.12
         ],
         'all': [
-            'tensorflow>=2.10.0',  # Include all optional dependencies
+            'tensorflow>=2.8.0,<2.17.0; platform_system != "Darwin" and python_version < "3.13"',
+            'tensorflow-macos>=2.8.0,<2.17.0; platform_system == "Darwin" and platform_machine == "arm64" and python_version < "3.13"',
+            'tensorflow>=2.8.0,<2.17.0; platform_system == "Darwin" and platform_machine != "arm64" and python_version < "3.13"',
         ],
     },
     entry_points={

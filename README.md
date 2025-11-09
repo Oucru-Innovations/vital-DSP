@@ -275,9 +275,18 @@ pip install -r requirements-tensorflow.txt
 
 ### Optional Dependencies
 
-- TensorFlow >= 2.10.0 (for deep learning models including autoencoders, LSTM, CNN, etc.)
+- TensorFlow >= 2.8.0 (for deep learning models including autoencoders, LSTM, CNN, etc.)
+  - **Python 3.8-3.12**: `tensorflow>=2.8.0,<2.17.0` (recommended)
+    - On Windows/Linux: `tensorflow>=2.8.0,<2.17.0`
+    - On macOS with Apple Silicon (M1/M2): `tensorflow-macos>=2.8.0,<2.17.0`
+    - On macOS with Intel: `tensorflow>=2.8.0,<2.17.0`
+  - **Python 3.13+**: TensorFlow is not officially supported yet
+    - **Option 1 (Recommended)**: Use Python 3.11 or 3.12 for stable TensorFlow support
+    - **Option 2 (Experimental)**: Install TensorFlow nightly build: `pip install tf-nightly`
 
 **Note**: TensorFlow is optional and only required if you plan to use the advanced deep learning models in `vitalDSP.ml_models`. The core signal processing and machine learning features work without TensorFlow.
+
+**Python 3.13 Users**: If you're using Python 3.13, you won't be able to install stable TensorFlow. We recommend using Python 3.11 or 3.12 for full compatibility. Alternatively, you can use vitalDSP without TensorFlow for all non-deep-learning features.
 
 ## Healthcare Applications
 

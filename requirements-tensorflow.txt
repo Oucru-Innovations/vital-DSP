@@ -1,3 +1,25 @@
 # TensorFlow dependencies for ML models
-tensorflow>=2.10.0
+# TensorFlow 2.x with flexible version support
+# 
+# IMPORTANT: TensorFlow compatibility by Python version:
+# - Python 3.8-3.11: Use TensorFlow 2.8-2.16
+# - Python 3.12+: TensorFlow 2.16+ (limited availability)
+# - Python 3.13+: Not officially supported yet (use nightly builds or wait for stable release)
+#
+# If you're using Python 3.13+, you have two options:
+# 1. Use Python 3.11 or 3.12 (recommended)
+# 2. Install TensorFlow nightly: pip install tf-nightly
+#
+# For most platforms (Linux, Windows) with Python 3.8-3.12
+tensorflow>=2.8.0,<2.17.0; platform_system != "Darwin" and python_version < "3.13"
+
+# For macOS with Apple Silicon (M1/M2) with Python 3.8-3.12
+tensorflow-macos>=2.8.0,<2.17.0; platform_system == "Darwin" and platform_machine == "arm64" and python_version < "3.13"
+
+# For macOS with Intel with Python 3.8-3.12
+tensorflow>=2.8.0,<2.17.0; platform_system == "Darwin" and platform_machine != "arm64" and python_version < "3.13"
+
+# For Python 3.13+ (experimental - requires manual installation of tf-nightly)
+# Uncomment the line below if you want to try the nightly build:
+# tf-nightly; python_version >= "3.13"
 
