@@ -1060,153 +1060,179 @@ class VariationalAutoencoder(BaseAutoencoder):
         dropout_rate: float = 0.2,
         backend: str = "tensorflow",
         random_state: Optional[int] = None,
+        learning_rate: float = 0.001,
     ):
-        """
-        Initialize VAE.
-
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of input signals
-        latent_dim : int, default=32
-            Dimensionality of latent space
-        hidden_dims : list, default=[256, 128, 64]
-            Dimensions of hidden layers
-        activation : str, default='relu'
-            Activation function
-        beta : float, default=1.0
-            Weight for KL divergence term (beta-VAE)
-        use_batch_norm : bool, default=True
-            Whether to use batch normalization
-        dropout_rate : float, default=0.2
-            Dropout rate
-        backend : str, default='tensorflow'
-            Deep learning backend
-        random_state : int, optional
-            Random seed
-        """
-        super().__init__(input_shape, latent_dim, backend, random_state)
+        super().__init__(
+            input_shape=input_shape,
+            latent_dim=latent_dim,
+            backend=backend,
+            random_state=random_state,
+        )
 
         self.hidden_dims = hidden_dims
         self.activation = activation
         self.beta = beta
         self.use_batch_norm = use_batch_norm
         self.dropout_rate = dropout_rate
+        self.learning_rate = learning_rate
 
         # Build model
         self._build_model()
 
     def _build_tensorflow_model(self):
-        """Build TensorFlow/Keras model."""
+        """Build the TensorFlow model for the VAE."""
+        import tensorflow as tf
+        from tensorflow import keras
+        from tensorflow.keras import layers
+        
         # Encoder
-        encoder_input = keras.Input(shape=self.input_shape)
-        x = layers.Flatten()(encoder_input)
-
-        for dim in self.hidden_dims:
-            x = layers.Dense(dim)(x)
+        encoder_input = layers.Input(shape=self.input_shape, name='encoder_input')
+        
+        x = encoder_input
+        for i, units in enumerate(self.hidden_dims):
+            x = layers.Dense(units, activation=self.activation, name=f'encoder_dense_{i}')(x)
             if self.use_batch_norm:
-                x = layers.BatchNormalization()(x)
-            x = layers.Activation(self.activation)(x)
-            x = layers.Dropout(self.dropout_rate)(x)
-
-        # Latent distribution parameters
-        z_mean = layers.Dense(self.latent_dim, name="z_mean")(x)
-        z_log_var = layers.Dense(self.latent_dim, name="z_log_var")(x)
-
-        # Sampling layer
+                x = layers.BatchNormalization(name=f'encoder_bn_{i}')(x)
+            if self.dropout_rate > 0:
+                x = layers.Dropout(self.dropout_rate, name=f'encoder_dropout_{i}')(x)
+        
+        # Latent space
+        z_mean = layers.Dense(self.latent_dim, name='z_mean')(x)
+        z_log_var = layers.Dense(self.latent_dim, name='z_log_var')(x)
+        
+        # Sampling layer using Keras backend
         def sampling(args):
             z_mean, z_log_var = args
-            batch = tf.shape(z_mean)[0]
-            dim = tf.shape(z_mean)[1]
-            epsilon = tf.random.normal(shape=(batch, dim))
-            return z_mean + tf.exp(0.5 * z_log_var) * epsilon
-
-        z = layers.Lambda(sampling, name="z")([z_mean, z_log_var])
-
-        self.encoder = Model(encoder_input, [z_mean, z_log_var, z], name="encoder")
-
+            batch = keras.backend.shape(z_mean)[0]
+            dim = keras.backend.shape(z_mean)[1]
+            epsilon = keras.backend.random_normal(shape=(batch, dim))
+            return z_mean + keras.backend.exp(0.5 * z_log_var) * epsilon
+        
+        z = layers.Lambda(sampling, name='z')([z_mean, z_log_var])
+        
         # Decoder
-        decoder_input = keras.Input(shape=(self.latent_dim,))
-        x = decoder_input
-
-        for dim in reversed(self.hidden_dims):
-            x = layers.Dense(dim)(x)
+        decoder_input = layers.Input(shape=(self.latent_dim,), name='decoder_input')
+        
+        x_dec = decoder_input
+        for i, units in enumerate(reversed(self.hidden_dims)):
+            x_dec = layers.Dense(units, activation=self.activation, name=f'decoder_dense_{i}')(x_dec)
             if self.use_batch_norm:
-                x = layers.BatchNormalization()(x)
-            x = layers.Activation(self.activation)(x)
-            x = layers.Dropout(self.dropout_rate)(x)
+                x_dec = layers.BatchNormalization(name=f'decoder_bn_{i}')(x_dec)
+            if self.dropout_rate > 0:
+                x_dec = layers.Dropout(self.dropout_rate, name=f'decoder_dropout_{i}')(x_dec)
+        
+        decoder_output = layers.Dense(np.prod(self.input_shape), activation='sigmoid', name='decoder_output')(x_dec)
+        if len(self.input_shape) > 1:
+            decoder_output = layers.Reshape(self.input_shape)(decoder_output)
+        
+        # Build encoder and decoder models
+        self.encoder = keras.Model(encoder_input, [z_mean, z_log_var, z], name='encoder')
+        self.decoder = keras.Model(decoder_input, decoder_output, name='decoder')
+        
+        # Build VAE model
+        outputs = self.decoder(self.encoder(encoder_input)[2])
+        self.model = keras.Model(encoder_input, outputs, name='vae')
+        
+        # Create a custom training step to handle the VAE loss
+        class VAEModel(keras.Model):
+            def __init__(self, encoder, decoder, beta, **kwargs):
+                super().__init__(**kwargs)
+                self.encoder = encoder
+                self.decoder = decoder
+                self.beta = beta
+                self.total_loss_tracker = keras.metrics.Mean(name="total_loss")
+                self.reconstruction_loss_tracker = keras.metrics.Mean(name="reconstruction_loss")
+                self.kl_loss_tracker = keras.metrics.Mean(name="kl_loss")
 
-        output_dim = np.prod(self.input_shape)
-        x = layers.Dense(output_dim, activation="linear")(x)
-        decoder_output = layers.Reshape(self.input_shape)(x)
-        self.decoder = Model(decoder_input, decoder_output, name="decoder")
+            @property
+            def metrics(self):
+                return [
+                    self.total_loss_tracker,
+                    self.reconstruction_loss_tracker,
+                    self.kl_loss_tracker,
+                ]
 
-        # Full VAE
-        z_mean_output, z_log_var_output, z_output = self.encoder(encoder_input)
-        outputs = self.decoder(z_output)
-        self.model = Model(encoder_input, outputs, name="vae")
+            def train_step(self, data):
+                # Handle both tuple (x, y) and single array x
+                if isinstance(data, tuple):
+                    x, _ = data  # VAE uses x as both input and target
+                else:
+                    x = data
+                with tf.GradientTape() as tape:
+                    z_mean, z_log_var, z = self.encoder(x, training=True)
+                    reconstruction = self.decoder(z, training=True)
+                    
+                    # Reconstruction loss
+                    reconstruction_loss = keras.backend.mean(
+                        keras.backend.sum(
+                            keras.backend.square(x - reconstruction),
+                            axis=list(range(1, len(x.shape)))
+                        )
+                    )
+                    
+                    # KL divergence loss
+                    kl_loss = -0.5 * keras.backend.mean(
+                        keras.backend.sum(
+                            1 + z_log_var - keras.backend.square(z_mean) - keras.backend.exp(z_log_var),
+                            axis=1
+                        )
+                    )
+                    
+                    total_loss = reconstruction_loss + self.beta * kl_loss
 
-        # Custom loss using Lambda layers to avoid KerasTensor issues
-        def vae_loss_fn(inputs):
-            encoder_input_inner, outputs_inner, z_mean_inner, z_log_var_inner = inputs
-            
-            # Reconstruction loss
-            reconstruction_loss = keras.backend.mean(
-                keras.backend.sum(
-                    keras.backend.square(encoder_input_inner - outputs_inner),
-                    axis=list(range(1, len(self.input_shape) + 1)),
+                grads = tape.gradient(total_loss, self.trainable_weights)
+                self.optimizer.apply_gradients(zip(grads, self.trainable_weights))
+                
+                self.total_loss_tracker.update_state(total_loss)
+                self.reconstruction_loss_tracker.update_state(reconstruction_loss)
+                self.kl_loss_tracker.update_state(kl_loss)
+                
+                return {
+                    "loss": self.total_loss_tracker.result(),
+                    "reconstruction_loss": self.reconstruction_loss_tracker.result(),
+                    "kl_loss": self.kl_loss_tracker.result(),
+                }
+
+            def test_step(self, data):
+                # Handle both tuple (x, y) and single array x
+                if isinstance(data, tuple):
+                    x, _ = data  # VAE uses x as both input and target
+                else:
+                    x = data
+                z_mean, z_log_var, z = self.encoder(x, training=False)
+                reconstruction = self.decoder(z, training=False)
+                
+                # Reconstruction loss
+                reconstruction_loss = keras.backend.mean(
+                    keras.backend.sum(
+                        keras.backend.square(x - reconstruction),
+                        axis=list(range(1, len(x.shape)))
+                    )
                 )
-            )
-            
-            # KL divergence loss
-            kl_loss = -0.5 * keras.backend.mean(
-                keras.backend.sum(
-                    1 + z_log_var_inner - keras.backend.square(z_mean_inner) - keras.backend.exp(z_log_var_inner),
-                    axis=1
+                
+                # KL divergence loss
+                kl_loss = -0.5 * keras.backend.mean(
+                    keras.backend.sum(
+                        1 + z_log_var - keras.backend.square(z_mean) - keras.backend.exp(z_log_var),
+                        axis=1
+                    )
                 )
-            )
-            
-            return reconstruction_loss + self.beta * kl_loss
+                
+                total_loss = reconstruction_loss + self.beta * kl_loss
+                
+                return {
+                    "loss": total_loss,
+                    "reconstruction_loss": reconstruction_loss,
+                    "kl_loss": kl_loss,
+                }
+
+        # Create the custom VAE model
+        self.vae_model = VAEModel(self.encoder, self.decoder, self.beta)
+        self.vae_model.compile(optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate))
         
-        # Compute loss
-        vae_loss = layers.Lambda(
-            vae_loss_fn, 
-            name='vae_loss'
-        )([encoder_input, outputs, z_mean_output, z_log_var_output])
-        
-        self.model.add_loss(vae_loss)
-        
-        # Add metrics using Lambda layers
-        def reconstruction_loss_fn(inputs):
-            encoder_input_inner, outputs_inner = inputs
-            return keras.backend.mean(
-                keras.backend.sum(
-                    keras.backend.square(encoder_input_inner - outputs_inner),
-                    axis=list(range(1, len(self.input_shape) + 1)),
-                )
-            )
-        
-        def kl_loss_fn(inputs):
-            z_mean_inner, z_log_var_inner = inputs
-            return -0.5 * keras.backend.mean(
-                keras.backend.sum(
-                    1 + z_log_var_inner - keras.backend.square(z_mean_inner) - keras.backend.exp(z_log_var_inner),
-                    axis=1
-                )
-            )
-        
-        reconstruction_loss_metric = layers.Lambda(
-            reconstruction_loss_fn,
-            name='reconstruction_loss_metric'
-        )([encoder_input, outputs])
-        
-        kl_loss_metric = layers.Lambda(
-            kl_loss_fn,
-            name='kl_loss_metric'
-        )([z_mean_output, z_log_var_output])
-        
-        self.model.add_metric(reconstruction_loss_metric, name="reconstruction_loss")
-        self.model.add_metric(kl_loss_metric, name="kl_loss")
+        # Store references for encoding/decoding
+        self.z_mean_output = z_mean
+        self.z_log_var_output = z_log_var
 
     def _build_pytorch_model(self):
         """Build PyTorch model."""
@@ -1248,9 +1274,6 @@ class VariationalAutoencoder(BaseAutoencoder):
     def fit(self, X: np.ndarray, **kwargs):
         """Train the VAE. See StandardAutoencoder.fit() for parameters."""
         if self.backend == "tensorflow":
-            # Compile model
-            self.model.compile(optimizer="adam")
-
             # Get training parameters
             epochs = kwargs.get("epochs", 100)
             batch_size = kwargs.get("batch_size", 32)
@@ -1270,23 +1293,51 @@ class VariationalAutoencoder(BaseAutoencoder):
                     ),
                 ]
 
-            # Train
-            self.history = self.model.fit(
+            # Handle validation data - VAE expects (x_val, x_val) tuple for Keras fit()
+            if validation_data is not None:
+                if isinstance(validation_data, tuple):
+                    # If validation_data is (X_val, y_val), use (X_val, X_val) for VAE
+                    # The train_step/test_step will extract just X_val
+                    validation_data = (validation_data[0], validation_data[0])
+                else:
+                    # If it's just an array, convert to tuple
+                    validation_data = (validation_data, validation_data)
+
+            # Train using the custom VAE model
+            # VAE reconstructs input, so pass X as both input and target
+            self.history = self.vae_model.fit(
                 X,
-                X,
+                X,  # VAE uses input as target
                 epochs=epochs,
                 batch_size=batch_size,
                 validation_split=validation_split if validation_data is None else 0,
-                validation_data=(
-                    (validation_data[0], validation_data[0])
-                    if validation_data is not None
-                    else None
-                ),
+                validation_data=validation_data,
                 callbacks=callbacks,
                 verbose=verbose,
             )
 
         return self
+
+    def sample(self, n_samples: int = 1) -> np.ndarray:
+        """
+        Generate new samples from the learned latent distribution.
+        
+        Parameters
+        ----------
+        n_samples : int, default=1
+            Number of samples to generate
+            
+        Returns
+        -------
+        np.ndarray
+            Generated samples of shape (n_samples, *input_shape)
+        """
+        if self.backend == "tensorflow":
+            # Sample from standard normal distribution
+            z_samples = np.random.randn(n_samples, self.latent_dim)
+            return self.decode(z_samples)
+        else:
+            raise NotImplementedError("Sampling not implemented for PyTorch backend")
 
 
 class DenoisingAutoencoder(StandardAutoencoder):
