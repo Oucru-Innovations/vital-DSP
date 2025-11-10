@@ -754,7 +754,6 @@ async def start_websocket_manager() -> None:
 
 async def stop_websocket_manager() -> None:
     """Stop global WebSocket manager."""
-    global _websocket_manager
     if _websocket_manager:
         await _websocket_manager.stop()
 

@@ -933,7 +933,6 @@ def start_task_processing() -> None:
 
 def stop_task_processing() -> None:
     """Stop global task processing."""
-    global _task_processor
     if _task_processor:
         _task_processor.stop()
 
