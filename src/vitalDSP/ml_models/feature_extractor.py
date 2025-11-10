@@ -138,8 +138,14 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
             elif self.feature_selection == "pca":
                 self.selector_ = PCA(n_components=self.n_features)
 
-            if self.selector_ and y is not None:
-                self.selector_.fit(X_features, y)
+            # Fit the selector
+            if self.selector_:
+                if self.feature_selection == "pca":
+                    # PCA is unsupervised, doesn't need y
+                    self.selector_.fit(X_features)
+                elif y is not None:
+                    # Supervised selectors (kbest, mutual_info) need y
+                    self.selector_.fit(X_features, y)
 
         return self
 
