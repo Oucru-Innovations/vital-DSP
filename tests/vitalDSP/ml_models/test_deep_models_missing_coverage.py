@@ -135,13 +135,33 @@ class TestTensorFlowNotAvailable:
 
     def test_tensorflow_not_available_error(self):
         """Test error when TensorFlow is not available - covers lines 105-107."""
-        # Mock TF_AVAILABLE to be False
-        with patch('vitalDSP.ml_models.deep_models.TF_AVAILABLE', False):
-            try:
+        # Test the ImportError path when TensorFlow is not available
+        import sys
+        import vitalDSP.ml_models.deep_models as dm_module
+        
+        # Ensure we have the module in sys.modules
+        module_name = 'vitalDSP.ml_models.deep_models'
+        if module_name not in sys.modules:
+            import vitalDSP.ml_models.deep_models
+        # Get the actual module reference from sys.modules
+        dm_module = sys.modules[module_name]
+
+        # Save original value
+        original_tf_available = dm_module.TF_AVAILABLE
+        
+        try:
+            # Set TF_AVAILABLE to False to simulate TensorFlow not being available
+            # This will be checked at runtime in CNN1D.__init__
+            dm_module.TF_AVAILABLE = False
+            
+            # The CNN1D class checks TF_AVAILABLE at runtime in __init__
+            # Since CNN1D is defined in this module, its __init__ will look up
+            # TF_AVAILABLE from the module's namespace
+            with pytest.raises(ImportError, match="TensorFlow not available"):
                 model = CNN1D(input_shape=(100, 1), n_classes=2, backend='tensorflow')
-                assert False, "Should have raised ImportError"
-            except ImportError as e:
-                assert "TensorFlow not available" in str(e)
+        finally:
+            # Restore original value
+            dm_module.TF_AVAILABLE = original_tf_available
 
 
 @pytest.mark.skipif(not DEEP_MODELS_AVAILABLE or not TORCH_AVAILABLE, reason="Deep models or PyTorch not available")

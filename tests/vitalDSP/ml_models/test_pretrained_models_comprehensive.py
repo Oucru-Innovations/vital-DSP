@@ -198,10 +198,24 @@ class TestPretrainedModelPlaceholderCreation:
         assert model is not None
         assert isinstance(model, keras.Model)
     
-    @pytest.mark.skipif(not TENSORFLOW_AVAILABLE, reason="TensorFlow not installed")
     def test_create_placeholder_no_tensorflow(self):
         """Test creating placeholder without TensorFlow - covers lines 309-310."""
-        with patch('vitalDSP.ml_models.pretrained_models.TENSORFLOW_AVAILABLE', False):
+        import sys
+        import vitalDSP.ml_models.pretrained_models as pm_module
+        
+        # Get the module from sys.modules
+        module_name = 'vitalDSP.ml_models.pretrained_models'
+        if module_name not in sys.modules:
+            import vitalDSP.ml_models.pretrained_models
+        pm_module = sys.modules[module_name]
+        
+        # Save original value
+        original_tf_available = pm_module.TENSORFLOW_AVAILABLE
+        
+        try:
+            # Set TENSORFLOW_AVAILABLE to False to simulate TensorFlow not being available
+            pm_module.TENSORFLOW_AVAILABLE = False
+            
             metadata = {
                 "backend": "tensorflow",
                 "architecture": "cnn1d",
@@ -213,6 +227,9 @@ class TestPretrainedModelPlaceholderCreation:
             
             with pytest.raises(ImportError, match="TensorFlow not installed"):
                 PretrainedModel._create_placeholder_model(metadata)
+        finally:
+            # Restore original value
+            pm_module.TENSORFLOW_AVAILABLE = original_tf_available
     
     def test_create_placeholder_pytorch_not_implemented(self):
         """Test PyTorch placeholder not implemented - covers lines 358-359."""
@@ -235,37 +252,70 @@ class TestPretrainedModelDownload:
     
     def test_download_model_tensorflow(self, tmp_cache_dir):
         """Test downloading TensorFlow model - covers lines 364-377."""
+        if not TENSORFLOW_AVAILABLE:
+            pytest.skip("TensorFlow not available")
+            
         url = "https://example.com/model.h5"
         save_path = tmp_cache_dir / "test_model.h5"
         
-        # Mock urlretrieve
-        with patch('vitalDSP.ml_models.pretrained_models.urlretrieve') as mock_retrieve:
-            if TENSORFLOW_AVAILABLE:
-                # Mock model loading
-                mock_model = Mock()
-                with patch('vitalDSP.ml_models.pretrained_models.keras.models.load_model', return_value=mock_model):
-                    model = PretrainedModel._download_model(url, save_path, "tensorflow")
-                    assert model is not None
-                    mock_retrieve.assert_called_once()
-            else:
-                pytest.skip("TensorFlow not available")
+        # Create a mock function that creates an empty file
+        def mock_urlretrieve(url, filename):
+            # Create an empty file to simulate download
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            Path(filename).touch()
+        
+        # Mock urlretrieve - patch the imported function
+        import vitalDSP.ml_models.pretrained_models as pm_module
+        original_urlretrieve = pm_module.urlretrieve
+        pm_module.urlretrieve = mock_urlretrieve
+        try:
+            # Mock model loading
+            mock_model = Mock()
+            original_load_model = pm_module.keras.models.load_model
+            pm_module.keras.models.load_model = Mock(return_value=mock_model)
+            try:
+                model = PretrainedModel._download_model(url, save_path, "tensorflow")
+                assert model is not None
+                assert save_path.exists()
+            finally:
+                pm_module.keras.models.load_model = original_load_model
+        finally:
+            pm_module.urlretrieve = original_urlretrieve
     
     def test_download_model_pytorch(self, tmp_cache_dir):
         """Test downloading PyTorch model - covers lines 375-375."""
+        if not PYTORCH_AVAILABLE:
+            pytest.skip("PyTorch not available")
+            
         url = "https://example.com/model.pt"
         save_path = tmp_cache_dir / "test_model.pt"
         
-        if PYTORCH_AVAILABLE:
-            # Mock urlretrieve
-            with patch('vitalDSP.ml_models.pretrained_models.urlretrieve') as mock_retrieve:
-                # Mock torch.load
-                mock_model = Mock()
-                with patch('vitalDSP.ml_models.pretrained_models.torch.load', return_value=mock_model):
+        # Create a mock function that creates an empty file
+        def mock_urlretrieve(url, filename):
+            # Create an empty file to simulate download
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            Path(filename).touch()
+        
+        # Mock urlretrieve - patch the imported function
+        import vitalDSP.ml_models.pretrained_models as pm_module
+        original_urlretrieve = pm_module.urlretrieve
+        pm_module.urlretrieve = mock_urlretrieve
+        try:
+            # Mock torch.load
+            mock_model = Mock()
+            if hasattr(pm_module, 'torch'):
+                original_torch_load = pm_module.torch.load
+                pm_module.torch.load = Mock(return_value=mock_model)
+                try:
                     model = PretrainedModel._download_model(url, save_path, "pytorch")
                     assert model is not None
-                    mock_retrieve.assert_called_once()
-        else:
-            pytest.skip("PyTorch not available")
+                    assert save_path.exists()
+                finally:
+                    pm_module.torch.load = original_torch_load
+            else:
+                pytest.skip("PyTorch not imported in module")
+        finally:
+            pm_module.urlretrieve = original_urlretrieve
     
     def test_download_model_url_error(self, tmp_cache_dir):
         """Test download model with URLError - covers lines 379-380."""
@@ -274,9 +324,15 @@ class TestPretrainedModelDownload:
         url = "https://invalid-url.com/model.h5"
         save_path = tmp_cache_dir / "test_model.h5"
         
-        with patch('vitalDSP.ml_models.pretrained_models.urlretrieve', side_effect=URLError("Connection failed")):
+        # Mock urlretrieve to raise URLError
+        import vitalDSP.ml_models.pretrained_models as pm_module
+        original_urlretrieve = pm_module.urlretrieve
+        pm_module.urlretrieve = Mock(side_effect=URLError("Connection failed"))
+        try:
             with pytest.raises(RuntimeError, match="Failed to download model"):
                 PretrainedModel._download_model(url, save_path, "tensorflow")
+        finally:
+            pm_module.urlretrieve = original_urlretrieve
 
 
 @pytest.mark.skipif(not PRETRAINED_AVAILABLE or not TENSORFLOW_AVAILABLE, reason="Pretrained models or TensorFlow not available")
@@ -868,22 +924,36 @@ class TestPretrainedModelEdgeCases:
     
     def test_from_registry_with_url(self, tmp_cache_dir):
         """Test from_registry with URL in metadata - covers lines 278-286."""
+        if not TENSORFLOW_AVAILABLE:
+            pytest.skip("TensorFlow not available")
+            
         # Modify registry temporarily
         original_url = MODEL_REGISTRY['ecg_classifier_mitbih']['url']
         MODEL_REGISTRY['ecg_classifier_mitbih']['url'] = 'https://example.com/model.h5'
         
         try:
-            with patch('vitalDSP.ml_models.pretrained_models.PretrainedModel._download_model') as mock_download:
-                if TENSORFLOW_AVAILABLE:
-                    mock_model = Mock()
-                    mock_download.return_value = mock_model
-                    
-                    model = PretrainedModel.from_registry(
-                        'ecg_classifier_mitbih',
-                        cache_dir=str(tmp_cache_dir),
-                        force_download=True
-                    )
-                    assert model is not None
+            # Create a mock function that creates an empty file
+            def mock_urlretrieve(url, filename):
+                Path(filename).parent.mkdir(parents=True, exist_ok=True)
+                Path(filename).touch()
+            
+            # Mock the download to create a file and return a mock model
+            import vitalDSP.ml_models.pretrained_models as pm_module
+            mock_model = Mock()
+            original_urlretrieve = pm_module.urlretrieve
+            original_load_model = pm_module.keras.models.load_model
+            pm_module.urlretrieve = mock_urlretrieve
+            pm_module.keras.models.load_model = Mock(return_value=mock_model)
+            try:
+                model = PretrainedModel.from_registry(
+                    'ecg_classifier_mitbih',
+                    cache_dir=str(tmp_cache_dir),
+                    force_download=True
+                )
+                assert model is not None
+            finally:
+                pm_module.urlretrieve = original_urlretrieve
+                pm_module.keras.models.load_model = original_load_model
         finally:
             # Restore original URL
             MODEL_REGISTRY['ecg_classifier_mitbih']['url'] = original_url

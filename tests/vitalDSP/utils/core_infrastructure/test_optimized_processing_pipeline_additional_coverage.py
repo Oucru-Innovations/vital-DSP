@@ -369,13 +369,14 @@ class TestOptimizedCheckpointManagerMissingLines:
         """Test _decompress_checkpoint_data - covers lines 553-562."""
         manager = OptimizedCheckpointManager(config_manager, temp_checkpoint_dir)
         
-        # Create compressed checkpoint data
+        # Create compressed checkpoint data with correct dtype
+        original_array = np.array([1, 2, 3], dtype=np.int64)
         compressed_data = {
             "_compressed": True,
             "data": {
-                "signal_compressed": zlib.compress(np.array([1, 2, 3]).tobytes()),
-                "signal_shape": (3,),
-                "signal_dtype": "int64"
+                "signal_compressed": zlib.compress(original_array.tobytes()),
+                "signal_shape": original_array.shape,
+                "signal_dtype": str(original_array.dtype)
             }
         }
         
@@ -384,6 +385,7 @@ class TestOptimizedCheckpointManagerMissingLines:
         assert "_compressed" not in decompressed
         assert "data" in decompressed
         assert "signal" in decompressed["data"]
+        np.testing.assert_array_equal(decompressed["data"]["signal"], original_array)
     
     def test_decompress_data_dict(self, config_manager, temp_checkpoint_dir):
         """Test _decompress_data_dict - covers lines 564-583."""
@@ -1035,15 +1037,27 @@ class TestOptimizedStandardProcessingPipelineMissingLines:
     
     def test_load_checkpoint_with_compression(self, pipeline, temp_checkpoint_dir):
         """Test load_checkpoint with compressed data - covers lines 1400-1403."""
+        from vitalDSP.utils.core_infrastructure.optimized_processing_pipeline import ProcessingCheckpoint, ProcessingStage
+        from datetime import datetime
+        
         checkpoint_path = Path(temp_checkpoint_dir) / "test.pkl"
         
-        # Create compressed checkpoint
+        # Create compressed checkpoint with correct structure
+        original_array = np.array([1, 2, 3], dtype=np.int64)
         compressed_data = {
             "_compressed": True,
+            "checkpoint": ProcessingCheckpoint(
+                stage=ProcessingStage.DATA_INGESTION,
+                timestamp=datetime.now(),
+                data_hash="test",
+                metadata={},
+                file_path=str(checkpoint_path),
+                success=True
+            ),
             "data": {
-                "signal_compressed": zlib.compress(np.array([1, 2, 3]).tobytes()),
-                "signal_shape": (3,),
-                "signal_dtype": "int64"
+                "signal_compressed": zlib.compress(original_array.tobytes()),
+                "signal_shape": original_array.shape,
+                "signal_dtype": str(original_array.dtype)
             }
         }
         
@@ -1053,6 +1067,8 @@ class TestOptimizedStandardProcessingPipelineMissingLines:
         result = pipeline.load_checkpoint(checkpoint_path)
         
         assert result is not None
+        assert "signal" in result
+        np.testing.assert_array_equal(result["signal"], original_array)
     
     def test_load_checkpoint_with_checkpoint_key(self, pipeline, temp_checkpoint_dir):
         """Test load_checkpoint with checkpoint key - covers line 1405."""

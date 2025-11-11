@@ -238,23 +238,59 @@ class TestTransformerModelInit:
     
     def test_init_tensorflow_not_available(self):
         """Test initialization when TensorFlow not available - covers lines 290-293."""
-        with patch('vitalDSP.ml_models.transformer_model.TF_AVAILABLE', False):
+        import sys
+        import vitalDSP.ml_models.transformer_model as tm_module
+        
+        # Get the module from sys.modules
+        module_name = 'vitalDSP.ml_models.transformer_model'
+        if module_name not in sys.modules:
+            import vitalDSP.ml_models.transformer_model
+        tm_module = sys.modules[module_name]
+        
+        # Save original value
+        original_tf_available = tm_module.TF_AVAILABLE
+        
+        try:
+            # Set TF_AVAILABLE to False to simulate TensorFlow not being available
+            tm_module.TF_AVAILABLE = False
+            
             with pytest.raises(ImportError, match="TensorFlow not available"):
                 TransformerModel(
                     input_shape=(100, 1),
                     n_classes=5,
                     backend='tensorflow'
                 )
+        finally:
+            # Restore original value
+            tm_module.TF_AVAILABLE = original_tf_available
     
     def test_init_pytorch_not_available(self):
         """Test initialization when PyTorch not available - covers lines 294-295."""
-        with patch('vitalDSP.ml_models.transformer_model.TORCH_AVAILABLE', False):
+        import sys
+        import vitalDSP.ml_models.transformer_model as tm_module
+        
+        # Get the module from sys.modules
+        module_name = 'vitalDSP.ml_models.transformer_model'
+        if module_name not in sys.modules:
+            import vitalDSP.ml_models.transformer_model
+        tm_module = sys.modules[module_name]
+        
+        # Save original value
+        original_torch_available = tm_module.TORCH_AVAILABLE
+        
+        try:
+            # Set TORCH_AVAILABLE to False to simulate PyTorch not being available
+            tm_module.TORCH_AVAILABLE = False
+            
             with pytest.raises(ImportError, match="PyTorch not available"):
                 TransformerModel(
                     input_shape=(100, 1),
                     n_classes=5,
                     backend='pytorch'
                 )
+        finally:
+            # Restore original value
+            tm_module.TORCH_AVAILABLE = original_torch_available
 
 
 @pytest.mark.skipif(not TRANSFORMER_AVAILABLE or not TENSORFLOW_AVAILABLE, reason="Transformer model or TensorFlow not available")

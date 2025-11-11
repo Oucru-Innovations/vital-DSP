@@ -403,13 +403,22 @@ class TestFineTuner:
                 self.fc = nn.Linear(187, 128)
         
         pytorch_model = SimpleModel()
-        finetuner = FineTuner(pytorch_model, backend='pytorch')
         
-        with pytest.raises(NotImplementedError, match="PyTorch backend"):
-            finetuner.freeze_layers()
+        # FineTuner.__init__ calls freeze_layers(), which raises NotImplementedError for PyTorch
+        with pytest.raises(NotImplementedError, match="PyTorch backend not yet implemented"):
+            finetuner = FineTuner(pytorch_model, backend='pytorch')
         
-        with pytest.raises(NotImplementedError, match="PyTorch backend"):
-            finetuner.unfreeze_layers()
+        # To test unfreeze_layers, we need to create the instance without calling freeze_layers
+        # We'll patch freeze_layers during __init__ to avoid the error
+        def noop_freeze(self, n_layers=None):
+            pass
+        
+        with patch.object(FineTuner, 'freeze_layers', noop_freeze):
+            finetuner = FineTuner(pytorch_model, backend='pytorch')
+            
+            # Now test that unfreeze_layers raises NotImplementedError
+            with pytest.raises(NotImplementedError, match="PyTorch backend not yet implemented"):
+                finetuner.unfreeze_layers()
     
     def test_fit_all_at_once(self, base_model_tensorflow, sample_data):
         """Test fit with all_at_once strategy - covers lines 497-546."""
@@ -557,12 +566,20 @@ class TestFineTuner:
                 self.fc = nn.Linear(187, 128)
         
         pytorch_model = SimpleModel()
-        finetuner = FineTuner(pytorch_model, backend='pytorch')
+        
+        # FineTuner.__init__ calls freeze_layers(), which raises NotImplementedError for PyTorch
+        # We need to patch freeze_layers to avoid the error during initialization
+        def noop_freeze(self, n_layers=None):
+            pass
         
         X_train, y_train, _, _ = sample_data
         
-        with pytest.raises(NotImplementedError, match="Only TensorFlow"):
-            finetuner.fit(X_train, y_train, n_classes=5, epochs=1, verbose=0)
+        with patch.object(FineTuner, 'freeze_layers', noop_freeze):
+            finetuner = FineTuner(pytorch_model, backend='pytorch')
+            
+            # Now test that fit raises NotImplementedError
+            with pytest.raises(NotImplementedError, match="Only TensorFlow backend currently supported"):
+                finetuner.fit(X_train, y_train, n_classes=5, epochs=1, verbose=0)
     
     def test_predict(self, base_model_tensorflow, sample_data):
         """Test predict method - covers lines 776-781."""
@@ -728,7 +745,7 @@ class TestDomainAdapter:
         X_train, y_train, _, _ = sample_data
         X_target = np.random.randn(50, 187, 1)
         
-        with pytest.raises(NotImplementedError, match="Only TensorFlow"):
+        with pytest.raises(NotImplementedError, match="Only TensorFlow backend currently supported"):
             adapter.fit(X_train, y_train, X_target, epochs=1, verbose=0)
     
     def test_fit_mmd_details(self, base_model_tensorflow, sample_data):
@@ -757,9 +774,9 @@ class TestDomainAdapter:
     
     def test_compute_mmd(self, base_model_tensorflow):
         """Test _compute_mmd static method - covers lines 1008-1037."""
-        # Create feature vectors
-        features_source = tf.random.normal((10, 64))
-        features_target = tf.random.normal((8, 64))
+        # Create feature vectors with consistent dtype (float32)
+        features_source = tf.random.normal((10, 64), dtype=tf.float32)
+        features_target = tf.random.normal((8, 64), dtype=tf.float32)
         
         mmd = DomainAdapter._compute_mmd(features_source, features_target)
         
@@ -769,12 +786,30 @@ class TestDomainAdapter:
     
     def test_compute_mmd_no_tensorflow(self):
         """Test _compute_mmd without TensorFlow - covers lines 1012-1013."""
-        with patch('vitalDSP.ml_models.transfer_learning.TENSORFLOW_AVAILABLE', False):
+        import sys
+        import vitalDSP.ml_models.transfer_learning as tl_module
+        
+        # Get the module from sys.modules
+        module_name = 'vitalDSP.ml_models.transfer_learning'
+        if module_name not in sys.modules:
+            import vitalDSP.ml_models.transfer_learning
+        tl_module = sys.modules[module_name]
+        
+        # Save original value
+        original_tf_available = tl_module.TENSORFLOW_AVAILABLE
+        
+        try:
+            # Set TENSORFLOW_AVAILABLE to False to simulate TensorFlow not being available
+            tl_module.TENSORFLOW_AVAILABLE = False
+            
             features_source = np.random.randn(10, 64)
             features_target = np.random.randn(8, 64)
             
             with pytest.raises(ImportError, match="TensorFlow is required"):
                 DomainAdapter._compute_mmd(features_source, features_target)
+        finally:
+            # Restore original value
+            tl_module.TENSORFLOW_AVAILABLE = original_tf_available
     
     def test_predict(self, base_model_tensorflow, sample_data):
         """Test predict method - covers lines 1039-1045."""
