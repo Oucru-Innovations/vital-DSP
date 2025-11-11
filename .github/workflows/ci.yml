@@ -34,7 +34,7 @@ jobs:
           pip install -r requirements-tensorflow.txt
           pip install -r requirements-explainability.txt
           pip install -r requirements-pytorch.txt
-          pip install pytest==8.1.1 pytest-cov==4.1.0 coverage==7.4.0 flake8 pandoc pandas httpx pytest-mock pytest-asyncio
+          pip install pytest==8.1.1 pytest-cov>=5.0.0 coverage>=7.4.0 flake8 pandoc pandas httpx pytest-mock pytest-asyncio
           pip install pytest-xdist pytest-parallel pytest-timeout
           pip install setuptools wheel twine sphinx coveralls responses
           pip install dash dash[testing]
