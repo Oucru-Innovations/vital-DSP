@@ -1,0 +1,14 @@
+# PyTorch dependencies for deep learning models
+#
+# PyTorch 2.x with flexible version support
+# PyTorch has good compatibility across Python versions
+#
+# For most platforms (Linux, Windows, macOS)
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Optional: torchtext for NLP tasks (if needed in future)
+# torchtext>=0.15.0
+
+# Optional: torchaudio for audio processing (if needed in future)
+# torchaudio>=2.0.0

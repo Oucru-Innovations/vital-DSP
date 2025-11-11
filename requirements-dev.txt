@@ -1,0 +1,39 @@
+# Development dependencies including all optional features
+# Install with: pip install -r requirements-dev.txt
+
+# Base requirements
+-r requirements.txt
+
+# Deep Learning - TensorFlow
+-r requirements-tensorflow.txt
+
+# Deep Learning - PyTorch
+-r requirements-pytorch.txt
+
+# ML Model Explainability
+-r requirements-explainability.txt
+
+# Testing dependencies
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pytest-mock>=3.10.0
+pytest-asyncio>=0.21.0
+pytest-dash>=2.0.0
+pytest-faker>=2.0.0
+pytest-xdist>=3.8.0
+
+# Code quality
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.0.0
+pylint>=2.16.0
+isort>=5.12.0
+
+# Documentation
+sphinx>=5.3.0
+sphinx-rtd-theme>=1.2.0
+sphinx-autodoc-typehints>=1.22.0
+
+# Additional development tools
+ipython>=8.0.0
+jupyter>=1.0.0

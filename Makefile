@@ -5,7 +5,7 @@ DOCS_DIR=docs
 SRC_DIR=src
 DIST_DIR=dist
 BUILD_DIR=build
-SPHINXBUILD = sphinx-build
+SPHINXBUILD = python -m sphinx
 SOURCEDIR = source
 WEBAPP_DIR=$(SRC_DIR)/webapp
 UPLOAD_DIR=$(WEBAPP_DIR)/data/uploads  # Upload folder
@@ -77,6 +77,41 @@ upload:
 html:
 	$(SPHINXBUILD) -b html $(DOCS_DIR)/$(SOURCEDIR) $(DOCBUILDDIR)/html
 
+# Build documentation for ReadTheDocs (simulates RTD build environment)
+docs-rtd:
+	@echo "Building documentation for ReadTheDocs..."
+	@pip install -q -r $(DOCS_DIR)/requirements.txt
+	$(SPHINXBUILD) -b html $(DOCS_DIR)/$(SOURCEDIR) $(DOCBUILDDIR)/html
+	@echo "✓ Documentation built successfully in $(DOCBUILDDIR)/html"
+	@echo "  Open $(DOCBUILDDIR)/html/index.html to view"
+
+# Build documentation with all formats (HTML, PDF, EPUB)
+docs-all:
+	@echo "Building all documentation formats..."
+	$(SPHINXBUILD) -b html $(DOCS_DIR)/$(SOURCEDIR) $(DOCBUILDDIR)/html
+	$(SPHINXBUILD) -b latex $(DOCS_DIR)/$(SOURCEDIR) $(DOCBUILDDIR)/latex
+	$(SPHINXBUILD) -b epub $(DOCS_DIR)/$(SOURCEDIR) $(DOCBUILDDIR)/epub
+	@echo "✓ All documentation formats built"
+
+# Serve documentation locally (requires sphinx-autobuild)
+docs-serve:
+	@echo "Starting documentation server on http://127.0.0.1:8001"
+	@pip install -q sphinx-autobuild
+	sphinx-autobuild $(DOCS_DIR)/$(SOURCEDIR) $(DOCBUILDDIR)/html --port 8001
+
+# Check documentation for errors
+docs-check:
+	@echo "Checking documentation for errors..."
+	$(SPHINXBUILD) -b linkcheck $(DOCS_DIR)/$(SOURCEDIR) $(DOCBUILDDIR)/linkcheck
+	$(SPHINXBUILD) -b doctest $(DOCS_DIR)/$(SOURCEDIR) $(DOCBUILDDIR)/doctest
+	@echo "✓ Documentation check complete"
+
+# Clean documentation build directory
+docs-clean:
+	@echo "Cleaning documentation build directory..."
+	rm -rf $(DOCBUILDDIR)
+	@echo "✓ Documentation cleaned"
+
 # Run the FastAPI + Dash web app using Uvicorn
 webapp:
 	uvicorn src.webapp.run_webapp:fastapi_app --reload --host 0.0.0.0 --port 8000
@@ -98,4 +133,4 @@ clean:
 	rm -rf $(DOCBUILDDIR)
 
 # Phony targets
-.PHONY: all test coverage lint html clean
+.PHONY: all test coverage lint html clean docs-rtd docs-all docs-serve docs-check docs-clean webapp build upload pandoc

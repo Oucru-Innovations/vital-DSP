@@ -1,6 +1,8 @@
 # .readthedocs.yml
 # This file is used to configure Read the Docs build.
 # Updated: 2025-01-27 - Trigger rebuild for new examples and tutorials
+# Updated: 2025-01-11 - Added PyTorch, SHAP, LIME support; Fixed test suite
+#                      - Added comprehensive installation documentation
 
 version: 2
 
@@ -39,4 +41,4 @@ formats:
 sphinx:
   builder: html
   configuration: docs/source/conf.py
-  
+  fail_on_warning: false  # Set to true to fail builds on warnings

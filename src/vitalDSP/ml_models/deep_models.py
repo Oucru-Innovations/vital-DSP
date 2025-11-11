@@ -63,7 +63,7 @@ try:
     import torch.nn as nn
     import torch.nn.functional as F
 
-    TORCH_AVAILABLE = False
+    TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
 
@@ -474,11 +474,23 @@ class CNN1D(BaseDeepModel):
         """Train PyTorch model."""
         # Convert to PyTorch tensors
         X_train_tensor = torch.FloatTensor(X_train).permute(0, 2, 1)  # (N, C, L)
-        y_train_tensor = (
-            torch.LongTensor(y_train)
-            if y_train.dtype == int
-            else torch.FloatTensor(y_train)
-        )
+
+        # For multi-class classification with CrossEntropyLoss, convert labels to Long
+        # For binary classification with BCELoss, keep as Float
+        if self.n_classes == 2:
+            # BCELoss expects labels to have same shape as output, including feature dimension
+            if len(y_train.shape) == 1:
+                y_train_tensor = torch.FloatTensor(y_train).unsqueeze(1)
+            else:
+                y_train_tensor = torch.FloatTensor(y_train)
+        else:
+            # For multi-class, convert to class indices if needed
+            if len(y_train.shape) > 1 and y_train.shape[1] > 1:
+                # One-hot encoded, convert to class indices
+                y_train_tensor = torch.LongTensor(np.argmax(y_train, axis=1))
+            else:
+                # Already class indices
+                y_train_tensor = torch.LongTensor(y_train.astype(np.int64).flatten())
 
         train_dataset = torch.utils.data.TensorDataset(X_train_tensor, y_train_tensor)
         train_loader = torch.utils.data.DataLoader(

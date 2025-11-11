@@ -1,0 +1,13 @@
+# Explainability and interpretability dependencies for ML models
+#
+# These packages provide tools for understanding and explaining ML model predictions
+#
+# SHAP (SHapley Additive exPlanations) for model interpretability
+shap>=0.41.0
+
+# LIME (Local Interpretable Model-agnostic Explanations) for explaining predictions
+lime>=0.2.0
+
+# Optional: Additional visualization dependencies for explainability
+# matplotlib>=3.3.0  (already in main requirements)
+# seaborn>=0.11.0    (already in main requirements)

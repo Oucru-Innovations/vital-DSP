@@ -57,10 +57,42 @@ setup(
             'tensorflow>=2.8.0,<2.17.0; platform_system == "Darwin" and platform_machine != "arm64" and python_version < "3.13"',  # macOS Intel
             # For Python 3.13+, users need to manually install tf-nightly or use Python 3.8-3.12
         ],
-        'all': [
+        'pytorch': [
+            'torch>=2.0.0',  # PyTorch for deep learning
+            'torchvision>=0.15.0',  # Optional: for vision tasks
+        ],
+        'explainability': [
+            'shap>=0.41.0',  # SHAP for model explainability
+            'lime>=0.2.0',  # LIME for model interpretation
+        ],
+        'dl': [
+            # Deep learning bundle with TensorFlow (default)
             'tensorflow>=2.8.0,<2.17.0; platform_system != "Darwin" and python_version < "3.13"',
             'tensorflow-macos>=2.8.0,<2.17.0; platform_system == "Darwin" and platform_machine == "arm64" and python_version < "3.13"',
             'tensorflow>=2.8.0,<2.17.0; platform_system == "Darwin" and platform_machine != "arm64" and python_version < "3.13"',
+        ],
+        'dl-pytorch': [
+            # Deep learning bundle with PyTorch
+            'torch>=2.0.0',
+            'torchvision>=0.15.0',
+        ],
+        'dl-all': [
+            # All deep learning frameworks
+            'tensorflow>=2.8.0,<2.17.0; platform_system != "Darwin" and python_version < "3.13"',
+            'tensorflow-macos>=2.8.0,<2.17.0; platform_system == "Darwin" and platform_machine == "arm64" and python_version < "3.13"',
+            'tensorflow>=2.8.0,<2.17.0; platform_system == "Darwin" and platform_machine != "arm64" and python_version < "3.13"',
+            'torch>=2.0.0',
+            'torchvision>=0.15.0',
+        ],
+        'all': [
+            # Complete installation with all optional features
+            'tensorflow>=2.8.0,<2.17.0; platform_system != "Darwin" and python_version < "3.13"',
+            'tensorflow-macos>=2.8.0,<2.17.0; platform_system == "Darwin" and platform_machine == "arm64" and python_version < "3.13"',
+            'tensorflow>=2.8.0,<2.17.0; platform_system == "Darwin" and platform_machine != "arm64" and python_version < "3.13"',
+            'torch>=2.0.0',
+            'torchvision>=0.15.0',
+            'shap>=0.41.0',
+            'lime>=0.2.0',
         ],
     },
     entry_points={

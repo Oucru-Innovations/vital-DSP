@@ -12,7 +12,7 @@ import os
 # Skip all tests if TensorFlow is not available
 pytest.importorskip("tensorflow")
 
-from vitalDSP.ml_models.deep_models import CNN1D, LSTMModel
+from vitalDSP.ml_models.deep_models import CNN1D, LSTMModel, TORCH_AVAILABLE
 
 
 @pytest.fixture
@@ -302,6 +302,7 @@ class TestLSTMModelAdditionalCoverage:
             assert model2.model is not None
 
 
+@pytest.mark.serial
 class TestBaseDeepModelEdgeCases:
     """Test edge cases for BaseDeepModel."""
 
@@ -311,9 +312,10 @@ class TestBaseDeepModelEdgeCases:
         # mocking the TensorFlow import
         pass
 
+    @pytest.mark.skipif(TORCH_AVAILABLE, reason="PyTorch is available")
     def test_pytorch_not_available_error(self):
         """Test error when PyTorch backend is requested but not available."""
-        # PyTorch is intentionally not set as available in deep_models.py
+        # This test only runs when PyTorch is NOT available
         with pytest.raises(ImportError, match="PyTorch not available"):
             CNN1D(
                 input_shape=(100, 1),

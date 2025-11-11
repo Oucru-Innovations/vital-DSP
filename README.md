@@ -206,14 +206,29 @@ vitalDSP can be installed using two different methods depending on your needs:
 
 For the most stable and tested version, install directly from the Python Package Index:
 
-**Basic Installation** (without TensorFlow):
+**Basic Installation** (core functionality without deep learning):
 ```bash
 pip install vitalDSP
 ```
 
-**Full Installation** (with TensorFlow for deep learning models):
+**With TensorFlow** (for deep learning models):
 ```bash
 pip install vitalDSP[tensorflow]
+```
+
+**With PyTorch** (alternative deep learning backend):
+```bash
+pip install vitalDSP[pytorch]
+```
+
+**With Explainability Tools** (SHAP, LIME for model interpretation):
+```bash
+pip install vitalDSP[explainability]
+```
+
+**Deep Learning Bundle** (TensorFlow + PyTorch):
+```bash
+pip install vitalDSP[dl-all]
 ```
 
 **Complete Installation** (all optional dependencies):
@@ -252,15 +267,40 @@ Or for development installation:
 pip install -e .
 ```
 
-With TensorFlow support:
+With specific optional dependencies:
 ```bash
+# TensorFlow support
 pip install -e .[tensorflow]
+
+# PyTorch support
+pip install -e .[pytorch]
+
+# Explainability tools (SHAP, LIME)
+pip install -e .[explainability]
+
+# All deep learning frameworks
+pip install -e .[dl-all]
+
+# Complete installation
+pip install -e .[all]
 ```
 
-Or install TensorFlow separately:
+Or install dependencies separately using requirements files:
 ```bash
+# Base installation
 pip install -e .
+
+# Add TensorFlow
 pip install -r requirements-tensorflow.txt
+
+# Add PyTorch
+pip install -r requirements-pytorch.txt
+
+# Add explainability tools
+pip install -r requirements-explainability.txt
+
+# Add all optional dependencies (for development)
+pip install -r requirements-dev.txt
 ```
 
 ### System Requirements
@@ -275,18 +315,43 @@ pip install -r requirements-tensorflow.txt
 
 ### Optional Dependencies
 
-- TensorFlow >= 2.8.0 (for deep learning models including autoencoders, LSTM, CNN, etc.)
-  - **Python 3.8-3.12**: `tensorflow>=2.8.0,<2.17.0` (recommended)
-    - On Windows/Linux: `tensorflow>=2.8.0,<2.17.0`
-    - On macOS with Apple Silicon (M1/M2): `tensorflow-macos>=2.8.0,<2.17.0`
-    - On macOS with Intel: `tensorflow>=2.8.0,<2.17.0`
-  - **Python 3.13+**: TensorFlow is not officially supported yet
-    - **Option 1 (Recommended)**: Use Python 3.11 or 3.12 for stable TensorFlow support
-    - **Option 2 (Experimental)**: Install TensorFlow nightly build: `pip install tf-nightly`
+#### Deep Learning Frameworks
 
-**Note**: TensorFlow is optional and only required if you plan to use the advanced deep learning models in `vitalDSP.ml_models`. The core signal processing and machine learning features work without TensorFlow.
+**TensorFlow** >= 2.8.0 (for deep learning models including autoencoders, LSTM, CNN, etc.)
+- **Python 3.8-3.12**: `tensorflow>=2.8.0,<2.17.0` (recommended)
+  - On Windows/Linux: `tensorflow>=2.8.0,<2.17.0`
+  - On macOS with Apple Silicon (M1/M2): `tensorflow-macos>=2.8.0,<2.17.0`
+  - On macOS with Intel: `tensorflow>=2.8.0,<2.17.0`
+- **Python 3.13+**: TensorFlow is not officially supported yet
+  - **Option 1 (Recommended)**: Use Python 3.11 or 3.12 for stable TensorFlow support
+  - **Option 2 (Experimental)**: Install TensorFlow nightly build: `pip install tf-nightly`
 
-**Python 3.13 Users**: If you're using Python 3.13, you won't be able to install stable TensorFlow. We recommend using Python 3.11 or 3.12 for full compatibility. Alternatively, you can use vitalDSP without TensorFlow for all non-deep-learning features.
+**PyTorch** >= 2.0.0 (alternative deep learning backend)
+- Supports Python 3.8-3.13+
+- Better compatibility with newer Python versions
+- Install with: `pip install vitalDSP[pytorch]`
+- Provides same deep learning capabilities as TensorFlow backend
+
+#### Model Explainability
+
+**SHAP** >= 0.41.0 (SHapley Additive exPlanations)
+- For understanding model predictions
+- Feature importance analysis
+- Model-agnostic explanations
+
+**LIME** >= 0.2.0 (Local Interpretable Model-agnostic Explanations)
+- For explaining individual predictions
+- Works with any machine learning model
+- Easy-to-understand local explanations
+
+Install explainability tools with: `pip install vitalDSP[explainability]`
+
+#### Notes
+
+- Deep learning frameworks are optional and only required if you plan to use advanced models in `vitalDSP.ml_models`
+- Core signal processing and traditional ML features work without deep learning frameworks
+- **Python 3.13 Users**: PyTorch is recommended over TensorFlow for better compatibility
+- You can install both frameworks with: `pip install vitalDSP[dl-all]`
 
 ## Healthcare Applications
 

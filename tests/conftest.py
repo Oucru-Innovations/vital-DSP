@@ -5,6 +5,7 @@ Test configuration and fixtures for vital-DSP tests.
 import os
 import sys
 from pathlib import Path
+import pytest
 
 # Get the project root directory (parent of tests directory)
 project_root = Path(__file__).parent.parent
@@ -27,3 +28,11 @@ except ImportError:
     parent_dir = str(project_root)
     if parent_dir not in sys.path:
         sys.path.insert(0, parent_dir)
+
+
+# Configure pytest-xdist to run serial tests in the same worker
+def pytest_collection_modifyitems(items):
+    """Mark tests with serial marker to run in the same xdist group."""
+    for item in items:
+        if 'serial' in item.keywords:
+            item.add_marker(pytest.mark.xdist_group(name="serial"))

@@ -188,7 +188,7 @@ class TransformerEncoderLayer(layers.Layer if TF_AVAILABLE else object):
 
     def call(self, x, mask=None, training=False):
         # Multi-head attention with residual connection
-        attn_output, _ = self.mha(x, mask, training)
+        attn_output, _ = self.mha(x, mask=mask, training=training)
         attn_output = self.dropout1(attn_output, training=training)
         out1 = self.layernorm1(x + attn_output)
 
