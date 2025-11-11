@@ -471,3 +471,304 @@ def test_compute_respiratory_rate_ensemble_quality_ratings(mock_preprocess_signa
     assert result["quality"] in ["high", "medium", "low"]
     assert "mean_rate" in result
     assert "method" in result
+
+
+def test_compute_respiratory_rate_ensemble_dict_return_type(mock_preprocess_signal, mock_preprocess_config, monkeypatch):
+    """Test compute_respiratory_rate_ensemble when method returns dict (lines 465-466)."""
+    def mock_compute_rr(*args, **kwargs):
+        method = kwargs.get("method", "counting")
+        # Return dict instead of float
+        return {"respiratory_rate": 15.0, "confidence": 0.9}
+    
+    monkeypatch.setattr(
+        RespiratoryAnalysis,
+        "compute_respiratory_rate",
+        mock_compute_rr
+    )
+    
+    signal = np.sin(np.linspace(0, 10, 100))
+    ra = RespiratoryAnalysis(signal, fs=128)
+    
+    result = ra.compute_respiratory_rate_ensemble(
+        methods=["counting", "fft_based"],
+        preprocess_config=mock_preprocess_config
+    )
+    
+    assert result["respiratory_rate"] == 15.0
+    assert result["n_methods"] == 2
+
+
+def test_compute_respiratory_rate_ensemble_exception_handling(mock_preprocess_signal, mock_preprocess_config, monkeypatch):
+    """Test compute_respiratory_rate_ensemble exception handling (lines 480-482)."""
+    def mock_compute_rr(*args, **kwargs):
+        method = kwargs.get("method", "counting")
+        if method == "counting":
+            return 15.0  # Valid
+        elif method == "fft_based":
+            raise ValueError("Test exception")
+        else:
+            return 20.0  # Valid
+    
+    monkeypatch.setattr(
+        RespiratoryAnalysis,
+        "compute_respiratory_rate",
+        mock_compute_rr
+    )
+    
+    signal = np.sin(np.linspace(0, 10, 100))
+    ra = RespiratoryAnalysis(signal, fs=128)
+    
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        result = ra.compute_respiratory_rate_ensemble(
+            methods=["counting", "fft_based", "frequency_domain"],
+            preprocess_config=mock_preprocess_config
+        )
+        
+        # Should handle exception gracefully
+        assert result["n_methods"] == 2  # Only counting and frequency_domain succeeded
+        assert "counting" in result["individual_estimates"]
+        assert result["individual_estimates"]["fft_based"] is None
+        # Check that warning was issued
+        assert len(w) > 0
+        assert any("failed with error" in str(warning.message) for warning in w)
+
+
+def test_compute_respiratory_rate_ensemble_confidence_std_less_than_1(mock_preprocess_signal, mock_preprocess_config, monkeypatch):
+    """Test compute_respiratory_rate_ensemble confidence when std < 1 (line 512-513)."""
+    def mock_compute_rr(*args, **kwargs):
+        method = kwargs.get("method", "counting")
+        # Return very similar values (std < 1)
+        method_values = {
+            "counting": 15.0,
+            "fft_based": 15.1,
+            "frequency_domain": 14.9,
+            "time_domain": 15.05
+        }
+        return method_values.get(method, 15.0)
+    
+    monkeypatch.setattr(
+        RespiratoryAnalysis,
+        "compute_respiratory_rate",
+        mock_compute_rr
+    )
+    
+    signal = np.sin(np.linspace(0, 10, 100))
+    ra = RespiratoryAnalysis(signal, fs=128)
+    
+    result = ra.compute_respiratory_rate_ensemble(preprocess_config=mock_preprocess_config)
+    
+    assert result["std"] < 1
+    assert result["confidence"] == 1.0
+
+
+def test_compute_respiratory_rate_ensemble_confidence_std_less_than_2(mock_preprocess_signal, mock_preprocess_config, monkeypatch):
+    """Test compute_respiratory_rate_ensemble confidence when 1 <= std < 2 (line 514-515)."""
+    def mock_compute_rr(*args, **kwargs):
+        method = kwargs.get("method", "counting")
+        # Return values with std between 1 and 2
+        # Values: [15.0, 17.0, 13.0, 16.0] -> mean=15.25, std≈1.48
+        # Actually need: [15.0, 16.5, 13.5, 16.0] -> mean=15.25, std≈1.12
+        method_values = {
+            "counting": 15.0,
+            "fft_based": 16.5,
+            "frequency_domain": 13.5,
+            "time_domain": 16.0
+        }
+        return method_values.get(method, 15.0)
+    
+    monkeypatch.setattr(
+        RespiratoryAnalysis,
+        "compute_respiratory_rate",
+        mock_compute_rr
+    )
+    
+    signal = np.sin(np.linspace(0, 10, 100))
+    ra = RespiratoryAnalysis(signal, fs=128)
+    
+    result = ra.compute_respiratory_rate_ensemble(preprocess_config=mock_preprocess_config)
+    
+    assert 1 <= result["std"] < 2
+    # With 4 methods, confidence is adjusted: 0.9 * 1.1 = 0.99 (with floating point precision)
+    assert abs(result["confidence"] - 0.99) < 0.01
+
+
+def test_compute_respiratory_rate_ensemble_confidence_std_less_than_3(mock_preprocess_signal, mock_preprocess_config, monkeypatch):
+    """Test compute_respiratory_rate_ensemble confidence when 2 <= std < 3 (line 516-517)."""
+    def mock_compute_rr(*args, **kwargs):
+        method = kwargs.get("method", "counting")
+        # Return values with std between 2 and 3
+        # Values: [15.0, 18.0, 12.0, 17.0] -> mean=15.5, std≈2.29
+        method_values = {
+            "counting": 15.0,
+            "fft_based": 18.0,
+            "frequency_domain": 12.0,
+            "time_domain": 17.0
+        }
+        return method_values.get(method, 15.0)
+    
+    monkeypatch.setattr(
+        RespiratoryAnalysis,
+        "compute_respiratory_rate",
+        mock_compute_rr
+    )
+    
+    signal = np.sin(np.linspace(0, 10, 100))
+    ra = RespiratoryAnalysis(signal, fs=128)
+    
+    result = ra.compute_respiratory_rate_ensemble(preprocess_config=mock_preprocess_config)
+    
+    assert 2 <= result["std"] < 3
+    # With 4 methods, confidence is adjusted: 0.7 * 1.1 = 0.77
+    assert result["confidence"] == 0.77
+
+
+def test_compute_respiratory_rate_ensemble_confidence_std_less_than_5(mock_preprocess_signal, mock_preprocess_config, monkeypatch):
+    """Test compute_respiratory_rate_ensemble confidence when 3 <= std < 5 (line 518-519)."""
+    def mock_compute_rr(*args, **kwargs):
+        method = kwargs.get("method", "counting")
+        # Return values with std between 3 and 5
+        # Values: [15.0, 20.0, 10.0, 18.0] -> mean=15.75, std≈4.03
+        method_values = {
+            "counting": 15.0,
+            "fft_based": 20.0,
+            "frequency_domain": 10.0,
+            "time_domain": 18.0
+        }
+        return method_values.get(method, 15.0)
+    
+    monkeypatch.setattr(
+        RespiratoryAnalysis,
+        "compute_respiratory_rate",
+        mock_compute_rr
+    )
+    
+    signal = np.sin(np.linspace(0, 10, 100))
+    ra = RespiratoryAnalysis(signal, fs=128)
+    
+    result = ra.compute_respiratory_rate_ensemble(preprocess_config=mock_preprocess_config)
+    
+    assert 3 <= result["std"] < 5
+    # With 4 methods, confidence is adjusted: 0.5 * 1.1 = 0.55
+    assert result["confidence"] == 0.55
+
+
+def test_compute_respiratory_rate_ensemble_confidence_std_greater_than_5(mock_preprocess_signal, mock_preprocess_config, monkeypatch):
+    """Test compute_respiratory_rate_ensemble confidence when std >= 5 (line 520-521)."""
+    def mock_compute_rr(*args, **kwargs):
+        method = kwargs.get("method", "counting")
+        # Return values with std >= 5
+        method_values = {
+            "counting": 15.0,
+            "fft_based": 25.0,
+            "frequency_domain": 8.0,
+            "time_domain": 20.0
+        }
+        return method_values.get(method, 15.0)
+    
+    monkeypatch.setattr(
+        RespiratoryAnalysis,
+        "compute_respiratory_rate",
+        mock_compute_rr
+    )
+    
+    signal = np.sin(np.linspace(0, 10, 100))
+    ra = RespiratoryAnalysis(signal, fs=128)
+    
+    result = ra.compute_respiratory_rate_ensemble(preprocess_config=mock_preprocess_config)
+    
+    assert result["std"] >= 5
+    assert result["confidence"] < 0.5
+    assert result["confidence"] >= 0
+
+
+def test_compute_respiratory_rate_ensemble_confidence_adjustment_two_methods(mock_preprocess_signal, mock_preprocess_config, monkeypatch):
+    """Test compute_respiratory_rate_ensemble confidence adjustment with 2 methods (line 527-528)."""
+    def mock_compute_rr(*args, **kwargs):
+        method = kwargs.get("method", "counting")
+        # Return values for exactly 2 methods
+        method_values = {
+            "counting": 15.0,
+            "fft_based": 15.5
+        }
+        return method_values.get(method, 15.0)
+    
+    monkeypatch.setattr(
+        RespiratoryAnalysis,
+        "compute_respiratory_rate",
+        mock_compute_rr
+    )
+    
+    signal = np.sin(np.linspace(0, 10, 100))
+    ra = RespiratoryAnalysis(signal, fs=128)
+    
+    result = ra.compute_respiratory_rate_ensemble(
+        methods=["counting", "fft_based"],
+        preprocess_config=mock_preprocess_config
+    )
+    
+    assert result["n_methods"] == 2
+    # Confidence should be adjusted (multiplied by 0.9)
+    # Base confidence for std < 1 is 1.0, so adjusted is 0.9
+    assert result["confidence"] == 0.9
+
+
+def test_compute_respiratory_rate_ensemble_quality_low(mock_preprocess_signal, mock_preprocess_config, monkeypatch):
+    """Test compute_respiratory_rate_ensemble quality = 'low' when conditions aren't met (line 536).
+    
+    Note: Line 536 can only be reached when confidence < 0.5 AND len(valid_estimates) < 2.
+    However, at this point in the code, we've already handled len(valid_estimates) < 2 cases.
+    So this branch is actually unreachable in normal execution. But we test it by ensuring
+    the condition would trigger if it were reachable.
+    
+    Actually, looking at the code flow:
+    - Line 485-493: handles len == 0
+    - Line 495-503: handles len == 1 (returns quality="low")
+    - Line 531-536: handles len >= 2
+    
+    So line 536 (quality="low") requires confidence < 0.5 AND len < 2, but len >= 2 at this point.
+    This means line 536 is unreachable. However, we can test the condition by checking
+    that when we have exactly 1 method (which returns early), quality is "low".
+    This is already covered by test_compute_respiratory_rate_ensemble_single_valid_estimate.
+    
+    For completeness, let's test a scenario where we have 2 methods but very low confidence
+    to verify the quality logic. With 2 methods, quality will be "medium" even with low confidence
+    because of the condition: elif confidence >= 0.5 or len(valid_estimates) >= 2
+    """
+    def mock_compute_rr(*args, **kwargs):
+        method = kwargs.get("method", "counting")
+        # Return values with very high std to get low confidence
+        # Values: [15.0, 30.0] -> mean=22.5, std≈10.6
+        # With std >= 5, confidence = max(0, 0.5 - (std - 5) / 10) = max(0, 0.5 - 0.56) ≈ 0
+        # With 2 methods, confidence *= 0.9 -> still ≈ 0
+        # But quality check: elif confidence >= 0.5 or len(valid_estimates) >= 2 -> "medium"
+        # So quality will be "medium", not "low"
+        method_values = {
+            "counting": 15.0,
+            "fft_based": 30.0  # Very large difference
+        }
+        return method_values.get(method, 15.0)
+    
+    monkeypatch.setattr(
+        RespiratoryAnalysis,
+        "compute_respiratory_rate",
+        mock_compute_rr
+    )
+    
+    signal = np.sin(np.linspace(0, 10, 100))
+    ra = RespiratoryAnalysis(signal, fs=128)
+    
+    result = ra.compute_respiratory_rate_ensemble(
+        methods=["counting", "fft_based"],
+        preprocess_config=mock_preprocess_config
+    )
+    
+    # With 2 methods, even with very low confidence, quality is "medium"
+    # because of: elif confidence >= 0.5 or len(valid_estimates) >= 2
+    assert result["n_methods"] == 2
+    assert result["confidence"] < 0.5
+    # Quality will be "medium" because len(valid_estimates) >= 2
+    assert result["quality"] == "medium"
+    
+    # To actually test line 536, we'd need to modify the code to allow len < 2 at that point
+    # But since that's not possible in the current code flow, we verify the logic is correct

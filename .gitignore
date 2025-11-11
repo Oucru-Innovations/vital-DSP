@@ -21,6 +21,26 @@ dev_docs/
 archive_docs/
 performance/
 
+docs/source/_static/images/*
+docs/source/notebooks/docs/_static/images/*
+docs/source/notebooks/*.csv
+docs/source/notebooks/*.json
+docs/source/notebooks/*.xlsx
+docs/source/notebooks/*.pkl
+docs/source/notebooks/*.pt
+docs/source/notebooks/*.pth
+docs/source/notebooks/*.pth.tar
+docs/source/notebooks/*.pth.tar.gz
+docs/source/notebooks/*.pth.tar.bz2
+docs/source/notebooks/*.npy
+docs/source/notebooks/*.npz
+docs/source/notebooks/*.npz.gz
+docs/source/notebooks/*.npz.bz2
+docs/source/notebooks/*.npz.tar
+docs/source/notebooks/*.npz.tar.gz
+docs/source/notebooks/*.npz.tar.bz2
+docs/source/notebooks/*.npz.tar.gz.bz2
+
 # C extensions
 *.so
 
