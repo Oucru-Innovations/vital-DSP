@@ -15,8 +15,24 @@ from unittest.mock import Mock, patch, MagicMock
 import warnings
 import tempfile
 
+# Configure pytest to suppress warnings for this module
+pytestmark = pytest.mark.filterwarnings(
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning:keras.*",
+    "ignore::UserWarning:tensorflow.*",
+    "ignore:.*ran out of data.*:UserWarning",
+    "ignore:.*Your input ran out of data.*:UserWarning",
+    "ignore:.*__array__.*copy.*:DeprecationWarning",
+)
+
 # Suppress warnings
 warnings.filterwarnings("ignore")
+# Suppress specific warnings from dependencies
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="keras.*")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="tensorflow.*")
+warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*__array__.*copy.*")
+warnings.filterwarnings("ignore", category=UserWarning, message=".*ran out of data.*")
+warnings.filterwarnings("ignore", category=UserWarning, message=".*Your input ran out of data.*")
 
 # Check module availability
 try:
@@ -27,14 +43,32 @@ try:
     )
     # Create aliases for backward compatibility
     LSTMNetwork = LSTMModel
-    ResNet1D = None  # Not implemented yet
-    AutoencoderModel = None  # Use autoencoder.py instead
+    try:
+        from vitalDSP.ml_models.deep_models import ResNet1D
+    except ImportError:
+        ResNet1D = None  # Not implemented yet
+    
+    # Try to import autoencoder classes from autoencoder module
+    try:
+        from vitalDSP.ml_models.autoencoder import (
+            StandardAutoencoder,
+            VariationalAutoencoder,
+            ConvolutionalAutoencoder,
+        )
+        # Use StandardAutoencoder as AutoencoderModel for testing
+        AutoencoderModel = StandardAutoencoder
+        AUTOENCODER_AVAILABLE = True
+    except ImportError:
+        AutoencoderModel = None
+        AUTOENCODER_AVAILABLE = False
+    
     DEEP_MODELS_AVAILABLE = True
 except ImportError:
     DEEP_MODELS_AVAILABLE = False
     LSTMNetwork = None
     ResNet1D = None
     AutoencoderModel = None
+    AUTOENCODER_AVAILABLE = False
 
 try:
     import tensorflow as tf
@@ -191,13 +225,17 @@ class TestCNN1D:
             assert X_val.shape[0] == 20
             assert y_val.shape[0] == 20
 
-            history = model.train(
-                X_train, y_train,
-                X_val=X_val, y_val=y_val,
-                epochs=1,
-                batch_size=16,
-                verbose=0
-            )
+            # Suppress warnings about data
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning, message=".*ran out of data.*")
+                warnings.filterwarnings("ignore", category=UserWarning, message=".*Your input ran out of data.*")
+                history = model.train(
+                    X_train, y_train,
+                    X_val=X_val, y_val=y_val,
+                    epochs=1,
+                    batch_size=16,
+                    verbose=0
+                )
             assert history is not None
         except (AttributeError, NotImplementedError, ValueError) as e:
             # Try direct model.fit if train method doesn't exist
@@ -207,13 +245,16 @@ class TestCNN1D:
                     loss='sparse_categorical_crossentropy',
                     metrics=['accuracy']
                 )
-                history = model.model.fit(
-                    X_train, y_train,
-                    validation_data=(X_val, y_val),
-                    epochs=1,
-                    batch_size=16,
-                    verbose=0
-                )
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=UserWarning, message=".*ran out of data.*")
+                    warnings.filterwarnings("ignore", category=UserWarning, message=".*Your input ran out of data.*")
+                    history = model.model.fit(
+                        X_train, y_train,
+                        validation_data=(X_val, y_val),
+                        epochs=1,
+                        batch_size=16,
+                        verbose=0
+                    )
                 assert history is not None
             except Exception as e2:
                 pytest.skip(f"Train method not implemented: {e2}")
@@ -421,38 +462,128 @@ class TestLSTMNetwork:
             pytest.skip(f"LSTM prediction not available: {e}")
 
 
-@pytest.mark.skip(reason="ResNet1D not implemented yet")
+@pytest.mark.skipif(not DEEP_MODELS_AVAILABLE or ResNet1D is None, reason="Deep models not available or ResNet1D not implemented")
 class TestResNet1D:
-    """Test ResNet1D functionality - placeholder for future implementation."""
+    """Test ResNet1D functionality."""
 
     def test_init_resnet(self):
         """Test ResNet1D initialization."""
-        pass
+        if ResNet1D is None:
+            pytest.skip("ResNet1D not implemented yet")
+        
+        try:
+            model = ResNet1D(input_shape=(1000, 1), n_classes=5)
+            assert model is not None
+            assert model.n_classes == 5
+            assert model.input_shape == (1000, 1)
+        except (TypeError, AttributeError) as e:
+            pytest.skip(f"ResNet1D initialization failed: {e}")
 
     def test_build_resnet_model(self):
         """Test building ResNet model."""
-        pass
+        if ResNet1D is None:
+            pytest.skip("ResNet1D not implemented yet")
+        
+        try:
+            model = ResNet1D(input_shape=(1000, 1), n_classes=5)
+            built_model = model.build_model()
+            assert built_model is not None
+            assert hasattr(model, 'model')
+        except (TypeError, AttributeError, NotImplementedError) as e:
+            pytest.skip(f"ResNet1D build failed: {e}")
 
     def test_resnet_residual_blocks(self):
         """Test ResNet with custom residual blocks."""
-        pass
+        if ResNet1D is None:
+            pytest.skip("ResNet1D not implemented yet")
+        
+        try:
+            # Try with custom residual blocks if parameter exists
+            model = ResNet1D(
+                input_shape=(1000, 1),
+                n_classes=5,
+                n_residual_blocks=3
+            )
+            built_model = model.build_model()
+            assert built_model is not None
+        except (TypeError, AttributeError, NotImplementedError) as e:
+            # If n_residual_blocks parameter doesn't exist, test without it
+            try:
+                model = ResNet1D(input_shape=(1000, 1), n_classes=5)
+                built_model = model.build_model()
+                assert built_model is not None
+            except Exception as e2:
+                pytest.skip(f"ResNet1D residual blocks test failed: {e2}")
 
 
-@pytest.mark.skip(reason="AutoencoderModel not in deep_models.py - use autoencoder.py instead")
+@pytest.mark.skipif(not AUTOENCODER_AVAILABLE or AutoencoderModel is None, reason="AutoencoderModel not available - use autoencoder.py module")
 class TestAutoencoderModel:
-    """Test AutoencoderModel - AutoencoderModel is in separate autoencoder.py module."""
+    """Test AutoencoderModel - tests StandardAutoencoder from autoencoder.py module."""
 
     def test_init_autoencoder(self):
         """Test autoencoder initialization."""
-        pass
+        if AutoencoderModel is None:
+            pytest.skip("AutoencoderModel not available")
+        
+        try:
+            model = AutoencoderModel(input_shape=(1000,), latent_dim=32)
+            assert model is not None
+            assert model.input_shape == (1000,)
+            assert model.latent_dim == 32
+        except (TypeError, AttributeError) as e:
+            pytest.skip(f"AutoencoderModel initialization failed: {e}")
 
     def test_build_autoencoder(self):
         """Test building autoencoder."""
-        pass
+        if AutoencoderModel is None:
+            pytest.skip("AutoencoderModel not available")
+        
+        try:
+            model = AutoencoderModel(input_shape=(1000,), latent_dim=32)
+            # Autoencoder models build automatically in __init__
+            assert model.model is not None or (hasattr(model, 'encoder') and hasattr(model, 'decoder'))
+        except (TypeError, AttributeError, NotImplementedError) as e:
+            pytest.skip(f"AutoencoderModel build failed: {e}")
 
     def test_autoencoder_encode_decode(self):
         """Test encoding and decoding."""
-        pass
+        if AutoencoderModel is None:
+            pytest.skip("AutoencoderModel not available")
+        
+        try:
+            model = AutoencoderModel(input_shape=(1000,), latent_dim=32)
+            
+            # Create sample data
+            X = np.random.randn(10, 1000).astype(np.float32)
+            
+            # Test encoding
+            if hasattr(model, 'encode'):
+                encoded = model.encode(X)
+                assert encoded is not None
+                assert encoded.shape[0] == 10
+                assert encoded.shape[1] == 32  # latent_dim
+            elif hasattr(model, 'encoder') and model.encoder is not None:
+                # Try direct encoder call
+                encoded = model.encoder.predict(X, verbose=0)
+                assert encoded is not None
+            
+            # Test decoding
+            if hasattr(model, 'decode'):
+                # Use encoded data or create random latent
+                if 'encoded' in locals():
+                    decoded = model.decode(encoded)
+                else:
+                    latent = np.random.randn(10, 32).astype(np.float32)
+                    decoded = model.decode(latent)
+                assert decoded is not None
+                assert decoded.shape[0] == 10
+            elif hasattr(model, 'decoder') and model.decoder is not None:
+                # Try direct decoder call
+                latent = np.random.randn(10, 32).astype(np.float32)
+                decoded = model.decoder.predict(latent, verbose=0)
+                assert decoded is not None
+        except (TypeError, AttributeError, NotImplementedError) as e:
+            pytest.skip(f"AutoencoderModel encode/decode failed: {e}")
 
 
 @pytest.mark.skipif(not DEEP_MODELS_AVAILABLE, reason="Deep models not available")
@@ -557,14 +688,17 @@ class TestTrainingCallbacks:
 
             # Try model.train() method first
             if hasattr(model, 'train'):
-                history = model.train(
-                    X_train, y_train,
-                    X_val=X_val, y_val=y_val,
-                    epochs=2,
-                    batch_size=16,
-                    callbacks=[early_stop],
-                    verbose=0
-                )
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=UserWarning, message=".*ran out of data.*")
+                    warnings.filterwarnings("ignore", category=UserWarning, message=".*Your input ran out of data.*")
+                    history = model.train(
+                        X_train, y_train,
+                        X_val=X_val, y_val=y_val,
+                        epochs=2,
+                        batch_size=16,
+                        callbacks=[early_stop],
+                        verbose=0
+                    )
                 assert history is not None
             else:
                 # Fallback to direct model.fit()
@@ -573,14 +707,17 @@ class TestTrainingCallbacks:
                     loss='sparse_categorical_crossentropy',
                     metrics=['accuracy']
                 )
-                history = model.model.fit(
-                    X_train, y_train,
-                    validation_data=(X_val, y_val),
-                    epochs=2,
-                    batch_size=16,
-                    callbacks=[early_stop],
-                    verbose=0
-                )
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=UserWarning, message=".*ran out of data.*")
+                    warnings.filterwarnings("ignore", category=UserWarning, message=".*Your input ran out of data.*")
+                    history = model.model.fit(
+                        X_train, y_train,
+                        validation_data=(X_val, y_val),
+                        epochs=2,
+                        batch_size=16,
+                        callbacks=[early_stop],
+                        verbose=0
+                    )
                 assert history is not None
         except (AttributeError, NotImplementedError, TypeError, ValueError) as e:
             pytest.skip(f"Early stopping not supported: {e}")
@@ -610,13 +747,16 @@ class TestTrainingCallbacks:
 
             # Try model.train() method first
             if hasattr(model, 'train'):
-                history = model.train(
-                    X_train, y_train,
-                    epochs=1,
-                    batch_size=16,
-                    callbacks=[checkpoint],
-                    verbose=0
-                )
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=UserWarning, message=".*ran out of data.*")
+                    warnings.filterwarnings("ignore", category=UserWarning, message=".*Your input ran out of data.*")
+                    history = model.train(
+                        X_train, y_train,
+                        epochs=1,
+                        batch_size=16,
+                        callbacks=[checkpoint],
+                        verbose=0
+                    )
             else:
                 # Fallback to direct model.fit()
                 model.model.compile(
@@ -624,13 +764,16 @@ class TestTrainingCallbacks:
                     loss='sparse_categorical_crossentropy',
                     metrics=['accuracy']
                 )
-                history = model.model.fit(
-                    X_train, y_train,
-                    epochs=1,
-                    batch_size=16,
-                    callbacks=[checkpoint],
-                    verbose=0
-                )
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=UserWarning, message=".*ran out of data.*")
+                    warnings.filterwarnings("ignore", category=UserWarning, message=".*Your input ran out of data.*")
+                    history = model.model.fit(
+                        X_train, y_train,
+                        epochs=1,
+                        batch_size=16,
+                        callbacks=[checkpoint],
+                        verbose=0
+                    )
             
             # Verify checkpoint was created (may not exist if save_best_only=True and loss increased)
             assert True  # Test passes if no exception raised
@@ -708,7 +851,10 @@ class TestEdgeCases:
 
         try:
             empty = np.array([]).reshape(0, 1000, 1)
-            result = model.predict(empty)
+            # Suppress the warning about empty input
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning, message=".*ran out of data.*")
+                result = model.predict(empty)
             assert result is not None
         except (ValueError, AttributeError, NotImplementedError):
             # Expected to fail or skip
@@ -996,12 +1142,15 @@ class TestTrainingVariations:
         y_train = sample_labels_multiclass[:80]
 
         try:
-            history = model.train(
-                X_train, y_train,
-                epochs=1,
-                batch_size=16,
-                verbose=0
-            )
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning, message=".*ran out of data.*")
+                warnings.filterwarnings("ignore", category=UserWarning, message=".*Your input ran out of data.*")
+                history = model.train(
+                    X_train, y_train,
+                    epochs=1,
+                    batch_size=16,
+                    verbose=0
+                )
             assert history is not None
         except (AttributeError, NotImplementedError) as e:
             pytest.skip(f"Train without validation not supported: {e}")
@@ -1015,13 +1164,16 @@ class TestTrainingVariations:
         y_train = sample_labels_multiclass[:80]
 
         try:
-            history = model.train(
-                X_train, y_train,
-                epochs=1,
-                batch_size=16,
-                learning_rate=0.0001,
-                verbose=0
-            )
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning, message=".*ran out of data.*")
+                warnings.filterwarnings("ignore", category=UserWarning, message=".*Your input ran out of data.*")
+                history = model.train(
+                    X_train, y_train,
+                    epochs=1,
+                    batch_size=16,
+                    learning_rate=0.0001,
+                    verbose=0
+                )
             assert history is not None
         except (AttributeError, NotImplementedError) as e:
             pytest.skip(f"Custom learning rate not supported: {e}")
@@ -1040,12 +1192,15 @@ class TestTrainingVariations:
         y_train = np.random.randint(0, 3, size=(50,))
 
         try:
-            history = model.train(
-                X_train, y_train,
-                epochs=1,
-                batch_size=10,
-                verbose=0
-            )
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning, message=".*ran out of data.*")
+                warnings.filterwarnings("ignore", category=UserWarning, message=".*Your input ran out of data.*")
+                history = model.train(
+                    X_train, y_train,
+                    epochs=1,
+                    batch_size=10,
+                    verbose=0
+                )
             assert history is not None
         except (AttributeError, NotImplementedError) as e:
             pytest.skip(f"LSTM train not implemented: {e}")
@@ -1065,13 +1220,16 @@ class TestTrainingVariations:
         y_val = np.random.randint(0, 3, size=(20,))
 
         try:
-            history = model.train(
-                X_train, y_train,
-                X_val=X_val, y_val=y_val,
-                epochs=1,
-                batch_size=10,
-                verbose=0
-            )
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=UserWarning, message=".*ran out of data.*")
+                warnings.filterwarnings("ignore", category=UserWarning, message=".*Your input ran out of data.*")
+                history = model.train(
+                    X_train, y_train,
+                    X_val=X_val, y_val=y_val,
+                    epochs=1,
+                    batch_size=10,
+                    verbose=0
+                )
             assert history is not None
         except (AttributeError, NotImplementedError) as e:
             pytest.skip(f"LSTM train with validation not implemented: {e}")

@@ -613,7 +613,9 @@ class TestOptimizedCheckpointManagerMissingLines:
         except Exception:
             pass  # Expected
         finally:
-            checkpoint_file.chmod(0o755)
+            # Check if file still exists before trying to chmod (it may have been deleted)
+            if checkpoint_file.exists():
+                checkpoint_file.chmod(0o755)
     
     def test_compute_optimized_data_hash_large_array(self, config_manager, temp_checkpoint_dir):
         """Test _compute_optimized_data_hash with large array - covers lines 721-726."""

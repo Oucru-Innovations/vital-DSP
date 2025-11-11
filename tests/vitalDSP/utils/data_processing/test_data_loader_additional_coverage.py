@@ -350,16 +350,21 @@ class TestDataLoaderOtherFormatsMissingLines:
     
     def test_load_excel(self, temp_dir):
         """Test _load_excel - covers lines 940-959."""
-        excel_path = Path(temp_dir) / "test.xlsx"
-        
-        df = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]})
-        df.to_excel(excel_path, index=False)
-        
-        loader = DataLoader(excel_path, format=DataFormat.EXCEL)
-        result = loader._load_excel()
-        
-        assert isinstance(result, pd.DataFrame)
-        assert len(result) == 3
+        try:
+            excel_path = Path(temp_dir) / "test.xlsx"
+            
+            df = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]})
+            df.to_excel(excel_path, index=False)
+            
+            loader = DataLoader(excel_path, format=DataFormat.EXCEL)
+            result = loader._load_excel()
+            
+            assert isinstance(result, pd.DataFrame)
+            assert len(result) == 3
+        except ImportError as e:
+            if 'openpyxl' in str(e).lower():
+                pytest.skip("openpyxl not available")
+            raise
     
     def test_load_json_list(self, temp_dir):
         """Test _load_json with list - covers lines 970-974."""
@@ -854,14 +859,19 @@ class TestDataLoaderOtherMethodsMissingLines:
     
     def test_export_excel(self, temp_dir):
         """Test export Excel - covers line 1512."""
-        loader = DataLoader()
-        
-        data = pd.DataFrame({"col1": [1, 2, 3]})
-        output_path = Path(temp_dir) / "output.xlsx"
-        
-        loader.export(data, output_path, format=DataFormat.EXCEL)
-        
-        assert output_path.exists()
+        try:
+            loader = DataLoader()
+            
+            data = pd.DataFrame({"col1": [1, 2, 3]})
+            output_path = Path(temp_dir) / "output.xlsx"
+            
+            loader.export(data, output_path, format=DataFormat.EXCEL)
+            
+            assert output_path.exists()
+        except ImportError as e:
+            if 'openpyxl' in str(e).lower():
+                pytest.skip("openpyxl not available")
+            raise
     
     def test_export_hdf5(self, temp_dir):
         """Test export HDF5 - covers line 1516."""
@@ -930,20 +940,31 @@ class TestStreamDataLoaderMissingLines:
     
     def test_stream_serial(self, temp_dir):
         """Test _stream_serial - covers lines 1661-1690."""
-        try:
-            loader = StreamDataLoader(source_type="serial", port="/dev/ttyUSB0", baudrate=9600)
+        loader = StreamDataLoader(source_type="serial", port="/dev/ttyUSB0", baudrate=9600, buffer_size=3)
+        
+        # Mock serial port - patch where it's imported (inside the method)
+        # Since serial is imported inside _stream_serial, we need to patch it at the serial module level
+        # Create a mock serial module if it doesn't exist
+        import sys
+        if 'serial' not in sys.modules:
+            # Create a mock serial module
+            mock_serial_module = MagicMock()
+            sys.modules['serial'] = mock_serial_module
+        
+        with patch('serial.Serial') as mock_serial:
+            mock_ser = MagicMock()
+            # readline() needs to return multiple values (one per sample)
+            # Return 5 samples to fill buffer and yield chunks
+            mock_ser.readline.side_effect = [b"1.0\n", b"2.0\n", b"3.0\n", b"4.0\n", b"5.0\n"]
+            # Set up context manager properly
+            mock_serial.return_value.__enter__ = Mock(return_value=mock_ser)
+            mock_serial.return_value.__exit__ = Mock(return_value=False)
             
-            # Mock serial port
-            with patch('serial.Serial') as mock_serial:
-                mock_ser = MagicMock()
-                mock_ser.readline.return_value = b"1.0\n"
-                mock_serial.return_value.__enter__.return_value = mock_ser
-                
-                chunks = list(loader._stream_serial(None, max_samples=5))
-                
-                assert len(chunks) > 0
-        except ImportError:
-            pytest.skip("pyserial not available")
+            chunks = list(loader._stream_serial(None, max_samples=5))
+            
+            assert len(chunks) > 0
+            # Should have at least one chunk since buffer_size=3 and we have 5 samples
+            assert len(chunks) >= 1
     
     def test_stream_serial_import_error(self, temp_dir):
         """Test _stream_serial ImportError - covers lines 1687-1690."""

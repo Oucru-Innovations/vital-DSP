@@ -264,23 +264,15 @@ class TestPretrainedModelDownload:
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             Path(filename).touch()
         
-        # Mock urlretrieve - patch the imported function
+        # Mock urlretrieve using patch at the source module
         import vitalDSP.ml_models.pretrained_models as pm_module
-        original_urlretrieve = pm_module.urlretrieve
-        pm_module.urlretrieve = mock_urlretrieve
-        try:
+        with patch('vitalDSP.ml_models.pretrained_models.urlretrieve', side_effect=mock_urlretrieve):
             # Mock model loading
             mock_model = Mock()
-            original_load_model = pm_module.keras.models.load_model
-            pm_module.keras.models.load_model = Mock(return_value=mock_model)
-            try:
+            with patch('vitalDSP.ml_models.pretrained_models.keras.models.load_model', return_value=mock_model):
                 model = PretrainedModel._download_model(url, save_path, "tensorflow")
                 assert model is not None
                 assert save_path.exists()
-            finally:
-                pm_module.keras.models.load_model = original_load_model
-        finally:
-            pm_module.urlretrieve = original_urlretrieve
     
     def test_download_model_pytorch(self, tmp_cache_dir):
         """Test downloading PyTorch model - covers lines 375-375."""
@@ -296,26 +288,18 @@ class TestPretrainedModelDownload:
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             Path(filename).touch()
         
-        # Mock urlretrieve - patch the imported function
+        # Mock urlretrieve using patch at the source module
         import vitalDSP.ml_models.pretrained_models as pm_module
-        original_urlretrieve = pm_module.urlretrieve
-        pm_module.urlretrieve = mock_urlretrieve
-        try:
+        with patch('vitalDSP.ml_models.pretrained_models.urlretrieve', side_effect=mock_urlretrieve):
             # Mock torch.load
             mock_model = Mock()
             if hasattr(pm_module, 'torch'):
-                original_torch_load = pm_module.torch.load
-                pm_module.torch.load = Mock(return_value=mock_model)
-                try:
+                with patch('vitalDSP.ml_models.pretrained_models.torch.load', return_value=mock_model):
                     model = PretrainedModel._download_model(url, save_path, "pytorch")
                     assert model is not None
                     assert save_path.exists()
-                finally:
-                    pm_module.torch.load = original_torch_load
             else:
                 pytest.skip("PyTorch not imported in module")
-        finally:
-            pm_module.urlretrieve = original_urlretrieve
     
     def test_download_model_url_error(self, tmp_cache_dir):
         """Test download model with URLError - covers lines 379-380."""
@@ -325,14 +309,9 @@ class TestPretrainedModelDownload:
         save_path = tmp_cache_dir / "test_model.h5"
         
         # Mock urlretrieve to raise URLError
-        import vitalDSP.ml_models.pretrained_models as pm_module
-        original_urlretrieve = pm_module.urlretrieve
-        pm_module.urlretrieve = Mock(side_effect=URLError("Connection failed"))
-        try:
+        with patch('vitalDSP.ml_models.pretrained_models.urlretrieve', side_effect=URLError("Connection failed")):
             with pytest.raises(RuntimeError, match="Failed to download model"):
                 PretrainedModel._download_model(url, save_path, "tensorflow")
-        finally:
-            pm_module.urlretrieve = original_urlretrieve
 
 
 @pytest.mark.skipif(not PRETRAINED_AVAILABLE or not TENSORFLOW_AVAILABLE, reason="Pretrained models or TensorFlow not available")
@@ -938,22 +917,15 @@ class TestPretrainedModelEdgeCases:
                 Path(filename).touch()
             
             # Mock the download to create a file and return a mock model
-            import vitalDSP.ml_models.pretrained_models as pm_module
             mock_model = Mock()
-            original_urlretrieve = pm_module.urlretrieve
-            original_load_model = pm_module.keras.models.load_model
-            pm_module.urlretrieve = mock_urlretrieve
-            pm_module.keras.models.load_model = Mock(return_value=mock_model)
-            try:
-                model = PretrainedModel.from_registry(
-                    'ecg_classifier_mitbih',
-                    cache_dir=str(tmp_cache_dir),
-                    force_download=True
-                )
-                assert model is not None
-            finally:
-                pm_module.urlretrieve = original_urlretrieve
-                pm_module.keras.models.load_model = original_load_model
+            with patch('vitalDSP.ml_models.pretrained_models.urlretrieve', side_effect=mock_urlretrieve):
+                with patch('vitalDSP.ml_models.pretrained_models.keras.models.load_model', return_value=mock_model):
+                    model = PretrainedModel.from_registry(
+                        'ecg_classifier_mitbih',
+                        cache_dir=str(tmp_cache_dir),
+                        force_download=True
+                    )
+                    assert model is not None
         finally:
             # Restore original URL
             MODEL_REGISTRY['ecg_classifier_mitbih']['url'] = original_url
