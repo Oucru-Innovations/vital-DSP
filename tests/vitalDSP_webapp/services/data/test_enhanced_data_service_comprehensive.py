@@ -312,10 +312,13 @@ class TestChunkedDataService:
         assert stats["cache_hit_rate"] >= 0.0
         assert stats["cache_hit_rate"] <= 1.0
 
-    @patch('vitalDSP_webapp.services.data.enhanced_data_service.VITALDSP_AVAILABLE', True)
     def test_chunked_data_service_load_data_chunked_with_vitaldsp(self, temp_csv_file):
         """Test load_data_chunked with vitalDSP available."""
         import vitalDSP_webapp.services.data.enhanced_data_service as eds_module
+        
+        # Store original values
+        original_vitaldsp_available = getattr(eds_module, 'VITALDSP_AVAILABLE', None)
+        original_chunked_loader = getattr(eds_module, 'ChunkedDataLoader', None)
         
         # Create a mock ChunkedDataLoader class and inject it into the module namespace
         # This handles the case where ChunkedDataLoader wasn't imported due to ImportError
@@ -325,11 +328,11 @@ class TestChunkedDataService:
         
         mock_loader_class = Mock(return_value=mock_loader_instance)
         
-        # Inject ChunkedDataLoader into the module namespace if it doesn't exist
-        original_chunked_loader = getattr(eds_module, 'ChunkedDataLoader', None)
-        eds_module.ChunkedDataLoader = mock_loader_class
-        
         try:
+            # Set VITALDSP_AVAILABLE to True and inject ChunkedDataLoader
+            eds_module.VITALDSP_AVAILABLE = True
+            eds_module.ChunkedDataLoader = mock_loader_class
+            
             service = ChunkedDataService()
             # This will try to use vitalDSP loader if available
             try:
@@ -340,10 +343,17 @@ class TestChunkedDataService:
                 # The important thing is that the function was attempted
                 pass
         finally:
-            # Restore original ChunkedDataLoader if it existed
+            # Restore original values
+            if original_vitaldsp_available is not None:
+                eds_module.VITALDSP_AVAILABLE = original_vitaldsp_available
+            elif hasattr(eds_module, 'VITALDSP_AVAILABLE'):
+                # If it was created by us, restore to False (default when import fails)
+                eds_module.VITALDSP_AVAILABLE = False
+            
             if original_chunked_loader is not None:
                 eds_module.ChunkedDataLoader = original_chunked_loader
-            # If it didn't exist originally, leave the mock in place (test cleanup)
+            # If we added ChunkedDataLoader and it didn't exist before, leave it
+            # (it won't affect other tests as each test gets a fresh import)
 
 
 class TestMemoryMappedDataService:
