@@ -700,6 +700,11 @@ invalid_date,"[1.0, 2.0]",100
         
         This test covers lines 1231-1232 in data_loader.py.
         """
+        try:
+            import pyarrow
+        except ImportError:
+            pytest.skip("pyarrow package required for Parquet files")
+        
         parquet_file = tmp_path / "test_invalid.parquet"
         parquet_file.write_text("invalid parquet content")
         

@@ -85,7 +85,12 @@ def test_compute_coherence(mock_preprocess, sample_signals, sample_preprocess_co
 # Suppress the graphical output of matplotlib in the test
 @patch("matplotlib.pyplot.show")
 @patch("matplotlib.pyplot.figure")
-def test_plot_coherence(mock_figure, mock_show, sample_signals):
+@patch("matplotlib.pyplot.semilogy")
+@patch("matplotlib.pyplot.title")
+@patch("matplotlib.pyplot.xlabel")
+@patch("matplotlib.pyplot.ylabel")
+@patch("matplotlib.pyplot.grid")
+def test_plot_coherence(mock_grid, mock_ylabel, mock_xlabel, mock_title, mock_semilogy, mock_figure, mock_show, sample_signals):
     signal1, signal2 = sample_signals
     coherence_analysis = CoherenceAnalysis(signal1, signal2, fs=500)
     f = np.linspace(0, 100, 100)
@@ -94,7 +99,8 @@ def test_plot_coherence(mock_figure, mock_show, sample_signals):
     coherence_analysis.plot_coherence(f, Cxy)
 
     # Ensure that the plot was created and show was called once
-    # Note: plt.figure() is called multiple times internally for different plot operations
+    # Note: plt.figure() is called inside the function, so we patch matplotlib.pyplot.figure
+    # The function imports plt inside, so we need to ensure the patch works
     assert mock_figure.call_count >= 1  # At least one figure call
     mock_show.assert_called_once()
 
