@@ -6,11 +6,14 @@ This file adds extensive coverage for plot creation and advanced filter function
 
 import pytest
 import numpy as np
+import sys
+import importlib
 from unittest.mock import Mock, patch, MagicMock
 from dash import Dash
 import plotly.graph_objects as go
 
-# Import the module to test
+# Import the module to test - will reload if needed
+import vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks as signal_filtering_module
 from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
     register_signal_filtering_callbacks,
     create_original_signal_plot,
@@ -140,12 +143,16 @@ class TestAdvancedFilterFunctions:
     @patch('vitalDSP.filtering.advanced_signal_filtering.AdvancedSignalFiltering')
     def test_apply_advanced_filter_kalman(self, mock_asf_class, sample_signal_data):
         """Test apply_advanced_filter with Kalman filter."""
+        # Reload module to get original function (not monkey-patched version)
+        importlib.reload(signal_filtering_module)
+        apply_advanced_filter_orig = signal_filtering_module.apply_advanced_filter
+        
         signal_data, _, fs = sample_signal_data
         mock_asf = Mock()
         mock_asf.kalman_filter.return_value = signal_data * 0.9
         mock_asf_class.return_value = mock_asf
         
-        result = apply_advanced_filter(signal_data, "kalman", kalman_r=1.0, kalman_q=1.0)
+        result = apply_advanced_filter_orig(signal_data, "kalman", kalman_r=1.0, kalman_q=1.0)
         assert result is not None
         assert len(result) == len(signal_data)
 
@@ -153,6 +160,10 @@ class TestAdvancedFilterFunctions:
     @patch('scipy.signal.savgol_filter')
     def test_apply_advanced_filter_adaptive(self, mock_savgol, mock_asf_class, sample_signal_data):
         """Test apply_advanced_filter with adaptive filter."""
+        # Reload module to get original function (not monkey-patched version)
+        importlib.reload(signal_filtering_module)
+        apply_advanced_filter_orig = signal_filtering_module.apply_advanced_filter
+        
         signal_data, _, fs = sample_signal_data
         mock_asf = Mock()
         # adaptive_filtering returns a numpy array (note: method name is adaptive_filtering, not adaptive_filter)
@@ -161,7 +172,7 @@ class TestAdvancedFilterFunctions:
         mock_asf_class.return_value = mock_asf
         mock_savgol.return_value = signal_data * 0.95  # Mock savgol_filter
         
-        result = apply_advanced_filter(signal_data, "adaptive", adaptive_mu=0.01, adaptive_order=4)
+        result = apply_advanced_filter_orig(signal_data, "adaptive", adaptive_mu=0.01, adaptive_order=4)
         assert result is not None
         # Result should be numpy array or similar
         assert hasattr(result, '__len__') or isinstance(result, np.ndarray)
@@ -183,12 +194,16 @@ class TestAdvancedFilterFunctions:
     @patch('vitalDSP.filtering.advanced_signal_filtering.AdvancedSignalFiltering')
     def test_apply_advanced_filter_exception(self, mock_asf_class, sample_signal_data):
         """Test apply_advanced_filter exception handling."""
+        # Reload module to get original function (not monkey-patched version)
+        importlib.reload(signal_filtering_module)
+        apply_advanced_filter_orig = signal_filtering_module.apply_advanced_filter
+        
         signal_data, _, fs = sample_signal_data
         mock_asf = Mock()
         mock_asf.kalman_filter.side_effect = Exception("Filter error")
         mock_asf_class.return_value = mock_asf
         
-        result = apply_advanced_filter(signal_data, "kalman", kalman_r=1.0, kalman_q=1.0)
+        result = apply_advanced_filter_orig(signal_data, "kalman", kalman_r=1.0, kalman_q=1.0)
         # Should return original signal on error
         assert result is not None
         assert len(result) == len(signal_data)
