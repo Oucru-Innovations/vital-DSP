@@ -44,6 +44,9 @@ docs/source/notebooks/*.npz.tar.gz.bz2
 # C extensions
 *.so
 
+.pypirc
+vitaldsp_webapp.log*
+
 new_test_settings*
 settings_backup*
 settings.json*
