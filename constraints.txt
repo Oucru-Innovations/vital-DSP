@@ -1,0 +1,4 @@
+# Constraints file to ensure compatibility with TensorFlow
+# TensorFlow 2.8-2.16 requires NumPy < 2.0
+numpy>=1.19.2,<2.0
+
