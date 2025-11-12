@@ -30,24 +30,34 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -r requirements-tensorflow.txt
-          pip install -r requirements-explainability.txt
-          pip install -r requirements-pytorch.txt
-          pip install pytest==8.1.1 pytest-cov>=5.0.0 coverage>=7.4.0 flake8 pandoc pandas httpx pytest-mock pytest-asyncio
-          pip install pytest-xdist pytest-parallel pytest-timeout
-          pip install setuptools wheel twine sphinx coveralls responses
-          pip install dash dash[testing]
-          pip install selenium webdriver-manager
+          # Install NumPy first with constraint to prevent NumPy 2.x from being installed
+          # TensorFlow requires NumPy < 2.0
+          pip install "numpy>=1.19.2,<2.0"
+          # Install base requirements (which also has numpy constraint, but already installed)
+          pip install -r requirements.txt -c constraints.txt
+          pip install -r requirements-tensorflow.txt -c constraints.txt
+          pip install -r requirements-explainability.txt -c constraints.txt
+          pip install -r requirements-pytorch.txt -c constraints.txt
+          # Install test dependencies with constraints to prevent NumPy upgrade
+          pip install -c constraints.txt pytest==8.1.1 pytest-cov>=5.0.0 coverage>=7.4.0 flake8 pandoc "pandas>=2.0.0" httpx pytest-mock pytest-asyncio
+          pip install -c constraints.txt pytest-xdist pytest-parallel pytest-timeout
+          pip install -c constraints.txt setuptools wheel twine sphinx coveralls responses
+          pip install -c constraints.txt dash dash[testing]
+          pip install -c constraints.txt selenium webdriver-manager
+          # Verify NumPy version is still < 2.0
+          python -c "import numpy; assert numpy.__version__.startswith('1.'), f'NumPy version {numpy.__version__} is >= 2.0, but TensorFlow requires < 2.0'"
       
-      - name: Verify TensorFlow Installation
+      - name: Verify NumPy and TensorFlow Installation
         run: |
           echo "Python version:"
           python --version
+          echo "NumPy version:"
+          python -c "import numpy; print(f'NumPy {numpy.__version__}')"
+          python -c "import numpy; assert numpy.__version__.startswith('1.'), f'ERROR: NumPy version {numpy.__version__} is >= 2.0, but TensorFlow requires < 2.0'"
           echo "TensorFlow version:"
           python -c "import tensorflow as tf; print(f'TensorFlow {tf.__version__} installed successfully')"
           echo "Available packages:"
-          pip list | grep -i tensorflow
+          pip list | grep -i -E "(numpy|tensorflow)"
       
       - name: Install Chrome and ChromeDriver
         run: |
