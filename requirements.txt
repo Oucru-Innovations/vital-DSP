@@ -1,5 +1,7 @@
 # Core vitalDSP dependencies
-numpy>=1.19.2
+# NumPy constrained to < 2.0 for TensorFlow compatibility
+# TensorFlow 2.8-2.16 was compiled with NumPy 1.x and cannot run with NumPy 2.x
+numpy>=1.19.2,<2.0
 scipy>=1.5.2
 scikit-learn>=0.23.2
 matplotlib
