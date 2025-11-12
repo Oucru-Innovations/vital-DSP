@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: vitaldsp/webapp:0.2.1-dev
     container_name: vitaldsp-webapp-dev
     ports:
       - "8000:8000"
@@ -13,6 +14,7 @@ services:
       - PYTHONPATH=/app:/app/src
       - PYTHONUNBUFFERED=1
       - FLASK_ENV=development
+      - VITALDSP_VERSION=0.2.1-dev
     volumes:
       - .:/app
       - ./uploads:/app/uploads

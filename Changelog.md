@@ -7,22 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Description of new features added in the unreleased version.
+- Planned features for future releases.
+
+## [0.2.1] - 2025-01-27
+### Added
+- Enhanced documentation with comprehensive examples and tutorials
+- Updated Read the Docs configuration for improved build process
+- Added support for PyTorch, SHAP, and LIME optional dependencies
+- Comprehensive installation documentation
+- **Comprehensive REST API**: 15+ new API endpoints for filtering, feature extraction, respiratory analysis, and more
+  - Signal filtering endpoints (Butterworth, adaptive)
+  - Feature extraction (time-domain, frequency-domain, HRV)
+  - Respiratory rate estimation
+  - Signal quality assessment
+  - Transform operations (FFT, Wavelet)
+  - Health report generation
+  - Batch processing support
+- Separate coverage targets in Makefile for vitalDSP core and webapp
 
 ### Changed
-- Description of existing features that were modified.
-
-### Deprecated
-- Features that are still available but are planned to be removed in the future.
-
-### Removed
-- Features that have been removed from the project.
+- Improved test suite with better coverage
+- Updated GitHub CI/CD workflow
+- Enhanced code quality and linting standards
+- Updated dependencies to latest stable versions
+- Docker and Docker Compose configurations with version tags
 
 ### Fixed
-- Bug fixes and resolved issues.
-
-### Security
-- Security improvements or vulnerability patches.
+- Fixed GitHub Actions CI configuration
+- Resolved linting issues across the codebase
+- Improved test coverage and reliability
 
 ## [Version X.X.X] - YYYY-MM-DD
 ### Added

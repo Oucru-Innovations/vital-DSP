@@ -64,7 +64,7 @@ class TestVitalDSPInit:
         # This tests the try block (lines 14-56)
         assert hasattr(vitalDSP, '__all__')
         assert hasattr(vitalDSP, '__version__')
-        assert vitalDSP.__version__ == "1.0.0"
+        assert vitalDSP.__version__ == "0.2.1"
 
     def test_import_error_handling(self):
         """Test ImportError exception handling (lines 58-60)"""
@@ -106,7 +106,7 @@ class TestVitalDSPInit:
         assert hasattr(vitalDSP, '__author__')
         assert hasattr(vitalDSP, '__description__')
 
-        assert vitalDSP.__version__ == "1.0.0"
+        assert vitalDSP.__version__ == "0.2.1"
         assert vitalDSP.__author__ == "vitalDSP Team"
         assert vitalDSP.__description__ == "Digital Signal Processing for Vital Signs"
 

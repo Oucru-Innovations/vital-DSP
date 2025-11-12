@@ -34,9 +34,11 @@ Installation Methods
 
 **Option 1: Install from PyPI (Recommended)**
 
+Install the latest stable version (v0.2.1):
+
 .. code-block:: bash
 
-   pip install vital-DSP
+   pip install vitalDSP
 
 **Option 2: Install from Source (Recommended for Development)**
 

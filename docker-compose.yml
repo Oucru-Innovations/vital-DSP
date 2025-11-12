@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.production
+    image: vitaldsp/webapp:0.2.1
     container_name: vitaldsp-webapp
     ports:
       - "8000:8000"
@@ -12,6 +13,7 @@ services:
       - PORT=8000
       - PYTHONPATH=/app:/app/src
       - PYTHONUNBUFFERED=1
+      - VITALDSP_VERSION=0.2.1
     volumes:
       - ./uploads:/app/uploads
       - ./logs:/app/logs

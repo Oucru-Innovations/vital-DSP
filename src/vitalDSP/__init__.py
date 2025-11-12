@@ -8,7 +8,7 @@ processing, real-time analysis, and health monitoring applications.
 
 Author: vitalDSP Team
 Date: 2025-01-27
-Version: 1.0.0
+Version: 0.2.1
 
 Key Features:
 - Advanced signal filtering and preprocessing
@@ -61,7 +61,7 @@ configure_warnings()
 suppress_test_warnings()
 
 # Version information
-__version__ = "1.0.0"
+__version__ = "0.2.1"
 __author__ = "vitalDSP Team"
 __description__ = "Digital Signal Processing for Vital Signs"
 

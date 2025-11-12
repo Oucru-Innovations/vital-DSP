@@ -56,9 +56,25 @@ test:
 # $(PYTHONPATH_SET) pytest --cov=$(SRC_DIR) --cov-config=.coveragerc --cov-report=html:$(COV_DIR)
 # Run tests with coverage using .coveragerc
 # Note: Using --capture=no to avoid pytest-cov/pytest-asyncio conflict during collection
-coverage:	
+coverage:
 	@echo "Running tests with coverage..."
-	@python -m pytest --cov=$(SRC_DIR) --cov-config=.coveragerc --cov-report=term-missing --cov-report=html:$(COV_DIR) --ignore=dev_docs --ignore=archive_docs 
+	@python -m pytest --cov=$(SRC_DIR) --cov-config=.coveragerc --cov-report=term-missing --cov-report=html:$(COV_DIR) --ignore=dev_docs --ignore=archive_docs
+
+# Run coverage for vitalDSP only
+coverage-vitaldsp:
+	@echo "Running coverage for vitalDSP only..."
+	@python -m pytest tests/vitalDSP --cov=$(SRC_DIR)/vitalDSP --cov-config=.coveragerc --cov-report=term-missing --cov-report=html:$(COV_DIR)/vitalDSP --ignore=dev_docs --ignore=archive_docs
+
+# Run coverage for vitalDSP_webapp only
+coverage-webapp:
+	@echo "Running coverage for vitalDSP_webapp only..."
+	@python -m pytest tests/vitalDSP_webapp --cov=$(SRC_DIR)/vitalDSP_webapp --cov-config=.coveragerc --cov-report=term-missing --cov-report=html:$(COV_DIR)/vitalDSP_webapp --ignore=dev_docs --ignore=archive_docs
+
+# Run coverage for both separately
+coverage-separate: coverage-vitaldsp coverage-webapp
+	@echo "✓ Separate coverage reports generated:"
+	@echo "  - vitalDSP: $(COV_DIR)/vitalDSP/index.html"
+	@echo "  - vitalDSP_webapp: $(COV_DIR)/vitalDSP_webapp/index.html" 
 
 # Lint the code using flake8 with custom config
 # Note: F401 (unused imports) is ignored in .flake8 config
@@ -133,4 +149,4 @@ clean:
 	rm -rf $(DOCBUILDDIR)
 
 # Phony targets
-.PHONY: all test coverage lint html clean docs-rtd docs-all docs-serve docs-check docs-clean webapp build upload pandoc
+.PHONY: all test test-fast test-ci test-unit test-core test-webapp test-coverage test-full test-parallel coverage coverage-vitaldsp coverage-webapp coverage-separate lint html clean docs-rtd docs-all docs-serve docs-check docs-clean webapp build upload pandoc

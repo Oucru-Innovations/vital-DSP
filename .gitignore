@@ -44,6 +44,15 @@ docs/source/notebooks/*.npz.tar.gz.bz2
 # C extensions
 *.so
 
+new_test_settings*
+settings_backup*
+settings.json*
+test_export.json*
+test_settings.json*
+new_test_settings.json*
+test.json
+vitaldsp_settings_*.json
+
 # Notes
 Features.txt
 markdowns/

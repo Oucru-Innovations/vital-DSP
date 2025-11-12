@@ -484,3 +484,206 @@ class TestNumericalStability:
             assert isinstance(entropy, (int, float))
         except (AttributeError, NotImplementedError):
             pytest.skip("Not implemented")
+
+
+class TestSymbolicDynamicsMissingCoverage:
+    """Tests to cover missing lines in symbolic_dynamics.py."""
+
+    def test_init_signal_not_numpy_array(self):
+        """Test initialization with non-numpy array signal.
+        
+        This test covers line 217 in symbolic_dynamics.py where
+        signal is converted to numpy array if not already one.
+        """
+        signal = [1.0, 2.0, 3.0, 4.0, 5.0]  # Python list
+        sd = SymbolicDynamics(signal, word_length=2)
+        assert isinstance(sd.signal, np.ndarray)
+        assert len(sd.signal) == 5
+
+    def test_init_signal_too_short(self):
+        """Test initialization when signal is too short.
+        
+        This test covers lines 219-223 in symbolic_dynamics.py where
+        ValueError is raised when signal length < word_length.
+        """
+        signal = np.array([1.0, 2.0])  # Only 2 samples
+        with pytest.raises(ValueError, match="Signal too short"):
+            SymbolicDynamics(signal, word_length=3)
+
+    def test_init_n_symbols_too_small(self):
+        """Test initialization when n_symbols is too small.
+        
+        This test covers lines 225-226 in symbolic_dynamics.py where
+        ValueError is raised when n_symbols < 2.
+        """
+        signal = np.random.randn(100)
+        with pytest.raises(ValueError, match="n_symbols must be 2-26"):
+            SymbolicDynamics(signal, n_symbols=1)
+
+    def test_init_n_symbols_too_large(self):
+        """Test initialization when n_symbols is too large.
+        
+        This test covers lines 225-226 in symbolic_dynamics.py where
+        ValueError is raised when n_symbols > 26.
+        """
+        signal = np.random.randn(100)
+        with pytest.raises(ValueError, match="n_symbols must be 2-26"):
+            SymbolicDynamics(signal, n_symbols=27)
+
+    def test_init_word_length_too_small(self):
+        """Test initialization when word_length is too small.
+        
+        This test covers lines 228-229 in symbolic_dynamics.py where
+        ValueError is raised when word_length < 2.
+        """
+        signal = np.random.randn(100)
+        with pytest.raises(ValueError, match="word_length must be 2-10"):
+            SymbolicDynamics(signal, word_length=1)
+
+    def test_init_word_length_too_large(self):
+        """Test initialization when word_length is too large.
+        
+        This test covers lines 228-229 in symbolic_dynamics.py where
+        ValueError is raised when word_length > 10.
+        """
+        signal = np.random.randn(100)
+        with pytest.raises(ValueError, match="word_length must be 2-10"):
+            SymbolicDynamics(signal, word_length=11)
+
+    def test_init_invalid_method(self):
+        """Test initialization when method is invalid.
+        
+        This test covers lines 232-233 in symbolic_dynamics.py where
+        ValueError is raised when method is not in valid_methods.
+        """
+        signal = np.random.randn(100)
+        with pytest.raises(ValueError, match="method must be one of"):
+            SymbolicDynamics(signal, method="invalid_method")
+
+    def test_symbolize_quantile(self):
+        """Test quantile symbolization method.
+        
+        This test covers lines 279-280, 346-347, 350 in symbolic_dynamics.py.
+        """
+        signal = np.random.randn(1000)
+        sd = SymbolicDynamics(signal, n_symbols=4, method="quantile")
+        symbols = sd.symbolize()
+        assert isinstance(symbols, np.ndarray)
+        assert len(symbols) == len(signal)
+        assert all(0 <= s < 4 for s in symbols)
+
+    def test_symbolize_sax(self):
+        """Test SAX symbolization method.
+        
+        This test covers lines 281-282, 361, 364, 366-367, 370 in symbolic_dynamics.py.
+        """
+        signal = np.random.randn(1000)
+        sd = SymbolicDynamics(signal, n_symbols=4, method="SAX")
+        symbols = sd.symbolize()
+        assert isinstance(symbols, np.ndarray)
+        assert len(symbols) == len(signal)
+        assert all(0 <= s < 4 for s in symbols)
+
+    def test_symbolize_threshold(self):
+        """Test threshold symbolization method.
+        
+        This test covers lines 283-284, 376-377, 379 in symbolic_dynamics.py.
+        """
+        signal = np.random.randn(1000)
+        sd = SymbolicDynamics(signal, n_symbols=4, method="threshold")
+        symbols = sd.symbolize()
+        assert isinstance(symbols, np.ndarray)
+        assert len(symbols) == len(signal)
+        assert all(0 <= s < 4 for s in symbols)
+
+    def test_detect_forbidden_words_symbols_none(self):
+        """Test detect_forbidden_words when symbols is None.
+        
+        This test covers line 514 in symbolic_dynamics.py where
+        self.symbolize() is called when symbols is None.
+        """
+        signal = np.random.randn(100)
+        sd = SymbolicDynamics(signal, n_symbols=4, word_length=3)
+        # Don't call symbolize() explicitly
+        forbidden = sd.detect_forbidden_words()
+        assert isinstance(forbidden, list)
+        assert sd.symbols is not None  # Should have been set by symbolize()
+
+    def test_compute_renyi_entropy_alpha_zero(self):
+        """Test Renyi entropy with alpha=0.0 (Hartley entropy).
+        
+        This test covers lines 624-626 in symbolic_dynamics.py where
+        Hartley entropy is computed when alpha=0.0.
+        """
+        signal = np.random.randn(1000)
+        sd = SymbolicDynamics(signal, n_symbols=4)
+        sd.symbolize()
+        entropy = sd.compute_renyi_entropy(alpha=0.0)
+        assert isinstance(entropy, (int, float))
+        assert entropy >= 0
+
+    def test_compute_permutation_entropy_signal_too_short(self):
+        """Test permutation entropy when signal is too short.
+        
+        This test covers lines 683-684 in symbolic_dynamics.py where
+        ValueError is raised when signal length < order.
+        """
+        signal = np.array([1.0, 2.0])  # Only 2 samples
+        sd = SymbolicDynamics(signal, word_length=2)
+        sd.symbolize()
+        with pytest.raises(ValueError, match="Signal length"):
+            sd.compute_permutation_entropy(order=5)
+
+    def test_compute_symbolic_features_symbols_none(self):
+        """Test compute_symbolic_features when symbols is None.
+        
+        This test covers lines 734-739 in symbolic_dynamics.py where
+        self.symbolize() is called when symbols is None or empty.
+        """
+        signal = np.random.randn(1000)
+        sd = SymbolicDynamics(signal, n_symbols=4, word_length=3)
+        # Don't call symbolize() explicitly
+        features = sd.compute_symbolic_features()
+        assert isinstance(features, dict)
+        assert "shannon_entropy" in features
+        assert "renyi_entropy" in features
+        assert "permutation_entropy" in features
+        assert "num_words" in features
+        assert "num_forbidden_words" in features
+        assert sd.symbols is not None  # Should have been set by symbolize()
+
+    def test_compute_symbolic_features_symbols_empty(self):
+        """Test compute_symbolic_features when symbols is empty.
+        
+        This test covers lines 734-739 in symbolic_dynamics.py where
+        self.symbolize() is called when symbols is empty.
+        """
+        signal = np.random.randn(1000)
+        sd = SymbolicDynamics(signal, n_symbols=4, word_length=3)
+        sd.symbols = np.array([])  # Set to empty array
+        features = sd.compute_symbolic_features()
+        assert isinstance(features, dict)
+        assert sd.symbols is not None  # Should have been reset by symbolize()
+
+    def test_compute_symbolic_features_all_features(self):
+        """Test compute_symbolic_features computes all features.
+        
+        This test covers lines 742-754 in symbolic_dynamics.py where
+        all features are computed including word distribution and forbidden words.
+        """
+        signal = np.random.randn(1000)
+        sd = SymbolicDynamics(signal, n_symbols=4, word_length=3)
+        features = sd.compute_symbolic_features()
+        
+        assert isinstance(features, dict)
+        assert "shannon_entropy" in features
+        assert "renyi_entropy" in features
+        assert "permutation_entropy" in features
+        assert "num_words" in features
+        assert "num_forbidden_words" in features
+        
+        assert isinstance(features["shannon_entropy"], (int, float))
+        assert isinstance(features["renyi_entropy"], (int, float))
+        assert isinstance(features["permutation_entropy"], (int, float))
+        assert isinstance(features["num_words"], (int, float))
+        assert isinstance(features["num_forbidden_words"], (int, float))

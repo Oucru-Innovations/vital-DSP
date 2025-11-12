@@ -110,3 +110,139 @@ def test_detect_arrhythmias(btb_analysis):
     arrhythmias = btb_analysis.detect_arrhythmias(threshold=150)
     assert isinstance(arrhythmias, np.ndarray)
     assert arrhythmias.shape[0] >= 0  # Could have 0 or more arrhythmic beats
+
+
+class TestBeatToBeatMissingCoverage:
+    """Tests to cover missing lines in beat_to_beat.py."""
+
+    def test_init_auto_detect_peaks_ecg(self, test_signal):
+        """Test initialization with auto-detection of peaks for ECG signal.
+        
+        This test covers lines 62-67 in beat_to_beat.py where
+        r_peaks is None and signal_type is 'ECG'.
+        """
+        btb = BeatToBeatAnalysis(signal=test_signal, r_peaks=None, fs=1000, signal_type="ECG")
+        assert hasattr(btb, 'r_peaks')
+        assert isinstance(btb.r_peaks, np.ndarray)
+        assert len(btb.r_peaks) > 0
+
+    def test_init_auto_detect_peaks_ppg(self, test_signal):
+        """Test initialization with auto-detection of peaks for PPG signal.
+        
+        This test covers lines 62-65 and 68-69 in beat_to_beat.py where
+        r_peaks is None and signal_type is 'PPG'.
+        """
+        btb = BeatToBeatAnalysis(signal=test_signal, r_peaks=None, fs=1000, signal_type="PPG")
+        assert hasattr(btb, 'r_peaks')
+        assert isinstance(btb.r_peaks, np.ndarray)
+        assert len(btb.r_peaks) > 0
+
+    def test_init_unsupported_signal_type(self, test_signal):
+        """Test initialization with unsupported signal type.
+        
+        This test covers lines 62-65 and 70-71 in beat_to_beat.py where
+        ValueError is raised for unsupported signal_type.
+        """
+        with pytest.raises(ValueError, match="Unsupported signal_type"):
+            BeatToBeatAnalysis(signal=test_signal, r_peaks=None, fs=1000, signal_type="EEG")
+
+    def test_correct_by_interpolation_with_outliers(self):
+        """Test _correct_by_interpolation when outliers are present.
+        
+        This test covers line 123 in beat_to_beat.py where
+        np.any(outliers) is True.
+        """
+        # Create RR intervals with clear outliers
+        rr_intervals = np.array([800, 850, 2000, 900, 850, 100, 900, 850])  # 2000 and 100 are outliers
+        
+        btb = BeatToBeatAnalysis(
+            signal=np.random.randn(1000),
+            r_peaks=np.array([100, 200, 300, 400, 500, 600, 700, 800, 900]),
+            fs=1000
+        )
+        
+        corrected = btb._correct_by_interpolation(rr_intervals)
+        assert len(corrected) == len(rr_intervals)
+        assert not np.any(np.isnan(corrected))
+        assert not np.any(np.isinf(corrected))
+
+    def test_correct_by_resampling_fs_zero(self):
+        """Test _correct_by_resampling when fs <= 0.
+        
+        This test covers lines 148-150 in beat_to_beat.py where
+        fs <= 0 returns original intervals.
+        """
+        rr_intervals = np.array([800, 850, 900, 850, 900])
+        
+        btb = BeatToBeatAnalysis(
+            signal=np.random.randn(100),
+            r_peaks=np.array([10, 20, 30, 40, 50]),
+            fs=0  # Invalid fs
+        )
+        
+        corrected = btb._correct_by_resampling(rr_intervals)
+        assert np.array_equal(corrected, rr_intervals)
+
+    def test_correct_by_resampling_fs_negative(self):
+        """Test _correct_by_resampling when fs < 0.
+        
+        This test covers lines 148-150 in beat_to_beat.py where
+        fs <= 0 returns original intervals.
+        """
+        rr_intervals = np.array([800, 850, 900, 850, 900])
+        
+        btb = BeatToBeatAnalysis(
+            signal=np.random.randn(100),
+            r_peaks=np.array([10, 20, 30, 40, 50]),
+            fs=-1  # Invalid fs
+        )
+        
+        corrected = btb._correct_by_resampling(rr_intervals)
+        assert np.array_equal(corrected, rr_intervals)
+
+    def test_correct_by_resampling_target_length_zero(self):
+        """Test _correct_by_resampling when target_length <= 0.
+        
+        This test covers lines 153-155 in beat_to_beat.py where
+        target_length <= 0 returns original intervals.
+        """
+        rr_intervals = np.array([800, 850, 900])
+        
+        # Use parameters that result in target_length <= 0
+        # target_length = num_points * new_rate // self.fs
+        # If new_rate is very small compared to fs, target_length could be 0
+        btb = BeatToBeatAnalysis(
+            signal=np.random.randn(100),
+            r_peaks=np.array([10, 20, 30]),
+            fs=1000  # High fs
+        )
+        
+        # Use very small new_rate so target_length = 3 * 1 // 1000 = 0
+        corrected = btb._correct_by_resampling(rr_intervals, new_rate=1)
+        assert np.array_equal(corrected, rr_intervals)
+
+    def test_correct_by_resampling_exception_handling(self):
+        """Test _correct_by_resampling exception handling.
+        
+        This test covers lines 157-162 in beat_to_beat.py where
+        resample raises an exception and original intervals are returned.
+        """
+        from unittest.mock import patch
+        
+        rr_intervals = np.array([800, 850, 900, 850, 900])
+        
+        btb = BeatToBeatAnalysis(
+            signal=np.random.randn(100),
+            r_peaks=np.array([10, 20, 30, 40, 50]),
+            fs=1000
+        )
+        
+        # Mock resample to raise ValueError
+        with patch('vitalDSP.physiological_features.beat_to_beat.resample', side_effect=ValueError("Mocked error")):
+            corrected = btb._correct_by_resampling(rr_intervals)
+            assert np.array_equal(corrected, rr_intervals)
+        
+        # Mock resample to raise ZeroDivisionError
+        with patch('vitalDSP.physiological_features.beat_to_beat.resample', side_effect=ZeroDivisionError("Mocked error")):
+            corrected = btb._correct_by_resampling(rr_intervals)
+            assert np.array_equal(corrected, rr_intervals)

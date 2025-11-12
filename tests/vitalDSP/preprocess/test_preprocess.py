@@ -172,3 +172,161 @@ def test_preprocess_bandpass_moving_average(test_signal):
                         sampling_rate,
                         method="invalid")
     # assert np.var(preprocessed_signal) < np.var(test_signal)
+
+
+class TestRespiratoryFilteringMissingCoverage:
+    """Tests to cover missing lines in respiratory_filtering function."""
+
+    def test_respiratory_filtering_negative_sampling_rate(self):
+        """Test respiratory_filtering with negative sampling rate.
+        
+        This test covers line 328 in preprocess_operations.py where
+        ValueError is raised for sampling_rate <= 0.
+        """
+        signal = np.sin(np.linspace(0, 10, 100))
+        
+        with pytest.raises(ValueError, match="Sampling rate must be positive"):
+            respiratory_filtering(signal, sampling_rate=-1)
+        
+        with pytest.raises(ValueError, match="Sampling rate must be positive"):
+            respiratory_filtering(signal, sampling_rate=0)
+
+    def test_respiratory_filtering_lowcut_greater_than_highcut(self):
+        """Test respiratory_filtering with lowcut >= highcut.
+        
+        This test covers line 331 in preprocess_operations.py where
+        ValueError is raised for lowcut >= highcut.
+        """
+        signal = np.sin(np.linspace(0, 10, 100))
+        
+        with pytest.raises(ValueError, match="lowcut.*must be less than highcut"):
+            respiratory_filtering(signal, sampling_rate=100, lowcut=0.5, highcut=0.3)
+        
+        with pytest.raises(ValueError, match="lowcut.*must be less than highcut"):
+            respiratory_filtering(signal, sampling_rate=100, lowcut=0.5, highcut=0.5)
+
+    def test_respiratory_filtering_highcut_above_nyquist(self):
+        """Test respiratory_filtering with highcut >= Nyquist frequency.
+        
+        This test covers lines 334-336 in preprocess_operations.py where
+        ValueError is raised for highcut >= sampling_rate / 2.
+        """
+        signal = np.sin(np.linspace(0, 10, 100))
+        sampling_rate = 100
+        
+        with pytest.raises(ValueError, match="highcut.*must be less than Nyquist frequency"):
+            respiratory_filtering(signal, sampling_rate=sampling_rate, highcut=sampling_rate / 2)
+        
+        with pytest.raises(ValueError, match="highcut.*must be less than Nyquist frequency"):
+            respiratory_filtering(signal, sampling_rate=sampling_rate, highcut=sampling_rate / 2 + 1)
+
+    def test_respiratory_filtering_normalized_frequencies_too_close(self):
+        """Test respiratory_filtering when normalized frequencies are too close.
+        
+        This test covers lines 347-352 in preprocess_operations.py where
+        low_norm >= high_norm triggers frequency adjustment.
+        """
+        signal = np.sin(np.linspace(0, 10, 1000))
+        sampling_rate = 1000
+        
+        # Use frequencies that will result in low_norm >= high_norm after normalization
+        # Very close frequencies near Nyquist
+        lowcut = 490  # Close to Nyquist (500)
+        highcut = 495  # Very close to lowcut
+        
+        # This should trigger the adjustment logic
+        filtered = respiratory_filtering(signal, sampling_rate=sampling_rate, lowcut=lowcut, highcut=highcut)
+        assert len(filtered) == len(signal)
+        assert not np.any(np.isnan(filtered))
+        assert not np.any(np.isinf(filtered))
+
+    def test_respiratory_filtering_nan_inf_values(self):
+        """Test respiratory_filtering when filter produces NaN or Inf values.
+        
+        This test covers lines 360-362 in preprocess_operations.py where
+        ValueError is raised for NaN or Inf values.
+        """
+        from unittest.mock import patch
+        
+        signal = np.sin(np.linspace(0, 10, 100))
+        
+        # Mock filtfilt to return NaN values
+        def mock_filtfilt(b, a, x):
+            result = np.zeros_like(x)
+            result[0] = np.nan
+            return result
+        
+        with patch('vitalDSP.preprocess.preprocess_operations.filtfilt', side_effect=mock_filtfilt):
+            # Should catch the NaN and return normalized signal (fallback)
+            filtered = respiratory_filtering(signal, sampling_rate=100)
+            assert len(filtered) == len(signal)
+            # Should return normalized signal (fallback)
+            assert not np.any(np.isnan(filtered))
+            assert not np.any(np.isinf(filtered))
+
+    def test_respiratory_filtering_unstable_filter_recursion(self):
+        """Test respiratory_filtering when filter is unstable and order > 1.
+        
+        This test covers lines 366-369 in preprocess_operations.py where
+        respiratory_filtering is called recursively with order - 1.
+        """
+        from unittest.mock import patch
+        
+        signal = np.sin(np.linspace(0, 10, 100))
+        
+        # Mock filtfilt to return very large values (unstable filter)
+        call_count = [0]
+        def mock_filtfilt(b, a, x):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                # First call returns unstable values
+                return np.ones_like(x) * 1e7
+            else:
+                # Subsequent calls return stable values
+                return np.sin(np.linspace(0, 10, len(x)))
+        
+        with patch('vitalDSP.preprocess.preprocess_operations.filtfilt', side_effect=mock_filtfilt):
+            filtered = respiratory_filtering(signal, sampling_rate=100, order=4)
+            assert len(filtered) == len(signal)
+            # Should have been called recursively with lower order
+            assert call_count[0] > 1
+
+    def test_respiratory_filtering_unstable_filter_order_one(self):
+        """Test respiratory_filtering when filter is unstable and order == 1.
+        
+        This test covers line 372 in preprocess_operations.py where
+        normalized signal is returned as last resort.
+        """
+        from unittest.mock import patch
+        
+        signal = np.sin(np.linspace(0, 10, 100))
+        
+        # Mock filtfilt to return very large values (unstable filter)
+        def mock_filtfilt(b, a, x):
+            return np.ones_like(x) * 1e7
+        
+        with patch('vitalDSP.preprocess.preprocess_operations.filtfilt', side_effect=mock_filtfilt):
+            filtered = respiratory_filtering(signal, sampling_rate=100, order=1)
+            assert len(filtered) == len(signal)
+            # Should return normalized signal
+            assert np.std(filtered) > 0  # Normalized signal should have std > 0
+            assert abs(np.mean(filtered)) < 1e-10  # Normalized signal should have mean ~ 0
+
+    def test_respiratory_filtering_exception_fallback(self):
+        """Test respiratory_filtering exception handling fallback.
+        
+        This test covers lines 376-378 in preprocess_operations.py where
+        normalized signal is returned if filtering fails.
+        """
+        from unittest.mock import patch
+        
+        signal = np.sin(np.linspace(0, 10, 100))
+        
+        # Mock butter to raise an exception
+        with patch('vitalDSP.preprocess.preprocess_operations.butter', side_effect=Exception("Mocked error")):
+            filtered = respiratory_filtering(signal, sampling_rate=100)
+            assert len(filtered) == len(signal)
+            # Should return normalized signal (fallback)
+            assert not np.any(np.isnan(filtered))
+            assert not np.any(np.isinf(filtered))
+            assert np.std(filtered) > 0  # Normalized signal should have std > 0

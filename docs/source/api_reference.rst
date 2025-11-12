@@ -197,6 +197,65 @@ EMD (Empirical Mode Decomposition)
    :undoc-members:
    :show-inheritance:
 
+Machine Learning Module
+=======================
+
+Deep Learning Models
+===================
+
+.. automodule:: vitalDSP.ml_models.deep_models
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Autoencoder Models
+==================
+
+.. automodule:: vitalDSP.ml_models.autoencoder
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Transformer Models
+==================
+
+.. automodule:: vitalDSP.ml_models.transformer_model
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Feature Extractor
+=================
+
+.. automodule:: vitalDSP.ml_models.feature_extractor
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Transfer Learning
+=================
+
+.. automodule:: vitalDSP.ml_models.transfer_learning
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Pre-trained Models
+==================
+
+.. automodule:: vitalDSP.ml_models.pretrained_models
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Model Explainability
+====================
+
+.. automodule:: vitalDSP.ml_models.explainability
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Feature Engineering Module
 ===========================
 

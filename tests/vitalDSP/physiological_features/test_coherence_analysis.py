@@ -97,3 +97,73 @@ def test_plot_coherence(mock_figure, mock_show, sample_signals):
     # Note: plt.figure() is called multiple times internally for different plot operations
     assert mock_figure.call_count >= 1  # At least one figure call
     mock_show.assert_called_once()
+
+
+# Test missing coverage lines
+@patch("vitalDSP.physiological_features.coherence_analysis.preprocess_signal")
+def test_preprocess_signals_config1_none(mock_preprocess, sample_signals):
+    """Test preprocess_signals when preprocess_config1 is None.
+    
+    This test covers lines 90-91 in coherence_analysis.py where
+    preprocess_config1 is set to PreprocessConfig() when None.
+    """
+    signal1, signal2 = sample_signals
+    mock_preprocess.side_effect = lambda signal, *args, **kwargs: signal
+    
+    coherence_analysis = CoherenceAnalysis(signal1, signal2, fs=500)
+    
+    # Call with preprocess_config1=None
+    preprocessed_signal1, preprocessed_signal2 = coherence_analysis.preprocess_signals(
+        preprocess_config1=None,
+        preprocess_config2=None,
+    )
+    
+    assert mock_preprocess.call_count == 2
+    assert np.array_equal(preprocessed_signal1, signal1)
+    assert np.array_equal(preprocessed_signal2, signal2)
+
+
+@patch("vitalDSP.physiological_features.coherence_analysis.preprocess_signal")
+def test_preprocess_signals_config2_none(mock_preprocess, sample_signals, sample_preprocess_config):
+    """Test preprocess_signals when preprocess_config2 is None.
+    
+    This test covers lines 93-94 in coherence_analysis.py where
+    preprocess_config2 is set to PreprocessConfig() when None.
+    """
+    signal1, signal2 = sample_signals
+    mock_preprocess.side_effect = lambda signal, *args, **kwargs: signal
+    
+    coherence_analysis = CoherenceAnalysis(signal1, signal2, fs=500)
+    
+    # Call with preprocess_config2=None
+    preprocessed_signal1, preprocessed_signal2 = coherence_analysis.preprocess_signals(
+        preprocess_config1=sample_preprocess_config,
+        preprocess_config2=None,
+    )
+    
+    assert mock_preprocess.call_count == 2
+    assert np.array_equal(preprocessed_signal1, signal1)
+    assert np.array_equal(preprocessed_signal2, signal2)
+
+
+def test_align_signals_negative_delay(sample_signals):
+    """Test align_signals when delay is negative (signal2 leads signal1).
+    
+    This test covers lines 167-168 in coherence_analysis.py where
+    the else branch is executed when delay <= 0.
+    """
+    signal1, signal2 = sample_signals
+    
+    # Create signal2 that leads signal1 (negative delay)
+    # Shift signal2 to the left by padding zeros at the end
+    signal2_leading = np.concatenate([signal2[50:], np.zeros(50)])
+    
+    coherence_analysis = CoherenceAnalysis(signal1, signal2_leading, fs=500)
+    
+    aligned_signal1, aligned_signal2 = coherence_analysis.align_signals(
+        signal1, signal2_leading
+    )
+    
+    assert len(aligned_signal1) == len(aligned_signal2)
+    # Both signals should be aligned (same length)
+    assert len(aligned_signal1) > 0

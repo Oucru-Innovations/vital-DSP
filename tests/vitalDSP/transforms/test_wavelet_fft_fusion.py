@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from unittest.mock import patch, MagicMock
 from vitalDSP.transforms.wavelet_fft_fusion import WaveletFFTfusion
 
 
@@ -83,3 +84,35 @@ def test_different_orders(sample_signal):
         fusion_result = fusion.compute_fusion()
         assert isinstance(fusion_result, np.ndarray)
         assert len(fusion_result) > 0
+
+
+def test_compute_fusion_wavelet_coeffs_longer_than_fft():
+    """Test fusion when wavelet coefficients list length is longer than FFT length.
+    
+    This test covers lines 103-104 in wavelet_fft_fusion.py where
+    len(fft_coeffs) < len(wavelet_coeffs).
+    """
+    # Create a short signal (FFT will have length 10)
+    signal = np.sin(np.linspace(0, 10, 10))
+    
+    # Mock WaveletTransform to return a list with more elements than signal length
+    # This simulates the edge case where wavelet decomposition returns more
+    # coefficient arrays than the FFT has elements
+    mock_wavelet_coeffs = [np.array([1.0, 2.0]) for _ in range(15)]  # 15 elements > 10
+    
+    fusion = WaveletFFTfusion(signal, wavelet_type="db", order=4)
+    
+    # Patch the WaveletTransform class and its perform_wavelet_transform method
+    with patch('vitalDSP.transforms.wavelet_fft_fusion.WaveletTransform') as mock_wt_class:
+        mock_wt_instance = MagicMock()
+        mock_wt_instance.perform_wavelet_transform.return_value = mock_wavelet_coeffs
+        mock_wt_class.return_value = mock_wt_instance
+        
+        fusion_result = fusion.compute_fusion()
+        
+        # Verify that wavelet_coeffs was truncated to match fft_coeffs length
+        assert isinstance(fusion_result, np.ndarray)
+        assert len(fusion_result) == len(signal)  # Should match FFT length (10)
+        
+        # Verify that perform_wavelet_transform was called
+        mock_wt_instance.perform_wavelet_transform.assert_called_once_with(level=4)

@@ -128,3 +128,111 @@ class TestEMDEdgeCases:
 
         # Allow for additional residual component
         assert len(imfs) <= 3
+
+
+class TestEMDMissingCoverage:
+    """Tests to cover missing lines in emd.py."""
+
+    def test_emd_max_decomposition_iterations_exceeded(self):
+        """Test EMD when max_decomposition_iterations is exceeded.
+        
+        This test covers lines 154-158 in emd.py where
+        warning is issued and break is executed when decomposition_iterations > max_decomposition_iterations.
+        """
+        import warnings
+        
+        # Create a signal that will require many iterations
+        # Use a very small max_decomposition_iterations to trigger the limit
+        signal = np.sin(np.linspace(0, 10, 100)) + 0.5 * np.random.randn(100)
+        emd = EMD(signal)
+        
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            
+            imfs = emd.emd(max_decomposition_iterations=1, stop_criterion=0.01)
+            
+            # Should have warning about stopping after max iterations
+            assert len(w) > 0
+            assert any("EMD decomposition stopped after" in str(warning.message) for warning in w)
+            # Should still return some IMFs (at least one)
+            assert isinstance(imfs, list)
+
+    def test_emd_interpolation_exception(self):
+        """Test EMD when interpolation raises an exception.
+        
+        This test covers lines 197-202 in emd.py where
+        exception is caught, warning is issued, and break is executed.
+        """
+        import warnings
+        from unittest.mock import patch
+        
+        signal = np.sin(np.linspace(0, 10, 100)) + 0.5 * np.random.randn(100)
+        emd = EMD(signal)
+        
+        # Mock _interpolate to raise an exception
+        original_interpolate = emd._interpolate
+        call_count = [0]
+        
+        def mock_interpolate(x, y):
+            call_count[0] += 1
+            if call_count[0] == 1:  # First call raises exception
+                raise ValueError("Mock interpolation error")
+            return original_interpolate(x, y)
+        
+        emd._interpolate = mock_interpolate
+        
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            
+            imfs = emd.emd(max_imfs=1, stop_criterion=0.05)
+            
+            # Should have warning about interpolation failure
+            assert len(w) > 0
+            assert any("Interpolation failed" in str(warning.message) for warning in w)
+            # Should still return some IMFs
+            assert isinstance(imfs, list)
+
+    def test_emd_zero_signal_power(self):
+        """Test EMD when signal power is zero.
+        
+        This test covers lines 210-214 in emd.py where
+        warning is issued and break is executed when signal_power == 0.
+        """
+        import warnings
+        from unittest.mock import patch
+        
+        # Create a signal that will have zero power during sifting
+        # We need to mock np.sum to return 0 when computing signal_power
+        signal = np.sin(np.linspace(0, 10, 100)) + 0.5 * np.random.randn(100)
+        emd = EMD(signal)
+        
+        # Track calls to np.sum to identify signal_power calculation
+        # signal_power = np.sum(h**2) at line 208
+        call_count = [0]
+        sum_calls = []
+        
+        def mock_sum(arr, **kwargs):
+            call_count[0] += 1
+            sum_calls.append((call_count[0], len(arr), np.all(arr >= 0) if len(arr) > 0 else False))
+            
+            # After entering the sifting loop, return 0 for signal_power calculation
+            # We identify signal_power by: it's a sum of squared values (all >= 0)
+            # and it happens after peaks/valleys are found
+            if call_count[0] > 5:  # After sifting loop has started
+                # Check if this looks like signal_power: squared values (all >= 0)
+                if len(arr) == len(signal) and np.all(arr >= 0):
+                    return 0.0  # Zero signal power
+            return np.sum(arr, **kwargs)
+        
+        # Patch np.sum in the emd module namespace
+        with patch('vitalDSP.advanced_computation.emd.np.sum', side_effect=mock_sum):
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                
+                imfs = emd.emd(max_imfs=1, stop_criterion=0.05)
+                
+                # Should have warning about zero signal power
+                warning_messages = [str(warning.message) for warning in w]
+                assert any("Signal power is zero" in msg for msg in warning_messages)
+                # Should still return some IMFs
+                assert isinstance(imfs, list)

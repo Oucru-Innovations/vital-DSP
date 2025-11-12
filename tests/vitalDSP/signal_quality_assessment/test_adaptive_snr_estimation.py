@@ -104,3 +104,85 @@ def test_recursive_snr_estimation_edge_case_constant_signal():
     assert np.all(
         np.isinf(snr_estimates)
     )  # With a constant signal, noise power will be zero, resulting in infinite SNR
+
+
+def test_sliding_window_snr_zero_noise_power():
+    """Test sliding_window_snr when noise_power is zero.
+    
+    This test covers line 60 in adaptive_snr_estimation.py where
+    snr = float("inf") when noise_power == 0.
+    """
+    # Create a signal with constant windows (zero variance = zero noise power)
+    # Use a signal that has constant values within each window
+    signal = np.ones(200)  # Constant signal (zero variance)
+    
+    # Use window_size and step_size that will create windows with zero variance
+    snr_estimates = sliding_window_snr(signal, window_size=50, step_size=25)
+    
+    # All windows should have infinite SNR since noise_power (variance) is zero
+    assert len(snr_estimates) > 0
+    assert np.all(np.isinf(snr_estimates))
+    assert np.all(snr_estimates == float("inf"))
+
+
+def test_adaptive_threshold_snr_zero_noise_power():
+    """Test adaptive_threshold_snr when noise_power is zero.
+    
+    This test covers line 101 in adaptive_snr_estimation.py where
+    return float("inf") when noise_power == 0.
+    """
+    # Create a signal where noise segments have zero variance
+    # Signal segments above threshold, noise segments below threshold but constant
+    signal = np.concatenate([
+        np.ones(100) * 2.0,  # Signal segments (above threshold)
+        np.zeros(100)        # Noise segments (constant, zero variance)
+    ])
+    
+    snr_estimate = adaptive_threshold_snr(signal, threshold=0.5)
+    
+    # Noise power should be zero (constant noise segments), so SNR should be infinite
+    assert snr_estimate == float("inf")
+
+
+def test_adaptive_threshold_snr_zero_signal_power():
+    """Test adaptive_threshold_snr when signal_power is zero.
+    
+    This test covers line 104 in adaptive_snr_estimation.py where
+    return -float("inf") when signal_power == 0.
+    
+    Note: This edge case is difficult to trigger naturally because:
+    - signal_power = 0 requires all signal_segments to be zero
+    - But zeros are only in signal_segments if threshold <= 0
+    - And noise_segments requires threshold > 0 to be non-empty
+    - This creates a logical contradiction
+    
+    We use mocking to simulate this edge case for coverage purposes.
+    """
+    from unittest.mock import patch
+    
+    # Create a signal with both signal and noise segments
+    signal = np.concatenate([
+        np.ones(100) * 0.1,              # Signal segments (above threshold)
+        np.random.normal(0, 0.1, 100)   # Noise segments
+    ])
+    
+    # Patch np.mean in the module where it's used
+    # This simulates the case where signal_power = 0
+    import vitalDSP.signal_quality_assessment.adaptive_snr_estimation as snr_module
+    
+    call_count = [0]
+    original_mean = np.mean
+    
+    def mock_mean(arr, **kwargs):
+        call_count[0] += 1
+        # On the first call (signal_power), return 0
+        # On the second call (noise_power), return normal value
+        if call_count[0] == 1:
+            return 0.0
+        else:
+            return original_mean(arr, **kwargs)
+    
+    with patch.object(snr_module.np, 'mean', side_effect=mock_mean):
+        snr_estimate = adaptive_threshold_snr(signal, threshold=0.05)
+        # Signal power should be zero (mocked), so SNR should be -inf
+        assert snr_estimate == -float("inf")

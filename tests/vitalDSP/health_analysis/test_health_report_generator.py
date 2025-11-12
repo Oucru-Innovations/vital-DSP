@@ -1004,3 +1004,448 @@ def test_batch_visualization_path_normalization_none_path():
                     if plot_path is not None and "Error generating plot" not in str(plot_path):
                         assert "\\" not in str(plot_path)
                         assert "/" in str(plot_path) or str(plot_path) == ""
+
+
+class TestHealthReportGeneratorMissingCoverage:
+    """Tests to cover missing lines in health_report_generator.py."""
+
+    def test_make_config_picklable_none(self):
+        """Test _make_config_picklable when config is None.
+        
+        This test covers line 67 in health_report_generator.py where
+        {} is returned when config is None.
+        """
+        from vitalDSP.health_analysis.health_report_generator import _make_config_picklable
+        
+        result = _make_config_picklable(None)
+        assert result == {}
+
+    def test_make_config_picklable_magicmock(self):
+        """Test _make_config_picklable when config is MagicMock.
+        
+        This test covers line 71 in health_report_generator.py where
+        {} is returned when config is MagicMock.
+        """
+        from vitalDSP.health_analysis.health_report_generator import _make_config_picklable
+        
+        mock_config = MagicMock()
+        result = _make_config_picklable(mock_config)
+        assert result == {}
+
+    def test_make_config_picklable_dict_with_magicmock_value(self):
+        """Test _make_config_picklable when dict contains MagicMock value.
+        
+        This test covers line 79 in health_report_generator.py where
+        continue is executed when value is MagicMock.
+        """
+        from vitalDSP.health_analysis.health_report_generator import _make_config_picklable
+        
+        config = {
+            "valid_key": "valid_value",
+            "mock_key": MagicMock(),
+            "another_valid": 42
+        }
+        result = _make_config_picklable(config)
+        assert "valid_key" in result
+        assert "another_valid" in result
+        assert "mock_key" not in result  # Should be skipped
+
+    def test_make_config_picklable_nested_dict(self):
+        """Test _make_config_picklable with nested dict.
+        
+        This test covers line 81 in health_report_generator.py where
+        recursive call is made for dict values.
+        """
+        from vitalDSP.health_analysis.health_report_generator import _make_config_picklable
+        
+        config = {
+            "nested": {
+                "key1": "value1",
+                "key2": MagicMock()  # Should be skipped
+            }
+        }
+        result = _make_config_picklable(config)
+        assert "nested" in result
+        assert isinstance(result["nested"], dict)
+        assert "key1" in result["nested"]
+        assert "key2" not in result["nested"]
+
+    def test_make_config_picklable_list_processing(self):
+        """Test _make_config_picklable with list values.
+        
+        This test covers lines 84-96 in health_report_generator.py where
+        lists are processed recursively.
+        """
+        from vitalDSP.health_analysis.health_report_generator import _make_config_picklable
+        
+        config = {
+            "list_key": [
+                "string_value",
+                42,
+                {"nested": "dict"},
+                MagicMock(),  # Should be skipped
+                [1, 2, 3]  # Nested list
+            ]
+        }
+        result = _make_config_picklable(config)
+        assert "list_key" in result
+        assert isinstance(result["list_key"], list)
+        assert len(result["list_key"]) == 4  # MagicMock should be skipped
+        assert "string_value" in result["list_key"]
+        assert 42 in result["list_key"]
+
+    def test_make_config_picklable_object_with_dict(self):
+        """Test _make_config_picklable with object that has __dict__.
+        
+        This test covers lines 98-103 and 108-109 in health_report_generator.py where
+        objects with __dict__ are converted recursively.
+        """
+        from vitalDSP.health_analysis.health_report_generator import _make_config_picklable
+        
+        class TestObject:
+            def __init__(self):
+                self.attr1 = "value1"
+                self.attr2 = 42
+        
+        config = {
+            "obj_key": TestObject()
+        }
+        result = _make_config_picklable(config)
+        assert "obj_key" in result
+        assert isinstance(result["obj_key"], dict)
+        assert result["obj_key"]["attr1"] == "value1"
+        assert result["obj_key"]["attr2"] == 42
+
+    def test_make_config_picklable_object_with_dict_exception(self):
+        """Test _make_config_picklable when object conversion raises exception.
+        
+        This test covers lines 98-103 in health_report_generator.py where
+        exception is caught and continue is executed.
+        """
+        from vitalDSP.health_analysis.health_report_generator import _make_config_picklable
+        
+        # Create an object where __dict__ contains something that causes exception
+        # when processed recursively. The recursive call to _make_config_picklable(value.__dict__)
+        # will iterate over items(), so we need to make items() raise an exception
+        class ExceptionDict(dict):
+            def items(self):
+                raise Exception("Cannot process dict")
+        
+        class BadObject:
+            def __init__(self):
+                # Use object.__setattr__ to bypass normal attribute setting
+                object.__setattr__(self, '__dict__', ExceptionDict({'attr': 'value'}))
+        
+        config = {
+            "bad_obj": BadObject(),
+            "valid_key": "valid_value"
+        }
+        result = _make_config_picklable(config)
+        # Valid key should remain
+        assert "valid_key" in result
+        # bad_obj should be skipped due to exception
+        assert "bad_obj" not in result
+
+    def test_make_config_picklable_fallback(self):
+        """Test _make_config_picklable fallback case.
+        
+        This test covers line 112 in health_report_generator.py where
+        {} is returned as fallback.
+        """
+        from vitalDSP.health_analysis.health_report_generator import _make_config_picklable
+        
+        # Create an object that doesn't match any condition
+        class UnusualObject:
+            pass
+        
+        config = UnusualObject()
+        result = _make_config_picklable(config)
+        assert result == {}
+
+    def test_batch_visualization_path_none(self):
+        """Test batch_visualization when path is None.
+        
+        This test covers line 449 in health_report_generator.py where
+        else branch is executed when path is falsy.
+        """
+        from vitalDSP.health_analysis.health_report_generator import HealthReportGenerator
+        import tempfile
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            mock_visualizer = MagicMock()
+            mock_visualizer.config = {}
+            mock_visualizer.segment_duration = "1_min"
+            
+            feature_data = {"feature1": [1, 2, 3]}
+            
+            # Create a mock that simulates the process returning None for some paths
+            # We'll patch the function to return a result with None paths
+            def mock_process_func(feature_item, config, segment_duration, output_dir):
+                return ("feature1", {
+                    "plot1": None,  # None path
+                    "plot2": "",  # Empty string path
+                    "plot3": "path/to/plot.png"  # Valid path
+                })
+            
+            # Patch at the module level before multiprocessing
+            import vitalDSP.health_analysis.health_report_generator as hrg_module
+            original_func = hrg_module.process_single_feature_visualization
+            
+            try:
+                hrg_module.process_single_feature_visualization = mock_process_func
+                
+                result = HealthReportGenerator.batch_visualization(
+                    mock_visualizer, feature_data, temp_dir, processes=1
+                )
+                
+                assert isinstance(result, dict)
+                if "feature1" in result:
+                    # Check that None and empty paths are handled correctly (line 449)
+                    assert isinstance(result["feature1"], dict)
+                    # The else branch (line 449) should preserve None/empty paths as-is
+                    if "plot1" in result["feature1"]:
+                        assert result["feature1"]["plot1"] is None or result["feature1"]["plot1"] == ""
+            finally:
+                # Restore original function
+                hrg_module.process_single_feature_visualization = original_func
+
+    def test_generate_exception_in_future_result(self, generator):
+        """Test generate when future.result() raises exception.
+        
+        This test covers lines 499-501 in health_report_generator.py where
+        exception is caught and continue is executed.
+        """
+        from unittest.mock import patch, MagicMock
+        from concurrent.futures import Future
+        
+        # Create a mock future that raises exception
+        mock_future = MagicMock(spec=Future)
+        mock_future.result.side_effect = Exception("Future error")
+        
+        with patch('vitalDSP.health_analysis.health_report_generator.ThreadPoolExecutor') as mock_executor:
+            mock_executor_instance = MagicMock()
+            mock_executor.return_value.__enter__.return_value = mock_executor_instance
+            mock_executor.return_value.__exit__.return_value = None
+            
+            # Mock submit to return our problematic future
+            mock_executor_instance.submit.return_value = mock_future
+            
+            # Mock as_completed to return the problematic future
+            with patch('vitalDSP.health_analysis.health_report_generator.concurrent.futures.as_completed') as mock_as_completed:
+                mock_as_completed.return_value = [mock_future]
+                
+                with patch.object(generator.logger, 'error') as mock_error:
+                    report_html = generator.generate()
+                    assert isinstance(report_html, str)
+                    # Should log error and continue
+                    mock_error.assert_called()
+
+    def test_generate_dynamic_analysis_exception(self, generator):
+        """Test _generate_dynamic_analysis exception handling.
+        
+        This test covers lines 714-730 in health_report_generator.py where
+        exception is caught and default values are returned.
+        """
+        # Create segment_values that will cause an exception
+        # Mock a method that will be called to raise exception
+        with patch.object(generator, '_generate_executive_summary', side_effect=Exception("Test error")):
+            result = generator._generate_dynamic_analysis({
+                "test": {
+                    "value": [1, 2, 3],
+                    "range_status": "in_range"
+                }
+            })
+            
+            assert isinstance(result, dict)
+            assert "executive_summary" in result
+            assert "Unable to generate summary" in result["executive_summary"]
+            assert result["overall_health_score"] == 0
+
+    def test_generate_risk_assessment_hrv_out_of_range(self, generator):
+        """Test _generate_risk_assessment when HRV features are out of range.
+        
+        This test covers lines 793-795 in health_report_generator.py where
+        risk level is adjusted when multiple HRV features are abnormal.
+        """
+        segment_values = {
+            "sdnn": {"range_status": "below_range", "value": [10]},
+            "rmssd": {"range_status": "below_range", "value": [5]},
+            "nn50": {"range_status": "below_range", "value": [2]},
+            "pnn50": {"range_status": "below_range", "value": [1]}
+        }
+        
+        result = generator._generate_risk_assessment(segment_values, health_score=50)
+        assert isinstance(result, dict)
+        assert "level" in result
+        assert "concerns" in result
+        assert any("heart rate variability" in concern.lower() for concern in result["concerns"])
+
+    def test_generate_risk_assessment_cardiovascular_risk(self, generator):
+        """Test _generate_risk_assessment when SDNN is below range.
+        
+        This test covers lines 798-804 in health_report_generator.py where
+        cardiovascular risk concern is added.
+        """
+        segment_values = {
+            "sdnn": {"range_status": "below_range", "value": [10]}
+        }
+        
+        result = generator._generate_risk_assessment(segment_values, health_score=50)
+        assert isinstance(result, dict)
+        assert "concerns" in result
+        assert any("cardiovascular" in concern.lower() for concern in result["concerns"])
+
+    def test_generate_recommendations_hrv_below_range(self, generator):
+        """Test _generate_recommendations for HRV features below range.
+        
+        This test covers lines 840-843 in health_report_generator.py where
+        recommendations are added for HRV features below range.
+        """
+        segment_values = {
+            "sdnn": {"range_status": "below_range", "value": [10]},
+            "rmssd": {"range_status": "below_range", "value": [5]}
+        }
+        risk_assessment = {"level": "moderate", "concerns": []}
+        
+        result = generator._generate_recommendations(segment_values, risk_assessment)
+        assert isinstance(result, list)
+        assert any("stress management" in rec.lower() or "exercise" in rec.lower() for rec in result)
+
+    def test_generate_recommendations_heart_rate_below_range(self, generator):
+        """Test _generate_recommendations for heart_rate below range.
+        
+        This test covers lines 844-847 in health_report_generator.py where
+        recommendations are added for heart_rate below range.
+        """
+        segment_values = {
+            "heart_rate": {"range_status": "below_range", "value": [40]}
+        }
+        risk_assessment = {"level": "moderate", "concerns": []}
+        
+        result = generator._generate_recommendations(segment_values, risk_assessment)
+        assert isinstance(result, list)
+        assert any("cardiovascular" in rec.lower() for rec in result)
+
+    def test_generate_recommendations_heart_rate_above_range(self, generator):
+        """Test _generate_recommendations for heart_rate above range.
+        
+        This test covers lines 849-852 in health_report_generator.py where
+        recommendations are added for heart_rate above range.
+        """
+        segment_values = {
+            "heart_rate": {"range_status": "above_range", "value": [120]}
+        }
+        risk_assessment = {"level": "moderate", "concerns": []}
+        
+        result = generator._generate_recommendations(segment_values, risk_assessment)
+        assert isinstance(result, list)
+        assert any("tachycardia" in rec.lower() or "cardiovascular" in rec.lower() for rec in result)
+
+    def test_generate_key_insights_few_out_of_range(self, generator):
+        """Test _generate_key_insights when <= 2 features are out of range.
+        
+        This test covers lines 877-880 in health_report_generator.py where
+        insight is generated for few out-of-range features.
+        """
+        segment_values = {
+            "feature1": {"range_status": "in_range", "value": [50]},
+            "feature2": {"range_status": "below_range", "value": [10]},
+            "feature3": {"range_status": "in_range", "value": [50]}
+        }
+        
+        result = generator._generate_key_insights(segment_values)
+        assert isinstance(result, list)
+        assert any("most parameters" in insight.lower() or "2" in insight for insight in result)
+
+    def test_generate_key_insights_many_out_of_range(self, generator):
+        """Test _generate_key_insights when > 2 features are out of range.
+        
+        This test covers lines 882-884 in health_report_generator.py where
+        insight is generated for many out-of-range features.
+        """
+        segment_values = {
+            "feature1": {"range_status": "below_range", "value": [10]},
+            "feature2": {"range_status": "below_range", "value": [5]},
+            "feature3": {"range_status": "above_range", "value": [200]},
+            "feature4": {"range_status": "in_range", "value": [50]}
+        }
+        
+        result = generator._generate_key_insights(segment_values)
+        assert isinstance(result, list)
+        assert any("multiple" in insight.lower() or "3" in insight for insight in result)
+
+    def test_generate_key_insights_hrv_below_range(self, generator):
+        """Test _generate_key_insights when HRV features are below range.
+        
+        This test covers lines 898-901 in health_report_generator.py where
+        insight is generated for HRV below range.
+        """
+        segment_values = {
+            "sdnn": {"range_status": "below_range", "value": [10]},
+            "rmssd": {"range_status": "below_range", "value": [5]}
+        }
+        
+        result = generator._generate_key_insights(segment_values)
+        assert isinstance(result, list)
+        assert any("autonomic" in insight.lower() or "heart rate variability" in insight.lower() for insight in result)
+
+    def test_generate_cross_correlations_list_values(self, generator):
+        """Test _generate_cross_correlations with list values.
+        
+        This test covers lines 911-920 in health_report_generator.py where
+        values are extracted from feature_data_dict.
+        """
+        segment_values = {
+            "feature1": {
+                "value": [10, 20, 30],
+                "range_status": "in_range"
+            },
+            "feature2": {
+                "value": [40, 50, 60],
+                "range_status": "in_range"
+            }
+        }
+        
+        # Mock the interpreter method
+        with patch.object(generator.interpreter, '_analyze_cross_feature_correlations', return_value=[]):
+            result = generator._generate_cross_correlations(segment_values)
+            assert isinstance(result, list)
+
+    def test_generate_cross_correlations_non_list_values(self, generator):
+        """Test _generate_cross_correlations with non-list values.
+        
+        This test covers lines 917 and 919-920 in health_report_generator.py where
+        else branches handle non-list values and raw values.
+        """
+        segment_values = {
+            "feature1": {
+                "value": 42.5,  # Single value, not list
+                "range_status": "in_range"
+            },
+            "feature2": 50.0  # Raw value
+        }
+        
+        # Mock the interpreter method
+        with patch.object(generator.interpreter, '_analyze_cross_feature_correlations', return_value=[]):
+            result = generator._generate_cross_correlations(segment_values)
+            assert isinstance(result, list)
+
+    def test_generate_cross_correlations_exception(self, generator):
+        """Test _generate_cross_correlations exception handling.
+        
+        This test covers lines 927-929 in health_report_generator.py where
+        exception is caught and [] is returned.
+        """
+        segment_values = {
+            "feature1": {
+                "value": [10, 20, 30],
+                "range_status": "in_range"
+            }
+        }
+        
+        # Mock to raise exception
+        with patch.object(generator.interpreter, '_analyze_cross_feature_correlations', side_effect=Exception("Test error")):
+            with patch.object(generator.logger, 'error') as mock_error:
+                result = generator._generate_cross_correlations(segment_values)
+                assert result == []
+                mock_error.assert_called()

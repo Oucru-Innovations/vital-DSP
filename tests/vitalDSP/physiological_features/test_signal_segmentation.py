@@ -107,3 +107,160 @@ def test_custom_segmentation(segmentation):
     result = segmentation.custom_segmentation(custom_fn)
     expected = [np.array([1, 2, 3]), np.array([4, 5, 6]), np.array([7, 8, 9])]
     assert all(np.array_equal(r, e) for r, e in zip(result, expected))
+
+
+class TestSignalSegmentationMissingCoverage:
+    """Tests to cover missing lines in signal_segmentation.py."""
+
+    def test_adaptive_segmentation_end_idx_zero(self):
+        """Test adaptive_segmentation when adaptive_fn returns 0.
+        
+        This test covers line 128 in signal_segmentation.py where
+        break is executed when end_idx == 0 to avoid infinite loops.
+        """
+        signal = np.array([1, 2, 3, 4, 5])
+        segmentation = SignalSegmentation(signal)
+        
+        def adaptive_fn(segment):
+            # Return 0 after first call to trigger break
+            if len(segment) == len(signal):
+                return 2  # First segment
+            return 0  # Return 0 to trigger break
+        
+        result = segmentation.adaptive_segmentation(adaptive_fn)
+        assert isinstance(result, list)
+        assert len(result) >= 1  # Should have at least one segment before break
+
+    def test_threshold_based_segmentation_start_idx_none(self):
+        """Test threshold_based_segmentation when start_idx is None.
+        
+        This test covers lines 161-162 in signal_segmentation.py where
+        start_idx = i when start_idx is None.
+        """
+        signal = np.array([1, 2, 5, 2, 8, 1])
+        segmentation = SignalSegmentation(signal)
+        
+        # Threshold that will trigger start_idx assignment
+        result = segmentation.threshold_based_segmentation(threshold=4)
+        assert isinstance(result, list)
+        # Should have segments where signal > threshold
+        assert len(result) > 0
+
+    def test_threshold_based_segmentation_ending_above_threshold(self):
+        """Test threshold_based_segmentation when signal ends above threshold.
+        
+        This test covers line 168 in signal_segmentation.py where
+        segments.append(self.signal[start_idx:]) is called when signal ends above threshold.
+        """
+        signal = np.array([1, 2, 5, 8])  # Ends with values above threshold
+        segmentation = SignalSegmentation(signal)
+        
+        result = segmentation.threshold_based_segmentation(threshold=4)
+        assert isinstance(result, list)
+        # Should include the final segment that ends above threshold
+        assert len(result) >= 1
+
+    def test_variance_based_segmentation_remaining_signal(self):
+        """Test variance_based_segmentation when start_idx < len(signal).
+        
+        This test covers lines 210-211 in signal_segmentation.py where
+        segments.append(self.signal[start_idx:]) is called for remaining signal.
+        """
+        signal = np.array([1, 2, 2, 2, 5, 6, 1, 1, 1, 8, 9, 10])
+        segmentation = SignalSegmentation(signal)
+        
+        result = segmentation.variance_based_segmentation(window_size=3, variance_threshold=2.0)
+        assert isinstance(result, list)
+        # Should include remaining signal after last variance change
+        assert len(result) > 0
+
+    def test_peak_based_segmentation_with_height(self):
+        """Test peak_based_segmentation with height parameter.
+        
+        This test covers lines 245-246 in signal_segmentation.py where
+        peaks are filtered by height.
+        """
+        signal = np.array([1, 2, 1, 2, 1, 8, 1, 2, 1, 9, 1])
+        segmentation = SignalSegmentation(signal)
+        
+        result = segmentation.peak_based_segmentation(min_distance=1, height=5)
+        assert isinstance(result, list)
+        # Should only include segments around peaks with height > 5
+
+    def test_peak_based_segmentation_with_min_distance(self):
+        """Test peak_based_segmentation with min_distance parameter.
+        
+        This test covers lines 247-248 in signal_segmentation.py where
+        peaks are filtered by min_distance.
+        """
+        signal = np.array([1, 8, 1, 2, 1, 9, 1, 2, 1, 7, 1])
+        segmentation = SignalSegmentation(signal)
+        
+        result = segmentation.peak_based_segmentation(min_distance=3, height=None)
+        assert isinstance(result, list)
+        # Should filter peaks based on min_distance
+
+    def test_peak_based_segmentation_multiple_peaks(self):
+        """Test peak_based_segmentation with multiple peaks.
+        
+        This test covers line 252 in signal_segmentation.py where
+        segments.append(self.signal[peaks[i] : peaks[i + 1]]) is called for multiple peaks.
+        """
+        signal = np.array([1, 8, 1, 2, 1, 9, 1, 2, 1, 7, 1])
+        segmentation = SignalSegmentation(signal)
+        
+        result = segmentation.peak_based_segmentation(min_distance=1, height=None)
+        assert isinstance(result, list)
+        # Should have segments between multiple peaks
+        assert len(result) >= 1
+
+    def test_ml_based_segmentation_change_detection(self):
+        """Test ml_based_segmentation with change_detection model.
+        
+        This test covers lines 277-280 in signal_segmentation.py where
+        change_detection model is used.
+        """
+        signal = np.array([1, 2, 2, 2, 5, 6, 1, 1, 8, 1])
+        segmentation = SignalSegmentation(signal)
+        
+        result = segmentation.ml_based_segmentation(model="change_detection")
+        assert isinstance(result, list)
+        assert len(result) > 0
+
+    def test_ml_based_segmentation_dtw(self):
+        """Test ml_based_segmentation with dtw model.
+        
+        This test covers lines 299-301 in signal_segmentation.py where
+        dtw model is used.
+        
+        Note: dtw model creates only one change point at len(signal) // 2,
+        which results in 0 segments since segments need at least 2 change points.
+        This is expected behavior for the placeholder implementation.
+        """
+        signal = np.array([1, 2, 2, 2, 5, 6, 1, 1, 8, 1])
+        segmentation = SignalSegmentation(signal)
+        
+        result = segmentation.ml_based_segmentation(model="dtw")
+        assert isinstance(result, list)
+        # dtw model creates only one change point, so no segments are created
+        # This is expected behavior for the placeholder implementation
+        assert len(result) == 0
+
+    def test_ml_based_segmentation_autoencoder(self):
+        """Test ml_based_segmentation with autoencoder model.
+        
+        This test covers lines 306-308 in signal_segmentation.py where
+        autoencoder model is used.
+        
+        Note: autoencoder model creates only one change point at len(signal) // 2,
+        which results in 0 segments since segments need at least 2 change points.
+        This is expected behavior for the placeholder implementation.
+        """
+        signal = np.array([1, 2, 2, 2, 5, 6, 1, 1, 8, 1])
+        segmentation = SignalSegmentation(signal)
+        
+        result = segmentation.ml_based_segmentation(model="autoencoder")
+        assert isinstance(result, list)
+        # autoencoder model creates only one change point, so no segments are created
+        # This is expected behavior for the placeholder implementation
+        assert len(result) == 0

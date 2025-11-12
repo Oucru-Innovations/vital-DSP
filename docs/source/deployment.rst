@@ -235,7 +235,7 @@ Interactive Scripts
 Docker Deployment
 ==================
 
-VitalDSP provides two Dockerfiles for different use cases:
+VitalDSP provides two Dockerfiles for different use cases. The current version is **0.2.1**.
 
 Standard Docker Deployment
 --------------------------
@@ -246,8 +246,9 @@ Standard Docker Deployment
 
 .. code-block:: bash
 
-   # Build the image
-   docker build -t vitaldsp:latest .
+   # Build the image (version 0.2.1)
+   docker build -t vitaldsp:0.2.1 .
+   docker tag vitaldsp:0.2.1 vitaldsp:latest
 
    # Run the container
    docker run -p 8000:8000 -e PORT=8000 vitaldsp:latest
@@ -325,7 +326,7 @@ Production Docker Deployment
 Docker Compose Deployment
 --------------------------
 
-**docker-compose.yml** provides a complete stack with nginx reverse proxy:
+**docker-compose.yml** provides a complete stack with nginx reverse proxy for version 0.2.1:
 
 .. code-block:: yaml
 

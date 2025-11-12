@@ -15,8 +15,8 @@ class PostInstallCommand(install):
         print("Your feedback and contributions make vitalDSP better for everyone. Happy coding! 💻\n")
 
 setup(
-    name='vitalDSP', 
-    version='0.1.5',  
+    name='vitalDSP',
+    version='0.2.1',
     author='van-koha',  
     author_email='vital.data@oucru.org', 
     description='A comprehensive toolkit for Digital Signal Processing in healthcare applications.',

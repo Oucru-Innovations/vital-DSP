@@ -194,10 +194,19 @@ Additional Resources
 * **Community Forum**: Connect with other users and developers
 * **Email Support**: Direct support for enterprise users
 
-**📈 What's New:**
+**📈 What's New in v0.2.1:**
 
 .. important::
-   Stay updated with the latest features and improvements by checking the **Changelog** regularly.
+   **Version 0.2.1** brings enhanced documentation, expanded ML framework support, and improved testing infrastructure.
+
+**Latest Updates (v0.2.1 - January 2025):**
+
+* **Enhanced Documentation**: Comprehensive examples, tutorials, and improved Read the Docs configuration
+* **Expanded ML Support**: Added PyTorch, SHAP, and LIME integration for advanced model development and explainability
+* **Improved Testing**: Enhanced test suite with better coverage and reliability
+* **CI/CD Improvements**: Updated GitHub Actions workflow for better automation
+* **Code Quality**: Enhanced linting standards and resolved codebase issues
+* **Dependency Updates**: Updated to latest stable versions for improved compatibility
 
 **🚀 Latest Optimization Features (Phase 1 & 2):**
 
