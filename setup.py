@@ -12,10 +12,10 @@ class PostInstallCommand(install):
         print("Explore the full potential of this toolkit and stay up-to-date with the latest features.")
         print("Visit our GitHub repository: https://github.com/Oucru-Innovations/vital-DSP")
         print("For updates, contributions, or to report issues, head over to GitHub!")
-        print("Your feedback and contributions make vitalDSP better for everyone. Happy coding! 💻\n")
+        print("Your feedback and contributions make vitalDSP better for everyone. Happy coding!\n")
 
 setup(
-    name='vitalDSP',
+    name='vitaldsp',
     version='0.2.1',
     author='van-koha',  
     author_email='vital.data@oucru.org', 
@@ -40,7 +40,7 @@ setup(
         "vitalDSP.notebooks": ["*.csv"],  # specify the file patterns
     },
     install_requires=[
-        'numpy>=1.19.2',
+        'numpy>=1.19.2,<2.0',  # Constrained for TensorFlow compatibility
         'scipy>=1.5.2',
         'plotly>=4.14.3',
         'scikit-learn>=0.23.2',
