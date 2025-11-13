@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or Discussion
+    url: https://github.com/Oucru-Innovations/vital-DSP/discussions
+    about: Ask questions or discuss ideas with the community
+  - name: Documentation
+    url: https://vital-dsp.readthedocs.io/
+    about: Check out our comprehensive documentation
+  - name: Security Vulnerability
+    url: https://github.com/Oucru-Innovations/vital-DSP/security/advisories/new
+    about: Report a security vulnerability privately

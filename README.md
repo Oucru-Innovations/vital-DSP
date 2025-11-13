@@ -1,7 +1,13 @@
 
 # vitalDSP - Comprehensive Healthcare Digital Signal Processing Toolkit
 
-A comprehensive Python toolkit for Digital Signal Processing (DSP) in healthcare applications, featuring advanced signal processing techniques, machine learning algorithms, and a production-ready web application.
+<p align="center">
+  <strong>A comprehensive Python toolkit for Digital Signal Processing (DSP) in healthcare applications</strong>
+</p>
+
+<p align="center">
+  Advanced signal processing techniques • Machine learning algorithms • Production-ready web application
+</p>
 
 **[🚀 Launch Web Application](https://vital-dsp-1.onrender.com/)** | **[📚 Documentation](https://vital-dsp.readthedocs.io/)** | **[📖 Tutorials](https://colab.research.google.com/github/Oucru-Innovations/vital-DSP/blob/main/docs/source/notebooks/synthesize_data.ipynb)**
 
