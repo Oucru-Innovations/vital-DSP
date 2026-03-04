@@ -306,33 +306,29 @@ class SymbolicDynamics:
         for i in range(len(self.signal) - 2):
             a, b, c = self.signal[i : i + 3]
 
-            # Calculate differences
-            diff_ab = abs(a - b)
-            diff_bc = abs(b - c)
-            diff_ac = abs(a - c)
+            d1 = b - a
+            d2 = c - b
+            v1 = abs(d1) > delta
+            v2 = abs(d2) > delta
 
-            # Count variations
-            variations = sum([diff_ab > delta, diff_bc > delta, diff_ac > delta])
-
-            if variations == 0:
-                # 0V: no variation (all approximately equal)
-                symbol = 0
-            elif variations == 1 or variations == 2:
-                # 1V: one variation (two equal, one different)
-                symbol = 1
+            if not v1 and not v2:
+                symbol = 0   # 0V: no significant variation
+            elif v1 != v2:
+                symbol = 1   # 1V: one significant variation
+            elif d1 * d2 > 0:
+                symbol = 2   # 2LV: two like variations (monotonic)
             else:
-                # 2 variations: determine if Low-High-Low or High-Low-High
-                if (a < b and b > c) or (a > b and b < c):
-                    # 2LV: two variations, oscillatory with extremum in middle
-                    if a < c:
-                        symbol = 2  # Low-High-Low
-                    else:
-                        symbol = 3  # High-Low-High (2UV)
-                else:
-                    # Other patterns
-                    symbol = 1
+                symbol = 3   # 2UV: two unlike variations (oscillatory)
 
             symbols.append(symbol)
+
+        if self.n_symbols != 4:
+            import warnings
+            warnings.warn(
+                f"0V symbolization always produces exactly 4 symbols (0-3). "
+                f"n_symbols={self.n_symbols} is ignored for this method.",
+                UserWarning
+            )
 
         return np.array(symbols)
 
@@ -358,7 +354,10 @@ class SymbolicDynamics:
         Uses Gaussian quantiles assuming normalized signal.
         """
         # Normalize signal (z-score)
-        normalized = (self.signal - np.mean(self.signal)) / np.std(self.signal)
+        std_val = np.std(self.signal)
+        if std_val == 0:
+            return np.zeros(len(self.signal), dtype=int)
+        normalized = (self.signal - np.mean(self.signal)) / std_val
 
         # Calculate Gaussian quantile breakpoints
         from scipy import stats

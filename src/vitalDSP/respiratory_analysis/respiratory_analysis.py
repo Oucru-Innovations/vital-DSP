@@ -106,7 +106,7 @@ class RespiratoryAnalysis:
         signal : numpy.ndarray
             The raw PPG or ECG signal to analyze.
         fs : int, optional
-            The sampling frequency of the signal in Hz. Default is 1000 Hz.
+            The sampling frequency of the signal in Hz. Default is 256 Hz.
         """
         # Validate sampling frequency
         if fs <= 0:
@@ -224,7 +224,7 @@ class RespiratoryAnalysis:
             )
             return respiratory_rate
         else:
-            raise ValueError("Invalid method. Choose 'peaks' or 'zero_crossing'.")
+            raise ValueError("Invalid method. Choose from 'peaks', 'zero_crossing', 'time_domain', 'frequency_domain', 'fft_based', or 'counting'.")
 
         # Apply correction method if specified
         if correction_method == "interpolation":
@@ -322,9 +322,12 @@ class RespiratoryAnalysis:
         np.ndarray
             The intervals between breaths in seconds.
         """
-        derivative_signal = np.diff(preprocessed_signal)
-        zero_crossings = np.where(np.diff(np.sign(derivative_signal)))[0]
-        breath_intervals = np.diff(zero_crossings) / self.fs
+        zero_crossings = np.where(np.diff(np.sign(preprocessed_signal)))[0]
+        # Keep only positive-going crossings for full-period intervals
+        positive_crossings = zero_crossings[np.diff(np.sign(preprocessed_signal))[zero_crossings] > 0]
+        if len(positive_crossings) < 2:
+            return np.array([])
+        breath_intervals = np.diff(positive_crossings) / self.fs
         return breath_intervals[
             (breath_intervals > min_breath_duration)
             & (breath_intervals < max_breath_duration)
@@ -344,18 +347,20 @@ class RespiratoryAnalysis:
         np.ndarray
             The corrected intervals after interpolation.
         """
+        intervals = intervals.copy()  # Don't mutate input
         outliers = np.abs(intervals - np.median(intervals)) > 1.5 * np.std(intervals)
-        if np.any(outliers):
-            x = np.arange(len(intervals))
-            valid_points = x[~outliers]
-            valid_intervals = intervals[~outliers]
-            f_interp = interp1d(
-                valid_points, valid_intervals, kind="linear", fill_value="extrapolate"
-            )
-            intervals[outliers] = f_interp(x[outliers])
+        if np.all(outliers) or not np.any(outliers):
+            return intervals
+        x = np.arange(len(intervals))
+        valid_points = x[~outliers]
+        valid_intervals = intervals[~outliers]
+        if len(valid_points) < 2:
+            return intervals
+        f_interp = interp1d(valid_points, valid_intervals, kind="linear", fill_value="extrapolate")
+        intervals[outliers] = f_interp(x[outliers])
         return intervals
 
-    def _correct_by_adaptive_threshold(self, intervals, threshold=150):
+    def _correct_by_adaptive_threshold(self, intervals, threshold=1.5):
         """
         Corrects false breath detections using an adaptive threshold method.
 
@@ -363,8 +368,8 @@ class RespiratoryAnalysis:
         ----------
         intervals : np.ndarray
             The intervals between breaths.
-        threshold : int, optional
-            Threshold for detecting false intervals. Default is 150 ms.
+        threshold : float, optional
+            Threshold for detecting false intervals in seconds. Default is 1.5.
 
         Returns
         -------
@@ -373,9 +378,11 @@ class RespiratoryAnalysis:
         """
         mean_interval = np.mean(intervals)
         valid_intervals = intervals[
-            (intervals > mean_interval - threshold / 1000)
-            & (intervals < mean_interval + threshold / 1000)
+            (intervals > mean_interval - threshold)
+            & (intervals < mean_interval + threshold)
         ]
+        if len(valid_intervals) == 0:
+            return intervals
         return valid_intervals
 
     def compute_respiratory_rate_ensemble(self, preprocess_config=None, methods=None):

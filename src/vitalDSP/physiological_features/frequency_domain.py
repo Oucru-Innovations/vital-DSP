@@ -110,9 +110,9 @@ class FrequencyDomainFeatures:
             nperseg=len(self.nn_intervals),
         )
 
-        # Define frequency bands for HRV analysis relative to the sampling frequency
-        ulf_band = (0.0033, 0.04)  # Ultra Low Frequency
-        vlf_band = (0.0033, 0.04)  # Very Low Frequency
+        # Standard HRV frequency bands (Task Force of ESC/NASPE, 1996)
+        ulf_band = (0.0, 0.003)  # Ultra Low Frequency
+        vlf_band = (0.003, 0.04)  # Very Low Frequency
         lf_band = (0.04, 0.15)  # Low Frequency
         hf_band = (0.15, 0.40)  # High Frequency
 
@@ -213,17 +213,8 @@ class FrequencyDomainFeatures:
             >>> ulf = fdf.compute_ulf()
             >>> print(f"ULF: {ulf}")
         """
-        f, psd = welch(
-            self.nn_intervals - np.mean(self.nn_intervals),
-            fs=self.fs,
-            nperseg=len(self.nn_intervals),
-        )
-        ulf_band = (0.0033, 0.04)
-        ulf_power = np.trapz(
-            psd[(f >= ulf_band[0]) & (f <= ulf_band[1])],
-            f[(f >= ulf_band[0]) & (f <= ulf_band[1])],
-        )
-        return ulf_power
+        psd_result = self.compute_psd()
+        return psd_result["ulf_power"]
 
     def compute_vlf(self):
         """
@@ -238,17 +229,8 @@ class FrequencyDomainFeatures:
             >>> vlf = fdf.compute_vlf()
             >>> print(f"VLF: {vlf}")
         """
-        f, psd = welch(
-            self.nn_intervals - np.mean(self.nn_intervals),
-            fs=self.fs,
-            nperseg=len(self.nn_intervals),
-        )
-        vlf_band = (0.0033, 0.04)
-        vlf_power = np.trapz(
-            psd[(f >= vlf_band[0]) & (f <= vlf_band[1])],
-            f[(f >= vlf_band[0]) & (f <= vlf_band[1])],
-        )
-        return vlf_power
+        psd_result = self.compute_psd()
+        return psd_result["vlf_power"]
 
     def compute_total_power(self):
         """

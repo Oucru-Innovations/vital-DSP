@@ -42,7 +42,8 @@ def test_poincare_plot(nonlinear_analysis, monkeypatch):
 
     monkeypatch.setattr(plt, "show", mock_show)
     figure = nonlinear_analysis.poincare_plot()
-    assert figure is None  # Since Poincaré plot doesn't return a figure, just plots
+    assert figure is not None  # Poincaré plot now returns a figure
+    plt.close(figure)
 
 
 def test_correlation_dimension(nonlinear_analysis):

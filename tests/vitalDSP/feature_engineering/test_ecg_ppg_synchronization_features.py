@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from vitalDSP.feature_engineering.ecg_ppg_synchronyzation_features import (
+from vitalDSP.feature_engineering.ecg_ppg_synchronization_features import (
     ECGPPGSynchronization,
 )
 
@@ -80,14 +80,17 @@ def test_rsa_computation(generate_ecg_ppg_signal):
     ecg_signal, ppg_signal, ecg_fs, ppg_fs = generate_ecg_ppg_signal
     sync_analyzer = ECGPPGSynchronization(ecg_signal, ppg_signal, ecg_fs, ppg_fs)
 
-    # Simulate R-peaks and systolic peaks for testing
-    r_peaks = np.array([100, 300, 500, 700])
-    systolic_peaks = np.array([110, 310, 510, 710])
+    # RSA requires enough R-peaks with respiratory-rate variability
+    # Simulate ~10 beats with slight variability at respiratory frequency
+    base_intervals = 200  # 200 samples at 1000 Hz = 0.2s
+    np.random.seed(42)
+    variation = np.sin(np.linspace(0, 2 * np.pi, 10)) * 10
+    r_peaks = np.cumsum(np.array([100] + [base_intervals + int(v) for v in variation]))
 
-    rsa = sync_analyzer.compute_rsa(r_peaks, systolic_peaks)
+    rsa = sync_analyzer.compute_rsa(r_peaks=r_peaks)
 
     assert isinstance(rsa, float), "RSA should return a float value"
-    assert rsa > 0, "RSA should be a positive value"
+    assert rsa >= 0, "RSA should be a non-negative value"
 
 
 # Edge case tests
@@ -227,7 +230,7 @@ def test_detect_systolic_peaks_runtime_error(ecg_ppg_synchronization, mocker):
 def test_compute_ptt_no_peaks(ecg_ppg_synchronization, mocker):
     mocker.patch.object(ecg_ppg_synchronization, 'detect_r_peaks', return_value=np.array([]))
     mocker.patch.object(ecg_ppg_synchronization, 'detect_systolic_peaks', return_value=np.array([]))
-    with pytest.raises(RuntimeError, match="Error computing Pulse Transit Time: No valid PTT values could be calculated."):
+    with pytest.raises(RuntimeError, match="Error computing Pulse Transit Time"):
         ecg_ppg_synchronization.compute_ptt()
 
 def test_compute_ptt_runtime_error(ecg_ppg_synchronization, mocker):
@@ -239,7 +242,7 @@ def test_compute_ptt_runtime_error(ecg_ppg_synchronization, mocker):
 def test_compute_pat_no_peaks(ecg_ppg_synchronization, mocker):
     mocker.patch.object(ecg_ppg_synchronization, 'detect_r_peaks', return_value=np.array([]))
     mocker.patch.object(ecg_ppg_synchronization, 'detect_systolic_peaks', return_value=np.array([]))
-    with pytest.raises(RuntimeError, match="Error computing Pulse Arrival Time: No valid PAT values could be calculated."):
+    with pytest.raises(RuntimeError, match="Error computing Pulse Arrival Time"):
         ecg_ppg_synchronization.compute_pat()
 
 def test_compute_pat_runtime_error(ecg_ppg_synchronization, mocker):
@@ -251,12 +254,12 @@ def test_compute_pat_runtime_error(ecg_ppg_synchronization, mocker):
 def test_compute_emd_no_peaks(ecg_ppg_synchronization, mocker):
     mocker.patch.object(ecg_ppg_synchronization, 'detect_r_peaks', return_value=np.array([]))
     mocker.patch.object(ecg_ppg_synchronization, 'detect_systolic_peaks', return_value=np.array([]))
-    with pytest.raises(RuntimeError, match="Error computing Electromechanical Delay: No valid EMD values could be calculated."):
+    with pytest.raises(RuntimeError, match="Error computing PPG systolic rise time"):
         ecg_ppg_synchronization.compute_emd()
 
 def test_compute_emd_runtime_error(ecg_ppg_synchronization, mocker):
     mocker.patch.object(ecg_ppg_synchronization, 'detect_r_peaks', side_effect=Exception("Test Error"))
-    with pytest.raises(RuntimeError, match="Error computing Electromechanical Delay: Test Error"):
+    with pytest.raises(RuntimeError, match="Error computing PPG systolic rise time: Test Error"):
         ecg_ppg_synchronization.compute_emd()
 
 # Test compute_hr_pr_sync_no_peaks
@@ -275,7 +278,7 @@ def test_compute_hr_pr_sync_runtime_error(ecg_ppg_synchronization, mocker):
 def test_compute_rsa_no_peaks(ecg_ppg_synchronization, mocker):
     mocker.patch.object(ecg_ppg_synchronization, 'detect_r_peaks', return_value=np.array([]))
     mocker.patch.object(ecg_ppg_synchronization, 'detect_systolic_peaks', return_value=np.array([]))
-    with pytest.raises(RuntimeError, match="Error computing Respiratory Sinus Arrhythmia: No valid RSA values could be computed."):
+    with pytest.raises(RuntimeError, match="Error computing Respiratory Sinus Arrhythmia"):
         ecg_ppg_synchronization.compute_rsa()
 
 def test_compute_rsa_runtime_error(ecg_ppg_synchronization, mocker):

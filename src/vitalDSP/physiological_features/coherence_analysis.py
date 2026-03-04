@@ -157,7 +157,7 @@ class CoherenceAnalysis:
 
         # Cross-correlate the signals to find the delay
         correlation = correlate(signal1, signal2)
-        delay = correlation.argmax() - (len(signal1) - 1)
+        delay = correlation.argmax() - (len(signal2) - 1)
 
         # Adjust the signals based on the detected delay
         if delay > 0:

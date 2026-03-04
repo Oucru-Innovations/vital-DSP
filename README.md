@@ -23,6 +23,32 @@
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Oucru-Innovations/vital-DSP/blob/main/docs/source/notebooks/synthesize_data.ipynb)
 [![Deploy on Render](https://img.shields.io/badge/Deploy%20on-Render-46E3B7?style=flat&logo=render)](https://vital-dsp-1.onrender.com/)
 
+---
+
+## 🔥 Maintainer Note: I gave up (Claude Code takeover)
+
+This repo has grown big enough that maintaining it manually started to feel **inefficient and time-exhausting**.  
+So yeah — **I gave up doing it the old way**.
+
+From now on, I’m using **Claude Code (Opus 4.6)** to do an end-to-end review of the legacy codebase and drive large refactors and upgrades. **Claude Code ROCKS** (sorry for you — Grok, OpenAI, Gemini 😅).
+
+### What this means 
+- Expect **major refactors** and **big structural changes**
+- There may be **breaking changes** (APIs, modules, file layouts, behaviors)
+- I will mainly review **final diffs + generated docs** after Claude’s changes are implemented and merged
+
+### Stability recommendation
+If you need a stable environment for production/research:
+- **pin a release version** (don’t track `main` blindly)
+- check **Releases / Changelog** before upgrading
+
+If you hit regressions, please open an issue with:
+- commit hash / version
+- steps to reproduce
+- minimal sample input (ECG/PPG snippet if possible)
+
+---
+
 ## 🎯 **Production-Ready Implementation**
 
 vitalDSP is a **comprehensive, production-ready** digital signal processing library with **50,000+ lines of code** across **200+ files**, featuring:

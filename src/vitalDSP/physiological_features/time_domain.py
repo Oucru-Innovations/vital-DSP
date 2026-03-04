@@ -88,7 +88,7 @@ class TimeDomainFeatures:
             >>> tdf.compute_sdnn()
             7.483314773547883
         """
-        return np.std(self.nn_intervals)
+        return np.std(self.nn_intervals, ddof=1)
 
     def compute_rmssd(self):
         """
@@ -139,7 +139,10 @@ class TimeDomainFeatures:
             return 0.0  # No differences possible with single interval
 
         nn50 = self.compute_nn50()
-        return 100.0 * nn50 / len(self.nn_intervals)
+        n_successive = len(self.nn_intervals) - 1
+        if n_successive <= 0:
+            return 0.0
+        return 100.0 * nn50 / n_successive
 
     def compute_median_nn(self):
         """
@@ -219,7 +222,10 @@ class TimeDomainFeatures:
 
         diff_nn_intervals = np.abs(np.diff(self.nn_intervals))
         nn20 = np.sum(diff_nn_intervals > 20)
-        return 100.0 * nn20 / len(self.nn_intervals)
+        n_successive = len(self.nn_intervals) - 1
+        if n_successive <= 0:
+            return 0.0
+        return 100.0 * nn20 / n_successive
 
     def compute_cvnn(self):
         """
@@ -235,7 +241,7 @@ class TimeDomainFeatures:
             0.009354143466934854
         """
         # Input validation to prevent division by zero
-        if len(self.nn_intervals) == 0:
+        if len(self.nn_intervals) < 2:
             return 0.0
 
         mean_nn = self.compute_mean_nn()
@@ -243,6 +249,8 @@ class TimeDomainFeatures:
             return 0.0  # Avoid division by zero
 
         sdnn = self.compute_sdnn()
+        if not np.isfinite(sdnn):
+            return 0.0
         return sdnn / mean_nn
 
     def compute_hrv_triangular_index(self):
@@ -264,11 +272,14 @@ class TimeDomainFeatures:
 
     def compute_tinn(self):
         """
-        Computes the Triangular Interpolation of NN Interval Histogram (TINN), which is the width of the
-        base of the histogram of NN intervals.
+        Computes the Triangular Interpolation of NN Interval Histogram (TINN).
+
+        TINN is the baseline width of the NN interval histogram triangle,
+        computed as the difference between the points N and M on the x-axis
+        where the triangular interpolation reaches the baseline.
 
         Returns:
-            float: The TINN value.
+            float: The TINN value in the same units as nn_intervals.
 
         Example:
             >>> tdf = TimeDomainFeatures([800, 810, 790, 805, 795])
@@ -276,11 +287,41 @@ class TimeDomainFeatures:
             20.0
         """
         hist, bin_edges = np.histogram(self.nn_intervals, bins="auto")
-        bin_width = np.diff(bin_edges)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
         max_bin_index = np.argmax(hist)
-        left_edge = bin_edges[max_bin_index] - bin_width[max_bin_index] / 2
-        right_edge = bin_edges[max_bin_index] + bin_width[max_bin_index] / 2
-        return right_edge - left_edge
+        peak_x = bin_centers[max_bin_index]
+        peak_y = hist[max_bin_index]
+
+        if peak_y == 0:
+            return 0.0
+
+        best_n = bin_centers[0]
+        best_m = bin_centers[-1]
+        min_error = np.inf
+
+        for n_idx in range(max_bin_index + 1):
+            for m_idx in range(max_bin_index, len(bin_centers)):
+                n_val = bin_centers[n_idx]
+                m_val = bin_centers[m_idx]
+                if m_val <= n_val:
+                    continue
+
+                triangle = np.zeros_like(hist, dtype=float)
+                for i, x in enumerate(bin_centers):
+                    if x <= n_val or x >= m_val:
+                        triangle[i] = 0.0
+                    elif x <= peak_x:
+                        triangle[i] = peak_y * (x - n_val) / (peak_x - n_val)
+                    else:
+                        triangle[i] = peak_y * (m_val - x) / (m_val - peak_x)
+
+                error = np.sum((hist - triangle) ** 2)
+                if error < min_error:
+                    min_error = error
+                    best_n = n_val
+                    best_m = m_val
+
+        return best_m - best_n
 
     def compute_sdsd(self):
         """
@@ -295,4 +336,4 @@ class TimeDomainFeatures:
             10.0
         """
         diff_nn_intervals = np.diff(self.nn_intervals)
-        return np.std(diff_nn_intervals)
+        return np.std(diff_nn_intervals, ddof=1)

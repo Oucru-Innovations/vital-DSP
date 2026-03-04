@@ -112,9 +112,7 @@ class FourierTransform:
         >>> frequency_content = ft.compute_dft()
         >>> print(frequency_content)
         """
-        # Apply a window function to reduce spectral leakage
-        windowed_signal = self.signal * np.hamming(len(self.signal))
-        dft = np.fft.fft(windowed_signal)
+        dft = np.fft.fft(self.signal)
         return dft
 
     def compute_idft(self, frequency_content):

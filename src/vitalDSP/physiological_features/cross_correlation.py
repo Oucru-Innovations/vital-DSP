@@ -75,7 +75,7 @@ class CrossCorrelationFeatures:
             mode=mode,
         )
         lag = int(
-            np.argmax(np.abs(cross_corr)) - (len(self.signal1) - 1)
+            np.argmax(np.abs(cross_corr)) - (len(self.signal2) - 1)
         )  # Ensure lag is an integer
         return cross_corr, lag
 
@@ -95,9 +95,11 @@ class CrossCorrelationFeatures:
             >>> print(f"Normalized Cross-Correlation: {norm_corr}, Lag: {lag}")
         """
         cross_corr, lag = self.compute_cross_correlation()
-        norm_corr = cross_corr / (
-            np.std(self.signal1) * np.std(self.signal2) * len(self.signal1)
-        )
+        std1 = np.std(self.signal1)
+        std2 = np.std(self.signal2)
+        if std1 == 0 or std2 == 0:
+            return np.zeros_like(cross_corr), lag
+        norm_corr = cross_corr / (std1 * std2 * len(self.signal1))
         return norm_corr, lag
 
     def compute_pulse_transit_time(self, r_peaks):

@@ -321,9 +321,9 @@ def test_compute_eeg_wavelet_features(sample_waveform):
     wm = WaveformMorphology(waveform, fs=fs, signal_type="EEG")
     features = wm.compute_eeg_wavelet_features()
     assert isinstance(features, dict)
-    assert "delta_power" in features
-    assert "theta_power" in features
-    assert "alpha_power" in features
+    assert "delta" in features
+    assert "theta" in features
+    assert "alpha" in features
 
 def test_compute_eeg_wavelet_features_invalid_signal_type(sample_waveform):
     waveform, fs = sample_waveform
@@ -417,10 +417,10 @@ def test_summarize_list_mean():
     assert wm._summarize_list(values, "median") == 20
     
     values = [10, 20, 30]
-    assert wm._summarize_list(values, "2nd_quartile") == 15
+    assert wm._summarize_list(values, "q1") == 15
     
     values = [10, 20, 30]
-    assert wm._summarize_list(values, "3rd_quartile") == 25
+    assert wm._summarize_list(values, "q3") == 25
 
 def test_summarize_list_invalid_summary_type():
     wm = WaveformMorphology(np.sin(np.linspace(0, 2 * np.pi, 10)), signal_type="ECG")
@@ -1296,7 +1296,7 @@ def test_detect_s_valley_invalid_signal_type(sample_waveform):
     # Initialize with PPG signal type
     wm = WaveformMorphology(waveform, fs=fs, signal_type="PPG")
     
-    with pytest.raises(ValueError, match="Q valleys can only be detected for ECG signals"):
+    with pytest.raises(ValueError, match="S valleys can only be detected for ECG signals"):
         wm.detect_s_valley()
 
 def test_detect_p_peak_invalid_signal_type(sample_waveform):

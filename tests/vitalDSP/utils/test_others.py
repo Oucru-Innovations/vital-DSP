@@ -48,18 +48,18 @@ def test_min_max_normalization():
         normalized_signal_custom, expected_output_custom, decimal=6
     )
 
-    # Test with a single value (edge case)
+    # Test with a single value (edge case — constant signal returns midpoint of range)
     signal_single = np.array([5])
     normalized_single = min_max_normalization(signal_single)
-    expected_single = np.array(
-        [0.0]
-    )  # Min-Max normalization of a single value will return 0 in default range
+    # Returns midpoint of [0, 1] = 0.5 for a constant (single-value) signal
+    expected_single = np.array([0.5])
 
     assert np.all(normalized_single == expected_single)
 
-    # Test with a constant signal (edge case, min and max will be the same, expect zeros)
+    # Test with a constant signal (edge case, min and max will be the same; returns midpoint)
     signal_constant = np.array([3, 3, 3, 3, 3])
     normalized_constant = min_max_normalization(signal_constant)
-    expected_constant = np.zeros_like(signal_constant)
+    # Returns midpoint of [0, 1] = 0.5 for a constant signal
+    expected_constant = np.full_like(signal_constant, 0.5, dtype=float)
 
     assert np.all(normalized_constant == expected_constant)

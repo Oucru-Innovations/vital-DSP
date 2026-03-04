@@ -203,7 +203,7 @@ class BeatToBeatAnalysis:
             float: The standard deviation of R-R intervals (SDNN).
         """
         rr_intervals = self.compute_rr_intervals()
-        return np.std(rr_intervals)
+        return np.std(rr_intervals, ddof=1)
 
     @deprecated(
         "Use vitalDSP.physiological_features.time_domain.compute_rmssd() instead."

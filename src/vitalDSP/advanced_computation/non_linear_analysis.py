@@ -112,9 +112,13 @@ class NonlinearAnalysis:
 
         Notes
         -----
-        For ECG and PPG signals, normalization is essential due to flat segments and
-        baseline wander that can cause divide-by-zero errors.
+        Uses the Rosenstein et al. (1993) algorithm: delay-embeds the signal into a
+        dim-dimensional phase space, finds the nearest neighbor for each reference point
+        (with Theiler window to exclude temporal neighbors), tracks trajectory divergence,
+        and fits the slope of the mean log-divergence curve.
         """
+        import warnings
+
         n = len(self.signal)
 
         # Validate signal length
@@ -132,40 +136,54 @@ class NonlinearAnalysis:
             if signal_std > epsilon:
                 signal = (signal - signal_mean) / signal_std
             else:
-                import warnings
-
                 warnings.warn(
                     "Signal has zero or very low variance. Lyapunov exponent may not be meaningful."
                 )
 
-        distances = []
+        # Phase-space embedding parameters (Rosenstein algorithm)
+        tau = 1   # Time delay
+        dim = 2   # Embedding dimension
+        min_sep = max(1, int(0.1 * n))  # Theiler window (minimum temporal separation)
+
+        # Create delay-embedded phase space
+        n_emb = n - (dim - 1) * tau
+        if n_emb < max_iter + min_sep + 1:
+            return np.nan
+
+        embedded = np.array([signal[i:i + dim * tau:tau] for i in range(n_emb)])
+
+        all_log_ratios = []
         skipped_points = 0
 
-        for i in range(n - max_iter):
-            dist = np.abs(signal[i + 1 : i + max_iter] - signal[i])
+        for i in range(n_emb - max_iter):
+            # Find nearest neighbor with Theiler exclusion
+            best_dist = np.inf
+            nn_idx = -1
+            for j in range(n_emb):
+                if abs(i - j) <= min_sep:
+                    continue
+                d = np.linalg.norm(embedded[i] - embedded[j])
+                if d < best_dist and d > 0:
+                    best_dist = d
+                    nn_idx = j
 
-            # Critical fix: Check if dist[0] is too small BEFORE division
-            if dist[0] < epsilon:
-                # Skip this point to avoid divide-by-zero
+            if nn_idx == -1 or best_dist < epsilon:
                 skipped_points += 1
                 continue
 
-            # Clamp other small values
-            dist[dist < epsilon] = epsilon
+            # Track divergence of nearest-neighbor trajectory
+            log_ratio = []
+            for t in range(1, max_iter):
+                if i + t >= n_emb or nn_idx + t >= n_emb:
+                    break
+                d_t = np.linalg.norm(embedded[i + t] - embedded[nn_idx + t])
+                if d_t > 0:
+                    log_ratio.append(np.log(d_t / best_dist))
 
-            # Now safe to divide by dist[0]
-            log_ratio = np.log(dist / dist[0])
+            if len(log_ratio) > 0 and np.all(np.isfinite(log_ratio)):
+                all_log_ratios.append(log_ratio)
 
-            # Filter out any inf/nan values that may still occur
-            log_ratio = log_ratio[np.isfinite(log_ratio)]
-
-            if len(log_ratio) > 0:
-                distances.append(log_ratio)
-
-        # Check if we have enough valid data points
-        if len(distances) == 0:
-            import warnings
-
+        if len(all_log_ratios) == 0:
             warnings.warn(
                 "No valid distance calculations obtained. Signal may have too many "
                 "repeated values or be unsuitable for Lyapunov exponent estimation. "
@@ -173,22 +191,27 @@ class NonlinearAnalysis:
             )
             return np.nan
 
-        if skipped_points > (n - max_iter) * 0.5:
-            import warnings
-
+        if skipped_points > (n_emb - max_iter) * 0.5:
             warnings.warn(
-                f"Skipped {skipped_points}/{n-max_iter} points due to near-zero distances. "
+                f"Skipped {skipped_points}/{n_emb - max_iter} points due to near-zero distances. "
                 f"Results may be unreliable. Consider signal preprocessing."
             )
 
-        # Flatten list of arrays and compute mean
-        all_distances = np.concatenate(distances)
-        lyapunov = np.mean(all_distances) / max_iter
+        # Pad shorter arrays with NaN for consistent shape
+        max_len = max(len(r) for r in all_log_ratios)
+        padded = np.full((len(all_log_ratios), max_len), np.nan)
+        for i, r in enumerate(all_log_ratios):
+            padded[i, :len(r)] = r
 
-        # Validate result
+        avg_log_div = np.nanmean(padded, axis=0)
+        time_indices = np.arange(1, len(avg_log_div) + 1)
+        valid = ~np.isnan(avg_log_div) & ~np.isinf(avg_log_div)
+        if np.sum(valid) < 2:
+            return 0.0
+        coeffs = np.polyfit(time_indices[valid], avg_log_div[valid], 1)
+        lyapunov = coeffs[0]
+
         if not np.isfinite(lyapunov):
-            import warnings
-
             warnings.warn(
                 f"Lyapunov exponent is {lyapunov}. This indicates numerical issues. "
                 f"Try signal normalization or different epsilon value."
@@ -217,11 +240,12 @@ class NonlinearAnalysis:
         x = self.signal[:-1]
         y = self.signal[1:]
 
-        plt.scatter(x, y)
-        plt.xlabel(r"$x_{n}$")
-        plt.ylabel(r"$x_{n+1}$")
-        plt.title("Poincaré Plot")
-        plt.show()
+        fig, ax = plt.subplots()
+        ax.scatter(x, y)
+        ax.set_xlabel(r"$x_{n}$")
+        ax.set_ylabel(r"$x_{n+1}$")
+        ax.set_title("Poincaré Plot")
+        return fig
 
     def correlation_dimension(self, radius=0.1, normalize=True):
         """
@@ -285,7 +309,6 @@ class NonlinearAnalysis:
 
         n = len(self.signal)
 
-        # Normalize signal if requested (recommended for physiological signals)
         signal = self.signal.copy()
         if normalize:
             signal_mean = np.mean(signal)
@@ -300,56 +323,48 @@ class NonlinearAnalysis:
                     "Correlation dimension may not be meaningful."
                 )
 
-        # Count point pairs within radius
-        count = 0
-        for i in range(n):
-            for j in range(i + 1, n):
-                if np.linalg.norm(signal[i] - signal[j]) < radius:
-                    count += 1
+        # Time-delay embedding
+        tau = 1
+        m = 2
+        if n <= (m - 1) * tau:
+            return 0.0
+        embedded = np.array([signal[i:i + (m-1)*tau + 1:tau] for i in range(n - (m-1)*tau)])
+        n_emb = len(embedded)
 
-        # Validate we found some pairs
-        if count == 0:
+        # Compute C(r) at multiple radii and use slope in log-log space
+        sig_std = np.std(signal)
+        if sig_std < 1e-10:
+            sig_std = 1.0
+        radii = np.logspace(np.log10(0.1 * sig_std), np.log10(2 * sig_std), 10)
+        log_C = []
+        log_r = []
+        for r in radii:
+            count = 0
+            for i in range(n_emb):
+                for j in range(i + 1, n_emb):
+                    if np.linalg.norm(embedded[i] - embedded[j]) < r:
+                        count += 1
+            C = 2.0 * count / (n_emb * (n_emb - 1)) if n_emb > 1 else 0
+            if C > 0:
+                log_C.append(np.log(C))
+                log_r.append(np.log(r))
+
+        if len(log_C) < 2:
             raise ValueError(
-                f"No point pairs found within radius {radius}. "
+                f"No point pairs found within radius range. "
                 f"Signal characteristics: mean={np.mean(signal):.4f}, std={np.std(signal):.4f}, "
                 f"range=[{np.min(signal):.4f}, {np.max(signal):.4f}]. "
                 f"Try: (1) Increasing radius, (2) Enabling normalization (normalize=True), "
                 f"or (3) Using a longer signal segment."
             )
 
-        # Compute correlation dimension
-        log_count = np.log(count)
-        log_radius = np.log(radius)
+        slope = np.polyfit(log_r, log_C, 1)[0]
 
-        # Additional safety check (should not occur given earlier validation)
-        if np.abs(log_radius) < 1e-10:
-            raise ValueError(
-                f"log(radius) = {log_radius} is too close to zero. "
-                f"This should not occur with radius != 1.0"
-            )
-
-        correlation_dim = log_count / log_radius
-
-        # Validate result
-        if correlation_dim < 0:
+        if not np.isfinite(slope):
             import warnings
 
             warnings.warn(
-                f"Negative correlation dimension ({correlation_dim:.4f}) suggests "
-                f"inappropriate radius selection or unsuitable signal. "
-                f"This occurs when log(count)/log(radius) < 0. "
-                f"Recommendations: "
-                f"(1) For radius < 1: if few pairs found, increase radius; "
-                f"(2) For radius > 1: if many pairs found, decrease radius; "
-                f"(3) Try radius in range [0.1, 2.0] for normalized signals; "
-                f"(4) Ensure signal is normalized (normalize=True)."
+                f"Correlation dimension is {slope}. This indicates numerical issues."
             )
 
-        if not np.isfinite(correlation_dim):
-            import warnings
-
-            warnings.warn(
-                f"Correlation dimension is {correlation_dim}. This indicates numerical issues."
-            )
-
-        return correlation_dim
+        return slope

@@ -16,7 +16,7 @@ class PostInstallCommand(install):
 
 setup(
     name='vitaldsp',
-    version='0.2.1',
+    version='0.2.2',
     author='van-koha',  
     author_email='vital.data@oucru.org', 
     description='A comprehensive toolkit for Digital Signal Processing in healthcare applications.',

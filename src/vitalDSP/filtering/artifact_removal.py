@@ -123,10 +123,13 @@ class ArtifactRemoval:
         >>> print(clean_signal)
         [-0.4995 -0.4995 -0.4995 -0.4995 -0.4995]
         """
+        from scipy.signal import butter, filtfilt
         nyquist = 0.5 * fs
+        if cutoff >= nyquist:
+            cutoff = nyquist * 0.99
         normal_cutoff = cutoff / nyquist
-        b = [1, -1]
-        clean_signal = np.convolve(self.signal, b, mode="same") / (1 - normal_cutoff)
+        b, a = butter(2, normal_cutoff, btype='high')
+        clean_signal = filtfilt(b, a, self.signal)
         return clean_signal
 
     def median_filter_removal(self, kernel_size=3):
@@ -232,10 +235,13 @@ class ArtifactRemoval:
         approx_coeffs = self.signal.copy()
         detail_coeffs = []
 
+        N = len(mother_wavelet)
+        high_pass = np.array([(-1)**n * mother_wavelet[N - 1 - n] for n in range(N)])
+
         for _ in range(level):
             # Convolution with the low-pass and high-pass filters (approximation and detail coefficients)
             approx = np.convolve(approx_coeffs, mother_wavelet, mode="full")
-            detail = np.convolve(approx_coeffs, mother_wavelet[::-1], mode="full")
+            detail = np.convolve(approx_coeffs, high_pass, mode="full")
 
             # Downsample
             approx_coeffs = approx[::2]
@@ -266,7 +272,7 @@ class ArtifactRemoval:
                 np.convolve(upsampled_approx, mother_wavelet, mode="full")[
                     : len(upsampled_approx)
                 ]
-                + np.convolve(upsampled_detail, mother_wavelet[::-1], mode="full")[
+                + np.convolve(upsampled_detail, high_pass, mode="full")[
                     : len(upsampled_detail)
                 ]
             )
@@ -277,7 +283,7 @@ class ArtifactRemoval:
         # Apply smoothing if specified
         if smoothing:
             clean_signal = self._apply_smoothing(
-                clean_signal, smoothing, **smoothing_params
+                clean_signal, smoothing, fs=smoothing_params.get('fs', 100.0), **{k: v for k, v in smoothing_params.items() if k != 'fs'}
             )
 
         return clean_signal
@@ -338,7 +344,7 @@ class ArtifactRemoval:
         return smoothed_signal
 
     @staticmethod
-    def _lowpass_filter(signal, cutoff, fs, order=5):
+    def _lowpass_filter(signal, cutoff, fs=100.0, order=5):
         """
         Apply a low-pass Butterworth filter to smooth the signal.
 
@@ -530,13 +536,9 @@ class ArtifactRemoval:
         >>> clean_signal = ar.notch_filter(freq=50, fs=1000, Q=30)
         >>> print(clean_signal)
         """
-        nyquist = 0.5 * fs
-        w0 = freq / nyquist
-        b = [1, -2 * np.cos(2 * np.pi * w0), 1]
-        a = [1, -2 * np.cos(2 * np.pi * w0) / Q, 1 / (Q**2)]
-        clean_signal = np.convolve(self.signal, b, mode="same") / np.convolve(
-            self.signal, a, mode="same"
-        )
+        from scipy.signal import iirnotch, filtfilt
+        b, a = iirnotch(freq, Q, fs)
+        clean_signal = filtfilt(b, a, self.signal)
         return clean_signal
 
     def pca_artifact_removal(self, num_components=1, window_size=100, overlap=50):

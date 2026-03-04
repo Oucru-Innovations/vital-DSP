@@ -24,6 +24,7 @@ Basic usage:
 """
 
 import numpy as np
+import warnings
 from vitalDSP.respiratory_analysis.estimate_rr.fft_based_rr import fft_based_rr
 from vitalDSP.respiratory_analysis.estimate_rr.time_domain_rr import time_domain_rr
 
@@ -69,7 +70,11 @@ def ppg_ecg_fusion(
         ecg_signal, sampling_rate, preprocess=preprocess, **preprocess_kwargs
     )
 
-    # Combine RR estimates from both signals
-    rr_fusion = np.mean([rr_ppg, rr_ecg])
-
+    # Combine RR estimates from both signals, filtering out failed estimations
+    estimates = [rr_ppg, rr_ecg]
+    valid_estimates = [e for e in estimates if 6.0 <= e <= 40.0]
+    if len(valid_estimates) == 0:
+        warnings.warn("Both respiratory rate estimates failed or are out of range.")
+        return 0.0
+    rr_fusion = np.mean(valid_estimates)
     return rr_fusion

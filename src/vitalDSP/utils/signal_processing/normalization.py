@@ -88,7 +88,7 @@ def min_max_normalization(signal, min_value=0, max_value=1):
 
     # Handle the case where min and max are the same to avoid division by zero
     if min_signal == max_signal:
-        return np.zeros_like(signal)
+        return np.full_like(signal, (min_value + max_value) / 2.0, dtype=float)
 
     normalized_signal = (signal - min_signal) / (max_signal - min_signal)
     normalized_signal = normalized_signal * (max_value - min_value) + min_value

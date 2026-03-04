@@ -143,16 +143,11 @@ def frequency_domain_rr(
     if nperseg is None:
         target_resolution = 0.05  # Hz
         nperseg = int(sampling_rate / target_resolution)
-
-        # Limit nperseg to signal length
-        nperseg = min(nperseg, len(signal))
-
-        # Ensure nperseg is at least 256 for stable estimation
         nperseg = max(256, nperseg)
-
-        # Make nperseg even for efficiency
         if nperseg % 2 != 0:
             nperseg += 1
+        # This MUST be last to ensure nperseg <= signal length
+        nperseg = min(nperseg, len(signal))
 
     # Compute the power spectral density using the Welch method
     logger.debug(f"Computing Welch PSD with nperseg={nperseg}")

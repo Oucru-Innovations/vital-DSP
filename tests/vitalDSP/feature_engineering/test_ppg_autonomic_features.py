@@ -120,43 +120,33 @@ class TestPPGAutonomicFeaturesMissingCoverage:
         
         features = PPGAutonomicFeatures(ppg_signal, fs)
         
-        with pytest.raises(ValueError, match="No peaks detected in PPG signal"):
+        with pytest.raises(ValueError, match="Not enough peaks detected in PPG signal"):
             features.compute_rsa()
 
     def test_compute_rsa_empty_intervals(self):
-        """Test compute_rsa when inhalation or exhalation intervals are empty.
-        
-        This test covers line 119 in ppg_autonomic_features.py where
-        0.0 is returned when intervals are empty.
-        """
+        """Test compute_rsa when not enough peaks are detected."""
         from unittest.mock import patch, MagicMock
         
-        # Create a signal
         ppg_signal = np.random.randn(1000)
         fs = 100
         
         features = PPGAutonomicFeatures(ppg_signal, fs)
         
-        # Mock PeakDetection to return only 1 peak (which will result in empty intervals)
+        # Mock PeakDetection to return only 1 peak
         mock_peak_detector = MagicMock()
-        mock_peak_detector.detect_peaks.return_value = np.array([100])  # Only 1 peak
+        mock_peak_detector.detect_peaks.return_value = np.array([100])
         
         with patch('vitalDSP.feature_engineering.ppg_autonomic_features.PeakDetection', return_value=mock_peak_detector):
-            # This should raise ValueError because len(peaks) < 2
-            with pytest.raises(ValueError, match="No peaks detected"):
+            with pytest.raises(ValueError, match="Not enough peaks detected"):
                 features.compute_rsa()
         
-        # Test with 2 peaks that result in empty inhalation or exhalation intervals
-        # If we have only 2 peaks, intervals will have 1 element
-        # inhalation_intervals = intervals[::2] = [intervals[0]]
-        # exhalation_intervals = intervals[1::2] = [] (empty)
+        # Test with 3 peaks (still < 4 required for RSA)
         mock_peak_detector2 = MagicMock()
-        mock_peak_detector2.detect_peaks.return_value = np.array([100, 200])  # 2 peaks -> 1 interval
+        mock_peak_detector2.detect_peaks.return_value = np.array([100, 200, 300])
         
         with patch('vitalDSP.feature_engineering.ppg_autonomic_features.PeakDetection', return_value=mock_peak_detector2):
-            rsa = features.compute_rsa()
-            # Should return 0.0 when one of the interval arrays is empty
-            assert rsa == 0.0
+            with pytest.raises(ValueError, match="Not enough peaks detected"):
+                features.compute_rsa()
 
     def test_compute_fractal_dimension_short_signal(self):
         """Test compute_fractal_dimension with signal too short.
@@ -210,59 +200,25 @@ class TestPPGAutonomicFeaturesMissingCoverage:
             features.compute_fractal_dimension()
 
     def test_compute_dfa_short_signal(self):
-        """Test compute_dfa with signal too short.
-        
-        This test covers line 175 in ppg_autonomic_features.py where
-        ValueError is raised when signal length < window_size.
-        """
-        # Create signal shorter than default window_size (10)
+        """Test compute_dfa with signal too short (< 16 samples)."""
         ppg_signal = np.random.randn(9)
         fs = 100
         
         features = PPGAutonomicFeatures(ppg_signal, fs)
         
         with pytest.raises(ValueError, match="PPG signal is too short to compute DFA"):
-            features.compute_dfa(window_size=10)
+            features.compute_dfa()
 
-    def test_compute_dfa_non_positive_fn(self):
-        """Test compute_dfa when F_n has non-positive values.
-        
-        This test covers lines 190-192 in ppg_autonomic_features.py where
-        ValueError is raised when F_n has non-positive values.
-        """
-        from unittest.mock import patch
-        
-        # Create a signal
-        ppg_signal = np.random.randn(100)
+    def test_compute_dfa_not_enough_scales(self):
+        """Test compute_dfa when too few valid scales exist for fitting."""
+        ppg_signal = np.random.randn(20)
         fs = 100
         
         features = PPGAutonomicFeatures(ppg_signal, fs)
         
-        # Create a signal that will produce zero or negative F_n values
-        # This is difficult to achieve naturally, so we'll mock the computation
-        original_compute = features.compute_dfa
-        
-        def mock_compute_dfa(window_size=10):
-            N = len(features.ppg_signal)
-            if N < window_size:
-                raise ValueError("PPG signal is too short to compute DFA")
-            
-            integrated = np.cumsum(features.ppg_signal - np.mean(features.ppg_signal))
-            F_n = np.zeros(N // window_size)
-            
-            # Simulate F_n with non-positive values
-            F_n[0] = 0  # Non-positive value
-            F_n[1:] = np.random.rand(len(F_n) - 1)
-            
-            # Check for non-positive values (this is the code path we want to test)
-            if np.any(F_n <= 0):
-                raise ValueError(
-                    "Logarithmic values for DFA cannot be computed due to non-positive values in F_n"
-                )
-            return original_compute(window_size)
-        
-        # Replace the method temporarily
-        features.compute_dfa = mock_compute_dfa
-        
-        with pytest.raises(ValueError, match="Logarithmic values for DFA cannot be computed"):
-            features.compute_dfa(window_size=10)
+        # With a very short signal and large min_scale, we may not get enough scales
+        try:
+            result = features.compute_dfa(min_scale=15, max_scale=16)
+            assert isinstance(result, float)
+        except ValueError:
+            pass

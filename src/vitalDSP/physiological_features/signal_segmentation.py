@@ -247,9 +247,10 @@ class SignalSegmentation:
         if min_distance > 1:
             peaks = peaks[np.diff(peaks, prepend=0) > min_distance]
 
+        all_points = np.concatenate(([0], peaks, [len(self.signal)]))
         segments = []
-        for i in range(len(peaks) - 1):
-            segments.append(self.signal[peaks[i] : peaks[i + 1]])
+        for i in range(len(all_points) - 1):
+            segments.append(self.signal[all_points[i] : all_points[i + 1]])
         return segments
 
     def ml_based_segmentation(self, model="change_detection"):
@@ -290,12 +291,12 @@ class SignalSegmentation:
             hidden_states = gmm.predict(self.signal.reshape(-1, 1))
             change_points = np.where(np.diff(hidden_states))[0] + 1
         elif model == "decision_tree":
-            labels = np.zeros(len(self.signal))
-            labels[: len(labels) // 2] = 1
-            dt = DecisionTreeClassifier()
-            dt.fit(self.signal.reshape(-1, 1), labels)
-            predictions = dt.predict(self.signal.reshape(-1, 1))
-            change_points = np.where(np.diff(predictions))[0] + 1
+            from sklearn.tree import DecisionTreeRegressor
+            dt = DecisionTreeRegressor(max_leaf_nodes=5)
+            X = np.arange(len(self.signal)).reshape(-1, 1)
+            dt.fit(X, self.signal)
+            predictions = dt.predict(X)
+            change_points = np.where(np.diff(predictions) != 0)[0] + 1
         elif model == "dtw":
             # Placeholder for a more complex DTW implementation
             change_points = np.array([len(self.signal) // 2])
@@ -309,10 +310,13 @@ class SignalSegmentation:
         else:
             raise ValueError("Unknown model type specified.")
 
+        change_points = np.concatenate(([0], change_points, [len(self.signal)]))
         segments = [
             self.signal[change_points[i] : change_points[i + 1]]
             for i in range(len(change_points) - 1)
         ]
+        if len(segments) == 0:
+            return [self.signal]
         return segments
 
     def custom_segmentation(self, custom_fn):

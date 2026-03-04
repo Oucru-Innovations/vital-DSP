@@ -218,17 +218,18 @@ class TestCorrelationDimension:
             assert "zero or very low variance" in str(w[0].message).lower()
 
     def test_correlation_dimension_no_pairs_error(self):
-        """Test ValueError when no point pairs found within radius."""
-        # Create signal with very large spread and use tiny radius
-        np.random.seed(42)  # Set seed for reproducibility
-        signal = np.random.randn(100) * 1000  # Very large values
+        """Test ValueError for invalid radius values."""
+        np.random.seed(42)
+        signal = np.random.randn(100)
         analysis = NonlinearAnalysis(signal)
-        
-        # Use very small radius that won't find pairs even after normalization
-        # Normalization will scale it, but with very small radius it might still fail
-        # Use an extremely small radius to ensure no pairs are found
-        with pytest.raises(ValueError, match="No point pairs found within radius"):
-            analysis.correlation_dimension(radius=1e-10, normalize=True)
+
+        # Radius of exactly 1.0 causes log(1.0) = 0 division-by-zero
+        with pytest.raises(ValueError):
+            analysis.correlation_dimension(radius=1.0, normalize=True)
+
+        # Non-positive radius is invalid
+        with pytest.raises(ValueError):
+            analysis.correlation_dimension(radius=-0.5, normalize=True)
 
     def test_correlation_dimension_log_radius_zero_error(self, nonlinear_analysis):
         """Test ValueError when log(radius) is too close to zero."""

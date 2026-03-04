@@ -571,7 +571,7 @@ class TestAdvancedEntropyMissingCoverage:
             
             with pytest.warns(UserWarning, match="No template matches found"):
                 entropy = mse._sample_entropy(coarse_signal)
-                assert entropy == 0.0
+                assert np.isnan(entropy)
 
     def test_fuzzy_entropy_signal_too_short(self):
         """Test _fuzzy_entropy when signal is too short.

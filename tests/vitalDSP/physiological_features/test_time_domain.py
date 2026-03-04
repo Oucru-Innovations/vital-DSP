@@ -12,7 +12,7 @@ def sample_nn_intervals():
 def test_sdnn(sample_nn_intervals):
     tdf = TimeDomainFeatures(sample_nn_intervals)
     result = tdf.compute_sdnn()
-    expected = np.std(sample_nn_intervals)
+    expected = np.std(sample_nn_intervals, ddof=1)
     assert np.isclose(result, expected), f"Expected {expected}, but got {result}"
 
 
@@ -36,7 +36,8 @@ def test_pnn50(sample_nn_intervals):
     tdf = TimeDomainFeatures(sample_nn_intervals)
     result = tdf.compute_pnn50()
     nn50 = tdf.compute_nn50()
-    expected = 100.0 * nn50 / len(sample_nn_intervals)
+    n_successive = len(sample_nn_intervals) - 1
+    expected = 100.0 * nn50 / n_successive if n_successive > 0 else 0.0
     assert np.isclose(result, expected), f"Expected {expected}, but got {result}"
 
 

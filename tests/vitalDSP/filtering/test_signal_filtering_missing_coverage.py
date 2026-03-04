@@ -344,32 +344,22 @@ class TestSignalFilteringBandpassMissingCoverage:
     """Tests for SignalFiltering bandpass method missing coverage (lines 910-915)."""
 
     def test_bandpass_cheby_type(self, sample_signal):
-        """Test bandpass with cheby filter type (line 910-911).
-        
-        Note: chebyshev method doesn't support band type, so we test that
-        bandpass raises an error when using cheby type, which exercises the code path.
-        """
+        """Test bandpass with cheby filter type."""
         sf = SignalFiltering(sample_signal)
-        # chebyshev doesn't support bandpass (btype="band"), so this should raise an error
-        # This tests the code path in bandpass that calls chebyshev
-        with pytest.raises((TypeError, ValueError)):
-            sf.bandpass(
-                lowcut=0.5, highcut=30, fs=256, order=4, filter_type="cheby"
-            )
+        result = sf.bandpass(
+            lowcut=0.5, highcut=30, fs=256, order=4, filter_type="cheby"
+        )
+        assert len(result) == len(sample_signal)
+        assert np.all(np.isfinite(result))
 
     def test_bandpass_elliptic_type(self, sample_signal):
-        """Test bandpass with elliptic filter type (line 912-913).
-        
-        Note: elliptic method doesn't support band type, so we test that
-        bandpass raises an error when using elliptic type, which exercises the code path.
-        """
+        """Test bandpass with elliptic filter type."""
         sf = SignalFiltering(sample_signal)
-        # elliptic doesn't support bandpass (btype="band"), so this should raise an error
-        # This tests the code path in bandpass that calls elliptic
-        with pytest.raises((TypeError, ValueError)):
-            sf.bandpass(
-                lowcut=0.5, highcut=30, fs=256, order=4, filter_type="elliptic"
-            )
+        result = sf.bandpass(
+            lowcut=0.5, highcut=30, fs=256, order=4, filter_type="elliptic"
+        )
+        assert len(result) == len(sample_signal)
+        assert np.all(np.isfinite(result))
 
     def test_bandpass_butter_type(self, sample_signal):
         """Test bandpass with butter filter type."""
@@ -392,40 +382,32 @@ class TestSignalFilteringBandpassMissingCoverage:
             )
 
     def test_bandpass_cheby_with_iterations(self, sample_signal):
-        """Test bandpass cheby with multiple iterations.
-        
-        Note: chebyshev method doesn't support band type, so we test that
-        bandpass raises an error when using cheby type with iterations.
-        """
+        """Test bandpass cheby with multiple iterations."""
         sf = SignalFiltering(sample_signal)
-        # chebyshev doesn't support bandpass, so this should raise an error
-        with pytest.raises((TypeError, ValueError)):
-            sf.bandpass(
-                lowcut=0.5,
-                highcut=30,
-                fs=256,
-                order=4,
-                filter_type="cheby",
-                iterations=2,
-            )
+        result = sf.bandpass(
+            lowcut=0.5,
+            highcut=30,
+            fs=256,
+            order=4,
+            filter_type="cheby",
+            iterations=2,
+        )
+        assert len(result) == len(sample_signal)
+        assert np.all(np.isfinite(result))
 
     def test_bandpass_elliptic_with_iterations(self, sample_signal):
-        """Test bandpass elliptic with multiple iterations.
-        
-        Note: elliptic method doesn't support band type, so we test that
-        bandpass raises an error when using elliptic type with iterations.
-        """
+        """Test bandpass elliptic with multiple iterations."""
         sf = SignalFiltering(sample_signal)
-        # elliptic doesn't support bandpass, so this should raise an error
-        with pytest.raises((TypeError, ValueError)):
-            sf.bandpass(
-                lowcut=0.5,
-                highcut=30,
-                fs=256,
-                order=4,
-                filter_type="elliptic",
-                iterations=2,
-            )
+        result = sf.bandpass(
+            lowcut=0.5,
+            highcut=30,
+            fs=256,
+            order=4,
+            filter_type="elliptic",
+            iterations=2,
+        )
+        assert len(result) == len(sample_signal)
+        assert np.all(np.isfinite(result))
 
 
 class TestSignalFilteringApplyIIRFilterMissingCoverage:
@@ -500,30 +482,20 @@ class TestSignalFilteringAdditionalCoverage:
         assert len(a) > 0
 
     def test_bandpass_cheby_calls_chebyshev(self, sample_signal):
-        """Test that bandpass with cheby type correctly calls chebyshev method.
-        
-        Note: chebyshev method doesn't support band type, so we test that
-        bandpass raises an error when using cheby type, which exercises the code path.
-        """
+        """Test that bandpass with cheby type correctly applies chebyshev filter."""
         sf = SignalFiltering(sample_signal)
-        # chebyshev doesn't support bandpass, so this should raise an error
-        # This tests that bandpass attempts to call chebyshev (exercising the code path)
-        with pytest.raises((TypeError, ValueError)):
-            sf.bandpass(
-                lowcut=0.5, highcut=30, fs=256, order=4, filter_type="cheby"
-            )
+        result = sf.bandpass(
+            lowcut=0.5, highcut=30, fs=256, order=4, filter_type="cheby"
+        )
+        assert len(result) == len(sample_signal)
+        assert np.all(np.isfinite(result))
 
     def test_bandpass_elliptic_calls_elliptic(self, sample_signal):
-        """Test that bandpass with elliptic type correctly calls elliptic method.
-        
-        Note: elliptic method doesn't support band type, so we test that
-        bandpass raises an error when using elliptic type, which exercises the code path.
-        """
+        """Test that bandpass with elliptic type correctly applies elliptic filter."""
         sf = SignalFiltering(sample_signal)
-        # elliptic doesn't support bandpass, so this should raise an error
-        # This tests that bandpass attempts to call elliptic (exercising the code path)
-        with pytest.raises((TypeError, ValueError)):
-            sf.bandpass(
-                lowcut=0.5, highcut=30, fs=256, order=4, filter_type="elliptic"
-            )
+        result = sf.bandpass(
+            lowcut=0.5, highcut=30, fs=256, order=4, filter_type="elliptic"
+        )
+        assert len(result) == len(sample_signal)
+        assert np.all(np.isfinite(result))
 

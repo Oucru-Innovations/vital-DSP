@@ -282,11 +282,18 @@ class TrendAnalysis:
         >>> decomposition['residual']
         array([-0.5,  0.5,  0. ,  0. ,  0. ,  0. ])
         """
-        trend = self.compute_moving_average(period)
-        detrended = self.signal[: len(trend)] - trend
+        n = len(self.signal)
+        half = period // 2
+        trend = np.full(n, np.nan)
+        for i in range(half, n - half):
+            end_offset = 1 if period % 2 == 1 else 0
+            trend[i] = np.mean(self.signal[i - half : i + half + end_offset])
+        trend[:half] = trend[half]
+        trend[n - half:] = trend[n - half - 1]
+        detrended = self.signal - trend
         seasonal = np.array([np.mean(detrended[i::period]) for i in range(period)])
-        seasonal = np.tile(seasonal, len(detrended) // period + 1)[: len(detrended)]
-        residual = detrended - seasonal
+        seasonal = np.tile(seasonal, n // period + 1)[:n]
+        residual = self.signal - trend - seasonal
         return {"trend": trend, "seasonal": seasonal, "residual": residual}
 
     def compute_trend_strength(self):
@@ -310,7 +317,10 @@ class TrendAnalysis:
         """
         linear_trend = self.compute_linear_trend()
         detrended_signal = self.signal - linear_trend
-        trend_strength = 1 - (np.var(detrended_signal) / np.var(self.signal))
+        signal_var = np.var(self.signal)
+        if signal_var == 0:
+            return 1.0
+        trend_strength = 1 - (np.var(detrended_signal) / signal_var)
         return trend_strength
 
     def detect_trend_reversal(self, window_size):

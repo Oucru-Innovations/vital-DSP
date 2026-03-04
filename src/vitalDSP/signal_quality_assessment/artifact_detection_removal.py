@@ -78,6 +78,8 @@ def z_score_artifact_detection(signal, z_threshold=3.0):
     """
     mean = np.mean(signal)
     std_dev = np.std(signal)
+    if std_dev == 0:
+        return np.array([])
     z_scores = np.abs((signal - mean) / std_dev)
     artifact_indices = np.where(z_scores > z_threshold)[0]
     return artifact_indices
@@ -109,6 +111,8 @@ def kurtosis_artifact_detection(signal, kurt_threshold=3.0):
     n = len(signal)
     mean = np.mean(signal)
     std_dev = np.std(signal)
+    if std_dev == 0:
+        return np.array([])
     kurtosis = np.sum(((signal - mean) / std_dev) ** 4) / n
     if kurtosis > kurt_threshold:
         artifact_indices = np.array([np.argmax(np.abs(signal))])
@@ -183,15 +187,15 @@ def wavelet_artifact_removal(signal, wavelet_func, level=3):
         coeffs.append(high_pass)
         current_signal = low_pass
 
-    # Zero out the highest frequency components (artifacts)
-    coeffs[-1] = np.zeros_like(coeffs[-1])
+    # Zero out the highest frequency detail coefficients (artifacts)
+    coeffs[0] = np.zeros_like(coeffs[0])
 
-    # Perform wavelet reconstruction
+    # Perform wavelet reconstruction using stored coefficients
     for i in range(level - 1, -1, -1):
-        low_pass, high_pass = wavelet_func(current_signal)
-        current_signal = low_pass + np.pad(
-            high_pass, (0, len(current_signal) - len(high_pass)), "constant"
-        )
+        high_pass = coeffs[i]
+        current_signal = current_signal + np.pad(
+            high_pass, (0, max(0, len(current_signal) - len(high_pass))), "constant"
+        )[: len(current_signal)]
 
     return current_signal
 
@@ -421,6 +425,10 @@ class ArtifactDetectionRemoval:
             return moving_average_artifact_removal(self.signal, window_size)
         elif method == "wavelet":
             wavelet_func = kwargs.get("wavelet_func", "db4")
+            if isinstance(wavelet_func, str):
+                from vitalDSP.transforms.wavelet_transform import WaveletTransform
+                wt = WaveletTransform(self.signal, wavelet=wavelet_func)
+                wavelet_func = lambda s: wt._wavelet_decompose(s)
             level = kwargs.get("level", 3)
             return wavelet_artifact_removal(self.signal, wavelet_func, level)
         elif method == "median":

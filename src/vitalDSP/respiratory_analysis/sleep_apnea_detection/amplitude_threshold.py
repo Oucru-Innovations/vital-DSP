@@ -23,6 +23,7 @@ Basic usage:
     >>> print(f'Processing result: {result}')
 """
 
+import numpy as np
 from vitalDSP.preprocess.preprocess_operations import preprocess_signal
 
 
@@ -69,7 +70,7 @@ def detect_apnea_amplitude(
         )
 
     # Identify segments where the signal amplitude is below the threshold
-    below_threshold = signal < threshold
+    below_threshold = np.abs(signal) < threshold
     apnea_events = []
     current_start = None
 

@@ -98,28 +98,33 @@ class PPGAutonomicFeatures:
 
     def compute_rsa(self):
         """
-        Computes Respiratory Sinus Arrhythmia (RSA) from the PPG signal.
-
-        RSA is measured by the difference in heart rate during inhalation and exhalation.
+        Computes Respiratory Sinus Arrhythmia (RSA) from the PPG signal
+        by bandpass filtering pulse-to-pulse intervals in the respiratory
+        frequency band (0.15-0.4 Hz).
 
         Returns:
-            float: RSA value (average difference in peak intervals).
+            float: RSA amplitude (std of respiratory-band pulse interval variability)
+                   in seconds.
         """
-        # peaks, _ = find_peaks(self.ppg_signal, distance=self.fs/2)
         peak_detector = PeakDetection(self.ppg_signal, method="ppg_first_derivative")
-        peaks = peak_detector.detect_peaks()  # Indices of peaks in the PPG signal
-        if len(peaks) < 2:
-            raise ValueError("No peaks detected in PPG signal")
+        peaks = peak_detector.detect_peaks()
+        if len(peaks) < 4:
+            raise ValueError("Not enough peaks detected in PPG signal for RSA")
 
         intervals = np.diff(peaks) / self.fs
-        inhalation_intervals = intervals[::2]
-        exhalation_intervals = intervals[1::2]
+        mean_interval = np.mean(intervals)
+        centered = intervals - mean_interval
 
-        if len(inhalation_intervals) == 0 or len(exhalation_intervals) == 0:
-            return 0.0
+        n = len(centered)
+        fft_vals = np.fft.rfft(centered)
+        freqs = np.fft.rfftfreq(n, d=mean_interval)
 
-        rsa = np.abs(np.mean(inhalation_intervals) - np.mean(exhalation_intervals))
-        return rsa
+        resp_mask = (freqs >= 0.15) & (freqs <= 0.4)
+        fft_filtered = np.zeros_like(fft_vals)
+        fft_filtered[resp_mask] = fft_vals[resp_mask]
+
+        respiratory_component = np.fft.irfft(fft_filtered, n=n)
+        return float(np.std(respiratory_component))
 
     def compute_fractal_dimension(self, k_max=10):
         """
@@ -142,7 +147,7 @@ class PPGAutonomicFeatures:
                 Lm = (
                     np.sum(np.abs(np.diff(self.ppg_signal[m:N:k])))
                     * (N - 1)
-                    / (((N - m) / k) * k)
+                    / (int((N - m) / k) * k)
                 )
                 Lmk.append(Lm)
             Lk[k - 1] = np.mean(Lmk)
@@ -158,41 +163,65 @@ class PPGAutonomicFeatures:
             float(fractal_dim) if fractal_dim > 0 else 0.001
         )  # Ensure valid float value
 
-    def compute_dfa(self, window_size=10):
+    def compute_dfa(self, min_scale=4, max_scale=None, num_scales=20):
         """
-        Computes the Detrended Fluctuation Analysis (DFA) of the PPG signal.
+        Computes the Detrended Fluctuation Analysis (DFA) of the PPG signal
+        using proper multi-scale analysis.
 
-        DFA is useful for measuring the complexity of time-series data.
+        DFA measures the fractal scaling properties by computing the fluctuation
+        function F(n) at multiple window sizes n, then fitting log(F) vs log(n).
 
         Args:
-            window_size (int): The window size for detrending (default is 10).
+            min_scale (int): Minimum window size (default 4).
+            max_scale (int): Maximum window size (default N//4).
+            num_scales (int): Number of scales to evaluate (default 20).
 
         Returns:
-            float: DFA value of the PPG signal.
+            float: DFA scaling exponent (alpha).
         """
         N = len(self.ppg_signal)
-        if N < window_size:
+        if N < 16:
             raise ValueError("PPG signal is too short to compute DFA")
 
+        if max_scale is None:
+            max_scale = N // 4
+
         integrated = np.cumsum(self.ppg_signal - np.mean(self.ppg_signal))
-        F_n = np.zeros(N // window_size)
 
-        for i in range(0, len(F_n)):
-            start = i * window_size
-            end = (i + 1) * window_size
-            x_range = np.arange(start, end)
-            poly_coeff = np.polyfit(x_range, integrated[start:end], 1)
-            trend = np.polyval(poly_coeff, x_range)
-            F_n[i] = np.sqrt(np.mean((integrated[start:end] - trend) ** 2))
+        scales = np.unique(
+            np.floor(np.logspace(np.log10(min_scale), np.log10(max_scale), num=num_scales))
+        ).astype(int)
 
-        # Handle potential negative or zero values in F_n before applying log
-        if np.any(F_n <= 0):
-            raise ValueError(
-                "Logarithmic values for DFA cannot be computed due to non-positive values in F_n"
-            )
+        fluctuations = []
+        valid_scales = []
 
-        dfa_value = np.polyfit(np.log(np.arange(1, len(F_n) + 1)), np.log(F_n), 1)[0]
-        return float(dfa_value) if dfa_value > 0 else 0.001  # Ensure valid float value
+        for scale in scales:
+            n_segments = N // scale
+            if n_segments < 2:
+                continue
+
+            truncated = integrated[: n_segments * scale]
+            segments = truncated.reshape((n_segments, scale))
+            x = np.arange(scale)
+
+            rms_values = np.zeros(n_segments)
+            for j in range(n_segments):
+                coeffs = np.polyfit(x, segments[j], 1)
+                trend = np.polyval(coeffs, x)
+                rms_values[j] = np.sqrt(np.mean((segments[j] - trend) ** 2))
+
+            mean_rms = np.mean(rms_values)
+            if mean_rms > 0:
+                fluctuations.append(mean_rms)
+                valid_scales.append(scale)
+
+        if len(valid_scales) < 2:
+            raise ValueError("Not enough valid scales to compute DFA")
+
+        log_scales = np.log(np.array(valid_scales, dtype=float))
+        log_fluct = np.log(np.array(fluctuations, dtype=float))
+        dfa_alpha = np.polyfit(log_scales, log_fluct, 1)[0]
+        return float(dfa_alpha) if dfa_alpha > 0 else 0.001
 
 
 # import pandas as pd

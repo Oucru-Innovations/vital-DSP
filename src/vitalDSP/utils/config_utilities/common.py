@@ -144,8 +144,9 @@ def find_peaks(
             if peaks and distance is not None and i - peaks[-1] < distance:
                 continue
             if prominence is not None:
-                left_base = np.min(signal[max(0, i - int(distance / 2)) : i])
-                right_base = np.min(signal[i : min(signal_len, i + int(distance / 2))])
+                prom_window = int(distance / 2) if distance is not None else max(1, signal_len // 10)
+                left_base = np.min(signal[max(0, i - prom_window) : i])
+                right_base = np.min(signal[i : min(signal_len, i + prom_window)])
                 if signal[i] - max(left_base, right_base) < prominence:
                     continue
             if width is not None:
@@ -162,9 +163,7 @@ def find_peaks(
 
 def filtfilt(b, a, signal):
     """
-    Apply a forward-backward filter to a signal.
-
-    This function applies a linear filter twice, once forward and once backward, to eliminate phase distortion.
+    Apply a forward-backward IIR/FIR filter to a signal for zero-phase filtering.
 
     Parameters
     ----------
@@ -178,7 +177,7 @@ def filtfilt(b, a, signal):
     Returns
     -------
     y : numpy.ndarray
-        The filtered signal.
+        The filtered signal with zero phase distortion.
 
     Examples
     --------
@@ -188,9 +187,46 @@ def filtfilt(b, a, signal):
     >>> filtered_signal = filtfilt(b, a, signal)
     >>> print(filtered_signal)
     """
-    y = np.convolve(signal, b, mode="same")
-    y = np.convolve(y[::-1], b, mode="same")
-    return y[::-1]
+
+    def _apply_iir(b, a, x):
+        """Apply an IIR filter using direct form II transposed."""
+        b = np.asarray(b, dtype=np.float64)
+        a = np.asarray(a, dtype=np.float64)
+        x = np.asarray(x, dtype=np.float64)
+
+        if a[0] != 1.0:
+            b = b / a[0]
+            a = a / a[0]
+
+        n = len(x)
+        nb = len(b)
+        na = len(a)
+        nfilt = max(nb, na)
+
+        if nfilt <= 1:
+            return b[0] * x
+
+        b_pad = np.zeros(nfilt)
+        a_pad = np.zeros(nfilt)
+        b_pad[:nb] = b
+        a_pad[:na] = a
+
+        y = np.zeros(n)
+        z = np.zeros(nfilt - 1)
+
+        for i in range(n):
+            y[i] = b_pad[0] * x[i] + z[0]
+            for j in range(nfilt - 2):
+                z[j] = b_pad[j + 1] * x[i] - a_pad[j + 1] * y[i] + z[j + 1]
+            z[nfilt - 2] = b_pad[nfilt - 1] * x[i] - a_pad[nfilt - 1] * y[i]
+
+        return y
+
+    # Forward pass
+    y = _apply_iir(b, a, signal)
+    # Backward pass (reverse, filter, reverse)
+    y = _apply_iir(b, a, y[::-1])[::-1]
+    return y
 
 
 def pearsonr(x, y):
@@ -232,6 +268,9 @@ def pearsonr(x, y):
     cov_xy = np.sum((x - mean_x) * (y - mean_y))
     std_x = np.sqrt(np.sum((x - mean_x) ** 2))
     std_y = np.sqrt(np.sum((y - mean_y) ** 2))
+
+    if std_x == 0 or std_y == 0:
+        return 0.0  # Correlation undefined for constant signal; return 0 (no correlation)
 
     correlation = cov_xy / (std_x * std_y)
     return correlation
@@ -323,22 +362,27 @@ def grangercausalitytests(data, max_lag, verbose=False):
     results = {}
 
     for lag in range(1, max_lag + 1):
-        x_lagged = lag_matrix(data[:, 0], lag)
-        y_lagged = lag_matrix(data[:, 1], lag)
+        y = data[lag:, 0]                       # Response: signal1 at times lag..n
+        y_lags = lag_matrix(data[:, 0], lag)    # Lagged signal1 (autoregressive terms)
+        x_lags = lag_matrix(data[:, 1], lag)    # Lagged signal2 (causal terms)
 
-        beta_y = np.linalg.lstsq(y_lagged, data[lag:, 0], rcond=None)[0]
-        beta_x = np.linalg.lstsq(x_lagged, data[lag:, 1], rcond=None)[0]
+        # Restricted model: regress signal1 on its own lags only
+        b_r = np.linalg.lstsq(y_lags, y, rcond=None)[0]
+        ssr_r = np.sum((y - y_lags @ b_r) ** 2)
 
-        ssr_full = np.sum((data[lag:, 0] - y_lagged @ beta_y) ** 2)
-        ssr_reduced = np.sum((data[lag:, 0] - x_lagged @ beta_x) ** 2)
+        # Unrestricted model: regress signal1 on its own lags + signal2's lags
+        xy_lags = np.hstack([y_lags, x_lags])
+        b_u = np.linalg.lstsq(xy_lags, y, rcond=None)[0]
+        ssr_u = np.sum((y - xy_lags @ b_u) ** 2)
 
-        df_full = n - 2 * lag - 1
-        f_statistic = ((ssr_reduced - ssr_full) / lag) / (ssr_full / df_full)
+        df_numerator = lag
+        df_denominator = max(len(y) - 2 * lag - 1, 1)
+        f_statistic = ((ssr_r - ssr_u) / df_numerator) / (ssr_u / df_denominator)
 
-        results[lag] = {"ssr_ftest": f_statistic}
+        results[lag] = {"ssr_ftest": f_statistic, "ssr_restricted": ssr_r, "ssr_unrestricted": ssr_u}
 
         if verbose:
-            logger.info(f"Lag: {lag}, F-statistic: {f_statistic}")
+            logger.info(f"Lag: {lag}, F-statistic: {f_statistic:.4f}")
 
     return results
 
@@ -368,13 +412,29 @@ def dtw_distance_windowed(x, y, window=None):
     dtw_matrix = np.full((len(x), len(y)), np.inf)
     dtw_matrix[0, 0] = 0
 
+    # Initialize first row within window.
+    # Initializes first row and column within the window to enable valid alignments
+    # starting at any (0, j) or (i, 0) position.
+    for j in range(1, min(len(y), window + 1)):
+        dtw_matrix[0, j] = dtw_matrix[0, j - 1] + (x[0] - y[j]) ** 2
+
+    # Initialize first column within window
+    for i in range(1, min(len(x), window + 1)):
+        dtw_matrix[i, 0] = dtw_matrix[i - 1, 0] + (x[i] - y[0]) ** 2
+
     for i in range(1, len(x)):
-        for j in range(max(1, i - window), min(len(y), i + window)):
+        for j in range(max(1, i - window), min(len(y), i + window + 1)):
+            if dtw_matrix[i, j] != np.inf:
+                continue  # Already initialized (first row/col)
             cost = (x[i] - y[j]) ** 2
-            dtw_matrix[i, j] = cost + min(
-                dtw_matrix[i - 1, j],  # Insertion
-                dtw_matrix[i, j - 1],  # Deletion
-                dtw_matrix[i - 1, j - 1],
-            )  # Match
+            neighbors = []
+            if dtw_matrix[i - 1, j] != np.inf:
+                neighbors.append(dtw_matrix[i - 1, j])
+            if dtw_matrix[i, j - 1] != np.inf:
+                neighbors.append(dtw_matrix[i, j - 1])
+            if dtw_matrix[i - 1, j - 1] != np.inf:
+                neighbors.append(dtw_matrix[i - 1, j - 1])
+            if neighbors:
+                dtw_matrix[i, j] = cost + min(neighbors)
 
     return np.sqrt(dtw_matrix[len(x) - 1, len(y) - 1])

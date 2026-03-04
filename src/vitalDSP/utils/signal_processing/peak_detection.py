@@ -168,13 +168,12 @@ class PeakDetection:
         >>> print(peaks)
         """
         # First derivative of the signal
-        # Step 1: Set adaptive height and prominence thresholds to isolate systolic peaks.
         mean_signal = np.mean(self.signal)
         std_signal = np.std(self.signal)
         height_threshold = mean_signal + (self.threshold_factor * std_signal)
         prominence_threshold = self.prominence
-        # Step 3: Minimum distance constraint (e.g., 30% of the sampling rate)
-        min_distance = max(self.distance, int(0.3 * self.fs))
+        default_distance = int(0.3 * self.fs)
+        min_distance = max(self.distance, default_distance) if self.distance is not None else default_distance
         # Step 4: Detect peaks based on height and prominence thresholds.
         peaks = find_peaks(
             self.signal,

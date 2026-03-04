@@ -188,7 +188,7 @@ def preprocess_signal(
         The type of filtering to apply. Options: 'bandpass', 'butterworth', 'chebyshev', 'elliptic', 'ignore'.
     lowcut : float, optional (default=0.1)
         The lower cutoff frequency for bandpass filtering.
-    highcut : float, optional (default=0.5)
+    highcut : float, optional (default=4.5)
         The upper cutoff frequency for bandpass filtering.
     order : int, optional (default=4)
         The order of the filter.
@@ -264,7 +264,7 @@ def preprocess_signal(
     # Additional preprocessing for respiratory signals (if respiratory_mode is True)
     if respiratory_mode:
         filtered_signal = respiratory_filtering(
-            signal, sampling_rate, lowcut, highcut, order
+            filtered_signal, sampling_rate, lowcut, highcut, order
         )
 
     # Apply noise reduction
@@ -368,14 +368,18 @@ def respiratory_filtering(signal, sampling_rate, lowcut=0.1, highcut=0.5, order=
                     signal, sampling_rate, lowcut, highcut, order - 1
                 )
             else:
-                # Last resort: return normalized signal
-                return (signal - np.mean(signal)) / np.std(signal)
+                std_val = np.std(signal)
+                if std_val == 0:
+                    return signal - np.mean(signal)
+                return (signal - np.mean(signal)) / std_val
 
         return filtered_signal
 
     except Exception as e:
-        # Fallback: return normalized signal if filtering fails
-        return (signal - np.mean(signal)) / np.std(signal)
+        std_val = np.std(signal)
+        if std_val == 0:
+            return signal - np.mean(signal)
+        return (signal - np.mean(signal)) / std_val
 
 
 def estimate_baseline(signal, fs, method="moving_average", window_size=5):
@@ -415,8 +419,10 @@ def estimate_baseline(signal, fs, method="moving_average", window_size=5):
         baseline = np.polyval(poly_coeff, x)
 
     elif method == "median_filter":
-        kernel_size = int(2 * window_size + 1)
-        # kernel_size=int(fs * window_size)
+        kernel_size = int(fs * window_size)
+        if kernel_size % 2 == 0:
+            kernel_size += 1
+        kernel_size = max(3, kernel_size)
         baseline = medfilt(signal, kernel_size=kernel_size)
 
     else:

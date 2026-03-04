@@ -311,8 +311,8 @@ class AnomalyDetection:
             neighbor_lrd = lrd[indices[i, 1 : n_neighbors + 1]]  # Exclude self
             lof[i] = np.mean(neighbor_lrd) / lrd[i]
 
-        # Anomalies are those points with LOF > 1 (indicating a potential outlier)
-        anomalies = np.where(lof > 1)[0]
+        # LOF > 1.5 threshold selected to reduce false positives from normal physiological variability.
+        anomalies = np.where(lof > 1.5)[0]
         return anomalies
 
     def _lof_anomaly_detection_fallback(self, n_neighbors):
@@ -328,8 +328,8 @@ class AnomalyDetection:
         # Sample-based approach to reduce complexity
         sample_size = min(1000, n_points)  # Limit sample size
         if n_points > sample_size:
-            # Random sampling
-            sample_indices = np.random.choice(n_points, sample_size, replace=False)
+            # Sort indices to preserve temporal ordering for valid delay embedding.
+            sample_indices = np.sort(np.random.choice(n_points, sample_size, replace=False))
             sample_signal = self.signal[sample_indices]
         else:
             sample_signal = self.signal
@@ -360,20 +360,20 @@ class AnomalyDetection:
         # Compute LRD
         lrd = np.zeros(n_sample)
         for i in range(n_sample):
+            neighbors = np.argsort(distances[i, :])[1:n_neighbors + 1]
             lrd[i] = 1 / (
-                np.mean(
-                    reachability_distances[i, np.argsort(distances[i, :])[:n_neighbors]]
-                )
+                np.mean(reachability_distances[i, neighbors])
                 + 1e-10
             )
 
         # Compute LOF
         lof = np.zeros(n_sample)
         for i in range(n_sample):
-            lof[i] = np.mean(lrd[np.argsort(distances[i, :])[:n_neighbors]]) / lrd[i]
+            neighbors = np.argsort(distances[i, :])[1:n_neighbors + 1]
+            lof[i] = np.mean(lrd[neighbors]) / lrd[i]
 
-        # Find anomalies in sample
-        sample_anomalies = np.where(lof > 1)[0]
+        # LOF > 1.5 threshold selected to reduce false positives from normal physiological variability.
+        sample_anomalies = np.where(lof > 1.5)[0]
 
         # Map back to original indices
         if n_points > sample_size:
@@ -405,10 +405,16 @@ class AnomalyDetection:
         >>> anomalies = anomaly_detector._fft_anomaly_detection(threshold=1.5)
         >>> print(anomalies)
         """
-        fft_result = np.fft.fft(self.signal)
-        magnitude = np.abs(fft_result)
-        anomalies = np.where(magnitude > threshold * np.mean(magnitude))[0]
-        return anomalies
+        fft_values = np.fft.fft(self.signal)
+        magnitude = np.abs(fft_values)
+        mean_magnitude = np.mean(magnitude)
+        anomalous_fft = np.where(magnitude > threshold * mean_magnitude, fft_values, 0)
+        anomaly_signal = np.abs(np.fft.ifft(anomalous_fft))
+        anomaly_std = np.std(anomaly_signal)
+        if anomaly_std == 0:
+            return np.array([], dtype=int)
+        anomaly_threshold = np.mean(anomaly_signal) + anomaly_std
+        return np.where(anomaly_signal > anomaly_threshold)[0]
 
     def _threshold_anomaly_detection(self, threshold):
         """
@@ -431,5 +437,5 @@ class AnomalyDetection:
         >>> anomalies = anomaly_detector._threshold_anomaly_detection(threshold=1.0)
         >>> print(anomalies)
         """
-        anomalies = np.where(self.signal > threshold)[0]
+        anomalies = np.where(np.abs(self.signal) > threshold)[0]
         return anomalies

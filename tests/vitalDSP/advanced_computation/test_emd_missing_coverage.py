@@ -50,7 +50,7 @@ class TestEMDLine159:
     """Test line 159: return zeros when len(x) < 2 in _interpolate"""
 
     def test_interpolate_with_insufficient_points(self):
-        """Test _interpolate returns zeros when len(x) < 2 (line 159)"""
+        """Test _interpolate returns constant when len(x) < 2"""
         signal = np.random.randn(50)
         emd = EMD(signal)
 
@@ -60,12 +60,12 @@ class TestEMDLine159:
 
         result = emd._interpolate(x, y)
 
-        # Line 159: should return zeros
-        expected = np.zeros(len(signal))
+        # Should return array filled with mean of available y values
+        expected = np.full(len(signal), 1.0)
         np.testing.assert_array_equal(result, expected)
 
     def test_interpolate_with_empty_array(self):
-        """Test _interpolate with empty arrays (line 159)"""
+        """Test _interpolate with empty arrays"""
         signal = np.random.randn(30)
         emd = EMD(signal)
 
@@ -75,8 +75,8 @@ class TestEMDLine159:
 
         result = emd._interpolate(x, y)
 
-        # Line 159: should return zeros
-        expected = np.zeros(len(signal))
+        # Should return array filled with 0 (default when no points)
+        expected = np.full(len(signal), 0.0)
         np.testing.assert_array_equal(result, expected)
 
     def test_interpolate_normal_case(self):

@@ -62,7 +62,7 @@ class RRTransformation:
     fs : int
         Sampling frequency of the signal.
     signal_type : str, optional
-        The type of the signal ('ecg' or 'ppg'). Default is 'ecg'.
+        The type of the signal ('ECG' or 'PPG'). Default is 'ECG'.
     options : dict, optional
         Options to customize the signal processing and RR interval computations.
 
@@ -89,7 +89,7 @@ class RRTransformation:
         fs : int
             Sampling frequency of the signal.
         signal_type : str, optional
-            The type of the signal ('ecg' or 'ppg'). Default is 'ecg'.
+            The type of the signal ('ECG' or 'PPG'). Default is 'ECG'.
         options : dict, optional
             Options to customize the signal processing and RR interval computations.
         """
@@ -237,11 +237,11 @@ class RRTransformation:
                     rr_intervals_filtered[i] = np.nan
 
         # Step 5: Reconsider trends using a running average
-        rr_intervals_filtered = self._reconsider_trends(rr_intervals_filtered)
+        rr_intervals_filtered = self._reconsider_trends(rr_intervals_filtered, original_values=rr_intervals)
 
         return rr_intervals_filtered
 
-    def _reconsider_trends(self, rr_intervals, window_size=5):
+    def _reconsider_trends(self, rr_intervals, window_size=5, original_values=None):
         """
         Reconsiders RR intervals that show a gradual trend (increase or decrease) and avoids marking them as invalid.
 
@@ -268,9 +268,9 @@ class RRTransformation:
         # If an RR interval is invalid, but close to the running mean, it could be a part of a trend
         for i in range(window_size, len(rr_intervals)):
             if np.isnan(rr_intervals[i]) and not np.isnan(running_mean[i]):
-                if np.abs(rr_intervals[i] - running_mean[i]) < 0.1 * running_mean[i]:
-                    # Reconsider this interval as valid
-                    rr_intervals_adaptive[i] = running_mean[i]
+                original_val = original_values[i] if original_values is not None else np.nan
+                if not np.isnan(original_val) and np.abs(original_val - running_mean[i]) < 0.1 * running_mean[i]:
+                    rr_intervals_adaptive[i] = original_val
 
         return rr_intervals_adaptive
 

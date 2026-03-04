@@ -313,7 +313,9 @@ class SignalQualityIndex:
                 segment, np.ones(moving_avg_window) / moving_avg_window, mode="valid"
             )
             wander = np.mean(np.abs(segment[: len(moving_average)] - moving_average))
-            max_signal = np.max(segment)
+            max_signal = np.max(np.abs(segment))
+            if max_signal == 0:
+                return 1.0
             sqi_value = 1 - (wander / max_signal)
             return sqi_value
 
@@ -525,7 +527,9 @@ class SignalQualityIndex:
         """
 
         def compute_sqi(segment):
-            probability_distribution = np.histogram(segment, bins=10, density=True)[0]
+            hist, _ = np.histogram(segment, bins=10)
+            hist = hist / hist.sum() if hist.sum() > 0 else hist
+            probability_distribution = hist
             entropy = -np.sum(
                 probability_distribution * np.log2(probability_distribution + 1e-8)
             )
@@ -777,9 +781,14 @@ class SignalQualityIndex:
         """
 
         def compute_sqi(segment):
-            signal_power = np.mean(segment**2)
-            noise_power = np.var(segment)
-            return 10 * np.log10(signal_power / (noise_power + 1e-8))
+            from scipy.ndimage import uniform_filter1d
+            smoothed = uniform_filter1d(segment.astype(float), size=max(3, len(segment) // 10))
+            signal_power = np.mean(smoothed ** 2)
+            noise_power = np.mean((segment - smoothed) ** 2)
+            if noise_power == 0:
+                return float('inf')
+            snr_value = 10 * np.log10(signal_power / noise_power)
+            return snr_value
 
         sqi_values, normal_segments, abnormal_segments = self._process_segments(
             compute_sqi,
@@ -906,26 +915,29 @@ class SignalQualityIndex:
         def compute_sqi(segment):
             rmssd = np.sqrt(np.mean(np.diff(segment) ** 2))
             mean_segment = np.mean(segment)
-            # Prevent division by zero
             if mean_segment == 0:
                 return 0.0
             normalized_rmssd = rmssd / mean_segment
             return normalized_rmssd
 
-        sqi_values, normal_segments, abnormal_segments = self._process_segments(
-            compute_sqi,
-            window_size,
-            step_size,
-            threshold=threshold,
-            threshold_type=threshold_type,
-            scale=scale,
-        )
+        original_signal = self.signal
+        try:
+            if rr_intervals is not None:
+                self.signal = np.array(rr_intervals)
+            sqi_values, normal_segments, abnormal_segments = self._process_segments(
+                compute_sqi,
+                window_size,
+                step_size,
+                threshold=threshold,
+                threshold_type=threshold_type,
+                scale=scale,
+            )
+        finally:
+            self.signal = original_signal
 
         if aggregate:
-            # Return mean SQI value for ease of use
             return float(np.mean(sqi_values))
         else:
-            # Return detailed results for advanced analysis
             return (sqi_values, normal_segments, abnormal_segments)
 
     def ppg_signal_quality_sqi(
@@ -1043,20 +1055,24 @@ class SignalQualityIndex:
             mean_power = np.mean(segment)
             return power_variability / (mean_power + 1e-2)
 
-        sqi_values, normal_segments, abnormal_segments = self._process_segments(
-            compute_sqi,
-            window_size,
-            step_size,
-            threshold=threshold,
-            threshold_type=threshold_type,
-            scale=scale,
-        )
+        original_signal = self.signal
+        try:
+            if band_power is not None:
+                self.signal = np.array(band_power)
+            sqi_values, normal_segments, abnormal_segments = self._process_segments(
+                compute_sqi,
+                window_size,
+                step_size,
+                threshold=threshold,
+                threshold_type=threshold_type,
+                scale=scale,
+            )
+        finally:
+            self.signal = original_signal
 
         if aggregate:
-            # Return mean SQI value for ease of use
             return float(np.mean(sqi_values))
         else:
-            # Return detailed results for advanced analysis
             return (sqi_values, normal_segments, abnormal_segments)
 
     def respiratory_signal_quality_sqi(

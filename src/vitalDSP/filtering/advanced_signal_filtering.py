@@ -204,7 +204,7 @@ class AdvancedSignalFiltering:
         x = initial_guess
         for i in range(iterations):
             grad = (
-                loss_func(self.signal - x, target + 1e-5)
+                loss_func(self.signal - (x + 1e-5), target)
                 - loss_func(self.signal - x, target)
             ) / 1e-5
             x -= learning_rate * grad
@@ -412,16 +412,25 @@ class AdvancedSignalFiltering:
             return np.average(filtered_signals, axis=0, weights=weights)
 
         elif method == "bagging":
-            # Initialize aggregated signal as zeros with the same shape as the input signal
-            aggregated_signal = np.zeros_like(self.signal, dtype=np.float64)
+            aggregated_signal_parts = []
+            original_signal = self.signal.copy()
             for _ in range(num_iterations):
                 sampled_indices = np.random.choice(
                     len(self.signal), size=len(self.signal), replace=True
                 )
                 sampled_signal = self.signal[sampled_indices]
+                self.signal = sampled_signal
                 for filter_func in filters:
-                    aggregated_signal += filter_func(sampled_signal)
-            return aggregated_signal / (len(filters) * num_iterations)
+                    try:
+                        result = filter_func()
+                        if isinstance(result, np.ndarray) and len(result) == len(sampled_signal):
+                            aggregated_signal_parts.append(result)
+                    except Exception:
+                        pass
+                self.signal = original_signal
+            if aggregated_signal_parts:
+                return np.mean(aggregated_signal_parts, axis=0)
+            return self.signal.copy()
 
         elif method == "boosting":
             # Cast the signal to float64 for numerical stability
@@ -546,7 +555,7 @@ class AdvancedSignalFiltering:
 
         return np.convolve(self.signal, weights, mode="same")
 
-    def adaptive_filtering(self, desired_signal, mu=0.5, filter_order=4):
+    def adaptive_filtering(self, desired_signal, mu=0.01, filter_order=4):
         """
         Apply an adaptive filter to the signal using the Least Mean Squares (LMS) algorithm.
 

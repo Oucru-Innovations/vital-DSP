@@ -759,7 +759,7 @@ class WaveformMorphology:
             Indices of the S valleys for each R peak.
         """
         if self.signal_type != "ECG":
-            raise ValueError("Q valleys can only be detected for ECG signals.")
+            raise ValueError("S valleys can only be detected for ECG signals.")
         if r_peaks is None:
             r_peaks = self.r_peaks
         if len(r_peaks) == 0:
@@ -943,6 +943,9 @@ class WaveformMorphology:
         if p_peaks is None:
             p_peaks = self.detect_p_peak(r_peaks=r_peaks, q_valleys=q_valleys)
         q_sessions = []
+
+        if len(q_valleys) == 0 or len(p_peaks) == 0:
+            return np.array([])
 
         # Trick to ensure that P peak comes before Q valley at the start
         if q_valleys[0] < p_peaks[0]:
@@ -1180,7 +1183,7 @@ class WaveformMorphology:
 
         # Calculate the derivative of the signal to identify flat regions
         signal_derivative = np.diff(self.waveform)
-        threshold = 0.02 * np.std(signal_derivative)  # Adaptive threshold for flatness
+        threshold = 0.15 * np.std(signal_derivative)  # Adaptive threshold for flatness
 
         for p, t in zip(p_peaks, t_peaks):
             # Detect flat line before the P peak
@@ -1334,7 +1337,7 @@ class WaveformMorphology:
         for i, peak in enumerate(peaks):
             if valleys is None:
                 # Baseline comparison only
-                amplitude = abs(self.waveform[peak] - baseline)
+                amplitude = abs(self.waveform[peak] - baseline[peak])
                 amplitudes.append(amplitude)
             elif i < len(valleys):
                 valley = valleys[i]
@@ -1564,8 +1567,7 @@ class WaveformMorphology:
         """
         if mode not in ["ECG", "PPG", "QRS", "Custom"]:
             raise ValueError(
-                "Duration can only be computed for ECG signals, PPG signals or QRS complexes.\
-                            Please use Custom or Custom"
+                "Duration can only be computed for ECG signals, PPG signals, QRS complexes, or Custom sessions."
             )
         if sessions is None:
             if mode == "ECG":
@@ -1641,20 +1643,22 @@ class WaveformMorphology:
             >>> print(wavelet_features)
         """
         if self.signal_type != "EEG":
-            raise ValueError("Wavelet features can only be computed for EEG signals.")
+            raise ValueError("EEG wavelet features can only be computed for EEG signals.")
+        signal = self.waveform
+        n = len(signal)
+        fft_vals = np.fft.rfft(signal)
+        freqs = np.fft.rfftfreq(n, d=1.0 / self.fs)
 
-        wavelet_coeffs = np.abs(np.convolve(self.waveform, np.ones(10), "same"))
+        def bandpower(fmin, fmax):
+            mask = (freqs >= fmin) & (freqs <= fmax)
+            return np.sum(np.abs(fft_vals[mask]) ** 2) / n
 
-        # Extract frequency bands based on wavelet decomposition
-        delta = wavelet_coeffs[: len(wavelet_coeffs) // 5]
-        theta = wavelet_coeffs[len(wavelet_coeffs) // 5 : len(wavelet_coeffs) // 4]
-        alpha = wavelet_coeffs[len(wavelet_coeffs) // 4 : len(wavelet_coeffs) // 3]
-
-        return {
-            "delta_power": np.sum(delta),
-            "theta_power": np.sum(theta),
-            "alpha_power": np.sum(alpha),
-        }
+        delta = bandpower(0.5, 4.0)
+        theta = bandpower(4.0, 8.0)
+        alpha = bandpower(8.0, 13.0)
+        beta = bandpower(13.0, 30.0)
+        gamma = bandpower(30.0, 100.0)
+        return {"delta": delta, "theta": theta, "alpha": alpha, "beta": beta, "gamma": gamma}
 
     def compute_slope(self, points=None, option=None, window=3, slope_unit="radians"):
         """
@@ -1992,7 +1996,7 @@ class WaveformMorphology:
         values : list
             List of values to summarize.
         summary_type : str
-            Summary type: 'mean', 'median', '2nd_quartile', '3rd_quartile', or 'full'.
+            Summary type: 'mean', 'median', 'q1', 'q3', or 'full'.
 
         Returns
         -------
@@ -2003,9 +2007,9 @@ class WaveformMorphology:
             return np.mean(values)
         elif summary_type == "median":
             return np.median(values)
-        elif summary_type == "2nd_quartile":
+        elif summary_type == "q1":
             return np.percentile(values, 25)
-        elif summary_type == "3rd_quartile":
+        elif summary_type == "q3":
             return np.percentile(values, 75)
         elif summary_type == "full":
             return values

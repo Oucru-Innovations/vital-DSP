@@ -201,14 +201,13 @@ def harmonic_distortion(signal, fundamental_freq, sampling_rate, harmonics=5):
     harmonic_amplitudes = []
     for i in range(2, harmonics + 1):
         harmonic_freq = i * fundamental_freq
-        harmonic_amplitude = np.max(
-            fft_spectrum[
-                np.where(
-                    (freqs >= harmonic_freq - 0.1) & (freqs <= harmonic_freq + 0.1)
-                )
-            ]
+        harmonic_indices = np.where(
+            (freqs >= harmonic_freq - 0.1) & (freqs <= harmonic_freq + 0.1)
         )
-        harmonic_amplitudes.append(harmonic_amplitude)
+        if len(harmonic_indices[0]) == 0:
+            harmonic_amplitudes.append(0.0)
+            continue
+        harmonic_amplitudes.append(np.max(fft_spectrum[harmonic_indices]))
 
     thd = np.sqrt(np.sum(np.square(harmonic_amplitudes))) / fundamental_amplitude * 100
     return thd

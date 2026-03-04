@@ -91,7 +91,7 @@ class HRVFeatures:
         signal_type : str, optional (default="PPG")
             The type of signal. Options: 'ECG', 'PPG', 'EEG'.
         fs : int, optional
-            The sampling frequency in Hz. Default is 1000 Hz.
+            The sampling frequency in Hz. Default is 100 Hz.
         """
         if nn_intervals is None:
             # Lazy import to avoid circular import
@@ -118,7 +118,7 @@ class HRVFeatures:
         if np.all(self.nn_intervals == 0):
             raise ValueError("NN intervals cannot contain all zeros.")
 
-        self.signal = np.array(signals)
+        self.signal = np.array(signals) if signals is not None else None
         self.fs = fs
 
     def compute_all_features(self, include_complex_methods=None, **kwargs):
@@ -175,8 +175,17 @@ class HRVFeatures:
                 features[feature] = np.nan
                 logger.error(f"Error computing {feature}: {e}")
 
+        # Interpolate NN intervals to uniform 4 Hz sampling for frequency analysis
+        nn_times = np.cumsum(self.nn_intervals) / 1000.0
+        nn_times = nn_times - nn_times[0]
+        if len(nn_times) > 1:
+            uniform_times = np.arange(0, nn_times[-1], 1.0 / 4.0)
+            nn_interp = np.interp(uniform_times, nn_times, self.nn_intervals)
+        else:
+            nn_interp = self.nn_intervals
+
         # Frequency-domain features
-        freq_features = FrequencyDomainFeatures(self.nn_intervals, fs=4)
+        freq_features = FrequencyDomainFeatures(nn_interp, fs=4)
         for feature, method in [
             # ("psd", freq_features.compute_psd),
             ("lf_power", freq_features.compute_lf),
@@ -195,56 +204,57 @@ class HRVFeatures:
                 logger.error(f"Error computing {feature}: {e}")
 
         # Nonlinear features
-        nonlinear_features = NonlinearFeatures(self.signal, self.fs)
-        for feature, method in [
-            # ("sample_entropy", nonlinear_features.compute_sample_entropy),
-            # ("approx_entropy", nonlinear_features.compute_approximate_entropy),
-            ("fractal_dimension", nonlinear_features.compute_fractal_dimension),
-            ("lyapunov_exponent", nonlinear_features.compute_lyapunov_exponent),
-            ("dfa", nonlinear_features.compute_dfa),
-            (
-                "poincare",
-                lambda: nonlinear_features.compute_poincare_features(),
-            ),
-            # ("recurrence", nonlinear_features.compute_recurrence_features),
-        ]:
-            try:
-                if feature == "poincare":
-                    poincare_result = method()
-                    features["poincare_sd1"] = poincare_result["sd1"]
-                    features["poincare_sd2"] = poincare_result["sd2"]
-                else:
-                    features[feature] = method()
-            except Exception as e:
-                features[feature] = np.nan
-                logger.error(f"Error computing {feature}: {e}")
+        if self.signal is not None:
+            nonlinear_features = NonlinearFeatures(self.nn_intervals, self.fs)
+            for feature, method in [
+                # ("sample_entropy", nonlinear_features.compute_sample_entropy),
+                # ("approx_entropy", nonlinear_features.compute_approximate_entropy),
+                ("fractal_dimension", nonlinear_features.compute_fractal_dimension),
+                ("lyapunov_exponent", nonlinear_features.compute_lyapunov_exponent),
+                ("dfa", nonlinear_features.compute_dfa),
+                (
+                    "poincare",
+                    lambda: nonlinear_features.compute_poincare_features(),
+                ),
+                # ("recurrence", nonlinear_features.compute_recurrence_features),
+            ]:
+                try:
+                    if feature == "poincare":
+                        poincare_result = method()
+                        features["poincare_sd1"] = poincare_result["sd1"]
+                        features["poincare_sd2"] = poincare_result["sd2"]
+                    else:
+                        features[feature] = method()
+                except Exception as e:
+                    features[feature] = np.nan
+                    logger.error(f"Error computing {feature}: {e}")
 
-        try:
-            if include_complex_methods:
-                features["sample_entropy"] = nonlinear_features.compute_sample_entropy(
-                    **kwargs
-                )
-                features["approximate_entropy"] = (
-                    nonlinear_features.compute_approximate_entropy(**kwargs)
-                )
-                recurrence_dict = nonlinear_features.compute_recurrence_features(
-                    **kwargs
-                )
-                features["recurrence_rate"] = recurrence_dict["recurrence_rate"]
-                features["determinism"] = recurrence_dict["determinism"]
-                features["laminarity"] = recurrence_dict["laminarity"]
-            else:
+            try:
+                if include_complex_methods:
+                    features["sample_entropy"] = nonlinear_features.compute_sample_entropy(
+                        **kwargs
+                    )
+                    features["approximate_entropy"] = (
+                        nonlinear_features.compute_approximate_entropy(**kwargs)
+                    )
+                    recurrence_dict = nonlinear_features.compute_recurrence_features(
+                        **kwargs
+                    )
+                    features["recurrence_rate"] = recurrence_dict["recurrence_rate"]
+                    features["determinism"] = recurrence_dict["determinism"]
+                    features["laminarity"] = recurrence_dict["laminarity"]
+                else:
+                    features["sample_entropy"] = None
+                    features["approximate_entropy"] = None
+                    features["recurrence_rate"] = None
+                    features["determinism"] = None
+                    features["laminarity"] = None
+            except Exception as e:
+                logger.error(f"Error computing complex features: {e}")
                 features["sample_entropy"] = None
                 features["approximate_entropy"] = None
                 features["recurrence_rate"] = None
                 features["determinism"] = None
                 features["laminarity"] = None
-        except Exception as e:
-            logger.error(f"Error computing complex features: {e}")
-            features["sample_entropy"] = None
-            features["approximate_entropy"] = None
-            features["recurrence_rate"] = None
-            features["determinism"] = None
-            features["laminarity"] = None
 
         return features

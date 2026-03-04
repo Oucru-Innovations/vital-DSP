@@ -151,7 +151,9 @@ class BandpassFilter:
         >>> print(filtered_signal)
         """
         b, a = self.signal_bypass(cutoff, order, a_pass, rp, rs, btype="low")
-        y = signal.lfilter(b, a, data)
+        if len(data) < 3 * max(len(b), len(a)):
+            return data
+        y = signal.filtfilt(b, a, data)
         return y
 
     def signal_highpass_filter(self, data, cutoff, order=5, a_pass=3, rp=4, rs=40):
@@ -320,13 +322,13 @@ class SignalFiltering:
             raise ValueError("window_length is too small for the polynomial order")
 
         half_window = (window_length - 1) // 2
-        b = np.asmatrix(
+        b = np.array(
             [
                 [k**i for i in range(polyorder + 1)]
                 for k in range(-half_window, half_window + 1)
             ]
         )
-        m = np.linalg.pinv(b).A[0]
+        m = np.linalg.pinv(b)[0]
         firstvals = signal[0] - np.abs(signal[1 : half_window + 1][::-1] - signal[0])
         lastvals = signal[-1] + np.abs(signal[-half_window - 1 : -1][::-1] - signal[-1])
         signal = np.concatenate((firstvals, signal, lastvals))
@@ -541,9 +543,7 @@ class SignalFiltering:
             order = optimized_params["order"]
             iterations = optimized_params["iterations"]
 
-        nyquist = 0.5 * fs
-        normal_cutoff = cutoff / nyquist
-        b, a = self.butter(order, normal_cutoff, btype=btype, fs=fs)
+        b, a = self.butter(order, cutoff, btype=btype, fs=fs)
         filtered_signal = self.signal.copy()
 
         for _ in range(iterations):
@@ -577,15 +577,7 @@ class SignalFiltering:
         >>> b, a = SignalFiltering().butter(4, 0.3, btype='low', fs=1.0)
         >>> print(b, a)
         """
-        # Check if cutoff is already normalized (between 0 and 1)
-        if np.all(np.array(cutoff) <= 1.0):
-            # Cutoff is already normalized
-            normalized_cutoff = np.array(cutoff)
-        else:
-            # Cutoff needs normalization
-            nyquist = 0.5 * fs
-            normalized_cutoff = np.array(cutoff) / nyquist
-        b, a = signal.butter(order, normalized_cutoff, btype=btype, analog=False)
+        b, a = signal.butter(order, cutoff, btype=btype, analog=False, fs=fs)
         # if btype == "low":
         #     poles = np.exp(
         #         1j * np.pi * (np.arange(1, 2 * order + 1, 2) + order - 1) / (2 * order)
@@ -635,29 +627,12 @@ class SignalFiltering:
         filtered_signal : numpy.ndarray
             The filtered signal.
         """
-        nyquist = 0.5 * fs
-        normal_cutoff = cutoff / nyquist
-        eps = np.sqrt(10 ** (ripple / 10) - 1)
-        k = np.arange(1, 2 * order, 2)
-        poles = np.exp(1j * np.pi * (k + order - 1) / (2 * order))
-        poles = poles[np.real(poles) < 0]
-        poles = np.concatenate([poles, -poles.conj()])
-        poles /= eps ** (1 / order)
-        if btype == "low":
-            poles = poles * normal_cutoff
-        elif btype == "high":
-            poles = normal_cutoff / poles
-        z = np.zeros(0)
-        b, a = np.poly(z), np.poly(poles)
-        b = np.atleast_1d(b)
-        a = np.atleast_1d(a)
-        b = b / np.abs(np.polyval(b, 1))
-        a = a / np.abs(np.polyval(a, 1))
+        rp = ripple if ripple >= 1 else 0.5
+        b, a = signal.cheby1(order, rp, cutoff, btype=btype, fs=fs)
 
         filtered_signal = self.signal.copy()
-
         for _ in range(iterations):
-            filtered_signal = self._apply_iir_filter(b, a, filtered_signal)
+            filtered_signal = signal.filtfilt(b, a, filtered_signal)
 
         return filtered_signal
 
@@ -696,38 +671,13 @@ class SignalFiltering:
         filtered_signal : numpy.ndarray
             The filtered signal.
         """
-        nyquist = 0.5 * fs
-        normal_cutoff = cutoff / nyquist
-
-        eps = np.sqrt(10 ** (ripple / 10) - 1)
-        k = eps / np.sqrt(1 + eps**2)
-
-        poles = []
-        for i in range(1, order + 1):
-            beta = np.arcsin(k)
-            theta = (2 * i - 1) * np.pi / (2 * order)
-            poles.append(np.exp(1j * (theta + beta)))
-            poles.append(np.exp(1j * (theta - beta)))
-
-        poles = np.array(poles)
-        poles = poles[np.real(poles) < 0]
-
-        if btype == "low":
-            poles = poles * normal_cutoff
-        elif btype == "high":
-            poles = normal_cutoff / poles
-
-        z = np.zeros(0)
-        b, a = np.poly(z), np.poly(poles)
-        b = np.atleast_1d(b)
-        a = np.atleast_1d(a)
-        b = b / np.abs(np.polyval(b, 1))
-        a = a / np.abs(np.polyval(a, 1))
+        rp = ripple if ripple >= 1 else 0.5
+        rs = stopband_attenuation if stopband_attenuation >= 1 else 40
+        b, a = signal.ellip(order, rp, rs, cutoff, btype=btype, fs=fs)
 
         filtered_signal = self.signal.copy()
-
         for _ in range(iterations):
-            filtered_signal = self._apply_iir_filter(b, a, filtered_signal)
+            filtered_signal = signal.filtfilt(b, a, filtered_signal)
 
         return filtered_signal
 
@@ -908,11 +858,9 @@ class SignalFiltering:
             if filter_type == "butter":
                 b, a = self.butter(order, [lowcut, highcut], btype="band", fs=fs)
             elif filter_type == "cheby":
-                # chebyshev signature: (cutoff, fs, order=4, btype="low", ...)
-                b, a = self.chebyshev([lowcut, highcut], fs, order=order, btype="band")
+                b, a = signal.cheby1(order, 1, [lowcut, highcut], btype='band', fs=fs)
             elif filter_type == "elliptic":
-                # elliptic signature: (cutoff, fs, order=4, btype="low", ...)
-                b, a = self.elliptic([lowcut, highcut], fs, order=order, btype="band")
+                b, a = signal.ellip(order, 1, 40, [lowcut, highcut], btype='band', fs=fs)
             else:
                 raise ValueError(
                     "Unsupported filter type. Choose from 'butter', 'cheby', or 'elliptic'."

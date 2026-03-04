@@ -27,7 +27,7 @@ Basic usage:
 """
 
 import numpy as np
-from scipy.signal import find_peaks
+from vitalDSP.utils.config_utilities.common import find_peaks
 
 
 class PPGLightFeatureExtractor:
@@ -95,7 +95,9 @@ class PPGLightFeatureExtractor:
             ir_dc = np.mean(ir_segment)
             red_dc = np.mean(red_segment)
 
-            # SpO2 calculation
+            # SpO2 calculation — skip segment if AC or DC component is zero
+            if ir_ac == 0 or ir_dc == 0 or red_dc == 0:
+                continue
             ratio = (red_ac / red_dc) / (ir_ac / ir_dc)
             spo2 = np.clip(110 - 25 * ratio, 0, 100)  # Clip between 0 and 100
             # spo2 = 110 - 25 * ratio  # Empirical constants (A=110, B=25)
@@ -144,7 +146,9 @@ class PPGLightFeatureExtractor:
 
     def calculate_respiratory_rate(self, window_seconds=60):
         """
-        Calculate the Respiratory Rate (RR) from a PPG signal by detecting low-frequency oscillations.
+        Calculate the Respiratory Rate (RR) from a PPG signal by isolating
+        the respiratory modulation via bandpass filtering in the respiratory
+        frequency band (0.1-0.5 Hz / 6-30 breaths per minute).
 
         Parameters:
         -----------
@@ -168,19 +172,27 @@ class PPGLightFeatureExtractor:
                 break
             segment = self.ir_signal[start:end]
 
-            # Extract low-frequency component (respiratory component)
-            low_freq_signal = segment - np.mean(segment)
-            peaks, _ = find_peaks(
-                low_freq_signal, distance=self.sampling_freq // 2
-            )  # Detect respiratory peaks
+            # FFT-based bandpass filter to isolate respiratory component (0.1-0.5 Hz)
+            n = len(segment)
+            fft_vals = np.fft.rfft(segment - np.mean(segment))
+            freqs = np.fft.rfftfreq(n, d=1.0 / self.sampling_freq)
 
-            if len(peaks) > 0:
+            resp_mask = (freqs >= 0.1) & (freqs <= 0.5)
+            fft_filtered = np.zeros_like(fft_vals)
+            fft_filtered[resp_mask] = fft_vals[resp_mask]
+            respiratory_signal = np.fft.irfft(fft_filtered, n=n)
+
+            # Minimum distance between respiratory peaks: ~1.2 seconds (50 bpm max)
+            min_dist = max(1, int(1.2 * self.sampling_freq))
+            peaks = find_peaks(respiratory_signal, distance=min_dist)
+
+            if len(peaks) > 1:
                 breaths_per_minute = len(peaks) * (60 / window_seconds)
             else:
-                breaths_per_minute = 0  # Assign 0 if no peaks are detected
+                breaths_per_minute = 0
             rr_values.append(breaths_per_minute)
             timestamps.append(start / self.sampling_freq)
-        # Ensure that rr_values is always non-empty, even if no peaks are found
+
         if len(rr_values) == 0:
             rr_values.append(0)
             timestamps.append(0)

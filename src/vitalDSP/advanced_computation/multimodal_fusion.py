@@ -161,7 +161,7 @@ class MultimodalFusion:
                 "Weights must be provided and must match the number of signals."
             )
 
-        fused_signal = np.zeros_like(self.signals[0])
+        fused_signal = np.zeros(len(self.signals[0]), dtype=float)
         for signal, weight in zip(self.signals, weights):
             fused_signal += weight * signal
         return fused_signal

@@ -98,8 +98,9 @@ class EnergyAnalysis:
             >>> spectral_energy = ea.compute_spectral_energy()
             >>> print(f"Spectral Energy: {spectral_energy}")
         """
-        f, psd = welch(self.signal, fs=self.fs, nperseg=len(self.signal) // 4)
-        spectral_energy = np.sum(psd)
+        nperseg = max(1, len(self.signal) // 4)
+        f, psd = welch(self.signal, fs=self.fs, nperseg=nperseg)
+        spectral_energy = np.trapz(psd, f)
         return spectral_energy
 
     def compute_band_energy(self, low_freq, high_freq):
@@ -119,9 +120,12 @@ class EnergyAnalysis:
             >>> band_energy = ea.compute_band_energy(8, 12)  # Alpha band (8-12 Hz)
             >>> print(f"Band Energy (8-12 Hz): {band_energy}")
         """
-        f, psd = welch(self.signal, fs=self.fs, nperseg=len(self.signal) // 4)
-        band_psd = psd[(f >= low_freq) & (f <= high_freq)]
-        band_energy = np.sum(band_psd)
+        nperseg = max(1, len(self.signal) // 4)
+        f, psd = welch(self.signal, fs=self.fs, nperseg=nperseg)
+        band_mask = (f >= low_freq) & (f <= high_freq)
+        f_band = f[band_mask]
+        band_psd = psd[band_mask]
+        band_energy = np.trapz(band_psd, f_band) if len(f_band) > 1 else np.sum(band_psd)
         return band_energy
 
     def compute_qrs_energy(self, r_peaks):
@@ -142,10 +146,10 @@ class EnergyAnalysis:
         qrs_energy = 0.0
         for r_peak in r_peaks:
             qrs_segment = self.signal[
-                max(0, r_peak - int(self.fs * 0.02)) : min(
-                    len(self.signal), r_peak + int(self.fs * 0.02)
+                max(0, r_peak - int(self.fs * 0.06)) : min(
+                    len(self.signal), r_peak + int(self.fs * 0.06)
                 )
-            ]  # 20ms before and after R peak
+            ]  # 60ms before and after R peak (standard QRS width)
             qrs_energy += np.sum(qrs_segment**2)
         return qrs_energy
 

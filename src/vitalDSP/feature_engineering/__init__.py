@@ -40,7 +40,7 @@ Morphology analysis:
 
 from .ecg_autonomic_features import ECGExtractor
 from .ppg_autonomic_features import PPGAutonomicFeatures
-from .ecg_ppg_synchronyzation_features import ECGPPGSynchronization
+from .ecg_ppg_synchronization_features import ECGPPGSynchronization
 from .morphology_features import PhysiologicalFeatureExtractor
 from .ppg_light_features import PPGLightFeatureExtractor
 

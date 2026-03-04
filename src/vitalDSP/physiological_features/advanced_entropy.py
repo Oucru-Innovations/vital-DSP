@@ -405,15 +405,15 @@ class MultiScaleEntropy:
         A = _count_matches(self.m + 1)  # Matches of length m+1
 
         # Calculate SampEn
-        if B == 0 or A == 0:
-            # No matches found - signal is very irregular
-            # Return maximum entropy (conventional choice)
+        if B == 0:
             warnings.warn(
-                "No template matches found. Signal may be too short or too irregular. "
-                "Returning 0.",
+                "No template matches found at embedding dimension m. "
+                "Signal may be too short or tolerance too small. Returning NaN.",
                 UserWarning,
             )
-            return 0.0
+            return float('nan')
+        if A == 0:
+            return float('inf')
 
         # Sample Entropy = -ln(A/B)
         sampen = -np.log(A / B)
@@ -745,14 +745,19 @@ class MultiScaleEntropy:
                 rcmse_values.append(0.0)
                 continue
 
-            # Create overlapping coarse-grained series
-            coarse_signals = []
-            for start_idx in range(n_windows):
-                window = self.signal[start_idx : start_idx + scale]
-                coarse_value = np.mean(window)
-                coarse_signals.append(coarse_value)
+            # Proper RCMSE: create tau non-overlapping coarse-grained series
+            # with multiple starting offsets, then pool all values
+            all_coarse = []
+            for k in range(scale):
+                for j in range((n - k) // scale):
+                    start = k + j * scale
+                    end = start + scale
+                    all_coarse.append(np.mean(self.signal[start:end]))
 
-            coarse_signal = np.array(coarse_signals)
+            coarse_signal = np.array(all_coarse)
+            if len(coarse_signal) < self.m + 2:
+                rcmse_values.append(0.0)
+                continue
 
             try:
                 entropy = entropy_func(coarse_signal)

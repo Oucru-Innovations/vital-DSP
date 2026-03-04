@@ -255,7 +255,7 @@ class EMD:
         This method uses a simple comparison to identify peaks where a point is higher than its neighboring points.
         """
         peaks = (
-            np.where((signal[1:-1] > signal[:-2]) & (signal[1:-1] > signal[2:]))[0] + 1
+            np.where((signal[1:-1] >= signal[:-2]) & (signal[1:-1] > signal[2:]))[0] + 1
         )
         return peaks
 
@@ -279,7 +279,18 @@ class EMD:
         -----
         Linear interpolation is used to create the envelope from the peaks or valleys.
         """
-        if len(x) < 2:  # Not enough points to interpolate
-            return np.zeros(len(self.signal))
-        interpolated = np.interp(np.arange(len(self.signal)), x, y)
-        return interpolated
+        if len(x) < 2:
+            return np.full(len(self.signal), np.mean(y) if len(y) > 0 else 0, dtype=float)
+        # Add boundary mirroring
+        x_ext = np.concatenate(([0], x, [len(self.signal) - 1]))
+        y_ext = np.concatenate(([y[0]], y, [y[-1]]))
+        # Remove duplicate boundary indices
+        _, unique_idx = np.unique(x_ext, return_index=True)
+        x_ext = x_ext[unique_idx]
+        y_ext = y_ext[unique_idx]
+        try:
+            from scipy.interpolate import CubicSpline
+            cs = CubicSpline(x_ext, y_ext, bc_type='natural')
+            return cs(np.arange(len(self.signal)))
+        except Exception:
+            return np.interp(np.arange(len(self.signal)), x_ext, y_ext)

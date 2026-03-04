@@ -50,17 +50,19 @@ def sliding_window_snr(signal, window_size=100, step_size=50):
     >>> snr_estimates = sliding_window_snr(signal)
     >>> print(snr_estimates)
     """
+    from scipy.ndimage import uniform_filter1d
     snr_estimates = []
     for i in range(0, len(signal) - window_size + 1, step_size):
         window_signal = signal[i : i + window_size]
-        signal_power = np.mean(window_signal**2)
-        noise_power = np.var(window_signal)
+        smoothed = uniform_filter1d(window_signal.astype(float), size=max(3, len(window_signal) // 5))
+        signal_power = np.mean(smoothed ** 2)
+        noise_power = np.mean((window_signal - smoothed) ** 2)
 
-        if noise_power == 0:  # Handle division by zero
-            snr = float("inf")
-        else:
-            snr = 10 * np.log10(signal_power / noise_power)
+        if noise_power == 0:
+            snr_estimates.append(float('inf'))
+            continue
 
+        snr = 10 * np.log10(signal_power / noise_power)
         snr_estimates.append(snr)
     return np.array(snr_estimates)
 
@@ -91,8 +93,7 @@ def adaptive_threshold_snr(signal, threshold=0.5):
     signal_segments = signal[np.abs(signal) >= threshold]
 
     if len(signal_segments) == 0 or len(noise_segments) == 0:
-        # Avoid division by zero and return a sentinel value
-        return float("inf") if len(signal_segments) == 0 else -float("inf")
+        return -float("inf") if len(signal_segments) == 0 else float("inf")
 
     signal_power = np.mean(signal_segments**2)
     noise_power = np.mean(noise_segments**2)
@@ -130,19 +131,20 @@ def recursive_snr_estimation(signal, alpha=0.9):
     >>> print(snr_estimates)
     """
     snr_estimates = []
-    avg_signal_power = 0
-    avg_noise_power = 0
+    signal_estimate = 0
+    noise_estimate = 0
 
-    mean_signal = np.mean(signal)
+    avg_mean = signal[0]
 
-    for x in signal:
-        avg_signal_power = alpha * avg_signal_power + (1 - alpha) * x**2
-        avg_noise_power = alpha * avg_noise_power + (1 - alpha) * (x - mean_signal) ** 2
+    for i, x in enumerate(signal):
+        avg_mean = alpha * avg_mean + (1 - alpha) * x
+        noise_estimate = (1 - alpha) * noise_estimate + alpha * (x - avg_mean) ** 2
+        signal_estimate = (1 - alpha) * signal_estimate + alpha * x ** 2
 
-        if avg_noise_power == 0:  # Handle division by zero
+        if noise_estimate == 0:
             snr = float("inf")
         else:
-            snr = 10 * np.log10(avg_signal_power / avg_noise_power)
+            snr = 10 * np.log10(signal_estimate / noise_estimate)
 
         snr_estimates.append(snr)
 

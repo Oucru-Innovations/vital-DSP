@@ -167,7 +167,7 @@ def _import_vitaldsp_modules():
         PPGAutonomicFeatures = None
 
     try:
-        from vitalDSP.feature_engineering.ecg_ppg_synchronyzation_features import (
+        from vitalDSP.feature_engineering.ecg_ppg_synchronization_features import (
             ECGPPGSynchronization,
         )
 

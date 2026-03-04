@@ -130,21 +130,21 @@ class KalmanFilter:
             raise ValueError("Measurement covariance must be 2-dimensional")
 
         # Check for positive definiteness of covariance matrices
-        if not np.all(np.linalg.eigvals(initial_covariance) > 0):
+        if not np.all(np.linalg.eigvalsh(initial_covariance) > 0):
             raise ValueError("Initial covariance must be positive definite")
 
-        if not np.all(np.linalg.eigvals(process_covariance) > 0):
+        if not np.all(np.linalg.eigvalsh(process_covariance) > 0):
             raise ValueError("Process covariance must be positive definite")
 
-        if not np.all(np.linalg.eigvals(measurement_covariance) > 0):
+        if not np.all(np.linalg.eigvalsh(measurement_covariance) > 0):
             raise ValueError("Measurement covariance must be positive definite")
 
     def _check_numerical_stability(self):
         """Check for potential numerical stability issues."""
         # Check for very small eigenvalues that could cause numerical issues
-        initial_eigenvals = np.linalg.eigvals(self.covariance)
-        process_eigenvals = np.linalg.eigvals(self.process_covariance)
-        measurement_eigenvals = np.linalg.eigvals(self.measurement_covariance)
+        initial_eigenvals = np.linalg.eigvalsh(self.covariance)
+        process_eigenvals = np.linalg.eigvalsh(self.process_covariance)
+        measurement_eigenvals = np.linalg.eigvalsh(self.measurement_covariance)
 
         min_eigenval = min(
             np.min(initial_eigenvals),

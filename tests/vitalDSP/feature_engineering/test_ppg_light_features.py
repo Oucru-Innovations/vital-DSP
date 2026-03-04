@@ -203,7 +203,7 @@ class TestPPGLightFeaturesMissingCoverage:
         ppg_extractor = PPGLightFeatureExtractor(ir_signal, sampling_freq=sampling_freq)
         
         # Mock find_peaks to return no peaks
-        with patch('vitalDSP.feature_engineering.ppg_light_features.find_peaks', return_value=(np.array([]), {})):
+        with patch('vitalDSP.feature_engineering.ppg_light_features.find_peaks', return_value=np.array([])):
             rr, times_rr = ppg_extractor.calculate_respiratory_rate(window_seconds=window_seconds)
             
             assert len(rr) > 0

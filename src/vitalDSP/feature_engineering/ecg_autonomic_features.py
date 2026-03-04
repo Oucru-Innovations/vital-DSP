@@ -107,35 +107,104 @@ class ECGExtractor:
             raise ValueError("No R-peaks detected in ECG signal")
         return r_peaks
 
+    def _find_p_onset(self, p_peak, search_start, derivative):
+        """Find P-wave onset by looking for the last derivative zero-crossing
+        before the P-peak, or fall back to a percentage-based boundary."""
+        onset = search_start
+        if p_peak > search_start and p_peak < len(derivative):
+            seg_deriv = derivative[search_start:p_peak]
+            if len(seg_deriv) > 0:
+                zero_crossings = np.where(np.diff(np.sign(seg_deriv)))[0]
+                if len(zero_crossings) > 0:
+                    onset = search_start + zero_crossings[-1]
+                else:
+                    # Fallback: use the point of minimum absolute derivative
+                    onset = search_start + np.argmin(np.abs(seg_deriv))
+        return onset
+
+    def _pair_p_peaks_q_valleys(self, p_peaks, q_valleys):
+        """Pair each P-peak with the nearest Q-valley that follows it."""
+        pairs = []
+        q_idx = 0
+        for p in p_peaks:
+            while q_idx < len(q_valleys) and q_valleys[q_idx] <= p:
+                q_idx += 1
+            if q_idx < len(q_valleys):
+                pairs.append((p, q_valleys[q_idx]))
+        return pairs
+
     def compute_p_wave_duration(self, r_peaks=None):
         """
-        Computes the P-wave duration based on R-peak detection.
+        Computes the P-wave duration by finding the onset and offset
+        around each detected P-peak.
 
         Returns:
-            float: Duration of P-wave in seconds.
+            float: Mean duration of P-waves in seconds.
         """
         if r_peaks is None:
-            r_peaks = self.detect_r_peaks()  # Detect R-peaks first
-        p_waves = self.morphology.detect_q_session(r_peaks)
-        if p_waves.size == 0:
+            r_peaks = self.detect_r_peaks()
+        q_valleys = self.morphology.detect_q_valley(r_peaks=r_peaks)
+        p_peaks = self.morphology.detect_p_peak(
+            r_peaks=r_peaks, q_valleys=q_valleys
+        )
+        if len(p_peaks) == 0:
             return 0.0
-        durations = [(end - start) / self.fs for start, end in p_waves]
-        return np.mean(durations)
+
+        pairs = self._pair_p_peaks_q_valleys(p_peaks, q_valleys)
+        if len(pairs) == 0:
+            return 0.0
+
+        durations = []
+        derivative = np.diff(self.ecg_signal)
+        for p_peak, q_valley in pairs:
+            search_start = max(0, p_peak - int(self.fs * 0.12))
+            onset = self._find_p_onset(p_peak, search_start, derivative)
+
+            offset = q_valley
+            if q_valley > p_peak and p_peak < len(derivative):
+                seg_deriv = derivative[p_peak:q_valley]
+                if len(seg_deriv) > 0:
+                    zero_crossings = np.where(np.diff(np.sign(seg_deriv)))[0]
+                    if len(zero_crossings) > 0:
+                        offset = p_peak + zero_crossings[0]
+                    else:
+                        offset = p_peak + np.argmin(np.abs(seg_deriv))
+
+            if offset > onset:
+                durations.append((offset - onset) / self.fs)
+
+        return np.mean(durations) if durations else 0.0
 
     def compute_pr_interval(self, r_peaks=None):
         """
-        Computes the PR interval (P-wave to QRS onset).
+        Computes the PR interval from P-wave onset to QRS onset (Q-valley).
 
         Returns:
-            float: PR interval in seconds.
+            float: Mean PR interval in seconds.
         """
         if r_peaks is None:
-            r_peaks = self.detect_r_peaks()  # Detect R-peaks first
-        pr_intervals = self.morphology.detect_q_session(r_peaks)
-        if pr_intervals.size == 0:
+            r_peaks = self.detect_r_peaks()
+        q_valleys = self.morphology.detect_q_valley(r_peaks=r_peaks)
+        p_peaks = self.morphology.detect_p_peak(
+            r_peaks=r_peaks, q_valleys=q_valleys
+        )
+        if len(p_peaks) == 0 or len(q_valleys) == 0:
             return 0.0
-        durations = [(end - start) / self.fs for start, end in pr_intervals]
-        return np.mean(durations)
+
+        pairs = self._pair_p_peaks_q_valleys(p_peaks, q_valleys)
+        if len(pairs) == 0:
+            return 0.0
+
+        derivative = np.diff(self.ecg_signal)
+        intervals = []
+        for p_peak, q_valley in pairs:
+            search_start = max(0, p_peak - int(self.fs * 0.12))
+            p_onset = self._find_p_onset(p_peak, search_start, derivative)
+
+            if q_valley > p_onset:
+                intervals.append((q_valley - p_onset) / self.fs)
+
+        return np.mean(intervals) if intervals else 0.0
 
     def compute_qrs_duration(self, r_peaks=None):
         """
@@ -176,37 +245,47 @@ class ECGExtractor:
         """
         q_valleys = self.morphology.detect_q_valley()
         t_peaks = self.morphology.detect_t_peak()
+        if len(q_valleys) == 0 or len(t_peaks) == 0:
+            return 0.0
         if q_valleys[0] > t_peaks[0]:
-            t_peaks = t_peaks[1:]  # skip the first peak
+            t_peaks = t_peaks[1:]
+        if len(t_peaks) == 0:
+            return 0.0
         sessions = []
         for i in range(min(len(q_valleys), len(t_peaks))):
             q_start = q_valleys[i]
             t_end = t_peaks[i]
-            # Ensure there is a valid interval for the R session
             if q_start < t_end:
                 sessions.append((q_start, t_end))
+        if len(sessions) == 0:
+            return 0.0
         sessions = np.array(sessions)
 
         return self.morphology.compute_duration(sessions=sessions, mode="Custom")
 
     def compute_st_interval(self):
         """
-        Computes the ST segment elevation or depression.
+        Computes the ST segment duration (from S-wave to T-wave peak).
 
         Returns:
-            float: Mean ST segment deviation from baseline.
+            float: Mean ST segment duration in seconds.
         """
         s_valleys = self.morphology.detect_s_valley()
         t_peaks = self.morphology.detect_t_peak()
+        if len(s_valleys) == 0 or len(t_peaks) == 0:
+            return 0.0
         if s_valleys[0] > t_peaks[0]:
-            t_peaks = t_peaks[1:]  # skip the first peak
+            t_peaks = t_peaks[1:]
+        if len(t_peaks) == 0:
+            return 0.0
         sessions = []
         for i in range(min(len(s_valleys), len(t_peaks))):
             s_start = s_valleys[i]
             t_end = t_peaks[i]
-            # Ensure there is a valid interval for the R session
             if s_start < t_end:
                 sessions.append((s_start, t_end))
+        if len(sessions) == 0:
+            return 0.0
         sessions = np.array(sessions)
 
         return self.morphology.compute_duration(sessions=sessions, mode="Custom")

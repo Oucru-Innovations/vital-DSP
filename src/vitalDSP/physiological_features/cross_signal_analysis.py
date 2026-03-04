@@ -184,15 +184,12 @@ class CrossSignalAnalysis:
         >>> psi = analysis.compute_phase_synchronization()
         >>> print(psi)
         """
-        phase_diff = np.angle(
-            np.exp(
-                1j
-                * (
-                    np.unwrap(np.angle(self.signal1))
-                    - np.unwrap(np.angle(self.signal2))
-                )
-            )
-        )
+        from scipy.signal import hilbert
+        analytic1 = hilbert(self.signal1)
+        analytic2 = hilbert(self.signal2)
+        phase1 = np.unwrap(np.angle(analytic1))
+        phase2 = np.unwrap(np.angle(analytic2))
+        phase_diff = phase1 - phase2
         psi = np.abs(np.mean(np.exp(1j * phase_diff)))
         return psi
 

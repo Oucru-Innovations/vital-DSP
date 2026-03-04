@@ -231,7 +231,8 @@ class NonlinearFeatures:
                         if curve_length > 0:
                             Lmk[m, k - 1] = Lm * (N - 1) / (curve_length * k * k)
 
-            Lk = np.sum(Lmk, axis=0) / kmax
+            k_counts = np.arange(1, kmax + 1)
+            Lk = np.sum(Lmk, axis=0) / k_counts
 
             # OPTIMIZATION: Vectorized log computation
             log_range = np.log(np.arange(1, kmax + 1))

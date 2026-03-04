@@ -120,9 +120,8 @@ class TestComputePWaveDuration:
             pass
 
     def test_compute_p_wave_duration_empty_p_waves(self, extractor, sample_r_peaks):
-        """Test P-wave duration when no P-waves detected - covers lines 120-121."""
-        # Mock morphology to return empty array
-        with patch.object(extractor.morphology, 'detect_q_session', return_value=np.array([])):
+        """Test P-wave duration when no P-waves detected."""
+        with patch.object(extractor.morphology, 'detect_p_peak', return_value=np.array([])):
             duration = extractor.compute_p_wave_duration(r_peaks=sample_r_peaks)
             assert duration == 0.0
 
@@ -151,9 +150,8 @@ class TestComputePRInterval:
             pass
 
     def test_compute_pr_interval_empty_intervals(self, extractor, sample_r_peaks):
-        """Test PR interval when no intervals detected - covers lines 135-136."""
-        # Mock morphology to return empty array
-        with patch.object(extractor.morphology, 'detect_q_session', return_value=np.array([])):
+        """Test PR interval when no P-peaks detected."""
+        with patch.object(extractor.morphology, 'detect_p_peak', return_value=np.array([])):
             interval = extractor.compute_pr_interval(r_peaks=sample_r_peaks)
             assert interval == 0.0
 
@@ -441,18 +439,22 @@ class TestEdgeCases:
         assert "Bradycardia" in arrhythmias
 
     def test_compute_p_wave_duration_edge_case_single_wave(self, extractor, sample_r_peaks):
-        """Test P-wave duration with single wave."""
-        mock_p_waves = np.array([(100, 120)])
-        with patch.object(extractor.morphology, 'detect_q_session', return_value=mock_p_waves):
-            duration = extractor.compute_p_wave_duration(r_peaks=sample_r_peaks)
-            assert isinstance(duration, float)
-            assert duration >= 0
+        """Test P-wave duration with single P-peak and Q-valley pair."""
+        mock_p_peaks = np.array([100])
+        mock_q_valleys = np.array([130])
+        with patch.object(extractor.morphology, 'detect_p_peak', return_value=mock_p_peaks):
+            with patch.object(extractor.morphology, 'detect_q_valley', return_value=mock_q_valleys):
+                duration = extractor.compute_p_wave_duration(r_peaks=sample_r_peaks)
+                assert isinstance(duration, float)
+                assert duration >= 0
 
     def test_compute_pr_interval_edge_case_single_interval(self, extractor, sample_r_peaks):
-        """Test PR interval with single interval."""
-        mock_pr_intervals = np.array([(100, 150)])
-        with patch.object(extractor.morphology, 'detect_q_session', return_value=mock_pr_intervals):
-            interval = extractor.compute_pr_interval(r_peaks=sample_r_peaks)
-            assert isinstance(interval, float)
-            assert interval >= 0
+        """Test PR interval with single P-peak and Q-valley pair."""
+        mock_p_peaks = np.array([100])
+        mock_q_valleys = np.array([150])
+        with patch.object(extractor.morphology, 'detect_p_peak', return_value=mock_p_peaks):
+            with patch.object(extractor.morphology, 'detect_q_valley', return_value=mock_q_valleys):
+                interval = extractor.compute_pr_interval(r_peaks=sample_r_peaks)
+                assert isinstance(interval, float)
+                assert interval >= 0
 

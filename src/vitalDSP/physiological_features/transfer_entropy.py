@@ -773,10 +773,15 @@ class TransferEntropy:
                 # Shuffle source signal
                 surrogate_source = np.random.permutation(self.source)
             elif method == "phase":
-                # Phase randomization (preserves power spectrum)
+                # Phase randomization (preserves power spectrum and conjugate symmetry)
                 fft = np.fft.fft(self.source)
-                phases = np.random.uniform(0, 2 * np.pi, len(fft))
-                fft_randomized = np.abs(fft) * np.exp(1j * phases)
+                n = len(fft)
+                phases = np.random.uniform(0, 2 * np.pi, n // 2 - 1)
+                fft_randomized = fft.copy()
+                fft_randomized[1:n//2] = np.abs(fft[1:n//2]) * np.exp(1j * phases)
+                if n % 2 == 0:
+                    fft_randomized[n//2] = np.abs(fft[n//2])
+                fft_randomized[n//2 + 1:] = np.conj(fft_randomized[1:n//2][::-1])
                 surrogate_source = np.real(np.fft.ifft(fft_randomized))
             else:
                 raise ValueError(f"Unknown method: {method}")

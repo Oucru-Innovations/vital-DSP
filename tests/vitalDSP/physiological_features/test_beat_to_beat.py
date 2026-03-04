@@ -79,7 +79,7 @@ def test_compute_sdnn(btb_analysis):
     assert isinstance(sdnn, float)
     assert sdnn > 0  # SDNN should be positive if there's variability in R-R intervals
     assert (
-        np.std(rr_intervals) == sdnn
+        np.std(rr_intervals, ddof=1) == sdnn
     )  # Ensure the computed SDNN matches the standard deviation of R-R intervals
 
 

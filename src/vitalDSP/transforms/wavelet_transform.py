@@ -129,11 +129,14 @@ class WaveletTransform:
         if isinstance(filters, tuple) and len(filters) == 2:
             self.low_pass, self.high_pass = filters
         else:
-            # If only one filter is returned, assume it's a low-pass filter
             self.low_pass = filters
-            self.high_pass = np.array(
-                [1, -1]
-            )  # Use a default or dummy high-pass filter
+            import warnings
+            warnings.warn(
+                f"Wavelet '{self.wavelet_name}' is a continuous wavelet and may not be suitable for DWT. "
+                "Using a default difference filter for the high-pass component.",
+                UserWarning
+            )
+            self.high_pass = np.array([1, -1])
 
         # Ensure the wavelet filters are numpy arrays
         self.low_pass = np.asarray(self.low_pass)
@@ -141,7 +144,11 @@ class WaveletTransform:
 
     def _wavelet_decompose(self, data):
         """
-        OPTIMIZED: Perform a single-level wavelet transform using vectorized convolution.
+        Perform a single-level wavelet transform using vectorized convolution.
+
+        Produces same-length output arrays (undecimated/stationary wavelet transform),
+        suitable for denoising and other applications where coefficient alignment with
+        the original signal is important.
 
         Parameters
         ----------
@@ -151,14 +158,19 @@ class WaveletTransform:
         Returns
         -------
         tuple
-            Approximation coefficients and detail coefficients.
+            approximation : numpy.ndarray
+                Approximation (low-pass) coefficients, same length as input.
+            detail : numpy.ndarray
+                Detail (high-pass) coefficients, same length as input.
         """
         output_length = len(data)
         filter_len = len(self.low_pass)
 
         # Apply padding based on the same_length option
         if self.same_length:
-            padded_data = np.pad(data, (filter_len // 2, filter_len // 2), "reflect")
+            pad_left = (filter_len - 1) // 2
+            pad_right = filter_len // 2
+            padded_data = np.pad(data, (pad_left, pad_right), "reflect")
         else:
             padded_data = np.pad(data, (0, filter_len - 1), "constant")
 
@@ -166,11 +178,11 @@ class WaveletTransform:
         try:
             from scipy.signal import convolve
 
-            # OPTIMIZATION: Vectorized convolution for O(n log n) complexity
+            # Vectorized convolution for O(n log n) complexity
             approximation = convolve(padded_data, self.low_pass[::-1], mode="valid")
             detail = convolve(padded_data, self.high_pass[::-1], mode="valid")
 
-            # Ensure output length matches expected length
+            # Ensure output length matches input length
             if len(approximation) > output_length:
                 approximation = approximation[:output_length]
             if len(detail) > output_length:
@@ -204,7 +216,10 @@ class WaveletTransform:
         Returns
         -------
         list
-            Wavelet coefficients, where each element corresponds to one level of decomposition.
+            Wavelet coefficients as a list of arrays. ``coeffs[0]`` through
+            ``coeffs[-2]`` are detail coefficient arrays (one per level, in
+            order from finest to coarsest). ``coeffs[-1]`` is the final
+            approximation array.
 
         Examples
         --------
@@ -224,7 +239,10 @@ class WaveletTransform:
 
     def _wavelet_reconstruct(self, approximation, detail):
         """
-        Perform a single-level inverse wavelet transform using the specified wavelet function.
+        Perform a single-level inverse wavelet transform.
+
+        Convolves the approximation and detail coefficient arrays with the
+        corresponding reconstruction filters and combines the results.
 
         Parameters
         ----------
