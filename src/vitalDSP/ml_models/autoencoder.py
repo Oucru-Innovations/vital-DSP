@@ -432,7 +432,7 @@ class StandardAutoencoder(BaseAutoencoder):
             x = layers.Dropout(self.dropout_rate)(x)
 
         # Output
-        output_dim = np.prod(self.input_shape)
+        output_dim = int(np.prod(self.input_shape))
         x = layers.Dense(output_dim, activation=self.output_activation)(x)
         decoder_output = layers.Reshape(self.input_shape)(x)
         self.decoder = Model(decoder_input, decoder_output, name="decoder")
@@ -505,7 +505,7 @@ class StandardAutoencoder(BaseAutoencoder):
                     layers_list.append(nn.Dropout(dropout_rate))
                     prev_dim = dim
 
-                output_dim = np.prod(output_shape)
+                output_dim = int(np.prod(output_shape))
                 layers_list.append(nn.Linear(prev_dim, output_dim))
                 if output_activation == "sigmoid":
                     layers_list.append(nn.Sigmoid())
@@ -529,7 +529,7 @@ class StandardAutoencoder(BaseAutoencoder):
                 reconstructed = self.decoder(latent)
                 return reconstructed
 
-        input_dim = np.prod(self.input_shape)
+        input_dim = int(np.prod(self.input_shape))
         self.encoder = Encoder(
             input_dim,
             self.hidden_dims,
@@ -820,7 +820,7 @@ class ConvolutionalAutoencoder(BaseAutoencoder):
 
         # Decoder
         decoder_input = keras.Input(shape=(self.latent_dim,))
-        x = layers.Dense(np.prod(shape_before_flatten))(decoder_input)
+        x = layers.Dense(int(np.prod(shape_before_flatten)))(decoder_input)
         x = layers.Reshape(shape_before_flatten)(x)
 
         for i, (n_filter, kernel_size, pool_size) in enumerate(
@@ -1160,7 +1160,7 @@ class VariationalAutoencoder(BaseAutoencoder):
                 )
 
         decoder_output = layers.Dense(
-            np.prod(self.input_shape), activation="sigmoid", name="decoder_output"
+            int(np.prod(self.input_shape)), activation="sigmoid", name="decoder_output"
         )(x_dec)
         if len(self.input_shape) > 1:
             decoder_output = layers.Reshape(self.input_shape)(decoder_output)
