@@ -20,10 +20,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history so tags are fetched correctly
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'  # Use Python 3.11 for TensorFlow compatibility
 
@@ -68,12 +70,13 @@ jobs:
       - name: Run Tests and Generate Coverage with Xvfb (for headless browser)
         run: |
           Xvfb :99 &  # Start X virtual framebuffer for headless browser testing
+          sleep 2      # Wait for Xvfb to be ready
           export DISPLAY=:99  # Set the DISPLAY environment variable to use Xvfb
           # Set environment variables for headless plotting
           export MPLBACKEND=Agg
           export QT_QPA_PLATFORM=offscreen
-          # Run all tests with parallel execution for full coverage
-          pytest -c pytest-full.ini --cov=src/vitalDSP --cov-report=html:cov_html --cov-report=term-missing
+          # Run all tests (coverage options already defined in pytest-full.ini)
+          pytest -c pytest-full.ini
   
 
       # - name: Generate Coverage Report
@@ -98,7 +101,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: documentation
-          path: $(DOCS_DIR)
+          path: docs/
       
       - name: Start Uvicorn (background)
         run: nohup uvicorn src.webapp.run_webapp:fastapi_app --host 0.0.0.0 --port 8000 &
