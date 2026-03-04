@@ -181,7 +181,7 @@ class TestDataLoaderOUCRUCSVMissingLines:
         
         # Create CSV with timezone-aware timestamps
         df = pd.DataFrame({
-            "timestamp": pd.date_range("2024-01-01", periods=3, freq="1S", tz="UTC"),
+            "timestamp": pd.date_range("2024-01-01", periods=3, freq="1s", tz="UTC"),
             "signal": ["[1.0, 2.0]", "[3.0, 4.0]", "[5.0, 6.0]"]
         })
         df.to_csv(csv_path, index=False)
@@ -310,7 +310,7 @@ class TestDataLoaderOUCRUCSVMissingLines:
         csv_path = Path(temp_dir) / "test_oucru.csv"
         
         df = pd.DataFrame({
-            "timestamp": pd.date_range("2024-01-01", periods=2, freq="1S", tz="UTC"),
+            "timestamp": pd.date_range("2024-01-01", periods=2, freq="1s", tz="UTC"),
             "signal": ["[1.0, 2.0]", "[3.0, 4.0]"]
         })
         df.to_csv(csv_path, index=False)

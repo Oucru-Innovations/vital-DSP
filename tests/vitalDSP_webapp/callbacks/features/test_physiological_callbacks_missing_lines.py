@@ -1070,7 +1070,7 @@ class TestAdvancedFeatureExtraction:
     def test_advanced_computation_anomaly(self, sample_physiological_data):
         """Test anomaly detection (lines 746-1193)."""
         df, sampling_freq = sample_physiological_data
-        signal_data = df['ecg'].values
+        signal_data = df['ecg'].values.copy()
         signal_data[500] = 100  # Introduce anomaly
         from vitalDSP_webapp.callbacks.features.physiological_callbacks import analyze_advanced_computation
         results = analyze_advanced_computation(signal_data, sampling_freq, advanced_computation=["anomaly_detection"])
@@ -1147,7 +1147,7 @@ class TestHRVAnalysis:
     def test_hrv_sdnn_calc(self, sample_physiological_data):
         """Test SDNN calculation (line 1208)."""
         df, sampling_freq = sample_physiological_data
-        ecg_signal = df['ecg'].values
+        ecg_signal = df['ecg'].values.copy()
         # Ensure we have enough peaks for HRV analysis
         if len(ecg_signal) > 1000:
             # Add more peaks to ensure HRV analysis works
@@ -1174,7 +1174,7 @@ class TestHRVAnalysis:
         """Test HRV with no options (to cover default paths)."""
         from vitalDSP_webapp.callbacks.features.physiological_callbacks import analyze_hrv
         df, sampling_freq = sample_physiological_data
-        ecg_signal = df['ecg'].values
+        ecg_signal = df['ecg'].values.copy()
         # Create a signal with more peaks for HRV analysis
         t = np.linspace(0, 10, len(ecg_signal))
         # Add more peaks to ensure HRV analysis works
@@ -1214,7 +1214,7 @@ class TestHRVAnalysis:
     def test_hrv_time_domain_specific(self, sample_physiological_data):
         """Test specific time domain HRV calculations (lines 1201, 1208)."""
         df, sampling_freq = sample_physiological_data
-        ecg_signal = df['ecg'].values
+        ecg_signal = df['ecg'].values.copy()
         # Create a signal with more peaks for HRV analysis
         t = np.linspace(0, 10, len(ecg_signal))
         # Add more peaks to ensure HRV analysis works
@@ -1233,7 +1233,7 @@ class TestHRVAnalysis:
     def test_hrv_freq_domain_specific(self, sample_physiological_data):
         """Test specific freq domain HRV calculations (lines 1216, 1224-1235)."""
         df, sampling_freq = sample_physiological_data
-        ecg_signal = df['ecg'].values
+        ecg_signal = df['ecg'].values.copy()
         # Create a signal with more peaks for HRV analysis
         t = np.linspace(0, 10, len(ecg_signal))
         # Add more peaks to ensure HRV analysis works
@@ -1261,7 +1261,7 @@ class TestHRVAnalysis:
     def test_hrv_nonlinear_specific(self, sample_physiological_data):
         """Test nonlinear HRV calculations (lines 1237-1239)."""
         df, sampling_freq = sample_physiological_data
-        ecg_signal = df['ecg'].values
+        ecg_signal = df['ecg'].values.copy()
         # Create a signal with more peaks for HRV analysis
         t = np.linspace(0, 10, len(ecg_signal))
         # Add more peaks to ensure HRV analysis works
