@@ -112,9 +112,6 @@ jobs:
       - name: Build package
         run: make build
       
-      - name: Combine Coverage Data
-        run: coverage combine
-
       - name: Send coverage to Coveralls
         run: coveralls
         env:
