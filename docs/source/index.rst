@@ -184,8 +184,7 @@ Additional Resources
 **📊 Data & Analysis:**
 
 * :doc:`sample_notebooks`: Interactive Jupyter notebooks with examples
-* :doc:`health_report_analysis`: Automated health report generation
-* :doc:`signal_quality_index`: Signal quality assessment and validation
+* :doc:`signal_quality_assessment`: Signal quality assessment and validation
 
 **🌐 Community & Support:**
 
@@ -194,19 +193,18 @@ Additional Resources
 * **Community Forum**: Connect with other users and developers
 * **Email Support**: Direct support for enterprise users
 
-**📈 What's New in v0.2.1:**
+**📈 What's New in v0.2.2:**
 
 .. important::
-   **Version 0.2.1** brings enhanced documentation, expanded ML framework support, and improved testing infrastructure.
+   **Version 0.2.2** brings critical compatibility fixes for NumPy 1.x/2.x, pandas datetime resolution, and improved CI/CD coverage reporting.
 
-**Latest Updates (v0.2.1 - January 2025):**
+**Latest Updates (v0.2.2 - March 2026):**
 
-* **Enhanced Documentation**: Comprehensive examples, tutorials, and improved Read the Docs configuration
-* **Expanded ML Support**: Added PyTorch, SHAP, and LIME integration for advanced model development and explainability
-* **Improved Testing**: Enhanced test suite with better coverage and reliability
-* **CI/CD Improvements**: Updated GitHub Actions workflow for better automation
-* **Code Quality**: Enhanced linting standards and resolved codebase issues
-* **Dependency Updates**: Updated to latest stable versions for improved compatibility
+* **NumPy Compatibility**: Fixed autoencoder ``Dense`` layer integer type errors with NumPy 1.x / TensorFlow 2.16
+* **Pandas Compatibility**: Fixed OUCRU timestamp parsing for pandas ≥ 2.0 datetime64 resolution changes
+* **Test Stability**: Resolved read-only numpy array errors and deprecated frequency string warnings in tests
+* **Coverage Reporting**: Fixed Coveralls integration for parallel test execution with pytest-xdist
+* **Documentation**: Updated version references and improved API documentation structure
 
 **🚀 Latest Optimization Features (Phase 1 & 2):**
 
