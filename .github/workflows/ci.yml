@@ -77,7 +77,10 @@ jobs:
           export QT_QPA_PLATFORM=offscreen
           # Run all tests (coverage options defined in pytest-full.ini, config from .coveragerc)
           pytest -c pytest-full.ini --cov-config=.coveragerc
-  
+
+      # Merge parallel coverage data (pytest-xdist writes .coverage.worker.*; Coveralls needs single .coverage)
+      - name: Combine coverage data
+        run: coverage combine
 
       # - name: Generate Coverage Report
       #   run: pytest --cov=src/vitalDSP --cov-config=.coveragerc --cov-report=html:cov_html
@@ -113,9 +116,10 @@ jobs:
         run: make build
       
       - name: Send coverage to Coveralls
-        run: coveralls
+        run: coveralls --service=github
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # - name: Deploy to PyPI
       #   if: github.ref == 'refs/heads/main'
       #   run: make upload
