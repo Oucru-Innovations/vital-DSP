@@ -76,11 +76,9 @@ jobs:
           export MPLBACKEND=Agg
           export QT_QPA_PLATFORM=offscreen
           # Run all tests (coverage options defined in pytest-full.ini, config from .coveragerc)
+          # pytest-cov already merges xdist workers into a single .coverage file,
+          # so we do NOT need an extra `coverage combine` step here.
           pytest -c pytest-full.ini --cov-config=.coveragerc
-
-      # Merge parallel coverage data (pytest-xdist writes .coverage.worker.*; Coveralls needs single .coverage)
-      - name: Combine coverage data
-        run: coverage combine
 
       # - name: Generate Coverage Report
       #   run: pytest --cov=src/vitalDSP --cov-config=.coveragerc --cov-report=html:cov_html
