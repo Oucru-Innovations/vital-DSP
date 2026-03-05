@@ -75,8 +75,8 @@ jobs:
           # Set environment variables for headless plotting
           export MPLBACKEND=Agg
           export QT_QPA_PLATFORM=offscreen
-          # Run all tests (coverage options already defined in pytest-full.ini)
-          pytest -c pytest-full.ini
+          # Run all tests (coverage options defined in pytest-full.ini, config from .coveragerc)
+          pytest -c pytest-full.ini --cov-config=.coveragerc
   
 
       # - name: Generate Coverage Report
@@ -115,7 +115,7 @@ jobs:
       - name: Send coverage to Coveralls
         run: coveralls
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
       # - name: Deploy to PyPI
       #   if: github.ref == 'refs/heads/main'
       #   run: make upload
