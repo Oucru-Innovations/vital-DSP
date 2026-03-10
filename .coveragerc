@@ -1,8 +1,5 @@
 [run]
 branch = True
-# Use relative paths so Coveralls can match files to the repo (fixes "0%" / no source file info)
-relative_files = True
-source = src/vitalDSP
 omit =
     tests/*
     migrations/*

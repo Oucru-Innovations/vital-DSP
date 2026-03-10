@@ -76,9 +76,8 @@ jobs:
           export MPLBACKEND=Agg
           export QT_QPA_PLATFORM=offscreen
           # Run all tests (coverage options defined in pytest-full.ini, config from .coveragerc)
+          # pytest-cov generates html, terminal, and xml reports directly (no separate coverage command needed)
           pytest -c pytest-full.ini --cov-config=.coveragerc
-          # Generate lcov right away while .coverage data is still available
-          coverage lcov -o coverage.lcov
 
 
       - name: Run Linting
@@ -113,7 +112,8 @@ jobs:
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          file: coverage.lcov
+          file: coverage.xml
+          format: cobertura
       # - name: Deploy to PyPI
       #   if: github.ref == 'refs/heads/main'
       #   run: make upload
