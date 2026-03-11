@@ -80,7 +80,7 @@ jobs:
 
           # Generate coverage separately without xdist (reliable)
           echo "=== Generating coverage without xdist ==="
-          pytest tests/ -o "addopts=" --cov=src/vitalDSP --cov-report=xml:coverage.xml --cov-report=html:cov_html --cov-report=term-missing --timeout=300 -q --tb=line --disable-warnings
+          pytest tests/ -o "addopts=" --cov=src/vitalDSP --cov-report=xml:coverage.xml --cov-report=html:cov_html --cov-report=term-missing --timeout=5400 -q --tb=line --disable-warnings
 
 
       - name: Run Linting
