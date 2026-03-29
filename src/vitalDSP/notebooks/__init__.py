@@ -24,27 +24,29 @@ import pandas as pd
 import numpy as np
 import ast
 import datetime as dt
-import pkg_resources
+import importlib.resources
+
+
+def _get_data_path(filename):
+    """Return the filesystem path to a bundled CSV resource."""
+    return str(importlib.resources.files("vitalDSP.notebooks").joinpath(filename))
 
 
 # Init functions to handle the sample data
 def load_sample_ecg():
-    # Get the path to the file in the package resources
-    data_path = pkg_resources.resource_filename("vitalDSP.notebooks", "ecg.csv")
+    data_path = _get_data_path("ecg.csv")
     signal_col, date_col = process_in_chunks(data_path, data_type="ecg", fs=256)
     return signal_col, date_col
 
 
 def load_sample_ecg_small():
-    # Get the path to the file in the package resources
-    data_path = pkg_resources.resource_filename("vitalDSP.notebooks", "ecg_small.csv")
+    data_path = _get_data_path("ecg_small.csv")
     signal_col, date_col = process_in_chunks(data_path, data_type="ecg", fs=256)
     return signal_col, date_col
 
 
 def load_sample_ppg():
-    # Get the path to the file in the package resources
-    data_path = pkg_resources.resource_filename("vitalDSP.notebooks", "ppg.csv")
+    data_path = _get_data_path("ppg.csv")
     signal_col, date_col = process_in_chunks(data_path, data_type="ppg", fs=100)
     return signal_col, date_col
 
