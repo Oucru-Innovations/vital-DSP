@@ -16,4 +16,3 @@ ipywidgets>=7
 sphinx-plotly-directive
 sphinxcontrib-jquery
 pydata-sphinx-theme
-vitalDSP
