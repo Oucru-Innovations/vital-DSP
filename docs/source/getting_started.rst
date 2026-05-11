@@ -645,10 +645,10 @@ Use machine learning and advanced algorithms:
 
 
 .. code-block:: python
-    # Pitch Shift filtering
-    pitch_shift_filter = PitchShift(ecg_signal,sampling_rate=fs)
-    filtered_signal = pitch_shift_filter.shift_pitch(semitones=2)
 
+    # Pitch Shift filtering
+    pitch_shift_filter = PitchShift(ecg_signal, sampling_rate=fs)
+    filtered_signal = pitch_shift_filter.shift_pitch(semitones=2)
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=np.arange(len(filtered_signal)), y=ecg_signal, mode='lines', name='Original Signal'))
@@ -660,7 +660,7 @@ Use machine learning and advanced algorithms:
     anomalies = anomaly_detector.detect_anomalies(method="z_score")
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(y=np.arange(len(ecg_signal)), x=anomalies, mode='lines', name='Anomlies Lines'))
+    fig.add_trace(go.Scatter(y=np.arange(len(ecg_signal)), x=anomalies, mode='lines', name='Anomalies'))
     fig.show()
 
 
