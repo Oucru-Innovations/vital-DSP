@@ -900,16 +900,16 @@ class SignalFiltering:
         filtered_signal = self.signal.copy()
 
         for _ in range(iterations):
-            padded_signal = np.pad(
+            from scipy import ndimage
+            # Map method to scipy mode names
+            mode_map = {"edge": "nearest", "reflect": "reflect", "constant": "constant"}
+            scipy_mode = mode_map.get(method, "nearest")
+
+            filtered_signal = ndimage.generic_filter(
                 filtered_signal,
-                (kernel_size // 2, kernel_size - 1 - kernel_size // 2),
-                mode=method,
-            )
-            filtered_signal = np.array(
-                [
-                    np.median(padded_signal[i : i + kernel_size])
-                    for i in range(len(self.signal))
-                ]
+                np.median,
+                size=kernel_size,
+                mode=scipy_mode
             )
 
         return filtered_signal

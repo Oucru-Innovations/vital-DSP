@@ -41,8 +41,8 @@ extensions = [
 ]
 
 # Execute notebooks during build (recommended for RTD)
-nb_execution_mode = "auto"           # "auto" or "force"
-nb_execution_timeout = 180           # bump if  notebooks are heavy
+nb_execution_mode = "auto"           # "auto" to run, "off" to skip all
+nb_execution_timeout = 180           # bump if notebooks are heavy
 nb_render_plugin = "default"         # myst-nb’s default HTML render
 
 # MyST config (optional, but useful)

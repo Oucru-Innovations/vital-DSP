@@ -483,22 +483,22 @@ class MultiScaleEntropy:
             if len(templates) < 2:
                 return 0.0
 
-            # Calculate all pairwise distances
-            similarities = 0.0
+            # Vectorized pairwise distance computation (replaces O(n³) loop)
             n_patterns = len(templates)
 
-            for i in range(n_patterns):
-                for j in range(n_patterns):
-                    if i != j:
-                        # Maximum absolute difference (Chebyshev distance)
-                        d = np.max(np.abs(templates[i] - templates[j]))
+            # Compute all pairwise Chebyshev distances: shape (n_patterns, n_patterns, m)
+            diffs = np.abs(templates[:, np.newaxis, :] - templates[np.newaxis, :, :])
+            # Max along embedding dimension: shape (n_patterns, n_patterns)
+            distances = np.max(diffs, axis=2)
 
-                        # Fuzzy membership function
-                        similarity = np.exp(-((d / self.r) ** n))
-                        similarities += similarity
+            # Fuzzy membership function: exp(-(d/r)^n)
+            similarities = np.exp(-((distances / self.r) ** n))
 
-            # Average similarity
-            phi = similarities / (n_patterns * (n_patterns - 1))
+            # Zero out diagonal (exclude self-comparisons)
+            np.fill_diagonal(similarities, 0.0)
+
+            # Average similarity (sum all pairs / (n * (n-1)))
+            phi = np.sum(similarities) / (n_patterns * (n_patterns - 1))
 
             return phi
 

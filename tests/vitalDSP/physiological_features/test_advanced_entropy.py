@@ -607,29 +607,30 @@ class TestAdvancedEntropyMissingCoverage:
 
     def test_fuzzy_entropy_phi_zero(self):
         """Test _fuzzy_entropy when phi values are zero.
-        
+
         This test covers lines 510-512 in advanced_entropy.py where
         warning is issued and 0.0 is returned when phi_m_plus_1 == 0 or phi_m == 0.
         """
         from unittest.mock import patch
-        
+
         signal = np.random.randn(100)
         mse = MultiScaleEntropy(signal, max_scale=10, m=2, fuzzy=True, r=0.15)
-        
+
         # Create a signal that's long enough
         coarse_signal = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0])
-        
+
         # Mock np.exp to return 0 for fuzzy membership, making phi = 0
         call_count = [0]
         original_exp = np.exp
-        
+
         def mock_exp(x):
             call_count[0] += 1
-            # After a few calls, return 0 to make phi zero
-            if call_count[0] > 10:
+            # Vectorized implementation calls np.exp twice (_phi calls)
+            # Make both return zeros to trigger the warning
+            if call_count[0] > 0:
                 return np.zeros_like(x) if isinstance(x, np.ndarray) else 0.0
             return original_exp(x)
-        
+
         with patch('vitalDSP.physiological_features.advanced_entropy.np.exp', side_effect=mock_exp):
             with pytest.warns(UserWarning, match="FuzzyEn calculation failed"):
                 entropy = mse._fuzzy_entropy(coarse_signal)
