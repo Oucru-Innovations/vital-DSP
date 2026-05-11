@@ -44,6 +44,7 @@ extensions = [
 nb_execution_mode = "auto"           # "auto" to run, "off" to skip all
 nb_execution_timeout = 180           # bump if notebooks are heavy
 nb_render_plugin = "default"         # myst-nb’s default HTML render
+nb_execution_excludepatterns = ["**/ADVANCED_FEATURES_GUIDE*"]  # too heavy, kills kernel
 
 # MyST config (optional, but useful)
 myst_enable_extensions = [
@@ -106,8 +107,6 @@ intersphinx_mapping = {
     'scipy': ('https://docs.scipy.org/doc/scipy/', None),
     'pandas': ('https://pandas.pydata.org/docs/', None),
     'matplotlib': ('https://matplotlib.org/stable/', None),
-    'plotly': ('https://plotly.com/python/', None),
-    'dash': ('https://dash.plotly.com/', None),
 }
 
 # # Exclude notebooks from autosummary processing

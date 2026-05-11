@@ -135,6 +135,7 @@ Class API
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
 Clinical Applications
 ~~~~~~~~~~~~~~~~~~~~~
@@ -225,6 +226,7 @@ Class API
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
 Clinical Applications
 ~~~~~~~~~~~~~~~~~~~~~
@@ -322,6 +324,7 @@ Class API
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
 Clinical Applications
 ~~~~~~~~~~~~~~~~~~~~~

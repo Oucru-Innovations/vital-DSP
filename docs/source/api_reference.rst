@@ -4,13 +4,13 @@ API Reference
 This section provides comprehensive documentation for all VitalDSP modules, classes, and functions.
 
 Core Library
-============
+------------
 
 Filtering Module
-----------------
+~~~~~~~~~~~~~~~~
 
 Signal Filtering
-~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^
 
 .. automodule:: vitalDSP.filtering.signal_filtering
    :members:
@@ -18,7 +18,7 @@ Signal Filtering
    :show-inheritance:
 
 Artifact Removal
-~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^
 
 .. automodule:: vitalDSP.filtering.artifact_removal
    :members:
@@ -26,15 +26,16 @@ Artifact Removal
    :show-inheritance:
 
 Advanced Signal Filtering
-~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. automodule:: vitalDSP.filtering.advanced_signal_filtering
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
 Physiological Features Module
-=============================
+------------------------------
 
 Time Domain Features
 ~~~~~~~~~~~~~~~~~~~~
@@ -43,6 +44,7 @@ Time Domain Features
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
 Frequency Domain Features
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -51,6 +53,7 @@ Frequency Domain Features
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
 HRV Analysis
 ~~~~~~~~~~~~
@@ -75,9 +78,10 @@ Nonlinear Features
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:
 
 Waveform Morphology
-===================
+~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.physiological_features.waveform
    :members:
@@ -85,10 +89,10 @@ Waveform Morphology
    :show-inheritance:
 
 Respiratory Analysis Module
-===========================
+----------------------------
 
 Respiratory Analysis
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.respiratory_analysis.respiratory_analysis
    :members:
@@ -96,7 +100,7 @@ Respiratory Analysis
    :show-inheritance:
 
 FFT-Based RR Estimation
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.respiratory_analysis.estimate_rr.fft_based_rr
    :members:
@@ -104,7 +108,7 @@ FFT-Based RR Estimation
    :show-inheritance:
 
 Peak Detection RR Estimation
-=============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.respiratory_analysis.estimate_rr.peak_detection_rr
    :members:
@@ -112,7 +116,7 @@ Peak Detection RR Estimation
    :show-inheritance:
 
 Sleep Apnea Detection
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.respiratory_analysis.sleep_apnea_detection.amplitude_threshold
    :members:
@@ -120,10 +124,10 @@ Sleep Apnea Detection
    :show-inheritance:
 
 Transforms Module
-=================
+-----------------
 
 Fourier Transform
-================
+~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.transforms.fourier_transform
    :members:
@@ -131,7 +135,7 @@ Fourier Transform
    :show-inheritance:
 
 Wavelet Transform
-================
+~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.transforms.wavelet_transform
    :members:
@@ -139,7 +143,7 @@ Wavelet Transform
    :show-inheritance:
 
 Discrete Cosine Transform
-=========================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.transforms.discrete_cosine_transform
    :members:
@@ -147,7 +151,7 @@ Discrete Cosine Transform
    :show-inheritance:
 
 Hilbert Transform
-================
+~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.transforms.hilbert_transform
    :members:
@@ -155,10 +159,10 @@ Hilbert Transform
    :show-inheritance:
 
 Advanced Computation Module
-===========================
+----------------------------
 
 Anomaly Detection
-================
+~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.advanced_computation.anomaly_detection
    :members:
@@ -166,7 +170,7 @@ Anomaly Detection
    :show-inheritance:
 
 Bayesian Analysis
-================
+~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.advanced_computation.bayesian_analysis
    :members:
@@ -174,7 +178,7 @@ Bayesian Analysis
    :show-inheritance:
 
 Neural Network Filtering
-========================
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.advanced_computation.neural_network_filtering
    :members:
@@ -182,7 +186,7 @@ Neural Network Filtering
    :show-inheritance:
 
 Reinforcement Learning Filter
-=============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.advanced_computation.reinforcement_learning_filter
    :members:
@@ -190,7 +194,7 @@ Reinforcement Learning Filter
    :show-inheritance:
 
 EMD (Empirical Mode Decomposition)
-===================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.advanced_computation.emd
    :members:
@@ -198,10 +202,10 @@ EMD (Empirical Mode Decomposition)
    :show-inheritance:
 
 Machine Learning Module
-=======================
+------------------------
 
 Deep Learning Models
-===================
+~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.ml_models.deep_models
    :members:
@@ -209,7 +213,7 @@ Deep Learning Models
    :show-inheritance:
 
 Autoencoder Models
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.ml_models.autoencoder
    :members:
@@ -217,7 +221,7 @@ Autoencoder Models
    :show-inheritance:
 
 Transformer Models
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.ml_models.transformer_model
    :members:
@@ -225,7 +229,7 @@ Transformer Models
    :show-inheritance:
 
 Feature Extractor
-=================
+~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.ml_models.feature_extractor
    :members:
@@ -233,7 +237,7 @@ Feature Extractor
    :show-inheritance:
 
 Transfer Learning
-=================
+~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.ml_models.transfer_learning
    :members:
@@ -241,7 +245,7 @@ Transfer Learning
    :show-inheritance:
 
 Pre-trained Models
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.ml_models.pretrained_models
    :members:
@@ -249,7 +253,7 @@ Pre-trained Models
    :show-inheritance:
 
 Model Explainability
-====================
+~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.ml_models.explainability
    :members:
@@ -257,10 +261,10 @@ Model Explainability
    :show-inheritance:
 
 Feature Engineering Module
-===========================
+---------------------------
 
 ECG Autonomic Features
-=====================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.feature_engineering.ecg_autonomic_features
    :members:
@@ -268,7 +272,7 @@ ECG Autonomic Features
    :show-inheritance:
 
 PPG Autonomic Features
-=====================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.feature_engineering.ppg_autonomic_features
    :members:
@@ -276,7 +280,7 @@ PPG Autonomic Features
    :show-inheritance:
 
 Morphology Features
-==================
+~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.feature_engineering.morphology_features
    :members:
@@ -284,10 +288,10 @@ Morphology Features
    :show-inheritance:
 
 Signal Quality Assessment Module
-================================
+---------------------------------
 
 Signal Quality
-==============
+~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.signal_quality_assessment.signal_quality
    :members:
@@ -295,7 +299,7 @@ Signal Quality
    :show-inheritance:
 
 Signal Quality Index
-===================
+~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.signal_quality_assessment.signal_quality_index
    :members:
@@ -303,7 +307,7 @@ Signal Quality Index
    :show-inheritance:
 
 SNR Computation
-===============
+~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.signal_quality_assessment.snr_computation
    :members:
@@ -311,10 +315,10 @@ SNR Computation
    :show-inheritance:
 
 Utils Module
-============
+------------
 
 Peak Detection
-==============
+~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.utils.signal_processing.peak_detection
    :members:
@@ -322,7 +326,7 @@ Peak Detection
    :show-inheritance:
 
 Data Synthesis
-==============
+~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.utils.data_processing.synthesize_data
    :members:
@@ -330,7 +334,7 @@ Data Synthesis
    :show-inheritance:
 
 Standard Scaler
-===============
+~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.utils.signal_processing.scaler
    :members:
@@ -338,7 +342,7 @@ Standard Scaler
    :show-inheritance:
 
 Normalization
-=============
+~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.utils.signal_processing.normalization
    :members:
@@ -346,7 +350,7 @@ Normalization
    :show-inheritance:
 
 Interpolations
-==============
+~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.utils.signal_processing.interpolations
    :members:
@@ -354,10 +358,10 @@ Interpolations
    :show-inheritance:
 
 Health Analysis Module
-======================
+-----------------------
 
 Health Report Generator
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.health_analysis.health_report_generator
    :members:
@@ -365,7 +369,7 @@ Health Report Generator
    :show-inheritance:
 
 Health Report Visualization
-============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.health_analysis.health_report_visualization
    :members:
@@ -373,7 +377,7 @@ Health Report Visualization
    :show-inheritance:
 
 Interpretation Engine
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.health_analysis.interpretation_engine
    :members:
@@ -381,10 +385,10 @@ Interpretation Engine
    :show-inheritance:
 
 Web Application API
-===================
+--------------------
 
 Data Service
-=============
+~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.services.data.data_service
    :members:
@@ -392,7 +396,7 @@ Data Service
    :show-inheritance:
 
 Settings Service
-================
+~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.services.settings_service
    :members:
@@ -400,7 +404,7 @@ Settings Service
    :show-inheritance:
 
 API Endpoints
-==============
+~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.api.endpoints
    :members:
@@ -408,10 +412,10 @@ API Endpoints
    :show-inheritance:
 
 Web Application Callbacks
-=========================
+--------------------------
 
 Core Callbacks
-==============
+~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.callbacks.core.app_callbacks
    :members:
@@ -419,7 +423,7 @@ Core Callbacks
    :show-inheritance:
 
 Upload Callbacks
-================
+~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.callbacks.core.upload_callbacks
    :members:
@@ -427,7 +431,7 @@ Upload Callbacks
    :show-inheritance:
 
 Page Routing Callbacks
-=======================
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.callbacks.core.page_routing_callbacks
    :members:
@@ -435,7 +439,7 @@ Page Routing Callbacks
    :show-inheritance:
 
 Analysis Callbacks
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.callbacks.analysis.vitaldsp_callbacks
    :members:
@@ -443,7 +447,7 @@ Analysis Callbacks
    :show-inheritance:
 
 Signal Filtering Callbacks
-============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks
    :members:
@@ -451,7 +455,7 @@ Signal Filtering Callbacks
    :show-inheritance:
 
 Respiratory Analysis Callbacks
-===============================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.callbacks.analysis.respiratory_callbacks
    :members:
@@ -459,7 +463,7 @@ Respiratory Analysis Callbacks
    :show-inheritance:
 
 Features Callbacks
-==================
+~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.callbacks.features.features_callbacks
    :members:
@@ -467,7 +471,7 @@ Features Callbacks
    :show-inheritance:
 
 Physiological Callbacks
-=======================
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.callbacks.features.physiological_callbacks
    :members:
@@ -475,7 +479,7 @@ Physiological Callbacks
    :show-inheritance:
 
 Respiratory Callbacks
-=====================
+~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.callbacks.features.respiratory_callbacks
    :members:
@@ -483,10 +487,10 @@ Respiratory Callbacks
    :show-inheritance:
 
 Utility Functions
-=================
+-----------------
 
 Common Utilities
-================
+~~~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP.utils.config_utilities.common
    :members:
@@ -494,7 +498,7 @@ Common Utilities
    :show-inheritance:
 
 Error Handling
-==============
+~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.utils.error_handler
    :members:
@@ -502,7 +506,7 @@ Error Handling
    :show-inheritance:
 
 Data Processor
-==============
+~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.utils.data_processor
    :members:
@@ -510,7 +514,7 @@ Data Processor
    :show-inheritance:
 
 Settings Utils
-==============
+~~~~~~~~~~~~~~
 
 .. automodule:: vitalDSP_webapp.utils.settings_utils
    :members:
