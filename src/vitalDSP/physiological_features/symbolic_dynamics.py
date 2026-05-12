@@ -72,10 +72,11 @@ Examples:
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.symbolic_dynamics import SymbolicDynamics
-    >>> signal = np.random.randn(1000)
-    >>> processor = SymbolicDynamics(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> rr_intervals = np.random.normal(0.8, 0.05, 200)
+    >>> sd = SymbolicDynamics(rr_intervals, n_symbols=4, word_length=3, method='0V')
+    >>> shannon = sd.compute_shannon_entropy()   # returns float
+    >>> forbidden = sd.detect_forbidden_words()  # returns list of str
+    >>> print(f'Shannon Entropy: {shannon:.3f}, Forbidden words: {len(forbidden)}')
 """
 
 import numpy as np

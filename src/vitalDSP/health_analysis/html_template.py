@@ -19,8 +19,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.health_analysis.html_template import HtmlTemplate
     >>> signal = np.random.randn(1000)
-    >>> processor = HtmlTemplate(signal)
-    >>> result = processor.process()
+    >>> from vitalDSP.health_analysis.html_template import render_report
+    >>> html = render_report(report_data={})
     >>> print(f'Processing result: {result}')
 """
 

@@ -19,11 +19,10 @@ Examples:
 --------
 Basic usage:
     >>> import numpy as np
-    >>> from vitalDSP.advanced_computation.non_linear_analysis import NonLinearAnalysis
+    >>> from vitalDSP.advanced_computation.non_linear_analysis import NonlinearAnalysis
     >>> signal = np.random.randn(1000)
-    >>> processor = NonLinearAnalysis(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> nla = NonlinearAnalysis(signal)
+    >>> le = nla.lyapunov_exponent()
 """
 
 import numpy as np

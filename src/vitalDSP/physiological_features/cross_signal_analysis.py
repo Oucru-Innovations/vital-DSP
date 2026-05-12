@@ -21,9 +21,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.cross_signal_analysis import CrossSignalAnalysis
     >>> signal = np.random.randn(1000)
-    >>> processor = CrossSignalAnalysis(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> csa = CrossSignalAnalysis(signal1, signal2)
+    >>> corr = csa.compute_correlation()
 """
 
 import numpy as np

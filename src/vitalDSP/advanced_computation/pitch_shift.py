@@ -19,9 +19,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.pitch_shift import PitchShift
     >>> signal = np.random.randn(1000)
-    >>> processor = PitchShift(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> ps = PitchShift(signal, fs=256)
+    >>> shifted = ps.shift_pitch(semitones=2)
 """
 
 import numpy as np

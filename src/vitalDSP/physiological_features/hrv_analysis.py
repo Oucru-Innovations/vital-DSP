@@ -18,11 +18,11 @@ Examples:
 --------
 Basic usage:
     >>> import numpy as np
-    >>> from vitalDSP.physiological_features.hrv_analysis import HrvAnalysis
-    >>> signal = np.random.randn(1000)
-    >>> processor = HrvAnalysis(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> from vitalDSP.physiological_features.hrv_analysis import HRVFeatures
+    >>> ecg_signal = np.random.randn(1000)
+    >>> hrv = HRVFeatures(ecg_signal, fs=256, signal_type='ECG')
+    >>> features = hrv.compute_all_features()
+    >>> print(f"SDNN: {features.get('sdnn', 'N/A')}")
 """
 
 import numpy as np

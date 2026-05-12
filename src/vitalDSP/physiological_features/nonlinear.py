@@ -19,11 +19,13 @@ Examples:
 --------
 Basic usage:
     >>> import numpy as np
-    >>> from vitalDSP.physiological_features.nonlinear import Nonlinear
+    >>> from vitalDSP.physiological_features.nonlinear import NonlinearFeatures
     >>> signal = np.random.randn(1000)
-    >>> processor = Nonlinear(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> nf = NonlinearFeatures(signal)
+    >>> sample_ent = nf.compute_sample_entropy()
+    >>> dfa_alpha = nf.compute_dfa()
+    >>> poincare = nf.compute_poincare_features()
+    >>> print(f'Sample Entropy: {sample_ent}, DFA: {dfa_alpha}')
 """
 
 import numpy as np

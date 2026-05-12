@@ -62,7 +62,7 @@ rmssd:
 
 nn50:
   normal_range:
-    1_min: [10, 50]
+    1_min: [5, 30]    # 1-min NN50 is 10-20% of 5-min values per clinical interpretation; upper bound corrected from 50 to 30
     5_min: [40, 150]
   description: "NN50 counts the number of successive NN intervals that differ by more than 50 ms. It is a marker of parasympathetic activity and reflects the body's ability to regulate heart rate variability in response to changes in physiological demand."
   references:
@@ -101,7 +101,7 @@ nn50:
 
 pnn50:
   normal_range:
-    1_min: [10, 40]
+    1_min: [5, 30]    # Corrected: fewer beats sampled in 1-min window; pNN50 is lower at shorter durations despite being normalized
     5_min: [15, 45]
   description: "pNN50 represents the percentage of NN intervals that differ by more than 50 ms. It is a measure of short-term heart rate variability and reflects parasympathetic (vagal) activity."
   references:
@@ -144,8 +144,8 @@ pnn50:
 
 mean_nn:
   normal_range:
-    1_min: [700, 900]
-    5_min: [720, 850]
+    1_min: [700, 950]  # Upper bound raised: age-related data shows 60-70yr mean NN 850-950ms; 850ms cutoff flags normal elderly
+    5_min: [720, 950]
   description: "Mean NN is the average interval between successive heartbeats, providing insight into overall heart rate. Shorter intervals indicate higher heart rates, while longer intervals suggest lower heart rates."
   references:
     - "Task Force of ESC/NASPE (1996): Mean NN (mean RR) is fundamental HRV parameter, normal resting: 750-1000 ms (60-80 bpm)"
@@ -433,7 +433,7 @@ sdsd:
 
 lf_power:
   normal_range:
-    1_min: [300, 1200]
+    1_min: [60, 300]   # ~1/5 of 5-min range; spectral power scales with recording duration (Task Force 1996: 5-min normal 519±291 ms²)
     5_min: [300, 1200]
   description: "LF power represents the power of low-frequency components in heart rate variability (0.04–0.15 Hz), reflecting a mix of sympathetic and parasympathetic nervous system activity. It is influenced by baroreceptor regulation and blood pressure control."
   references:
@@ -468,7 +468,7 @@ lf_power:
 
 hf_power:
   normal_range:
-    1_min: [200, 1000]
+    1_min: [40, 250]   # ~1/4 of 5-min range; HF power scales with recording duration (Task Force 1996: 5-min normal 657±777 ms²)
     5_min: [200, 1000]
   description: "HF power reflects the power of high-frequency components (0.15–0.40 Hz), which are primarily associated with parasympathetic (vagal) activity. It is often used to assess vagal tone and respiratory sinus arrhythmia."
   references:
@@ -534,8 +534,8 @@ lyapunov_exponent:
 
 lf_hf_ratio:
   normal_range:
-    1_min: [0.5, 2.0]
-    5_min: [0.5, 2.0]
+    1_min: [0.5, 4.0]  # Widened: Task Force (1996) supine 1.5-2.0, upright 2.0-6.0; ratio is controversial (Billman 2013), narrow range creates false alarms
+    5_min: [0.5, 4.0]
   description: "The LF/HF ratio is a measure of the balance between sympathetic and parasympathetic activity. A higher ratio indicates sympathetic dominance, while a lower ratio suggests parasympathetic dominance."
   references:
     - "Task Force of ESC/NASPE (1996): LF/HF ratio normal supine: 1.5-2.0, upright: 2.0-6.0; reflects sympathovagal balance but interpretation controversial"
@@ -907,8 +907,8 @@ laminarity:
 
 systolic_duration:
   normal_range:
-    1_min: [-inf, 400]
-    5_min: [-inf, 400]
+    1_min: [50, 400]   # Lower bound added: negative/zero systolic duration is physiologically impossible
+    5_min: [50, 400]
   description: "Systolic duration represents the time the heart spends in contraction during the cardiac cycle. Short systolic durations may indicate high heart rates or reduced cardiac output, while prolonged durations could indicate cardiac overload or ventricular dysfunction."
   interpretation:
     in_range: "Normal systolic duration suggests appropriate cardiac output and ventricular function, with balanced contraction and relaxation phases."
@@ -1438,8 +1438,8 @@ dfa_ppg:
 spo2:
   description: "Oxygen saturation level in blood measured via PPG using infrared (IR) and red light. Low SpO2 suggests hypoxia or respiratory failure."
   normal_range:
-    1_min: [95, 100]
-    5_min: [95, 100]  # Same range for 5-minute segments (SpO2 should remain stable)
+    1_min: [94, 100]
+    5_min: [94, 100]  # BTS Guidelines (2017): target 94-98% for most patients; WHO lower bound 95% is too strict for general population
   references:
     - "WHO Guidelines (2011): Normal SpO2 95-100%, Hypoxemia <90%, Severe hypoxemia <85%"
     - "FDA Pulse Oximetry Guidance (2021): Accuracy ±2% in 95-100% range"
@@ -1469,8 +1469,8 @@ spo2:
 perfusion_index:
   description: "Represents the strength of the pulse signal from the PPG, reflecting peripheral blood flow. Low PI indicates poor perfusion."
   normal_range:
-    1_min: [0.02, 20]
-    5_min: [0.02, 20]  # Same range for 5-minute segments (PI should be relatively stable)
+    1_min: [0.3, 10]   # Lima et al. (2002): normal range 0.3-10%, median 1.4%; 0.02% is signal quality floor, not clinical normal
+    5_min: [0.3, 10]
   references:
     - "Lima AP, Beelen P, Bakker J (2002): PI normal range 0.3-10%, median 1.4% in healthy subjects; PI <0.4% associated with reduced SpO2 accuracy"
     - "Masimo Corporation Technical White Paper (2014): PI <0.02% indicates insufficient signal quality; PI >20% rare except in sepsis or vasodilation"

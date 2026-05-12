@@ -139,17 +139,6 @@ Combining information from multiple signal sources to improve the accuracy and r
     :exclude-members: __dict__, __weakref__, __module__, __annotations__
     :noindex:
 
-Neural Network Filtering
-------------------------
-Advanced filtering techniques leveraging neural networks to process and enhance biomedical signals.
-
-.. automodule:: vitalDSP.advanced_computation.neural_network_filtering
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:
-
 Non-Linear Analysis
 -------------------
 Analyzing signals using non-linear methods, essential for understanding complex systems where traditional linear methods fall short.
@@ -166,28 +155,6 @@ Pitch Shift
 Techniques for shifting the pitch of audio signals, often used in music signal processing and speech modulation.
 
 .. automodule:: vitalDSP.advanced_computation.pitch_shift
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:
-
-Real-Time Anomaly Detection
----------------------------
-Real-time methods for detecting anomalies in streaming biomedical signals, crucial for monitoring and alert systems.
-
-.. automodule:: vitalDSP.advanced_computation.real_time_anomaly_detection
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:
-
-Reinforcement Learning Filter
------------------------------
-Filtering methods that use reinforcement learning to adaptively improve signal quality based on feedback loops.
-
-.. automodule:: vitalDSP.advanced_computation.reinforcement_learning_filter
     :members:
     :undoc-members:
     :private-members:

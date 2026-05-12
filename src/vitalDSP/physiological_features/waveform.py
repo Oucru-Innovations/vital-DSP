@@ -19,11 +19,9 @@ Examples:
 --------
 Basic usage:
     >>> import numpy as np
-    >>> from vitalDSP.physiological_features.waveform import Waveform
-    >>> signal = np.random.randn(1000)
-    >>> processor = Waveform(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> from vitalDSP.physiological_features.waveform import WaveformMorphology
+    >>> signal = np.random.ra    >>> wm = WaveformMorphology(signal, fs=256)
+    >>> troughs = wm.detect_troughs(){result}')
 """
 
 import numpy as np
@@ -49,7 +47,7 @@ class WaveformMorphology:
     Examples
     --------
     >>> import numpy as np
-    >>> from vitalDSP.physiological_features.waveform import WaveformMorphology
+    >>> from vitalDSP.physiological_features.waveform import WaveformMorphologyMorphology
     >>>
     >>> # Example 1: ECG waveform analysis
     >>> ecg_signal = np.random.randn(1000)  # Simulated ECG signal

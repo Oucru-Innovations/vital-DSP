@@ -20,8 +20,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.filtering.artifact_removal import ArtifactRemoval
     >>> signal = np.random.randn(1000)
-    >>> processor = ArtifactRemoval(signal)
-    >>> result = processor.process()
+    >>> ar = ArtifactRemoval(signal, fs=256)
+    >>> cleaned = ar.baseline_correction()
     >>> print(f'Processing result: {result}')
 """
 

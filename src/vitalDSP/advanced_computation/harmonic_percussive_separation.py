@@ -19,9 +19,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.harmonic_percussive_separation import HarmonicPercussiveSeparation
     >>> signal = np.random.randn(1000)
-    >>> processor = HarmonicPercussiveSeparation(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> hps = HarmonicPercussiveSeparation(signal)
+    >>> harmonic, percussive = hps.separate()
 """
 
 import numpy as np

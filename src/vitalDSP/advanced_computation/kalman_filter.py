@@ -21,9 +21,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.kalman_filter import KalmanFilter
     >>> signal = np.random.randn(1000)
-    >>> processor = KalmanFilter(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> kf = KalmanFilter(signal)
+    >>> filtered = kf.filter()
 """
 
 import numpy as np

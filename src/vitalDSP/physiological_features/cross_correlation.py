@@ -17,11 +17,9 @@ Examples:
 --------
 Basic usage:
     >>> import numpy as np
-    >>> from vitalDSP.physiological_features.cross_correlation import CrossCorrelation
-    >>> signal = np.random.randn(1000)
-    >>> processor = CrossCorrelation(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> from vitalDSP.physiological_features.cross_correlation import CrossCorrelationFeatures
+    >>> signal = np.random.rand    >>> ccf = CrossCorrelationFeatures(signal1, signal2)
+    >>> cc = ccf.compute_cross_correlation()esult}')
 """
 
 import numpy as np

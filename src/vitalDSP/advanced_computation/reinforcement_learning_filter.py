@@ -21,9 +21,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.reinforcement_learning_filter import ReinforcementLearningFilter
     >>> signal = np.random.randn(1000)
-    >>> processor = ReinforcementLearningFilter(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> rlf = ReinforcementLearningFilter(signal)
+    >>> filtered = rlf.apply_filter(signal)
 """
 
 import numpy as np

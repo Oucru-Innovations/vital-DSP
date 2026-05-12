@@ -20,9 +20,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.trend_analysis import TrendAnalysis
     >>> signal = np.random.randn(1000)
-    >>> processor = TrendAnalysis(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> ta = TrendAnalysis(signal)
+    >>> trend = ta.compute_linear_trend()
 """
 
 import numpy as np

@@ -72,8 +72,9 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.advanced_entropy import AdvancedEntropy
     >>> signal = np.random.randn(1000)
-    >>> processor = AdvancedEntropy(signal)
-    >>> result = processor.process()
+    >>> mse = MultiScaleEntropy(signal, max_scale=20, m=2, r=0.15)
+    >>> mse_values = mse.compute_mse()
+    >>> ci = mse.get_complexity_index(mse_values)
     >>> print(f'Processing result: {result}')
 """
 

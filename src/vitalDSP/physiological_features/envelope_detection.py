@@ -20,9 +20,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.envelope_detection import EnvelopeDetection
     >>> signal = np.random.randn(1000)
-    >>> processor = EnvelopeDetection(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> ed = EnvelopeDetection(signal, fs=256)
+    >>> envelope = ed.hilbert_envelope()
 """
 
 import numpy as np

@@ -25,20 +25,15 @@ Examples:
 Basic CNN model for ECG classification:
     >>> import numpy as np
     >>> from vitalDSP.ml_models.deep_models import CNN1D
-    >>> model = CNN1D(input_shape=(1000, 1), num_classes=5)
-    >>> model.compile(optimizer='adam', loss='categorical_crossentropy')
-    >>> # Train with your data
-    >>> # model.fit(X_train, y_train, epochs=10)
+    >>> model = CNN1D(input_shape=(1000, 1), n_classes=5)
+    >>> model.build_model()
+    >>> # Train with your data: model.train(X_train, y_train, epochs=10)
 
 LSTM for sequence modeling:
-    >>> from vitalDSP.ml_models.deep_models import LSTMNetwork
-    >>> lstm_model = LSTMNetwork(sequence_length=100, features=1, num_classes=3)
-    >>> lstm_model.compile(optimizer='adam', loss='sparse_categorical_crossentropy')
-
-Autoencoder for anomaly detection:
-    >>> from vitalDSP.ml_models.deep_models import AutoencoderModel
-    >>> autoencoder = AutoencoderModel(input_dim=1000, encoding_dim=32)
-    >>> autoencoder.compile(optimizer='adam', loss='mse')
+    >>> from vitalDSP.ml_models.deep_models import LSTMModel
+    >>> lstm_model = LSTMModel(input_shape=(100, 1), n_classes=3)
+    >>> lstm_model.build_model()
+    >>> # lstm_model.train(X_train, y_train, epochs=10)
 """
 
 import numpy as np

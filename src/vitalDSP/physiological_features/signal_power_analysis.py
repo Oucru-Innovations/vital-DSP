@@ -20,9 +20,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.signal_power_analysis import SignalPowerAnalysis
     >>> signal = np.random.randn(1000)
-    >>> processor = SignalPowerAnalysis(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> spa = SignalPowerAnalysis(signal)
+    >>> power = spa.compute_total_power()
 """
 
 import numpy as np

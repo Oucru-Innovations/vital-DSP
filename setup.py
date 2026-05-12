@@ -16,7 +16,7 @@ class PostInstallCommand(install):
 
 setup(
     name='vitaldsp',
-    version='0.2.2',
+    version='0.2.3',
     author='van-koha',  
     author_email='vital.data@oucru.org', 
     description='A comprehensive toolkit for Digital Signal Processing in healthcare applications.',
@@ -40,17 +40,24 @@ setup(
         "vitalDSP.notebooks": ["*.csv"],  # specify the file patterns
     },
     install_requires=[
-        'numpy>=1.19.2,<2.0',  # Constrained for TensorFlow compatibility
-        'scipy>=1.5.2',
+        'numpy>=1.21.0',
+        'scipy>=1.7.0',
+        'matplotlib>=3.4.0',
+        'pandas>=1.3.0',
         'plotly>=4.14.3',
-        'scikit-learn>=0.23.2',
-        'statsmodels',
-        'dash>=2.0.0',  # Updated to include Dash
-        'fastapi>=0.68.0',  # Include FastAPI for APIs
-        'uvicorn>=0.15.0'   # Uvicorn for serving FastAPI
-        # Add other dependencies here
+        'scikit-learn>=0.24.0',
+        'statsmodels>=0.12.0',
+        'seaborn>=0.11.0',
+        'PyYAML>=5.4',
+        'Jinja2>=3.0',
+        'psutil>=5.8.0',
     ],
     extras_require={
+        'webapp': [
+            'dash>=2.0.0',
+            'fastapi>=0.68.0',
+            'uvicorn>=0.15.0',
+        ],
         'tensorflow': [
             'tensorflow>=2.8.0,<2.17.0; platform_system != "Darwin" and python_version < "3.13"',  # TensorFlow for Linux/Windows
             'tensorflow-macos>=2.8.0,<2.17.0; platform_system == "Darwin" and platform_machine == "arm64" and python_version < "3.13"',  # Apple Silicon

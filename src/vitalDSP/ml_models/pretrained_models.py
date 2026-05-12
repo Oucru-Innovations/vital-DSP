@@ -44,8 +44,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.ml_models.pretrained_models import PretrainedModels
     >>> signal = np.random.randn(1000)
-    >>> processor = PretrainedModels(signal)
-    >>> result = processor.process()
+    >>> pm = PretrainedModel(model_type='ecg_classifier')
+    >>> predictions = pm.predict(signal)
     >>> print(f'Processing result: {result}')
 """
 

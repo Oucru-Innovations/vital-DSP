@@ -20,8 +20,9 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.health_analysis.interpretation_engine import InterpretationEngine
     >>> signal = np.random.randn(1000)
-    >>> processor = InterpretationEngine(signal)
-    >>> result = processor.process()
+    >>> ie = InterpretationEngine()
+    >>> status = ie.get_range_status('sdnn', 45.0)
+    >>> interp = ie.interpret_feature('sdnn', 45.0)
     >>> print(f'Processing result: {result}')
 """
 

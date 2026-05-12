@@ -21,9 +21,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.energy_analysis import EnergyAnalysis
     >>> signal = np.random.randn(1000)
-    >>> processor = EnergyAnalysis(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> ea = EnergyAnalysis(signal, fs=256)
+    >>> energy = ea.compute_total_energy()
 """
 
 import numpy as np

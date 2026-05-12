@@ -19,9 +19,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.signal_segmentation import SignalSegmentation
     >>> signal = np.random.randn(1000)
-    >>> processor = SignalSegmentation(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> ss = SignalSegmentation(signal)
+    >>> segments = ss.fixed_size_segmentation(segment_size=256)
 """
 
 from sklearn.cluster import KMeans, SpectralClustering

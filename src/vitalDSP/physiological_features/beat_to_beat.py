@@ -19,11 +19,12 @@ Examples:
 --------
 Basic usage:
     >>> import numpy as np
-    >>> from vitalDSP.physiological_features.beat_to_beat import BeatToBeat
-    >>> signal = np.random.randn(1000)
-    >>> processor = BeatToBeat(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> from vitalDSP.physiological_features.beat_to_beat import BeatToBeatAnalysis
+    >>> ecg_signal = np.random.randn(5000)
+    >>> bba = BeatToBeatAnalysis(ecg_signal, fs=500)
+    >>> rr = bba.compute_rr_intervals()
+    >>> sdnn = bba.compute_sdnn()
+    >>> print(f'SDNN: {sdnn:.2f} ms')
 """
 
 import numpy as np

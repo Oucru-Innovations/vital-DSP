@@ -19,9 +19,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.sparse_signal_processing import SparseSignalProcessing
     >>> signal = np.random.randn(1000)
-    >>> processor = SparseSignalProcessing(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> ssp = SparseSignalProcessing(signal)
+    >>> coeffs = ssp.sparse_representation()
 """
 
 import numpy as np

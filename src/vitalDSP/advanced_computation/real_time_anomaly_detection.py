@@ -20,9 +20,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.real_time_anomaly_detection import RealTimeAnomalyDetection
     >>> signal = np.random.randn(1000)
-    >>> processor = RealTimeAnomalyDetection(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> rtad = RealTimeAnomalyDetection(signal)
+    >>> anomalies = rtad.detect_statistical()
 """
 
 import numpy as np

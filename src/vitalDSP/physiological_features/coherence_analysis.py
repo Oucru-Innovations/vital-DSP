@@ -21,9 +21,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.coherence_analysis import CoherenceAnalysis
     >>> signal = np.random.randn(1000)
-    >>> processor = CoherenceAnalysis(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> ca = CoherenceAnalysis(signal1, signal2, fs=256)
+    >>> coh = ca.compute_coherence()
 """
 
 from scipy.signal import coherence

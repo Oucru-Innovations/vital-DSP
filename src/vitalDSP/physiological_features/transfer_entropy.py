@@ -75,8 +75,9 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.transfer_entropy import TransferEntropy
     >>> signal = np.random.randn(1000)
-    >>> processor = TransferEntropy(signal)
-    >>> result = processor.process()
+    >>> te = TransferEntropy(source, target, k_coef=1, l_coef=1)
+    >>> te_val = te.compute_transfer_entropy()
+    >>> te_fwd, te_bwd = te.compute_bidirectional_te()
     >>> print(f'Processing result: {result}')
 """
 

@@ -19,9 +19,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.multimodal_fusion import MultimodalFusion
     >>> signal = np.random.randn(1000)
-    >>> processor = MultimodalFusion(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> mf = MultimodalFusion(signal)
+    >>> fused = mf.fuse()
 """
 
 import numpy as np

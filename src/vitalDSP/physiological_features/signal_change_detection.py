@@ -20,9 +20,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.signal_change_detection import SignalChangeDetection
     >>> signal = np.random.randn(1000)
-    >>> processor = SignalChangeDetection(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> scd = SignalChangeDetection(signal)
+    >>> changes = scd.zero_crossing_rate()
 """
 
 import numpy as np

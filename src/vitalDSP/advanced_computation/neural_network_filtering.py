@@ -21,9 +21,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.neural_network_filtering import NeuralNetworkFiltering
     >>> signal = np.random.randn(1000)
-    >>> processor = NeuralNetworkFiltering(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> nn = NeuralNetworkFiltering(input_size=100)
+    >>> filtered = nn.apply_filter(signal)
 """
 
 import numpy as np

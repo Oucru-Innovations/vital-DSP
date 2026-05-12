@@ -45,8 +45,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.ml_models.transfer_learning import TransferLearning
     >>> signal = np.random.randn(1000)
-    >>> processor = TransferLearning(signal)
-    >>> result = processor.process()
+    >>> tls = TransferLearningStrategy(base_model)
+    >>> tls.freeze_layers(n_layers=5)
     >>> print(f'Processing result: {result}')
 """
 

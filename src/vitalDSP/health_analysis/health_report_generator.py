@@ -22,16 +22,14 @@ Examples:
 --------
 Basic health report generation:
     >>> from vitalDSP.health_analysis.health_report_generator import HealthReportGenerator
-    >>> generator = HealthReportGenerator()
-    >>> features = {'hrv_sdnn': 45.2, 'hrv_rmssd': 32.1, 'respiratory_rate': 16.5}
-    >>> report = generator.generate_report(features, output_dir='./reports')
-    >>> print(f"Report generated: {report['status']}")
+    >>> feature_data = {'sdnn': [45.2, 48.1, 42.3], 'rmssd': [32.1, 35.4, 30.8]}
+    >>> generator = HealthReportGenerator(feature_data=feature_data, segment_duration='1_min')
+    >>> report_html = generator.generate(output_dir='./reports')
 
 Multi-threaded processing:
-    >>> config = {'max_workers': 4, 'use_multiprocessing': True}
-    >>> generator = HealthReportGenerator(config)
-    >>> large_features = {f'feature_{i}': np.random.randn(1000) for i in range(10)}
-    >>> report = generator.generate_report(large_features, output_dir='./reports')
+    >>> generator = HealthReportGenerator(feature_data=feature_data, segment_duration='1_min', max_workers=4)
+    >>> generator.set_concurrency(max_workers=4)
+    >>> report_html = generator.generate()
 """
 
 from vitalDSP.health_analysis.interpretation_engine import InterpretationEngine

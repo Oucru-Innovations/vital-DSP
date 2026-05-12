@@ -1090,26 +1090,29 @@ This example demonstrates advanced nonlinear analysis techniques for assessing p
                # 3. Multi-Scale Entropy Analysis
                mse_analyzer = MultiScaleEntropy(
                    signal=valid_rr,
-                   m=2,           # Embedding dimension
-                   r_multiplier=0.15,  # Tolerance multiplier
-                   max_scale=20   # Maximum scale
+                   m=2,        # Embedding dimension
+                   r=0.15,     # Tolerance (fraction of std)
+                   max_scale=20
                )
-               
-               # Standard MSE
-               mse_values, complexity_index = mse_analyzer.compute_mse()
+
+               # Standard MSE — returns np.ndarray of length max_scale
+               mse_values = mse_analyzer.compute_mse()
+               complexity_index = mse_analyzer.get_complexity_index(mse_values)
                results['mse_values'] = mse_values.tolist()
                results['complexity_index'] = float(complexity_index)
-               
+
                # Composite MSE (more robust)
-               cmse_values, cmse_ci = mse_analyzer.compute_cmse()
+               cmse_values = mse_analyzer.compute_cmse()
+               cmse_ci = mse_analyzer.get_complexity_index(cmse_values)
                results['cmse_values'] = cmse_values.tolist()
                results['cmse_complexity_index'] = float(cmse_ci)
-               
+
                # Refined Composite MSE (best for short signals)
-               rcmse_values, rcmse_ci = mse_analyzer.compute_rcmse()
+               rcmse_values = mse_analyzer.compute_rcmse()
+               rcmse_ci = mse_analyzer.get_complexity_index(rcmse_values)
                results['rcmse_values'] = rcmse_values.tolist()
                results['rcmse_complexity_index'] = float(rcmse_ci)
-               
+
                # 4. Clinical Interpretation
                interpretation = interpret_complexity_metrics(
                    complexity_index,
@@ -1357,22 +1360,17 @@ This example demonstrates a complete health monitoring pipeline with automated r
        
        def _process_respiratory(self, resp_signal):
            """Process respiratory signal."""
-           
+
            results = {}
-           
+
            try:
+               # Filter before analysis
+               sf = SignalFiltering(resp_signal)
+               filtered_resp = sf.bandpass(lowcut=0.1, highcut=0.5, fs=self.fs, order=4)
+
                # Respiratory analysis
-               resp_analyzer = RespiratoryAnalysis(resp_signal, self.fs)
-               
-               # Preprocess
-               filtered_resp = resp_analyzer.preprocess_signal(
-                   detrend=True,
-                   normalize=True,
-                   filter_type='bandpass',
-                   low_freq=0.1,
-                   high_freq=0.5
-               )
-               
+               resp_analyzer = RespiratoryAnalysis(filtered_resp, self.fs)
+
                # Estimate rate
                resp_rate = resp_analyzer.compute_respiratory_rate()
                results['respiratory_rate'] = float(resp_rate)
@@ -1488,18 +1486,16 @@ This example demonstrates a complete health monitoring pipeline with automated r
                            feature_data[key] = [float(value)]
            
            if feature_data:
-               # Generate report
+               # Generate report — HealthReportGenerator takes feature_data and
+               # optional segment_duration; output_dir is passed to .generate()
                report_gen = HealthReportGenerator(
                    feature_data=feature_data,
-                   sampling_rate=self.fs
+                   segment_duration='1_min'
                )
-               
-               report_path = report_gen.generate_report(
-                   patient_id=self.patient_id,
-                   output_path=output_path
-               )
-               
-               return report_path
+
+               output_dir = os.path.dirname(output_path) or 'reports'
+               report_gen.generate(output_dir=output_dir)
+               return output_dir
            
            return None
 
@@ -1606,22 +1602,25 @@ This example demonstrates advanced analysis of coupling between multiple physiol
                )
                
                # 3. Transfer Entropy Analysis
+               # k_coef / l_coef are history lengths for target / source
                te_analyzer = TransferEntropy(
                    source=resp_resampled[:len(valid_rr)],
                    target=valid_rr,
-                   k=1,  # History length
-                   delay=1  # Time delay
+                   k_coef=1,
+                   l_coef=1,
+                   delay=1
                )
-               
+
                # Respiratory -> Cardiac influence
                te_resp_to_cardiac = te_analyzer.compute_transfer_entropy()
                results['te_resp_to_cardiac'] = float(te_resp_to_cardiac)
-               
+
                # Cardiac -> Respiratory influence
                te_analyzer_reverse = TransferEntropy(
                    source=valid_rr,
                    target=resp_resampled[:len(valid_rr)],
-                   k=1,
+                   k_coef=1,
+                   l_coef=1,
                    delay=1
                )
                te_cardiac_to_resp = te_analyzer_reverse.compute_transfer_entropy()
@@ -1825,48 +1824,44 @@ This example demonstrates comprehensive feature extraction across all domains: t
        # 3. TIME DOMAIN FEATURES
        print("Extracting time-domain features...")
        td_features = TimeDomainFeatures(valid_rr)
-       
-       # Basic statistics
-       results['features']['mean_rr'] = td_features.mean()
-       results['features']['std_rr'] = td_features.std()
-       results['features']['min_rr'] = td_features.min()
-       results['features']['max_rr'] = td_features.max()
-       results['features']['range_rr'] = td_features.max() - td_features.min()
-       
+
+       # Basic HRV statistics
+       mean_rr = td_features.compute_mean_nn()
+       results['features']['mean_rr'] = mean_rr
+       results['features']['std_rr'] = td_features.compute_std_nn()
+       results['features']['median_rr'] = td_features.compute_median_nn()
+
        # HRV time-domain metrics
-       results['features']['sdnn'] = td_features.sdnn()
-       results['features']['rmssd'] = td_features.rmssd()
-       results['features']['sdsd'] = td_features.sdsd()
-       results['features']['nn50'] = td_features.nn50()
-       results['features']['pnn50'] = td_features.pnn50()
-       results['features']['nn20'] = td_features.nn20()
-       results['features']['pnn20'] = td_features.pnn20()
-       
+       results['features']['sdnn'] = td_features.compute_sdnn()
+       results['features']['rmssd'] = td_features.compute_rmssd()
+       results['features']['sdsd'] = td_features.compute_sdsd()
+       results['features']['nn50'] = td_features.compute_nn50()
+       results['features']['pnn50'] = td_features.compute_pnn50()
+       results['features']['pnn20'] = td_features.compute_pnn20()
+
        # Heart rate
-       results['features']['mean_hr'] = 60000 / results['features']['mean_rr']
+       results['features']['mean_hr'] = 60000 / mean_rr
        
        # 4. FREQUENCY DOMAIN FEATURES
        print("Extracting frequency-domain features...")
-       fd_features = FrequencyDomainFeatures(valid_rr, fs=4.0)  # Typical RR sampling ~4Hz
-       
-       # Compute PSD
-       psd_results = fd_features.compute_psd(method='welch')
+       # FrequencyDomainFeatures expects nn_intervals and fs (default 4 Hz)
+       fd_features = FrequencyDomainFeatures(valid_rr, fs=4)
+
+       # compute_psd() takes no arguments; returns dict with keys:
+       # ulf_power, vlf_power, lf_power, hf_power, lf_hf_ratio, total_power, frequencies, psd
+       psd_results = fd_features.compute_psd()
        results['features']['vlf_power'] = psd_results['vlf_power']
        results['features']['lf_power'] = psd_results['lf_power']
        results['features']['hf_power'] = psd_results['hf_power']
        results['features']['total_power'] = psd_results['total_power']
        results['features']['lf_hf_ratio'] = psd_results['lf_hf_ratio']
-       
+
        # Normalized powers
-       if results['features']['total_power'] > 0:
-           results['features']['lf_nu'] = (results['features']['lf_power'] / 
-                                           (results['features']['lf_power'] + results['features']['hf_power']) * 100)
-           results['features']['hf_nu'] = (results['features']['hf_power'] / 
-                                           (results['features']['lf_power'] + results['features']['hf_power']) * 100)
-       
-       # Peak frequencies
-       results['features']['lf_peak'] = psd_results.get('lf_peak_frequency', 0)
-       results['features']['hf_peak'] = psd_results.get('hf_peak_frequency', 0)
+       lf = results['features']['lf_power']
+       hf = results['features']['hf_power']
+       if (lf + hf) > 0:
+           results['features']['lf_nu'] = lf / (lf + hf) * 100
+           results['features']['hf_nu'] = hf / (lf + hf) * 100
        
        # 5. NONLINEAR FEATURES
        print("Extracting nonlinear features...")
@@ -1879,12 +1874,11 @@ This example demonstrates comprehensive feature extraction across all domains: t
        results['features']['sd_ratio'] = poincare['sd_ratio']
        
        # Entropy measures
-       results['features']['sample_entropy'] = nl_features.sample_entropy(m=2, r=0.2)
-       results['features']['approximate_entropy'] = nl_features.approximate_entropy(m=2, r=0.2)
-       
-       # Detrended Fluctuation Analysis
-       results['features']['dfa_alpha1'] = nl_features.dfa(scale_min=4, scale_max=16)
-       results['features']['dfa_alpha2'] = nl_features.dfa(scale_min=16, scale_max=64)
+       results['features']['sample_entropy'] = nl_features.compute_sample_entropy(m=2, r=0.2)
+       results['features']['approximate_entropy'] = nl_features.compute_approximate_entropy(m=2, r=0.2)
+
+       # Detrended Fluctuation Analysis (compute_dfa takes order, not scale bounds)
+       results['features']['dfa_alpha'] = nl_features.compute_dfa()
        
        # 6. BEAT-TO-BEAT ANALYSIS
        print("Extracting beat-to-beat features...")
@@ -2058,6 +2052,7 @@ This example demonstrates comprehensive feature extraction across all domains: t
    print(f"SD1/SD2 Ratio: {results['features']['sd_ratio']:.3f}")
    print(f"Sample Entropy: {results['features']['sample_entropy']:.3f}")
    print(f"Approximate Entropy: {results['features']['approximate_entropy']:.3f}")
+   print(f"DFA Alpha: {results['features']['dfa_alpha']:.3f}")
    
    print(f"\n{'='*60}")
    print("CLINICAL INTERPRETATION")
@@ -2097,126 +2092,80 @@ This example demonstrates machine learning applications including anomaly detect
 .. code-block:: python
 
    import numpy as np
-   from vitalDSP.ml_models.deep_models import (
-       StandardAutoencoder, ConvolutionalAutoencoder, CNN1D
-   )
+   from vitalDSP.ml_models.deep_models import CNN1D
    from vitalDSP.advanced_computation.anomaly_detection import AnomalyDetection
    from vitalDSP.ml_models.feature_extractor import FeatureExtractor
-   from vitalDSP.filtering.signal_filtering import SignalFiltering
    from vitalDSP.utils.data_processing.synthesize_data import generate_ecg_signal
    from sklearn.model_selection import train_test_split
    from sklearn.preprocessing import StandardScaler
-   
+
    def ml_signal_analysis_pipeline(clean_signals, noisy_signals, fs, anomaly_threshold=2.5):
        """
        Complete ML pipeline for physiological signal analysis.
-       
+
        Parameters:
        -----------
        clean_signals : list of arrays
            Clean reference signals for training
        noisy_signals : list of arrays
-           Noisy signals to denoise
+           Noisy signals to process
        fs : float
            Sampling frequency
        anomaly_threshold : float
            Z-score threshold for anomaly detection
-       
+
        Returns:
        --------
-       dict : ML analysis results including denoised signals and detected anomalies
+       dict : ML analysis results including anomaly flags and classification
        """
-       
+
        results = {
-           'denoising': {},
            'anomaly_detection': {},
            'classification': {},
            'model_performance': {}
        }
-       
-       # 1. SIGNAL DENOISING WITH AUTOENCODER
-       print("="*60)
-       print("1. AUTOENCODER-BASED SIGNAL DENOISING")
-       print("="*60)
-       
-       # Prepare data for autoencoder
+
        signal_length = min([len(s) for s in clean_signals])
        X_clean = np.array([s[:signal_length] for s in clean_signals])
        X_noisy = np.array([s[:signal_length] for s in noisy_signals])
-       
+
        # Normalize
        scaler = StandardScaler()
        X_clean_norm = scaler.fit_transform(X_clean)
-       X_noisy_norm = scaler.transform(X_noisy)
-       
-       # Reshape for autoencoder (samples, timesteps, features)
-       X_clean_reshaped = X_clean_norm.reshape(X_clean_norm.shape[0], X_clean_norm.shape[1], 1)
-       X_noisy_reshaped = X_noisy_norm.reshape(X_noisy_norm.shape[0], X_noisy_norm.shape[1], 1)
-       
-       # Train Convolutional Autoencoder
-       print("Training Convolutional Autoencoder...")
-       autoencoder = ConvolutionalAutoencoder(
-           input_shape=(signal_length, 1),
-           latent_dim=32
-       )
-       
-       history = autoencoder.fit(
-           X_noisy_reshaped,
-           X_clean_reshaped,
-           epochs=50,
-           batch_size=32,
-           validation_split=0.2,
-           verbose=0
-       )
-       
-       # Denoise signals
-       X_denoised = autoencoder.predict(X_noisy_reshaped)
-       X_denoised = scaler.inverse_transform(X_denoised.reshape(X_denoised.shape[0], -1))
-       
-       # Calculate reconstruction error
-       reconstruction_error = np.mean((X_clean - X_denoised) ** 2, axis=1)
-       
-       results['denoising']['clean_signals'] = X_clean
-       results['denoising']['noisy_signals'] = X_noisy
-       results['denoising']['denoised_signals'] = X_denoised
-       results['denoising']['reconstruction_error'] = reconstruction_error
-       results['denoising']['mean_error'] = np.mean(reconstruction_error)
-       results['denoising']['std_error'] = np.std(reconstruction_error)
-       
-       print(f"✓ Denoising complete")
-       print(f"  Mean Reconstruction Error: {results['denoising']['mean_error']:.4f}")
-       print(f"  Std Reconstruction Error: {results['denoising']['std_error']:.4f}")
-       
-       # 2. ANOMALY DETECTION
-       print(f"\n{'='*60}")
-       print("2. ANOMALY DETECTION")
+
+       # Reshape for CNN1D (samples, timesteps, features)
+       X_reshaped = X_clean_norm.reshape(X_clean_norm.shape[0], X_clean_norm.shape[1], 1)
+
+       # 1. ANOMALY DETECTION
        print("="*60)
-       
+       print("1. ANOMALY DETECTION")
+       print("="*60)
+
        anomaly_results = []
        for i, signal in enumerate(noisy_signals):
            detector = AnomalyDetection(signal)
-           
+
            # Z-score based detection
            anomalies_zscore = detector.detect_anomalies(
                method='z_score',
                threshold=anomaly_threshold
            )
-           
+
            # Statistical detection
            anomalies_stat = detector.detect_anomalies(
                method='statistical',
                window_size=100
            )
-           
+
            # Isolation Forest
            try:
                anomalies_isolation = detector.detect_anomalies(
                    method='isolation_forest',
                    contamination=0.1
                )
-           except:
+           except Exception:
                anomalies_isolation = []
-           
+
            anomaly_info = {
                'signal_index': i,
                'z_score_anomalies': len(anomalies_zscore),
@@ -2226,178 +2175,120 @@ This example demonstrates machine learning applications including anomaly detect
                'signal_quality': 'good' if len(anomalies_zscore) < 10 else 'poor'
            }
            anomaly_results.append(anomaly_info)
-       
+
        results['anomaly_detection']['per_signal'] = anomaly_results
        results['anomaly_detection']['total_signals'] = len(noisy_signals)
        results['anomaly_detection']['good_quality'] = sum(1 for a in anomaly_results if a['signal_quality'] == 'good')
        results['anomaly_detection']['poor_quality'] = sum(1 for a in anomaly_results if a['signal_quality'] == 'poor')
-       
-       print(f"✓ Anomaly detection complete")
-       print(f"  Total signals analyzed: {results['anomaly_detection']['total_signals']}")
-       print(f"  Good quality signals: {results['anomaly_detection']['good_quality']}")
-       print(f"  Poor quality signals: {results['anomaly_detection']['poor_quality']}")
-       
-       # 3. FEATURE EXTRACTION FOR ML
+
+       print(f"Total signals analyzed: {results['anomaly_detection']['total_signals']}")
+       print(f"Good quality signals: {results['anomaly_detection']['good_quality']}")
+       print(f"Poor quality signals: {results['anomaly_detection']['poor_quality']}")
+
+       # 2. FEATURE EXTRACTION FOR ML
+       # FeatureExtractor is a sklearn-compatible transformer: fit then transform
        print(f"\n{'='*60}")
-       print("3. FEATURE EXTRACTION FOR MACHINE LEARNING")
+       print("2. FEATURE EXTRACTION FOR MACHINE LEARNING")
        print("="*60)
-       
-       extractor = FeatureExtractor()
-       
-       features_list = []
-       for signal in X_denoised:
-           # Extract comprehensive features
-           features = extractor.extract_features(
-               signal,
-               fs=fs,
-               feature_types=['statistical', 'temporal', 'spectral']
-           )
-           features_list.append(features)
-       
-       features_array = np.array(features_list)
-       
+
+       extractor = FeatureExtractor(signal_type='ecg', sampling_rate=float(fs))
+       features_array = extractor.fit_transform(X_clean)
+
        results['classification']['features'] = features_array
        results['classification']['n_features'] = features_array.shape[1]
-       
-       print(f"✓ Feature extraction complete")
-       print(f"  Number of features extracted: {features_array.shape[1]}")
-       print(f"  Feature dimensions: {features_array.shape}")
-       
-       # 4. CNN1D CLASSIFICATION (Example with synthetic labels)
+
+       print(f"Number of features extracted: {features_array.shape[1]}")
+       print(f"Feature dimensions: {features_array.shape}")
+
+       # 3. CNN1D CLASSIFICATION (Example with synthetic labels)
        print(f"\n{'='*60}")
-       print("4. CNN1D PATTERN CLASSIFICATION")
+       print("3. CNN1D PATTERN CLASSIFICATION")
        print("="*60)
-       
+
        # Create synthetic labels for demonstration (normal vs. abnormal)
-       labels = np.array([0 if e < np.median(reconstruction_error) else 1 
-                         for e in reconstruction_error])
-       
+       noise_levels = np.array([np.std(s - c[:signal_length])
+                                for s, c in zip(noisy_signals, clean_signals)])
+       labels = (noise_levels > np.median(noise_levels)).astype(int)
+
        # Split data
        X_train, X_test, y_train, y_test = train_test_split(
-           X_clean_reshaped, labels, test_size=0.2, random_state=42, stratify=labels
+           X_reshaped, labels, test_size=0.2, random_state=42
        )
-       
+
        # Train CNN1D classifier
+       # Note: CNN1D.train() not .fit(); no .evaluate() method
        print("Training CNN1D classifier...")
        cnn = CNN1D(
            input_shape=(signal_length, 1),
-           num_classes=2,
-           num_filters=[32, 64, 128],
-           kernel_size=3,
-           pool_size=2
+           n_classes=2,
+           n_filters=[32, 64, 128],
+           kernel_sizes=[3],
+           pool_sizes=[2]
        )
-       
-       cnn_history = cnn.fit(
+
+       train_history = cnn.train(
            X_train, y_train,
+           X_val=X_test, y_val=y_test,
            epochs=30,
-           batch_size=32,
-           validation_split=0.2,
-           verbose=0
+           batch_size=32
        )
-       
-       # Evaluate
-       test_loss, test_accuracy = cnn.evaluate(X_test, y_test)
-       
-       results['classification']['test_accuracy'] = test_accuracy
-       results['classification']['test_loss'] = test_loss
+
        results['classification']['n_train'] = len(X_train)
        results['classification']['n_test'] = len(X_test)
-       
-       print(f"✓ Classification complete")
-       print(f"  Test Accuracy: {test_accuracy:.2%}")
-       print(f"  Test Loss: {test_loss:.4f}")
-       print(f"  Training samples: {len(X_train)}")
-       print(f"  Test samples: {len(X_test)}")
-       
+       results['model_performance']['history'] = train_history
+
+       print(f"Training samples: {len(X_train)}")
+       print(f"Test samples: {len(X_test)}")
+
        return results
-   
+
    def evaluate_ml_pipeline(results):
        """Evaluate and display ML pipeline results."""
-       
+
        print(f"\n{'='*60}")
        print("ML PIPELINE PERFORMANCE SUMMARY")
        print("="*60)
-       
-       # Denoising performance
-       print(f"\n📊 Denoising Performance:")
-       print(f"  Mean Reconstruction Error: {results['denoising']['mean_error']:.4f}")
-       print(f"  Std Reconstruction Error: {results['denoising']['std_error']:.4f}")
-       
-       # Calculate SNR improvement
-       original_noise = np.mean(np.var(results['denoising']['noisy_signals'] - 
-                                       results['denoising']['clean_signals'], axis=1))
-       residual_noise = np.mean(np.var(results['denoising']['denoised_signals'] - 
-                                       results['denoising']['clean_signals'], axis=1))
-       snr_improvement = 10 * np.log10(original_noise / (residual_noise + 1e-10))
-       
-       print(f"  SNR Improvement: {snr_improvement:.2f} dB")
-       
+
        # Anomaly detection
-       print(f"\n🔍 Anomaly Detection:")
+       print(f"\nAnomaly Detection:")
        print(f"  Total signals: {results['anomaly_detection']['total_signals']}")
        print(f"  Good quality: {results['anomaly_detection']['good_quality']} "
              f"({results['anomaly_detection']['good_quality']/results['anomaly_detection']['total_signals']*100:.1f}%)")
        print(f"  Poor quality: {results['anomaly_detection']['poor_quality']} "
              f"({results['anomaly_detection']['poor_quality']/results['anomaly_detection']['total_signals']*100:.1f}%)")
-       
+
        # Classification
-       print(f"\n🎯 Classification Performance:")
-       print(f"  Test Accuracy: {results['classification']['test_accuracy']:.2%}")
+       print(f"\nClassification:")
        print(f"  Number of features: {results['classification']['n_features']}")
-       
-       # Overall assessment
-       print(f"\n{'='*60}")
-       print("OVERALL ASSESSMENT")
-       print("="*60)
-       
-       quality_score = (
-           (snr_improvement / 10) * 30 +  # Denoising (30 points)
-           (results['anomaly_detection']['good_quality'] / 
-            results['anomaly_detection']['total_signals']) * 30 +  # Quality (30 points)
-           results['classification']['test_accuracy'] * 40  # Classification (40 points)
-       )
-       
-       print(f"Quality Score: {quality_score:.1f}/100")
-       
-       if quality_score >= 80:
-           print("✅ Excellent - ML pipeline performing optimally")
-       elif quality_score >= 60:
-           print("⚠️ Good - ML pipeline acceptable, some improvements possible")
-       else:
-           print("❌ Fair - ML pipeline needs optimization")
+       print(f"  Training samples: {results['classification']['n_train']}")
+       print(f"  Test samples: {results['classification']['n_test']}")
 
 **Usage Example:**
 
 .. code-block:: python
 
    # Generate training data
-   n_signals = 100
+   n_signals = 50
    fs = 256
-   signal_length = 2560  # 10 seconds
-   
+   signal_length = 1280  # 5 seconds
+
    print("Generating training data...")
    clean_signals = []
    noisy_signals = []
-   
+
    for i in range(n_signals):
-       # Generate clean ECG
-       clean = generate_ecg_signal(sfecg=fs, duration=10, hrmean=70+np.random.randn()*5, Anoise=0.0)
-       clean_signals.append(clean[:signal_length])
-       
-       # Add noise
+       clean = np.random.randn(signal_length)  # synthetic signal
+       clean_signals.append(clean)
        noise = np.random.normal(0, 0.1, signal_length)
-       noisy = clean[:signal_length] + noise
-       noisy_signals.append(noisy)
-   
+       noisy_signals.append(clean + noise)
+
    # Run ML pipeline
    results = ml_signal_analysis_pipeline(clean_signals, noisy_signals, fs=fs)
-   
+
    # Evaluate results
    evaluate_ml_pipeline(results)
-   
-   # Save models for deployment
-   print("\n💾 Models ready for deployment")
-   print("  - Autoencoder trained for real-time denoising")
+
+   print("\nModels ready for deployment")
    print("  - Anomaly detector calibrated for quality assessment")
    print("  - CNN1D classifier ready for pattern recognition")
 

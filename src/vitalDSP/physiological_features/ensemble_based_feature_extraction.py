@@ -20,8 +20,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.ensemble_based_feature_extraction import EnsembleBasedFeatureExtraction
     >>> signal = np.random.randn(1000)
-    >>> processor = EnsembleBasedFeatureExtraction(signal)
-    >>> result = processor.process()
+    >>> ebfe = EnsembleBasedFeatureExtraction(signal)
+    >>> features = ebfe.random_forest_features()
     >>> print(f'Processing result: {result}')
 """
 

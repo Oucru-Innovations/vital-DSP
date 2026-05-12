@@ -25,22 +25,20 @@ Basic autoencoder for anomaly detection:
     >>> import numpy as np
     >>> from vitalDSP.ml_models.autoencoder import StandardAutoencoder
     >>> signal_data = np.random.randn(1000, 100)  # 1000 samples, 100 features
-    >>> autoencoder = StandardAutoencoder(input_dim=100, encoding_dim=32)
-    >>> autoencoder.compile(optimizer='adam', loss='mse')
-    >>> autoencoder.fit(signal_data, signal_data, epochs=10)
+    >>> autoencoder = StandardAutoencoder(input_shape=(100,), latent_dim=32)
+    >>> autoencoder.fit(signal_data, epochs=10)
+    >>> anomalies, scores, threshold = autoencoder.detect_anomalies(signal_data)
 
 Variational autoencoder:
     >>> from vitalDSP.ml_models.autoencoder import VariationalAutoencoder
-    >>> vae = VariationalAutoencoder(input_dim=100, latent_dim=16)
-    >>> vae.compile(optimizer='adam', loss='mse')
-    >>> vae.fit(signal_data, signal_data, epochs=10)
+    >>> vae = VariationalAutoencoder(input_shape=(100,), latent_dim=16)
+    >>> vae.fit(signal_data, epochs=10)
 
 Denoising autoencoder:
     >>> from vitalDSP.ml_models.autoencoder import DenoisingAutoencoder
     >>> noisy_data = signal_data + np.random.normal(0, 0.1, signal_data.shape)
-    >>> dae = DenoisingAutoencoder(input_dim=100, encoding_dim=32)
-    >>> dae.compile(optimizer='adam', loss='mse')
-    >>> dae.fit(noisy_data, signal_data, epochs=10)
+    >>> dae = DenoisingAutoencoder(input_shape=(100,), latent_dim=32)
+    >>> dae.fit(noisy_data, epochs=10)
 """
 
 import numpy as np

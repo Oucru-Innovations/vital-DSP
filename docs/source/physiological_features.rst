@@ -310,13 +310,16 @@ Symbolic dynamics transforms continuous physiological signals into discrete symb
     sd = SymbolicDynamics(rr_intervals, n_symbols=4, word_length=3, method='0V')
 
     # Compute multiple metrics
+    # compute_shannon_entropy() and compute_permutation_entropy() return float
     shannon = sd.compute_shannon_entropy()
-    forbidden = sd.detect_forbidden_words()
     perm_ent = sd.compute_permutation_entropy(order=3)
+    # detect_forbidden_words() returns a list of forbidden word strings
+    forbidden = sd.detect_forbidden_words()
 
-    print(f"Shannon Entropy: {shannon['normalized_entropy']:.3f}")
-    print(f"Forbidden Words: {forbidden['forbidden_percentage']:.1f}%")
-    print(f"Interpretation: {forbidden['interpretation']}")
+    print(f"Shannon Entropy: {shannon:.3f}")
+    print(f"Permutation Entropy: {perm_ent:.3f}")
+    print(f"Forbidden Words count: {len(forbidden)}")
+    print(f"Forbidden Words: {forbidden[:5]}")
 
 .. automodule:: vitalDSP.physiological_features.symbolic_dynamics
    :members:
@@ -349,21 +352,22 @@ Transfer entropy quantifies directional information flow between coupled physiol
     from vitalDSP.physiological_features.transfer_entropy import TransferEntropy
 
     # Analyze respiration → heart rate coupling
-    te = TransferEntropy(respiration, heart_rate, k=2, l=2, delay=1, k_neighbors=3)
+    # Parameters: k_coef and l_coef (not k and l)
+    te = TransferEntropy(respiration, heart_rate, k_coef=2, l_coef=2, delay=1, k_neighbors=3)
 
-    # Bidirectional analysis
-    bidirectional = te.compute_bidirectional_te()
-    print(f"Respiration → HR: {bidirectional['te_forward']:.3f}")
-    print(f"HR → Respiration: {bidirectional['te_backward']:.3f}")
-    print(f"Coupling type: {bidirectional['interpretation']}")
+    # Bidirectional analysis returns (te_forward, te_backward) tuple
+    te_forward, te_backward = te.compute_bidirectional_te()
+    print(f"Respiration -> HR: {te_forward:.3f}")
+    print(f"HR -> Respiration: {te_backward:.3f}")
 
-    # Statistical significance
-    significance = te.test_significance(n_surrogates=1000)
-    print(f"p-value: {significance['p_value']:.4f} {significance['significance']}")
+    # Statistical significance returns (p_value, te_observed) tuple
+    p_value, te_observed = te.test_significance(n_surrogates=1000)
+    print(f"p-value: {p_value:.4f}, observed TE: {te_observed:.3f}")
 
-    # Find optimal coupling delay
-    delayed = te.compute_time_delayed_te(max_delay=10)
-    print(f"Optimal delay: {delayed['optimal_delay']} seconds")
+    # Time-delayed TE returns np.ndarray of TE values for each delay
+    delayed_te = te.compute_time_delayed_te(max_delay=10)
+    optimal_delay = int(delayed_te.argmax())
+    print(f"Optimal delay: {optimal_delay} steps, TE: {delayed_te[optimal_delay]:.3f}")
 
 .. automodule:: vitalDSP.physiological_features.transfer_entropy
    :members:
@@ -512,123 +516,3 @@ Change point detection and signal transition analysis.
    :exclude-members: __dict__, __weakref__, __module__, __annotations__
    :noindex:
 
-Ensemble-Based Feature Extraction
----------------------------------
-Extract features from signals using ensemble methods, which aggregate multiple models or analyses to improve robustness and accuracy.
-
-.. automodule:: vitalDSP.physiological_features.ensemble_based_feature_extraction
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:
-
-Energy Analysis
----------------------
-Techniques for analyzing the energy-related features from physiological signals (ECG, PPG, EEG).
-
-.. automodule:: vitalDSP.physiological_features.energy_analysis
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:
-
-Envelope Detection
-------------------
-Methods for detecting the envelope of a signal, which captures the signal’s amplitude variations over time, often used in audio and biomedical signal processing.
-
-.. automodule:: vitalDSP.physiological_features.envelope_detection
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:
-
-Frequency Domain
----------------------
-Techniques for analyzing the frequency domain features from physiological signals (ECG, PPG, EEG).
-
-.. automodule:: vitalDSP.physiological_features.frequency_domain
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:
-
-Nonlinear Analysis
----------------------
-Techniques for analyzing the nonlinear features from physiological signals (ECG, PPG, EEG).
-
-.. automodule:: vitalDSP.physiological_features.nonlinear
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:
-
-Signal Change Detection
------------------------
-Detect abrupt changes in signals, which may signify transitions between different physiological states or responses.
-
-.. automodule:: vitalDSP.physiological_features.signal_change_detection
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:
-
-Signal Power Analysis
----------------------
-Analyze the power of a signal over time, which can provide insights into the energy distribution and overall activity within the signal.
-
-.. automodule:: vitalDSP.physiological_features.signal_power_analysis
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:
-
-Signal Segmentation
--------------------
-Segment signals into meaningful parts for further analysis, a crucial step in processing long-duration biomedical signals.
-
-.. automodule:: vitalDSP.physiological_features.signal_segmentation
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:
-
-Time Domain Analysis
----------------------
-Techniques for analyzing the time domain features from physiological signals (ECG, PPG, EEG).
-
-.. automodule:: vitalDSP.physiological_features.time_domain
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:
-
-Trend Analysis
---------------
-Analyze trends within signals over time, identifying underlying patterns and long-term behaviors that may be of clinical significance.
-
-.. automodule:: vitalDSP.physiological_features.trend_analysis
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:
-
-Waveform Analysis
----------------------
-Techniques for analyzing the waveform features from physiological signals (ECG, PPG, EEG).
-
-.. automodule:: vitalDSP.physiological_features.waveform
-    :members:
-    :undoc-members:
-    :private-members:
-    :exclude-members: __dict__, __weakref__, __module__, __annotations__
-    :noindex:

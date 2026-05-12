@@ -18,8 +18,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.health_analysis.file_io import FileIo
     >>> signal = np.random.randn(1000)
-    >>> processor = FileIo(signal)
-    >>> result = processor.process()
+    >>> fio = FileIO()
+    >>> config = fio.load_yaml('config.yaml')
     >>> print(f'Processing result: {result}')
 """
 

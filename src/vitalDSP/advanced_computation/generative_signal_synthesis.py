@@ -19,9 +19,8 @@ Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.generative_signal_synthesis import GenerativeSignalSynthesis
     >>> signal = np.random.randn(1000)
-    >>> processor = GenerativeSignalSynthesis(signal)
-    >>> result = processor.process()
-    >>> print(f'Processing result: {result}')
+    >>> gen = GenerativeSignalSynthesis()
+    >>> signal = gen.generate()
 """
 
 import numpy as np
