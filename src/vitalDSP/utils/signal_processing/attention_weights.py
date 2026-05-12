@@ -101,10 +101,12 @@ class AttentionWeights:
         >>> print(weights)
         [0.33333333 0.26666667 0.2        0.13333333 0.06666667]
         """
-        if ascending:
-            return np.linspace(1, size, size) / np.sum(np.linspace(1, size, size))
-        else:
-            return np.linspace(size, 1, size) / np.sum(np.linspace(size, 1, size))
+        # sum of 1..size = size*(size+1)/2 — compute once, avoid double linspace call
+        weights = np.linspace(1, size, size)
+        total = size * (size + 1) / 2
+        if not ascending:
+            weights = weights[::-1]
+        return weights / total
 
     @staticmethod
     def gaussian(size, sigma=1.0):

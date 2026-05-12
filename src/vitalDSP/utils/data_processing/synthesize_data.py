@@ -262,7 +262,8 @@ def generate_ecg_signal(
 
     X = solv_ode.y
     z = X[2]
-    z = (z - np.min(z)) * 1.6 / (np.max(z) - np.min(z)) - 0.4
+    z_range = np.max(z) - np.min(z)
+    z = (z - np.min(z)) * 1.6 / (z_range if z_range > 0 else 1.0) - 0.4
     s = z + Anoise * (2 * np.random.rand(len(z)) - 1)
 
     # detector = PeakDetection(s, method="ecg_r_peak",
@@ -283,9 +284,10 @@ def ordinary_differential_equation(
     a0 = 1.0 - np.sqrt(x**2 + y**2) / r0
     ip = int(1 + np.floor(t * sfint))
     try:
-        w0 = 2 * np.pi / rr[ip]
-    except Exception:
-        w0 = 2 * np.pi / rr[-1]
+        rr_val = rr[ip]
+    except (IndexError, TypeError):
+        rr_val = rr[-1]
+    w0 = 2 * np.pi / rr_val if rr_val != 0 else 2 * np.pi
 
     fresp = 0.25
     zbase = 0.005 * np.sin(2 * np.pi * fresp * t)
@@ -330,8 +332,8 @@ def rrprocess(flo, fhi, flostd, fhistd, lfhfratio, hrmean, hrstd, sfrr, n):
     and phases which are randomly distributed between 0 and 2pi
     """
     # Ensure Hw_resampled is non-negative before taking the square root
-    Hw0_half = np.array(Hw[0 : int(n / 2)])
-    Hw0 = np.append(Hw0_half, np.flip(Hw0_half))
+    Hw0_half = Hw[: int(n / 2)]
+    Hw0 = np.concatenate([Hw0_half, Hw0_half[::-1]])
     Sw = (sfrr / 2) * (Hw0**0.5)
 
     # Generate phase with correct length

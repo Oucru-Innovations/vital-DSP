@@ -50,9 +50,9 @@ def z_score_normalization(signal):
     mean = np.mean(signal)
     std = np.std(signal)
 
-    # Handle the case where std is 0 to avoid division by zero
     if std == 0:
-        return np.zeros_like(signal)
+        # Constant signal: z-score undefined — return zero-centered signal
+        return signal - mean
 
     normalized_signal = (signal - mean) / std
     return normalized_signal

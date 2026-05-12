@@ -57,7 +57,7 @@ import json
 import hashlib
 import warnings
 from urllib.request import urlretrieve
-from urllib.error import URLError
+from urllib.error import URLError, HTTPError
 import os
 
 try:
@@ -379,7 +379,7 @@ class PretrainedModel:
 
             return model
 
-        except URLError as e:
+        except (URLError, HTTPError, OSError, Exception) as e:
             raise RuntimeError(f"Failed to download model: {e}")
 
     def predict(

@@ -102,7 +102,8 @@ class StandardScaler:
         if self.mean_ is None or self.std_ is None:
             raise ValueError("The scaler has not been fitted yet. Call 'fit' first.")
         if self.std_ == 0:
-            return np.zeros_like(signal, dtype=float)
+            # Constant signal: return zero-centered values instead of discarding them
+            return (signal - self.mean_).astype(float)
         return (signal - self.mean_) / self.std_
 
     def fit_transform(self, signal):

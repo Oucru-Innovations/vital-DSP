@@ -146,7 +146,8 @@ def find_peaks(
             if prominence is not None:
                 prom_window = int(distance / 2) if distance is not None else max(1, signal_len // 10)
                 left_base = np.min(signal[max(0, i - prom_window) : i])
-                right_base = np.min(signal[i : min(signal_len, i + prom_window)])
+                right_base = np.min(signal[i + 1 : min(signal_len, i + prom_window + 1)])
+                # prominence = peak height above the higher of the two bases
                 if signal[i] - max(left_base, right_base) < prominence:
                     continue
             if width is not None:
@@ -319,7 +320,8 @@ def coherence(x, y, fs=1.0, nperseg=256):
     freqs, psd_x = periodogram(x)
     _, psd_y = periodogram(y)
     csd_xy = cross_spectrum(x, y)
-    coherence = np.abs(csd_xy) ** 2 / (psd_x * psd_y)
+    denom = psd_x * psd_y
+    coherence = np.where(denom > 0, np.abs(csd_xy) ** 2 / denom, 0.0)
 
     return freqs, coherence
 

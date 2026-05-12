@@ -302,9 +302,12 @@ class OptimizedDataTypeOptimizer:
     def _calculate_signal_entropy(self, signal: np.ndarray, bins: int = 50) -> float:
         """Calculate signal entropy."""
         try:
-            hist, _ = np.histogram(signal, bins=bins, density=True)
-            hist = hist[hist > 0]  # Remove zeros
-            return -np.sum(hist * np.log2(hist))
+            counts, _ = np.histogram(signal, bins=bins)
+            total = counts.sum()
+            if total == 0:
+                return 0.0
+            probs = counts[counts > 0] / total   # proper probability mass, sums to 1
+            return float(-np.sum(probs * np.log2(probs)))
         except Exception as e:
             logger.error(f"Error calculating signal entropy: {str(e)}")
             return 0.0
@@ -334,7 +337,9 @@ class OptimizedDataTypeOptimizer:
         )
         max_precision_loss = requirements["max_precision_loss"]
 
-        # Calculate precision loss
+        # Calculate precision loss — integer dtypes have no finfo, treat as lossless
+        if np.issubdtype(current_dtype, np.integer) or np.issubdtype(target_dtype, np.integer):
+            return True
         current_precision = np.finfo(current_dtype).precision
         target_precision = np.finfo(target_dtype).precision
         precision_loss = current_precision - target_precision

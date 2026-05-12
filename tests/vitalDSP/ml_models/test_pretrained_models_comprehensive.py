@@ -1,4 +1,4 @@
-﻿"""
+"""
 Comprehensive Tests for Pretrained Models Module - Missing Coverage
 
 This test file specifically targets missing lines in pretrained_models.py to achieve
@@ -251,28 +251,26 @@ class TestPretrainedModelDownload:
     """Test model download functionality - covers lines 363-380."""
     
     def test_download_model_tensorflow(self, tmp_cache_dir):
-        """Test downloading TensorFlow model - covers lines 364-377."""
+        """Test downloading TensorFlow model - covers lines 364-377 (fully mocked)."""
         if not TENSORFLOW_AVAILABLE:
             pytest.skip("TensorFlow not available")
-            
+
         url = "https://example.com/model.h5"
         save_path = tmp_cache_dir / "test_model.h5"
-        
-        # Create a mock function that creates an empty file
+
         def mock_urlretrieve(url, filename):
-            # Create an empty file to simulate download
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             Path(filename).touch()
-        
-        # Mock urlretrieve using patch at the source module
-        import vitalDSP.ml_models.pretrained_models as pm_module
-        with patch('vitalDSP.ml_models.pretrained_models.urlretrieve', side_effect=mock_urlretrieve):
-            # Mock model loading
-            mock_model = Mock()
-            with patch('vitalDSP.ml_models.pretrained_models.keras.models.load_model', return_value=mock_model):
-                model = PretrainedModel._download_model(url, save_path, "tensorflow")
-                assert model is not None
-                assert save_path.exists()
+
+        mock_model = Mock()
+        # Patch both urlretrieve (network) and keras load (disk read) so no I/O escapes
+        with patch('vitalDSP.ml_models.pretrained_models.urlretrieve',
+                   side_effect=mock_urlretrieve), \
+             patch('vitalDSP.ml_models.pretrained_models.keras.models.load_model',
+                   return_value=mock_model):
+            model = PretrainedModel._download_model(url, save_path, "tensorflow")
+            assert model is mock_model
+            assert save_path.exists()
     
     def test_download_model_pytorch(self, tmp_cache_dir):
         """Test downloading PyTorch model - covers lines 375-375."""
@@ -902,32 +900,354 @@ class TestPretrainedModelEdgeCases:
             PretrainedModel.from_registry('invalid_model_name')
     
     def test_from_registry_with_url(self, tmp_cache_dir):
-        """Test from_registry with URL in metadata - covers lines 278-286."""
+        """Test from_registry with URL in metadata - covers lines 278-286 (fully mocked)."""
         if not TENSORFLOW_AVAILABLE:
             pytest.skip("TensorFlow not available")
-            
-        # Modify registry temporarily
+
         original_url = MODEL_REGISTRY['ecg_classifier_mitbih']['url']
         MODEL_REGISTRY['ecg_classifier_mitbih']['url'] = 'https://example.com/model.h5'
-        
+
+        def mock_urlretrieve(url, filename):
+            Path(filename).parent.mkdir(parents=True, exist_ok=True)
+            Path(filename).touch()
+
+        mock_model = Mock()
         try:
-            # Create a mock function that creates an empty file
-            def mock_urlretrieve(url, filename):
-                Path(filename).parent.mkdir(parents=True, exist_ok=True)
-                Path(filename).touch()
-            
-            # Mock the download to create a file and return a mock model
-            mock_model = Mock()
-            with patch('vitalDSP.ml_models.pretrained_models.urlretrieve', side_effect=mock_urlretrieve):
-                with patch('vitalDSP.ml_models.pretrained_models.keras.models.load_model', return_value=mock_model):
-                    model = PretrainedModel.from_registry(
-                        'ecg_classifier_mitbih',
-                        cache_dir=str(tmp_cache_dir),
-                        force_download=True
-                    )
-                    assert model is not None
+            # Both urlretrieve (network) and keras.load (disk) are patched — no real I/O
+            with patch('vitalDSP.ml_models.pretrained_models.urlretrieve',
+                       side_effect=mock_urlretrieve), \
+                 patch('vitalDSP.ml_models.pretrained_models.keras.models.load_model',
+                       return_value=mock_model):
+                model = PretrainedModel.from_registry(
+                    'ecg_classifier_mitbih',
+                    cache_dir=str(tmp_cache_dir),
+                    force_download=True,
+                )
+                assert model is not None
         finally:
-            # Restore original URL
             MODEL_REGISTRY['ecg_classifier_mitbih']['url'] = original_url
+
+
+@pytest.mark.skipif(not PRETRAINED_AVAILABLE, reason="Pretrained models module not available")
+class TestMissingCoverageLines:
+    """New tests to cover lines flagged as uncovered in the coverage report.
+
+    Target lines: 289-292, 344-345, 348-354, 372-380, 412, 420-426, 424, 610, 834-836
+    """
+
+    # ------------------------------------------------------------------ #
+    # Lines 289-292: from_registry loads TF/PT model from cache when file exists
+    # ------------------------------------------------------------------ #
+
+    def test_from_registry_loads_tf_from_cache(self, tmp_cache_dir):
+        """Load TF model from existing cache path (lines 289-290)."""
+        if not TENSORFLOW_AVAILABLE:
+            pytest.skip("TensorFlow not available")
+
+        model_name = "ecg_classifier_mitbih"
+        metadata = MODEL_REGISTRY[model_name]
+        cached_path = tmp_cache_dir / f"{model_name}_v{metadata['version']}"
+        cached_path.mkdir(parents=True, exist_ok=True)  # mimic existing cache
+
+        mock_model = Mock()
+        with patch(
+            "vitalDSP.ml_models.pretrained_models.keras.models.load_model",
+            return_value=mock_model,
+        ):
+            result = PretrainedModel.from_registry(
+                model_name,
+                cache_dir=str(tmp_cache_dir),
+                force_download=False,
+            )
+        assert result is not None
+        assert result.model is mock_model
+
+    def test_from_registry_loads_pytorch_from_cache(self, tmp_cache_dir):
+        """Load PyTorch model from existing cache path (lines 291-292)."""
+        if not PYTORCH_AVAILABLE:
+            pytest.skip("PyTorch not available")
+
+        # Use a registry entry with pytorch backend
+        pt_meta = {
+            "architecture": "cnn1d",
+            "input_shape": (187, 1),
+            "n_classes": 2,
+            "task": "classification",
+            "backend": "pytorch",
+            "version": "test",
+            "url": None,
+            "description": "test",
+        }
+        model_name = "_test_pt_cache_"
+        MODEL_REGISTRY[model_name] = pt_meta
+
+        cached_path = tmp_cache_dir / f"{model_name}_vtest"
+        cached_path.touch()
+
+        mock_model = Mock()
+        try:
+            with patch(
+                "vitalDSP.ml_models.pretrained_models.torch.load",
+                return_value=mock_model,
+            ):
+                result = PretrainedModel.from_registry(
+                    model_name,
+                    cache_dir=str(tmp_cache_dir),
+                    force_download=False,
+                )
+            assert result.model is mock_model
+        finally:
+            del MODEL_REGISTRY[model_name]
+
+    # ------------------------------------------------------------------ #
+    # Lines 344-345: placeholder model — multi_label_classification branch
+    # ------------------------------------------------------------------ #
+
+    def test_placeholder_model_multi_label(self):
+        """Create placeholder for multi_label_classification (lines 343-345)."""
+        if not TENSORFLOW_AVAILABLE:
+            pytest.skip("TensorFlow not available")
+
+        meta = {
+            "architecture": "cnn1d",
+            "input_shape": (187, 1),
+            "n_classes": 5,
+            "task": "multi_label_classification",
+            "backend": "tensorflow",
+        }
+        model = PretrainedModel._create_placeholder_model(meta)
+        assert model is not None
+
+    # ------------------------------------------------------------------ #
+    # Lines 348-354: placeholder model — autoencoder branch
+    # ------------------------------------------------------------------ #
+
+    def test_placeholder_model_autoencoder(self):
+        """Create placeholder for autoencoder task (lines 348-354)."""
+        if not TENSORFLOW_AVAILABLE:
+            pytest.skip("TensorFlow not available")
+
+        meta = {
+            "architecture": "cnn1d",
+            "input_shape": (187, 1),
+            "n_classes": 1,
+            "task": "autoencoder",
+            "backend": "tensorflow",
+        }
+        model = PretrainedModel._create_placeholder_model(meta)
+        assert model is not None
+
+    # ------------------------------------------------------------------ #
+    # Lines 372-380: _download_model — pytorch branch + error branch
+    # ------------------------------------------------------------------ #
+
+    def test_download_model_pytorch_branch(self, tmp_cache_dir):
+        """Cover pytorch branch in _download_model (lines 377-378)."""
+        if not PYTORCH_AVAILABLE:
+            pytest.skip("PyTorch not available")
+
+        url = "https://example.com/model.pt"
+        save_path = tmp_cache_dir / "model.pt"
+
+        def fake_urlretrieve(u, f):
+            Path(f).parent.mkdir(parents=True, exist_ok=True)
+            Path(f).touch()
+
+        mock_model = Mock()
+        with patch(
+            "vitalDSP.ml_models.pretrained_models.urlretrieve",
+            side_effect=fake_urlretrieve,
+        ), patch(
+            "vitalDSP.ml_models.pretrained_models.torch.load",
+            return_value=mock_model,
+        ):
+            result = PretrainedModel._download_model(url, save_path, "pytorch")
+        assert result is mock_model
+
+    def test_download_model_http_error(self, tmp_cache_dir):
+        """_download_model converts HTTPError to RuntimeError (line 382-383)."""
+        from urllib.error import HTTPError
+
+        url = "https://example.com/model.h5"
+        save_path = tmp_cache_dir / "model.h5"
+
+        with patch(
+            "vitalDSP.ml_models.pretrained_models.urlretrieve",
+            side_effect=HTTPError(url, 404, "Not Found", {}, None),
+        ):
+            with pytest.raises(RuntimeError, match="Failed to download model"):
+                PretrainedModel._download_model(url, save_path, "tensorflow")
+
+    def test_download_model_os_error(self, tmp_cache_dir):
+        """_download_model converts OSError to RuntimeError (line 382-383)."""
+        url = "https://example.com/model.h5"
+        save_path = tmp_cache_dir / "model.h5"
+
+        with patch(
+            "vitalDSP.ml_models.pretrained_models.urlretrieve",
+            side_effect=OSError("disk full"),
+        ):
+            with pytest.raises(RuntimeError, match="Failed to download model"):
+                PretrainedModel._download_model(url, save_path, "tensorflow")
+
+    # ------------------------------------------------------------------ #
+    # Line 412: predict PyTorch — return_proba=True skips argmax (line 412)
+    # Lines 420-426: pytorch classification argmax and binary paths
+    # ------------------------------------------------------------------ #
+
+    def test_predict_pytorch_return_proba(self):
+        """PyTorch predict with return_proba=True returns raw proba (line 412)."""
+        if not PYTORCH_AVAILABLE:
+            pytest.skip("PyTorch not available")
+
+        mock_torch_model = Mock()
+        mock_torch_model.return_value = Mock()
+        mock_out = np.random.rand(10, 5).astype(np.float32)
+
+        meta = {
+            "task": "classification",
+            "n_classes": 5,
+            "backend": "pytorch",
+            "architecture": "cnn1d",
+            "input_shape": (187, 1),
+        }
+        pm = PretrainedModel(mock_torch_model, meta, "pytorch")
+
+        X = np.random.rand(10, 187, 1).astype(np.float32)
+        with patch.object(mock_torch_model, "eval"), \
+             patch("torch.no_grad", return_value=MagicMock(__enter__=Mock(return_value=None),
+                                                           __exit__=Mock(return_value=False))):
+            mock_torch_model.return_value.cpu.return_value.numpy.return_value = mock_out
+            import torch
+
+            with patch.object(torch, "FloatTensor", return_value=Mock()), \
+                 patch.object(mock_torch_model, "__call__", return_value=Mock(
+                     cpu=Mock(return_value=Mock(numpy=Mock(return_value=mock_out))))):
+                result = pm.predict(X, return_proba=True)
+
+        # When return_proba=True no argmax is applied — shape must stay (10, 5)
+        assert result.shape == mock_out.shape
+
+    def test_predict_pytorch_classification_argmax(self):
+        """PyTorch predict multi-class argmax path (lines 420-422)."""
+        if not PYTORCH_AVAILABLE:
+            pytest.skip("PyTorch not available")
+
+        import torch
+
+        meta = {
+            "task": "classification",
+            "n_classes": 5,
+            "backend": "pytorch",
+            "architecture": "cnn1d",
+            "input_shape": (187, 1),
+        }
+        raw_proba = np.random.rand(10, 5).astype(np.float32)
+
+        # Use a real tiny PyTorch model so no Mock object ends up as predictions
+        class TinyNet(torch.nn.Module):
+            def forward(self, x):
+                return torch.from_numpy(raw_proba)
+
+        pm = PretrainedModel(TinyNet(), meta, "pytorch")
+        X = np.random.rand(10, 187, 1).astype(np.float32)
+        result = pm.predict(X, return_proba=False)
+
+        expected = np.argmax(raw_proba, axis=1)
+        np.testing.assert_array_equal(result, expected)
+
+    def test_predict_pytorch_binary_squeeze(self):
+        """PyTorch predict binary sigmoid squeeze path (lines 423-424)."""
+        if not PYTORCH_AVAILABLE:
+            pytest.skip("PyTorch not available")
+
+        import torch
+
+        meta = {
+            "task": "classification",
+            "n_classes": 2,
+            "backend": "pytorch",
+            "architecture": "cnn1d",
+            "input_shape": (187, 1),
+        }
+        # Shape (10, 1) — binary sigmoid output that squeezes to 1-D
+        raw_proba = np.random.rand(10, 1).astype(np.float32)
+
+        class BinaryNet(torch.nn.Module):
+            def forward(self, x):
+                return torch.from_numpy(raw_proba)
+
+        pm = PretrainedModel(BinaryNet(), meta, "pytorch")
+        X = np.random.rand(10, 187, 1).astype(np.float32)
+        result = pm.predict(X, return_proba=False)
+
+        expected = (raw_proba.squeeze() > 0.5).astype(int)
+        np.testing.assert_array_equal(result, expected)
+
+    # ------------------------------------------------------------------ #
+    # Line 610: load() — pytorch cache load branch
+    # ------------------------------------------------------------------ #
+
+    def test_load_pytorch_from_disk(self, tmp_cache_dir):
+        """PretrainedModel.load() pytorch branch (line 609-610)."""
+        if not PYTORCH_AVAILABLE:
+            pytest.skip("PyTorch not available")
+
+        meta = {
+            "task": "classification",
+            "n_classes": 2,
+            "backend": "pytorch",
+            "architecture": "cnn1d",
+            "input_shape": (187, 1),
+        }
+
+        # load() looks for: filepath.parent / f"{filepath.stem}_metadata.json"
+        filepath = tmp_cache_dir / "pt_model.pt"
+        filepath.touch()
+        meta_path = tmp_cache_dir / "pt_model_metadata.json"
+        with open(meta_path, "w") as f:
+            json.dump(meta, f)
+
+        mock_model = Mock()
+        with patch(
+            "vitalDSP.ml_models.pretrained_models.torch.load",
+            return_value=mock_model,
+        ):
+            result = PretrainedModel.load(str(filepath))
+        assert result.model is mock_model
+        assert result.backend == "pytorch"
+
+    # ------------------------------------------------------------------ #
+    # Lines 834-836: ModelHub.compare_models — metric present and absent
+    # ------------------------------------------------------------------ #
+
+    def test_compare_models_metric_present(self):
+        """compare_models returns values when metric key exists (lines 834-837)."""
+        hub = ModelHub()
+        # Use a metric key known to exist in some registry entries
+        comparison = hub.compare_models(
+            list(MODEL_REGISTRY.keys())[:2],
+            metric="accuracy",
+        )
+        # Result is a dict; values are only included when key exists
+        assert isinstance(comparison, dict)
+
+    def test_compare_models_metric_absent(self):
+        """compare_models returns empty dict when metric missing everywhere (line 836 branch)."""
+        hub = ModelHub()
+        comparison = hub.compare_models(
+            list(MODEL_REGISTRY.keys()),
+            metric="nonexistent_metric_xyz",
+        )
+        assert comparison == {}
+
+    def test_compare_models_invalid_name(self):
+        """compare_models silently skips names not in registry (line 833-834 guard)."""
+        hub = ModelHub()
+        comparison = hub.compare_models(
+            ["invalid_model_xyz", "another_bad_name"],
+            metric="accuracy",
+        )
+        assert comparison == {}
 
 

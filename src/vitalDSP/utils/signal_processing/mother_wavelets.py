@@ -111,22 +111,15 @@ class Wavelet:
         >>> db_wavelet = Wavelet.db(order=4)
         >>> print(db_wavelet)
         """
-        p = np.poly1d([1])
-        for k in range(1, order + 1):
-            p = np.convolve(p, np.poly1d([1, 1]))
+        # (1+z)^order via direct polynomial power — avoids O(order²) convolve loop
+        p = np.poly1d([1, 1]) ** order
         p = np.polyder(p)
         roots = np.roots(p)
         angles = np.angle(roots)
-        indices = np.argsort(angles)
-        roots = roots[indices]
+        roots = roots[np.argsort(angles)]
         wavelet_coeffs = np.polyval(p, roots)
-        # Avoid divide by zero warning
         norm = np.sqrt(np.sum(wavelet_coeffs**2))
-        if norm > 0:
-            wavelet_coeffs = wavelet_coeffs / norm
-        else:
-            # If norm is zero, return zeros
-            wavelet_coeffs = np.zeros_like(wavelet_coeffs)
+        wavelet_coeffs = wavelet_coeffs / norm if norm > 0 else np.zeros_like(wavelet_coeffs)
         return wavelet_coeffs
 
     @staticmethod
@@ -151,22 +144,15 @@ class Wavelet:
         >>> sym_wavelet = Wavelet.sym(order=4)
         >>> print(sym_wavelet)
         """
-        p = np.poly1d([1])
-        for k in range(1, order + 1):
-            p = np.convolve(p, np.poly1d([1, 1]))
+        # Symlets use the same polynomial construction as Daubechies
+        p = np.poly1d([1, 1]) ** order
         p = np.polyder(p)
         roots = np.roots(p)
         angles = np.angle(roots)
-        indices = np.argsort(angles)
-        roots = roots[indices]
+        roots = roots[np.argsort(angles)]
         wavelet_coeffs = np.polyval(p, roots)
-        # Avoid divide by zero warning
         norm = np.sqrt(np.sum(wavelet_coeffs**2))
-        if norm > 0:
-            wavelet_coeffs = wavelet_coeffs / norm
-        else:
-            # If norm is zero, return zeros
-            wavelet_coeffs = np.zeros_like(wavelet_coeffs)
+        wavelet_coeffs = wavelet_coeffs / norm if norm > 0 else np.zeros_like(wavelet_coeffs)
         return wavelet_coeffs
 
     @staticmethod
