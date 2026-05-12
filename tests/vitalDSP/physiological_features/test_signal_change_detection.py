@@ -15,7 +15,7 @@ def test_zero_crossing_rate(sample_signal):
     """Test the zero crossing rate calculation."""
     scd = SignalChangeDetection(sample_signal)
     zcr = scd.zero_crossing_rate()
-    assert zcr == 0.1, "Zero Crossing Rate calculation failed"  # Updated expected value
+    assert zcr == pytest.approx(1 / 9), "Zero Crossing Rate: 1 crossing over 9 transitions"
 
 
 def test_absolute_difference(sample_signal):

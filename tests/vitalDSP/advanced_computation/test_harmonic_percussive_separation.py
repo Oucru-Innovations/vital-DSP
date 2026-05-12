@@ -31,6 +31,10 @@ def test_hps_separate(hps):
     assert isinstance(percussive, np.ndarray)
     assert harmonic.shape == hps.signal.shape
     assert percussive.shape == hps.signal.shape
+    # harmonic + percussive must reconstruct the original signal
+    np.testing.assert_allclose(harmonic + percussive, hps.signal)
+    # components must differ (separation is non-trivial for non-constant signals)
+    assert not np.allclose(harmonic, percussive)
 
 
 def test_apply_median(hps, test_signal):

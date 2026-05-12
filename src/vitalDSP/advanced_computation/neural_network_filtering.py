@@ -325,13 +325,17 @@ class FeedforwardNetwork:
 
     def _forward(self, X):
         activations = [X]
-        for W, b in zip(self.weights, self.biases):
+        last_idx = len(self.weights) - 1
+        for idx, (W, b) in enumerate(zip(self.weights, self.biases)):
             Z = np.dot(activations[-1], W) + b
             if self.batch_norm:
                 Z = self._batch_normalization(Z)
-            A = self._relu(Z)
-            if self.dropout_rate > 0:
-                A = self._apply_dropout(A)
+            if idx < last_idx:
+                A = self._relu(Z)
+                if self.dropout_rate > 0:
+                    A = self._apply_dropout(A)
+            else:
+                A = Z  # linear output for regression
             activations.append(A)
         return activations
 
@@ -364,11 +368,12 @@ class FeedforwardNetwork:
 
     def predict(self, X):
         A = X
-        for W, b in zip(self.weights, self.biases):
+        last_idx = len(self.weights) - 1
+        for idx, (W, b) in enumerate(zip(self.weights, self.biases)):
             Z = np.dot(A, W) + b
             if self.batch_norm:
                 Z = self._batch_normalization(Z)
-            A = self._relu(Z)
+            A = Z if idx == last_idx else self._relu(Z)  # linear output
         return A
 
     def _batch_normalization(self, Z):
@@ -423,13 +428,17 @@ class ConvolutionalNetwork:
             self._weights_initialized = True
 
         activations = [A]
-        for W, b in zip(self.weights, self.biases):
+        last_idx = len(self.weights) - 1
+        for idx, (W, b) in enumerate(zip(self.weights, self.biases)):
             Z = np.dot(activations[-1], W) + b
             if self.batch_norm:
                 Z = self._batch_normalization(Z)
-            A = self._relu(Z)
-            if self.dropout_rate > 0:
-                A = self._apply_dropout(A)
+            if idx < last_idx:
+                A = self._relu(Z)
+                if self.dropout_rate > 0:
+                    A = self._apply_dropout(A)
+            else:
+                A = Z  # linear output for regression
             activations.append(A)
         return activations
 
@@ -472,23 +481,23 @@ class ConvolutionalNetwork:
             self.biases = [np.random.randn(64), np.random.randn(1)]
             self._weights_initialized = True
 
-        for W, b in zip(self.weights, self.biases):
+        last_idx = len(self.weights) - 1
+        for idx, (W, b) in enumerate(zip(self.weights, self.biases)):
             Z = np.dot(A, W) + b
             if self.batch_norm:
                 Z = self._batch_normalization(Z)
-            A = self._relu(Z)
+            A = Z if idx == last_idx else self._relu(Z)  # linear output
         return A
 
     def _convolution(self, X):
-        output = np.zeros(
-            (X.shape[0], X.shape[1] - 2, X.shape[2] - 2, len(self.filters))
-        )
+        from scipy.signal import correlate2d
+        batch, h, w = X.shape
+        out_h, out_w = h - 2, w - 2
+        output = np.zeros((batch, out_h, out_w, len(self.filters)))
         for i, f in enumerate(self.filters):
-            for j in range(output.shape[1]):
-                for k in range(output.shape[2]):
-                    output[:, j, k, i] = np.sum(
-                        X[:, j : j + 3, k : k + 3] * f, axis=(1, 2)
-                    )
+            for b in range(batch):
+                # valid correlation: no padding, output shrinks by kernel-1 each side
+                output[b, :, :, i] = correlate2d(X[b], f, mode="valid")
         return output
 
     def _batch_normalization(self, Z):
@@ -515,11 +524,25 @@ class RecurrentNetwork:
         self.batch_norm = batch_norm
 
         input_size = 10  # Adjust the input size based on expected input shape
-        self.Wx = np.random.randn(input_size, 64)  # Input-to-hidden weight
-        self.Wh = np.random.randn(64, 64)  # Hidden-to-hidden weight
-        self.b = np.random.randn(64)  # Bias for the hidden layer
-        self.Wy = np.random.randn(64, 1)  # Output weight
-        self.by = np.random.randn(1)  # Bias for the output
+        # Separate weights for forget (f), input (i), output (o) gates and cell candidate (g)
+        self.Wf = np.random.randn(input_size, 64) * 0.1
+        self.Wi = np.random.randn(input_size, 64) * 0.1
+        self.Wo = np.random.randn(input_size, 64) * 0.1
+        self.Wg = np.random.randn(input_size, 64) * 0.1
+        self.Uf = np.random.randn(64, 64) * 0.1
+        self.Ui = np.random.randn(64, 64) * 0.1
+        self.Uo = np.random.randn(64, 64) * 0.1
+        self.Ug = np.random.randn(64, 64) * 0.1
+        self.bf = np.zeros(64)
+        self.bi = np.zeros(64)
+        self.bo = np.zeros(64)
+        self.bg = np.zeros(64)
+        # GRU weights
+        self.Wx = np.random.randn(input_size, 64) * 0.1
+        self.Wh = np.random.randn(64, 64) * 0.1
+        self.b = np.zeros(64)
+        self.Wy = np.random.randn(64, 1) * 0.1  # Output weight
+        self.by = np.zeros(1)  # Bias for the output
 
     def _backward(self, X, y, activations, learning_rate):
         delta = activations[-1] - y.reshape(-1, 1)  # Fix the shape mismatch
@@ -563,10 +586,12 @@ class RecurrentNetwork:
     def _lstm(self, X, h):
         c = np.zeros_like(h)
         for t in range(X.shape[1]):
-            f = self._sigmoid(np.dot(X[:, t], self.Wx) + np.dot(h, self.Wh) + self.b)
-            i = self._sigmoid(np.dot(X[:, t], self.Wx) + np.dot(h, self.Wh) + self.b)
-            o = self._sigmoid(np.dot(X[:, t], self.Wx) + np.dot(h, self.Wh) + self.b)
-            c = f * c + i * np.tanh(np.dot(X[:, t], self.Wx) + self.b)
+            xt = X[:, t]
+            f = self._sigmoid(np.dot(xt, self.Wf) + np.dot(h, self.Uf) + self.bf)
+            i = self._sigmoid(np.dot(xt, self.Wi) + np.dot(h, self.Ui) + self.bi)
+            o = self._sigmoid(np.dot(xt, self.Wo) + np.dot(h, self.Uo) + self.bo)
+            g = np.tanh(np.dot(xt, self.Wg) + np.dot(h, self.Ug) + self.bg)
+            c = f * c + i * g
             h = o * np.tanh(c)
         return h, c
 

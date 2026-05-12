@@ -527,12 +527,14 @@ class CNN1D(BaseDeepModel):
                 epoch_loss += loss.item()
 
                 if self.n_classes == 2:
-                    predicted = (outputs > 0.5).float()
+                    predicted = (outputs > 0.5).float().view(-1)
+                    batch_y_cmp = batch_y.view(-1)
                 else:
                     _, predicted = torch.max(outputs.data, 1)
+                    batch_y_cmp = batch_y
 
                 total += batch_y.size(0)
-                correct += (predicted == batch_y).sum().item()
+                correct += (predicted == batch_y_cmp).sum().item()
 
             self.history["loss"].append(epoch_loss / len(train_loader))
             self.history["accuracy"].append(correct / total)
@@ -841,8 +843,61 @@ class LSTMModel(BaseDeepModel):
         **kwargs,
     ):
         """Train PyTorch LSTM model."""
-        # Similar to CNN1D._train_pytorch()
-        pass  # Implementation similar to CNN1D
+        X_train_tensor = torch.FloatTensor(X_train)  # (N, L, C) — batch_first
+
+        if self.n_classes == 2:
+            y_train_tensor = torch.FloatTensor(y_train.flatten())
+        else:
+            if y_train.ndim > 1 and y_train.shape[1] > 1:
+                y_train_tensor = torch.LongTensor(np.argmax(y_train, axis=1))
+            else:
+                y_train_tensor = torch.LongTensor(y_train.astype(np.int64).flatten())
+
+        train_dataset = torch.utils.data.TensorDataset(X_train_tensor, y_train_tensor)
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset, batch_size=batch_size, shuffle=True
+        )
+
+        criterion = nn.BCELoss() if self.n_classes == 2 else nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(device)
+
+        self.history = {"loss": [], "accuracy": []}
+
+        for epoch in range(epochs):
+            self.model.train()
+            epoch_loss, correct, total = 0, 0, 0
+
+            for batch_X, batch_y in train_loader:
+                batch_X, batch_y = batch_X.to(device), batch_y.to(device)
+                optimizer.zero_grad()
+                outputs = self.model(batch_X)
+
+                if self.n_classes == 2:
+                    loss = criterion(outputs.squeeze(1), batch_y)
+                    predicted = (outputs.squeeze(1) > 0.5).float()
+                else:
+                    loss = criterion(outputs, batch_y)
+                    _, predicted = torch.max(outputs.data, 1)
+
+                loss.backward()
+                optimizer.step()
+
+                epoch_loss += loss.item()
+                total += batch_y.size(0)
+                correct += (predicted == batch_y).sum().item()
+
+            self.history["loss"].append(epoch_loss / len(train_loader))
+            self.history["accuracy"].append(correct / total)
+
+            if kwargs.get("verbose", 1) > 0:
+                print(
+                    f"Epoch {epoch+1}/{epochs} - loss: {self.history['loss'][-1]:.4f} - accuracy: {self.history['accuracy'][-1]:.4f}"
+                )
+
+        return self.history
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Make predictions."""

@@ -340,6 +340,9 @@ class PretrainedModel:
             if task == "classification":
                 n_classes = metadata["n_classes"]
                 outputs = keras.layers.Dense(n_classes, activation="softmax")(x)
+            elif task == "multi_label_classification":
+                n_classes = metadata["n_classes"]
+                outputs = keras.layers.Dense(n_classes, activation="sigmoid")(x)
             elif task == "regression":
                 outputs = keras.layers.Dense(1, activation="linear")(x)
             elif task == "autoencoder":
@@ -403,7 +406,10 @@ class PretrainedModel:
             predictions = self.model.predict(X, batch_size=batch_size, verbose=0)
 
             if self.metadata["task"] == "classification" and not return_proba:
-                predictions = np.argmax(predictions, axis=1)
+                if predictions.ndim > 1 and predictions.shape[1] > 1:
+                    predictions = np.argmax(predictions, axis=1)
+                else:
+                    predictions = (predictions.squeeze() > 0.5).astype(int)
 
         else:  # pytorch
             self.model.eval()
@@ -412,7 +418,10 @@ class PretrainedModel:
                 predictions = self.model(X_tensor).cpu().numpy()
 
                 if self.metadata["task"] == "classification" and not return_proba:
-                    predictions = np.argmax(predictions, axis=1)
+                    if predictions.ndim > 1 and predictions.shape[1] > 1:
+                        predictions = np.argmax(predictions, axis=1)
+                    else:
+                        predictions = (predictions.squeeze() > 0.5).astype(int)
 
         return predictions
 

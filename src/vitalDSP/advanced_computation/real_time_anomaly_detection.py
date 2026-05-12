@@ -120,6 +120,8 @@ class RealTimeAnomalyDetection:
         """Detect anomalies using Z-score method."""
         mean = np.mean(self.data_window)
         std_dev = np.std(self.data_window)
+        if std_dev == 0:
+            return False  # constant window — no meaningful deviation
         z_score = (data_point - mean) / std_dev
         return abs(z_score) > threshold
 
@@ -449,7 +451,7 @@ class SimpleAutoencoder:
 
         Parameters
         ----------
-        data_point : np.array
+        data_point : float or np.array
             The data point to compute the reconstruction error for.
 
         Returns
@@ -461,9 +463,14 @@ class SimpleAutoencoder:
         -------
         >>> error = model.reconstruction_error(np.array([1, 2, 3]))
         """
-        encoded = np.dot(data_point, self.weights)
+        dp = np.atleast_2d(np.asarray(data_point, dtype=float))
+        input_dim = self.weights.shape[0]
+        if dp.shape[1] != input_dim:
+            # Scalar or mismatched input: broadcast to expected input dimension
+            dp = np.full((1, input_dim), float(data_point))
+        encoded = np.dot(dp, self.weights)
         reconstructed = np.dot(encoded, self.weights.T)
-        return np.mean((data_point - reconstructed) ** 2)
+        return float(np.mean((dp - reconstructed) ** 2))
 
     def update(self, data_point):
         """
@@ -471,25 +478,15 @@ class SimpleAutoencoder:
 
         Parameters
         ----------
-        data_point : np.array
+        data_point : float or np.array
             The new data point to be added for online learning.
-
-        Notes
-        -----
-        If the `data_point` is 1D, it is reshaped to 2D before appending.
 
         Example
         -------
         >>> model.update(np.array([4, 5, 6]))
         """
-        # Ensure the new data point is 2D
-        if data_point.ndim == 1:
-            data_point = data_point.reshape(1, -1)
-
-        # Append the new data point to the training data
-        self.training_data = np.append(self.training_data, data_point, axis=0)
-
-        # Update weights (placeholder update logic)
+        dp = np.atleast_2d(np.asarray(data_point, dtype=float))
+        self.training_data = np.append(self.training_data, dp, axis=0)
         self.weights += np.random.randn(*self.weights.shape) * 0.01
 
 
@@ -497,16 +494,24 @@ class SimpleAutoencoder:
 class SimpleLSTM:
     def __init__(self, training_data, hidden_units=50):
         self.hidden_units = hidden_units
-        self.W = np.random.randn(training_data.shape[1], hidden_units)
-        self.U = np.random.randn(hidden_units, hidden_units)
-        self.V = np.random.randn(hidden_units, training_data.shape[1])
+        data = np.atleast_2d(np.asarray(training_data, dtype=float))
+        input_dim = data.shape[1]
+        self.input_dim = input_dim
+        self.W = np.random.randn(input_dim, hidden_units) * 0.1
+        self.U = np.random.randn(hidden_units, hidden_units) * 0.1
+        self.V = np.random.randn(hidden_units, input_dim) * 0.1
 
     def prediction_error(self, data_point):
+        # Accept scalar, 1-D, or 2-D input
+        dp = np.atleast_2d(np.asarray(data_point, dtype=float))
+        if dp.shape[1] != self.input_dim:
+            # Scalar passed as single point: reshape to (1, input_dim)
+            dp = np.full((1, self.input_dim), float(data_point))
         h = np.zeros(self.hidden_units)
-        for t in range(len(data_point)):
-            h = np.tanh(np.dot(data_point[t], self.W) + np.dot(h, self.U))
+        for t in range(dp.shape[0]):
+            h = np.tanh(np.dot(dp[t], self.W) + np.dot(h, self.U))
         predicted = np.dot(h, self.V)
-        return np.mean((predicted - data_point) ** 2)
+        return float(np.mean((predicted - dp) ** 2))
 
     def update(self, data_point):
         # Placeholder LSTM online update logic

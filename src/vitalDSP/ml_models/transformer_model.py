@@ -542,6 +542,7 @@ class TransformerModel:
 
             def __call__(self, step):
                 step = tf.cast(step, tf.float32)
+                step = tf.maximum(step, 1.0)  # guard against rsqrt(0) = inf → NaN
                 arg1 = tf.math.rsqrt(step)
                 arg2 = step * (self.warmup_steps**-1.5)
                 return tf.math.rsqrt(self.d_model) * tf.math.minimum(arg1, arg2)
@@ -616,9 +617,9 @@ class TransformerModel:
         **kwargs,
     ):
         """Train PyTorch Transformer model."""
-        # Similar to other PyTorch training methods
-        # Implementation details omitted for brevity
-        pass
+        raise NotImplementedError(
+            "PyTorch Transformer training is not yet implemented. Use backend='tensorflow'."
+        )
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """

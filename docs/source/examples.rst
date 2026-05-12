@@ -18,29 +18,17 @@ Example Categories
 
 **Wearable Device Examples**
    * Fitness tracker integration
-   * Smartwatch signal processing
-   * Mobile health applications
+   * Multi-signal synchronization
 
-**Medical Device Examples**
-   * Patient monitoring systems
-   * Diagnostic equipment integration
-   * Clinical decision support systems
+**Advanced Analysis**
+   * Multi-scale entropy for cardiac complexity
+   * Comprehensive feature extraction (time, frequency, nonlinear)
+   * Machine learning pipeline for signal classification
 
 Example 1: ECG Analysis for Clinical Research
 ==============================================
 
-This example demonstrates comprehensive ECG analysis for cardiovascular research applications.
-
-**Use Case:** Analyzing ECG signals from clinical trials to assess cardiovascular health and detect abnormalities.
-
-**Key Features:**
-* R-peak detection and RR interval analysis
-* Heart rate variability (HRV) analysis
-* Morphological feature extraction
-* Signal quality assessment
-* Clinical interpretation
-
-**Implementation:**
+Comprehensive ECG analysis including bandpass filtering, signal quality assessment, waveform morphology, and HRV feature extraction.
 
 .. code-block:: python
 
@@ -50,2248 +38,908 @@ This example demonstrates comprehensive ECG analysis for cardiovascular research
    from vitalDSP.physiological_features.waveform import WaveformMorphology
    from vitalDSP.physiological_features.hrv_analysis import HRVFeatures
    from vitalDSP.signal_quality_assessment.signal_quality_index import SignalQualityIndex
-   
+   from vitalDSP.utils.data_processing.synthesize_data import generate_ecg_signal
+
    def analyze_ecg_clinical_research(ecg_signal, fs, patient_id=None):
        """
        Comprehensive ECG analysis for clinical research.
-       
-       Parameters:
-       -----------
-       ecg_signal : array-like
-           ECG signal data
+
+       Parameters
+       ----------
+       ecg_signal : numpy.ndarray
+           Raw ECG signal.
        fs : float
-           Sampling frequency (Hz)
+           Sampling frequency in Hz.
        patient_id : str, optional
-           Patient identifier
-       
-       Returns:
-       --------
-       dict : Comprehensive analysis results
+           Patient identifier for logging.
+
+       Returns
+       -------
+       dict : Analysis results including quality metrics, heart rate, and HRV.
        """
-       
        results = {
            'patient_id': patient_id,
            'sampling_frequency': fs,
            'signal_length': len(ecg_signal),
-           'analysis_timestamp': pd.Timestamp.now()
        }
-       
-   # 1. Signal Preprocessing
-   sf = SignalFiltering(ecg_signal)
-   filtered_ecg = sf.bandpass(lowcut=0.5, highcut=40.0, fs=fs, order=4)
-       
+
+       # 1. Bandpass filter (0.5–40 Hz for ECG)
+       sf = SignalFiltering(ecg_signal)
+       filtered_ecg = sf.bandpass(lowcut=0.5, highcut=40.0, fs=fs, order=4)
+
        # 2. Signal Quality Assessment
        sqi = SignalQualityIndex(filtered_ecg)
-       quality_metrics = {}
-       
-   # Amplitude variability SQI
-   amp_sqi, _, _ = sqi.amplitude_variability_sqi(
-       window_size=int(fs*5), step_size=int(fs*1), threshold=2, aggregate=False
-   )
-   quality_metrics['amplitude_variability'] = np.mean(amp_sqi)
-   
-   # Baseline wander SQI
-   baseline_sqi, _, _ = sqi.baseline_wander_sqi(
-       window_size=int(fs*5), step_size=int(fs*1), threshold=2, aggregate=False
-   )
-   quality_metrics['baseline_wander'] = np.mean(baseline_sqi)
-   
-   # Signal-to-noise ratio
-   snr_sqi, _, _ = sqi.snr_sqi(
-       window_size=int(fs*5), step_size=int(fs*1), threshold=-1, aggregate=False
-   )
-   quality_metrics['signal_to_noise_ratio'] = np.mean(snr_sqi)
-       
-       results['quality_metrics'] = quality_metrics
-       
-       # 3. R-Peak Detection and RR Interval Analysis
-       wm = WaveformMorphology(filtered_ecg, fs=fs, signal_type="ECG")
-       r_peaks = wm.r_peaks
-       
-       if len(r_peaks) > 10:  # Ensure sufficient data
-           # Calculate RR intervals
-           rr_intervals = np.diff(r_peaks) / fs * 1000  # Convert to ms
-           
-           # Remove outliers
-           valid_rr = rr_intervals[(rr_intervals > 300) & (rr_intervals < 2000)]
-           
-           if len(valid_rr) > 5:
-               # Heart rate calculation
-               heart_rate = 60 * fs / np.mean(np.diff(r_peaks))
-               
-               # HRV Analysis
-               hrv = HRVFeatures(valid_rr)
-               hrv_features = hrv.compute_all_features()
-               
-               results['heart_rate'] = heart_rate
-               results['rr_intervals'] = {
-                   'count': len(valid_rr),
-                   'mean': np.mean(valid_rr),
-                   'std': np.std(valid_rr),
-                   'min': np.min(valid_rr),
-                   'max': np.max(valid_rr)
-               }
-               results['hrv_features'] = hrv_features
-               
-               # Morphological features
-               morphological_features = {
-                   'r_peak_count': len(r_peaks),
-                   'qrs_duration': wm.qrs_duration if hasattr(wm, 'qrs_duration') else None,
-                   'qt_interval': wm.qt_interval if hasattr(wm, 'qt_interval') else None
-               }
-               results['morphological_features'] = morphological_features
-               
-               # Clinical interpretation
-               clinical_interpretation = interpret_ecg_results(hrv_features, heart_rate)
-               results['clinical_interpretation'] = clinical_interpretation
-       
+       results['snr_sqi']      = sqi.snr_sqi(window_size=int(fs * 5), step_size=int(fs), aggregate=True)
+       results['baseline_sqi'] = sqi.baseline_wander_sqi(window_size=int(fs * 5), step_size=int(fs), aggregate=True)
+
+       # 3. Waveform Morphology — detects R-peaks, computes heart rate
+       wm = WaveformMorphology(filtered_ecg, fs=fs, signal_type='ECG')
+       heart_rate = wm.get_heart_rate(summary_type='mean')
+       results['heart_rate'] = heart_rate
+       results['heart_rate_status'] = (
+           'bradycardia' if heart_rate < 60 else
+           'tachycardia' if heart_rate > 100 else 'normal'
+       )
+
+       # 4. HRV analysis from RR intervals
+       #    BeatToBeatAnalysis gives us cleaned RR intervals
+       from vitalDSP.physiological_features.beat_to_beat import BeatToBeatAnalysis
+       bb = BeatToBeatAnalysis(filtered_ecg, fs=fs, signal_type='ECG')
+       rr_intervals = bb.compute_rr_intervals()       # ms, outlier-corrected
+
+       if len(rr_intervals) > 10:
+           hrv = HRVFeatures(signals=filtered_ecg, nn_intervals=rr_intervals, fs=fs)
+           hrv_features = hrv.compute_all_features()
+           results['hrv'] = hrv_features
+
+           sdnn = hrv_features.get('sdnn', 0)
+           results['hrv_status'] = (
+               'reduced' if sdnn < 30 else
+               'good'    if sdnn > 50 else 'normal'
+           )
+
        return results
-   
-   def interpret_ecg_results(hrv_features, heart_rate):
-       """Provide clinical interpretation of ECG analysis results."""
-       
-       interpretation = {
-           'heart_rate_status': 'normal' if 60 <= heart_rate <= 100 else 'abnormal',
-           'hrv_status': 'normal',
-           'risk_assessment': 'low',
-           'recommendations': []
-       }
-       
-       # Heart rate interpretation
-       if heart_rate < 60:
-           interpretation['heart_rate_status'] = 'bradycardia'
-           interpretation['recommendations'].append('Consider bradycardia evaluation')
-       elif heart_rate > 100:
-           interpretation['heart_rate_status'] = 'tachycardia'
-           interpretation['recommendations'].append('Consider tachycardia evaluation')
-       
-       # HRV interpretation
-       if 'sdnn' in hrv_features:
-           sdnn = hrv_features['sdnn']
-           if sdnn < 30:
-               interpretation['hrv_status'] = 'reduced'
-               interpretation['risk_assessment'] = 'elevated'
-               interpretation['recommendations'].append('Reduced HRV may indicate stress or cardiovascular risk')
-           elif sdnn > 50:
-               interpretation['hrv_status'] = 'good'
-               interpretation['risk_assessment'] = 'low'
-       
-       return interpretation
 
-**Usage Example:**
+   # --- Usage ---
+   fs = 256
+   ecg_data = generate_ecg_signal(sfecg=fs, duration=60, hrmean=72, Anoise=0.05)
+   results = analyze_ecg_clinical_research(ecg_data, fs, patient_id='P001')
 
-.. code-block:: python
-
-   # Load ECG data (replace with your data loading method)
-   ecg_data = np.load('ecg_data.npy')  # Your ECG signal
-   fs = 1000  # Sampling frequency
-   
-   # Perform analysis
-   results = analyze_ecg_clinical_research(ecg_data, fs, patient_id="P001")
-   
-   # Display results
-   print(f"Patient ID: {results['patient_id']}")
-   print(f"Heart Rate: {results['heart_rate']:.1f} BPM")
-   print(f"HRV Status: {results['clinical_interpretation']['hrv_status']}")
-   print(f"Risk Assessment: {results['clinical_interpretation']['risk_assessment']}")
+   print(f"Patient   : {results['patient_id']}")
+   print(f"Heart rate: {results['heart_rate']:.1f} BPM ({results['heart_rate_status']})")
+   print(f"SNR SQI   : {results['snr_sqi']:.3f}")
+   if 'hrv_status' in results:
+       print(f"HRV status: {results['hrv_status']}")
 
 Example 2: PPG Analysis for Hemodynamic Studies
 =================================================
 
-This example demonstrates PPG signal analysis for hemodynamic studies and cardiovascular assessment.
-
-**Use Case:** Analyzing PPG signals to assess blood volume changes, pulse wave characteristics, and cardiovascular health.
-
-**Key Features:**
-* Systolic and diastolic peak detection
-* Pulse wave analysis
-* Hemodynamic parameter estimation
-* Signal quality assessment
-* Clinical interpretation
-
-**Implementation:**
+Analyzes PPG signals for pulse rate, pulse amplitude, and signal quality — using real data from the vitalDSP sample loader.
 
 .. code-block:: python
 
+   import numpy as np
+   from vitalDSP.filtering.signal_filtering import SignalFiltering
+   from vitalDSP.physiological_features.waveform import WaveformMorphology
+   from vitalDSP.physiological_features.beat_to_beat import BeatToBeatAnalysis
+   from vitalDSP.signal_quality_assessment.signal_quality_index import SignalQualityIndex
+   from vitalDSP.notebooks import load_sample_ppg
+
    def analyze_ppg_hemodynamic(ppg_signal, fs, patient_id=None):
        """
-       Comprehensive PPG analysis for hemodynamic studies.
-       
-       Parameters:
-       -----------
-       ppg_signal : array-like
-           PPG signal data
+       PPG analysis for hemodynamic characterization.
+
+       Parameters
+       ----------
+       ppg_signal : numpy.ndarray
+           Raw PPG signal.
        fs : float
-           Sampling frequency (Hz)
-       patient_id : str, optional
-           Patient identifier
-       
-       Returns:
-       --------
-       dict : Comprehensive PPG analysis results
+           Sampling frequency in Hz.
+
+       Returns
+       -------
+       dict : Pulse rate, variability, and signal quality metrics.
        """
-       
-       results = {
-           'patient_id': patient_id,
-           'sampling_frequency': fs,
-           'signal_length': len(ppg_signal),
-           'analysis_timestamp': pd.Timestamp.now()
-       }
-       
-   # 1. Signal Preprocessing
-   sf = SignalFiltering(ppg_signal)
-   filtered_ppg = sf.bandpass(lowcut=0.5, highcut=8.0, fs=fs, order=4)  # PPG-specific range
-       
-       # 2. Signal Quality Assessment
+       results = {'patient_id': patient_id, 'sampling_frequency': fs}
+
+       # 1. Bandpass filter (0.5–8 Hz for PPG)
+       sf = SignalFiltering(ppg_signal)
+       filtered_ppg = sf.bandpass(lowcut=0.5, highcut=8.0, fs=fs, order=4)
+
+       # 2. Signal quality
        sqi = SignalQualityIndex(filtered_ppg)
-       quality_metrics = {}
-       
-   # Amplitude variability SQI
-   amp_sqi, _, _ = sqi.amplitude_variability_sqi(
-       window_size=int(fs*5), step_size=int(fs*1), threshold=2, aggregate=False
-   )
-   quality_metrics['amplitude_variability'] = np.mean(amp_sqi)
-   
-   # Signal-to-noise ratio
-   snr_sqi, _, _ = sqi.snr_sqi(
-       window_size=int(fs*5), step_size=int(fs*1), threshold=-1, aggregate=False
-   )
-   quality_metrics['signal_to_noise_ratio'] = np.mean(snr_sqi)
-       
-       results['quality_metrics'] = quality_metrics
-       
-       # 3. PPG-Specific Analysis
-       wm = WaveformMorphology(filtered_ppg, fs=fs, signal_type="PPG")
-       
-       # Detect systolic peaks
-       systolic_peaks = wm.systolic_peaks
-       
-       if len(systolic_peaks) > 5:
-           # Calculate pulse rate
-           pulse_rate = 60 * fs / np.mean(np.diff(systolic_peaks))
-           
-           # Pulse interval analysis
-           pulse_intervals = np.diff(systolic_peaks) / fs * 1000  # Convert to ms
-           valid_intervals = pulse_intervals[(pulse_intervals > 400) & (pulse_intervals < 2000)]
-           
-           if len(valid_intervals) > 3:
-               # Pulse rate variability (similar to HRV)
-               prv_features = {
-                   'mean_pulse_interval': np.mean(valid_intervals),
-                   'std_pulse_interval': np.std(valid_intervals),
-                   'pulse_rate_variability': np.std(valid_intervals) / np.mean(valid_intervals) * 100
-               }
-               
-               # Hemodynamic parameters
-               hemodynamic_params = calculate_hemodynamic_parameters(filtered_ppg, systolic_peaks, fs)
-               
-               results['pulse_rate'] = pulse_rate
-               results['pulse_intervals'] = {
-                   'count': len(valid_intervals),
-                   'mean': np.mean(valid_intervals),
-                   'std': np.std(valid_intervals)
-               }
-               results['prv_features'] = prv_features
-               results['hemodynamic_parameters'] = hemodynamic_params
-               
-               # Clinical interpretation
-               clinical_interpretation = interpret_ppg_results(prv_features, pulse_rate, hemodynamic_params)
-               results['clinical_interpretation'] = clinical_interpretation
-       
+       results['snr_sqi'] = sqi.snr_sqi(
+           window_size=int(fs * 5), step_size=int(fs), aggregate=True
+       )
+
+       # 3. Pulse rate via WaveformMorphology
+       wm = WaveformMorphology(filtered_ppg, fs=fs, signal_type='PPG')
+       pulse_rate = wm.get_heart_rate(summary_type='mean')
+       results['pulse_rate'] = pulse_rate
+       results['pulse_rate_status'] = (
+           'bradycardia' if pulse_rate < 60 else
+           'tachycardia' if pulse_rate > 100 else 'normal'
+       )
+
+       # 4. Beat-to-beat pulse interval variability
+       bb = BeatToBeatAnalysis(filtered_ppg, fs=fs, signal_type='PPG')
+       pi_intervals = bb.compute_rr_intervals()
+
+       if len(pi_intervals) > 5:
+           results['mean_pulse_interval'] = float(np.mean(pi_intervals))
+           results['std_pulse_interval']  = float(np.std(pi_intervals))
+           results['pulse_rate_variability'] = float(
+               np.std(pi_intervals) / np.mean(pi_intervals) * 100
+           )
+
+       # 5. Pulse amplitude variability
+       results['amplitude_sqi'] = sqi.amplitude_variability_sqi(
+           window_size=int(fs * 5), step_size=int(fs), aggregate=True
+       )
+
        return results
-   
-   def calculate_hemodynamic_parameters(ppg_signal, systolic_peaks, fs):
-       """Calculate hemodynamic parameters from PPG signal."""
-       
-       params = {}
-       
-       if len(systolic_peaks) > 2:
-           # Pulse amplitude
-           pulse_amplitudes = []
-           for i in range(len(systolic_peaks) - 1):
-               start = systolic_peaks[i]
-               end = systolic_peaks[i + 1]
-               pulse_segment = ppg_signal[start:end]
-               amplitude = np.max(pulse_segment) - np.min(pulse_segment)
-               pulse_amplitudes.append(amplitude)
-           
-           params['mean_pulse_amplitude'] = np.mean(pulse_amplitudes)
-           params['pulse_amplitude_variability'] = np.std(pulse_amplitudes) / np.mean(pulse_amplitudes) * 100
-           
-           # Pulse wave analysis
-           params['pulse_wave_analysis'] = analyze_pulse_wave_morphology(ppg_signal, systolic_peaks, fs)
-       
-       return params
-   
-   def analyze_pulse_wave_morphology(ppg_signal, systolic_peaks, fs):
-       """Analyze pulse wave morphology."""
-       
-       morphology = {}
-       
-       if len(systolic_peaks) > 1:
-           # Calculate average pulse wave
-           pulse_waves = []
-           for i in range(len(systolic_peaks) - 1):
-               start = systolic_peaks[i]
-               end = systolic_peaks[i + 1]
-               pulse_wave = ppg_signal[start:end]
-               if len(pulse_wave) > 10:  # Ensure sufficient data
-                   pulse_waves.append(pulse_wave)
-           
-           if pulse_waves:
-               # Normalize pulse waves to same length
-               min_length = min(len(wave) for wave in pulse_waves)
-               normalized_waves = [wave[:min_length] for wave in pulse_waves]
-               
-               # Calculate average pulse wave
-               average_pulse_wave = np.mean(normalized_waves, axis=0)
-               
-               # Analyze morphology
-               morphology['pulse_width'] = calculate_pulse_width(average_pulse_wave)
-               morphology['pulse_slope'] = calculate_pulse_slope(average_pulse_wave)
-               morphology['pulse_area'] = np.trapz(average_pulse_wave)
-       
-       return morphology
-   
-   def interpret_ppg_results(prv_features, pulse_rate, hemodynamic_params):
-       """Provide clinical interpretation of PPG analysis results."""
-       
-       interpretation = {
-           'pulse_rate_status': 'normal' if 60 <= pulse_rate <= 100 else 'abnormal',
-           'hemodynamic_status': 'normal',
-           'risk_assessment': 'low',
-           'recommendations': []
-       }
-       
-       # Pulse rate interpretation
-       if pulse_rate < 60:
-           interpretation['pulse_rate_status'] = 'bradycardia'
-           interpretation['recommendations'].append('Consider bradycardia evaluation')
-       elif pulse_rate > 100:
-           interpretation['pulse_rate_status'] = 'tachycardia'
-           interpretation['recommendations'].append('Consider tachycardia evaluation')
-       
-       # Hemodynamic interpretation
-       if 'mean_pulse_amplitude' in hemodynamic_params:
-           pulse_amplitude = hemodynamic_params['mean_pulse_amplitude']
-           if pulse_amplitude < 0.1:  # Threshold depends on your signal scaling
-               interpretation['hemodynamic_status'] = 'reduced'
-               interpretation['risk_assessment'] = 'elevated'
-               interpretation['recommendations'].append('Reduced pulse amplitude may indicate poor perfusion')
-       
-       return interpretation
+
+   # --- Usage ---
+   ppg_col, _ = load_sample_ppg()
+   ppg_col = np.array(ppg_col)
+   fs = 128
+
+   results = analyze_ppg_hemodynamic(ppg_col, fs=fs, patient_id='P001')
+   print(f"Pulse rate   : {results['pulse_rate']:.1f} BPM ({results['pulse_rate_status']})")
+   print(f"SNR SQI      : {results['snr_sqi']:.3f}")
+   print(f"Amplitude SQI: {results['amplitude_sqi']:.3f}")
+   if 'pulse_rate_variability' in results:
+       print(f"PRV (CV)     : {results['pulse_rate_variability']:.2f} %")
 
 Example 3: Real-Time Vital Signs Monitoring
 =============================================
 
-This example demonstrates real-time vital signs monitoring using VitalDSP.
-
-**Use Case:** Continuous monitoring of vital signs in clinical settings or remote patient monitoring applications.
-
-**Key Features:**
-* Real-time signal processing
-* Continuous vital signs calculation
-* Alert generation for abnormal values
-* Data logging and storage
-* Web interface for monitoring
-
-**Implementation:**
+A sliding-window monitoring system that continuously processes incoming signal chunks and logs vital signs.
 
 .. code-block:: python
 
    import time
    import threading
+   import numpy as np
    from collections import deque
    from vitalDSP.filtering.signal_filtering import SignalFiltering
    from vitalDSP.physiological_features.waveform import WaveformMorphology
    from vitalDSP.signal_quality_assessment.signal_quality_index import SignalQualityIndex
-   
+
    class RealTimeVitalSignsMonitor:
-       """Real-time vital signs monitoring system."""
-       
-       def __init__(self, fs=1000, window_size=10, update_interval=1):
-           """
-           Initialize real-time monitor.
-           
-           Parameters:
-           -----------
-           fs : float
-               Sampling frequency (Hz)
-           window_size : int
-               Window size in seconds
-           update_interval : float
-               Update interval in seconds
-           """
-           
+       """Sliding-window real-time vital signs monitor."""
+
+       def __init__(self, fs=128, window_size=10, update_interval=1):
            self.fs = fs
-           self.window_size = window_size
-           self.update_interval = update_interval
            self.window_samples = fs * window_size
-           
-           # Data buffers
+           self.update_interval = update_interval
            self.signal_buffer = deque(maxlen=self.window_samples)
-           self.vital_signs_history = deque(maxlen=100)  # Keep last 100 measurements
-           
-           # Current vital signs
-           self.current_vital_signs = {
-               'heart_rate': None,
-               'pulse_rate': None,
-               'signal_quality': None,
-               'timestamp': None
-           }
-           
-           # Alert thresholds
-           self.alert_thresholds = {
-               'heart_rate_low': 50,
-               'heart_rate_high': 120,
-               'signal_quality_low': 0.5
-           }
-           
-           # Monitoring state
-           self.is_monitoring = False
-           self.monitor_thread = None
-           
-       def add_signal_data(self, signal_chunk):
-           """Add new signal data to the buffer."""
-           self.signal_buffer.extend(signal_chunk)
-       
-       def start_monitoring(self):
-           """Start real-time monitoring."""
-           if not self.is_monitoring:
-               self.is_monitoring = True
-               self.monitor_thread = threading.Thread(target=self._monitoring_loop)
-               self.monitor_thread.daemon = True
-               self.monitor_thread.start()
-               print("Real-time monitoring started")
-       
-       def stop_monitoring(self):
-           """Stop real-time monitoring."""
-           self.is_monitoring = False
-           if self.monitor_thread:
-               self.monitor_thread.join()
-               print("Real-time monitoring stopped")
-       
-       def _monitoring_loop(self):
-           """Main monitoring loop."""
-           while self.is_monitoring:
+           self.history = deque(maxlen=100)
+           self.current = {}
+           self.is_running = False
+           self.thresholds = {'hr_low': 50, 'hr_high': 120, 'sqi_low': 0.3}
+
+       def add_data(self, chunk):
+           """Push a new signal chunk into the sliding buffer."""
+           self.signal_buffer.extend(chunk)
+
+       def start(self):
+           self.is_running = True
+           t = threading.Thread(target=self._loop, daemon=True)
+           t.start()
+           print("Monitoring started.")
+
+       def stop(self):
+           self.is_running = False
+           print("Monitoring stopped.")
+
+       def _loop(self):
+           while self.is_running:
                if len(self.signal_buffer) >= self.window_samples:
-                   # Get current window
-                   current_signal = np.array(list(self.signal_buffer))
-                   
-                   # Process signal
-                   vital_signs = self._process_signal_window(current_signal)
-                   
-                   # Update current vital signs
-                   self.current_vital_signs.update(vital_signs)
-                   self.current_vital_signs['timestamp'] = time.time()
-                   
-                   # Add to history
-                   self.vital_signs_history.append(vital_signs.copy())
-                   
-                   # Check for alerts
-                   self._check_alerts(vital_signs)
-                   
-                   # Log results
-                   self._log_vital_signs(vital_signs)
-               
+                   window = np.array(list(self.signal_buffer))
+                   vitals = self._process(window)
+                   self.current = vitals
+                   self.history.append(vitals)
+                   self._check_alerts(vitals)
+                   self._log(vitals)
                time.sleep(self.update_interval)
-       
-       def _process_signal_window(self, signal):
-           """Process a window of signal data."""
-           vital_signs = {}
-           
-       try:
-           # Signal preprocessing
-           sf = SignalFiltering(signal)
-           filtered_signal = sf.bandpass(lowcut=0.5, highcut=40.0, fs=self.fs, order=4)
-           
-           # Signal quality assessment
-           sqi = SignalQualityIndex(filtered_signal)
-           quality_sqi, _, _ = sqi.amplitude_variability_sqi(
-               window_size=int(self.fs*5), step_size=int(self.fs*1), threshold=2, aggregate=False
-           )
-           vital_signs['signal_quality'] = np.mean(quality_sqi)
-               
-               # Detect peaks (assuming ECG signal)
-               wm = WaveformMorphology(filtered_signal, fs=self.fs, signal_type="ECG")
-               r_peaks = wm.r_peaks
-               
-               if len(r_peaks) > 2:
-                   # Calculate heart rate
-                   rr_intervals = np.diff(r_peaks) / self.fs
-                   valid_rr = rr_intervals[(rr_intervals > 0.3) & (rr_intervals < 2.0)]
-                   
-                   if len(valid_rr) > 1:
-                       heart_rate = 60 / np.mean(valid_rr)
-                       vital_signs['heart_rate'] = heart_rate
-                       vital_signs['pulse_rate'] = heart_rate  # Assuming same for this example
-               
+
+       def _process(self, signal):
+           vitals = {}
+           try:
+               sf = SignalFiltering(signal)
+               filtered = sf.bandpass(lowcut=0.5, highcut=40.0, fs=self.fs, order=4)
+
+               sqi = SignalQualityIndex(filtered)
+               vitals['sqi'] = sqi.snr_sqi(
+                   window_size=int(self.fs * 5), step_size=int(self.fs), aggregate=True
+               )
+
+               wm = WaveformMorphology(filtered, fs=self.fs, signal_type='ECG')
+               vitals['heart_rate'] = wm.get_heart_rate(summary_type='mean')
            except Exception as e:
-               print(f"Error processing signal: {e}")
-               vital_signs['error'] = str(e)
-           
-           return vital_signs
-       
-       def _check_alerts(self, vital_signs):
-           """Check for alert conditions."""
-           alerts = []
-           
-           if 'heart_rate' in vital_signs:
-               hr = vital_signs['heart_rate']
-               if hr < self.alert_thresholds['heart_rate_low']:
-                   alerts.append(f"Low heart rate: {hr:.1f} BPM")
-               elif hr > self.alert_thresholds['heart_rate_high']:
-                   alerts.append(f"High heart rate: {hr:.1f} BPM")
-           
-           if 'signal_quality' in vital_signs:
-               sq = vital_signs['signal_quality']
-               if sq < self.alert_thresholds['signal_quality_low']:
-                   alerts.append(f"Poor signal quality: {sq:.2f}")
-           
-           if alerts:
-               self._handle_alerts(alerts)
-       
-       def _handle_alerts(self, alerts):
-           """Handle alert conditions."""
-           timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-           for alert in alerts:
-               print(f"[ALERT {timestamp}] {alert}")
-               # Here you could send notifications, log to database, etc.
-       
-       def _log_vital_signs(self, vital_signs):
-           """Log vital signs data."""
-           timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-           log_entry = f"[{timestamp}] "
-           
-           if 'heart_rate' in vital_signs:
-               log_entry += f"HR: {vital_signs['heart_rate']:.1f} BPM "
-           
-           if 'signal_quality' in vital_signs:
-               log_entry += f"SQ: {vital_signs['signal_quality']:.2f}"
-           
-           print(log_entry)
-       
-       def get_current_vital_signs(self):
-           """Get current vital signs."""
-           return self.current_vital_signs.copy()
-       
-       def get_vital_signs_history(self):
-           """Get vital signs history."""
-           return list(self.vital_signs_history)
-       
-       def get_statistics(self):
-           """Get statistics from vital signs history."""
-           if not self.vital_signs_history:
+               vitals['error'] = str(e)
+           return vitals
+
+       def _check_alerts(self, vitals):
+           hr = vitals.get('heart_rate', None)
+           if hr is not None:
+               if hr < self.thresholds['hr_low']:
+                   print(f"[ALERT] Low HR: {hr:.1f} BPM")
+               elif hr > self.thresholds['hr_high']:
+                   print(f"[ALERT] High HR: {hr:.1f} BPM")
+           if vitals.get('sqi', 1.0) < self.thresholds['sqi_low']:
+               print(f"[ALERT] Poor signal quality: SQI={vitals['sqi']:.2f}")
+
+       def _log(self, vitals):
+           hr  = vitals.get('heart_rate', float('nan'))
+           sqi = vitals.get('sqi', float('nan'))
+           print(f"HR={hr:.1f} BPM  SQI={sqi:.3f}")
+
+       def get_stats(self):
+           hrs = [v['heart_rate'] for v in self.history if 'heart_rate' in v]
+           if not hrs:
                return {}
-           
-           stats = {}
-           
-           # Heart rate statistics
-           heart_rates = [vs.get('heart_rate') for vs in self.vital_signs_history if vs.get('heart_rate')]
-           if heart_rates:
-               stats['heart_rate'] = {
-                   'mean': np.mean(heart_rates),
-                   'std': np.std(heart_rates),
-                   'min': np.min(heart_rates),
-                   'max': np.max(heart_rates)
-               }
-           
-           # Signal quality statistics
-           signal_qualities = [vs.get('signal_quality') for vs in self.vital_signs_history if vs.get('signal_quality')]
-           if signal_qualities:
-               stats['signal_quality'] = {
-                   'mean': np.mean(signal_qualities),
-                   'std': np.std(signal_qualities),
-                   'min': np.min(signal_qualities),
-                   'max': np.max(signal_qualities)
-               }
-           
-           return stats
+           return {'mean_hr': np.mean(hrs), 'std_hr': np.std(hrs),
+                   'min_hr': np.min(hrs), 'max_hr': np.max(hrs)}
 
-**Usage Example:**
+   # --- Usage ---
+   from vitalDSP.utils.data_processing.synthesize_data import generate_ecg_signal
 
-.. code-block:: python
+   fs = 128
+   monitor = RealTimeVitalSignsMonitor(fs=fs, window_size=10, update_interval=1)
+   monitor.start()
 
-   # Initialize real-time monitor
-   monitor = RealTimeVitalSignsMonitor(fs=1000, window_size=10, update_interval=1)
-   
-   # Start monitoring
-   monitor.start_monitoring()
-   
-   # Simulate real-time data (replace with your data source)
-   for i in range(100):
-       # Generate sample data (replace with your data acquisition)
-       sample_data = np.random.randn(100) + np.sin(2 * np.pi * 1.2 * np.arange(100) / 1000)
-       monitor.add_signal_data(sample_data)
-       time.sleep(0.1)
-   
-   # Get current vital signs
-   current_vitals = monitor.get_current_vital_signs()
-   print(f"Current heart rate: {current_vitals.get('heart_rate', 'N/A')} BPM")
-   
-   # Get statistics
-   stats = monitor.get_statistics()
-   print(f"Average heart rate: {stats.get('heart_rate', {}).get('mean', 'N/A')} BPM")
-   
-   # Stop monitoring
-   monitor.stop_monitoring()
+   ecg_stream = generate_ecg_signal(sfecg=fs, duration=15, hrmean=72, Anoise=0.05)
+   chunk_size = fs  # 1 second per push
+
+   for start in range(0, len(ecg_stream), chunk_size):
+       monitor.add_data(ecg_stream[start:start + chunk_size])
+       time.sleep(0.1)  # simulate real-time
+
+   monitor.stop()
+   stats = monitor.get_stats()
+   print(f"Session mean HR: {stats.get('mean_hr', float('nan')):.1f} BPM")
 
 Example 4: Wearable Device Integration
 ========================================
 
-This example demonstrates how to integrate VitalDSP with wearable devices for health monitoring.
-
-**Use Case:** Processing data from fitness trackers, smartwatches, or other wearable health devices.
-
-**Key Features:**
-* Data format conversion and preprocessing
-* Real-time processing for wearable constraints
-* Battery-efficient algorithms
-* Mobile-friendly analysis
-* Cloud integration
-
-**Implementation:**
+Processes data from wearable devices (fitness tracker, smartwatch, chest strap) with device-specific filter settings.
 
 .. code-block:: python
 
-   import json
-   import requests
-   from datetime import datetime, timedelta
-   
-   class WearableDeviceIntegration:
-       """Integration with wearable devices for health monitoring."""
-       
-       def __init__(self, device_type="fitness_tracker", cloud_endpoint=None):
-           """
-           Initialize wearable device integration.
-           
-           Parameters:
-           -----------
-           device_type : str
-               Type of wearable device
-           cloud_endpoint : str, optional
-               Cloud endpoint for data synchronization
-           """
-           
-           self.device_type = device_type
-           self.cloud_endpoint = cloud_endpoint
-           self.device_config = self._get_device_config(device_type)
-           
-           # Data processing parameters optimized for wearables
-           self.processing_params = {
-               'fs': self.device_config['sampling_rate'],
-               'window_size': 30,  # 30-second windows
-               'update_interval': 5,  # 5-second updates
-               'battery_optimized': True
-           }
-           
-           # Local data storage
-           self.local_data = []
-           self.processed_data = []
-           
-       def _get_device_config(self, device_type):
-           """Get device-specific configuration."""
-           
-           configs = {
-               'fitness_tracker': {
-                   'sampling_rate': 100,
-                   'signal_types': ['ppg', 'accelerometer'],
-                   'battery_life': '7_days',
-                   'data_format': 'json'
-               },
-               'smartwatch': {
-                   'sampling_rate': 200,
-                   'signal_types': ['ppg', 'ecg', 'accelerometer'],
-                   'battery_life': '2_days',
-                   'data_format': 'json'
-               },
-               'chest_strap': {
-                   'sampling_rate': 1000,
-                   'signal_types': ['ecg', 'accelerometer'],
-                   'battery_life': '24_hours',
-                   'data_format': 'csv'
-               }
-           }
-           
-           return configs.get(device_type, configs['fitness_tracker'])
-       
-       def process_wearable_data(self, raw_data, data_type="ppg"):
-           """
-           Process data from wearable device.
-           
-           Parameters:
-           -----------
-           raw_data : dict or array
-               Raw data from wearable device
-           data_type : str
-               Type of signal data
-           
-           Returns:
-           --------
-           dict : Processed analysis results
-           """
-           
-           # Convert raw data to standard format
-           processed_signal = self._convert_wearable_data(raw_data, data_type)
-           
-           if processed_signal is None:
-               return {'error': 'Failed to convert data'}
-           
-           # Apply battery-optimized processing
-           results = self._battery_optimized_processing(processed_signal, data_type)
-           
-           # Add metadata
-           results['device_type'] = self.device_type
-           results['data_type'] = data_type
-           results['timestamp'] = datetime.now().isoformat()
-           results['processing_params'] = self.processing_params
-           
-           # Store locally
-           self.processed_data.append(results)
-           
-           # Sync to cloud if enabled
-           if self.cloud_endpoint:
-               self._sync_to_cloud(results)
-           
-           return results
-       
-       def _convert_wearable_data(self, raw_data, data_type):
-           """Convert wearable data to standard format."""
-           
-           try:
-               if self.device_config['data_format'] == 'json':
-                   if isinstance(raw_data, str):
-                       data = json.loads(raw_data)
-                   else:
-                       data = raw_data
-                   
-                   # Extract signal data based on device type
-                   if self.device_type == 'fitness_tracker':
-                       signal = data.get('ppg_data', [])
-                   elif self.device_type == 'smartwatch':
-                       signal = data.get('heart_rate_data', [])
-                   elif self.device_type == 'chest_strap':
-                       signal = data.get('ecg_data', [])
-                   else:
-                       signal = data.get('signal_data', [])
-               
-               elif self.device_config['data_format'] == 'csv':
-                   # Handle CSV data
-                   signal = raw_data if isinstance(raw_data, list) else raw_data.tolist()
-               
-               else:
-                   signal = raw_data
-               
-               # Convert to numpy array
-               signal_array = np.array(signal)
-               
-               # Validate signal
-               if len(signal_array) < 10:
-                   return None
-               
-               return signal_array
-           
-           except Exception as e:
-               print(f"Error converting wearable data: {e}")
-               return None
-       
-       def _battery_optimized_processing(self, signal, data_type):
-           """Apply battery-optimized signal processing."""
-           
-           results = {}
-           
-           try:
-               fs = self.processing_params['fs']
-               
-               # Lightweight preprocessing
-               sf = SignalFiltering(signal)
-               
-               # Use simpler filters for battery optimization
-               if data_type == 'ppg':
-                   filtered_signal = sf.bandpass(lowcut=0.5, highcut=8.0, fs=fs, order=2)
-               elif data_type == 'ecg':
-                   filtered_signal = sf.bandpass(lowcut=0.5, highcut=40.0, fs=fs, order=2)
-               else:
-                   filtered_signal = sf.bandpass(lowcut=0.1, highcut=20.0, fs=fs, order=2)
-               
-               # Basic feature extraction
-               if data_type in ['ppg', 'ecg']:
-                   wm = WaveformMorphology(filtered_signal, fs=fs, signal_type=data_type)
-                   
-                   if data_type == 'ppg':
-                       peaks = wm.systolic_peaks
-                   else:
-                       peaks = wm.r_peaks
-                   
-                   if len(peaks) > 2:
-                       # Calculate heart rate
-                       intervals = np.diff(peaks) / fs
-                       valid_intervals = intervals[(intervals > 0.3) & (intervals < 2.0)]
-                       
-                       if len(valid_intervals) > 1:
-                           heart_rate = 60 / np.mean(valid_intervals)
-                           results['heart_rate'] = heart_rate
-                           results['heart_rate_variability'] = np.std(valid_intervals) / np.mean(valid_intervals) * 100
-               
-           # Basic signal quality
-           sqi = SignalQualityIndex(filtered_signal)
-           quality_sqi, _, _ = sqi.amplitude_variability_sqi(
-               window_size=int(fs*5), step_size=int(fs*1), threshold=2, aggregate=False
-           )
-           results['signal_quality'] = np.mean(quality_sqi)
-               
-               # Activity level (if accelerometer data available)
-               if data_type == 'accelerometer':
-                   results['activity_level'] = self._calculate_activity_level(signal)
-           
-           except Exception as e:
-               print(f"Error in battery-optimized processing: {e}")
-               results['error'] = str(e)
-           
-           return results
-       
-       def _calculate_activity_level(self, accelerometer_data):
-           """Calculate activity level from accelerometer data."""
-           
-           if len(accelerometer_data) < 3:
-               return 'unknown'
-           
-           # Calculate magnitude of acceleration
-           if accelerometer_data.ndim > 1:
-               magnitude = np.sqrt(np.sum(accelerometer_data**2, axis=1))
-           else:
-               magnitude = np.abs(accelerometer_data)
-           
-           # Calculate activity level
-           mean_magnitude = np.mean(magnitude)
-           
-           if mean_magnitude < 1.0:
-               return 'sedentary'
-           elif mean_magnitude < 2.0:
-               return 'light'
-           elif mean_magnitude < 3.0:
-               return 'moderate'
-           else:
-               return 'vigorous'
-       
-       def _sync_to_cloud(self, data):
-           """Sync processed data to cloud endpoint."""
-           
-           try:
-               if self.cloud_endpoint:
-                   response = requests.post(
-                       self.cloud_endpoint,
-                       json=data,
-                       timeout=10
-                   )
-                   
-                   if response.status_code == 200:
-                       print("Data synced to cloud successfully")
-                   else:
-                       print(f"Cloud sync failed: {response.status_code}")
-           
-           except Exception as e:
-               print(f"Cloud sync error: {e}")
-       
-       def get_health_summary(self, hours=24):
-           """Get health summary for specified time period."""
-           
-           cutoff_time = datetime.now() - timedelta(hours=hours)
-           
-           # Filter data for specified time period
-           recent_data = [
-               data for data in self.processed_data
-               if datetime.fromisoformat(data['timestamp']) > cutoff_time
-           ]
-           
-           if not recent_data:
-               return {'message': 'No data available for specified period'}
-           
-           # Calculate summary statistics
-           summary = {
-               'period_hours': hours,
-               'data_points': len(recent_data),
-               'heart_rate_stats': self._calculate_heart_rate_stats(recent_data),
-               'activity_summary': self._calculate_activity_summary(recent_data),
-               'signal_quality_stats': self._calculate_signal_quality_stats(recent_data)
-           }
-           
-           return summary
-       
-       def _calculate_heart_rate_stats(self, data):
-           """Calculate heart rate statistics."""
-           
-           heart_rates = [d.get('heart_rate') for d in data if d.get('heart_rate')]
-           
-           if not heart_rates:
-               return None
-           
-           return {
-               'mean': np.mean(heart_rates),
-               'std': np.std(heart_rates),
-               'min': np.min(heart_rates),
-               'max': np.max(heart_rates),
-               'count': len(heart_rates)
-           }
-       
-       def _calculate_activity_summary(self, data):
-           """Calculate activity summary."""
-           
-           activities = [d.get('activity_level') for d in data if d.get('activity_level')]
-           
-           if not activities:
-               return None
-           
-           activity_counts = {}
-           for activity in activities:
-               activity_counts[activity] = activity_counts.get(activity, 0) + 1
-           
-           return activity_counts
-       
-       def _calculate_signal_quality_stats(self, data):
-           """Calculate signal quality statistics."""
-           
-           qualities = [d.get('signal_quality') for d in data if d.get('signal_quality')]
-           
-           if not qualities:
-               return None
-           
-           return {
-               'mean': np.mean(qualities),
-               'std': np.std(qualities),
-               'min': np.min(qualities),
-               'max': np.max(qualities)
-           }
+   import numpy as np
+   from datetime import datetime
+   from vitalDSP.filtering.signal_filtering import SignalFiltering
+   from vitalDSP.physiological_features.waveform import WaveformMorphology
+   from vitalDSP.signal_quality_assessment.signal_quality_index import SignalQualityIndex
 
-**Usage Example:**
-
-.. code-block:: python
-
-   # Initialize wearable integration
-   wearable = WearableDeviceIntegration(
-       device_type="fitness_tracker",
-       cloud_endpoint="https://api.example.com/vital-signs"
-   )
-   
-   # Simulate wearable data
-   sample_data = {
-       'ppg_data': np.random.randn(1000) + np.sin(2 * np.pi * 1.2 * np.arange(1000) / 100),
-       'timestamp': datetime.now().isoformat(),
-       'device_id': 'tracker_001'
+   DEVICE_CONFIGS = {
+       'fitness_tracker': {'fs': 100, 'signal': 'PPG', 'lowcut': 0.5, 'highcut': 8.0},
+       'smartwatch':      {'fs': 200, 'signal': 'PPG', 'lowcut': 0.5, 'highcut': 8.0},
+       'chest_strap':     {'fs': 256, 'signal': 'ECG', 'lowcut': 0.5, 'highcut': 40.0},
    }
-   
-   # Process wearable data
-   results = wearable.process_wearable_data(sample_data, data_type="ppg")
-   
-   print(f"Heart rate: {results.get('heart_rate', 'N/A')} BPM")
-   print(f"Signal quality: {results.get('signal_quality', 'N/A')}")
-   
-   # Get health summary
-   summary = wearable.get_health_summary(hours=24)
-   print(f"Health summary: {summary}")
 
-Best Practices for Examples
-============================
+   def process_wearable_data(raw_signal, device_type='fitness_tracker'):
+       """
+       Process a wearable signal chunk and return vital signs.
 
-**Code Organization**
-* Use clear, descriptive function and variable names
-* Include comprehensive docstrings
-* Implement proper error handling
-* Follow PEP 8 style guidelines
+       Parameters
+       ----------
+       raw_signal : numpy.ndarray
+           Raw signal from the wearable sensor.
+       device_type : str
+           One of 'fitness_tracker', 'smartwatch', 'chest_strap'.
 
-**Performance Considerations**
-* Optimize for your specific use case
-* Consider memory usage for large datasets
-* Use appropriate sampling rates
-* Implement efficient data structures
+       Returns
+       -------
+       dict : Heart rate, signal quality, device metadata, timestamp.
+       """
+       cfg = DEVICE_CONFIGS.get(device_type, DEVICE_CONFIGS['fitness_tracker'])
+       fs  = cfg['fs']
 
-**Clinical Applications**
-* Validate results against clinical standards
-* Consider patient safety and data privacy
-* Document methodology for reproducibility
-* Include appropriate disclaimers
+       sf = SignalFiltering(raw_signal)
+       filtered = sf.bandpass(lowcut=cfg['lowcut'], highcut=cfg['highcut'], fs=fs, order=2)
 
-**Integration Guidelines**
-* Design for your target platform
-* Consider real-time constraints
-* Implement proper data validation
-* Include comprehensive logging
+       result = {
+           'device_type': device_type,
+           'signal_type': cfg['signal'],
+           'timestamp': datetime.now().isoformat(),
+       }
 
-**Testing and Validation**
-* Test with various signal types and qualities
-* Validate against known datasets
-* Include edge case handling
-* Document test procedures
+       # Signal quality
+       sqi = SignalQualityIndex(filtered)
+       result['sqi'] = sqi.snr_sqi(
+           window_size=min(int(fs * 5), len(filtered) - 1),
+           step_size=int(fs),
+           aggregate=True
+       )
+
+       # Heart / pulse rate
+       wm = WaveformMorphology(filtered, fs=fs, signal_type=cfg['signal'])
+       result['heart_rate'] = wm.get_heart_rate(summary_type='mean')
+
+       return result
+
+   # --- Usage ---
+   np.random.seed(42)
+
+   for device in ['fitness_tracker', 'smartwatch', 'chest_strap']:
+       cfg = DEVICE_CONFIGS[device]
+       t = np.arange(2000) / cfg['fs']
+       sim_signal = np.sin(2 * np.pi * 1.2 * t) + 0.1 * np.random.randn(len(t))
+
+       r = process_wearable_data(sim_signal, device_type=device)
+       print(f"{device}: HR={r['heart_rate']:.1f} BPM  SQI={r['sqi']:.3f}")
 
 Example 5: Advanced Multi-Scale Entropy Analysis
 ==================================================
 
-This example demonstrates advanced nonlinear analysis techniques for assessing physiological signal complexity.
-
-**Use Case:** Quantifying cardiac health and autonomic nervous system function through multi-scale entropy analysis.
-
-**Key Features:**
-* Multi-scale entropy (MSE) computation
-* Composite multi-scale entropy (CMSE)
-* Refined composite multi-scale entropy (RCMSE)
-* Clinical interpretation of entropy metrics
-* Complexity-loss aging assessment
-
-**Implementation:**
+Quantifies cardiac signal complexity using Multi-Scale Entropy (MSE), Composite MSE, and Refined Composite MSE.
 
 .. code-block:: python
 
    import numpy as np
    from vitalDSP.physiological_features.advanced_entropy import MultiScaleEntropy
-   from vitalDSP.utils.data_processing.synthesize_data import generate_ecg_signal
-   from vitalDSP.physiological_features.waveform import WaveformMorphology
+   from vitalDSP.physiological_features.beat_to_beat import BeatToBeatAnalysis
    from vitalDSP.filtering.signal_filtering import SignalFiltering
-   
+   from vitalDSP.utils.data_processing.synthesize_data import generate_ecg_signal
+
    def analyze_cardiac_complexity(ecg_signal, fs, patient_id=None):
        """
-       Comprehensive cardiac complexity analysis using multi-scale entropy.
-       
-       Parameters:
-       -----------
-       ecg_signal : array-like
-           ECG signal data
+       Multi-scale entropy analysis of cardiac dynamics.
+
+       Parameters
+       ----------
+       ecg_signal : numpy.ndarray
+           ECG signal.
        fs : float
-           Sampling frequency (Hz)
-       patient_id : str, optional
-           Patient identifier
-       
-       Returns:
-       --------
-       dict : Comprehensive complexity analysis results
+           Sampling frequency in Hz.
+
+       Returns
+       -------
+       dict : MSE, CMSE, RCMSE values and complexity indices.
        """
-       
-       results = {
-           'patient_id': patient_id,
-           'sampling_frequency': fs,
-           'analysis': 'Multi-Scale Entropy'
-       }
-       
-       # 1. Preprocess ECG signal
+       results = {'patient_id': patient_id, 'fs': fs}
+
+       # Preprocess
        sf = SignalFiltering(ecg_signal)
-       filtered_ecg = sf.bandpass(lowcut=0.5, highcut=40.0, fs=fs, order=4)
-       
-       # 2. Extract RR intervals
-       wm = WaveformMorphology(filtered_ecg, fs=fs, signal_type="ECG")
-       r_peaks = wm.r_peaks
-       
-       if len(r_peaks) > 50:
-           # Calculate RR intervals in milliseconds
-           rr_intervals = np.diff(r_peaks) / fs * 1000
-           
-           # Remove outliers
-           valid_rr = rr_intervals[(rr_intervals > 300) & (rr_intervals < 2000)]
-           
-           if len(valid_rr) > 50:
-               # 3. Multi-Scale Entropy Analysis
-               mse_analyzer = MultiScaleEntropy(
-                   signal=valid_rr,
-                   m=2,        # Embedding dimension
-                   r=0.15,     # Tolerance (fraction of std)
-                   max_scale=20
-               )
+       filtered = sf.bandpass(lowcut=0.5, highcut=40.0, fs=fs, order=4)
 
-               # Standard MSE — returns np.ndarray of length max_scale
-               mse_values = mse_analyzer.compute_mse()
-               complexity_index = mse_analyzer.get_complexity_index(mse_values)
-               results['mse_values'] = mse_values.tolist()
-               results['complexity_index'] = float(complexity_index)
+       # Extract RR intervals
+       bb = BeatToBeatAnalysis(filtered, fs=fs, signal_type='ECG')
+       rr = bb.compute_rr_intervals()
 
-               # Composite MSE (more robust)
-               cmse_values = mse_analyzer.compute_cmse()
-               cmse_ci = mse_analyzer.get_complexity_index(cmse_values)
-               results['cmse_values'] = cmse_values.tolist()
-               results['cmse_complexity_index'] = float(cmse_ci)
+       if len(rr) < 50:
+           results['error'] = f'Only {len(rr)} RR intervals — need ≥50 for MSE.'
+           return results
 
-               # Refined Composite MSE (best for short signals)
-               rcmse_values = mse_analyzer.compute_rcmse()
-               rcmse_ci = mse_analyzer.get_complexity_index(rcmse_values)
-               results['rcmse_values'] = rcmse_values.tolist()
-               results['rcmse_complexity_index'] = float(rcmse_ci)
+       # Multi-Scale Entropy
+       mse_analyzer = MultiScaleEntropy(signal=rr, max_scale=20, m=2, r=0.15)
 
-               # 4. Clinical Interpretation
-               interpretation = interpret_complexity_metrics(
-                   complexity_index,
-                   cmse_ci,
-                   rcmse_ci,
-                   len(valid_rr)
-               )
-               results['clinical_interpretation'] = interpretation
-       
+       mse_values   = mse_analyzer.compute_mse()
+       cmse_values  = mse_analyzer.compute_cmse()
+       rcmse_values = mse_analyzer.compute_rcmse()
+
+       results['mse']               = mse_values.tolist()
+       results['cmse']              = cmse_values.tolist()
+       results['rcmse']             = rcmse_values.tolist()
+       results['complexity_index']  = float(mse_analyzer.get_complexity_index(mse_values))
+       results['cmse_ci']           = float(mse_analyzer.get_complexity_index(cmse_values))
+       results['rcmse_ci']          = float(mse_analyzer.get_complexity_index(rcmse_values))
+
+       # Clinical interpretation
+       cmse_ci = results['cmse_ci']
+       results['interpretation'] = (
+           'reduced complexity — possible autonomic dysfunction' if cmse_ci < 30 else
+           'excellent complexity — healthy autonomic function'   if cmse_ci > 60 else
+           'normal complexity'
+       )
+
        return results
-   
-   def interpret_complexity_metrics(mse_ci, cmse_ci, rcmse_ci, signal_length):
-       """Provide clinical interpretation of complexity metrics."""
-       
-       interpretation = {
-           'complexity_level': 'normal',
-           'autonomic_status': 'balanced',
-           'cardiac_health': 'healthy',
-           'recommendations': []
-       }
-       
-       # Complexity Index thresholds (clinically validated)
-       if cmse_ci < 30:
-           interpretation['complexity_level'] = 'reduced'
-           interpretation['autonomic_status'] = 'impaired'
-           interpretation['cardiac_health'] = 'at_risk'
-           interpretation['recommendations'].append(
-               'Reduced complexity suggests autonomic dysfunction or aging'
-           )
-           interpretation['recommendations'].append(
-               'Consider comprehensive cardiac evaluation'
-           )
-       elif cmse_ci > 60:
-           interpretation['complexity_level'] = 'high'
-           interpretation['autonomic_status'] = 'healthy'
-           interpretation['cardiac_health'] = 'excellent'
-           interpretation['recommendations'].append(
-               'High complexity indicates good cardiovascular health'
-           )
-       else:
-           interpretation['complexity_level'] = 'normal'
-           interpretation['autonomic_status'] = 'balanced'
-           interpretation['recommendations'].append(
-               'Complexity within normal range for age'
-           )
-       
-       # Signal quality check
-       if signal_length < 100:
-           interpretation['recommendations'].append(
-               'Signal length is short - consider longer recording for robust assessment'
-           )
-       
-       return interpretation
 
-**Usage Example:**
-
-.. code-block:: python
-
-   # Generate or load ECG data
+   # --- Usage ---
    fs = 256
-   ecg_data = generate_ecg_signal(sfecg=fs, duration=300, hrmean=72, Anoise=0.05)
-   
-   # Perform complexity analysis
-   results = analyze_cardiac_complexity(ecg_data, fs, patient_id="P001")
-   
-   # Display results
-   print(f"Patient ID: {results['patient_id']}")
-   print(f"Complexity Index (CMSE): {results['cmse_complexity_index']:.2f}")
-   print(f"Cardiac Health: {results['clinical_interpretation']['cardiac_health']}")
-   print(f"Autonomic Status: {results['clinical_interpretation']['autonomic_status']}")
-   
-   # Plot MSE curves
-   import matplotlib.pyplot as plt
-   
-   scales = range(1, len(results['mse_values']) + 1)
-   plt.figure(figsize=(12, 6))
-   plt.plot(scales, results['mse_values'], 'b-', label='MSE', linewidth=2)
-   plt.plot(scales, results['cmse_values'], 'r-', label='CMSE', linewidth=2)
-   plt.plot(scales, results['rcmse_values'], 'g-', label='RCMSE', linewidth=2)
-   plt.xlabel('Scale Factor')
-   plt.ylabel('Sample Entropy')
-   plt.title('Multi-Scale Entropy Analysis')
-   plt.legend()
-   plt.grid(True, alpha=0.3)
-   plt.show()
+   ecg_data = generate_ecg_signal(sfecg=fs, duration=120, hrmean=72, Anoise=0.03)
+   results = analyze_cardiac_complexity(ecg_data, fs=fs, patient_id='P001')
+
+   if 'error' not in results:
+       print(f"Patient          : {results['patient_id']}")
+       print(f"MSE CI           : {results['complexity_index']:.2f}")
+       print(f"CMSE CI          : {results['cmse_ci']:.2f}")
+       print(f"RCMSE CI         : {results['rcmse_ci']:.2f}")
+       print(f"Interpretation   : {results['interpretation']}")
+   else:
+       print(results['error'])
 
 Example 6: Comprehensive Health Monitoring System
 ===================================================
 
-This example demonstrates a complete health monitoring pipeline with automated report generation.
-
-**Use Case:** Continuous health monitoring with automated assessment and alerting for clinical decision support.
-
-**Key Features:**
-* Multi-modal signal processing (ECG, PPG, Respiratory)
-* Comprehensive feature extraction
-* Automated health report generation
-* Clinical decision support
-* Trend analysis and alerts
-
-**Implementation:**
+Multi-modal vital signs assessment (ECG + PPG + respiratory) with automated health scoring and clinical recommendations.
 
 .. code-block:: python
 
-   from vitalDSP.health_analysis.health_report_generator import HealthReportGenerator
-   from vitalDSP.filtering.signal_filtering import SignalFiltering
-   from vitalDSP.physiological_features.hrv_analysis import HRVFeatures
-   from vitalDSP.physiological_features.waveform import WaveformMorphology
-   from vitalDSP.respiratory_analysis.respiratory_analysis import RespiratoryAnalysis
-   import pandas as pd
    import numpy as np
-   
+   import pandas as pd
+   from vitalDSP.filtering.signal_filtering import SignalFiltering
+   from vitalDSP.physiological_features.waveform import WaveformMorphology
+   from vitalDSP.physiological_features.hrv_analysis import HRVFeatures
+   from vitalDSP.physiological_features.beat_to_beat import BeatToBeatAnalysis
+   from vitalDSP.respiratory_analysis.respiratory_analysis import RespiratoryAnalysis
+   from vitalDSP.utils.data_processing.synthesize_data import generate_ecg_signal
+
    class ComprehensiveHealthMonitor:
-       """Complete health monitoring system with automated reporting."""
-       
+       """Multi-modal health monitoring with automated assessment."""
+
        def __init__(self, patient_id, fs=256):
-           """
-           Initialize health monitoring system.
-           
-           Parameters:
-           -----------
-           patient_id : str
-               Patient identifier
-           fs : float
-               Sampling frequency (Hz)
-           """
            self.patient_id = patient_id
            self.fs = fs
-           self.monitoring_history = []
-           
+
        def process_vital_signs(self, ecg_signal, ppg_signal=None, resp_signal=None):
-           """
-           Process multiple vital signs and generate comprehensive assessment.
-           
-           Parameters:
-           -----------
-           ecg_signal : array-like
-               ECG signal data
-           ppg_signal : array-like, optional
-               PPG signal data
-           resp_signal : array-like, optional
-               Respiratory signal data
-           
-           Returns:
-           --------
-           dict : Comprehensive health assessment
-           """
-           
            assessment = {
                'patient_id': self.patient_id,
-               'timestamp': pd.Timestamp.now(),
-               'vital_signs': {}
+               'timestamp': pd.Timestamp.now().isoformat(),
+               'vital_signs': {},
            }
-           
-           # Process ECG signal
+
            if ecg_signal is not None:
-               ecg_results = self._process_ecg(ecg_signal)
-               assessment['vital_signs']['ecg'] = ecg_results
-           
-           # Process PPG signal
+               assessment['vital_signs']['ecg'] = self._process_ecg(ecg_signal)
            if ppg_signal is not None:
-               ppg_results = self._process_ppg(ppg_signal)
-               assessment['vital_signs']['ppg'] = ppg_results
-           
-           # Process Respiratory signal
+               assessment['vital_signs']['ppg'] = self._process_ppg(ppg_signal)
            if resp_signal is not None:
-               resp_results = self._process_respiratory(resp_signal)
-               assessment['vital_signs']['respiratory'] = resp_results
-           
-           # Generate health score
-           health_score = self._calculate_health_score(assessment['vital_signs'])
-           assessment['health_score'] = health_score
-           
-           # Clinical recommendations
-           assessment['recommendations'] = self._generate_recommendations(
-               assessment['vital_signs'],
-               health_score
+               assessment['vital_signs']['respiratory'] = self._process_resp(resp_signal)
+
+           assessment['health_score']    = self._health_score(assessment['vital_signs'])
+           assessment['recommendations'] = self._recommendations(
+               assessment['vital_signs'], assessment['health_score']
            )
-           
-           # Store in history
-           self.monitoring_history.append(assessment)
-           
            return assessment
-       
-       def _process_ecg(self, ecg_signal):
-           """Process ECG signal and extract features."""
-           
-           results = {}
-           
-           # Filter ECG
-           sf = SignalFiltering(ecg_signal)
-           filtered_ecg = sf.bandpass(lowcut=0.5, highcut=40.0, fs=self.fs, order=4)
-           
-           # Detect R-peaks
-           wm = WaveformMorphology(filtered_ecg, fs=self.fs, signal_type="ECG")
-           r_peaks = wm.r_peaks
-           
-           if len(r_peaks) > 10:
-               # RR intervals
-               rr_intervals = np.diff(r_peaks) / self.fs * 1000
-               valid_rr = rr_intervals[(rr_intervals > 300) & (rr_intervals < 2000)]
-               
-               if len(valid_rr) > 5:
-                   # Heart rate
-                   heart_rate = 60000 / np.mean(valid_rr)
-                   results['heart_rate'] = float(heart_rate)
-                   results['heart_rate_status'] = self._assess_heart_rate(heart_rate)
-                   
-                   # HRV analysis
-                   hrv = HRVFeatures(valid_rr)
-                   hrv_features = hrv.compute_all_features()
-                   results['hrv'] = hrv_features
-                   results['hrv_status'] = self._assess_hrv(hrv_features)
-           
-           return results
-       
-       def _process_ppg(self, ppg_signal):
-           """Process PPG signal and extract features."""
-           
-           results = {}
-           
-           # Filter PPG
-           sf = SignalFiltering(ppg_signal)
-           filtered_ppg = sf.bandpass(lowcut=0.5, highcut=8.0, fs=self.fs, order=4)
-           
-           # Detect peaks
-           wm = WaveformMorphology(filtered_ppg, fs=self.fs, signal_type="PPG")
-           systolic_peaks = wm.systolic_peaks
-           
-           if len(systolic_peaks) > 5:
-               # Pulse rate
-               pulse_intervals = np.diff(systolic_peaks) / self.fs * 1000
-               valid_intervals = pulse_intervals[(pulse_intervals > 400) & (pulse_intervals < 2000)]
-               
-               if len(valid_intervals) > 3:
-                   pulse_rate = 60000 / np.mean(valid_intervals)
-                   results['pulse_rate'] = float(pulse_rate)
-                   results['pulse_rate_status'] = self._assess_heart_rate(pulse_rate)
-                   
-                   # Pulse rate variability
-                   prv = np.std(valid_intervals)
-                   results['pulse_rate_variability'] = float(prv)
-           
-           return results
-       
-       def _process_respiratory(self, resp_signal):
-           """Process respiratory signal."""
 
-           results = {}
+       def _process_ecg(self, signal):
+           sf = SignalFiltering(signal)
+           filtered = sf.bandpass(lowcut=0.5, highcut=40.0, fs=self.fs, order=4)
 
+           wm = WaveformMorphology(filtered, fs=self.fs, signal_type='ECG')
+           hr = wm.get_heart_rate(summary_type='mean')
+
+           bb  = BeatToBeatAnalysis(filtered, fs=self.fs, signal_type='ECG')
+           rr  = bb.compute_rr_intervals()
+           res = {'heart_rate': float(hr),
+                  'heart_rate_status': self._hr_status(hr)}
+
+           if len(rr) > 10:
+               hrv = HRVFeatures(signals=filtered, nn_intervals=rr, fs=self.fs)
+               hrv_feats = hrv.compute_all_features()
+               res['hrv'] = hrv_feats
+               sdnn = hrv_feats.get('sdnn', 0)
+               res['hrv_status'] = ('reduced' if sdnn < 30 else
+                                    'good'    if sdnn > 50 else 'normal')
+           return res
+
+       def _process_ppg(self, signal):
+           sf = SignalFiltering(signal)
+           filtered = sf.bandpass(lowcut=0.5, highcut=8.0, fs=self.fs, order=4)
+
+           wm = WaveformMorphology(filtered, fs=self.fs, signal_type='PPG')
+           pr = wm.get_heart_rate(summary_type='mean')
+
+           bb = BeatToBeatAnalysis(filtered, fs=self.fs, signal_type='PPG')
+           pi = bb.compute_rr_intervals()
+           res = {'pulse_rate': float(pr), 'pulse_rate_status': self._hr_status(pr)}
+           if len(pi) > 3:
+               res['prv'] = float(np.std(pi))
+           return res
+
+       def _process_resp(self, signal):
            try:
-               # Filter before analysis
-               sf = SignalFiltering(resp_signal)
-               filtered_resp = sf.bandpass(lowcut=0.1, highcut=0.5, fs=self.fs, order=4)
-
-               # Respiratory analysis
-               resp_analyzer = RespiratoryAnalysis(filtered_resp, self.fs)
-
-               # Estimate rate
-               resp_rate = resp_analyzer.compute_respiratory_rate()
-               results['respiratory_rate'] = float(resp_rate)
-               results['respiratory_status'] = self._assess_respiratory_rate(resp_rate)
-           
+               ra = RespiratoryAnalysis(signal, fs=self.fs)
+               rr = ra.compute_respiratory_rate(method='fft')
+               return {
+                   'respiratory_rate': float(rr),
+                   'status': ('bradypnea' if rr < 12 else
+                              'tachypnea' if rr > 20 else 'normal'),
+               }
            except Exception as e:
-               results['error'] = str(e)
-           
-           return results
-       
-       def _assess_heart_rate(self, hr):
-           """Assess heart rate status."""
-           if hr < 60:
-               return 'bradycardia'
-           elif hr > 100:
-               return 'tachycardia'
-           else:
-               return 'normal'
-       
-       def _assess_hrv(self, hrv_features):
-           """Assess HRV status."""
-           if 'sdnn' in hrv_features:
-               sdnn = hrv_features['sdnn']
-               if sdnn < 30:
-                   return 'reduced'
-               elif sdnn > 50:
-                   return 'good'
-               else:
-                   return 'normal'
-           return 'unknown'
-       
-       def _assess_respiratory_rate(self, rr):
-           """Assess respiratory rate status."""
-           if rr < 12:
-               return 'bradypnea'
-           elif rr > 20:
-               return 'tachypnea'
-           else:
-               return 'normal'
-       
-       def _calculate_health_score(self, vital_signs):
-           """Calculate overall health score (0-100)."""
-           
+               return {'error': str(e)}
+
+       def _hr_status(self, hr):
+           return 'bradycardia' if hr < 60 else 'tachycardia' if hr > 100 else 'normal'
+
+       def _health_score(self, vitals):
            score = 100
-           
-           # ECG assessment
-           if 'ecg' in vital_signs:
-               ecg = vital_signs['ecg']
-               if ecg.get('heart_rate_status') != 'normal':
-                   score -= 15
-               if ecg.get('hrv_status') == 'reduced':
-                   score -= 20
-               elif ecg.get('hrv_status') == 'good':
-                   score += 5
-           
-           # PPG assessment
-           if 'ppg' in vital_signs:
-               ppg = vital_signs['ppg']
-               if ppg.get('pulse_rate_status') != 'normal':
-                   score -= 10
-           
-           # Respiratory assessment
-           if 'respiratory' in vital_signs:
-               resp = vital_signs['respiratory']
-               if resp.get('respiratory_status') != 'normal':
-                   score -= 15
-           
+           ecg = vitals.get('ecg', {})
+           if ecg.get('heart_rate_status') != 'normal':
+               score -= 15
+           if ecg.get('hrv_status') == 'reduced':
+               score -= 20
+           if vitals.get('ppg', {}).get('pulse_rate_status') != 'normal':
+               score -= 10
+           if vitals.get('respiratory', {}).get('status') not in ('normal', None):
+               score -= 15
            return max(0, min(100, score))
-       
-       def _generate_recommendations(self, vital_signs, health_score):
-           """Generate clinical recommendations."""
-           
-           recommendations = []
-           
-           if health_score < 60:
-               recommendations.append('⚠️ URGENT: Immediate clinical evaluation recommended')
-           elif health_score < 75:
-               recommendations.append('⚠️ Clinical review recommended within 24 hours')
-           
-           # Specific recommendations
-           if 'ecg' in vital_signs:
-               ecg = vital_signs['ecg']
-               if ecg.get('heart_rate_status') == 'bradycardia':
-                   recommendations.append('• Evaluate for bradycardia causes')
-               elif ecg.get('heart_rate_status') == 'tachycardia':
-                   recommendations.append('• Assess for tachycardia etiology')
-               
-               if ecg.get('hrv_status') == 'reduced':
-                   recommendations.append('• Reduced HRV - consider autonomic assessment')
-           
-           if 'respiratory' in vital_signs:
-               resp = vital_signs['respiratory']
-               if resp.get('respiratory_status') != 'normal':
-                   recommendations.append('• Abnormal respiratory rate - assess pulmonary function')
-           
-           if not recommendations:
-               recommendations.append('✓ All vital signs within normal ranges')
-               recommendations.append('✓ Continue regular monitoring')
-           
-           return recommendations
-       
-       def generate_health_report(self, assessment, output_path='health_report.html'):
-           """Generate comprehensive health report."""
-           
-           # Prepare feature data for report generator
-           feature_data = {}
-           
-           if 'ecg' in assessment['vital_signs']:
-               ecg = assessment['vital_signs']['ecg']
-               if 'hrv' in ecg:
-                   for key, value in ecg['hrv'].items():
-                       if isinstance(value, (int, float, np.number)):
-                           feature_data[key] = [float(value)]
-           
-           if feature_data:
-               # Generate report — HealthReportGenerator takes feature_data and
-               # optional segment_duration; output_dir is passed to .generate()
-               report_gen = HealthReportGenerator(
-                   feature_data=feature_data,
-                   segment_duration='1_min'
-               )
 
-               output_dir = os.path.dirname(output_path) or 'reports'
-               report_gen.generate(output_dir=output_dir)
-               return output_dir
-           
-           return None
+       def _recommendations(self, vitals, score):
+           recs = []
+           if score < 60:
+               recs.append('URGENT: immediate clinical evaluation recommended')
+           elif score < 75:
+               recs.append('Clinical review recommended within 24 hours')
+           ecg = vitals.get('ecg', {})
+           if ecg.get('hrv_status') == 'reduced':
+               recs.append('Reduced HRV — consider autonomic assessment')
+           if ecg.get('heart_rate_status') == 'bradycardia':
+               recs.append('Bradycardia detected — evaluate underlying cause')
+           if not recs:
+               recs.append('All vital signs within normal ranges')
+           return recs
 
-**Usage Example:**
+   # --- Usage ---
+   fs = 256
+   ecg = generate_ecg_signal(sfecg=fs, duration=60, hrmean=75, Anoise=0.05)
 
-.. code-block:: python
+   monitor = ComprehensiveHealthMonitor(patient_id='P001', fs=fs)
+   assessment = monitor.process_vital_signs(ecg_signal=ecg)
 
-   # Initialize monitoring system
-   monitor = ComprehensiveHealthMonitor(patient_id="P001", fs=256)
-   
-   # Generate or load vital signs
-   ecg_signal = generate_ecg_signal(sfecg=256, duration=60, hrmean=75, Anoise=0.05)
-   
-   # Process vital signs
-   assessment = monitor.process_vital_signs(ecg_signal=ecg_signal)
-   
-   # Display results
-   print(f"Patient ID: {assessment['patient_id']}")
-   print(f"Health Score: {assessment['health_score']}/100")
-   print(f"Timestamp: {assessment['timestamp']}")
-   
-   print("\nVital Signs:")
-   if 'ecg' in assessment['vital_signs']:
-       ecg = assessment['vital_signs']['ecg']
-       print(f"  Heart Rate: {ecg.get('heart_rate', 'N/A'):.1f} BPM ({ecg.get('heart_rate_status', 'unknown')})")
-       print(f"  HRV Status: {ecg.get('hrv_status', 'unknown')}")
-   
-   print("\nRecommendations:")
-   for rec in assessment['recommendations']:
-       print(f"  {rec}")
-   
-   # Generate HTML report
-   report_path = monitor.generate_health_report(assessment)
-   if report_path:
-       print(f"\n📄 Health report generated: {report_path}")
+   print(f"Patient      : {assessment['patient_id']}")
+   print(f"Health Score : {assessment['health_score']}/100")
+   ecg_vs = assessment['vital_signs']['ecg']
+   print(f"Heart Rate   : {ecg_vs['heart_rate']:.1f} BPM ({ecg_vs['heart_rate_status']})")
+   if 'hrv_status' in ecg_vs:
+       print(f"HRV Status   : {ecg_vs['hrv_status']}")
+   print("Recommendations:")
+   for r in assessment['recommendations']:
+       print(f"  • {r}")
 
 Example 7: Cross-Signal Synchronization Analysis
 ==================================================
 
-This example demonstrates advanced analysis of coupling between multiple physiological signals.
-
-**Use Case:** Analyzing cardio-respiratory coupling and autonomic nervous system coordination.
-
-**Key Features:**
-* Transfer entropy analysis
-* Phase synchronization
-* Cross-correlation analysis
-* Directional coupling assessment
-* Clinical interpretation of coupling metrics
-
-**Implementation:**
+Analyzes directional coupling between cardiac and respiratory signals using Transfer Entropy and cross-correlation.
 
 .. code-block:: python
 
-   from vitalDSP.physiological_features.transfer_entropy import TransferEntropy
-   from vitalDSP.filtering.signal_filtering import SignalFiltering
-   from vitalDSP.physiological_features.waveform import WaveformMorphology
    import numpy as np
    from scipy import signal as sp_signal
-   
+   from vitalDSP.filtering.signal_filtering import SignalFiltering
+   from vitalDSP.physiological_features.beat_to_beat import BeatToBeatAnalysis
+   from vitalDSP.physiological_features.transfer_entropy import TransferEntropy
+   from vitalDSP.utils.data_processing.synthesize_data import generate_ecg_signal
+
    def analyze_cardiorespiratory_coupling(ecg_signal, resp_signal, fs):
        """
-       Analyze coupling between cardiac and respiratory signals.
-       
-       Parameters:
-       -----------
-       ecg_signal : array-like
-           ECG signal data
-       resp_signal : array-like
-           Respiratory signal data
+       Directional coupling between cardiac and respiratory signals.
+
+       Parameters
+       ----------
+       ecg_signal : numpy.ndarray
+           ECG signal.
+       resp_signal : numpy.ndarray
+           Respiratory signal (same length, same fs).
        fs : float
-           Sampling frequency (Hz)
-       
-       Returns:
-       --------
-       dict : Coupling analysis results
+           Sampling frequency.
+
+       Returns
+       -------
+       dict : Transfer entropy, cross-correlation, and clinical interpretation.
        """
-       
-       results = {
-           'sampling_frequency': fs,
-           'analysis_type': 'cardio-respiratory_coupling'
-       }
-       
-       # 1. Preprocess signals
+       results = {'fs': fs}
+
+       # Filter ECG
        sf_ecg = SignalFiltering(ecg_signal)
        filtered_ecg = sf_ecg.bandpass(lowcut=0.5, highcut=40.0, fs=fs, order=4)
-       
+
+       # Filter respiratory signal to the respiratory band
        sf_resp = SignalFiltering(resp_signal)
        filtered_resp = sf_resp.bandpass(lowcut=0.1, highcut=0.5, fs=fs, order=4)
-       
-       # 2. Extract RR intervals
-       wm = WaveformMorphology(filtered_ecg, fs=fs, signal_type="ECG")
-       r_peaks = wm.r_peaks
-       
-       if len(r_peaks) > 50:
-           rr_intervals = np.diff(r_peaks) / fs * 1000
-           valid_rr = rr_intervals[(rr_intervals > 300) & (rr_intervals < 2000)]
-           
-           if len(valid_rr) > 50 and len(filtered_resp) > 100:
-               # Resample respiratory signal to match RR intervals
-               resp_resampled = sp_signal.resample(
-                   filtered_resp,
-                   len(valid_rr)
-               )
-               
-               # 3. Transfer Entropy Analysis
-               # k_coef / l_coef are history lengths for target / source
-               te_analyzer = TransferEntropy(
-                   source=resp_resampled[:len(valid_rr)],
-                   target=valid_rr,
-                   k_coef=1,
-                   l_coef=1,
-                   delay=1
-               )
 
-               # Respiratory -> Cardiac influence
-               te_resp_to_cardiac = te_analyzer.compute_transfer_entropy()
-               results['te_resp_to_cardiac'] = float(te_resp_to_cardiac)
+       # Extract RR intervals
+       bb = BeatToBeatAnalysis(filtered_ecg, fs=fs, signal_type='ECG')
+       rr = bb.compute_rr_intervals()
 
-               # Cardiac -> Respiratory influence
-               te_analyzer_reverse = TransferEntropy(
-                   source=valid_rr,
-                   target=resp_resampled[:len(valid_rr)],
-                   k_coef=1,
-                   l_coef=1,
-                   delay=1
-               )
-               te_cardiac_to_resp = te_analyzer_reverse.compute_transfer_entropy()
-               results['te_cardiac_to_resp'] = float(te_cardiac_to_resp)
-               
-               # Net directionality
-               net_directionality = te_resp_to_cardiac - te_cardiac_to_resp
-               results['net_directionality'] = float(net_directionality)
-               
-               # 4. Cross-correlation analysis
-               cross_corr = np.correlate(
-                   valid_rr - np.mean(valid_rr),
-                   resp_resampled[:len(valid_rr)] - np.mean(resp_resampled[:len(valid_rr)]),
-                   mode='full'
-               )
-               cross_corr = cross_corr / (len(valid_rr) * np.std(valid_rr) * np.std(resp_resampled[:len(valid_rr)]))
-               
-               max_corr_idx = np.argmax(np.abs(cross_corr))
-               max_correlation = cross_corr[max_corr_idx]
-               lag = max_corr_idx - len(valid_rr) + 1
-               
-               results['max_correlation'] = float(max_correlation)
-               results['optimal_lag'] = int(lag)
-               
-               # 5. Clinical interpretation
-               interpretation = interpret_coupling_metrics(
-                   te_resp_to_cardiac,
-                   te_cardiac_to_resp,
-                   net_directionality,
-                   max_correlation
-               )
-               results['clinical_interpretation'] = interpretation
-       
-       return results
-   
-   def interpret_coupling_metrics(te_r_to_c, te_c_to_r, net_dir, max_corr):
-       """Provide clinical interpretation of coupling metrics."""
-       
-       interpretation = {
-           'coupling_strength': 'normal',
-           'dominant_direction': 'balanced',
-           'autonomic_status': 'healthy',
-           'recommendations': []
-       }
-       
-       # Assess coupling strength
-       avg_te = (te_r_to_c + te_c_to_r) / 2
-       if avg_te < 0.05:
-           interpretation['coupling_strength'] = 'weak'
-           interpretation['autonomic_status'] = 'impaired'
-           interpretation['recommendations'].append(
-               'Weak cardio-respiratory coupling suggests autonomic dysfunction'
+       if len(rr) < 50:
+           return {'error': f'Need ≥50 RR intervals, got {len(rr)}'}
+
+       # Resample respiratory signal to length of RR series
+       resp_resampled = sp_signal.resample(filtered_resp, len(rr))
+
+       # Transfer Entropy: respiratory → cardiac
+       te_r2c = TransferEntropy(
+           source=resp_resampled, target=rr,
+           k_coef=1, l_coef=1, delay=1
+       ).compute_transfer_entropy()
+
+       # Transfer Entropy: cardiac → respiratory
+       te_c2r = TransferEntropy(
+           source=rr, target=resp_resampled,
+           k_coef=1, l_coef=1, delay=1
+       ).compute_transfer_entropy()
+
+       results['te_resp_to_cardiac'] = float(te_r2c)
+       results['te_cardiac_to_resp'] = float(te_c2r)
+       results['net_directionality']  = float(te_r2c - te_c2r)
+
+       # Normalized cross-correlation
+       x = rr - np.mean(rr)
+       y = resp_resampled - np.mean(resp_resampled)
+       denom = len(rr) * (np.std(x) * np.std(y) + 1e-9)
+       xcorr = np.correlate(x, y, mode='full') / denom
+       idx = np.argmax(np.abs(xcorr))
+       results['max_correlation'] = float(xcorr[idx])
+       results['optimal_lag']     = int(idx - len(rr) + 1)
+
+       # Interpretation
+       avg_te = (te_r2c + te_c2r) / 2
+       results['coupling_strength'] = ('weak' if avg_te < 0.05 else
+                                       'strong' if avg_te > 0.2 else 'moderate')
+       if abs(results['net_directionality']) > 0.1:
+           results['dominant_direction'] = (
+               'respiratory→cardiac' if results['net_directionality'] > 0
+               else 'cardiac→respiratory'
            )
-       elif avg_te > 0.2:
-           interpretation['coupling_strength'] = 'strong'
-           interpretation['autonomic_status'] = 'healthy'
-           interpretation['recommendations'].append(
-               'Strong coupling indicates good autonomic function'
-           )
-       
-       # Assess directionality
-       if abs(net_dir) > 0.1:
-           if net_dir > 0:
-               interpretation['dominant_direction'] = 'respiratory_to_cardiac'
-               interpretation['recommendations'].append(
-                   'Respiratory drive dominant - typical of healthy state'
-               )
-           else:
-               interpretation['dominant_direction'] = 'cardiac_to_respiratory'
-               interpretation['recommendations'].append(
-                   'Cardiac drive dominant - may indicate stress or pathology'
-               )
        else:
-           interpretation['dominant_direction'] = 'balanced'
-           interpretation['recommendations'].append(
-               'Balanced bidirectional coupling'
-           )
-       
-       # Assess correlation
-       if abs(max_corr) > 0.5:
-           interpretation['recommendations'].append(
-               f'High correlation ({max_corr:.2f}) indicates strong synchronization'
-           )
-       elif abs(max_corr) < 0.2:
-           interpretation['recommendations'].append(
-               f'Low correlation ({max_corr:.2f}) suggests reduced synchronization'
-           )
-       
-       return interpretation
+           results['dominant_direction'] = 'balanced'
 
-**Usage Example:**
+       return results
 
-.. code-block:: python
-
-   from vitalDSP.utils.data_processing.synthesize_data import generate_ecg_signal, generate_resp_signal
-   
-   # Generate signals
+   # --- Usage ---
    fs = 256
-   duration = 300
-   
-   ecg_signal = generate_ecg_signal(sfecg=fs, duration=duration, hrmean=72, Anoise=0.05)
-   resp_signal = generate_resp_signal(sampling_rate=fs, duration=duration, frequency=0.25, amplitude=0.5)
-   
-   # Analyze coupling
-   results = analyze_cardiorespiratory_coupling(ecg_signal, resp_signal, fs)
-   
-   # Display results
-   print("Cardio-Respiratory Coupling Analysis")
-   print("=" * 50)
-   print(f"Transfer Entropy (Resp → Cardiac): {results['te_resp_to_cardiac']:.4f}")
-   print(f"Transfer Entropy (Cardiac → Resp): {results['te_cardiac_to_resp']:.4f}")
-   print(f"Net Directionality: {results['net_directionality']:.4f}")
-   print(f"Maximum Correlation: {results['max_correlation']:.3f}")
-   print(f"Optimal Lag: {results['optimal_lag']} samples")
-   
-   print("\nClinical Interpretation:")
-   interp = results['clinical_interpretation']
-   print(f"Coupling Strength: {interp['coupling_strength']}")
-   print(f"Dominant Direction: {interp['dominant_direction']}")
-   print(f"Autonomic Status: {interp['autonomic_status']}")
-   
-   print("\nRecommendations:")
-   for rec in interp['recommendations']:
-       print(f"  • {rec}")
+   ecg  = generate_ecg_signal(sfecg=fs, duration=120, hrmean=72, Anoise=0.03)
+   t    = np.arange(len(ecg)) / fs
+   resp = 0.5 * np.sin(2 * np.pi * 0.25 * t) + 0.05 * np.random.randn(len(t))
+
+   results = analyze_cardiorespiratory_coupling(ecg, resp, fs)
+
+   if 'error' not in results:
+       print(f"TE (Resp→Cardiac): {results['te_resp_to_cardiac']:.4f}")
+       print(f"TE (Cardiac→Resp): {results['te_cardiac_to_resp']:.4f}")
+       print(f"Net directionality: {results['net_directionality']:.4f}")
+       print(f"Coupling strength : {results['coupling_strength']}")
+       print(f"Dominant direction: {results['dominant_direction']}")
+       print(f"Max cross-corr    : {results['max_correlation']:.3f} (lag={results['optimal_lag']})")
 
 Example 8: Comprehensive Physiological Feature Extraction
 ===========================================================
 
-This example demonstrates comprehensive feature extraction across all domains: time, frequency, nonlinear, and energy analysis.
-
-**Use Case:** Complete physiological characterization for research and clinical assessment.
-
-**Key Features:**
-* Time-domain feature extraction
-* Frequency-domain analysis (PSD, spectral bands)
-* Nonlinear dynamics (Poincaré, entropy, fractal dimension)
-* Beat-to-beat variability analysis
-* Energy distribution analysis
-* Automated feature interpretation
-
-**Implementation:**
+Extracts time-domain, frequency-domain, nonlinear, and energy features from a single ECG recording.
 
 .. code-block:: python
 
    import numpy as np
+   import pandas as pd
+   from vitalDSP.filtering.signal_filtering import SignalFiltering
    from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
    from vitalDSP.physiological_features.frequency_domain import FrequencyDomainFeatures
    from vitalDSP.physiological_features.nonlinear import NonlinearFeatures
    from vitalDSP.physiological_features.beat_to_beat import BeatToBeatAnalysis
    from vitalDSP.physiological_features.energy_analysis import EnergyAnalysis
-   from vitalDSP.physiological_features.waveform import WaveformMorphology
-   from vitalDSP.filtering.signal_filtering import SignalFiltering
    from vitalDSP.utils.data_processing.synthesize_data import generate_ecg_signal
-   import pandas as pd
-   
+
    def extract_comprehensive_features(ecg_signal, fs, patient_id=None):
        """
-       Extract comprehensive physiological features from ECG signal.
-       
-       Parameters:
-       -----------
-       ecg_signal : array-like
-           ECG signal data
+       Full-spectrum feature extraction: time, frequency, nonlinear, energy.
+
+       Parameters
+       ----------
+       ecg_signal : numpy.ndarray
+           ECG signal.
        fs : float
-           Sampling frequency (Hz)
-       patient_id : str, optional
-           Patient identifier
-       
-       Returns:
-       --------
-       dict : Complete feature set with clinical interpretation
+           Sampling frequency in Hz.
+
+       Returns
+       -------
+       dict : Feature dictionary with clinical interpretation.
        """
-       
-       results = {
-           'patient_id': patient_id,
-           'sampling_frequency': fs,
-           'features': {},
-           'interpretation': {}
-       }
-       
-       # 1. Preprocess signal
+       results = {'patient_id': patient_id, 'features': {}, 'interpretation': {}}
+
+       # Preprocessing
        sf = SignalFiltering(ecg_signal)
-       filtered_ecg = sf.bandpass(lowcut=0.5, highcut=40.0, fs=fs, order=4)
-       
-       # 2. Extract R-peaks and RR intervals
-       wm = WaveformMorphology(filtered_ecg, fs=fs, signal_type="ECG")
-       r_peaks = wm.r_peaks
-       
-       if len(r_peaks) < 10:
-           results['error'] = 'Insufficient R-peaks detected'
+       filtered = sf.bandpass(lowcut=0.5, highcut=40.0, fs=fs, order=4)
+
+       # RR intervals
+       bb = BeatToBeatAnalysis(filtered, fs=fs, signal_type='ECG')
+       rr = bb.compute_rr_intervals()
+
+       if len(rr) < 5:
+           results['error'] = 'Insufficient RR intervals'
            return results
-       
-       # Calculate RR intervals in milliseconds
-       rr_intervals = np.diff(r_peaks) / fs * 1000
-       valid_rr = rr_intervals[(rr_intervals > 300) & (rr_intervals < 2000)]
-       
-       if len(valid_rr) < 5:
-           results['error'] = 'Insufficient valid RR intervals'
-           return results
-       
-       # 3. TIME DOMAIN FEATURES
-       print("Extracting time-domain features...")
-       td_features = TimeDomainFeatures(valid_rr)
 
-       # Basic HRV statistics
-       mean_rr = td_features.compute_mean_nn()
-       results['features']['mean_rr'] = mean_rr
-       results['features']['std_rr'] = td_features.compute_std_nn()
-       results['features']['median_rr'] = td_features.compute_median_nn()
+       # 1. TIME DOMAIN
+       td = TimeDomainFeatures(rr)
+       results['features'].update({
+           'mean_rr'  : td.compute_mean_nn(),
+           'sdnn'     : td.compute_sdnn(),
+           'rmssd'    : td.compute_rmssd(),
+           'sdsd'     : td.compute_sdsd(),
+           'nn50'     : td.compute_nn50(),
+           'pnn50'    : td.compute_pnn50(),
+           'pnn20'    : td.compute_pnn20(),
+           'mean_hr'  : 60000 / max(td.compute_mean_nn(), 1),
+       })
 
-       # HRV time-domain metrics
-       results['features']['sdnn'] = td_features.compute_sdnn()
-       results['features']['rmssd'] = td_features.compute_rmssd()
-       results['features']['sdsd'] = td_features.compute_sdsd()
-       results['features']['nn50'] = td_features.compute_nn50()
-       results['features']['pnn50'] = td_features.compute_pnn50()
-       results['features']['pnn20'] = td_features.compute_pnn20()
+       # 2. FREQUENCY DOMAIN  (nn_intervals as input, fs=4 Hz = typical RR series rate)
+       fd = FrequencyDomainFeatures(rr, fs=4)
+       psd = fd.compute_psd()
+       lf  = psd['lf_power']
+       hf  = psd['hf_power']
+       results['features'].update({
+           'vlf_power'   : psd['vlf_power'],
+           'lf_power'    : lf,
+           'hf_power'    : hf,
+           'total_power' : psd['total_power'],
+           'lf_hf_ratio' : psd['lf_hf_ratio'],
+           'lf_nu'       : lf / (lf + hf + 1e-9) * 100,
+           'hf_nu'       : hf / (lf + hf + 1e-9) * 100,
+       })
 
-       # Heart rate
-       results['features']['mean_hr'] = 60000 / mean_rr
-       
-       # 4. FREQUENCY DOMAIN FEATURES
-       print("Extracting frequency-domain features...")
-       # FrequencyDomainFeatures expects nn_intervals and fs (default 4 Hz)
-       fd_features = FrequencyDomainFeatures(valid_rr, fs=4)
+       # 3. NONLINEAR
+       nl = NonlinearFeatures(rr)
+       poincare = nl.compute_poincare_features()
+       results['features'].update({
+           'sd1'               : poincare['sd1'],
+           'sd2'               : poincare['sd2'],
+           'sd_ratio'          : poincare['sd_ratio'],
+           'sample_entropy'    : nl.compute_sample_entropy(m=2, r=0.2),
+           'approx_entropy'    : nl.compute_approximate_entropy(m=2, r=0.2),
+           'dfa_alpha'         : nl.compute_dfa(),
+       })
 
-       # compute_psd() takes no arguments; returns dict with keys:
-       # ulf_power, vlf_power, lf_power, hf_power, lf_hf_ratio, total_power, frequencies, psd
-       psd_results = fd_features.compute_psd()
-       results['features']['vlf_power'] = psd_results['vlf_power']
-       results['features']['lf_power'] = psd_results['lf_power']
-       results['features']['hf_power'] = psd_results['hf_power']
-       results['features']['total_power'] = psd_results['total_power']
-       results['features']['lf_hf_ratio'] = psd_results['lf_hf_ratio']
+       # 4. ENERGY (on the filtered ECG signal)
+       ea = EnergyAnalysis(filtered, fs=fs)
+       results['features'].update({
+           'total_energy'    : ea.compute_total_energy(),
+           'band_energy_lf'  : ea.compute_band_energy(low_freq=0.5, high_freq=5.0),
+           'spectral_energy' : ea.compute_spectral_energy(),
+       })
 
-       # Normalized powers
-       lf = results['features']['lf_power']
-       hf = results['features']['hf_power']
-       if (lf + hf) > 0:
-           results['features']['lf_nu'] = lf / (lf + hf) * 100
-           results['features']['hf_nu'] = hf / (lf + hf) * 100
-       
-       # 5. NONLINEAR FEATURES
-       print("Extracting nonlinear features...")
-       nl_features = NonlinearFeatures(valid_rr)
-       
-       # Poincaré analysis
-       poincare = nl_features.compute_poincare_features()
-       results['features']['sd1'] = poincare['sd1']
-       results['features']['sd2'] = poincare['sd2']
-       results['features']['sd_ratio'] = poincare['sd_ratio']
-       
-       # Entropy measures
-       results['features']['sample_entropy'] = nl_features.compute_sample_entropy(m=2, r=0.2)
-       results['features']['approximate_entropy'] = nl_features.compute_approximate_entropy(m=2, r=0.2)
+       # 5. INTERPRETATION
+       feats = results['features']
+       sdnn     = feats.get('sdnn', 0)
+       lf_hf    = feats.get('lf_hf_ratio', 1.0)
+       samp_ent = feats.get('sample_entropy', 1.0)
 
-       # Detrended Fluctuation Analysis (compute_dfa takes order, not scale bounds)
-       results['features']['dfa_alpha'] = nl_features.compute_dfa()
-       
-       # 6. BEAT-TO-BEAT ANALYSIS
-       print("Extracting beat-to-beat features...")
-       bb_analysis = BeatToBeatAnalysis(filtered_ecg, fs=fs, r_peaks=r_peaks)
-       
-       # Beat-to-beat variability
-       bb_features = bb_analysis.compute_variability_features()
-       results['features']['beat_variability'] = bb_features.get('variability_index', 0)
-       results['features']['successive_difference'] = bb_features.get('successive_difference', 0)
-       
-       # 7. ENERGY ANALYSIS
-       print("Extracting energy features...")
-       energy_analysis = EnergyAnalysis(filtered_ecg, fs=fs)
-       
-       # Signal energy distribution
-       energy_features = energy_analysis.compute_energy_features()
-       results['features']['total_energy'] = energy_features.get('total_energy', 0)
-       results['features']['energy_mean'] = energy_features.get('mean_energy', 0)
-       results['features']['energy_std'] = energy_features.get('std_energy', 0)
-       
-       # Spectral energy
-       spectral_energy = energy_analysis.compute_spectral_energy()
-       results['features']['spectral_energy'] = spectral_energy.get('total_spectral_energy', 0)
-       
-       # 8. CLINICAL INTERPRETATION
-       results['interpretation'] = interpret_comprehensive_features(results['features'])
-       
+       interp = {}
+       interp['hrv_status']       = ('reduced' if sdnn < 50 else 'good' if sdnn > 100 else 'normal')
+       interp['autonomic_balance'] = ('parasympathetic' if lf_hf < 0.5 else
+                                      'sympathetic'     if lf_hf > 2.0 else 'balanced')
+       risk = sum([sdnn < 50, feats.get('rmssd', 50) < 20,
+                   lf_hf > 2.5, samp_ent < 1.0])
+       interp['risk_level']   = ('high' if risk >= 3 else 'moderate' if risk >= 1 else 'low')
+       interp['cardiac_health'] = ('concerning' if risk >= 3 else 'fair' if risk >= 1 else 'healthy')
+       results['interpretation'] = interp
+
        return results
-   
-   def interpret_comprehensive_features(features):
-       """Provide comprehensive clinical interpretation."""
-       
-       interpretation = {
-           'hrv_status': 'normal',
-           'autonomic_balance': 'balanced',
-           'cardiac_health': 'healthy',
-           'risk_level': 'low',
-           'recommendations': []
-       }
-       
-       # Time-domain assessment
-       sdnn = features.get('sdnn', 0)
-       rmssd = features.get('rmssd', 0)
-       pnn50 = features.get('pnn50', 0)
-       
-       if sdnn < 50:
-           interpretation['hrv_status'] = 'reduced'
-           interpretation['cardiac_health'] = 'at_risk'
-           interpretation['risk_level'] = 'moderate'
-           interpretation['recommendations'].append(
-               'Reduced SDNN (<50ms) suggests decreased HRV and increased cardiac risk'
-           )
-       elif sdnn < 100:
-           interpretation['hrv_status'] = 'fair'
-           interpretation['recommendations'].append(
-               'SDNN within fair range (50-100ms) - regular monitoring recommended'
-           )
-       else:
-           interpretation['hrv_status'] = 'good'
-           interpretation['recommendations'].append(
-               'Good SDNN (>100ms) indicates healthy HRV'
-           )
-       
-       # Frequency-domain assessment
-       lf_hf_ratio = features.get('lf_hf_ratio', 1.0)
-       
-       if lf_hf_ratio < 0.5:
-           interpretation['autonomic_balance'] = 'parasympathetic_dominant'
-           interpretation['recommendations'].append(
-               'Low LF/HF ratio (<0.5) suggests parasympathetic dominance'
-           )
-       elif lf_hf_ratio > 2.0:
-           interpretation['autonomic_balance'] = 'sympathetic_dominant'
-           interpretation['recommendations'].append(
-               'High LF/HF ratio (>2.0) suggests sympathetic dominance or stress'
-           )
-       else:
-           interpretation['autonomic_balance'] = 'balanced'
-           interpretation['recommendations'].append(
-               'LF/HF ratio within normal range indicates balanced autonomic function'
-           )
-       
-       # Nonlinear assessment
-       sd1 = features.get('sd1', 0)
-       sd2 = features.get('sd2', 0)
-       sample_entropy = features.get('sample_entropy', 0)
-       
-       if sd1 < 10:
-           interpretation['recommendations'].append(
-               'Low SD1 (<10ms) indicates reduced short-term variability'
-           )
-       
-       if sample_entropy < 1.0:
-           interpretation['recommendations'].append(
-               'Low sample entropy (<1.0) suggests reduced signal complexity'
-           )
-       elif sample_entropy > 2.0:
-           interpretation['recommendations'].append(
-               'High sample entropy (>2.0) indicates good signal complexity'
-           )
-       
-       # Overall risk assessment
-       risk_factors = 0
-       if sdnn < 50:
-           risk_factors += 2
-       if rmssd < 20:
-           risk_factors += 1
-       if lf_hf_ratio > 2.5:
-           risk_factors += 1
-       if sample_entropy < 1.0:
-           risk_factors += 1
-       
-       if risk_factors >= 3:
-           interpretation['risk_level'] = 'high'
-           interpretation['cardiac_health'] = 'concerning'
-           interpretation['recommendations'].append(
-               '⚠️ Multiple risk factors detected - comprehensive cardiac evaluation recommended'
-           )
-       elif risk_factors >= 1:
-           interpretation['risk_level'] = 'moderate'
-           interpretation['cardiac_health'] = 'fair'
-           interpretation['recommendations'].append(
-               '⚠️ Some risk factors present - regular monitoring advised'
-           )
-       else:
-           interpretation['risk_level'] = 'low'
-           interpretation['cardiac_health'] = 'healthy'
-           interpretation['recommendations'].append(
-               '✓ All metrics within healthy ranges'
-           )
-       
-       return interpretation
 
-**Usage Example:**
+   # --- Usage ---
+   fs  = 256
+   ecg = generate_ecg_signal(sfecg=fs, duration=120, hrmean=75, Anoise=0.05)
+   res = extract_comprehensive_features(ecg, fs=fs, patient_id='P001')
 
-.. code-block:: python
+   if 'error' not in res:
+       f = res['features']
+       print(f"=== Time Domain ===")
+       print(f"Mean RR : {f['mean_rr']:.1f} ms    Mean HR : {f['mean_hr']:.1f} BPM")
+       print(f"SDNN    : {f['sdnn']:.1f} ms    RMSSD   : {f['rmssd']:.1f} ms")
+       print(f"pNN50   : {f['pnn50']:.2f} %")
+       print(f"\n=== Frequency Domain ===")
+       print(f"LF      : {f['lf_power']:.2f}    HF  : {f['hf_power']:.2f}")
+       print(f"LF/HF   : {f['lf_hf_ratio']:.2f}")
+       print(f"\n=== Nonlinear ===")
+       print(f"SD1     : {f['sd1']:.2f}  SD2     : {f['sd2']:.2f}")
+       print(f"SampEn  : {f['sample_entropy']:.3f}  DFA α: {f['dfa_alpha']:.3f}")
+       i = res['interpretation']
+       print(f"\n=== Interpretation ===")
+       print(f"HRV     : {i['hrv_status']}    ANS   : {i['autonomic_balance']}")
+       print(f"Risk    : {i['risk_level']}    Health: {i['cardiac_health']}")
+   else:
+       print(res['error'])
 
-   # Generate or load ECG data
-   fs = 256
-   duration = 300  # 5 minutes
-   ecg_data = generate_ecg_signal(sfecg=fs, duration=duration, hrmean=75, Anoise=0.05)
-   
-   # Extract comprehensive features
-   results = extract_comprehensive_features(ecg_data, fs, patient_id="P001")
-   
-   # Display results
-   print(f"Patient ID: {results['patient_id']}")
-   print(f"\n{'='*60}")
-   print("TIME DOMAIN FEATURES")
-   print(f"{'='*60}")
-   print(f"Mean RR: {results['features']['mean_rr']:.2f} ms")
-   print(f"SDNN: {results['features']['sdnn']:.2f} ms")
-   print(f"RMSSD: {results['features']['rmssd']:.2f} ms")
-   print(f"pNN50: {results['features']['pnn50']:.2f} %")
-   print(f"Heart Rate: {results['features']['mean_hr']:.1f} BPM")
-   
-   print(f"\n{'='*60}")
-   print("FREQUENCY DOMAIN FEATURES")
-   print(f"{'='*60}")
-   print(f"VLF Power: {results['features']['vlf_power']:.2f} ms²")
-   print(f"LF Power: {results['features']['lf_power']:.2f} ms²")
-   print(f"HF Power: {results['features']['hf_power']:.2f} ms²")
-   print(f"LF/HF Ratio: {results['features']['lf_hf_ratio']:.2f}")
-   print(f"Total Power: {results['features']['total_power']:.2f} ms²")
-   
-   print(f"\n{'='*60}")
-   print("NONLINEAR FEATURES")
-   print(f"{'='*60}")
-   print(f"SD1: {results['features']['sd1']:.2f} ms")
-   print(f"SD2: {results['features']['sd2']:.2f} ms")
-   print(f"SD1/SD2 Ratio: {results['features']['sd_ratio']:.3f}")
-   print(f"Sample Entropy: {results['features']['sample_entropy']:.3f}")
-   print(f"Approximate Entropy: {results['features']['approximate_entropy']:.3f}")
-   print(f"DFA Alpha: {results['features']['dfa_alpha']:.3f}")
-   
-   print(f"\n{'='*60}")
-   print("CLINICAL INTERPRETATION")
-   print(f"{'='*60}")
-   interp = results['interpretation']
-   print(f"HRV Status: {interp['hrv_status']}")
-   print(f"Autonomic Balance: {interp['autonomic_balance']}")
-   print(f"Cardiac Health: {interp['cardiac_health']}")
-   print(f"Risk Level: {interp['risk_level']}")
-   
-   print(f"\nRecommendations:")
-   for rec in interp['recommendations']:
-       print(f"  {rec}")
-   
-   # Export to DataFrame for further analysis
-   features_df = pd.DataFrame([results['features']])
-   features_df.to_csv(f"features_{results['patient_id']}.csv", index=False)
-   print(f"\n✅ Features exported to features_{results['patient_id']}.csv")
+   # Export features to CSV
+   features_df = pd.DataFrame([res['features']])
+   features_df.to_csv(f"features_{res['patient_id']}.csv", index=False)
 
 Example 9: Machine Learning for Physiological Signal Analysis
 ===============================================================
 
-This example demonstrates machine learning applications including anomaly detection, signal denoising with autoencoders, and pattern classification.
-
-**Use Case:** Automated signal quality assessment, artifact detection, and arrhythmia classification using deep learning.
-
-**Key Features:**
-* Autoencoder-based signal denoising
-* Anomaly detection for artifact identification
-* CNN1D for pattern classification
-* Feature extraction for ML
-* Model training and evaluation
-* Real-time inference pipeline
-
-**Implementation:**
+Anomaly detection, feature extraction with ``FeatureExtractor``, and CNN1D classification on synthetic ECG signals.
 
 .. code-block:: python
 
    import numpy as np
-   from vitalDSP.ml_models.deep_models import CNN1D
-   from vitalDSP.advanced_computation.anomaly_detection import AnomalyDetection
-   from vitalDSP.ml_models.feature_extractor import FeatureExtractor
-   from vitalDSP.utils.data_processing.synthesize_data import generate_ecg_signal
    from sklearn.model_selection import train_test_split
    from sklearn.preprocessing import StandardScaler
+   from vitalDSP.advanced_computation.anomaly_detection import AnomalyDetection
+   from vitalDSP.ml_models.feature_extractor import FeatureExtractor
+   from vitalDSP.ml_models.deep_models import CNN1D
 
    def ml_signal_analysis_pipeline(clean_signals, noisy_signals, fs, anomaly_threshold=2.5):
        """
-       Complete ML pipeline for physiological signal analysis.
+       ML pipeline: anomaly detection → feature extraction → CNN1D classification.
 
-       Parameters:
-       -----------
-       clean_signals : list of arrays
-           Clean reference signals for training
-       noisy_signals : list of arrays
-           Noisy signals to process
+       Parameters
+       ----------
+       clean_signals : list of numpy.ndarray
+           Reference (normal) signals for training.
+       noisy_signals : list of numpy.ndarray
+           Signals to screen for anomalies and classify.
        fs : float
-           Sampling frequency
+           Sampling frequency.
        anomaly_threshold : float
-           Z-score threshold for anomaly detection
+           Z-score threshold for anomaly flagging.
 
-       Returns:
-       --------
-       dict : ML analysis results including anomaly flags and classification
+       Returns
+       -------
+       dict : Anomaly counts, extracted features, and CNN1D training history.
        """
-
-       results = {
-           'anomaly_detection': {},
-           'classification': {},
-           'model_performance': {}
-       }
-
-       signal_length = min([len(s) for s in clean_signals])
-       X_clean = np.array([s[:signal_length] for s in clean_signals])
-       X_noisy = np.array([s[:signal_length] for s in noisy_signals])
-
-       # Normalize
-       scaler = StandardScaler()
-       X_clean_norm = scaler.fit_transform(X_clean)
-
-       # Reshape for CNN1D (samples, timesteps, features)
-       X_reshaped = X_clean_norm.reshape(X_clean_norm.shape[0], X_clean_norm.shape[1], 1)
+       results = {'anomaly': {}, 'classification': {}}
+       sig_len = min(len(s) for s in clean_signals)
 
        # 1. ANOMALY DETECTION
-       print("="*60)
-       print("1. ANOMALY DETECTION")
-       print("="*60)
+       anomaly_info = []
+       for i, sig in enumerate(noisy_signals):
+           det = AnomalyDetection(sig)
+           z_anomalies  = det.detect_anomalies(method='z_score',  threshold=anomaly_threshold)
+           iqr_anomalies = det.detect_anomalies(method='iqr')
+           anomaly_info.append({
+               'signal_index'       : i,
+               'z_score_anomalies'  : len(z_anomalies),
+               'iqr_anomalies'      : len(iqr_anomalies),
+               'quality'            : 'good' if len(z_anomalies) < 10 else 'poor',
+           })
 
-       anomaly_results = []
-       for i, signal in enumerate(noisy_signals):
-           detector = AnomalyDetection(signal)
+       results['anomaly']['per_signal'] = anomaly_info
+       results['anomaly']['good']       = sum(1 for a in anomaly_info if a['quality'] == 'good')
+       results['anomaly']['poor']       = sum(1 for a in anomaly_info if a['quality'] == 'poor')
+       print(f"Good-quality signals: {results['anomaly']['good']}/{len(noisy_signals)}")
 
-           # Z-score based detection
-           anomalies_zscore = detector.detect_anomalies(
-               method='z_score',
-               threshold=anomaly_threshold
-           )
-
-           # Statistical detection
-           anomalies_stat = detector.detect_anomalies(
-               method='statistical',
-               window_size=100
-           )
-
-           # Isolation Forest
-           try:
-               anomalies_isolation = detector.detect_anomalies(
-                   method='isolation_forest',
-                   contamination=0.1
-               )
-           except Exception:
-               anomalies_isolation = []
-
-           anomaly_info = {
-               'signal_index': i,
-               'z_score_anomalies': len(anomalies_zscore),
-               'statistical_anomalies': len(anomalies_stat),
-               'isolation_forest_anomalies': len(anomalies_isolation),
-               'z_score_locations': anomalies_zscore,
-               'signal_quality': 'good' if len(anomalies_zscore) < 10 else 'poor'
-           }
-           anomaly_results.append(anomaly_info)
-
-       results['anomaly_detection']['per_signal'] = anomaly_results
-       results['anomaly_detection']['total_signals'] = len(noisy_signals)
-       results['anomaly_detection']['good_quality'] = sum(1 for a in anomaly_results if a['signal_quality'] == 'good')
-       results['anomaly_detection']['poor_quality'] = sum(1 for a in anomaly_results if a['signal_quality'] == 'poor')
-
-       print(f"Total signals analyzed: {results['anomaly_detection']['total_signals']}")
-       print(f"Good quality signals: {results['anomaly_detection']['good_quality']}")
-       print(f"Poor quality signals: {results['anomaly_detection']['poor_quality']}")
-
-       # 2. FEATURE EXTRACTION FOR ML
-       # FeatureExtractor is a sklearn-compatible transformer: fit then transform
-       print(f"\n{'='*60}")
-       print("2. FEATURE EXTRACTION FOR MACHINE LEARNING")
-       print("="*60)
-
+       # 2. FEATURE EXTRACTION  (sklearn-compatible transformer)
+       X_clean = np.array([s[:sig_len] for s in clean_signals])
        extractor = FeatureExtractor(signal_type='ecg', sampling_rate=float(fs))
-       features_array = extractor.fit_transform(X_clean)
+       X_features = extractor.fit_transform(X_clean)
+       results['classification']['n_features'] = X_features.shape[1]
+       print(f"Features extracted : {X_features.shape[1]}")
 
-       results['classification']['features'] = features_array
-       results['classification']['n_features'] = features_array.shape[1]
+       # 3. CNN1D CLASSIFICATION
+       scaler = StandardScaler()
+       X_norm = scaler.fit_transform(X_clean)
+       X_3d   = X_norm.reshape(X_norm.shape[0], sig_len, 1)
 
-       print(f"Number of features extracted: {features_array.shape[1]}")
-       print(f"Feature dimensions: {features_array.shape}")
+       # Synthetic binary labels: high-noise vs low-noise
+       noise_std = np.array([np.std(n[:sig_len] - c[:sig_len])
+                             for n, c in zip(noisy_signals, clean_signals)])
+       labels = (noise_std > np.median(noise_std)).astype(int)
 
-       # 3. CNN1D CLASSIFICATION (Example with synthetic labels)
-       print(f"\n{'='*60}")
-       print("3. CNN1D PATTERN CLASSIFICATION")
-       print("="*60)
-
-       # Create synthetic labels for demonstration (normal vs. abnormal)
-       noise_levels = np.array([np.std(s - c[:signal_length])
-                                for s, c in zip(noisy_signals, clean_signals)])
-       labels = (noise_levels > np.median(noise_levels)).astype(int)
-
-       # Split data
        X_train, X_test, y_train, y_test = train_test_split(
-           X_reshaped, labels, test_size=0.2, random_state=42
+           X_3d, labels, test_size=0.2, random_state=42
        )
 
-       # Train CNN1D classifier
-       # Note: CNN1D.train() not .fit(); no .evaluate() method
-       print("Training CNN1D classifier...")
        cnn = CNN1D(
-           input_shape=(signal_length, 1),
+           input_shape=(sig_len, 1),
            n_classes=2,
-           n_filters=[32, 64, 128],
+           n_filters=[32, 64],
            kernel_sizes=[3],
-           pool_sizes=[2]
+           pool_sizes=[2],
        )
-
-       train_history = cnn.train(
-           X_train, y_train,
-           X_val=X_test, y_val=y_test,
-           epochs=30,
-           batch_size=32
-       )
-
-       results['classification']['n_train'] = len(X_train)
-       results['classification']['n_test'] = len(X_test)
-       results['model_performance']['history'] = train_history
-
-       print(f"Training samples: {len(X_train)}")
-       print(f"Test samples: {len(X_test)}")
+       history = cnn.train(X_train, y_train, X_val=X_test, y_val=y_test,
+                           epochs=10, batch_size=16)
+       results['classification']['history']  = history
+       results['classification']['n_train']  = len(X_train)
+       results['classification']['n_test']   = len(X_test)
+       print(f"CNN1D trained: {len(X_train)} train / {len(X_test)} test samples")
 
        return results
 
-   def evaluate_ml_pipeline(results):
-       """Evaluate and display ML pipeline results."""
+   # --- Usage ---
+   np.random.seed(42)
+   n_signals = 30
+   fs = 128
+   sig_len = 640  # 5 seconds
 
-       print(f"\n{'='*60}")
-       print("ML PIPELINE PERFORMANCE SUMMARY")
-       print("="*60)
+   clean  = [np.sin(2 * np.pi * 1.2 * np.arange(sig_len) / fs) +
+             0.05 * np.random.randn(sig_len) for _ in range(n_signals)]
+   noisy  = [c + np.random.normal(0, np.random.uniform(0.05, 0.3), sig_len)
+             for c in clean]
 
-       # Anomaly detection
-       print(f"\nAnomaly Detection:")
-       print(f"  Total signals: {results['anomaly_detection']['total_signals']}")
-       print(f"  Good quality: {results['anomaly_detection']['good_quality']} "
-             f"({results['anomaly_detection']['good_quality']/results['anomaly_detection']['total_signals']*100:.1f}%)")
-       print(f"  Poor quality: {results['anomaly_detection']['poor_quality']} "
-             f"({results['anomaly_detection']['poor_quality']/results['anomaly_detection']['total_signals']*100:.1f}%)")
+   results = ml_signal_analysis_pipeline(clean, noisy, fs=fs)
+   print(f"Features: {results['classification']['n_features']}")
+   print(f"Anomaly good/poor: {results['anomaly']['good']}/{results['anomaly']['poor']}")
 
-       # Classification
-       print(f"\nClassification:")
-       print(f"  Number of features: {results['classification']['n_features']}")
-       print(f"  Training samples: {results['classification']['n_train']}")
-       print(f"  Test samples: {results['classification']['n_test']}")
-
-**Usage Example:**
-
-.. code-block:: python
-
-   # Generate training data
-   n_signals = 50
-   fs = 256
-   signal_length = 1280  # 5 seconds
-
-   print("Generating training data...")
-   clean_signals = []
-   noisy_signals = []
-
-   for i in range(n_signals):
-       clean = np.random.randn(signal_length)  # synthetic signal
-       clean_signals.append(clean)
-       noise = np.random.normal(0, 0.1, signal_length)
-       noisy_signals.append(clean + noise)
-
-   # Run ML pipeline
-   results = ml_signal_analysis_pipeline(clean_signals, noisy_signals, fs=fs)
-
-   # Evaluate results
-   evaluate_ml_pipeline(results)
-
-   print("\nModels ready for deployment")
-   print("  - Anomaly detector calibrated for quality assessment")
-   print("  - CNN1D classifier ready for pattern recognition")
-
-These examples provide a solid foundation for implementing VitalDSP in various real-world scenarios. Adapt them to your specific needs and requirements.
-
-For more advanced examples and use cases, explore the Jupyter notebooks in the :ref:`sample_notebooks` section.
+These examples provide a solid foundation for implementing VitalDSP in real-world scenarios. Refer to the :ref:`sample_notebooks` section for interactive Jupyter notebook versions.

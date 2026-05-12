@@ -104,6 +104,9 @@ class FrequencyDomainFeatures:
             >>> psd_result = fdf.compute_psd()
             >>> print(f"LF: {psd_result['lf_power']}, HF: {psd_result['hf_power']}")
         """
+        if hasattr(self, '_psd_cache'):
+            return self._psd_cache
+
         f, psd = welch(
             self.nn_intervals - np.mean(self.nn_intervals),
             fs=self.fs,
@@ -140,8 +143,8 @@ class FrequencyDomainFeatures:
         # Calculate total power
         total_power = ulf_power + vlf_power + lf_power + hf_power
 
-        # Return as dictionary for API compatibility
-        return {
+        # Return as dictionary for API compatibility — cache to avoid recomputing on each band call
+        self._psd_cache = {
             "ulf_power": ulf_power,
             "vlf_power": vlf_power,
             "lf_power": lf_power,
@@ -151,6 +154,7 @@ class FrequencyDomainFeatures:
             "frequencies": f,
             "psd": psd,
         }
+        return self._psd_cache
 
     def compute_lf(self):
         """

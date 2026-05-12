@@ -265,8 +265,8 @@ class WaveletTransform:
         approx_conv = approx_conv[:min_length]
         detail_conv = detail_conv[:min_length]
 
-        # Combine the convolved signals and scale appropriately
-        data = (approx_conv + detail_conv) / np.sqrt(2)
+        # Combine the convolved signals — no scaling, forward transform is unnormalized
+        data = approx_conv + detail_conv
 
         # Trim the data to maintain the original length if required
         if self.same_length:

@@ -185,13 +185,13 @@ class EnvelopeDetection:
         >>> envelope = ed.absolute_value_envelope(0.1)
         >>> print(envelope)
         """
+        from scipy.signal import lfilter
+
         absolute_signal = np.abs(self.signal)
-        smoothed_signal = np.zeros_like(absolute_signal)
-        smoothed_signal[0] = absolute_signal[0]
-        for i in range(1, len(absolute_signal)):
-            smoothed_signal[i] = (1 - smoothing_factor) * smoothed_signal[
-                i - 1
-            ] + smoothing_factor * absolute_signal[i]
+        b = [smoothing_factor]
+        a = [1, -(1 - smoothing_factor)]
+        zi = np.array([absolute_signal[0] * (1 - smoothing_factor)])
+        smoothed_signal, _ = lfilter(b, a, absolute_signal, zi=zi)
         return smoothed_signal
 
     def peak_envelope(self, interpolation_method="linear"):

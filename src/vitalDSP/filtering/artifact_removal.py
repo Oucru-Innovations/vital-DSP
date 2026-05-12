@@ -256,21 +256,16 @@ class ArtifactRemoval:
 
         # Wavelet reconstruction
         for i in reversed(range(level)):
-            # Upsample
-            upsampled_approx = np.zeros(len(approx_coeffs) * 2)
-            upsampled_approx[::2] = np.real(approx_coeffs)
-            upsampled_detail = np.zeros(len(detail_coeffs[i]) * 2)
-            upsampled_detail[::2] = np.real(detail_coeffs[i])
+            # Upsample both arrays to the same target length
+            target_len = max(len(approx_coeffs), len(detail_coeffs[i])) * 2
+            upsampled_approx = np.zeros(target_len)
+            upsampled_approx[: len(approx_coeffs) * 2 : 2] = np.real(approx_coeffs)
+            upsampled_detail = np.zeros(target_len)
+            upsampled_detail[: len(detail_coeffs[i]) * 2 : 2] = np.real(detail_coeffs[i])
 
-            # Truncate to the same length before summing
-            upsampled_approx = upsampled_approx[: len(upsampled_detail)]
             approx_coeffs = (
-                np.convolve(upsampled_approx, mother_wavelet, mode="full")[
-                    : len(upsampled_approx)
-                ]
-                + np.convolve(upsampled_detail, high_pass, mode="full")[
-                    : len(upsampled_detail)
-                ]
+                np.convolve(upsampled_approx, mother_wavelet, mode="full")[:target_len]
+                + np.convolve(upsampled_detail, high_pass, mode="full")[:target_len]
             )
 
         # Adjust the length of the output signal to match the original signal length

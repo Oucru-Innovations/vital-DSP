@@ -160,12 +160,12 @@ class TrendAnalysis:
         """
         if not (0 < alpha <= 1):
             raise ValueError("Alpha must be between 0 and 1.")
-        smoothed_signal = np.zeros_like(self.signal)
-        smoothed_signal[0] = self.signal[0]
-        for t in range(1, len(self.signal)):
-            smoothed_signal[t] = (
-                alpha * self.signal[t] + (1 - alpha) * smoothed_signal[t - 1]
-            )
+        from scipy.signal import lfilter
+
+        b = [alpha]
+        a = [1, -(1 - alpha)]
+        zi = np.array([self.signal[0] * (1 - alpha)])
+        smoothed_signal, _ = lfilter(b, a, self.signal, zi=zi)
         return smoothed_signal
 
     def compute_linear_trend(self):

@@ -835,6 +835,23 @@ class ConvolutionalAutoencoder(BaseAutoencoder):
         decoder_output = layers.Conv1D(
             self.input_shape[-1], 3, padding="same", activation="linear"
         )(x)
+
+        # Crop or pad to exactly match input length (UpSampling1D can overshoot
+        # when encoder used padding="same" on odd-length sequences)
+        target_length = self.input_shape[0]
+        current_length = decoder_output.shape[1]
+        if current_length is not None and current_length != target_length:
+            if current_length > target_length:
+                excess = current_length - target_length
+                crop_left = excess // 2
+                crop_right = excess - crop_left
+                decoder_output = layers.Cropping1D((crop_left, crop_right))(decoder_output)
+            else:
+                pad_total = target_length - current_length
+                pad_left = pad_total // 2
+                pad_right = pad_total - pad_left
+                decoder_output = layers.ZeroPadding1D((pad_left, pad_right))(decoder_output)
+
         self.decoder = Model(decoder_input, decoder_output, name="decoder")
 
         # Full autoencoder
@@ -865,7 +882,74 @@ class ConvolutionalAutoencoder(BaseAutoencoder):
         if X.ndim == 2:
             X = X[..., np.newaxis]
 
-        return super(StandardAutoencoder, self).fit(X, **kwargs)
+        epochs = kwargs.get("epochs", 100)
+        batch_size = kwargs.get("batch_size", 32)
+        validation_split = kwargs.get("validation_split", 0.2)
+        validation_data = kwargs.get("validation_data", None)
+        verbose = kwargs.get("verbose", 1)
+        callbacks = kwargs.get("callbacks", None)
+
+        if self.backend == "tensorflow":
+            self.model.compile(optimizer="adam", loss="mse", metrics=["mae"])
+
+            if callbacks is None:
+                callbacks = [
+                    keras.callbacks.EarlyStopping(
+                        monitor="val_loss", patience=10, restore_best_weights=True
+                    ),
+                    keras.callbacks.ReduceLROnPlateau(
+                        monitor="val_loss", factor=0.5, patience=5, min_lr=1e-6
+                    ),
+                ]
+
+            self.history = self.model.fit(
+                X,
+                X,
+                epochs=epochs,
+                batch_size=batch_size,
+                validation_split=validation_split if validation_data is None else 0,
+                validation_data=(
+                    (validation_data[0], validation_data[0])
+                    if validation_data is not None
+                    else None
+                ),
+                callbacks=callbacks,
+                verbose=verbose,
+            )
+
+        else:  # pytorch
+            optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
+            criterion = nn.MSELoss()
+
+            if validation_data is not None:
+                X_train, X_val = X, validation_data[0]
+            else:
+                split_idx = int(len(X) * (1 - validation_split))
+                X_train, X_val = X[:split_idx], X[split_idx:]
+
+            train_dataset = TensorDataset(
+                torch.FloatTensor(X_train), torch.FloatTensor(X_train)
+            )
+            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+            self.history = {"loss": [], "val_loss": []}
+
+            for epoch in range(epochs):
+                self.model.train()
+                epoch_loss = 0.0
+                for batch_X, batch_y in train_loader:
+                    optimizer.zero_grad()
+                    output = self.model(batch_X)
+                    loss = criterion(output, batch_y)
+                    loss.backward()
+                    optimizer.step()
+                    epoch_loss += loss.item()
+                self.history["loss"].append(epoch_loss / len(train_loader))
+
+                if verbose:
+                    print(f"Epoch {epoch+1}/{epochs} - loss: {self.history['loss'][-1]:.4f}")
+
+        return self
 
 
 class LSTMAutoencoder(BaseAutoencoder):

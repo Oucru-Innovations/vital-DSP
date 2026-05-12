@@ -703,8 +703,9 @@ class SymbolicDynamics:
             [count / total_patterns for count in pattern_counts.values()]
         )
 
-        # Shannon entropy of permutations
-        perm_entropy = -np.sum(probabilities * np.log2(probabilities + 1e-10))
+        # Shannon entropy of permutations — guard zeros before log, not inside it
+        safe_probs = np.where(probabilities > 0, probabilities, 1.0)
+        perm_entropy = -np.sum(probabilities * np.log2(safe_probs))
 
         # Normalize by maximum possible entropy
         max_entropy = np.log2(math.factorial(order))

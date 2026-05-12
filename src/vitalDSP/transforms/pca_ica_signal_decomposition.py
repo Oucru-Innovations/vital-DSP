@@ -182,24 +182,26 @@ class ICASignalDecomposition:
         centered_signals = self.signals - mean_signal
         cov = np.cov(centered_signals, rowvar=False)
         eig_vals, eig_vecs = np.linalg.eigh(cov)
-        whitening_matrix = np.dot(
-            eig_vecs / np.sqrt(eig_vals + 1e-6), eig_vecs.T
-        )  # Whitening
+        # Correct whitening: W = V @ diag(1/sqrt(Λ)) @ V.T
+        # eig_vecs columns are eigenvectors; divide each column by its eigenvalue's sqrt
+        whitening_matrix = eig_vecs @ np.diag(1.0 / np.sqrt(eig_vals + 1e-6)) @ eig_vecs.T
         whitened_signals = np.dot(centered_signals, whitening_matrix)
 
         # Step 2: Initialize weights (for n_signals)
         n_signals = whitened_signals.shape[1]
         W = np.random.randn(n_signals, n_signals)
 
-        # Step 3: Perform ICA using the FastICA algorithm
+        # Step 3: Perform ICA using the FastICA algorithm (deflation update)
+        # Update: W ← E[g(Wx)xᵀ] − E[g′(Wx)]·W  where g=tanh, g′=1−tanh²
+        N = whitened_signals.shape[0]
         for i in range(self.max_iter):
             W_old = W.copy()
-            W = np.dot(
-                np.tanh(np.dot(W, whitened_signals.T)).dot(whitened_signals)
-                / whitened_signals.shape[0],
-                W,
-            )
-            W = W / np.linalg.norm(W, axis=1, keepdims=True)
+            GWX = np.tanh(np.dot(W, whitened_signals.T))          # (n, N)
+            G_prime_mean = (1 - GWX ** 2).mean(axis=1, keepdims=True)  # (n, 1)
+            W = (GWX @ whitened_signals) / N - G_prime_mean * W
+            # Symmetric orthogonalization to keep rows orthonormal
+            U, _, Vt = np.linalg.svd(W, full_matrices=False)
+            W = U @ Vt
 
             # Check for convergence
             if np.linalg.norm(W - W_old) < self.tolerance:

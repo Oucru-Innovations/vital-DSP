@@ -93,9 +93,7 @@ class HarmonicPercussiveSeparation:
         >>> print(percussive)
         """
         harmonic = self._apply_median(self.signal, kernel_size)
-        percussive = self._apply_median(
-            self.signal, kernel_size
-        )  # Simplified for 1D signal
+        percussive = self.signal - harmonic
         return harmonic, percussive
 
     def _median_filter(self, signal, size):

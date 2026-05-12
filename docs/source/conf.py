@@ -22,29 +22,31 @@ version = '0.2.3'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    'nbsphinx',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.todo',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.coverage',
-    'sphinx.ext.mathjax',
-    'sphinx.ext.ifconfig',
-    'sphinx.ext.githubpages',
-    'sphinx_rtd_theme',
-    'sphinx_markdown_builder',
+    ‘sphinx.ext.autodoc’,
+    ‘sphinx.ext.autosummary’,
+    ‘sphinx.ext.napoleon’,
+    ‘sphinx.ext.viewcode’,
+    ‘sphinx.ext.todo’,
+    ‘sphinx.ext.intersphinx’,
+    ‘sphinx.ext.coverage’,
+    ‘sphinx.ext.mathjax’,
+    ‘sphinx.ext.ifconfig’,
+    ‘sphinx.ext.githubpages’,
+    ‘sphinx_rtd_theme’,
+    ‘sphinx_markdown_builder’,
     "myst_nb",
-    "jupyter_sphinx",          # for widget-backed outputs (fallback) # registers plotly MIME + JS
     "sphinxcontrib.jquery",    # ensures jQuery is available to extensions that expect it
 ]
 
-# Execute notebooks during build (recommended for RTD)
-nb_execution_mode = "auto"           # "auto" to run, "off" to skip all
-nb_execution_timeout = 180           # bump if notebooks are heavy
-nb_render_plugin = "default"         # myst-nb’s default HTML render
-nb_execution_excludepatterns = ["**/ADVANCED_FEATURES_GUIDE*"]  # too heavy, kills kernel
+# myst-nb: execute notebooks during build
+nb_execution_mode = "auto"       # run notebooks; skips those that are already cached
+nb_execution_timeout = 180       # seconds per notebook before timeout
+nb_render_plugin = "default"
+# Skip notebooks that are too heavy or have optional dependencies
+nb_execution_excludepatterns = [
+    "**/ADVANCED_FEATURES_GUIDE*",
+    "**/advanced_features_analysis*",
+]
 
 # MyST config (optional, but useful)
 myst_enable_extensions = [
@@ -177,17 +179,5 @@ html_sidebars = {
 # -- Options for Extensions -------------------------------------------------
 todo_include_todos = True  # Enable the todo extension if needed
 
-# nbsphinx configuration
-nbsphinx_allow_errors = True  # Allow notebook execution errors
-nbsphinx_execute = 'never'  # Don't execute notebooks during build
-nbsphinx_timeout = 60  # Timeout for notebook execution
-
-# Plotly configuration for nbsphinx
-nbsphinx_prolog = """
-.. raw:: html
-
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-"""
-
 # Suppress warnings
-suppress_warnings = ['nbsphinx']
+suppress_warnings = ['myst_nb']

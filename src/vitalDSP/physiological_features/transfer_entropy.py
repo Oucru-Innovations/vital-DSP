@@ -499,10 +499,10 @@ class TransferEntropy:
         # Source history: X(t-delay), X(t-2*delay), ..., X(t-l*delay)
         source_past = self._create_embedding(self.source[:-1], self.l, self.delay)
 
-        # Align to same time points
+        # Align to same time points — clamp to 0 to guard when k > l or l > k
         max_lookback = max(self.k, self.l) * self.delay
-        target_past = target_past[max_lookback - self.k * self.delay :]
-        source_past = source_past[max_lookback - self.l * self.delay :]
+        target_past = target_past[max(0, max_lookback - self.k * self.delay) :]
+        source_past = source_past[max(0, max_lookback - self.l * self.delay) :]
 
         # Future target: Y(t)
         target_future = self.target[max_lookback:].reshape(-1, 1)
@@ -782,7 +782,7 @@ class TransferEntropy:
                 fft_randomized[1:n//2] = np.abs(fft[1:n//2]) * np.exp(1j * phases)
                 if n % 2 == 0:
                     fft_randomized[n//2] = np.abs(fft[n//2])
-                fft_randomized[n//2 + 1:] = np.conj(fft_randomized[1:n//2][::-1])
+                fft_randomized[n//2 + 1:] = np.conj(fft_randomized[1 : n - n//2][::-1])
                 surrogate_source = np.real(np.fft.ifft(fft_randomized))
             else:
                 raise ValueError(f"Unknown method: {method}")

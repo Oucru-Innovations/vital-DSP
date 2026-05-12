@@ -757,17 +757,17 @@ class GradCAM1D:
         # Weight feature maps by gradients
         conv_outputs = conv_outputs[0]
         for i in range(pooled_grads.shape[-1]):
-            conv_outputs = conv_outputs[:, i] * pooled_grads[i]
+            conv_outputs[:, i] *= pooled_grads[i]
 
         # Create heatmap
         heatmap = tf.reduce_mean(conv_outputs, axis=-1)
         heatmap = tf.maximum(heatmap, 0)  # ReLU
         heatmap = heatmap / (tf.reduce_max(heatmap) + 1e-10)  # Normalize
 
-        # Resize to input length
+        # Resize to input length — tf.image.resize needs (batch, h, w, c)
         original_length = signal.shape[1]
         heatmap = tf.image.resize(
-            heatmap[..., tf.newaxis, tf.newaxis], (original_length, 1)
+            heatmap[tf.newaxis, :, tf.newaxis], (original_length, 1)
         )
         heatmap = tf.squeeze(heatmap).numpy()
 

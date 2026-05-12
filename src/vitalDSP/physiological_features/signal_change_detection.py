@@ -90,7 +90,7 @@ class SignalChangeDetection:
         0.8
         """
         zero_crossings = np.where(np.diff(np.sign(self.signal)))[0]
-        zcr = len(zero_crossings) / len(self.signal)
+        zcr = len(zero_crossings) / (len(self.signal) - 1)
         return zcr
 
     def absolute_difference(self):
@@ -216,18 +216,14 @@ class SignalChangeDetection:
         >>> print(changes)
         [6]
         """
-        local_means = np.array(
-            [
-                np.mean(self.signal[i : i + window_size])
-                for i in range(len(self.signal) - window_size)
-            ]
-        )
-        local_stds = np.array(
-            [
-                np.std(self.signal[i : i + window_size])
-                for i in range(len(self.signal) - window_size)
-            ]
-        )
+        from numpy.lib.stride_tricks import as_strided
+
+        sig = np.ascontiguousarray(self.signal)
+        shape = (len(sig) - window_size, window_size)
+        strides = (sig.strides[0], sig.strides[0])
+        windows = as_strided(sig, shape=shape, strides=strides, writeable=False)
+        local_means = np.mean(windows, axis=1)
+        local_stds = np.std(windows, axis=1)
         adaptive_thresholds = local_means + threshold_factor * local_stds
         signal_changes = (
             np.where(

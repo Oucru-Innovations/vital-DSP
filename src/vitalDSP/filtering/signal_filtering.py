@@ -369,16 +369,14 @@ class SignalFiltering:
         filtered_signal = self.signal.copy()
 
         for _ in range(iterations):
-            # Apply padding to the signal based on the chosen method
-            padded_signal = np.pad(
-                filtered_signal,
-                (window_size // 2, window_size - 1 - window_size // 2),
-                mode=method,
-            )
-            # Calculate the moving average
+            # Symmetric padding keeps the output length and avoids phase shift
+            pad = window_size // 2
+            padded_signal = np.pad(filtered_signal, (pad, pad), mode=method)
+            # Trim one extra sample on the right for even window sizes so output
+            # length matches input length exactly.
             filtered_signal = np.convolve(
                 padded_signal, np.ones(window_size) / window_size, mode="valid"
-            )
+            )[: len(filtered_signal)]
 
         return filtered_signal
 

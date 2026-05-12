@@ -191,12 +191,13 @@ class SignalSegmentation:
         >>> print(variance_segments)
         [array([1, 2, 2, 2, 5, 6]), array([1, 1, 1, 8])]
         """
-        variances = np.array(
-            [
-                np.var(self.signal[i : i + window_size])
-                for i in range(len(self.signal) - window_size)
-            ]
-        )
+        from numpy.lib.stride_tricks import as_strided
+
+        sig = np.ascontiguousarray(self.signal)
+        shape = (len(sig) - window_size, window_size)
+        strides = (sig.strides[0], sig.strides[0])
+        windows = as_strided(sig, shape=shape, strides=strides, writeable=False)
+        variances = np.var(windows, axis=1)
         segments = []
         start_idx = 0
         for i in range(1, len(variances)):

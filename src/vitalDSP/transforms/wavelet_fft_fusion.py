@@ -103,7 +103,8 @@ class WaveletFFTfusion:
         elif len(fft_coeffs) < len(wavelet_coeffs):
             wavelet_coeffs = wavelet_coeffs[: len(fft_coeffs)]
 
-        # Fusion by multiplying wavelet and FFT coefficients
+        # wavelet_coeffs is a list of per-level arrays; fft_coeffs is a 1D array.
+        # Each level array is scaled by its corresponding FFT coefficient scalar.
         fusion_result = np.array([w * f for w, f in zip(wavelet_coeffs, fft_coeffs)])
 
         return fusion_result

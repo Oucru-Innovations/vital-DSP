@@ -204,8 +204,8 @@ class AdvancedSignalFiltering:
         x = initial_guess
         for i in range(iterations):
             grad = (
-                loss_func(self.signal - (x + 1e-5), target)
-                - loss_func(self.signal - x, target)
+                loss_func(self.signal - x, target)
+                - loss_func(self.signal - (x + 1e-5), target)
             ) / 1e-5
             x -= learning_rate * grad
 

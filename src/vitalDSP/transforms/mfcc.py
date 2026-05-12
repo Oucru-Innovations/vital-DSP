@@ -172,15 +172,21 @@ class MFCC:
         hz_points = 700 * (10 ** (mel_points / 2595) - 1)
         bin = np.floor((NFFT + 1) * hz_points / self.sample_rate)
         fbank = np.zeros((self.num_filters, int(np.floor(NFFT / 2 + 1))))
+        k_range = np.arange(fbank.shape[1])
         for m in range(1, self.num_filters + 1):
             f_m_minus = int(bin[m - 1])
             f_m = int(bin[m])
             f_m_plus = int(bin[m + 1])
 
-            for k in range(f_m_minus, f_m):
-                fbank[m - 1, k] = (k - bin[m - 1]) / (bin[m] - bin[m - 1])
-            for k in range(f_m, f_m_plus):
-                fbank[m - 1, k] = (bin[m + 1] - k) / (bin[m + 1] - bin[m])
+            # Vectorized triangular filter — eliminates inner Python loops
+            if f_m > f_m_minus:
+                fbank[m - 1, f_m_minus:f_m] = (
+                    (k_range[f_m_minus:f_m] - bin[m - 1]) / (bin[m] - bin[m - 1])
+                )
+            if f_m_plus > f_m:
+                fbank[m - 1, f_m:f_m_plus] = (
+                    (bin[m + 1] - k_range[f_m:f_m_plus]) / (bin[m + 1] - bin[m])
+                )
 
         filter_banks = np.dot(pow_frames, fbank.T)
         filter_banks = np.where(filter_banks == 0, np.finfo(float).eps, filter_banks)

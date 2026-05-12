@@ -223,25 +223,25 @@ class TestExtractFeatures:
 
     def test_extract_features_preprocessing_error(self, extractor):
         """Test error handling during preprocessing - covers line 272-274."""
-        # Mock preprocess_signal to raise an exception
         with patch('vitalDSP.feature_engineering.morphology_features.preprocess_signal') as mock_preprocess:
             mock_preprocess.side_effect = Exception("Preprocessing failed")
-            
+
             features = extractor.extract_features(signal_type="ECG")
-            # Should return empty dict with NaN values
             assert isinstance(features, dict)
-            assert len(features) == 0  # Empty dict since features was initialized as {}
+            assert len(features) > 0  # NaN fallback dict — not empty
+            assert all(np.isnan(v) for v in features.values())
+            assert "qrs_duration" in features
 
     def test_extract_features_morphology_init_error(self, extractor, preprocess_config):
         """Test error handling during morphology initialization - covers line 288-290."""
-        # Mock WaveformMorphology to raise an exception
         with patch('vitalDSP.feature_engineering.morphology_features.WaveformMorphology') as mock_morphology:
             mock_morphology.side_effect = Exception("Morphology init failed")
-            
+
             features = extractor.extract_features(signal_type="ECG", preprocess_config=preprocess_config)
-            # Should return empty dict with NaN values
             assert isinstance(features, dict)
-            assert len(features) == 0
+            assert len(features) > 0  # NaN fallback dict — not empty
+            assert all(np.isnan(v) for v in features.values())
+            assert "qrs_duration" in features
 
     def test_extract_features_feature_extraction_error(self, extractor, preprocess_config):
         """Test error handling during feature extraction - covers lines 394-402."""

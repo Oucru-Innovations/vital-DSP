@@ -651,11 +651,11 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
             n_boxes = n // box_size
             boxes = y[: n_boxes * box_size].reshape(n_boxes, box_size)
 
-            # Detrend each box
-            trends = np.array([np.polyfit(range(box_size), box, 1) for box in boxes])
-            trend_lines = np.array(
-                [np.polyval(trend, range(box_size)) for trend in trends]
-            )
+            # Detrend each box — batched lstsq is O(box_size) vs O(n_boxes*box_size)
+            t = np.arange(box_size, dtype=float)
+            A = np.column_stack([t, np.ones(box_size)])
+            coeffs, _, _, _ = np.linalg.lstsq(A, boxes.T, rcond=None)
+            trend_lines = (A @ coeffs).T
 
             # Calculate fluctuation
             F = np.sqrt(np.mean((boxes - trend_lines) ** 2))

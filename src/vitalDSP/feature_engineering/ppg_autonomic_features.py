@@ -144,13 +144,17 @@ class PPGAutonomicFeatures:
         for k in range(1, k_max + 1):
             Lmk = []
             for m in range(k):
+                denom = int((N - m) / k) * k
+                if denom == 0:
+                    continue
                 Lm = (
                     np.sum(np.abs(np.diff(self.ppg_signal[m:N:k])))
                     * (N - 1)
-                    / (int((N - m) / k) * k)
+                    / denom
                 )
                 Lmk.append(Lm)
-            Lk[k - 1] = np.mean(Lmk)
+            if Lmk:
+                Lk[k - 1] = np.mean(Lmk)
 
         # Handle cases where log(Lk) might produce negative values or zero
         if np.any(Lk <= 0):

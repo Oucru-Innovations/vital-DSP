@@ -109,8 +109,9 @@ class NonlinearFeatures:
             return 0  # Return 0 for signals too short for meaningful entropy
 
         # Normalize the signal to have zero mean and unit variance
-        signal = (signal - np.mean(signal)) / np.std(signal)
-        r *= np.std(signal)  # Scale tolerance; std=1 after normalization, so unchanged
+        original_std = np.std(signal)
+        signal = (signal - np.mean(signal)) / original_std
+        r *= original_std  # Scale tolerance by original std before normalization
 
         # Create embedded vectors for dimensions m and m+1
         embedded_m = np.array([signal[i : i + m] for i in range(N - m + 1)])
