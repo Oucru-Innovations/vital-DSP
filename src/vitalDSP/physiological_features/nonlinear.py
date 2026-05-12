@@ -284,15 +284,14 @@ class NonlinearFeatures:
 
                 tree = cKDTree(phase_space)
 
-                divergences = []
-                for i in range(len(phase_space) - max_t - 1):
-                    # Find nearest neighbor efficiently
-                    distances, indices = tree.query(
-                        phase_space[i], k=2
-                    )  # k=2 to get nearest neighbor (excluding self)
+                query_points = phase_space[: len(phase_space) - max_t - 1]
+                all_distances, all_indices = tree.query(query_points, k=2)
 
-                    if len(distances) > 1 and distances[1] > epsilon:
-                        # Find the corresponding point after max_t steps
+                divergences = []
+                for i, (distances, indices) in enumerate(
+                    zip(all_distances, all_indices)
+                ):
+                    if distances[1] > epsilon:
                         neighbor_idx = indices[1]
                         if neighbor_idx + max_t < len(phase_space):
                             d0 = distances[1]

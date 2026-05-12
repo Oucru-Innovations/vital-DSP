@@ -222,13 +222,9 @@ def median_filter_artifact_removal(signal, kernel_size=3):
     >>> cleaned_signal = median_filter_artifact_removal(signal, kernel_size=3)
     >>> print(cleaned_signal)
     """
-    padded_signal = np.pad(
-        signal, (kernel_size // 2, kernel_size - 1 - kernel_size // 2), mode="edge"
-    )
-    filtered_signal = np.array(
-        [np.median(padded_signal[i : i + kernel_size]) for i in range(len(signal))]
-    )
-    return filtered_signal
+    from scipy.ndimage import median_filter
+
+    return median_filter(signal, size=kernel_size, mode="nearest")
 
 
 def adaptive_threshold_artifact_detection(signal, window_size=100, std_factor=2.0):

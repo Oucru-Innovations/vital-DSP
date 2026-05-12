@@ -154,10 +154,6 @@ class HarmonicPercussiveSeparation:
         -------
         >>> filtered_arr = self._apply_median(arr, kernel_size=31)
         """
-        padded_arr = np.pad(arr, (kernel_size // 2, kernel_size // 2), mode="edge")
-        filtered_arr = np.zeros_like(arr)
+        from scipy.ndimage import median_filter
 
-        for i in range(len(arr)):
-            filtered_arr[i] = np.median(padded_arr[i : i + kernel_size])
-
-        return filtered_arr
+        return median_filter(arr, size=kernel_size, mode="nearest")

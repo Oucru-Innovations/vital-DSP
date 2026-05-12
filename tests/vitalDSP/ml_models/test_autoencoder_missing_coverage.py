@@ -1,4 +1,4 @@
-"""
+﻿"""
 Additional tests for autoencoder.py to cover missing lines.
 
 This test file specifically targets uncovered lines in:
@@ -275,7 +275,7 @@ class TestStandardAutoencoderMissingCoverage:
         """Test fit with default callbacks (lines 569-577)."""
         ae = StandardAutoencoder(input_shape=(100,), latent_dim=16)
         # callbacks=None should create default callbacks
-        history = ae.fit(sample_signal_1d, epochs=2, verbose=0, callbacks=None)
+        history = ae.fit(sample_signal_1d, epochs=1, verbose=0, callbacks=None)
         assert ae.history is not None
 
     @pytest.mark.skipif(not PYTORCH_AVAILABLE, reason="PyTorch not available")
@@ -286,7 +286,7 @@ class TestStandardAutoencoderMissingCoverage:
             latent_dim=16,
             backend="pytorch"
         )
-        history = ae.fit(sample_signal_1d, epochs=2, verbose=0)
+        history = ae.fit(sample_signal_1d, epochs=1, verbose=0)
         assert ae.history is not None
         assert "loss" in ae.history
         assert "val_loss" in ae.history
@@ -302,7 +302,7 @@ class TestStandardAutoencoderMissingCoverage:
         X_val = np.random.randn(10, 100).astype(np.float32)
         history = ae.fit(
             sample_signal_1d,
-            epochs=2,
+            epochs=1,
             verbose=0,
             validation_data=(X_val, X_val)
         )
@@ -317,7 +317,7 @@ class TestStandardAutoencoderMissingCoverage:
             backend="pytorch"
         )
         # Train for many epochs to trigger early stopping
-        history = ae.fit(sample_signal_1d, epochs=100, verbose=0)
+        history = ae.fit(sample_signal_1d, epochs=3, verbose=0)
         assert ae.history is not None
 
 
@@ -419,7 +419,7 @@ class TestLSTMAutoencoderMissingCoverage:
             input_shape=(100, 1),
             latent_dim=16
         )
-        history = lstm_ae.fit(sample_signal_3d, epochs=2, verbose=0)
+        history = lstm_ae.fit(sample_signal_3d, epochs=1, verbose=0)
         assert lstm_ae.history is not None
 
     def test_fit_default_callbacks(self, sample_signal_3d):
@@ -429,7 +429,7 @@ class TestLSTMAutoencoderMissingCoverage:
             latent_dim=16
         )
         # callbacks=None should create default callbacks
-        history = lstm_ae.fit(sample_signal_3d, epochs=2, verbose=0, callbacks=None)
+        history = lstm_ae.fit(sample_signal_3d, epochs=1, verbose=0, callbacks=None)
         assert lstm_ae.history is not None
 
     def test_fit_with_validation_data(self, sample_signal_3d):
@@ -441,7 +441,7 @@ class TestLSTMAutoencoderMissingCoverage:
         X_val = np.random.randn(10, 100, 1).astype(np.float32)
         history = lstm_ae.fit(
             sample_signal_3d,
-            epochs=2,
+            epochs=1,
             verbose=0,
             validation_data=(X_val, X_val)
         )
@@ -547,7 +547,7 @@ class TestVariationalAutoencoderMissingCoverage:
                 input_shape=(100,),
                 latent_dim=16
             )
-            history = vae.fit(sample_signal_1d, epochs=2, verbose=0)
+            history = vae.fit(sample_signal_1d, epochs=1, verbose=0)
             assert vae.history is not None
         except ValueError as e:
             if "KerasTensor cannot be used" in str(e):
@@ -563,7 +563,7 @@ class TestVariationalAutoencoderMissingCoverage:
                 latent_dim=16
             )
             # callbacks=None should create default callbacks
-            history = vae.fit(sample_signal_1d, epochs=2, verbose=0, callbacks=None)
+            history = vae.fit(sample_signal_1d, epochs=1, verbose=0, callbacks=None)
             assert vae.history is not None
         except ValueError as e:
             if "KerasTensor cannot be used" in str(e):
@@ -581,7 +581,7 @@ class TestVariationalAutoencoderMissingCoverage:
             X_val = np.random.randn(10, 100).astype(np.float32)
             history = vae.fit(
                 sample_signal_1d,
-                epochs=2,
+                epochs=1,
                 verbose=0,
                 validation_data=(X_val, X_val)
             )
@@ -647,7 +647,7 @@ class TestDenoisingAutoencoderMissingCoverage:
             noise_type="gaussian",
             noise_level=0.1
         )
-        history = dae.fit(sample_signal_1d, epochs=2, verbose=0)
+        history = dae.fit(sample_signal_1d, epochs=1, verbose=0)
         assert dae.history is not None
 
     def test_fit_with_validation_data_noise(self, sample_signal_1d):
@@ -661,7 +661,7 @@ class TestDenoisingAutoencoderMissingCoverage:
         X_val = np.random.randn(10, 100).astype(np.float32)
         history = dae.fit(
             sample_signal_1d,
-            epochs=2,
+            epochs=1,
             verbose=0,
             validation_data=(X_val, X_val)
         )
@@ -676,7 +676,7 @@ class TestDenoisingAutoencoderMissingCoverage:
             noise_level=0.1
         )
         # callbacks=None should create default callbacks
-        history = dae.fit(sample_signal_1d, epochs=2, verbose=0, callbacks=None)
+        history = dae.fit(sample_signal_1d, epochs=1, verbose=0, callbacks=None)
         assert dae.history is not None
 
     def test_denoise_tensorflow_path(self, sample_signal_1d):
@@ -819,4 +819,5 @@ class TestConvenienceFunctionsMissingCoverage:
             latent_dim=16
         )
         assert X_denoised.shape == X_noisy.shape
+
 

@@ -580,31 +580,25 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
         if n < m + 1:
             return 0
 
-        B = 0
-        A = 0
+        from numpy.lib.stride_tricks import as_strided
+        from scipy.spatial import cKDTree
 
-        # Create templates
-        xm = np.array([signal[i : i + m] for i in range(n - m)])
-        xm1 = np.array([signal[i : i + m + 1] for i in range(n - m)])
+        def _count_kdtree(m_val):
+            if n - m_val < 2:
+                return 0
+            templates = as_strided(
+                signal,
+                shape=(n - m_val, m_val),
+                strides=(signal.strides[0],) * 2,
+                writeable=False,
+            )
+            templates = np.ascontiguousarray(templates)
+            tree = cKDTree(templates, leafsize=40)
+            counts = tree.query_ball_point(templates, r=r, p=np.inf, return_length=True)
+            return (int(np.sum(counts)) - len(templates)) // 2
 
-        for i in range(len(xm)):
-            template_m = xm[i]
-            template_m1 = xm1[i]
-
-            # Count matches for m
-            for j in range(len(xm)):
-                if i != j:
-                    if _maxdist(template_m, xm[j]) <= r:
-                        B += 1
-
-            # Count matches for m+1
-            for j in range(len(xm1)):
-                if i != j:
-                    if _maxdist(template_m1, xm1[j]) <= r:
-                        A += 1
-
-        B = B / (n - m)
-        A = A / (n - m)
+        B = _count_kdtree(m)
+        A = _count_kdtree(m + 1)
 
         if A == 0 or B == 0:
             return 0
@@ -614,24 +608,26 @@ class FeatureExtractor(BaseEstimator, TransformerMixin):
     @staticmethod
     def _approximate_entropy(signal, m, r):
         """Simplified Approximate Entropy calculation."""
-
-        def _maxdist(xmi, xmj):
-            return max([abs(ua - va) for ua, va in zip(xmi, xmj)])
+        from numpy.lib.stride_tricks import as_strided
+        from scipy.spatial import cKDTree
 
         n = len(signal)
         if n < m + 1:
             return 0
 
-        def _phi(m):
-            xm = np.array([signal[i : i + m] for i in range(n - m + 1)])
-            C = []
-            for i in range(len(xm)):
-                template = xm[i]
-                count = sum(
-                    [1 for j in range(len(xm)) if _maxdist(template, xm[j]) <= r]
-                )
-                C.append(count / (n - m + 1))
-            return np.sum(np.log(C)) / (n - m + 1)
+        def _phi(m_val):
+            count = n - m_val + 1
+            templates = as_strided(
+                signal,
+                shape=(count, m_val),
+                strides=(signal.strides[0],) * 2,
+                writeable=False,
+            )
+            templates = np.ascontiguousarray(templates)
+            tree = cKDTree(templates, leafsize=40)
+            counts = tree.query_ball_point(templates, r=r, p=np.inf, return_length=True)
+            C = counts / count
+            return np.sum(np.log(C)) / count
 
         return abs(_phi(m) - _phi(m + 1))
 

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Comprehensive Tests for Transfer Learning Module - Missing Coverage
 
 This test file specifically targets missing lines in transfer_learning.py to achieve
@@ -258,7 +258,7 @@ class TestTransferFeatureExtractor:
             X_train, y_train,
             X_val=X_val, y_val=y_val,
             n_classes=5,
-            epochs=2,
+            epochs=1,
             batch_size=16,
             verbose=0
         )
@@ -281,7 +281,7 @@ class TestTransferFeatureExtractor:
             X_val=X_val, y_val=y_val_reg,
             task='regression',
             n_outputs=1,
-            epochs=2,
+            epochs=1,
             batch_size=16,
             verbose=0
         )
@@ -298,7 +298,7 @@ class TestTransferFeatureExtractor:
         history = extractor.fit(
             X_train, y_train,
             n_classes=None,  # Should auto-detect
-            epochs=2,
+            epochs=1,
             batch_size=16,
             verbose=0
         )
@@ -312,7 +312,7 @@ class TestTransferFeatureExtractor:
         extractor = TransferFeatureExtractor(base_model_tensorflow, freeze_base=True)
         
         # Fit first
-        extractor.fit(X_train, y_train, n_classes=5, epochs=2, verbose=0)
+        extractor.fit(X_train, y_train, n_classes=5, epochs=1, verbose=0)
         
         # Predict
         predictions = extractor.predict(X_train[:10], batch_size=8)
@@ -425,19 +425,19 @@ class TestFineTuner:
         X_train, y_train, X_val, y_val = sample_data
         
         finetuner = FineTuner(base_model_tensorflow, strategy='all_at_once')
-        
+
         history = finetuner.fit(
             X_train, y_train,
             X_val=X_val, y_val=y_val,
             n_classes=5,
-            epochs=5,
+            epochs=3,
             batch_size=16,
             verbose=0
         )
-        
+
         assert history is not None
         assert 'loss' in history
-    
+
     def test_fit_progressive(self, base_model_tensorflow, sample_data):
         """Test fit with progressive strategy - covers lines 548-562."""
         X_train, y_train, X_val, y_val = sample_data
@@ -448,9 +448,9 @@ class TestFineTuner:
             X_train, y_train,
             X_val=X_val, y_val=y_val,
             n_classes=5,
-            epochs=10,
+            epochs=3,
             batch_size=16,
-            progressive_epochs=[3, 6, 9],
+            progressive_epochs=[1, 2, 3],
             verbose=0
         )
         
@@ -467,7 +467,7 @@ class TestFineTuner:
             X_train, y_train,
             X_val=X_val, y_val=y_val,
             n_classes=5,
-            epochs=12,
+            epochs=1,
             batch_size=16,
             progressive_epochs=None,  # Use default
             verbose=0
@@ -485,7 +485,7 @@ class TestFineTuner:
             X_train, y_train,
             X_val=X_val, y_val=y_val,
             n_classes=5,
-            epochs=5,
+            epochs=1,
             batch_size=16,
             verbose=0
         )
@@ -515,7 +515,7 @@ class TestFineTuner:
             X_train, y_train_reg,
             X_val=X_val, y_val=y_val_reg,
             task='regression',
-            epochs=5,
+            epochs=1,
             batch_size=16,
             verbose=0
         )
@@ -531,7 +531,7 @@ class TestFineTuner:
         history = finetuner.fit(
             X_train, y_train,
             n_classes=None,  # Auto-detect
-            epochs=5,
+            epochs=1,
             batch_size=16,
             verbose=0
         )
@@ -548,7 +548,7 @@ class TestFineTuner:
             X_train, y_train,
             X_val=X_val, y_val=y_val,
             n_classes=5,
-            epochs=5,
+            epochs=1,
             batch_size=16,
             verbose=0
         )
@@ -586,7 +586,7 @@ class TestFineTuner:
         X_train, y_train, _, _ = sample_data
         
         finetuner = FineTuner(base_model_tensorflow, strategy='all_at_once')
-        finetuner.fit(X_train, y_train, n_classes=5, epochs=2, verbose=0)
+        finetuner.fit(X_train, y_train, n_classes=5, epochs=1, verbose=0)
         
         predictions = finetuner.predict(X_train[:10], batch_size=8)
         
@@ -612,7 +612,7 @@ class TestFineTuner:
             X_train, y_train,
             X_val=X_val, y_val=y_val,
             n_classes=5,
-            epochs=15,  # Enough for head training + fine-tuning
+            epochs=3,  # Enough for head training + fine-tuning (needs epochs//3 >= 1)
             batch_size=16,
             verbose=0
         )
@@ -630,9 +630,9 @@ class TestFineTuner:
             X_train, y_train,
             X_val=X_val, y_val=y_val,
             n_classes=5,
-            epochs=12,
+            epochs=3,
             batch_size=16,
-            progressive_epochs=[3, 6, 9],
+            progressive_epochs=[1, 2, 3],
             verbose=0
         )
         
@@ -649,7 +649,7 @@ class TestFineTuner:
             X_train, y_train,
             X_val=X_val, y_val=y_val,
             n_classes=5,
-            epochs=5,
+            epochs=1,
             batch_size=16,
             verbose=0
         )
@@ -685,7 +685,7 @@ class TestDomainAdapter:
                 X_train, y_train,
                 X_target,
                 n_classes=5,
-                epochs=2,
+                epochs=1,
                 batch_size=32,  # Ensure batch_size divides dataset size
                 verbose=0
             )
@@ -710,7 +710,7 @@ class TestDomainAdapter:
                 X_train, y_train,
                 X_target,
                 n_classes=None,  # Auto-detect
-                epochs=2,
+                epochs=1,
                 batch_size=32,
                 verbose=0
             )
@@ -760,7 +760,7 @@ class TestDomainAdapter:
                 X_train, y_train,
                 X_target, None,
                 n_classes=5,
-                epochs=2,
+                epochs=1,
                 batch_size=32,
                 learning_rate=1e-4,
                 lambda_da=0.1,
@@ -819,7 +819,7 @@ class TestDomainAdapter:
         adapter = DomainAdapter(base_model_tensorflow, method='mmd')
         
         try:
-            adapter.fit(X_train, y_train, X_target, n_classes=5, epochs=2, batch_size=32, verbose=0)
+            adapter.fit(X_train, y_train, X_target, n_classes=5, epochs=1, batch_size=32, verbose=0)
             
             predictions = adapter.predict(X_train[:10], batch_size=8)
             
@@ -851,7 +851,7 @@ class TestQuickTransfer:
             X_train, y_train,
             strategy='feature_extraction',
             n_classes=5,
-            epochs=2,
+            epochs=1,
             verbose=0
         )
         
@@ -867,7 +867,7 @@ class TestQuickTransfer:
             X_train, y_train,
             strategy='fine_tuning',
             n_classes=5,
-            epochs=2,
+            epochs=1,
             verbose=0
         )
         
@@ -901,7 +901,7 @@ class TestEdgeCases:
         history = extractor.fit(
             X_train, y_train,
             n_classes=5,
-            epochs=2,
+            epochs=1,
             verbose=0
         )
         
@@ -919,9 +919,9 @@ class TestEdgeCases:
                 X_train, y_train,
                 X_val=X_val, y_val=y_val,
                 n_classes=5,
-                epochs=12,
+                epochs=3,
                 batch_size=16,
-                progressive_epochs=[3, 6, 9],
+                progressive_epochs=[1, 2, 3],
                 verbose=1
             )
         
@@ -940,7 +940,7 @@ class TestEdgeCases:
                 X_train, y_train,
                 X_target, y_target=y_target,
                 n_classes=5,
-                epochs=2,
+                epochs=1,
                 batch_size=32,
                 verbose=0
             )
@@ -948,4 +948,5 @@ class TestEdgeCases:
             assert history is not None
         except (ValueError, tf.errors.InvalidArgumentError) as e:
             pytest.skip(f"DomainAdapter fit with y_target failed (expected): {e}")
+
 

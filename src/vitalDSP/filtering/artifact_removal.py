@@ -158,13 +158,9 @@ class ArtifactRemoval:
         >>> print(clean_signal)
         [1 3 4 4 5]
         """
-        padded_signal = np.pad(
-            self.signal, (kernel_size // 2, kernel_size // 2), mode="edge"
-        )
-        clean_signal = np.zeros_like(self.signal)
-        for i in range(len(self.signal)):
-            clean_signal[i] = np.median(padded_signal[i : i + kernel_size])
-        return clean_signal
+        from scipy.ndimage import median_filter
+
+        return median_filter(self.signal, size=kernel_size, mode="nearest")
 
     def wavelet_denoising(
         self,

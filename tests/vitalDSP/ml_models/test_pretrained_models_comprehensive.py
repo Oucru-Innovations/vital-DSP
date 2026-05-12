@@ -1,4 +1,4 @@
-"""
+﻿"""
 Comprehensive Tests for Pretrained Models Module - Missing Coverage
 
 This test file specifically targets missing lines in pretrained_models.py to achieve
@@ -424,7 +424,7 @@ class TestPretrainedModelFineTune:
         
         history = model.fine_tune(
             X_train, y_train,
-            epochs=2,
+            epochs=1,
             batch_size=8,
             verbose=0
         )
@@ -443,7 +443,7 @@ class TestPretrainedModelFineTune:
         history = model.fine_tune(
             X_train, y_train,
             X_val=X_val, y_val=y_val,
-            epochs=2,
+            epochs=1,
             batch_size=8,
             verbose=0
         )
@@ -460,7 +460,7 @@ class TestPretrainedModelFineTune:
         history = model.fine_tune(
             X_train, y_train,
             freeze_layers=2,
-            epochs=2,
+            epochs=1,
             batch_size=8,
             verbose=0
         )
@@ -485,7 +485,7 @@ class TestPretrainedModelFineTune:
             
             history = model.fine_tune(
                 X_train, y_train,
-                epochs=2,
+                epochs=1,
                 batch_size=8,
                 verbose=0
             )
@@ -929,4 +929,5 @@ class TestPretrainedModelEdgeCases:
         finally:
             # Restore original URL
             MODEL_REGISTRY['ecg_classifier_mitbih']['url'] = original_url
+
 

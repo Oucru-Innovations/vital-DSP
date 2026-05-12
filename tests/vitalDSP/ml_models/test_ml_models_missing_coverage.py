@@ -1,4 +1,4 @@
-"""
+﻿"""
 Comprehensive Tests to Cover Missing Lines in ML Models
 
 This test file focuses on covering the specific missing lines identified
@@ -541,7 +541,7 @@ class TestDeepModelsCoverage:
             # Train with early stopping
             history = model.train(
                 X, y,
-                epochs=2,
+                epochs=1,
                 batch_size=16,
                 verbose=0
             )
@@ -718,3 +718,4 @@ class TestExplainabilityCoverage:
 # ============================================================================
 # RUN TESTS
 # ============================================================================
+

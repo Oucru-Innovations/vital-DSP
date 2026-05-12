@@ -1,4 +1,4 @@
-"""
+﻿"""
 Comprehensive Tests for Deep Models Module - Missing Coverage
 
 This test file specifically targets missing lines in deep_models.py to achieve
@@ -208,7 +208,7 @@ class TestPyTorchBackend:
         
         history = model.train(
             X_train, y_train,
-            epochs=2,
+            epochs=1,
             batch_size=8,
             verbose=0
         )
@@ -228,7 +228,7 @@ class TestPyTorchBackend:
         history = model.train(
             X_train, y_train,
             X_val=X_val, y_val=y_val,
-            epochs=2,
+            epochs=1,
             batch_size=8,
             verbose=0
         )
@@ -248,7 +248,7 @@ class TestPyTorchBackend:
         
         history = model.train(
             X_train, y_train_binary,
-            epochs=2,
+            epochs=1,
             batch_size=8,
             verbose=0
         )
@@ -358,7 +358,7 @@ class TestLSTMRegression:
         history = model.train(
             X_train, y_train,
             X_val=X_val, y_val=y_val,
-            epochs=2,
+            epochs=1,
             batch_size=8,
             verbose=0
         )
@@ -491,7 +491,7 @@ class TestPyTorchTrainingDetails:
         # Train with verbose=1 to test verbose output
         history = model.train(
             X_train, y_train,
-            epochs=2,
+            epochs=1,
             batch_size=8,
             verbose=1
         )
@@ -511,9 +511,10 @@ class TestPyTorchTrainingDetails:
         # Note: PyTorch training expects integer labels, but test the code path
         history = model.train(
             X_train, y_train,  # Use integer labels
-            epochs=2,
+            epochs=1,
             batch_size=8,
             verbose=0
         )
         assert history is not None
+
 

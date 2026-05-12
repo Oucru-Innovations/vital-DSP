@@ -144,13 +144,13 @@ class SignalChangeDetection:
         >>> print(variances)
         [0.33333333 0.33333333 2.33333333 6.33333333 13.33333333]
         """
-        variances = np.array(
-            [
-                np.var(self.signal[i : i + window_size])
-                for i in range(len(self.signal) - window_size)
-            ]
-        )
-        return variances
+        from numpy.lib.stride_tricks import as_strided
+
+        sig = np.ascontiguousarray(self.signal)
+        shape = (len(sig) - window_size, window_size)
+        strides = (sig.strides[0], sig.strides[0])
+        windows = as_strided(sig, shape=shape, strides=strides, writeable=False)
+        return np.var(windows, axis=1)
 
     def energy_based_detection(self, window_size):
         """
@@ -179,13 +179,13 @@ class SignalChangeDetection:
         >>> print(energies)
         [14 29 50]
         """
-        energies = np.array(
-            [
-                np.sum(self.signal[i : i + window_size] ** 2)
-                for i in range(len(self.signal) - window_size)
-            ]
-        )
-        return energies
+        from numpy.lib.stride_tricks import as_strided
+
+        sig = np.ascontiguousarray(self.signal)
+        shape = (len(sig) - window_size, window_size)
+        strides = (sig.strides[0], sig.strides[0])
+        windows = as_strided(sig, shape=shape, strides=strides, writeable=False)
+        return np.sum(windows**2, axis=1)
 
     def adaptive_threshold_detection(self, threshold_factor=1.5, window_size=10):
         """

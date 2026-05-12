@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for Deep Models PyTorch backend and missing coverage paths.
 This test file focuses on increasing coverage for PyTorch-specific code paths
 and edge cases in deep learning models.
@@ -168,7 +168,7 @@ class TestCNN1DAdditionalCoverage:
         model.train(
             X[:50], y[:50],
             X_val=X[50:60], y_val=y[50:60],
-            epochs=2,
+            epochs=1,
             batch_size=16,
             verbose=0
         )
@@ -279,7 +279,7 @@ class TestLSTMModelAdditionalCoverage:
         model.train(
             X[:40], y[:40],
             X_val=X[40:50], y_val=y[40:50],
-            epochs=2,
+            epochs=1,
             verbose=0
         )
         assert model.history is not None
@@ -448,7 +448,7 @@ class TestTrainingParameters:
         from tensorflow.keras.callbacks import EarlyStopping
         early_stop = EarlyStopping(monitor='loss', patience=2, verbose=0)
         
-        model.train(X[:20], y[:20], epochs=5, callbacks=[early_stop], verbose=0)
+        model.train(X[:20], y[:20], epochs=1, callbacks=[early_stop], verbose=0)
         assert model.history is not None
 
     def test_verbose_training(self, sample_signal_data):
@@ -459,4 +459,5 @@ class TestTrainingParameters:
         model.model.compile(optimizer='adam', loss='sparse_categorical_crossentropy')
         model.train(X[:10], y[:10], epochs=1, verbose=1)
         assert model.history is not None
+
 

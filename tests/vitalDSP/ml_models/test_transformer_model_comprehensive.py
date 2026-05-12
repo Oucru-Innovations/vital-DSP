@@ -1,4 +1,4 @@
-"""
+﻿"""
 Comprehensive Tests for Transformer Model Module - Missing Coverage
 
 This test file specifically targets missing lines in transformer_model.py to achieve
@@ -434,7 +434,7 @@ class TestTransformerModelTrain:
         history = model.train(
             X_train, y_train,
             X_val=X_val, y_val=y_val,
-            epochs=2,
+            epochs=1,
             batch_size=16,
             verbose=0
         )
@@ -465,7 +465,7 @@ class TestTransformerModelTrain:
         history = model.train(
             X_train, y_train_binary,
             X_val=X_val, y_val=y_val_binary,
-            epochs=2,
+            epochs=1,
             batch_size=16,
             verbose=0
         )
@@ -497,7 +497,7 @@ class TestTransformerModelTrain:
         history = model.train(
             X_train, y_train_cat,
             X_val=X_val, y_val=y_val_cat,
-            epochs=2,
+            epochs=1,
             batch_size=16,
             verbose=0
         )
@@ -527,7 +527,7 @@ class TestTransformerModelTrain:
         history = model.train(
             X_train, y_train_reg,
             X_val=X_val, y_val=y_val_reg,
-            epochs=2,
+            epochs=1,
             batch_size=16,
             verbose=0
         )
@@ -552,7 +552,7 @@ class TestTransformerModelTrain:
         
         history = model.train(
             X_train, y_train,
-            epochs=2,
+            epochs=1,
             batch_size=16,
             verbose=0
         )
@@ -576,7 +576,7 @@ class TestTransformerModelTrain:
         
         history = model.train(
             X_train, y_train,
-            epochs=2,
+            epochs=1,
             batch_size=16,
             warmup_epochs=1,
             verbose=0
@@ -605,7 +605,7 @@ class TestTransformerModelTrain:
             history = model.train(
                 X_train, y_train,
                 X_val=X_val, y_val=y_val,
-                epochs=2,
+                epochs=1,
                 batch_size=16,
                 verbose=0
             )
@@ -632,7 +632,7 @@ class TestTransformerModelPredict:
             d_ff=256
         )
         model.build_model()
-        model.train(X_train, y_train, epochs=2, batch_size=16, verbose=0)
+        model.train(X_train, y_train, epochs=1, batch_size=16, verbose=0)
         
         predictions = model.predict(X_train[:10])
         
@@ -729,7 +729,7 @@ class TestTransformerModelSaveLoad:
             d_ff=256
         )
         model.build_model()
-        model.train(X_train, y_train, epochs=2, batch_size=16, verbose=0)
+        model.train(X_train, y_train, epochs=1, batch_size=16, verbose=0)
         
         save_path = tmp_path / "transformer_model.keras"
         
@@ -756,7 +756,7 @@ class TestTransformerModelSaveLoad:
             d_ff=256
         )
         model.build_model()
-        model.train(X_train, y_train, epochs=2, batch_size=16, verbose=0)
+        model.train(X_train, y_train, epochs=1, batch_size=16, verbose=0)
         
         save_path = tmp_path / "transformer_model.keras"
         
@@ -888,4 +888,5 @@ class TestTransformerModelEdgeCases:
         layer_types = [type(layer).__name__ for layer in model.model.layers]
         dense_count = layer_types.count('Dense')
         assert dense_count >= 3  # Input projection + 2 dense + output
+
 

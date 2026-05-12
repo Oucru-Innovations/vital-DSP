@@ -338,13 +338,13 @@ class NonlinearAnalysis:
         radii = np.logspace(np.log10(0.1 * sig_std), np.log10(2 * sig_std), 10)
         log_C = []
         log_r = []
+        from scipy.spatial import cKDTree
+        tree = cKDTree(embedded)
+        n_pairs = n_emb * (n_emb - 1) / 2 if n_emb > 1 else 1
         for r in radii:
-            count = 0
-            for i in range(n_emb):
-                for j in range(i + 1, n_emb):
-                    if np.linalg.norm(embedded[i] - embedded[j]) < r:
-                        count += 1
-            C = 2.0 * count / (n_emb * (n_emb - 1)) if n_emb > 1 else 0
+            counts = tree.query_ball_point(embedded, r=r, p=2, return_length=True)
+            count = (int(np.sum(counts)) - n_emb) // 2
+            C = count / n_pairs if n_emb > 1 else 0
             if C > 0:
                 log_C.append(np.log(C))
                 log_r.append(np.log(r))

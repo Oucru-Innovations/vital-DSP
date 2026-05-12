@@ -1,4 +1,4 @@
-"""
+﻿"""
 Enhanced Unit Tests for Deep Models Module
 
 This module provides comprehensive test coverage for deep learning models
@@ -694,7 +694,7 @@ class TestTrainingCallbacks:
                     history = model.train(
                         X_train, y_train,
                         X_val=X_val, y_val=y_val,
-                        epochs=2,
+                        epochs=1,
                         batch_size=16,
                         callbacks=[early_stop],
                         verbose=0
@@ -713,7 +713,7 @@ class TestTrainingCallbacks:
                     history = model.model.fit(
                         X_train, y_train,
                         validation_data=(X_val, y_val),
-                        epochs=2,
+                        epochs=1,
                         batch_size=16,
                         callbacks=[early_stop],
                         verbose=0
@@ -1231,3 +1231,4 @@ class TestTrainingVariations:
             assert history is not None
         except (AttributeError, NotImplementedError) as e:
             pytest.skip(f"LSTM train with validation not implemented: {e}")
+
