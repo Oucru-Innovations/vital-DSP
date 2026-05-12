@@ -50,13 +50,17 @@ def sample_visualizations():
     """Sample visualizations for testing."""
     return {
         "sdnn": {
-            "bell_plot": "_static/images/sdnn_bell_plot.png",
-            "time_series": "_static/images/sdnn_time_series.png",
-            "histogram": "_static/images/sdnn_histogram.png"
+            "gauge_chart": "_static/images/sdnn_gauge_chart.png",
+            "violin_plot": "_static/images/sdnn_violin_plot.png",
+            "plot_box_swarm": "_static/images/sdnn_box_swarm.png",
+            "line_with_rolling_stats": "_static/images/sdnn_line_rolling.png",
+            "trend_sparkline": "_static/images/sdnn_trend_sparkline.png"
         },
         "rmssd": {
-            "bell_plot": "_static/images/rmssd_bell_plot.png",
-            "time_series": "_static/images/rmssd_time_series.png"
+            "gauge_chart": "_static/images/rmssd_gauge_chart.png",
+            "violin_plot": "_static/images/rmssd_violin_plot.png",
+            "plot_box_swarm": "_static/images/rmssd_box_swarm.png",
+            "line_with_rolling_stats": "_static/images/rmssd_line_rolling.png"
         }
     }
 
@@ -316,7 +320,7 @@ def test_render_report_with_missing_visualizations(sample_feature_interpretation
     """Test report rendering with missing visualizations for some features."""
     partial_visualizations = {
         "sdnn": {
-            "bell_plot": "_static/images/sdnn_bell_plot.png"
+            "gauge_chart": "_static/images/sdnn_gauge_chart.png"
         }
         # rmssd has no visualizations
     }
@@ -332,9 +336,9 @@ def test_render_report_with_none_values(sample_feature_interpretations):
     """Test report rendering with None values in visualizations."""
     visualizations_with_none = {
         "sdnn": {
-            "bell_plot": "_static/images/sdnn_bell_plot.png",
-            "time_series": None,
-            "histogram": "_static/images/sdnn_histogram.png"
+            "gauge_chart": "_static/images/sdnn_gauge_chart.png",
+            "violin_plot": None,
+            "plot_box_swarm": "_static/images/sdnn_box_swarm.png"
         }
     }
     
@@ -348,9 +352,9 @@ def test_render_report_with_empty_strings(sample_feature_interpretations):
     """Test report rendering with empty string values."""
     visualizations_with_empty = {
         "sdnn": {
-            "bell_plot": "_static/images/sdnn_bell_plot.png",
-            "time_series": "",
-            "histogram": "_static/images/sdnn_histogram.png"
+            "gauge_chart": "_static/images/sdnn_gauge_chart.png",
+            "violin_plot": "",
+            "plot_box_swarm": "_static/images/sdnn_box_swarm.png"
         }
     }
     
@@ -610,23 +614,19 @@ def test_render_report_with_multiple_visualizations(sample_feature_interpretatio
     """Test report rendering with multiple visualization types."""
     multi_visualizations = {
         "sdnn": {
-            "heatmap": "_static/images/sdnn_heatmap.png",
-            "bell_plot": "_static/images/sdnn_bell_plot.png",
-            "radar_plot": "_static/images/sdnn_radar_plot.png",
+            "gauge_chart": "_static/images/sdnn_gauge_chart.png",
             "violin_plot": "_static/images/sdnn_violin_plot.png",
             "plot_box_swarm": "_static/images/sdnn_box_swarm.png",
-            "plot_spectrogram": "_static/images/sdnn_spectrogram.png",
-            "lag_plot": "_static/images/sdnn_lag_plot.png",
             "line_with_rolling_stats": "_static/images/sdnn_line_rolling.png",
-            "plot_spectral_density": "_static/images/sdnn_spectral_density.png"
+            "trend_sparkline": "_static/images/sdnn_trend_sparkline.png"
         }
     }
 
     html = render_report(sample_feature_interpretations, multi_visualizations)
 
     assert isinstance(html, str)
-    assert "heatmap" in html.lower()
-    assert "bell_plot" in html
+    assert "gauge_chart" in html
+    assert "violin_plot" in html
     assert "Choose Plot Type" in html
 
 

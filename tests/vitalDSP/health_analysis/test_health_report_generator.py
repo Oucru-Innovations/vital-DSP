@@ -992,9 +992,8 @@ def test_batch_visualization_path_normalization_none_path():
             # Check that the result contains the expected plot types
             # Some may be error messages if they failed to generate
             expected_plots = [
-                "heatmap", "bell_plot", "radar_plot", "violin_plot",
-                "line_with_rolling_stats", "lag_plot", "plot_periodogram",
-                "plot_spectrogram", "plot_spectral_density", "plot_box_swarm"
+                "gauge_chart", "violin_plot", "plot_box_swarm",
+                "line_with_rolling_stats", "trend_sparkline"
             ]
             
             for plot_type in expected_plots:
