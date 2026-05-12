@@ -15,7 +15,7 @@ Key Features:
 - Configurable parameters and settings
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.health_analysis.interpretation_engine import InterpretationEngine

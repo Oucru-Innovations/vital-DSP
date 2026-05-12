@@ -15,7 +15,7 @@ Key Features:
 - Comprehensive signal analysis
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.hrv_analysis import HRVFeatures
@@ -137,7 +137,7 @@ class HRVFeatures:
             dict: A dictionary containing all the computed features.
 
         Example usage
-        -------
+        -------------
         >>> nn_intervals = [800, 810, 790, 805, 795]  # NN intervals in ms
         >>> ecg_signal = np.random.randn(1000)  # Example ECG signal
         >>> fs = 1000  # Sampling frequency in Hz

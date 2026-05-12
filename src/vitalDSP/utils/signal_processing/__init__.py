@@ -17,7 +17,7 @@ Key Features:
 - Interpolation methods
 
 Examples:
---------
+---------
 Peak detection:
     >>> from vitalDSP.utils.signal_processing import PeakDetection
     >>> detector = PeakDetection(signal)

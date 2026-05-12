@@ -6,7 +6,7 @@ This module provides symbolic dynamics methods for analyzing physiological signa
 by transforming continuous signals into discrete symbol sequences for pattern analysis.
 
 Implemented Methods:
--------------------
+--------------------
 1. Symbolic Transformation (0V, 1V, 2LV, 2UV patterns)
 2. Shannon Entropy of Symbol Distribution
 3. Word Distribution Analysis
@@ -16,7 +16,7 @@ Implemented Methods:
 7. Permutation Entropy
 
 Clinical Applications:
----------------------
+----------------------
 - Cardiac autonomic function assessment
 - Arrhythmia detection and classification
 - Sleep stage classification
@@ -25,7 +25,7 @@ Clinical Applications:
 - Seizure prediction
 
 Mathematical Background:
------------------------
+------------------------
 Symbolic dynamics transforms a continuous-valued time series into a sequence of
 discrete symbols based on pattern recognition. This approach reduces noise sensitivity
 and reveals underlying regulatory patterns.
@@ -37,7 +37,7 @@ The transformation captures important dynamical features while being robust to:
 - Computational complexity
 
 References:
-----------
+-----------
 1. Voss, A., Schulz, S., Schroeder, R., Baumert, M., & Caminal, P. (2009).
    Methods derived from nonlinear dynamics for analysing heart rate variability.
    Philosophical Transactions of the Royal Society A, 367(1887), 277-296.
@@ -68,7 +68,7 @@ Key Features:
 - Interactive visualization capabilities
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.symbolic_dynamics import SymbolicDynamics
@@ -249,25 +249,25 @@ class SymbolicDynamics:
             Array of symbol indices (integers 0 to n_symbols-1)
 
         Methods:
-        -------
-        **1. 0V Method (Variations):**
-        Classifies triplets based on pattern variations:
-        - 0V: all approximately equal (|a-b|<δ, |b-c|<δ, |a-c|<δ)
-        - 1V: two equal, one different
-        - 2LV: two variations with low-high-low pattern
-        - 2UV: two variations with high-low-high pattern
+        --------
+        1. **0V Method (Variations):**
+           Classifies triplets based on pattern variations:
+           - 0V: all approximately equal (|a-b|<δ, |b-c|<δ, |a-c|<δ)
+           - 1V: two equal, one different
+           - 2LV: two variations with low-high-low pattern
+           - 2UV: two variations with high-low-high pattern
 
-        **2. Quantile Method:**
-        Divides signal into n_symbols quantiles
+        2. **Quantile Method:**
+           Divides signal into n_symbols quantiles.
 
-        **3. SAX (Symbolic Aggregate approXimation):**
-        Uses Gaussian quantiles for symbolization
+        3. **SAX (Symbolic Aggregate approXimation):**
+           Uses Gaussian quantiles for symbolization.
 
-        **4. Threshold Method:**
-        Simple thresholding based on percentiles
+        4. **Threshold Method:**
+           Simple thresholding based on percentiles.
 
         Examples:
-        --------
+        ---------
         >>> sd = SymbolicDynamics(signal, n_symbols=4, method='0V')
         >>> symbols = sd.symbolize()
         >>>
@@ -295,7 +295,7 @@ class SymbolicDynamics:
         0V, 1V, 2LV, 2UV
 
         Returns:
-        -------
+        --------
         symbols : numpy.ndarray
             Symbol sequence (0-3)
         """
@@ -392,25 +392,25 @@ class SymbolicDynamics:
             Shannon entropy in bits (log base 2)
 
         Formula:
-        -------
+        --------
         H = -Σ p(i) * log2(p(i))
 
         where p(i) is the probability of symbol i.
 
         Interpretation:
-        --------------
-        - **0:** Completely predictable (only one symbol appears)
-        - **log2(n_symbols):** Maximum entropy (uniform distribution)
-        - **Between:** Degree of predictability/complexity
+        ---------------
+        - ``H = 0``: Completely predictable (only one symbol appears)
+        - ``H = log2(n_symbols)``: Maximum entropy (uniform distribution)
+        - In between: Degree of predictability/complexity
 
         Clinical Significance:
-        ---------------------
+        ----------------------
         - **Low H:** Regular, predictable rhythm (may indicate reduced adaptability)
         - **High H:** Variable, unpredictable rhythm (healthy variability)
         - **Very High H:** Chaotic, random (e.g., atrial fibrillation)
 
         Examples:
-        --------
+        ---------
         >>> sd = SymbolicDynamics(signal)
         >>> sd.symbolize()
         >>> h = sd.compute_shannon_entropy()
@@ -451,7 +451,7 @@ class SymbolicDynamics:
             Values: probabilities (0-1)
 
         Examples:
-        --------
+        ---------
         >>> sd = SymbolicDynamics(signal, word_length=3)
         >>> sd.symbolize()
         >>> word_dist = sd.compute_word_distribution()
@@ -493,7 +493,7 @@ class SymbolicDynamics:
             List of words that never appear in the sequence
 
         Significance:
-        ------------
+        -------------
         Forbidden words indicate deterministic constraints or regulatory
         mechanisms that prevent certain patterns from occurring.
 
@@ -502,7 +502,7 @@ class SymbolicDynamics:
         - **No forbidden words:** Complete randomness (e.g., atrial fibrillation)
 
         Examples:
-        --------
+        ---------
         >>> sd = SymbolicDynamics(signal, n_symbols=4, word_length=3)
         >>> sd.symbolize()
         >>> forbidden = sd.detect_forbidden_words()
@@ -540,7 +540,7 @@ class SymbolicDynamics:
             Element [i,j] = P(next symbol is j | current symbol is i)
 
         Examples:
-        --------
+        ---------
         >>> sd = SymbolicDynamics(signal, n_symbols=4)
         >>> sd.symbolize()
         >>> trans = sd.compute_transition_matrix()
@@ -592,13 +592,13 @@ class SymbolicDynamics:
             Renyi entropy value
 
         Formula:
-        -------
+        --------
         H_α = (1/(1-α)) * log2(Σ p_i^α)
 
         where p_i are symbol probabilities.
 
         Clinical Use:
-        ------------
+        -------------
         Different alpha values emphasize different aspects:
         - α < 1: Emphasizes rare events
         - α > 1: Emphasizes common events
@@ -653,26 +653,26 @@ class SymbolicDynamics:
             Permutation entropy value
 
         Algorithm:
-        ---------
+        ----------
         1. Extract overlapping windows of length 'order'
         2. Determine ranking permutation for each window
         3. Count frequency of each permutation pattern
         4. Calculate Shannon entropy of permutation distribution
 
         Advantages:
-        ----------
+        -----------
         - Robust to noise
         - Fast computation
         - Conceptually simple
         - Good for nonlinear signals
 
         References:
-        ----------
+        -----------
         Bandt, C., & Pompe, B. (2002). Permutation entropy: a natural complexity
         measure for time series. Physical review letters, 88(17), 174102.
 
         Examples:
-        --------
+        ---------
         >>> sd = SymbolicDynamics(signal)
         >>> pe = sd.compute_permutation_entropy(order=3)
         >>> print(f"Permutation Entropy: {pe:.4f}")

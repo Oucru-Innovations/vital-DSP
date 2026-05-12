@@ -16,7 +16,7 @@ Key Features:
 - Feature extraction capabilities
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.feature_engineering.ppg_autonomic_features import PpgAutonomicFeatures
@@ -41,24 +41,23 @@ class PPGAutonomicFeatures:
     - Respiratory Sinus Arrhythmia (RSA)
     - Autonomic Nervous System Balance (Fractal Dimension, DFA)
 
-    Example usage:
-    ```
-    import numpy as np
-    from PPGRespiratoryAutonomicFeatures import PPGRespiratoryAutonomicFeatures
+    Example usage::
 
-    # Simulated PPG signal data
-    ppg_signal = np.random.rand(1000)  # Replace with actual PPG signal
-    fs = 100  # Sampling frequency in Hz
+        import numpy as np
+        from vitalDSP.feature_engineering.ppg_autonomic_features import PPGAutonomicFeatures
 
-    features = PPGRespiratoryAutonomicFeatures(ppg_signal, fs)
+        # Simulated PPG signal data
+        ppg_signal = np.random.rand(1000)  # Replace with actual PPG signal
+        fs = 100  # Sampling frequency in Hz
 
-    rrv = features.compute_rrv()
-    rsa = features.compute_rsa()
-    fractal = features.compute_fractal_dimension()
-    dfa_value = features.compute_dfa()
+        features = PPGAutonomicFeatures(ppg_signal, fs)
 
-    print(f"RRV: {rrv}, RSA: {rsa}, Fractal Dimension: {fractal}, DFA: {dfa_value}")
-    ```
+        rrv = features.compute_rrv()
+        rsa = features.compute_rsa()
+        fractal = features.compute_fractal_dimension()
+        dfa_value = features.compute_dfa()
+
+        print(f"RRV: {rrv}, RSA: {rsa}, Fractal Dimension: {fractal}, DFA: {dfa_value}")
     """
 
     def __init__(self, ppg_signal, sampling_frequency):

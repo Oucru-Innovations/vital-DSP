@@ -23,7 +23,7 @@ Key Features:
 - Deep learning framework integration
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.utils.warning_config import WarningConfig

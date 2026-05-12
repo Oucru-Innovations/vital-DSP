@@ -16,7 +16,7 @@ Key Features:
 - Configurable parameters and settings
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.transforms.beats_transformation import BeatsTransformation

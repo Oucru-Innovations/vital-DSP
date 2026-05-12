@@ -14,7 +14,7 @@ Key Features:
 - Signal validation
 
 Examples:
---------
+---------
 Basic preprocessing:
     >>> from vitalDSP.preprocess import PreprocessConfig, preprocess_signal
     >>> config = PreprocessConfig(filter_type='bandpass')

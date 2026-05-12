@@ -16,7 +16,7 @@ Key Features:
 - Time-domain visualization
 
 Examples:
---------
+---------
 Basic visualization:
     >>> from vitalDSP.visualization import TimeDomainVisualizer
     >>> visualizer = TimeDomainVisualizer(signal)

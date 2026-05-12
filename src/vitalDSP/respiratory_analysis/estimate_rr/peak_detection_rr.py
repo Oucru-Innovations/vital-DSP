@@ -16,7 +16,7 @@ Key Features:
 - Pattern and anomaly detection
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.estimate_rr.peak_detection_rr import PeakDetectionRr
@@ -109,8 +109,8 @@ def peak_detection_rr(
 
     References
     ----------
-    .. [1] Pan, J., & Tompkins, W. J. (1985). A real-time QRS detection algorithm.
-           IEEE transactions on biomedical engineering, (3), 230-236.
+    .. [pan1985] Pan, J., & Tompkins, W. J. (1985). A real-time QRS detection algorithm.
+                 IEEE transactions on biomedical engineering, (3), 230-236.
     """
     logger.debug("=" * 80)
     logger.debug("PEAK DETECTION RR - Starting estimation")

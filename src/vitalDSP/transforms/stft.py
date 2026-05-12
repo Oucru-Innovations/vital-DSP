@@ -15,7 +15,7 @@ Key Features:
 - Performance optimization
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.transforms.stft import Stft

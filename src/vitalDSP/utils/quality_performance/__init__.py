@@ -14,7 +14,7 @@ Key Features:
 - Monitoring utilities
 
 Examples:
---------
+---------
 Performance monitoring:
     >>> from vitalDSP.utils.quality_performance import PerformanceMonitor
     >>> monitor = PerformanceMonitor()

@@ -19,7 +19,7 @@ Key Features:
 - Wavelet and bandpass filtering for EEG
 
 Examples:
---------
+---------
 Basic peak detection:
     >>> import numpy as np
     >>> from vitalDSP.utils.signal_processing.peak_detection import PeakDetection

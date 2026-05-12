@@ -19,7 +19,7 @@ Key Features:
 - Performance monitoring and optimization
 
 Examples:
---------
+---------
 Basic Z-score anomaly detection:
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.anomaly_detection import AnomalyDetection

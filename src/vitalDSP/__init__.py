@@ -32,7 +32,7 @@ Modules:
 - visualization: Plotting and visualization tools
 
 Examples:
---------
+---------
 Basic signal filtering:
     >>> from vitalDSP import SignalFiltering
     >>> filter_obj = SignalFiltering(signal, fs=250)

@@ -13,7 +13,7 @@ Key Features:
 - NumPy integration for numerical computations
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.estimate_rr.fft_based_rr import FftBasedRr
@@ -92,9 +92,9 @@ def fft_based_rr(
 
     References
     ----------
-    .. [1] Charlton, P.H., et al. (2018). Breathing rate estimation from the
-           electrocardiogram and photoplethysmogram: A review. IEEE Reviews in
-           Biomedical Engineering, 11, 2-20.
+    .. [charlton2018] Charlton, P.H., et al. (2018). Breathing rate estimation from the
+                      electrocardiogram and photoplethysmogram: A review. IEEE Reviews in
+                      Biomedical Engineering, 11, 2-20.
     """
     logger.debug("=" * 80)
     logger.debug("FFT-BASED RR - Starting estimation")

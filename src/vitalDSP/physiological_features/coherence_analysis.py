@@ -16,7 +16,7 @@ Key Features:
 - Interactive visualization capabilities
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.coherence_analysis import CoherenceAnalysis

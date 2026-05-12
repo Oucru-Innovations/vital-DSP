@@ -39,7 +39,7 @@ Key Features:
 - Signal validation and error handling
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.ml_models.pretrained_models import PretrainedModels

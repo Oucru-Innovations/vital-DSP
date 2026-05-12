@@ -16,7 +16,7 @@ Key Features:
 - Signal validation and error handling
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.signal_quality_assessment.signal_quality_index import SignalQualityIndex

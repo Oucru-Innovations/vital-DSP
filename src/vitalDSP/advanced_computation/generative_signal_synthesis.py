@@ -14,7 +14,7 @@ Key Features:
 - NumPy integration for numerical computations
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.generative_signal_synthesis import GenerativeSignalSynthesis

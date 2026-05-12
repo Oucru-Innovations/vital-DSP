@@ -16,7 +16,7 @@ Key Features:
 - Signal transformation methods
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.transforms.discrete_cosine_transform import DiscreteCosineTransform

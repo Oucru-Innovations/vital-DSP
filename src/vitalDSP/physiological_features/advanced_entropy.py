@@ -15,7 +15,7 @@ These methods analyze signal complexity across multiple time scales, providing
 insights into the multi-scale structure of physiological signals.
 
 Clinical Applications:
----------------------
+----------------------
 - Cardiac arrhythmia detection and classification
 - Aging assessment and cardiovascular health
 - Autonomic nervous system function evaluation
@@ -24,14 +24,14 @@ Clinical Applications:
 - Seizure prediction and epilepsy monitoring
 
 Mathematical Background:
------------------------
+------------------------
 Multi-scale entropy extends traditional entropy measures by analyzing the signal
 at multiple temporal scales through a coarse-graining procedure. This reveals
 complexity at different time scales, which is crucial for understanding
 physiological regulation mechanisms.
 
 References:
-----------
+-----------
 1. Costa, M., Goldberger, A. L., & Peng, C. K. (2002). Multiscale entropy analysis
    of complex physiologic time series. Physical review letters, 89(6), 068102.
 
@@ -67,7 +67,7 @@ Key Features:
 - Interactive visualization capabilities
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.advanced_entropy import AdvancedEntropy
@@ -164,10 +164,10 @@ class MultiScaleEntropy:
     -----
     **Interpretation Guidelines:**
 
-    - **Healthy/Young:** MSE values remain high or increase at larger scales
+    - **Healthy or Young:** MSE values remain high or increase at larger scales
       indicating rich multi-scale complexity
 
-    - **Disease/Aging:** MSE values decrease more rapidly with scale,
+    - **Disease or Aging:** MSE values decrease more rapidly with scale,
       indicating loss of complexity and adaptive capacity
 
     - **Scale-Specific Information:**
@@ -267,7 +267,7 @@ class MultiScaleEntropy:
             Coarse-grained time series
 
         Mathematical Definition:
-        -----------------------
+        ------------------------
         For scale τ, the coarse-grained series y^(τ) is:
 
         y^(τ)_j = (1/τ) * Σ(i=(j-1)τ+1 to jτ) x_i
@@ -275,7 +275,7 @@ class MultiScaleEntropy:
         where j = 1, 2, ..., N/τ
 
         Examples:
-        --------
+        ---------
         >>> signal = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         >>> coarse = _coarse_grain(signal, scale=2)
         >>> # Result: [1.5, 3.5, 5.5, 7.5, 9.5]
@@ -322,7 +322,7 @@ class MultiScaleEntropy:
             Returns 0 if calculation fails (e.g., signal too short)
 
         Mathematical Definition:
-        -----------------------
+        ------------------------
         SampEn(m, r, N) = -ln(A/B)
 
         where:
@@ -332,24 +332,24 @@ class MultiScaleEntropy:
         - N = signal length
 
         Algorithm Steps:
-        ---------------
+        ----------------
         1. Form all possible patterns of length m and m+1
         2. For each pattern, count matches within tolerance r
         3. Compute ratio of matches: A/B
         4. Return -ln(A/B)
 
         Computational Complexity:
-        ------------------------
+        -------------------------
         O(N²) for naive implementation
         O(N log N) with spatial data structures (KD-tree)
 
         Implementation Notes:
-        --------------------
+        ---------------------
         This implementation uses scipy's cKDTree for efficient nearest neighbor
         search, achieving O(N log N) complexity instead of O(N²).
 
         References:
-        ----------
+        -----------
         Richman, J. S., & Moorman, J. R. (2000). Physiological time-series
         analysis using approximate entropy and sample entropy. American Journal
         of Physiology-Heart and Circulatory Physiology, 278(6), H2039-H2049.
@@ -442,7 +442,7 @@ class MultiScaleEntropy:
             Fuzzy entropy value
 
         Mathematical Definition:
-        -----------------------
+        ------------------------
         FuzzyEn uses an exponential membership function:
 
         μ(d) = exp(-(d/r)^n)
@@ -453,14 +453,14 @@ class MultiScaleEntropy:
         - n = gradient parameter (typically n=2)
 
         Advantages over SampEn:
-        ----------------------
+        -----------------------
         1. More stable for short signals
         2. Continuous similarity measure
         3. Better statistical properties
         4. Less sensitive to parameter choices
 
         References:
-        ----------
+        -----------
         Chen, W., Wang, Z., Xie, H., & Yu, W. (2007). Characterization of
         surface EMG signal based on fuzzy entropy. IEEE Transactions on neural
         systems and rehabilitation engineering, 15(2), 266-272.
@@ -530,18 +530,18 @@ class MultiScaleEntropy:
             Index i corresponds to scale i+1
 
         Algorithm:
-        ---------
+        ----------
         For each scale τ = 1, 2, ..., max_scale:
             1. Coarse-grain signal at scale τ
             2. Compute Sample Entropy (or Fuzzy Entropy) of coarse-grained signal
             3. Store entropy value for scale τ
 
         Time Complexity:
-        ---------------
+        ----------------
         O(max_scale * N log N) where N is signal length
 
         Examples:
-        --------
+        ---------
         >>> mse = MultiScaleEntropy(signal, max_scale=20)
         >>> entropy_values = mse.compute_mse()
         >>>
@@ -556,9 +556,9 @@ class MultiScaleEntropy:
         >>> plt.show()
 
         Clinical Interpretation:
-        -----------------------
-        - **Healthy/Young:** MSE stays elevated or increases at larger scales
-        - **Disease/Aging:** MSE decreases rapidly with scale
+        ------------------------
+        - **Healthy or Young:** MSE stays elevated or increases at larger scales
+        - **Disease or Aging:** MSE decreases rapidly with scale
         - **Heart Failure:** Marked decrease in entropy at all scales
         - **Atrial Fibrillation:** Very high entropy at small scales, rapid decrease
         """
@@ -602,7 +602,7 @@ class MultiScaleEntropy:
             Array of composite entropy values for each scale
 
         Algorithm:
-        ---------
+        ----------
         For each scale τ = 1, 2, ..., max_scale:
             1. Create τ different coarse-grained series starting at indices 0, 1, ..., τ-1
             2. Compute entropy for each coarse-grained series
@@ -616,12 +616,12 @@ class MultiScaleEntropy:
         4. **Consistent Results:** Less sensitive to signal length
 
         Time Complexity:
-        ---------------
+        ----------------
         O(max_scale² * N log N)
         Note: ~τ times slower than MSE due to multiple coarse-grainings
 
         Examples:
-        --------
+        ---------
         >>> mse = MultiScaleEntropy(signal, max_scale=15)
         >>> cmse_values = mse.compute_cmse()
         >>>
@@ -638,13 +638,13 @@ class MultiScaleEntropy:
         >>> plt.grid(True)
 
         References:
-        ----------
+        -----------
         Wu, S. D., Wu, C. W., Lin, S. G., Wang, C. C., & Lee, K. Y. (2013).
         Time series analysis using composite multiscale entropy. Entropy,
         15(3), 1069-1084.
 
         Notes:
-        -----
+        ------
         CMSE is particularly recommended when:
         - Signal length < 1000 samples
         - max_scale > 10
@@ -708,21 +708,21 @@ class MultiScaleEntropy:
         This preserves more temporal structure and reduces information loss.
 
         Advantages over CMSE:
-        --------------------
+        ---------------------
         1. **Better Information Preservation:** Overlapping windows retain more details
         2. **Smoother Curves:** Less jagged MSE curves
         3. **Improved Sensitivity:** Better detects subtle changes
         4. **Best Stability:** Superior performance on short signals
 
         When to Use RCMSE:
-        -----------------
+        ------------------
         - Short signals (< 500 samples)
         - Need maximum stability
         - Require smooth, interpretable curves
         - Comparing very different conditions
 
         References:
-        ----------
+        -----------
         Wu, S. D., Wu, C. W., Lin, S. G., Lee, K. Y., & Peng, C. K. (2014).
         Analysis of complex time series using refined composite multiscale
         entropy. Physics Letters A, 378(20), 1369-1374.
@@ -796,17 +796,17 @@ class MultiScaleEntropy:
             Area under the entropy curve (using trapezoidal integration)
 
         Formula:
-        -------
+        --------
         CI = Σ(i=1 to max_scale-1) [(Entropy_i + Entropy_(i+1)) / 2]
 
         Clinical Interpretation:
-        -----------------------
+        ------------------------
         - **High CI:** Complex, adaptive physiological regulation (healthy)
         - **Low CI:** Simple, less adaptive regulation (disease, aging)
         - **Very Low CI:** Pathological simplification (severe disease)
 
         Examples:
-        --------
+        ---------
         >>> mse = MultiScaleEntropy(signal)
         >>> entropy = mse.compute_mse()
         >>>
@@ -820,7 +820,7 @@ class MultiScaleEntropy:
         >>> ci_long = mse.get_complexity_index(entropy, scale_range=(10, 20))
 
         Notes:
-        -----
+        ------
         Different scale ranges provide insights into different regulatory mechanisms:
         - Scales 1-5: Intrinsic cardiac dynamics
         - Scales 5-10: Sympathovagal balance

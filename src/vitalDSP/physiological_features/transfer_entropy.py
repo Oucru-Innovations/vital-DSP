@@ -6,7 +6,7 @@ This module provides transfer entropy methods for analyzing directional informat
 flow and coupling between physiological signals.
 
 Implemented Methods:
--------------------
+--------------------
 1. Transfer Entropy (TE)
 2. Conditional Transfer Entropy
 3. Time-Delayed Transfer Entropy
@@ -14,7 +14,7 @@ Implemented Methods:
 5. Effective Transfer Entropy
 
 Clinical Applications:
----------------------
+----------------------
 - Cardio-respiratory coupling analysis
 - Brain-heart interaction
 - Autonomic nervous system assessment
@@ -23,7 +23,7 @@ Clinical Applications:
 - Neurovascular coupling
 
 Mathematical Background:
------------------------
+------------------------
 Transfer entropy quantifies the directed (causal) information flow from one
 time series to another. Unlike correlation, it captures nonlinear relationships
 and distinguishes the direction of influence.
@@ -32,7 +32,7 @@ TE from X to Y measures how much uncertainty about the future of Y is reduced
 by knowing the past of X, given the past of Y.
 
 References:
-----------
+-----------
 1. Schreiber, T. (2000). Measuring information transfer. Physical review letters,
    85(2), 461.
 
@@ -70,7 +70,7 @@ Key Features:
 - Interactive visualization capabilities
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.transfer_entropy import TransferEntropy
@@ -281,7 +281,7 @@ class TransferEntropy:
             Embedded vectors (n_vectors x dimension)
 
         Mathematical Background:
-        -----------------------
+        ------------------------
         Time-delay embedding reconstructs the state space from a scalar time series:
 
         X(t) = [x(t), x(t-τ), x(t-2τ), ..., x(t-(d-1)τ)]
@@ -294,7 +294,7 @@ class TransferEntropy:
         This is based on Takens' embedding theorem.
 
         References:
-        ----------
+        -----------
         Takens, F. (1981). Detecting strange attractors in turbulence.
         In Dynamical systems and turbulence, Warwick 1980 (pp. 366-381).
         """
@@ -334,7 +334,7 @@ class TransferEntropy:
             Estimated entropy in nats (natural log)
 
         Algorithm:
-        ---------
+        ----------
         Uses Kraskov-Stögbauer-Grassberger (KSG) estimator:
 
         H(X) = ψ(N) - ψ(k) + ψ(k_i)
@@ -346,7 +346,7 @@ class TransferEntropy:
         - k_i = number of points within k-th neighbor distance
 
         References:
-        ----------
+        -----------
         Kraskov, A., Stögbauer, H., & Grassberger, P. (2004). Estimating
         mutual information. Physical review E, 69(6), 066138.
         """
@@ -410,7 +410,7 @@ class TransferEntropy:
             Mutual information estimate
 
         Formula:
-        -------
+        --------
         I(X;Y) = H(X) + H(Y) - H(X,Y)
 
         where H is entropy and (X,Y) is joint distribution.
@@ -447,7 +447,7 @@ class TransferEntropy:
             Transfer entropy value in nats
 
         Formula:
-        -------
+        --------
         TE(X→Y) = I(Y_future; X_past | Y_past)
 
         More formally:
@@ -459,7 +459,7 @@ class TransferEntropy:
         - X_past = l past values of source
 
         Algorithm Steps:
-        ---------------
+        ----------------
         1. Create embeddings for target history (k values)
         2. Create embeddings for source history (l values)
         3. Extract future target values
@@ -467,7 +467,7 @@ class TransferEntropy:
         5. Return TE estimate
 
         Examples:
-        --------
+        ---------
         >>> te_analyzer = TransferEntropy(x, y, k=1, l=1)
         >>> te_value = te_analyzer.compute_transfer_entropy()
         >>>
@@ -476,7 +476,7 @@ class TransferEntropy:
         >>> print(f"TE: {te_bits:.4f} bits")
 
         Clinical Interpretation:
-        -----------------------
+        ------------------------
         - **Cardio-respiratory:**
             - Healthy: Moderate bidirectional coupling
             - Sleep apnea: Reduced respiratory → cardiac TE
@@ -487,7 +487,7 @@ class TransferEntropy:
             - Relaxation: Reduced directional coupling
 
         Notes:
-        -----
+        ------
         - Returns value in nats (natural logarithm base)
         - Convert to bits by dividing by ln(2)
         - Significance should be tested with surrogate data
@@ -557,7 +557,7 @@ class TransferEntropy:
             TE from target to source
 
         Examples:
-        --------
+        ---------
         >>> te = TransferEntropy(resp, hr)
         >>> te_resp_hr, te_hr_resp = te.compute_bidirectional_te()
         >>>
@@ -568,7 +568,7 @@ class TransferEntropy:
         >>> print(f"Coupling asymmetry: {abs(net_coupling):.4f}")
 
         Interpretation:
-        --------------
+        ---------------
         Comparing bidirectional TE reveals:
 
         1. **Dominant Direction:**
@@ -578,7 +578,7 @@ class TransferEntropy:
 
         2. **Coupling Strength:**
            - Sum = TE(X→Y) + TE(Y→X): Total coupling
-           - Difference = |TE(X→Y) - TE(Y→X)|: Directional asymmetry
+           - Difference = abs(TE(X→Y) - TE(Y→X)): Directional asymmetry
         """
         # Forward: source → target
         te_forward = self.compute_transfer_entropy()
@@ -611,12 +611,12 @@ class TransferEntropy:
             TE values for each delay (length: max_delay)
 
         Purpose:
-        -------
+        --------
         Different physiological processes operate at different time scales.
         Time-delayed TE reveals the temporal dynamics of coupling.
 
         Examples:
-        --------
+        ---------
         >>> te = TransferEntropy(source, target)
         >>> te_delays = te.compute_time_delayed_te(max_delay=20)
         >>>
@@ -634,7 +634,7 @@ class TransferEntropy:
         >>> plt.grid(True)
 
         Clinical Significance:
-        ---------------------
+        ----------------------
         - **Short delays (1-3):** Immediate physiological responses
         - **Medium delays (5-10):** Regulatory mechanisms
         - **Long delays (>10):** Slow adaptive processes
@@ -674,7 +674,7 @@ class TransferEntropy:
             Normalized TE in range [0, 1]
 
         Formula:
-        -------
+        --------
         Effective TE = TE / H(target_future | target_past)
 
         Normalization provides:
@@ -683,7 +683,7 @@ class TransferEntropy:
         - Easier comparison across different signal pairs
 
         Examples:
-        --------
+        ---------
         >>> te_analyzer = TransferEntropy(x, y)
         >>> eff_te = te_analyzer.compute_effective_te()
         >>> print(f"Effective TE: {eff_te:.2%}")
@@ -740,14 +740,14 @@ class TransferEntropy:
             Original TE value
 
         Algorithm:
-        ---------
+        ----------
         1. Compute TE for original data
         2. Generate n_surrogates by shuffling source signal
         3. Compute TE for each surrogate
         4. p-value = fraction of surrogates with TE >= original TE
 
         Examples:
-        --------
+        ---------
         >>> te = TransferEntropy(x, y)
         >>> p_value, te_value = te.test_significance(n_surrogates=1000)
         >>>
@@ -757,7 +757,7 @@ class TransferEntropy:
         ...     print(f"No significant coupling (p={p_value:.4f})")
 
         Notes:
-        -----
+        ------
         - p < 0.05: Significant coupling
         - p < 0.01: Highly significant
         - More surrogates = more reliable p-value

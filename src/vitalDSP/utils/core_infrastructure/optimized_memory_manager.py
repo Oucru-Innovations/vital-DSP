@@ -28,7 +28,7 @@ Key Features:
 - Parallel processing capabilities
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.core_infrastructure.optimized_memory_manager import OptimizedMemoryManager

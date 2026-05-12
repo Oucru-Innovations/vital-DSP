@@ -18,7 +18,7 @@ Key Features:
 - Signal reconstruction from frequency components
 
 Examples:
---------
+---------
 Basic frequency analysis:
     >>> import numpy as np
     >>> from vitalDSP.transforms.fourier_transform import FourierTransform

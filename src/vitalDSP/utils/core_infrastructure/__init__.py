@@ -16,7 +16,7 @@ Key Features:
 - Parallel processing
 
 Examples:
---------
+---------
 Core pipeline:
     >>> from vitalDSP.utils.core_infrastructure import ProcessingPipeline
     >>> pipeline = ProcessingPipeline()

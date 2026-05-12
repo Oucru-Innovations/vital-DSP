@@ -19,7 +19,7 @@ Key Features:
 - Parallel processing for large datasets
 
 Examples:
---------
+---------
 Basic health report generation:
     >>> from vitalDSP.health_analysis.health_report_generator import HealthReportGenerator
     >>> feature_data = {'sdnn': [45.2, 48.1, 42.3], 'rmssd': [32.1, 35.4, 30.8]}

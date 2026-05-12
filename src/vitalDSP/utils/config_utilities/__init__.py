@@ -14,7 +14,7 @@ Key Features:
 - Common utility functions
 
 Examples:
---------
+---------
 Configuration management:
     >>> from vitalDSP.utils.config_utilities import get_config
     >>> config = get_config('filtering')

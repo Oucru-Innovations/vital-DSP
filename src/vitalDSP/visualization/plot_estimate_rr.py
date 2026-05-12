@@ -16,7 +16,7 @@ Key Features:
 - Configurable parameters and settings
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.visualization.plot_estimate_rr import PlotEstimateRr

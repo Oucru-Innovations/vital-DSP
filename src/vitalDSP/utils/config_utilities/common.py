@@ -13,7 +13,7 @@ Key Features:
 - NumPy integration for numerical computations
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.config_utilities.common import Common

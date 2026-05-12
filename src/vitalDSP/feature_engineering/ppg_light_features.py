@@ -16,7 +16,7 @@ Key Features:
 - Feature extraction capabilities
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.feature_engineering.ppg_light_features import PpgLightFeatures

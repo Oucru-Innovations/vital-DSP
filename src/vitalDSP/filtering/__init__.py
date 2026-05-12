@@ -20,7 +20,7 @@ Key Features:
 - Comprehensive signal conditioning
 
 Examples:
---------
+---------
 Basic signal filtering:
     >>> from vitalDSP.filtering import SignalFiltering
     >>> filter_obj = SignalFiltering(signal, fs=250)

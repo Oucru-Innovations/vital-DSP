@@ -14,7 +14,7 @@ Key Features:
 - SciPy integration for advanced signal processing
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.estimate_rr.frequency_domain_rr import FrequencyDomainRr

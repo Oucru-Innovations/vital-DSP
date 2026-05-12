@@ -15,7 +15,7 @@ Key Features:
 - Pattern and anomaly detection
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.real_time_anomaly_detection import RealTimeAnomalyDetection

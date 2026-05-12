@@ -21,7 +21,7 @@ Key Features:
 - Cross-validation and model selection
 
 Examples:
---------
+---------
 Basic CNN model:
     >>> from vitalDSP.ml_models import CNN1D
     >>> model = CNN1D(input_shape=(1000, 1), num_classes=5)

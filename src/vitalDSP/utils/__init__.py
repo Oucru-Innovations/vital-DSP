@@ -16,7 +16,7 @@ Key Features:
 - Warning configuration
 
 Examples:
---------
+---------
 Basic utilities:
     >>> from vitalDSP.utils import configure_warnings
     >>> configure_warnings()

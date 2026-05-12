@@ -13,7 +13,7 @@ Key Features:
 - Multiple processing methods and functions
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.health_analysis.file_io import FileIo

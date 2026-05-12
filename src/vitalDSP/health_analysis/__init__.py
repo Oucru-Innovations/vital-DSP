@@ -20,7 +20,7 @@ Key Features:
 - Comprehensive health metrics analysis
 
 Examples:
---------
+---------
 Health report generation:
     >>> from vitalDSP.health_analysis import HealthReportGenerator
     >>> generator = HealthReportGenerator()

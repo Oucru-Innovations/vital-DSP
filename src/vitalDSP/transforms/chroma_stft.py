@@ -15,7 +15,7 @@ Key Features:
 - SciPy integration for advanced signal processing
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.transforms.chroma_stft import ChromaStft

@@ -21,7 +21,7 @@ Key Features:
 - Advanced morphological analysis
 
 Examples:
---------
+---------
 ECG feature extraction:
     >>> from vitalDSP.feature_engineering import ECGExtractor
     >>> ecg_features = ECGExtractor(ecg_signal, fs=250)

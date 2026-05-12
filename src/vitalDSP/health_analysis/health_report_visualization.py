@@ -16,7 +16,7 @@ Key Features:
 - Interactive visualization capabilities
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.health_analysis.health_report_visualization import HealthReportVisualization

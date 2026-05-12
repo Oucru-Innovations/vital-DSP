@@ -19,7 +19,7 @@ Key Features:
 - Comprehensive filter design options
 
 Examples:
---------
+---------
 Basic bandpass filtering:
     >>> import numpy as np
     >>> from vitalDSP.filtering.signal_filtering import SignalFiltering, BandpassFilter

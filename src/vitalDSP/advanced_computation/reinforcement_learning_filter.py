@@ -16,7 +16,7 @@ Key Features:
 - Advanced filtering algorithms
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.reinforcement_learning_filter import ReinforcementLearningFilter

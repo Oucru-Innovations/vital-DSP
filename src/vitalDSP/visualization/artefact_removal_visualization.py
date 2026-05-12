@@ -16,7 +16,7 @@ Key Features:
 - Interactive plotting and visualization
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.visualization.artefact_removal_visualization import ArtefactRemovalVisualization

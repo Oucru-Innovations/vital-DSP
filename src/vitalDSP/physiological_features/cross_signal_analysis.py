@@ -16,7 +16,7 @@ Key Features:
 - Comprehensive signal analysis
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.cross_signal_analysis import CrossSignalAnalysis

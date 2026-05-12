@@ -27,7 +27,7 @@ Key Features:
 - Performance optimization
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.core_infrastructure.memory_manager import MemoryManager

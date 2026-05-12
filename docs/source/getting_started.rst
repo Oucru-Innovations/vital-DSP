@@ -400,8 +400,9 @@ Signal Filtering and Processing
 The filtering module provides comprehensive signal processing techniques with visualization:
 
 .. code-block:: python
+
    import vitalDSP
-   
+
    from vitalDSP.filtering.signal_filtering import SignalFiltering
    from vitalDSP.filtering.artifact_removal import ArtifactRemoval
    import plotly.graph_objects as go

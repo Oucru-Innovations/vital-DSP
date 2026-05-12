@@ -16,7 +16,7 @@ Key Features:
 - Comprehensive filtering effectiveness evaluation
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.signal_quality_assessment.filtering_quality_assessment import FilteringQualityAssessment

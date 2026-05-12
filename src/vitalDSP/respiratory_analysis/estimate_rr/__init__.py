@@ -14,7 +14,7 @@ Key Features:
 - Peak detection algorithms
 
 Examples:
---------
+---------
 FFT-based estimation:
     >>> from vitalDSP.respiratory_analysis.estimate_rr import fft_based_rr
     >>> rr = fft_based_rr(signal, fs=250)

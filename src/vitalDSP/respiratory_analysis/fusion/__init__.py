@@ -14,7 +14,7 @@ Key Features:
 - Signal fusion algorithms
 
 Examples:
---------
+---------
 Multimodal fusion:
     >>> from vitalDSP.respiratory_analysis.fusion import multimodal_analysis
     >>> result = multimodal_analysis(ppg_signal, ecg_signal, fs=250)

@@ -15,7 +15,7 @@ Key Features:
 - Pattern and anomaly detection
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.sleep_apnea_detection.pause_detection import PauseDetection

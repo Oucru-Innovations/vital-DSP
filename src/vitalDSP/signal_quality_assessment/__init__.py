@@ -22,7 +22,7 @@ Key Features:
 - Comprehensive quality metrics
 
 Examples:
---------
+---------
 Basic signal quality assessment:
     >>> from vitalDSP.signal_quality_assessment import SignalQuality
     >>> sq = SignalQuality(original_signal, processed_signal)

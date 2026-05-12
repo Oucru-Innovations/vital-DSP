@@ -14,7 +14,7 @@ Key Features:
 - NumPy integration for numerical computations
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.transforms.pca_ica_signal_decomposition import PcaIcaSignalDecomposition

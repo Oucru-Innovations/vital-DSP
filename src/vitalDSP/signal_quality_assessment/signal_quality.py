@@ -19,7 +19,7 @@ Key Features:
 - Comprehensive quality metrics for signal evaluation
 
 Examples:
---------
+---------
 Basic signal quality assessment:
     >>> import numpy as np
     >>> from vitalDSP.signal_quality_assessment.signal_quality import SignalQuality

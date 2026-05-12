@@ -21,7 +21,7 @@ Key Features:
 - Comprehensive ECG feature extraction
 
 Examples:
---------
+---------
 Basic ECG feature extraction:
     >>> import numpy as np
     >>> from vitalDSP.feature_engineering.ecg_autonomic_features import ECGExtractor
@@ -60,22 +60,21 @@ class ECGExtractor:
     - QT Interval (QRS onset to T-wave end)
     - Detection of Arrhythmias (AFib, VTach, Bradycardia)
 
-    Example usage:
-    ```
-    ecg_signal = np.random.rand(1000)  # Replace with actual ECG signal
-    fs = 250  # Sampling frequency in Hz
+    Example usage::
 
-    extractor = ECGExtractor(ecg_signal, fs)
+        ecg_signal = np.random.rand(1000)  # Replace with actual ECG signal
+        fs = 250  # Sampling frequency in Hz
 
-    p_wave_duration = extractor.compute_p_wave_duration()
-    pr_interval = extractor.compute_pr_interval()
-    qrs_width = extractor.compute_qrs_width()
-    qt_interval = extractor.compute_qt_interval()
-    st_segment = extractor.compute_st_segment()
-    arrhythmias = extractor.detect_arrhythmias()
+        extractor = ECGExtractor(ecg_signal, fs)
 
-    print(f"P-wave Duration: {p_wave_duration}, PR Interval: {pr_interval}, QRS Width: {qrs_width}")
-    ```
+        p_wave_duration = extractor.compute_p_wave_duration()
+        pr_interval = extractor.compute_pr_interval()
+        qrs_width = extractor.compute_qrs_width()
+        qt_interval = extractor.compute_qt_interval()
+        st_segment = extractor.compute_st_segment()
+        arrhythmias = extractor.detect_arrhythmias()
+
+        print(f"P-wave Duration: {p_wave_duration}, PR Interval: {pr_interval}, QRS Width: {qrs_width}")
     """
 
     def __init__(self, ecg_signal, sampling_frequency):

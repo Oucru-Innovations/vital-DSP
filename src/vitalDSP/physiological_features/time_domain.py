@@ -18,7 +18,7 @@ Key Features:
 - Comprehensive NN interval analysis
 
 Examples:
---------
+---------
 Basic HRV analysis:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.time_domain import TimeDomainFeatures

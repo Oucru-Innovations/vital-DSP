@@ -15,7 +15,7 @@ Key Features:
 - Feature extraction capabilities
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.ensemble_based_feature_extraction import EnsembleBasedFeatureExtraction

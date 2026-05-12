@@ -14,7 +14,7 @@ Key Features:
 - Breathing pattern analysis
 
 Examples:
---------
+---------
 Sleep apnea detection:
     >>> from vitalDSP.respiratory_analysis.sleep_apnea_detection import pause_detection
     >>> apnea_events = pause_detection(signal, fs=250)

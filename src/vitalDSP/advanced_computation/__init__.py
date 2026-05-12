@@ -26,7 +26,7 @@ Key Features:
 - Real-time anomaly detection
 
 Examples:
---------
+---------
 Basic anomaly detection:
     >>> from vitalDSP.advanced_computation import AnomalyDetection
     >>> detector = AnomalyDetection(signal)

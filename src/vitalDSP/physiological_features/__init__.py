@@ -27,7 +27,7 @@ Key Features:
 - Ensemble-based feature extraction
 
 Examples:
---------
+---------
 Time-domain HRV analysis:
     >>> from vitalDSP.physiological_features import TimeDomainFeatures
     >>> tdf = TimeDomainFeatures(nn_intervals)

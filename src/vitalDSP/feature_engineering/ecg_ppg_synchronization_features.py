@@ -15,7 +15,7 @@ Key Features:
 - Feature extraction capabilities
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.feature_engineering.ecg_ppg_synchronization_features import ECGPPGSynchronization

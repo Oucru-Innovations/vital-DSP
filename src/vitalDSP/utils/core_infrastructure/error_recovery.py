@@ -27,7 +27,7 @@ Key Features:
 - Parallel processing capabilities
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.core_infrastructure.error_recovery import ErrorRecovery

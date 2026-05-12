@@ -20,7 +20,7 @@ Key Features:
 - Model saving and loading capabilities
 
 Examples:
---------
+---------
 Basic autoencoder for anomaly detection:
     >>> import numpy as np
     >>> from vitalDSP.ml_models.autoencoder import StandardAutoencoder
@@ -1464,7 +1464,7 @@ class VariationalAutoencoder(BaseAutoencoder):
         Returns
         -------
         np.ndarray
-            Generated samples of shape (n_samples, *input_shape)
+            Generated samples of shape ``(n_samples, *input_shape)``
         """
         if self.backend == "tensorflow":
             # Sample from standard normal distribution

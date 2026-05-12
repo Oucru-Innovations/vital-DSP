@@ -27,7 +27,7 @@ Key Features:
 - Wavelet-FFT fusion methods
 
 Examples:
---------
+---------
 Basic Fourier Transform:
     >>> from vitalDSP.transforms import FourierTransform
     >>> ft = FourierTransform(signal)

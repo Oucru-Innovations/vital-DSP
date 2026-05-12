@@ -40,7 +40,7 @@ Key Features:
 - Signal validation and error handling
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.ml_models.transfer_learning import TransferLearning

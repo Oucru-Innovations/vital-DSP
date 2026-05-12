@@ -14,7 +14,7 @@ Key Features:
 - Pattern and anomaly detection
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.signal_quality_assessment.artifact_detection_removal import ArtifactDetectionRemoval

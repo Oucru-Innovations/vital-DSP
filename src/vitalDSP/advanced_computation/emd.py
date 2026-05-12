@@ -19,7 +19,7 @@ Key Features:
 - Advanced signal analysis capabilities
 
 Examples:
---------
+---------
 Basic EMD decomposition:
     >>> import numpy as np
     >>> from vitalDSP.advanced_computation.emd import EMD

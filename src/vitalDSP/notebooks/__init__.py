@@ -13,7 +13,7 @@ Key Features:
 - Data loading and preprocessing examples
 
 Examples:
---------
+---------
 Basic usage:
     >>> from vitalDSP.notebooks import load_sample_data
     >>> data = load_sample_data('ecg')

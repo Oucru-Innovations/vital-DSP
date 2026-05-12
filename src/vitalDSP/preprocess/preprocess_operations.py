@@ -19,7 +19,7 @@ Key Features:
 - Integration with signal filtering modules
 
 Examples:
---------
+---------
 Basic ECG preprocessing:
     >>> import numpy as np
     >>> from vitalDSP.preprocess.preprocess_operations import PreprocessConfig, preprocess_signal

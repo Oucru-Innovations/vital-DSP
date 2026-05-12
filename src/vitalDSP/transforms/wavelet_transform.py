@@ -19,7 +19,7 @@ Key Features:
 - Integration with mother wavelet utilities
 
 Examples:
---------
+---------
 Basic wavelet transform:
     >>> import numpy as np
     >>> from vitalDSP.transforms.wavelet_transform import WaveletTransform

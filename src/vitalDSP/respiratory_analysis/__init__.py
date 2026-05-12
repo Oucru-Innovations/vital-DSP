@@ -21,7 +21,7 @@ Key Features:
 - Comprehensive respiratory pattern analysis
 
 Examples:
---------
+---------
 Basic respiratory analysis:
     >>> from vitalDSP.respiratory_analysis import RespiratoryAnalysis
     >>> resp_analyzer = RespiratoryAnalysis(signal, fs=250)

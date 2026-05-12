@@ -16,7 +16,7 @@ Key Features:
 - Performance optimization
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.transforms.vital_transformation import VitalTransformation

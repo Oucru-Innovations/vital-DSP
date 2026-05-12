@@ -19,7 +19,7 @@ Key Features:
 - Comprehensive respiratory pattern analysis
 
 Examples:
---------
+---------
 Basic respiratory rate estimation:
     >>> import numpy as np
     >>> from vitalDSP.respiratory_analysis.respiratory_analysis import RespiratoryAnalysis

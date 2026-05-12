@@ -15,7 +15,7 @@ Key Features:
 - Signal transformation methods
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.transforms.hilbert_transform import HilbertTransform

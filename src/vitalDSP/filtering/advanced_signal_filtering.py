@@ -20,7 +20,7 @@ Key Features:
 - Attention-based dynamic filtering
 
 Examples:
---------
+---------
 Basic Kalman filtering:
     >>> import numpy as np
     >>> from vitalDSP.filtering.advanced_signal_filtering import AdvancedSignalFiltering

@@ -20,7 +20,7 @@ Key Features:
 - Comprehensive HRV frequency domain analysis
 
 Examples:
---------
+---------
 Basic frequency domain analysis:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.frequency_domain import FrequencyDomainFeatures

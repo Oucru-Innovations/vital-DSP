@@ -13,7 +13,7 @@ Key Features:
 - NumPy integration for numerical computations
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.signal_quality_assessment.snr_computation import SnrComputation

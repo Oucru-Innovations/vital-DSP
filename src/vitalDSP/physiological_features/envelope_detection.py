@@ -15,7 +15,7 @@ Key Features:
 - Pattern and anomaly detection
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.envelope_detection import EnvelopeDetection

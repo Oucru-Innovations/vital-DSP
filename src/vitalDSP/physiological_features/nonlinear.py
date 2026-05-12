@@ -16,7 +16,7 @@ Key Features:
 - Performance optimization
 
 Examples:
---------
+---------
 Basic usage:
     >>> import numpy as np
     >>> from vitalDSP.physiological_features.nonlinear import NonlinearFeatures

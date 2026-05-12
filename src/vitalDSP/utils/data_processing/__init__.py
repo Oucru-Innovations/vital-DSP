@@ -14,7 +14,7 @@ Key Features:
 - Processing helpers
 
 Examples:
---------
+---------
 Data validation:
     >>> from vitalDSP.utils.data_processing import SignalValidator
     >>> validator = SignalValidator()

@@ -19,7 +19,7 @@ Key Features:
 - Export-ready interactive plots
 
 Examples:
---------
+---------
 Basic trend visualization:
     >>> import numpy as np
     >>> from vitalDSP.visualization.time_domain_visualization import TrendAnalysisVisualizer

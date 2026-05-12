@@ -21,7 +21,7 @@ Key Features:
 - Cross-framework compatibility (TensorFlow/PyTorch)
 
 Examples:
---------
+---------
 Basic CNN model for ECG classification:
     >>> import numpy as np
     >>> from vitalDSP.ml_models.deep_models import CNN1D
