@@ -1,17 +1,15 @@
 # Development dependencies including all optional features
-# Install with: pip install -r requirements-dev.txt
+# Install with: pip install -r requirements/dev.txt
 
 # Base requirements
--r requirements.txt
+-r base.txt
 
-# Deep Learning - TensorFlow
--r requirements-tensorflow.txt
-
-# Deep Learning - PyTorch
--r requirements-pytorch.txt
+# Deep Learning
+-r tensorflow.txt
+-r pytorch.txt
 
 # ML Model Explainability
--r requirements-explainability.txt
+-r explainability.txt
 
 # Testing dependencies
 pytest>=7.0.0
@@ -21,6 +19,7 @@ pytest-asyncio>=0.21.0
 pytest-dash>=2.0.0
 pytest-faker>=2.0.0
 pytest-xdist>=3.8.0
+pytest-timeout>=2.1.0
 
 # Code quality
 black>=23.0.0

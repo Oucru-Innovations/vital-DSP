@@ -36,10 +36,10 @@ jobs:
           # TensorFlow requires NumPy < 2.0
           pip install "numpy>=1.19.2,<2.0"
           # Install base requirements (which also has numpy constraint, but already installed)
-          pip install -r requirements.txt -c constraints.txt
-          pip install -r requirements-tensorflow.txt -c constraints.txt
-          pip install -r requirements-explainability.txt -c constraints.txt
-          pip install -r requirements-pytorch.txt -c constraints.txt
+          pip install -r requirements/base.txt -c constraints.txt
+          pip install -r requirements/tensorflow.txt -c constraints.txt
+          pip install -r requirements/explainability.txt -c constraints.txt
+          pip install -r requirements/pytorch.txt -c constraints.txt
           # Install test dependencies with constraints to prevent NumPy upgrade
           pip install -c constraints.txt pytest==8.1.1 pytest-cov>=5.0.0 coverage>=7.4.0 flake8 pandoc "pandas>=2.0.0" httpx pytest-mock pytest-asyncio
           pip install -c constraints.txt pytest-xdist pytest-timeout
@@ -76,7 +76,7 @@ jobs:
           export MPLBACKEND=Agg
           export QT_QPA_PLATFORM=offscreen
           # Run all tests with xdist for speed (disable coverage — it doesn't work with xdist)
-          pytest -c pytest-full.ini --no-cov
+          pytest --no-cov -n auto --timeout=300 --dist=worksteal
 
           # Generate coverage separately without xdist (reliable)
           echo "=== Generating coverage without xdist ==="

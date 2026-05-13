@@ -20,7 +20,7 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy requirements files
-COPY requirements.txt /tmp/root_requirements.txt
+COPY requirements/base.txt /tmp/root_requirements.txt
 COPY src/vitalDSP_webapp/requirements.txt /tmp/webapp_requirements.txt
 
 # Install Python dependencies

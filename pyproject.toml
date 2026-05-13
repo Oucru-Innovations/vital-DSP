@@ -95,3 +95,60 @@ include = ["vitalDSP*", "vitalDSP_webapp*"]
 "vitalDSP.health_analysis" = ["feature_config.yml"]
 "vitalDSP.notebooks" = ["*.csv"]
 "*" = ["*.html", "*.css", "*.js"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--disable-warnings",
+    "--tb=short",
+    "-v",
+    "--maxfail=5",
+    "--durations=10",
+    "--ignore=dev_docs",
+    "--ignore=archive_docs",
+]
+markers = [
+    "unit: Unit tests (fast, no external dependencies)",
+    "integration: Integration tests (medium speed, some dependencies)",
+    "slow: Slow tests (comprehensive, heavy computation)",
+    "webapp: Web application tests (UI, mocking)",
+    "core: Core library tests",
+    "ci: Tests that should run in CI/CD",
+    "local: Tests that should only run locally",
+    "fast: Fast tests that can run in parallel",
+    "serial: Tests that must run serially",
+    "visualization: Visualization tests (may require display mocking)",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+norecursedirs = [
+    ".git", ".tox", "dist", "build", "*.egg",
+    "__pycache__", ".pytest_cache", "cov_html",
+    "docs", "dev_docs", "archive_docs",
+]
+asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore::UserWarning",
+    "ignore::FutureWarning",
+    "ignore::pandas.errors.PerformanceWarning",
+]
+
+[tool.flake8]
+max-line-length = 88
+exclude = [
+    ".git", "__pycache__", "build", "dist",
+    ".venv", "venv", "env", "*.egg-info",
+    ".tox", ".mypy_cache", ".pytest_cache", "cov_html",
+]
+ignore = [
+    "E203", "E226", "E266", "E302", "E402",
+    "E501", "E731", "E741",
+    "W503",
+    "F401", "F541", "F811", "F841", "F403", "F405",
+]

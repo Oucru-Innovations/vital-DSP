@@ -2,7 +2,7 @@ services:
   - type: web
     name: vital-DSP
     env: python
-    buildCommand: cd src && pip install -r ../requirements.txt && pip install -r vitalDSP_webapp/requirements.txt
+    buildCommand: cd src && pip install -r ../requirements/base.txt && pip install -r vitalDSP_webapp/requirements.txt
     startCommand: cd src && python start.py
     healthCheckPath: /api/health
     envVars:

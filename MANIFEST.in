@@ -1,5 +1,5 @@
 include README.md
 include LICENSE
-include requirements.txt
+recursive-include requirements *.txt
 include src/vitalDSP/health_analysis/feature_config.yml
 

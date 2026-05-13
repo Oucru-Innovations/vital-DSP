@@ -323,16 +323,16 @@ Or install dependencies separately using requirements files:
 pip install -e .
 
 # Add TensorFlow
-pip install -r requirements-tensorflow.txt
+pip install -r requirements/tensorflow.txt
 
 # Add PyTorch
-pip install -r requirements-pytorch.txt
+pip install -r requirements/pytorch.txt
 
 # Add explainability tools
-pip install -r requirements-explainability.txt
+pip install -r requirements/explainability.txt
 
 # Add all optional dependencies (for development)
-pip install -r requirements-dev.txt
+pip install -r requirements/dev.txt
 ```
 
 ### System Requirements
@@ -565,7 +565,7 @@ docker run -p 8000:8000 vitaldsp:production
 2. Sign up at https://render.com and create a new Web Service
 3. Connect your GitHub repository
 4. Configure:
-   - **Build Command**: `pip install -r requirements.txt && pip install -r requirements-tensorflow.txt && pip install -r src/vitalDSP_webapp/requirements.txt && pip install -e .`
+   - **Build Command**: `pip install -r requirements/base.txt && pip install -r requirements/tensorflow.txt && pip install -r src/vitalDSP_webapp/requirements.txt && pip install -e .`
    - **Start Command**: `gunicorn -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT vitalDSP_webapp.run_webapp:app`
    - **Environment**: Python 3
 5. Deploy!
@@ -587,8 +587,8 @@ git clone https://github.com/Oucru-Innovations/vital-DSP.git
 cd vital-DSP
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
-pip install -r requirements-tensorflow.txt
+pip install -r requirements/base.txt
+pip install -r requirements/tensorflow.txt
 pip install -r src/vitalDSP_webapp/requirements.txt
 pip install -e .
 

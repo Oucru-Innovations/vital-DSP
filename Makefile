@@ -89,6 +89,25 @@ build:
 upload:
 	twine upload $(DIST_DIR)/*
 
+# Install all dependencies
+install:
+	pip install -r requirements/base.txt
+
+install-dev:
+	pip install -r requirements/dev.txt
+
+install-tensorflow:
+	pip install -r requirements/tensorflow.txt
+
+install-pytorch:
+	pip install -r requirements/pytorch.txt
+
+install-explainability:
+	pip install -r requirements/explainability.txt
+
+install-data:
+	pip install -r requirements/data.txt
+
 # Build HTML documentation
 html:
 	$(SPHINXBUILD) -b html $(DOCS_DIR)/$(SOURCEDIR) $(DOCBUILDDIR)/html
@@ -149,4 +168,4 @@ clean:
 	rm -rf $(DOCBUILDDIR)
 
 # Phony targets
-.PHONY: all test test-fast test-ci test-unit test-core test-webapp test-coverage test-full test-parallel coverage coverage-vitaldsp coverage-webapp coverage-separate lint html clean docs-rtd docs-all docs-serve docs-check docs-clean webapp build upload pandoc
+.PHONY: all test test-fast test-ci test-unit test-core test-webapp test-coverage test-full test-parallel coverage coverage-vitaldsp coverage-webapp coverage-separate lint html clean docs-rtd docs-all docs-serve docs-check docs-clean webapp build upload pandoc install install-dev install-tensorflow install-pytorch install-explainability install-data
