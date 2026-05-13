@@ -193,9 +193,12 @@ def wavelet_artifact_removal(signal, wavelet_func, level=3):
     # Perform wavelet reconstruction using stored coefficients
     for i in range(level - 1, -1, -1):
         high_pass = coeffs[i]
-        current_signal = current_signal + np.pad(
-            high_pass, (0, max(0, len(current_signal) - len(high_pass))), "constant"
-        )[: len(current_signal)]
+        current_signal = (
+            current_signal
+            + np.pad(
+                high_pass, (0, max(0, len(current_signal) - len(high_pass))), "constant"
+            )[: len(current_signal)]
+        )
 
     return current_signal
 
@@ -423,6 +426,7 @@ class ArtifactDetectionRemoval:
             wavelet_func = kwargs.get("wavelet_func", "db4")
             if isinstance(wavelet_func, str):
                 from vitalDSP.transforms.wavelet_transform import WaveletTransform
+
                 wt = WaveletTransform(self.signal, wavelet=wavelet_func)
                 wavelet_func = lambda s: wt._wavelet_decompose(s)
             level = kwargs.get("level", 3)

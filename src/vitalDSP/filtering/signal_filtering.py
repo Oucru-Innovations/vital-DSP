@@ -856,9 +856,11 @@ class SignalFiltering:
             if filter_type == "butter":
                 b, a = self.butter(order, [lowcut, highcut], btype="band", fs=fs)
             elif filter_type == "cheby":
-                b, a = signal.cheby1(order, 1, [lowcut, highcut], btype='band', fs=fs)
+                b, a = signal.cheby1(order, 1, [lowcut, highcut], btype="band", fs=fs)
             elif filter_type == "elliptic":
-                b, a = signal.ellip(order, 1, 40, [lowcut, highcut], btype='band', fs=fs)
+                b, a = signal.ellip(
+                    order, 1, 40, [lowcut, highcut], btype="band", fs=fs
+                )
             else:
                 raise ValueError(
                     "Unsupported filter type. Choose from 'butter', 'cheby', or 'elliptic'."
@@ -899,15 +901,13 @@ class SignalFiltering:
 
         for _ in range(iterations):
             from scipy import ndimage
+
             # Map method to scipy mode names
             mode_map = {"edge": "nearest", "reflect": "reflect", "constant": "constant"}
             scipy_mode = mode_map.get(method, "nearest")
 
             filtered_signal = ndimage.generic_filter(
-                filtered_signal,
-                np.median,
-                size=kernel_size,
-                mode=scipy_mode
+                filtered_signal, np.median, size=kernel_size, mode=scipy_mode
             )
 
         return filtered_signal

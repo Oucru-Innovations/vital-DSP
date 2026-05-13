@@ -228,7 +228,9 @@ class RespiratoryAnalysis:
             )
             return respiratory_rate
         else:
-            raise ValueError("Invalid method. Choose from 'peaks', 'zero_crossing', 'time_domain', 'frequency_domain', 'fft_based', or 'counting'.")
+            raise ValueError(
+                "Invalid method. Choose from 'peaks', 'zero_crossing', 'time_domain', 'frequency_domain', 'fft_based', or 'counting'."
+            )
 
         # Apply correction method if specified
         if correction_method == "interpolation":
@@ -328,7 +330,9 @@ class RespiratoryAnalysis:
         """
         zero_crossings = np.where(np.diff(np.sign(preprocessed_signal)))[0]
         # Keep only positive-going crossings for full-period intervals
-        positive_crossings = zero_crossings[np.diff(np.sign(preprocessed_signal))[zero_crossings] > 0]
+        positive_crossings = zero_crossings[
+            np.diff(np.sign(preprocessed_signal))[zero_crossings] > 0
+        ]
         if len(positive_crossings) < 2:
             return np.array([])
         breath_intervals = np.diff(positive_crossings) / self.fs
@@ -360,7 +364,9 @@ class RespiratoryAnalysis:
         valid_intervals = intervals[~outliers]
         if len(valid_points) < 2:
             return intervals
-        f_interp = interp1d(valid_points, valid_intervals, kind="linear", fill_value="extrapolate")
+        f_interp = interp1d(
+            valid_points, valid_intervals, kind="linear", fill_value="extrapolate"
+        )
         intervals[outliers] = f_interp(x[outliers])
         return intervals
 

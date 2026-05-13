@@ -491,6 +491,7 @@ class ConvolutionalNetwork:
 
     def _convolution(self, X):
         from scipy.signal import correlate2d
+
         batch, h, w = X.shape
         out_h, out_w = h - 2, w - 2
         output = np.zeros((batch, out_h, out_w, len(self.filters)))

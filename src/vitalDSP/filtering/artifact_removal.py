@@ -124,11 +124,12 @@ class ArtifactRemoval:
         [-0.4995 -0.4995 -0.4995 -0.4995 -0.4995]
         """
         from scipy.signal import butter, filtfilt
+
         nyquist = 0.5 * fs
         if cutoff >= nyquist:
             cutoff = nyquist * 0.99
         normal_cutoff = cutoff / nyquist
-        b, a = butter(2, normal_cutoff, btype='high')
+        b, a = butter(2, normal_cutoff, btype="high")
         clean_signal = filtfilt(b, a, self.signal)
         return clean_signal
 
@@ -278,15 +279,20 @@ class ArtifactRemoval:
             approx_coeffs = ra + rd
 
         # Total group delay = (Nf-1) * (2^level - 1), derived from the polyphase structure
-        total_delay = (Nf - 1) * (2 ** level - 1)
-        clean_signal = approx_coeffs[total_delay: total_delay + sig_len]
+        total_delay = (Nf - 1) * (2**level - 1)
+        clean_signal = approx_coeffs[total_delay : total_delay + sig_len]
         if len(clean_signal) < sig_len:
-            clean_signal = np.pad(clean_signal, (0, sig_len - len(clean_signal)), mode='edge')
+            clean_signal = np.pad(
+                clean_signal, (0, sig_len - len(clean_signal)), mode="edge"
+            )
 
         # Apply smoothing if specified
         if smoothing:
             clean_signal = self._apply_smoothing(
-                clean_signal, smoothing, fs=smoothing_params.get('fs', 100.0), **{k: v for k, v in smoothing_params.items() if k != 'fs'}
+                clean_signal,
+                smoothing,
+                fs=smoothing_params.get("fs", 100.0),
+                **{k: v for k, v in smoothing_params.items() if k != "fs"},
             )
 
         return clean_signal
@@ -518,9 +524,11 @@ class ArtifactRemoval:
 
         for i in range(n):
             if i < filter_order:
-                x = np.concatenate([np.zeros(filter_order - i), reference_signal[:i][::-1]])
+                x = np.concatenate(
+                    [np.zeros(filter_order - i), reference_signal[:i][::-1]]
+                )
             else:
-                x = reference_signal[i - filter_order:i][::-1]
+                x = reference_signal[i - filter_order : i][::-1]
 
             artifact_est = np.dot(w, x)
             error = signal[i] - artifact_est
@@ -558,6 +566,7 @@ class ArtifactRemoval:
         >>> print(clean_signal)
         """
         from scipy.signal import iirnotch, filtfilt
+
         b, a = iirnotch(freq, Q, fs)
         clean_signal = filtfilt(b, a, self.signal)
         return clean_signal

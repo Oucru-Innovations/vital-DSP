@@ -146,11 +146,7 @@ class PPGAutonomicFeatures:
                 denom = int((N - m) / k) * k
                 if denom == 0:
                     continue
-                Lm = (
-                    np.sum(np.abs(np.diff(self.ppg_signal[m:N:k])))
-                    * (N - 1)
-                    / denom
-                )
+                Lm = np.sum(np.abs(np.diff(self.ppg_signal[m:N:k]))) * (N - 1) / denom
                 Lmk.append(Lm)
             if Lmk:
                 Lk[k - 1] = np.mean(Lmk)
@@ -192,7 +188,9 @@ class PPGAutonomicFeatures:
         integrated = np.cumsum(self.ppg_signal - np.mean(self.ppg_signal))
 
         scales = np.unique(
-            np.floor(np.logspace(np.log10(min_scale), np.log10(max_scale), num=num_scales))
+            np.floor(
+                np.logspace(np.log10(min_scale), np.log10(max_scale), num=num_scales)
+            )
         ).astype(int)
 
         fluctuations = []

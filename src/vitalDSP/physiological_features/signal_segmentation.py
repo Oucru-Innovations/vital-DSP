@@ -292,6 +292,7 @@ class SignalSegmentation:
             change_points = np.where(np.diff(hidden_states))[0] + 1
         elif model == "decision_tree":
             from sklearn.tree import DecisionTreeRegressor
+
             dt = DecisionTreeRegressor(max_leaf_nodes=5)
             X = np.arange(len(self.signal)).reshape(-1, 1)
             dt.fit(X, self.signal)

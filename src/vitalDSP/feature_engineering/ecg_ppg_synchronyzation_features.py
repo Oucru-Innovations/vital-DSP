@@ -2,6 +2,7 @@
 Backward-compatibility shim. The module has been renamed to
 ecg_ppg_synchronization_features (fixing the typo).
 """
+
 import warnings
 
 warnings.warn(
@@ -12,4 +13,6 @@ warnings.warn(
 )
 
 from vitalDSP.feature_engineering.ecg_ppg_synchronization_features import *  # noqa: F401,F403
-from vitalDSP.feature_engineering.ecg_ppg_synchronization_features import ECGPPGSynchronization  # noqa: F401
+from vitalDSP.feature_engineering.ecg_ppg_synchronization_features import (
+    ECGPPGSynchronization,
+)  # noqa: F401

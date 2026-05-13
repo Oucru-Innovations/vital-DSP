@@ -273,6 +273,7 @@ class ECGPPGSynchronization:
         not true Electromechanical Delay (EMD). Renamed for accuracy.
         """
         import warnings
+
         warnings.warn(
             "compute_emd() is deprecated and will be removed in a future version. "
             "Use compute_ppg_rise_time() instead. Note: this computes PPG rise time "

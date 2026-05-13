@@ -184,6 +184,7 @@ class CrossSignalAnalysis:
         >>> print(psi)
         """
         from scipy.signal import hilbert
+
         analytic1 = hilbert(self.signal1)
         analytic2 = hilbert(self.signal2)
         phase1 = np.unwrap(np.angle(analytic1))

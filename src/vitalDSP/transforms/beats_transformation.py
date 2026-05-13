@@ -237,7 +237,9 @@ class RRTransformation:
                     rr_intervals_filtered[i] = np.nan
 
         # Step 5: Reconsider trends using a running average
-        rr_intervals_filtered = self._reconsider_trends(rr_intervals_filtered, original_values=rr_intervals)
+        rr_intervals_filtered = self._reconsider_trends(
+            rr_intervals_filtered, original_values=rr_intervals
+        )
 
         return rr_intervals_filtered
 
@@ -268,8 +270,13 @@ class RRTransformation:
         # If an RR interval is invalid, but close to the running mean, it could be a part of a trend
         for i in range(window_size, len(rr_intervals)):
             if np.isnan(rr_intervals[i]) and not np.isnan(running_mean[i]):
-                original_val = original_values[i] if original_values is not None else np.nan
-                if not np.isnan(original_val) and np.abs(original_val - running_mean[i]) < 0.1 * running_mean[i]:
+                original_val = (
+                    original_values[i] if original_values is not None else np.nan
+                )
+                if (
+                    not np.isnan(original_val)
+                    and np.abs(original_val - running_mean[i]) < 0.1 * running_mean[i]
+                ):
                     rr_intervals_adaptive[i] = original_val
 
         return rr_intervals_adaptive

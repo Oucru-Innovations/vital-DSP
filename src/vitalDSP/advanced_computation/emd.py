@@ -280,7 +280,9 @@ class EMD:
         Linear interpolation is used to create the envelope from the peaks or valleys.
         """
         if len(x) < 2:
-            return np.full(len(self.signal), np.mean(y) if len(y) > 0 else 0, dtype=float)
+            return np.full(
+                len(self.signal), np.mean(y) if len(y) > 0 else 0, dtype=float
+            )
         # Add boundary mirroring
         x_ext = np.concatenate(([0], x, [len(self.signal) - 1]))
         y_ext = np.concatenate(([y[0]], y, [y[-1]]))
@@ -290,7 +292,8 @@ class EMD:
         y_ext = y_ext[unique_idx]
         try:
             from scipy.interpolate import CubicSpline
-            cs = CubicSpline(x_ext, y_ext, bc_type='natural')
+
+            cs = CubicSpline(x_ext, y_ext, bc_type="natural")
             return cs(np.arange(len(self.signal)))
         except Exception:
             return np.interp(np.arange(len(self.signal)), x_ext, y_ext)

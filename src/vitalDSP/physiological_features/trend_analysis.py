@@ -288,7 +288,7 @@ class TrendAnalysis:
             end_offset = 1 if period % 2 == 1 else 0
             trend[i] = np.mean(self.signal[i - half : i + half + end_offset])
         trend[:half] = trend[half]
-        trend[n - half:] = trend[n - half - 1]
+        trend[n - half :] = trend[n - half - 1]
         detrended = self.signal - trend
         seasonal = np.array([np.mean(detrended[i::period]) for i in range(period)])
         seasonal = np.tile(seasonal, n // period + 1)[:n]

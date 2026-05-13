@@ -223,7 +223,12 @@ class VitalTransformation:
         >>> print(transformer.signal)
         """
         if options is None:
-            options = {"lowcut": 0.5, "highcut": 30, "filter_order": 4, "filter_type": "butter"}
+            options = {
+                "lowcut": 0.5,
+                "highcut": 30,
+                "filter_order": 4,
+                "filter_type": "butter",
+            }
 
         artifact_removal = ArtifactRemoval(self.signal)
 

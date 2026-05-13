@@ -104,7 +104,7 @@ class FrequencyDomainFeatures:
             >>> psd_result = fdf.compute_psd()
             >>> print(f"LF: {psd_result['lf_power']}, HF: {psd_result['hf_power']}")
         """
-        if hasattr(self, '_psd_cache'):
+        if hasattr(self, "_psd_cache"):
             return self._psd_cache
 
         f, psd = welch(

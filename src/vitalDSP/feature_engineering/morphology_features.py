@@ -265,19 +265,28 @@ class PhysiologicalFeatureExtractor:
 
         # NaN fallback templates — used if init fails before features dict is built
         _ppg_nan = {
-            "systolic_duration": np.nan, "diastolic_duration": np.nan,
-            "systolic_area": np.nan, "diastolic_area": np.nan,
-            "systolic_slope": np.nan, "diastolic_slope": np.nan,
-            "signal_skewness": np.nan, "peak_trend_slope": np.nan,
-            "heart_rate": np.nan, "systolic_amplitude_variability": np.nan,
+            "systolic_duration": np.nan,
+            "diastolic_duration": np.nan,
+            "systolic_area": np.nan,
+            "diastolic_area": np.nan,
+            "systolic_slope": np.nan,
+            "diastolic_slope": np.nan,
+            "signal_skewness": np.nan,
+            "peak_trend_slope": np.nan,
+            "heart_rate": np.nan,
+            "systolic_amplitude_variability": np.nan,
             "diastolic_amplitude_variability": np.nan,
         }
         _ecg_nan = {
-            "qrs_duration": np.nan, "qrs_area": np.nan,
-            "qrs_amplitude": np.nan, "qrs_slope": np.nan,
-            "t_wave_area": np.nan, "heart_rate": np.nan,
+            "qrs_duration": np.nan,
+            "qrs_area": np.nan,
+            "qrs_amplitude": np.nan,
+            "qrs_slope": np.nan,
+            "t_wave_area": np.nan,
+            "heart_rate": np.nan,
             "r_peak_amplitude_variability": np.nan,
-            "signal_skewness": np.nan, "peak_trend_slope": np.nan,
+            "signal_skewness": np.nan,
+            "peak_trend_slope": np.nan,
         }
         _nan_fallback = _ppg_nan if signal_type == "PPG" else _ecg_nan
 

@@ -152,7 +152,7 @@ class SignalQuality:
         signal_power = np.mean(self.original_signal**2)
         noise_power = np.mean((self.original_signal - self.processed_signal) ** 2)
         if noise_power == 0:
-            return float('inf')
+            return float("inf")
         snr_value = 10 * np.log10(signal_power / noise_power)
         return snr_value
 
@@ -188,7 +188,7 @@ class SignalQuality:
 
         mse_value = np.mean((self.original_signal - self.processed_signal) ** 2)
         if mse_value == 0:
-            return float('inf')
+            return float("inf")
         max_signal = np.max(self.original_signal)
         psnr_value = 10 * np.log10(max_signal**2 / mse_value)
         return psnr_value
@@ -256,6 +256,6 @@ class SignalQuality:
         signal_power = np.mean(self.original_signal**2)
         noise_power = np.mean(noise_signal**2)
         if noise_power == 0:
-            return float('inf')
+            return float("inf")
         snr_value = 10 * np.log10(signal_power / noise_power)
         return snr_value

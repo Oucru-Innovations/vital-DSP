@@ -180,12 +180,12 @@ class MFCC:
 
             # Vectorized triangular filter — eliminates inner Python loops
             if f_m > f_m_minus:
-                fbank[m - 1, f_m_minus:f_m] = (
-                    (k_range[f_m_minus:f_m] - bin[m - 1]) / (bin[m] - bin[m - 1])
+                fbank[m - 1, f_m_minus:f_m] = (k_range[f_m_minus:f_m] - bin[m - 1]) / (
+                    bin[m] - bin[m - 1]
                 )
             if f_m_plus > f_m:
-                fbank[m - 1, f_m:f_m_plus] = (
-                    (bin[m + 1] - k_range[f_m:f_m_plus]) / (bin[m + 1] - bin[m])
+                fbank[m - 1, f_m:f_m_plus] = (bin[m + 1] - k_range[f_m:f_m_plus]) / (
+                    bin[m + 1] - bin[m]
                 )
 
         filter_banks = np.dot(pow_frames, fbank.T)

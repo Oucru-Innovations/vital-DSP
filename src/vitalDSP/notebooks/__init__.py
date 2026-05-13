@@ -118,7 +118,9 @@ def process_in_chunks(file_path, chunk_size=10000, fs=100, data_type="ppg"):
 def plot_trace(input_signal, output_signal=None, title="Processed Signal"):
     traces = [go.Scatter(y=input_signal, mode="lines", name="Original Signal")]
     if output_signal is not None:
-        traces.append(go.Scatter(y=output_signal, mode="lines", name="Processed Signal"))
+        traces.append(
+            go.Scatter(y=output_signal, mode="lines", name="Processed Signal")
+        )
     layout = go.Layout(
         title=title,
         xaxis=dict(title="Sample Index"),

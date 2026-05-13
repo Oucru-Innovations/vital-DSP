@@ -51,15 +51,18 @@ def sliding_window_snr(signal, window_size=100, step_size=50):
     >>> print(snr_estimates)
     """
     from scipy.ndimage import uniform_filter1d
+
     snr_estimates = []
     for i in range(0, len(signal) - window_size + 1, step_size):
         window_signal = signal[i : i + window_size]
-        smoothed = uniform_filter1d(window_signal.astype(float), size=max(3, len(window_signal) // 5))
-        signal_power = np.mean(smoothed ** 2)
+        smoothed = uniform_filter1d(
+            window_signal.astype(float), size=max(3, len(window_signal) // 5)
+        )
+        signal_power = np.mean(smoothed**2)
         noise_power = np.mean((window_signal - smoothed) ** 2)
 
         if noise_power == 0:
-            snr_estimates.append(float('inf'))
+            snr_estimates.append(float("inf"))
             continue
 
         snr = 10 * np.log10(signal_power / noise_power)
@@ -139,7 +142,7 @@ def recursive_snr_estimation(signal, alpha=0.9):
     for i, x in enumerate(signal):
         avg_mean = alpha * avg_mean + (1 - alpha) * x
         noise_estimate = (1 - alpha) * noise_estimate + alpha * (x - avg_mean) ** 2
-        signal_estimate = (1 - alpha) * signal_estimate + alpha * x ** 2
+        signal_estimate = (1 - alpha) * signal_estimate + alpha * x**2
 
         if noise_estimate == 0:
             snr = float("inf")

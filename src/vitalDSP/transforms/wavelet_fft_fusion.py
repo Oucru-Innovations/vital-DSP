@@ -108,8 +108,6 @@ class WaveletFFTfusion:
 
         # Pad each level to the length of the longest level so the result is rectangular.
         max_len = max(len(a) for a in scaled)
-        fusion_result = np.array(
-            [np.pad(a, (0, max_len - len(a))) for a in scaled]
-        )
+        fusion_result = np.array([np.pad(a, (0, max_len - len(a))) for a in scaled])
 
         return fusion_result

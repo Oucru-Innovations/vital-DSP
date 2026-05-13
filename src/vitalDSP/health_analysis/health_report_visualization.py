@@ -295,7 +295,7 @@ class HealthReportVisualizer:
             ang_min = val_to_angle(normal_min)
             ang_max = val_to_angle(normal_max)
             ang_gauge_min = np.pi  # leftmost
-            ang_gauge_max = 0.0   # rightmost
+            ang_gauge_max = 0.0  # rightmost
 
             def draw_arc_zone(a_start, a_end, color, alpha=0.85):
                 angles = np.linspace(a_start, a_end, 60)
@@ -307,37 +307,61 @@ class HealthReportVisualizer:
                 ys = np.concatenate([y_outer, y_inner])
                 ax.fill(xs, ys, color=color, alpha=alpha, zorder=2)
 
-            draw_arc_zone(ang_gauge_min, ang_min, "#e74c3c")   # below-normal zone
-            draw_arc_zone(ang_min, ang_max, "#27ae60")          # normal zone
-            draw_arc_zone(ang_max, ang_gauge_max, "#e67e22")    # above-normal zone
+            draw_arc_zone(ang_gauge_min, ang_min, "#e74c3c")  # below-normal zone
+            draw_arc_zone(ang_min, ang_max, "#27ae60")  # normal zone
+            draw_arc_zone(ang_max, ang_gauge_max, "#e67e22")  # above-normal zone
 
             # Arc border
             arc_theta = np.linspace(np.pi, 0, 200)
-            ax.plot(r_outer * np.cos(arc_theta), r_outer * np.sin(arc_theta),
-                    "k-", lw=1.5, zorder=3)
-            ax.plot(r_inner * np.cos(arc_theta), r_inner * np.sin(arc_theta),
-                    "k-", lw=1.0, zorder=3)
+            ax.plot(
+                r_outer * np.cos(arc_theta),
+                r_outer * np.sin(arc_theta),
+                "k-",
+                lw=1.5,
+                zorder=3,
+            )
+            ax.plot(
+                r_inner * np.cos(arc_theta),
+                r_inner * np.sin(arc_theta),
+                "k-",
+                lw=1.0,
+                zorder=3,
+            )
 
             # Tick marks at normal_min, mid, normal_max, and current value
             tick_vals = [normal_min, mid, normal_max]
             for tv in tick_vals:
                 ta = val_to_angle(tv)
-                ax.plot([r_inner * np.cos(ta), r_outer * np.cos(ta)],
-                        [r_inner * np.sin(ta), r_outer * np.sin(ta)],
-                        "k-", lw=2, zorder=4)
-                ax.text((r_outer + 0.07) * np.cos(ta),
-                        (r_outer + 0.07) * np.sin(ta),
-                        f"{tv:.1f}", ha="center", va="center", fontsize=8, zorder=5)
+                ax.plot(
+                    [r_inner * np.cos(ta), r_outer * np.cos(ta)],
+                    [r_inner * np.sin(ta), r_outer * np.sin(ta)],
+                    "k-",
+                    lw=2,
+                    zorder=4,
+                )
+                ax.text(
+                    (r_outer + 0.07) * np.cos(ta),
+                    (r_outer + 0.07) * np.sin(ta),
+                    f"{tv:.1f}",
+                    ha="center",
+                    va="center",
+                    fontsize=8,
+                    zorder=5,
+                )
 
             # Needle
             needle_angle = val_to_angle(current)
             needle_len = 0.75
             ax.annotate(
                 "",
-                xy=(needle_len * np.cos(needle_angle), needle_len * np.sin(needle_angle)),
+                xy=(
+                    needle_len * np.cos(needle_angle),
+                    needle_len * np.sin(needle_angle),
+                ),
                 xytext=(0, 0),
-                arrowprops=dict(arrowstyle="-|>", color="#2c3e50", lw=2.5,
-                                mutation_scale=20),
+                arrowprops=dict(
+                    arrowstyle="-|>", color="#2c3e50", lw=2.5, mutation_scale=20
+                ),
                 zorder=6,
             )
             ax.add_patch(plt.Circle((0, 0), 0.06, color="#2c3e50", zorder=7))
@@ -345,20 +369,44 @@ class HealthReportVisualizer:
             # Center annotation
             unit = FEATURE_UNITS.get(feature.lower(), "")
             label_unit = f" {unit}" if unit else ""
-            ax.text(0, -0.20, f"{current:.2f}{label_unit}",
-                    ha="center", va="center", fontsize=14, fontweight="bold",
-                    color=status_color, zorder=8)
-            ax.text(0, -0.35, status,
-                    ha="center", va="center", fontsize=11, fontweight="bold",
-                    color=status_color, zorder=8)
-            ax.text(0, -0.48,
-                    f"Normal: [{normal_min:.1f} – {normal_max:.1f}]{label_unit}",
-                    ha="center", va="center", fontsize=9, color="#555", zorder=8)
+            ax.text(
+                0,
+                -0.20,
+                f"{current:.2f}{label_unit}",
+                ha="center",
+                va="center",
+                fontsize=14,
+                fontweight="bold",
+                color=status_color,
+                zorder=8,
+            )
+            ax.text(
+                0,
+                -0.35,
+                status,
+                ha="center",
+                va="center",
+                fontsize=11,
+                fontweight="bold",
+                color=status_color,
+                zorder=8,
+            )
+            ax.text(
+                0,
+                -0.48,
+                f"Normal: [{normal_min:.1f} – {normal_max:.1f}]{label_unit}",
+                ha="center",
+                va="center",
+                fontsize=9,
+                color="#555",
+                zorder=8,
+            )
 
             ax.set_xlim(-1.2, 1.2)
             ax.set_ylim(-0.65, 1.1)
-            ax.set_title(f"{feature} — Current Value vs Normal Range",
-                         fontsize=13, pad=12)
+            ax.set_title(
+                f"{feature} — Current Value vs Normal Range", fontsize=13, pad=12
+            )
 
             # Trend inset when enough segments
             if has_trend:
@@ -411,8 +459,14 @@ class HealthReportVisualizer:
             vals = np.array([v if np.isfinite(v) else np.nan for v in values])
 
             fig, ax = plt.subplots(figsize=(8, 3))
-            ax.fill_between(seg_idx, normal_min, normal_max,
-                            color="#27ae60", alpha=0.12, label="Normal range")
+            ax.fill_between(
+                seg_idx,
+                normal_min,
+                normal_max,
+                color="#27ae60",
+                alpha=0.12,
+                label="Normal range",
+            )
             ax.axhline(normal_min, color="#27ae60", lw=0.8, ls="--", alpha=0.7)
             ax.axhline(normal_max, color="#27ae60", lw=0.8, ls="--", alpha=0.7)
             ax.plot(seg_idx, vals, color="#3498db", lw=1.5, zorder=3)
@@ -420,10 +474,12 @@ class HealthReportVisualizer:
             # Color dots by in/out of range
             in_range = finite_mask & (vals >= normal_min) & (vals <= normal_max)
             out_range = finite_mask & ~in_range
-            ax.scatter(seg_idx[in_range], vals[in_range],
-                       color="#27ae60", s=40, zorder=4)
-            ax.scatter(seg_idx[out_range], vals[out_range],
-                       color="#e74c3c", s=40, zorder=4)
+            ax.scatter(
+                seg_idx[in_range], vals[in_range], color="#27ae60", s=40, zorder=4
+            )
+            ax.scatter(
+                seg_idx[out_range], vals[out_range], color="#e74c3c", s=40, zorder=4
+            )
 
             unit = FEATURE_UNITS.get(feature.lower(), "")
             ylabel = f"{feature} ({unit})" if unit else feature
@@ -495,25 +551,54 @@ class HealthReportVisualizer:
             )
 
             mean_value = (normal_max + normal_min) / 2
-            plt.axhline(mean_value, color="green", linestyle="--",
-                        label=f"Normal Mean: {mean_value:.2f}")
-            plt.axhline(normal_min, color="blue", linestyle="--", alpha=0.6,
-                        label=f"Normal Min: {normal_min:.2f}")
-            plt.axhline(normal_max, color="red", linestyle="--", alpha=0.6,
-                        label=f"Normal Max: {normal_max:.2f}")
+            plt.axhline(
+                mean_value,
+                color="green",
+                linestyle="--",
+                label=f"Normal Mean: {mean_value:.2f}",
+            )
+            plt.axhline(
+                normal_min,
+                color="blue",
+                linestyle="--",
+                alpha=0.6,
+                label=f"Normal Min: {normal_min:.2f}",
+            )
+            plt.axhline(
+                normal_max,
+                color="red",
+                linestyle="--",
+                alpha=0.6,
+                label=f"Normal Max: {normal_max:.2f}",
+            )
 
             # Scatter individual values at x=0 (violin center)
             from collections import Counter
+
             value_counts = Counter(capped_values)
             for value, count in value_counts.items():
-                color = "red" if value == outlier_min or value == outlier_max else "blue"
-                plt.scatter([0] * count, [value] * count,
-                            color=color, zorder=5, s=50 + count * 10,
-                            edgecolors="black")
+                color = (
+                    "red" if value == outlier_min or value == outlier_max else "blue"
+                )
+                plt.scatter(
+                    [0] * count,
+                    [value] * count,
+                    color=color,
+                    zorder=5,
+                    s=50 + count * 10,
+                    edgecolors="black",
+                )
 
             median_value = np.median(capped_values)
-            plt.scatter(0, median_value, color="purple", zorder=6, s=150,
-                        edgecolors="black", label=f"Median: {median_value:.2f}")
+            plt.scatter(
+                0,
+                median_value,
+                color="purple",
+                zorder=6,
+                s=150,
+                edgecolors="black",
+                label=f"Median: {median_value:.2f}",
+            )
 
             unit = FEATURE_UNITS.get(feature.lower(), "")
             ylabel = f"{feature} ({unit})" if unit else f"{feature} Values"
@@ -558,41 +643,76 @@ class HealthReportVisualizer:
 
             outlier_min = normal_min - 1.5 * (normal_max - normal_min)
             outlier_max = normal_max + 1.5 * (normal_max - normal_min)
-            capped_values = [
-                max(outlier_min, min(outlier_max, v)) for v in values
-            ]
+            capped_values = [max(outlier_min, min(outlier_max, v)) for v in values]
 
             plt.figure(figsize=(8, 6))
             sns.set(style="whitegrid")
 
             if len(capped_values) == 1:
                 # Single value: scatter point against normal range band
-                plt.axhspan(normal_min, normal_max, color="#A9DFBF", alpha=0.35,
-                            label="Normal Range")
-                plt.scatter([0], capped_values, color="#34495E", s=120,
-                            edgecolor="black", zorder=5, label="Value")
+                plt.axhspan(
+                    normal_min,
+                    normal_max,
+                    color="#A9DFBF",
+                    alpha=0.35,
+                    label="Normal Range",
+                )
+                plt.scatter(
+                    [0],
+                    capped_values,
+                    color="#34495E",
+                    s=120,
+                    edgecolor="black",
+                    zorder=5,
+                    label="Value",
+                )
                 plt.xlim(-0.5, 0.5)
             else:
                 # Box + swarm using data= keyword (seaborn ≥0.12)
                 sns.boxplot(data=capped_values, color="#D0E1F9", linewidth=2, width=0.3)
-                sns.swarmplot(data=capped_values, color="#34495E", size=6,
-                              edgecolor="black", alpha=0.8)
+                sns.swarmplot(
+                    data=capped_values,
+                    color="#34495E",
+                    size=6,
+                    edgecolor="black",
+                    alpha=0.8,
+                )
                 # Normal range shading using axhspan (axis-relative, always correct)
-                plt.axhspan(normal_min, normal_max, color="#A9DFBF", alpha=0.25,
-                            label="Normal Range")
+                plt.axhspan(
+                    normal_min,
+                    normal_max,
+                    color="#A9DFBF",
+                    alpha=0.25,
+                    label="Normal Range",
+                )
 
             mean_value = (normal_max + normal_min) / 2
-            plt.axhline(mean_value, color="#27AE60", linestyle="--",
-                        label=f"Normal Mean: {mean_value:.2f}")
-            plt.axhline(normal_min, color="#E74C3C", linestyle="--", alpha=0.6,
-                        label=f"Normal Min: {normal_min:.2f}")
-            plt.axhline(normal_max, color="#E74C3C", linestyle="--", alpha=0.6,
-                        label=f"Normal Max: {normal_max:.2f}")
+            plt.axhline(
+                mean_value,
+                color="#27AE60",
+                linestyle="--",
+                label=f"Normal Mean: {mean_value:.2f}",
+            )
+            plt.axhline(
+                normal_min,
+                color="#E74C3C",
+                linestyle="--",
+                alpha=0.6,
+                label=f"Normal Min: {normal_min:.2f}",
+            )
+            plt.axhline(
+                normal_max,
+                color="#E74C3C",
+                linestyle="--",
+                alpha=0.6,
+                label=f"Normal Max: {normal_max:.2f}",
+            )
 
             unit = FEATURE_UNITS.get(feature.lower(), "")
             ylabel = f"{feature} ({unit})" if unit else f"{feature} Values"
-            plt.title(f"{feature} Distribution and Data Points", fontsize=14,
-                      color="#2C3E50")
+            plt.title(
+                f"{feature} Distribution and Data Points", fontsize=14, color="#2C3E50"
+            )
             plt.xlabel("")
             plt.ylabel(ylabel, fontsize=12, color="#2C3E50")
             plt.xticks([])
@@ -605,7 +725,9 @@ class HealthReportVisualizer:
             sns.despine(left=True, bottom=True)
 
             os.makedirs(output_dir, exist_ok=True)
-            filepath = os.path.join(output_dir, f"{feature}_enhanced_box_swarm_plot.png")
+            filepath = os.path.join(
+                output_dir, f"{feature}_enhanced_box_swarm_plot.png"
+            )
             plt.savefig(filepath, bbox_inches="tight", dpi=150)
             plt.close()
         except Exception as e:
@@ -646,22 +768,40 @@ class HealthReportVisualizer:
 
             plt.figure(figsize=(12, 6))
             plt.plot(df["time"], df["data"], label="Data", color="blue", alpha=0.7)
-            plt.plot(df["time"], df["rolling_mean"], label=f"Rolling Mean (w={window})",
-                     color="orange", linestyle="--", linewidth=2)
+            plt.plot(
+                df["time"],
+                df["rolling_mean"],
+                label=f"Rolling Mean (w={window})",
+                color="orange",
+                linestyle="--",
+                linewidth=2,
+            )
             plt.fill_between(
                 df["time"],
                 df["rolling_mean"] - df["rolling_std"],
                 df["rolling_mean"] + df["rolling_std"],
-                color="orange", alpha=0.3, label="Rolling ±1 SD",
+                color="orange",
+                alpha=0.3,
+                label="Rolling ±1 SD",
             )
 
             normal_min, normal_max = self._fetch_and_validate_normal_range(
                 feature, values[0]
             )
-            plt.axhline(normal_min, color="red", linestyle="--", linewidth=1.5,
-                        label=f"Normal Min: {normal_min}")
-            plt.axhline(normal_max, color="red", linestyle="--", linewidth=1.5,
-                        label=f"Normal Max: {normal_max}")
+            plt.axhline(
+                normal_min,
+                color="red",
+                linestyle="--",
+                linewidth=1.5,
+                label=f"Normal Min: {normal_min}",
+            )
+            plt.axhline(
+                normal_max,
+                color="red",
+                linestyle="--",
+                linewidth=1.5,
+                label=f"Normal Max: {normal_max}",
+            )
             plt.axhspan(normal_min, normal_max, color="#27ae60", alpha=0.08)
 
             # Peak detection only when enough data to be meaningful
@@ -669,10 +809,22 @@ class HealthReportVisualizer:
                 series = df["data"].dropna()
                 peaks = find_peaks(series.values)
                 troughs = find_peaks(-series.values)
-                plt.scatter(df["time"].iloc[peaks], df["data"].iloc[peaks],
-                            color="purple", s=80, label="Peaks", zorder=5)
-                plt.scatter(df["time"].iloc[troughs], df["data"].iloc[troughs],
-                            color="cyan", s=80, label="Troughs", zorder=5)
+                plt.scatter(
+                    df["time"].iloc[peaks],
+                    df["data"].iloc[peaks],
+                    color="purple",
+                    s=80,
+                    label="Peaks",
+                    zorder=5,
+                )
+                plt.scatter(
+                    df["time"].iloc[troughs],
+                    df["data"].iloc[troughs],
+                    color="cyan",
+                    s=80,
+                    label="Troughs",
+                    zorder=5,
+                )
 
             lo, hi = self._get_plot_bounds(normal_min, normal_max, list(values))
             plt.ylim(lo, hi)
@@ -686,7 +838,9 @@ class HealthReportVisualizer:
             plt.grid(True, linestyle="--", linewidth=0.6, alpha=0.5)
 
             os.makedirs(output_dir, exist_ok=True)
-            filepath = os.path.join(output_dir, f"{feature}_line_with_enhanced_stats.png")
+            filepath = os.path.join(
+                output_dir, f"{feature}_line_with_enhanced_stats.png"
+            )
             plt.savefig(filepath, bbox_inches="tight", dpi=150)
             plt.close()
         except Exception as e:
@@ -755,19 +909,40 @@ class HealthReportVisualizer:
             n = len(features)
             fig, ax = plt.subplots(figsize=(max(10, n * 0.9 + 2), 5))
 
-            bars = ax.bar(features, normalized_vals, color=colors, edgecolor="white",
-                          linewidth=1.2, zorder=3)
+            bars = ax.bar(
+                features,
+                normalized_vals,
+                color=colors,
+                edgecolor="white",
+                linewidth=1.2,
+                zorder=3,
+            )
 
             # Reference lines at 0% (normal_min) and 100% (normal_max)
-            ax.axhline(0, color="#27ae60", lw=1.5, ls="--", label="Normal min (0%)", zorder=4)
-            ax.axhline(100, color="#27ae60", lw=1.5, ls="--", label="Normal max (100%)", zorder=4)
+            ax.axhline(
+                0, color="#27ae60", lw=1.5, ls="--", label="Normal min (0%)", zorder=4
+            )
+            ax.axhline(
+                100,
+                color="#27ae60",
+                lw=1.5,
+                ls="--",
+                label="Normal max (100%)",
+                zorder=4,
+            )
             ax.axhspan(0, 100, color="#27ae60", alpha=0.06, zorder=2)
 
             for bar, label in zip(bars, value_labels):
                 ypos = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width() / 2,
-                        ypos + 2, label, ha="center", va="bottom",
-                        fontsize=8, fontweight="bold")
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    ypos + 2,
+                    label,
+                    ha="center",
+                    va="bottom",
+                    fontsize=8,
+                    fontweight="bold",
+                )
 
             legend_patches = [
                 mpatches.Patch(color="#27ae60", label="In range"),

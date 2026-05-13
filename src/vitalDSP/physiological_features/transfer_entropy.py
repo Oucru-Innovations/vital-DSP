@@ -815,10 +815,14 @@ class TransferEntropy:
                 n = len(fft)
                 phases = np.random.uniform(0, 2 * np.pi, n // 2 - 1)
                 fft_randomized = fft.copy()
-                fft_randomized[1:n//2] = np.abs(fft[1:n//2]) * np.exp(1j * phases)
+                fft_randomized[1 : n // 2] = np.abs(fft[1 : n // 2]) * np.exp(
+                    1j * phases
+                )
                 if n % 2 == 0:
-                    fft_randomized[n//2] = np.abs(fft[n//2])
-                fft_randomized[n//2 + 1:] = np.conj(fft_randomized[1 : n - n//2][::-1])
+                    fft_randomized[n // 2] = np.abs(fft[n // 2])
+                fft_randomized[n // 2 + 1 :] = np.conj(
+                    fft_randomized[1 : n - n // 2][::-1]
+                )
                 surrogate_source = np.real(np.fft.ifft(fft_randomized))
             else:
                 raise ValueError(f"Unknown method: {method}")
@@ -849,9 +853,7 @@ class TransferEntropy:
             p_value = float(np.mean(surrogate_arr >= te_original))
             surr_mean = float(np.mean(surrogate_arr))
             surr_std = float(np.std(surrogate_arr))
-            effect_size = (
-                (te_original - surr_mean) / surr_std if surr_std > 0 else 0.0
-            )
+            effect_size = (te_original - surr_mean) / surr_std if surr_std > 0 else 0.0
         else:
             warnings.warn(
                 "All surrogate calculations failed. Cannot compute p-value.",

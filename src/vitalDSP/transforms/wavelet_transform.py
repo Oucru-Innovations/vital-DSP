@@ -131,10 +131,11 @@ class WaveletTransform:
         else:
             self.low_pass = filters
             import warnings
+
             warnings.warn(
                 f"Wavelet '{self.wavelet_name}' is a continuous wavelet and may not be suitable for DWT. "
                 "Using a default difference filter for the high-pass component.",
-                UserWarning
+                UserWarning,
             )
             self.high_pass = np.array([1, -1])
 

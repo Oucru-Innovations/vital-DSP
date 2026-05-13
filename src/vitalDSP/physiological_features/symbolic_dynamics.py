@@ -313,22 +313,23 @@ class SymbolicDynamics:
             v2 = abs(d2) > delta
 
             if not v1 and not v2:
-                symbol = 0   # 0V: no significant variation
+                symbol = 0  # 0V: no significant variation
             elif v1 != v2:
-                symbol = 1   # 1V: one significant variation
+                symbol = 1  # 1V: one significant variation
             elif d1 * d2 > 0:
-                symbol = 2   # 2LV: two like variations (monotonic)
+                symbol = 2  # 2LV: two like variations (monotonic)
             else:
-                symbol = 3   # 2UV: two unlike variations (oscillatory)
+                symbol = 3  # 2UV: two unlike variations (oscillatory)
 
             symbols.append(symbol)
 
         if self.n_symbols != 4:
             import warnings
+
             warnings.warn(
                 f"0V symbolization always produces exactly 4 symbols (0-3). "
                 f"n_symbols={self.n_symbols} is ignored for this method.",
-                UserWarning
+                UserWarning,
             )
 
         return np.array(symbols)
@@ -554,9 +555,13 @@ class SymbolicDynamics:
         elif forbidden_pct > 20:
             interpretation = "Moderate forbidden words — some regulatory constraints"
         elif forbidden_pct > 0:
-            interpretation = "Few forbidden words — flexible regulation (typically healthy)"
+            interpretation = (
+                "Few forbidden words — flexible regulation (typically healthy)"
+            )
         else:
-            interpretation = "No forbidden words — complete randomness (e.g., atrial fibrillation)"
+            interpretation = (
+                "No forbidden words — complete randomness (e.g., atrial fibrillation)"
+            )
 
         return {
             "forbidden_words": forbidden_words,
@@ -657,7 +662,9 @@ class SymbolicDynamics:
         if alpha == 1.0:
             # Shannon entropy (alpha→1 limit of Renyi entropy)
             result = self.compute_shannon_entropy()
-            return float(result["entropy"]) if isinstance(result, dict) else float(result)
+            return (
+                float(result["entropy"]) if isinstance(result, dict) else float(result)
+            )
 
         if alpha == 0.0:
             # Hartley entropy

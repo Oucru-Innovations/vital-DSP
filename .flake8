@@ -1,0 +1,31 @@
+[flake8]
+max-line-length = 88
+exclude =
+    .git,
+    __pycache__,
+    build,
+    dist,
+    .venv,
+    venv,
+    env,
+    *.egg-info,
+    .tox,
+    .mypy_cache,
+    .pytest_cache,
+    cov_html
+ignore =
+    E203,
+    E226,
+    E266,
+    E302,
+    E402,
+    E501,
+    E731,
+    E741,
+    W503,
+    F401,
+    F541,
+    F811,
+    F841,
+    F403,
+    F405

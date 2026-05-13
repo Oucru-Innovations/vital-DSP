@@ -598,7 +598,9 @@ class DataLoader:
                     timestamps_for_conversion = timestamps
 
                 base_timestamps_sec = (
-                    (timestamps_for_conversion - pd.Timestamp("1970-01-01")) / pd.Timedelta("1s")
+                    timestamps_for_conversion - pd.Timestamp("1970-01-01")
+                ) / pd.Timedelta(
+                    "1s"
                 )  # Convert to seconds (resolution-agnostic)
 
                 # Create offset array: [0, 1/fs, 2/fs, ..., (n_samples_per_row-1)/fs] repeated for each row
@@ -882,7 +884,9 @@ class DataLoader:
                 else:
                     timestamps_for_conversion = timestamps
 
-                base_timestamps_sec = (timestamps_for_conversion - pd.Timestamp("1970-01-01")) / pd.Timedelta("1s")
+                base_timestamps_sec = (
+                    timestamps_for_conversion - pd.Timestamp("1970-01-01")
+                ) / pd.Timedelta("1s")
 
                 # Create vectorized arrays
                 sample_offsets = np.tile(time_deltas_per_row, n_rows)

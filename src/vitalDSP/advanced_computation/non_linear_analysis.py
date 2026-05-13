@@ -140,8 +140,8 @@ class NonlinearAnalysis:
                 )
 
         # Phase-space embedding parameters (Rosenstein algorithm)
-        tau = 1   # Time delay
-        dim = 2   # Embedding dimension
+        tau = 1  # Time delay
+        dim = 2  # Embedding dimension
         min_sep = max(1, int(0.1 * n))  # Theiler window (minimum temporal separation)
 
         # Create delay-embedded phase space
@@ -149,7 +149,7 @@ class NonlinearAnalysis:
         if n_emb < max_iter + min_sep + 1:
             return np.nan
 
-        embedded = np.array([signal[i:i + dim * tau:tau] for i in range(n_emb)])
+        embedded = np.array([signal[i : i + dim * tau : tau] for i in range(n_emb)])
 
         all_log_ratios = []
         skipped_points = 0
@@ -200,7 +200,7 @@ class NonlinearAnalysis:
         max_len = max(len(r) for r in all_log_ratios)
         padded = np.full((len(all_log_ratios), max_len), np.nan)
         for i, r in enumerate(all_log_ratios):
-            padded[i, :len(r)] = r
+            padded[i, : len(r)] = r
 
         avg_log_div = np.nanmean(padded, axis=0)
         time_indices = np.arange(1, len(avg_log_div) + 1)
@@ -327,7 +327,9 @@ class NonlinearAnalysis:
         m = 2
         if n <= (m - 1) * tau:
             return 0.0
-        embedded = np.array([signal[i:i + (m-1)*tau + 1:tau] for i in range(n - (m-1)*tau)])
+        embedded = np.array(
+            [signal[i : i + (m - 1) * tau + 1 : tau] for i in range(n - (m - 1) * tau)]
+        )
         n_emb = len(embedded)
 
         # Compute C(r) at multiple radii and use slope in log-log space
@@ -338,6 +340,7 @@ class NonlinearAnalysis:
         log_C = []
         log_r = []
         from scipy.spatial import cKDTree
+
         tree = cKDTree(embedded)
         n_pairs = n_emb * (n_emb - 1) / 2 if n_emb > 1 else 1
         for r in radii:

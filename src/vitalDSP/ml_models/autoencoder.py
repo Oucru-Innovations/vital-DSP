@@ -845,12 +845,16 @@ class ConvolutionalAutoencoder(BaseAutoencoder):
                 excess = current_length - target_length
                 crop_left = excess // 2
                 crop_right = excess - crop_left
-                decoder_output = layers.Cropping1D((crop_left, crop_right))(decoder_output)
+                decoder_output = layers.Cropping1D((crop_left, crop_right))(
+                    decoder_output
+                )
             else:
                 pad_total = target_length - current_length
                 pad_left = pad_total // 2
                 pad_right = pad_total - pad_left
-                decoder_output = layers.ZeroPadding1D((pad_left, pad_right))(decoder_output)
+                decoder_output = layers.ZeroPadding1D((pad_left, pad_right))(
+                    decoder_output
+                )
 
         self.decoder = Model(decoder_input, decoder_output, name="decoder")
 
@@ -930,7 +934,9 @@ class ConvolutionalAutoencoder(BaseAutoencoder):
             train_dataset = TensorDataset(
                 torch.FloatTensor(X_train), torch.FloatTensor(X_train)
             )
-            train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+            train_loader = DataLoader(
+                train_dataset, batch_size=batch_size, shuffle=True
+            )
 
             self.history = {"loss": [], "val_loss": []}
 
@@ -947,7 +953,9 @@ class ConvolutionalAutoencoder(BaseAutoencoder):
                 self.history["loss"].append(epoch_loss / len(train_loader))
 
                 if verbose:
-                    print(f"Epoch {epoch+1}/{epochs} - loss: {self.history['loss'][-1]:.4f}")
+                    print(
+                        f"Epoch {epoch+1}/{epochs} - loss: {self.history['loss'][-1]:.4f}"
+                    )
 
         return self
 

@@ -231,8 +231,8 @@ class HRVFeatures:
 
             try:
                 if include_complex_methods:
-                    features["sample_entropy"] = nonlinear_features.compute_sample_entropy(
-                        **kwargs
+                    features["sample_entropy"] = (
+                        nonlinear_features.compute_sample_entropy(**kwargs)
                     )
                     features["approximate_entropy"] = (
                         nonlinear_features.compute_approximate_entropy(**kwargs)

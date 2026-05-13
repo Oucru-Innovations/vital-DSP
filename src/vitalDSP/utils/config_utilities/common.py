@@ -144,9 +144,15 @@ def find_peaks(
             if peaks and distance is not None and i - peaks[-1] < distance:
                 continue
             if prominence is not None:
-                prom_window = int(distance / 2) if distance is not None else max(1, signal_len // 10)
+                prom_window = (
+                    int(distance / 2)
+                    if distance is not None
+                    else max(1, signal_len // 10)
+                )
                 left_base = np.min(signal[max(0, i - prom_window) : i])
-                right_base = np.min(signal[i + 1 : min(signal_len, i + prom_window + 1)])
+                right_base = np.min(
+                    signal[i + 1 : min(signal_len, i + prom_window + 1)]
+                )
                 # prominence = peak height above the higher of the two bases
                 if signal[i] - max(left_base, right_base) < prominence:
                     continue
@@ -271,7 +277,9 @@ def pearsonr(x, y):
     std_y = np.sqrt(np.sum((y - mean_y) ** 2))
 
     if std_x == 0 or std_y == 0:
-        return 0.0  # Correlation undefined for constant signal; return 0 (no correlation)
+        return (
+            0.0  # Correlation undefined for constant signal; return 0 (no correlation)
+        )
 
     correlation = cov_xy / (std_x * std_y)
     return correlation
@@ -364,9 +372,9 @@ def grangercausalitytests(data, max_lag, verbose=False):
     results = {}
 
     for lag in range(1, max_lag + 1):
-        y = data[lag:, 0]                       # Response: signal1 at times lag..n
-        y_lags = lag_matrix(data[:, 0], lag)    # Lagged signal1 (autoregressive terms)
-        x_lags = lag_matrix(data[:, 1], lag)    # Lagged signal2 (causal terms)
+        y = data[lag:, 0]  # Response: signal1 at times lag..n
+        y_lags = lag_matrix(data[:, 0], lag)  # Lagged signal1 (autoregressive terms)
+        x_lags = lag_matrix(data[:, 1], lag)  # Lagged signal2 (causal terms)
 
         # Restricted model: regress signal1 on its own lags only
         b_r = np.linalg.lstsq(y_lags, y, rcond=None)[0]
@@ -381,7 +389,11 @@ def grangercausalitytests(data, max_lag, verbose=False):
         df_denominator = max(len(y) - 2 * lag - 1, 1)
         f_statistic = ((ssr_r - ssr_u) / df_numerator) / (ssr_u / df_denominator)
 
-        results[lag] = {"ssr_ftest": f_statistic, "ssr_restricted": ssr_r, "ssr_unrestricted": ssr_u}
+        results[lag] = {
+            "ssr_ftest": f_statistic,
+            "ssr_restricted": ssr_r,
+            "ssr_unrestricted": ssr_u,
+        }
 
         if verbose:
             logger.info(f"Lag: {lag}, F-statistic: {f_statistic:.4f}")

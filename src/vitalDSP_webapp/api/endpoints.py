@@ -32,47 +32,72 @@ router = APIRouter()
 
 # ==================== Request/Response Models ====================
 
+
 class SignalData(BaseModel):
     """Input signal data model"""
+
     data: List[float] = Field(..., description="Signal data points")
     sampling_rate: Optional[float] = Field(250.0, description="Sampling rate in Hz")
-    signal_type: Optional[str] = Field("ECG", description="Type of signal (ECG, PPG, etc.)")
+    signal_type: Optional[str] = Field(
+        "ECG", description="Type of signal (ECG, PPG, etc.)"
+    )
+
 
 class FilterRequest(BaseModel):
     """Request model for signal filtering"""
+
     data: List[float]
     sampling_rate: float = 250.0
-    filter_type: str = Field(..., description="Filter type: butterworth, chebyshev, elliptic, bessel, gaussian, savgol")
+    filter_type: str = Field(
+        ...,
+        description="Filter type: butterworth, chebyshev, elliptic, bessel, gaussian, savgol",
+    )
     low_cutoff: Optional[float] = None
     high_cutoff: Optional[float] = None
     order: Optional[int] = 5
 
+
 class FeatureExtractionRequest(BaseModel):
     """Request model for feature extraction"""
+
     data: List[float]
     sampling_rate: float = 250.0
-    feature_type: str = Field(..., description="Feature type: time_domain, frequency_domain, hrv, nonlinear")
+    feature_type: str = Field(
+        ..., description="Feature type: time_domain, frequency_domain, hrv, nonlinear"
+    )
+
 
 class RespiratoryRequest(BaseModel):
     """Request model for respiratory analysis"""
+
     data: List[float]
     sampling_rate: float = 250.0
     signal_type: str = Field("PPG", description="Signal type: ECG, PPG")
-    method: Optional[str] = Field("fft", description="Method: fft, wavelet, peak_detection")
+    method: Optional[str] = Field(
+        "fft", description="Method: fft, wavelet, peak_detection"
+    )
+
 
 class TransformRequest(BaseModel):
     """Request model for signal transforms"""
+
     data: List[float]
     sampling_rate: float = 250.0
-    transform_type: str = Field(..., description="Transform type: fft, wavelet, stft, hilbert")
+    transform_type: str = Field(
+        ..., description="Transform type: fft, wavelet, stft, hilbert"
+    )
+
 
 class QualityAssessmentRequest(BaseModel):
     """Request model for signal quality assessment"""
+
     original_data: List[float]
     processed_data: Optional[List[float]] = None
     sampling_rate: float = 250.0
 
+
 # ==================== Health & System Endpoints ====================
+
 
 @router.get("/health", tags=["System"])
 async def health_check():
@@ -95,6 +120,7 @@ async def health_check():
         "disk_usage": f"{psutil.disk_usage('/').percent}%",
     }
 
+
 @router.get("/version", tags=["System"])
 async def get_version():
     """Get VitalDSP version information"""
@@ -105,7 +131,9 @@ async def get_version():
         "python_version": "3.9+",
     }
 
+
 # ==================== Signal Filtering Endpoints ====================
+
 
 @router.post("/filter/butterworth", tags=["Filtering"])
 async def apply_butterworth_filter(request: FilterRequest):
@@ -123,30 +151,31 @@ async def apply_butterworth_filter(request: FilterRequest):
             filtered = filter_obj.bandpass_filter(
                 lowcut=request.low_cutoff,
                 highcut=request.high_cutoff,
-                order=request.order
+                order=request.order,
             )
         elif request.low_cutoff:
             # Highpass
             filtered = filter_obj.highpass_filter(
-                cutoff=request.low_cutoff,
-                order=request.order
+                cutoff=request.low_cutoff, order=request.order
             )
         elif request.high_cutoff:
             # Lowpass
             filtered = filter_obj.lowpass_filter(
-                cutoff=request.high_cutoff,
-                order=request.order
+                cutoff=request.high_cutoff, order=request.order
             )
         else:
-            raise HTTPException(status_code=400, detail="Must specify cutoff frequencies")
+            raise HTTPException(
+                status_code=400, detail="Must specify cutoff frequencies"
+            )
 
         return {
             "filtered_data": filtered.tolist(),
             "filter_type": "butterworth",
-            "sampling_rate": request.sampling_rate
+            "sampling_rate": request.sampling_rate,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/filter/adaptive", tags=["Filtering"])
 async def apply_adaptive_filter(request: SignalData):
@@ -163,12 +192,14 @@ async def apply_adaptive_filter(request: SignalData):
         return {
             "filtered_data": filtered.tolist(),
             "filter_type": "adaptive",
-            "sampling_rate": request.sampling_rate
+            "sampling_rate": request.sampling_rate,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # ==================== Feature Extraction Endpoints ====================
+
 
 @router.post("/features/time-domain", tags=["Feature Extraction"])
 async def extract_time_domain_features(request: FeatureExtractionRequest):
@@ -189,10 +220,11 @@ async def extract_time_domain_features(request: FeatureExtractionRequest):
         return {
             "features": features,
             "feature_type": "time_domain",
-            "sampling_rate": request.sampling_rate
+            "sampling_rate": request.sampling_rate,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/features/frequency-domain", tags=["Feature Extraction"])
 async def extract_frequency_domain_features(request: FeatureExtractionRequest):
@@ -213,10 +245,11 @@ async def extract_frequency_domain_features(request: FeatureExtractionRequest):
         return {
             "features": features,
             "feature_type": "frequency_domain",
-            "sampling_rate": request.sampling_rate
+            "sampling_rate": request.sampling_rate,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/features/hrv", tags=["Feature Extraction"])
 async def extract_hrv_features(request: FeatureExtractionRequest):
@@ -236,12 +269,14 @@ async def extract_hrv_features(request: FeatureExtractionRequest):
         return {
             "features": features,
             "feature_type": "hrv",
-            "sampling_rate": request.sampling_rate
+            "sampling_rate": request.sampling_rate,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # ==================== Respiratory Analysis Endpoints ====================
+
 
 @router.post("/respiratory/estimate-rate", tags=["Respiratory Analysis"])
 async def estimate_respiratory_rate(request: RespiratoryRequest):
@@ -270,12 +305,14 @@ async def estimate_respiratory_rate(request: RespiratoryRequest):
             "respiratory_rate": rr,
             "method": request.method,
             "signal_type": request.signal_type,
-            "unit": "breaths per minute"
+            "unit": "breaths per minute",
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # ==================== Signal Quality Endpoints ====================
+
 
 @router.post("/quality/assess", tags=["Signal Quality"])
 async def assess_signal_quality(request: QualityAssessmentRequest):
@@ -290,7 +327,9 @@ async def assess_signal_quality(request: QualityAssessmentRequest):
     """
     try:
         original = np.array(request.original_data)
-        processed = np.array(request.processed_data) if request.processed_data else original
+        processed = (
+            np.array(request.processed_data) if request.processed_data else original
+        )
 
         quality_obj = SignalQuality(original, processed)
 
@@ -298,17 +337,16 @@ async def assess_signal_quality(request: QualityAssessmentRequest):
             "snr_db": quality_obj.snr(),
             "quality_index": quality_obj.signal_quality_index(),
             "has_artifacts": quality_obj.detect_artifacts(),
-            "quality_score": quality_obj.overall_quality_score()
+            "quality_score": quality_obj.overall_quality_score(),
         }
 
-        return {
-            "quality_metrics": metrics,
-            "sampling_rate": request.sampling_rate
-        }
+        return {"quality_metrics": metrics, "sampling_rate": request.sampling_rate}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # ==================== Transform Endpoints ====================
+
 
 @router.post("/transform/fft", tags=["Transforms"])
 async def apply_fft(request: TransformRequest):
@@ -326,10 +364,11 @@ async def apply_fft(request: TransformRequest):
             "frequencies": frequencies.tolist(),
             "magnitudes": magnitudes.tolist(),
             "transform_type": "fft",
-            "sampling_rate": request.sampling_rate
+            "sampling_rate": request.sampling_rate,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/transform/wavelet", tags=["Transforms"])
 async def apply_wavelet(request: TransformRequest):
@@ -346,12 +385,14 @@ async def apply_wavelet(request: TransformRequest):
         return {
             "coefficients": [c.tolist() for c in coefficients],
             "transform_type": "wavelet",
-            "sampling_rate": request.sampling_rate
+            "sampling_rate": request.sampling_rate,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # ==================== Health Report Endpoints ====================
+
 
 @router.post("/health-report/generate", tags=["Health Analysis"])
 async def generate_health_report(request: SignalData):
@@ -372,12 +413,14 @@ async def generate_health_report(request: SignalData):
         return {
             "report": report,
             "signal_type": request.signal_type,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # ==================== Batch Processing Endpoints ====================
+
 
 @router.post("/batch/process", tags=["Batch Processing"])
 async def batch_process_signals(signals: List[SignalData]):
@@ -396,15 +439,14 @@ async def batch_process_signals(signals: List[SignalData]):
             features_obj = TimeDomainFeatures(filtered, signal_data.sampling_rate)
             features = features_obj.extract_features()
 
-            results.append({
-                "signal_type": signal_data.signal_type,
-                "filtered_data": filtered.tolist(),
-                "features": features
-            })
+            results.append(
+                {
+                    "signal_type": signal_data.signal_type,
+                    "filtered_data": filtered.tolist(),
+                    "features": features,
+                }
+            )
 
-        return {
-            "processed_count": len(results),
-            "results": results
-        }
+        return {"processed_count": len(results), "results": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

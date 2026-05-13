@@ -428,16 +428,18 @@ class HealthFeatureExtractor:
 
             # Create embedding matrix: shape (N - m_val, m_val)
             from numpy.lib.stride_tricks import as_strided
+
             templates = as_strided(
                 signal_data,
                 shape=(N - m_val, m_val),
                 strides=(signal_data.strides[0], signal_data.strides[0]),
-                writeable=False
+                writeable=False,
             )
             templates = np.ascontiguousarray(templates)
 
             # Build KD-Tree with Chebyshev (L-infinity) metric
             from scipy.spatial import cKDTree
+
             tree = cKDTree(templates, leafsize=40)
 
             # Count neighbors within radius r using Chebyshev distance

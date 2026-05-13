@@ -124,7 +124,9 @@ class EnergyAnalysis:
         band_mask = (f >= low_freq) & (f <= high_freq)
         f_band = f[band_mask]
         band_psd = psd[band_mask]
-        band_energy = np.trapz(band_psd, f_band) if len(f_band) > 1 else np.sum(band_psd)
+        band_energy = (
+            np.trapz(band_psd, f_band) if len(f_band) > 1 else np.sum(band_psd)
+        )
         return band_energy
 
     def compute_qrs_energy(self, r_peaks):

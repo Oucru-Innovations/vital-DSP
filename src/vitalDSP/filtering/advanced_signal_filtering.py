@@ -421,7 +421,9 @@ class AdvancedSignalFiltering:
             aggregated = np.zeros(len(self.signal), dtype=np.float64)
             count = 0
             for _ in range(num_iterations):
-                perturbed = original_signal + np.random.randn(len(original_signal)) * noise_std
+                perturbed = (
+                    original_signal + np.random.randn(len(original_signal)) * noise_std
+                )
                 self.signal = perturbed
                 for filter_func in filters:
                     try:
@@ -604,7 +606,7 @@ class AdvancedSignalFiltering:
             if i < filter_order:
                 x = np.concatenate([np.zeros(filter_order - i), self.signal[:i][::-1]])
             else:
-                x = self.signal[i - filter_order:i][::-1]
+                x = self.signal[i - filter_order : i][::-1]
 
             # Guard against unexpected slice lengths (e.g. from mock signals in tests)
             if len(x) != filter_order:

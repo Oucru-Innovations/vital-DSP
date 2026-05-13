@@ -173,7 +173,11 @@ class PeakDetection:
         height_threshold = mean_signal + (self.threshold_factor * std_signal)
         prominence_threshold = self.prominence
         default_distance = int(0.3 * self.fs)
-        min_distance = max(self.distance, default_distance) if self.distance is not None else default_distance
+        min_distance = (
+            max(self.distance, default_distance)
+            if self.distance is not None
+            else default_distance
+        )
         # Step 4: Detect peaks based on height and prominence thresholds.
         peaks = find_peaks(
             self.signal,

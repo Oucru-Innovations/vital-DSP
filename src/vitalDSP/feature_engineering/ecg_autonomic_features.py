@@ -143,9 +143,7 @@ class ECGExtractor:
         if r_peaks is None:
             r_peaks = self.detect_r_peaks()
         q_valleys = self.morphology.detect_q_valley(r_peaks=r_peaks)
-        p_peaks = self.morphology.detect_p_peak(
-            r_peaks=r_peaks, q_valleys=q_valleys
-        )
+        p_peaks = self.morphology.detect_p_peak(r_peaks=r_peaks, q_valleys=q_valleys)
         if len(p_peaks) == 0:
             return 0.0
 
@@ -184,9 +182,7 @@ class ECGExtractor:
         if r_peaks is None:
             r_peaks = self.detect_r_peaks()
         q_valleys = self.morphology.detect_q_valley(r_peaks=r_peaks)
-        p_peaks = self.morphology.detect_p_peak(
-            r_peaks=r_peaks, q_valleys=q_valleys
-        )
+        p_peaks = self.morphology.detect_p_peak(r_peaks=r_peaks, q_valleys=q_valleys)
         if len(p_peaks) == 0 or len(q_valleys) == 0:
             return 0.0
 

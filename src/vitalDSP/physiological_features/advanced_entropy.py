@@ -412,9 +412,9 @@ class MultiScaleEntropy:
                 "Signal may be too short or tolerance too small. Returning NaN.",
                 UserWarning,
             )
-            return float('nan')
+            return float("nan")
         if A == 0:
-            return float('inf')
+            return float("inf")
 
         # Sample Entropy = -ln(A/B)
         sampen = -np.log(A / B)

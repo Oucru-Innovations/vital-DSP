@@ -33,7 +33,7 @@ def detect_apnea_amplitude(
     threshold,
     min_duration=10,
     preprocess=None,
-    **preprocess_kwargs
+    **preprocess_kwargs,
 ):
     """
     Detect sleep apnea events based on amplitude thresholding.

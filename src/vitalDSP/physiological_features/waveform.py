@@ -1641,7 +1641,9 @@ class WaveformMorphology:
             >>> print(wavelet_features)
         """
         if self.signal_type != "EEG":
-            raise ValueError("EEG wavelet features can only be computed for EEG signals.")
+            raise ValueError(
+                "EEG wavelet features can only be computed for EEG signals."
+            )
         signal = self.waveform
         n = len(signal)
         fft_vals = np.fft.rfft(signal)
@@ -1656,7 +1658,13 @@ class WaveformMorphology:
         alpha = bandpower(8.0, 13.0)
         beta = bandpower(13.0, 30.0)
         gamma = bandpower(30.0, 100.0)
-        return {"delta": delta, "theta": theta, "alpha": alpha, "beta": beta, "gamma": gamma}
+        return {
+            "delta": delta,
+            "theta": theta,
+            "alpha": alpha,
+            "beta": beta,
+            "gamma": gamma,
+        }
 
     def compute_slope(self, points=None, option=None, window=3, slope_unit="radians"):
         """

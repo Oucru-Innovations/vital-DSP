@@ -782,11 +782,14 @@ class SignalQualityIndex:
 
         def compute_sqi(segment):
             from scipy.ndimage import uniform_filter1d
-            smoothed = uniform_filter1d(segment.astype(float), size=max(3, len(segment) // 10))
-            signal_power = np.mean(smoothed ** 2)
+
+            smoothed = uniform_filter1d(
+                segment.astype(float), size=max(3, len(segment) // 10)
+            )
+            signal_power = np.mean(smoothed**2)
             noise_power = np.mean((segment - smoothed) ** 2)
             if noise_power == 0:
-                return float('inf')
+                return float("inf")
             snr_value = 10 * np.log10(signal_power / noise_power)
             return snr_value
 

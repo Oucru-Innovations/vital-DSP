@@ -306,7 +306,7 @@ class OptimizedDataTypeOptimizer:
             total = counts.sum()
             if total == 0:
                 return 0.0
-            probs = counts[counts > 0] / total   # proper probability mass, sums to 1
+            probs = counts[counts > 0] / total  # proper probability mass, sums to 1
             return float(-np.sum(probs * np.log2(probs)))
         except Exception as e:
             logger.error(f"Error calculating signal entropy: {str(e)}")
@@ -338,7 +338,9 @@ class OptimizedDataTypeOptimizer:
         max_precision_loss = requirements["max_precision_loss"]
 
         # Calculate precision loss — integer dtypes have no finfo, treat as lossless
-        if np.issubdtype(current_dtype, np.integer) or np.issubdtype(target_dtype, np.integer):
+        if np.issubdtype(current_dtype, np.integer) or np.issubdtype(
+            target_dtype, np.integer
+        ):
             return True
         current_precision = np.finfo(current_dtype).precision
         target_precision = np.finfo(target_dtype).precision

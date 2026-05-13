@@ -329,7 +329,9 @@ class AnomalyDetection:
         sample_size = min(1000, n_points)  # Limit sample size
         if n_points > sample_size:
             # Sort indices to preserve temporal ordering for valid delay embedding.
-            sample_indices = np.sort(np.random.choice(n_points, sample_size, replace=False))
+            sample_indices = np.sort(
+                np.random.choice(n_points, sample_size, replace=False)
+            )
             sample_signal = self.signal[sample_indices]
         else:
             sample_signal = self.signal
@@ -360,16 +362,13 @@ class AnomalyDetection:
         # Compute LRD
         lrd = np.zeros(n_sample)
         for i in range(n_sample):
-            neighbors = np.argsort(distances[i, :])[1:n_neighbors + 1]
-            lrd[i] = 1 / (
-                np.mean(reachability_distances[i, neighbors])
-                + 1e-10
-            )
+            neighbors = np.argsort(distances[i, :])[1 : n_neighbors + 1]
+            lrd[i] = 1 / (np.mean(reachability_distances[i, neighbors]) + 1e-10)
 
         # Compute LOF
         lof = np.zeros(n_sample)
         for i in range(n_sample):
-            neighbors = np.argsort(distances[i, :])[1:n_neighbors + 1]
+            neighbors = np.argsort(distances[i, :])[1 : n_neighbors + 1]
             lof[i] = np.mean(lrd[neighbors]) / lrd[i]
 
         # LOF > 1.5 threshold selected to reduce false positives from normal physiological variability.
