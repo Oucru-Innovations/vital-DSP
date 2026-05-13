@@ -15,8 +15,8 @@ sys.path.insert(0, os.path.abspath('../../src'))
 project = 'VitalDSP'
 copyright = '2024, VitalDSP Team'
 author = 'van-koha'
-release = '0.2.3'
-version = '0.2.3'
+release = '0.2.4'
+version = '0.2.4'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -157,11 +157,11 @@ html_theme_options = {
     'display_version': True,
     'prev_next_buttons_location': 'bottom',
     'style_external_links': True,
-    'collapse_navigation': False,
+    'collapse_navigation': True,   # sections collapse; expand on click
     'sticky_navigation': True,
-    'navigation_depth': 4,
+    'navigation_depth': 3,
     'includehidden': True,
-    'titles_only': False,
+    'titles_only': True,           # show only page titles, not per-page headings
     'style_nav_header_background': '#2980B9',
 }
 
