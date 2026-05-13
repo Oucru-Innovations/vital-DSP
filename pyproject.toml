@@ -130,7 +130,6 @@ norecursedirs = [
     "__pycache__", ".pytest_cache", "cov_html",
     "docs", "dev_docs", "archive_docs",
 ]
-asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",

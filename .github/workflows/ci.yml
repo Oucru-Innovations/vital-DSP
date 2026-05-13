@@ -75,12 +75,12 @@ jobs:
           # Set environment variables for headless plotting
           export MPLBACKEND=Agg
           export QT_QPA_PLATFORM=offscreen
-          # Run all tests with xdist for speed (disable coverage — it doesn't work with xdist)
-          pytest --no-cov -n auto --timeout=300 --dist=worksteal
+          # Pass 1: fast parallel run to catch failures quickly
+          pytest tests/ --no-cov -n auto --dist=worksteal --timeout=120 -q --tb=line --disable-warnings
 
-          # Generate coverage separately without xdist (reliable)
-          echo "=== Generating coverage without xdist ==="
-          pytest tests/ -o "addopts=" --cov=src/vitalDSP --cov-report=xml:coverage.xml --cov-report=html:cov_html --cov-report=term-missing --timeout=5400 -q --tb=line --disable-warnings
+          # Pass 2: coverage run without xdist, per-test timeout to cap slow tests
+          echo "=== Generating coverage ==="
+          pytest tests/ -o "addopts=" --cov=src/vitalDSP --cov-report=xml:coverage.xml --cov-report=html:cov_html --cov-report=term-missing --timeout=120 -q --tb=line --disable-warnings
 
 
       - name: Run Linting
