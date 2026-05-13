@@ -8,27 +8,35 @@ warnings.filterwarnings("ignore", category=RuntimeWarning, message="invalid valu
 
 
 def test_haar():
-    result = Wavelet.haar()
-    expected = np.array([1 / np.sqrt(2), 1 / np.sqrt(2)])
-    np.testing.assert_array_almost_equal(result, expected)
+    lo, hi = Wavelet.haar()
+    expected_lo = np.array([1 / np.sqrt(2), 1 / np.sqrt(2)])
+    np.testing.assert_array_almost_equal(lo, expected_lo)
+    assert lo.size == 2
+    assert hi.size == 2
 
 
 def test_db():
-    result = Wavelet.db(order=4)  # Use order=4 instead of order=1
-    assert isinstance(result, np.ndarray)
-    assert result.size > 0
+    lo, hi = Wavelet.db(order=4)
+    assert isinstance(lo, np.ndarray)
+    assert isinstance(hi, np.ndarray)
+    assert lo.size > 0
+    assert hi.size == lo.size
 
 
 def test_sym():
-    result = Wavelet.sym(order=4)  # Use order=4 instead of order=1
-    assert isinstance(result, np.ndarray)
-    assert result.size > 0
+    lo, hi = Wavelet.sym(order=4)
+    assert isinstance(lo, np.ndarray)
+    assert isinstance(hi, np.ndarray)
+    assert lo.size > 0
+    assert hi.size == lo.size
 
 
 def test_coif():
-    result = Wavelet.coif(order=2)  # Use order=2 instead of order=1
-    assert isinstance(result, np.ndarray)
-    assert result.size > 0
+    lo, hi = Wavelet.coif(order=2)
+    assert isinstance(lo, np.ndarray)
+    assert isinstance(hi, np.ndarray)
+    assert lo.size > 0
+    assert hi.size == lo.size
 
 
 def test_gauchy():
@@ -107,45 +115,45 @@ def test_wavelet_orders():
     """Test that wavelets work with different valid orders."""
     # Test Daubechies with different orders
     for order in [2, 4, 6, 8]:
-        result = Wavelet.db(order=order)
-        assert isinstance(result, np.ndarray)
-        assert result.size > 0
-    
+        lo, hi = Wavelet.db(order=order)
+        assert isinstance(lo, np.ndarray)
+        assert lo.size > 0
+        assert hi.size == lo.size
+
     # Test Symlets with different orders
     for order in [2, 4, 6, 8]:
-        result = Wavelet.sym(order=order)
-        assert isinstance(result, np.ndarray)
-        assert result.size > 0
-    
+        lo, hi = Wavelet.sym(order=order)
+        assert isinstance(lo, np.ndarray)
+        assert lo.size > 0
+        assert hi.size == lo.size
+
     # Test Coiflets with different orders
     for order in [2, 4, 6]:
-        result = Wavelet.coif(order=order)
-        assert isinstance(result, np.ndarray)
-        assert result.size > 0
+        lo, hi = Wavelet.coif(order=order)
+        assert isinstance(lo, np.ndarray)
+        assert lo.size > 0
+        assert hi.size == lo.size
 
 
 def test_wavelet_edge_cases():
     """Test wavelet behavior with edge case orders."""
-    # Test with very small orders (should handle gracefully)
     try:
-        result = Wavelet.db(order=1)
-        # If it works, should be valid
-        if result.size > 0:
-            assert isinstance(result, np.ndarray)
-    except (ValueError, RuntimeWarning):
-        # If order=1 fails, that's acceptable
-        pass
-    
-    try:
-        result = Wavelet.sym(order=1)
-        if result.size > 0:
-            assert isinstance(result, np.ndarray)
+        lo, hi = Wavelet.db(order=1)
+        if lo.size > 0:
+            assert isinstance(lo, np.ndarray)
     except (ValueError, RuntimeWarning):
         pass
-    
+
     try:
-        result = Wavelet.coif(order=1)
-        if result.size > 0:
-            assert isinstance(result, np.ndarray)
+        lo, hi = Wavelet.sym(order=1)
+        if lo.size > 0:
+            assert isinstance(lo, np.ndarray)
+    except (ValueError, RuntimeWarning):
+        pass
+
+    try:
+        lo, hi = Wavelet.coif(order=1)
+        if lo.size > 0:
+            assert isinstance(lo, np.ndarray)
     except (ValueError, RuntimeWarning):
         pass
