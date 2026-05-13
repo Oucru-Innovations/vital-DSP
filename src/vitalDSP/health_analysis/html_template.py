@@ -963,7 +963,7 @@ def _get_dynamic_analysis_template():
         <div class="dynamic-analysis-container">
             <!-- Executive Summary - Full Width -->
             <div class="executive-summary">
-                <h2 style="margin: 0 0 12px 0; font-size: 1.4rem;">📊 Executive Summary</h2>
+                <h2 style="margin: 0 0 12px 0; font-size: 1.4rem;">Executive Summary</h2>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                     <span style="font-size: 0.9rem; opacity: 0.9;">Overall Health Score:</span>
                     <span style="font-size: 1.8rem; font-weight: 700;">{{ "%.1f"|format(dynamic_analysis.overall_health_score) }}/100</span>
@@ -976,7 +976,7 @@ def _get_dynamic_analysis_template():
                 <!-- Left Column: Risk & Insights -->
                 <div class="main-analysis">
                     <div class="risk-assessment">
-                        <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">⚠️ Risk Assessment</h3>
+                        <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">Risk Assessment</h3>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <span style="font-size: 0.85rem; color: #7f8c8d;">Risk Level:</span>
                             <span style="font-size: 1rem; font-weight: 600; color: #e74c3c;">{{ dynamic_analysis.risk_assessment.level|title }}</span>
@@ -987,7 +987,7 @@ def _get_dynamic_analysis_template():
                     </div>
 
                     <div class="key-insights">
-                        <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">💡 Key Insights</h3>
+                        <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">Key Insights</h3>
                         <ul style="margin: 0; padding-left: 16px; font-size: 0.85rem; color: #555;">
                             {% for insight in dynamic_analysis.key_insights[:3] %}
                             <li style="margin-bottom: 4px;">{{ insight }}</li>
@@ -998,7 +998,7 @@ def _get_dynamic_analysis_template():
 
                 <!-- Right Column: Statistics -->
                 <div class="statistics-summary">
-                    <h3 style="margin: 0 0 12px 0; font-size: 1.1rem; color: #2c3e50;">📈 Analysis Summary</h3>
+                    <h3 style="margin: 0 0 12px 0; font-size: 1.1rem; color: #2c3e50;">Analysis Summary</h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                         <div style="text-align: center; padding: 8px; background: rgba(255,255,255,0.7); border-radius: 6px;">
                             <div style="font-size: 1.2rem; font-weight: 700; color: #2c3e50;">{{ dynamic_analysis.statistics.total_features }}</div>
@@ -1024,7 +1024,7 @@ def _get_dynamic_analysis_template():
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
                 <!-- Cross-Feature Correlations -->
                 <div class="cross-correlations" style="margin: 0; padding: 12px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 10px; border-left: 3px solid #9b59b6;">
-                    <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">🔗 Key Correlations</h3>
+                    <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">Key Correlations</h3>
                     <div style="font-size: 0.85rem; color: #555;">
                         {% for correlation in dynamic_analysis.cross_correlations[:2] %}
                         <div style="margin-bottom: 6px; padding: 6px; background: rgba(255,255,255,0.7); border-radius: 4px;">
@@ -1037,7 +1037,7 @@ def _get_dynamic_analysis_template():
 
                 <!-- Recommendations -->
                 <div class="recommendations" style="margin: 0; padding: 12px;">
-                    <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">💊 Recommendations</h3>
+                    <h3 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #2c3e50;">Recommendations</h3>
                     <ol style="margin: 0; padding-left: 16px; font-size: 0.85rem; color: #555;">
                         {% for recommendation in dynamic_analysis.recommendations[:3] %}
                         <li style="margin-bottom: 4px;">{{ recommendation }}</li>

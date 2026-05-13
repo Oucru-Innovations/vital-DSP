@@ -9,7 +9,7 @@
   Advanced signal processing techniques • Machine learning algorithms • Production-ready web application
 </p>
 
-**[🚀 Launch Web Application](https://vital-dsp-1.onrender.com/)** | **[📚 Documentation](https://vital-dsp.readthedocs.io/)** | **[📖 Tutorials](https://colab.research.google.com/github/Oucru-Innovations/vital-DSP/blob/main/docs/source/notebooks/synthesize_data.ipynb)**
+**[Launch Web Application](https://vital-dsp-1.onrender.com/)** | **[Documentation](https://vital-dsp.readthedocs.io/)** | **[Tutorials](https://colab.research.google.com/github/Oucru-Innovations/vital-DSP/blob/main/docs/source/notebooks/synthesize_data.ipynb)**
 
 [![DOI](https://zenodo.org/badge/845712551.svg)](https://doi.org/10.5281/zenodo.14613751)
 ![GitHub stars](https://img.shields.io/github/stars/Oucru-Innovations/vital-DSP?style=social)
@@ -25,7 +25,7 @@
 
 ---
 
-## 🔥 Maintainer Note: I gave up (Claude Code takeover)
+## Maintainer Note: Claude Code takeover
 
 This repo has grown big enough that maintaining it manually started to feel **inefficient and time-exhausting**.  
 So yeah — **I gave up doing it the old way**.
@@ -49,7 +49,7 @@ If you hit regressions, please open an issue with:
 
 ---
 
-## 🎯 **Production-Ready Implementation**
+## Production-Ready Implementation
 
 vitalDSP is a **comprehensive, production-ready** digital signal processing library with **50,000+ lines of code** across **200+ files**, featuring:
 
@@ -61,7 +61,7 @@ vitalDSP is a **comprehensive, production-ready** digital signal processing libr
 
 Experience vitalDSP directly in your browser through our interactive web interface. No installation required - simply visit the application and start exploring the toolkit's capabilities.
 
-**[🚀 Launch Web Application](https://vital-dsp-1.onrender.com/)**
+**[Launch Web Application](https://vital-dsp-1.onrender.com/)**
 
 ### Web Application Features
 - **Interactive Signal Analysis**: Upload and analyze physiological signals
@@ -86,7 +86,7 @@ The repository includes optimized sample datasets for web application testing:
 
 ---
 
-## 🚀 **Comprehensive Feature Set**
+## Comprehensive Feature Set
 
 ### **Core Signal Processing**
 - **Multi-Signal Support**: ECG, PPG, EEG, respiratory signals
@@ -151,23 +151,23 @@ The repository includes optimized sample datasets for web application testing:
 
 ---
 
-## 📊 **Performance Benchmarks**
+## Performance Benchmarks
 
-### **Signal Processing Performance**
+### Signal Processing Performance
 - **Large File Loading**: Up to 420x speedup for memory-mapped files
 - **Quality Screening**: <10ms per 10-second segment
 - **Parallel Processing**: Up to 9x speedup with multiprocessing
 - **Memory Efficiency**: Up to 98% reduction in memory usage
 - **Feature Extraction**: 50+ features in <1 second
 
-### **Web Application Performance**
+### Web Application Performance
 - **Page Load Time**: <2 seconds for analysis pages
 - **Real-time Updates**: <100ms callback response
 - **Data Visualization**: Smooth interactive plots
 - **Export Speed**: <5 seconds for comprehensive reports
 - **Memory Usage**: <200MB for typical analysis
 
-### **Machine Learning Performance**
+### Machine Learning Performance
 - **Feature Extraction**: 50+ features in <1 second
 - **Model Training**: Optimized for physiological signals
 - **Inference Speed**: Real-time prediction capability
@@ -291,7 +291,7 @@ cd vital-DSP
 
 Basic installation:
 ```bash
-python setup.py install
+pip install .
 ```
 
 Or for development installation:
@@ -438,20 +438,16 @@ pip install -e .[tensorflow]  # Include [tensorflow] for deep learning support
 ```python
 import vitalDSP as vdsp
 import numpy as np
-from vitalDSP.utils.peak_detection import PeakDetection
 from vitalDSP.physiological_features.waveform import WaveformMorphology
 
 # Load sample ECG data (default sampling rate: 128 Hz)
-ecg_signal = np.load('sample_data/ECG_short.csv')
+ecg_signal = np.loadtxt('sample_data/ECG_short.csv', delimiter=',')
 
-# Apply Butterworth filter
-filtered_signal = vdsp.filtering.butterworth_filter(
-    ecg_signal, 
-    lowcut=0.5, 
-    highcut=4, 
-    fs=128, 
-    order=4
-)
+# Apply bandpass filter
+from vitalDSP.filtering.signal_filtering import SignalFiltering
+
+sf = SignalFiltering(ecg_signal)
+filtered_signal = sf.bandpass(lowcut=0.5, highcut=40, fs=128, order=4)
 
 # Create waveform morphology object for additional features
 waveform = WaveformMorphology(filtered_signal, fs=128, signal_type="ECG")
@@ -515,7 +511,7 @@ For comprehensive examples and detailed API documentation, please visit our [off
 
 VitalDSP offers flexible deployment options for different use cases:
 
-### 🐳 Docker Deployment (Recommended for Production)
+### Docker Deployment (Recommended for Production)
 
 **Quick Start with Docker Compose**:
 
@@ -557,7 +553,7 @@ docker build -f Dockerfile.production -t vitaldsp:production .
 docker run -p 8000:8000 vitaldsp:production
 ```
 
-### ☁️ Cloud Deployment
+### Cloud Deployment
 
 **Render.com** (Currently deployed: https://vital-dsp-1.onrender.com/)
 
@@ -566,7 +562,7 @@ docker run -p 8000:8000 vitaldsp:production
 3. Connect your GitHub repository
 4. Configure:
    - **Build Command**: `pip install -r requirements/base.txt && pip install -r requirements/tensorflow.txt && pip install -r src/vitalDSP_webapp/requirements.txt && pip install -e .`
-   - **Start Command**: `gunicorn -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT vitalDSP_webapp.run_webapp:app`
+   - **Start Command**: `gunicorn -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT vitalDSP_webapp.run_webapp:fastapi_app`
    - **Environment**: Python 3
 5. Deploy!
 
@@ -574,7 +570,7 @@ docker run -p 8000:8000 vitaldsp:production
 
 See our comprehensive [Deployment Guide](https://vital-dsp.readthedocs.io/en/latest/deployment.html) for detailed instructions on deploying to major cloud platforms.
 
-### 🖥️ Local/Server Deployment
+### Local/Server Deployment
 
 **Production Server Setup** (Ubuntu/Debian):
 
@@ -604,7 +600,7 @@ python src/vitalDSP_webapp/run_webapp.py --production
 - **Testing**: default mode (standard logging)
 - **Production**: `--production` (optimized, minimal logging)
 
-### 🔒 Security Considerations for Production
+### Security Considerations for Production
 
 1. **SSL/TLS**: Use nginx or cloud provider SSL termination
 2. **Environment Variables**: Store sensitive config in `.env` file

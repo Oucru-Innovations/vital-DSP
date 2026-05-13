@@ -28,30 +28,30 @@ VitalDSP is a cutting-edge digital signal processing library specifically design
 Key Features
 ============
 
-**🔬 Advanced Signal Processing**
+**Advanced Signal Processing**
    * **Multi-Type Filtering**: Traditional, advanced, artifact removal, neural network, and ensemble filtering
    * **Signal Enhancement**: Noise reduction, baseline correction, and signal quality improvement
    * **Real-Time Processing**: Optimized algorithms for live signal analysis and monitoring
 
-**📊 Comprehensive Feature Extraction**
+**Comprehensive Feature Extraction**
    * **Time-Domain Analysis**: Statistical features, morphological analysis, and waveform characteristics
    * **Frequency-Domain Analysis**: Spectral analysis, power spectral density, and frequency features
    * **Heart Rate Variability (HRV)**: HRV metrics for cardiovascular health assessment
    * **Respiratory Analysis**: Multi-modal respiratory rate estimation and breathing pattern analysis
 
-**🤖 Machine Learning Integration**
+**Machine Learning Integration**
    * **Neural Network Filtering**: Deep learning-based artifact removal and signal enhancement
    * **Anomaly Detection**: Automated detection of abnormal patterns and events
    * **Bayesian Optimization**: Intelligent parameter tuning and optimization
    * **Ensemble Methods**: Combination of multiple algorithms for robust analysis
 
-**🌐 Interactive Web Application**
+**Interactive Web Application**
    * **User-Friendly Interface**: Intuitive drag-and-drop interface for signal upload and analysis
    * **Real-Time Visualization**: Interactive plots with zoom, pan, and export capabilities
    * **Automated Analysis**: One-click feature extraction and health report generation
    * **Multi-Format Support**: CSV, Excel, JSON, and real-time data streaming
 
-**📈 Health Report Generation**
+**Health Report Generation**
    * **Automated Analysis**: Comprehensive physiological signal analysis and interpretation
    * **Clinical Insights**: Built-in clinical significance assessment and recommendations
    * **Export Options**: PDF reports, data exports, and high-resolution visualizations
@@ -62,7 +62,7 @@ Getting Started
 
 Whether you're a beginner or an experienced user, this documentation will guide you through the essential features of VitalDSP. You'll find clear examples, detailed explanations, and practical advice for using each module.
 
-**🚀 Quick Start Options:**
+**Quick Start Options:**
 
 * **New to VitalDSP?** Start with the :doc:`getting_started` guide for installation and basic usage
 * **Want to see examples?** Check out our :doc:`tutorials` section with step-by-step tutorials
@@ -168,32 +168,32 @@ Complete API reference for all modules and functions:
 Additional Resources
 ====================
 
-**📚 Documentation Resources:**
+**Documentation Resources:**
 
 * :ref:`genindex`: General index of the documentation
 * :ref:`modindex`: Index of all modules
 * :ref:`search`: Full-text search through the documentation
 
-**🔧 Development & Support:**
+**Development & Support:**
 
 * :doc:`troubleshooting`: Common issues and solutions
 * :doc:`performance`: Performance optimization and best practices with Phase 1 & 2 optimizations
 * :doc:`deployment`: Production deployment guide
 * :doc:`contributing`: Contributing guidelines and development setup
 
-**📊 Data & Analysis:**
+**Data & Analysis:**
 
 * :doc:`sample_notebooks`: Interactive Jupyter notebooks with examples
 * :doc:`signal_quality_assessment`: Signal quality assessment and validation
 
-**🌐 Community & Support:**
+**Community & Support:**
 
 * **GitHub Repository**: `VitalDSP GitHub <https://github.com/Oucru-Innovations/vital-DSP>`_
 * **Issue Tracker**: Report bugs and request features
 * **Community Forum**: Connect with other users and developers
 * **Email Support**: Direct support for enterprise users
 
-**📈 What's New in v0.2.2:**
+**What's New in v0.2.4:**
 
 .. important::
    **Version 0.2.2** brings critical compatibility fixes for NumPy 1.x/2.x, pandas datetime resolution, and improved CI/CD coverage reporting.
@@ -206,7 +206,7 @@ Additional Resources
 * **Coverage Reporting**: Fixed Coveralls integration for parallel test execution with pytest-xdist
 * **Documentation**: Updated version references and improved API documentation structure
 
-**🚀 Latest Optimization Features (Phase 1 & 2):**
+**Latest Optimization Features (Phase 1 & 2):**
 
 * **Dynamic Configuration System**: Zero hardcoded values with adaptive parameter optimization
 * **Advanced Memory Management**: Intelligent memory allocation and data type optimization
@@ -222,7 +222,7 @@ Additional Resources
 * **Error Recovery**: 90%+ success rate for recoverable errors
 * **Scalability**: 5-10x improvement for large datasets
 
-**🎯 Use Cases:**
+**Use Cases:**
 
 * **Clinical Research**: Advanced signal analysis for medical research
 * **Healthcare Monitoring**: Real-time vital signs monitoring
@@ -230,7 +230,7 @@ Additional Resources
 * **Telemedicine**: Remote patient monitoring and analysis
 * **Medical Device Development**: Signal processing algorithms
 
-**💡 Getting Help:**
+**Getting Help:**
 
 * **Documentation**: Comprehensive guides and API reference
 * **Tutorials**: Step-by-step learning guides
@@ -239,4 +239,4 @@ Additional Resources
 
 Thank you for using VitalDSP! If you have any questions or need further assistance, please refer to our support resources or reach out to our community.
 
-**Happy analyzing with VitalDSP! 🫀📊**
+Thank you for choosing VitalDSP.

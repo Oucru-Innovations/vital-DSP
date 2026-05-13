@@ -560,17 +560,17 @@ class HealthReportGenerator:
 
         # Print total timing summary
         total_time = time.time() - start_time
-        print("\n🚀 Report generation completed!")
-        print(f"📊 Total time: {total_time:.2f} seconds")
-        print(f"⚡ Features processed: {len(segment_values)}")
-        print(f"📈 Visualizations generated: {len(visualizations)}")
-        print(f"🔧 Feature processing: Concurrent ({max_workers} workers)")
+        print("\nReport generation completed!")
+        print(f"Total time: {total_time:.2f} seconds")
+        print(f"Features processed: {len(segment_values)}")
+        print(f"Visualizations generated: {len(visualizations)}")
+        print(f"Feature processing: Concurrent ({max_workers} workers)")
         if optimal_processes > 0:
             print(
-                f"🎨 Visualization generation: Concurrent ({optimal_processes} processes)"
+                f"Visualization generation: Concurrent ({optimal_processes} processes)"
             )
         else:
-            print("🎨 Visualization generation: Skipped (no output directory)")
+            print("Visualization generation: Skipped (no output directory)")
 
         return report_html
 
