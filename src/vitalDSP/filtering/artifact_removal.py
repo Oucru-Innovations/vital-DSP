@@ -208,68 +208,80 @@ class ArtifactRemoval:
         """
         wavelet = Wavelet()
 
+        def _extract_lo(result):
+            """Return the low-pass filter, unpacking a (lo, hi) tuple if needed."""
+            if isinstance(result, tuple):
+                return np.asarray(result[0], dtype=np.float64)
+            return np.asarray(result, dtype=np.float64)
+
         if wavelet_type == "haar":
-            mother_wavelet = wavelet.haar()
+            mother_wavelet = _extract_lo(wavelet.haar())
         elif wavelet_type == "db":
-            mother_wavelet = wavelet.db(order)
+            mother_wavelet = _extract_lo(wavelet.db(order))
         elif wavelet_type == "sym":
-            mother_wavelet = wavelet.sym(order)
+            mother_wavelet = _extract_lo(wavelet.sym(order))
         elif wavelet_type == "coif":
-            mother_wavelet = wavelet.coif(order)
+            mother_wavelet = _extract_lo(wavelet.coif(order))
         elif wavelet_type == "custom":
             if custom_wavelet is None:
                 raise ValueError(
                     "A custom wavelet must be provided if wavelet_type is 'custom'."
                 )
-            mother_wavelet = custom_wavelet
+            mother_wavelet = np.asarray(custom_wavelet, dtype=np.float64)
         else:
             raise ValueError(
                 "Invalid wavelet_type. Must be 'haar', 'db', 'sym', 'coif', or 'custom'."
             )
 
-        # Wavelet decomposition
-        approx_coeffs = self.signal.copy()
-        detail_coeffs = []
+        # Wavelet decomposition and reconstruction using polyphase upfirdn,
+        # which handles the filter delay correctly and gives perfect reconstruction.
+        from scipy.signal import upfirdn
 
-        N = len(mother_wavelet)
-        high_pass = np.array([(-1)**n * mother_wavelet[N - 1 - n] for n in range(N)])
+        lo_d = mother_wavelet.astype(np.float64)
+        Nf = len(lo_d)
+        # QMF high-pass (analysis): alternating-flip of low-pass
+        hi_d = lo_d[::-1] * np.array([(-1) ** n for n in range(Nf)])
+        # Synthesis filters: time-reversed analysis filters
+        lo_r = lo_d[::-1]
+        hi_r = hi_d[::-1]
+
+        sig_len = len(self.signal)
+        approx_coeffs = self.signal.copy().astype(np.float64)
+        detail_coeffs = []
+        level_delays = []
 
         for _ in range(level):
-            # Convolution with the low-pass and high-pass filters (approximation and detail coefficients)
-            approx = np.convolve(approx_coeffs, mother_wavelet, mode="full")
-            detail = np.convolve(approx_coeffs, high_pass, mode="full")
+            a = upfirdn(lo_d, approx_coeffs, up=1, down=2)
+            d = upfirdn(hi_d, approx_coeffs, up=1, down=2)
+            approx_coeffs = a
+            detail_coeffs.append(d)
+            level_delays.append(Nf - 1)
 
-            # Downsample
-            approx_coeffs = approx[::2]
-            detail_coeffs.append(detail[::2])
-
-        # Thresholding detail coefficients
-        threshold = (
-            np.sqrt(2 * np.log(len(self.signal)))
-            * np.median(np.abs(detail_coeffs[-1]))
-            / 0.6745
-        )
+        # Per-level soft thresholding using each level's own noise estimate
         for i in range(len(detail_coeffs)):
+            level_len = len(detail_coeffs[i])
+            sigma_hat = np.median(np.abs(detail_coeffs[i])) / 0.6745
+            threshold = sigma_hat * np.sqrt(2 * np.log(max(level_len, 2)))
             detail_coeffs[i] = np.sign(detail_coeffs[i]) * np.maximum(
                 np.abs(detail_coeffs[i]) - threshold, 0
             )
 
-        # Wavelet reconstruction
+        # Wavelet reconstruction using synthesis filters
         for i in reversed(range(level)):
-            # Upsample both arrays to the same target length
-            target_len = max(len(approx_coeffs), len(detail_coeffs[i])) * 2
-            upsampled_approx = np.zeros(target_len)
-            upsampled_approx[: len(approx_coeffs) * 2 : 2] = np.real(approx_coeffs)
-            upsampled_detail = np.zeros(target_len)
-            upsampled_detail[: len(detail_coeffs[i]) * 2 : 2] = np.real(detail_coeffs[i])
+            ra = upfirdn(lo_r, approx_coeffs, up=2, down=1)
+            rd = upfirdn(hi_r, detail_coeffs[i], up=2, down=1)
+            out_len = max(len(ra), len(rd))
+            if len(ra) < out_len:
+                ra = np.pad(ra, (0, out_len - len(ra)))
+            if len(rd) < out_len:
+                rd = np.pad(rd, (0, out_len - len(rd)))
+            approx_coeffs = ra + rd
 
-            approx_coeffs = (
-                np.convolve(upsampled_approx, mother_wavelet, mode="full")[:target_len]
-                + np.convolve(upsampled_detail, high_pass, mode="full")[:target_len]
-            )
-
-        # Adjust the length of the output signal to match the original signal length
-        clean_signal = approx_coeffs[: len(self.signal)]
+        # Total group delay = (Nf-1) * (2^level - 1), derived from the polyphase structure
+        total_delay = (Nf - 1) * (2 ** level - 1)
+        clean_signal = approx_coeffs[total_delay: total_delay + sig_len]
+        if len(clean_signal) < sig_len:
+            clean_signal = np.pad(clean_signal, (0, sig_len - len(clean_signal)), mode='edge')
 
         # Apply smoothing if specified
         if smoothing:
@@ -476,28 +488,46 @@ class ArtifactRemoval:
         ...     num_iterations=120
         ... )
         """
-        # Ensure the signal is cast to float64 for numerical stability
-        filtered_signal = self.signal.astype(np.float64)
+        signal = self.signal.astype(np.float64)
+        n = len(signal)
 
-        # Handle reference signal
         if reference_signal is None:
-            # Adapt towards zero (denoising/DC removal)
-            reference_signal = np.zeros_like(filtered_signal, dtype=np.float64)
-        else:
-            # Validate and convert reference signal
-            reference_signal = np.asarray(reference_signal, dtype=np.float64)
-            if len(reference_signal) != len(self.signal):
-                raise ValueError(
-                    f"Reference signal length ({len(reference_signal)}) must match "
-                    f"signal length ({len(self.signal)})"
-                )
+            # Without a reference, use an exponential moving average to estimate
+            # and remove the slow baseline (equivalent to a first-order high-pass).
+            alpha = min(learning_rate, 1.0)
+            baseline = np.zeros(n)
+            est = signal[0]
+            for i in range(n):
+                est = (1 - alpha) * est + alpha * signal[i]
+                baseline[i] = est
+            return signal - baseline
 
-        # LMS adaptive filtering
-        for _ in range(num_iterations):
-            error = filtered_signal - reference_signal
-            filtered_signal -= learning_rate * error
+        reference_signal = np.asarray(reference_signal, dtype=np.float64)
+        if len(reference_signal) != n:
+            raise ValueError(
+                f"Reference signal length ({len(reference_signal)}) must match "
+                f"signal length ({n})"
+            )
 
-        return filtered_signal
+        # LMS adaptive filter: learn the artifact path from reference to contaminated signal,
+        # then subtract the estimated artifact.  filter_order is derived from num_iterations
+        # so that more iterations → longer (more accurate) filter.
+        filter_order = max(1, num_iterations // 10)
+        w = np.zeros(filter_order)
+        clean = np.zeros(n)
+
+        for i in range(n):
+            if i < filter_order:
+                x = np.concatenate([np.zeros(filter_order - i), reference_signal[:i][::-1]])
+            else:
+                x = reference_signal[i - filter_order:i][::-1]
+
+            artifact_est = np.dot(w, x)
+            error = signal[i] - artifact_est
+            clean[i] = error
+            w += 2 * learning_rate * error * x
+
+        return clean
 
     def notch_filter(self, freq=50, fs=1000, Q=30):
         """
@@ -599,11 +629,15 @@ class ArtifactRemoval:
                 f"Linear Algebra error during eigenvalue decomposition: {e}"
             )
 
-        # Sort eigenvalues and eigenvectors in descending order
-        sorted_indices = np.argsort(eigenvalues)[::-1]
-        selected_components = eigenvectors[:, sorted_indices[:num_components]]
+        # Sort eigenvalues ascending: the lowest-variance components are the clean signal;
+        # the highest-variance components capture artifact structure and are discarded.
+        sorted_indices = np.argsort(eigenvalues)  # ascending → smallest variance first
+        n_total = len(eigenvalues)
+        # Keep all components EXCEPT the top num_components (artifact directions)
+        keep_indices = sorted_indices[: n_total - num_components]
+        selected_components = eigenvectors[:, keep_indices]
 
-        # Reconstruct the signal using the selected components
+        # Reconstruct by projecting onto the clean-signal subspace
         reconstructed_segments = (
             np.dot(centered_signal, selected_components).dot(selected_components.T)
             + signal_mean

@@ -138,9 +138,11 @@ class WaveletTransform:
             )
             self.high_pass = np.array([1, -1])
 
-        # Ensure the wavelet filters are numpy arrays
-        self.low_pass = np.asarray(self.low_pass)
-        self.high_pass = np.asarray(self.high_pass)
+        # Ensure the wavelet filters are real-valued numpy arrays.
+        # Some wavelet constructions (e.g. db via polynomial roots) may yield
+        # small imaginary parts due to floating-point arithmetic; discard them.
+        self.low_pass = np.real(np.asarray(self.low_pass)).astype(np.float64)
+        self.high_pass = np.real(np.asarray(self.high_pass)).astype(np.float64)
 
     def _wavelet_decompose(self, data):
         """

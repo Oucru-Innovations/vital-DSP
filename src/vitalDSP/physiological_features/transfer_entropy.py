@@ -204,6 +204,8 @@ class TransferEntropy:
         delay: int = 1,
         n_bins: Optional[int] = None,
         k_neighbors: int = 3,
+        k: Optional[int] = None,
+        l: Optional[int] = None,
     ):
         """
         Initialize Transfer Entropy analyzer.
@@ -215,16 +217,25 @@ class TransferEntropy:
         target : numpy.ndarray
             Target signal
         k_coef : int
-            Target history
+            Target history length (also accepted as ``k``).
         l_coef : int
-            Source history
+            Source history length (also accepted as ``l``).
         delay : int
             Time delay
         n_bins : int, optional
             Binning (None for KNN)
         k_neighbors : int
             Neighbors for KNN
+        k : int, optional
+            Alias for ``k_coef``.
+        l : int, optional
+            Alias for ``l_coef``.
         """
+        # Support legacy/shorthand keyword aliases
+        if k is not None:
+            k_coef = k
+        if l is not None:
+            l_coef = l
         # Input validation
         if not isinstance(source, np.ndarray):
             source = np.array(source)
@@ -594,7 +605,24 @@ class TransferEntropy:
         )
         te_backward = te_backward_analyzer.compute_transfer_entropy()
 
-        return te_forward, te_backward
+        net_te = te_forward - te_backward
+        total = te_forward + te_backward
+        ratio = (te_forward / te_backward) if te_backward > 0 else float("inf")
+        if net_te > 0.01 * total:
+            interpretation = "Source predominantly drives target"
+        elif net_te < -0.01 * total:
+            interpretation = "Target predominantly drives source"
+        else:
+            interpretation = "Bidirectional coupling or common drive"
+        return {
+            "te_forward": float(te_forward),
+            "te_backward": float(te_backward),
+            "net_te": float(net_te),
+            "net_coupling": float(net_te),
+            "ratio": float(ratio),
+            "dominant_direction": "source→target" if net_te >= 0 else "target→source",
+            "interpretation": interpretation,
+        }
 
     def compute_time_delayed_te(self, max_delay: int = 10) -> np.ndarray:
         """
@@ -640,8 +668,9 @@ class TransferEntropy:
         - **Long delays (>10):** Slow adaptive processes
         """
         te_values = []
+        delays = list(range(1, max_delay + 1))
 
-        for delay_val in range(1, max_delay + 1):
+        for delay_val in delays:
             # Create TE analyzer with this delay
             te_analyzer = TransferEntropy(
                 self.source,
@@ -662,7 +691,14 @@ class TransferEntropy:
                 )
                 te_values.append(0.0)
 
-        return np.array(te_values)
+        te_array = np.array(te_values)
+        optimal_idx = int(np.argmax(te_array))
+        return {
+            "te_values": te_array,
+            "delays": delays,
+            "optimal_delay": delays[optimal_idx],
+            "optimal_te": float(te_array[optimal_idx]),
+        }
 
     def compute_effective_te(self) -> float:
         """
@@ -807,18 +843,40 @@ class TransferEntropy:
                 )
                 continue
 
-        # Compute p-value
+        # Compute p-value and summary statistics
         if surrogate_tes:
-            surrogate_tes = np.array(surrogate_tes)
-            p_value = np.mean(surrogate_tes >= te_original)
+            surrogate_arr = np.array(surrogate_tes)
+            p_value = float(np.mean(surrogate_arr >= te_original))
+            surr_mean = float(np.mean(surrogate_arr))
+            surr_std = float(np.std(surrogate_arr))
+            effect_size = (
+                (te_original - surr_mean) / surr_std if surr_std > 0 else 0.0
+            )
         else:
             warnings.warn(
                 "All surrogate calculations failed. Cannot compute p-value.",
                 UserWarning,
             )
             p_value = 1.0
+            surr_mean = 0.0
+            surr_std = 0.0
+            effect_size = 0.0
 
-        return p_value, te_original
+        if p_value < 0.01:
+            sig_label = "Highly significant (p < 0.01)"
+        elif p_value < 0.05:
+            sig_label = "Significant (p < 0.05)"
+        else:
+            sig_label = "Not significant (p >= 0.05)"
+
+        return {
+            "p_value": p_value,
+            "te_original": float(te_original),
+            "te_surrogates_mean": surr_mean,
+            "te_surrogates_std": surr_std,
+            "effect_size": float(effect_size),
+            "significance": sig_label,
+        }
 
 
 # Export main class

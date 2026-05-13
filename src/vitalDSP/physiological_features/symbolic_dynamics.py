@@ -427,17 +427,27 @@ class SymbolicDynamics:
         symbol_counts = Counter(self.symbols)
         total_symbols = len(self.symbols)
 
-        # Calculate probabilities
-        probabilities = np.array(
-            [count / total_symbols for count in symbol_counts.values()]
-        )
+        # Symbol probability distribution (keyed by symbol value)
+        symbol_distribution = {
+            sym: count / total_symbols for sym, count in symbol_counts.items()
+        }
 
-        # Shannon entropy: -Σ p*log2(p)
-        # Handle log(0) by removing zero probabilities
-        probabilities = probabilities[probabilities > 0]
-        entropy = -np.sum(probabilities * np.log2(probabilities))
+        # Calculate probabilities array for entropy computation
+        probabilities = np.array(list(symbol_distribution.values()))
 
-        return entropy
+        # Shannon entropy: -Σ p*log2(p), ignoring zero probabilities
+        nonzero_probs = probabilities[probabilities > 0]
+        entropy = -np.sum(nonzero_probs * np.log2(nonzero_probs))
+
+        max_entropy = np.log2(self.n_symbols) if self.n_symbols > 1 else 0.0
+        normalized_entropy = entropy / max_entropy if max_entropy > 0 else 0.0
+
+        return {
+            "entropy": float(entropy),
+            "normalized_entropy": float(normalized_entropy),
+            "max_entropy": float(max_entropy),
+            "symbol_distribution": symbol_distribution,
+        }
 
     def compute_word_distribution(self) -> Dict[str, float]:
         """
@@ -475,13 +485,22 @@ class SymbolicDynamics:
         word_counts = Counter(words)
         total_words = len(words)
 
-        # Convert to probabilities
-        word_dist = {
-            "".join(str(s) for s in word): count / total_words
-            for word, count in word_counts.items()
+        # Convert to probabilities with full metadata per word
+        word_distribution = {
+            "".join(str(s) for s in word): {
+                "probability": count / total_words,
+                "count": int(count),
+            }
+            for word, count in sorted(
+                word_counts.items(), key=lambda kv: kv[1], reverse=True
+            )
         }
 
-        return word_dist
+        return {
+            "word_distribution": word_distribution,
+            "total_words": total_words,
+            "unique_words": len(word_counts),
+        }
 
     def detect_forbidden_words(self) -> List[str]:
         """
@@ -514,9 +533,9 @@ class SymbolicDynamics:
         if self.symbols is None:
             self.symbolize()
 
-        # Get observed words
-        word_dist = self.compute_word_distribution()
-        observed_words = set(word_dist.keys())
+        # Get observed words (compute_word_distribution now returns a dict with nested keys)
+        word_dist_result = self.compute_word_distribution()
+        observed_words = set(word_dist_result["word_distribution"].keys())
 
         # Generate all possible words
         all_possible_words = set()
@@ -525,9 +544,27 @@ class SymbolicDynamics:
             all_possible_words.add(word)
 
         # Find forbidden words
-        forbidden_words = list(all_possible_words - observed_words)
+        forbidden_words = sorted(all_possible_words - observed_words)
+        n_possible = len(all_possible_words)
+        n_forbidden = len(forbidden_words)
+        forbidden_pct = 100.0 * n_forbidden / n_possible if n_possible > 0 else 0.0
 
-        return forbidden_words
+        if forbidden_pct > 50:
+            interpretation = "Many forbidden words — strong regulatory constraints (likely pathological)"
+        elif forbidden_pct > 20:
+            interpretation = "Moderate forbidden words — some regulatory constraints"
+        elif forbidden_pct > 0:
+            interpretation = "Few forbidden words — flexible regulation (typically healthy)"
+        else:
+            interpretation = "No forbidden words — complete randomness (e.g., atrial fibrillation)"
+
+        return {
+            "forbidden_words": forbidden_words,
+            "n_forbidden": n_forbidden,
+            "n_possible": n_possible,
+            "forbidden_percentage": forbidden_pct,
+            "interpretation": interpretation,
+        }
 
     def compute_transition_matrix(self) -> np.ndarray:
         """
@@ -618,8 +655,9 @@ class SymbolicDynamics:
 
         # Handle special cases
         if alpha == 1.0:
-            # Shannon entropy
-            return self.compute_shannon_entropy()
+            # Shannon entropy (alpha→1 limit of Renyi entropy)
+            result = self.compute_shannon_entropy()
+            return float(result["entropy"]) if isinstance(result, dict) else float(result)
 
         if alpha == 0.0:
             # Hartley entropy
@@ -709,9 +747,15 @@ class SymbolicDynamics:
 
         # Normalize by maximum possible entropy
         max_entropy = np.log2(math.factorial(order))
-        normalized_pe = perm_entropy / max_entropy if max_entropy > 0 else 0
+        normalized_pe = float(perm_entropy / max_entropy) if max_entropy > 0 else 0.0
 
-        return normalized_pe
+        return {
+            "permutation_entropy": float(perm_entropy),
+            "normalized_pe": normalized_pe,
+            "max_entropy": float(max_entropy),
+            "n_patterns": len(pattern_counts),
+            "order": order,
+        }
 
     def compute_symbolic_features(self) -> Dict[str, float]:
         """
@@ -739,20 +783,22 @@ class SymbolicDynamics:
         ):
             self.symbolize()
 
-        # Compute all features
+        # Compute all features (methods now return dicts; extract key values)
+        shannon_result = self.compute_shannon_entropy()
+        perm_result = self.compute_permutation_entropy(order=3)
+        word_result = self.compute_word_distribution()
+        forbidden_result = self.detect_forbidden_words()
+
         features = {
-            "shannon_entropy": self.compute_shannon_entropy(),
+            "shannon_entropy": shannon_result["entropy"],
+            "normalized_shannon_entropy": shannon_result["normalized_entropy"],
             "renyi_entropy": self.compute_renyi_entropy(alpha=2.0),
-            "permutation_entropy": self.compute_permutation_entropy(order=3),
+            "permutation_entropy": perm_result["permutation_entropy"],
+            "normalized_permutation_entropy": perm_result["normalized_pe"],
+            "num_words": word_result["unique_words"],
+            "num_forbidden_words": forbidden_result["n_forbidden"],
+            "forbidden_percentage": forbidden_result["forbidden_percentage"],
         }
-
-        # Word distribution
-        word_dist = self.compute_word_distribution()
-        features["num_words"] = len(word_dist)
-
-        # Forbidden words
-        forbidden_words = self.detect_forbidden_words()
-        features["num_forbidden_words"] = len(forbidden_words)
 
         return features
 

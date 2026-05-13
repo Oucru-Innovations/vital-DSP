@@ -69,12 +69,14 @@ def test_compute_fusion_wavelet_longer():
 
 
 def test_fusion_result_complex(sample_signal):
-    """Test that fusion result contains complex numbers (from FFT)"""
+    """Test that fusion result is a valid numpy array (FFT magnitudes scale the wavelet levels)."""
     fusion = WaveletFFTfusion(sample_signal, wavelet_type="db", order=4)
     fusion_result = fusion.compute_fusion()
 
-    # Fusion result should be complex since FFT produces complex coefficients
-    assert np.iscomplexobj(fusion_result)
+    # Fusion result is now real-valued (each wavelet level scaled by FFT magnitude)
+    assert isinstance(fusion_result, np.ndarray)
+    assert fusion_result.ndim == 2  # (n_levels, padded_level_length)
+    assert not np.all(fusion_result == 0)  # Non-trivial output
 
 
 def test_different_orders(sample_signal):

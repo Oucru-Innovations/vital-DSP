@@ -186,6 +186,10 @@ class RespiratoryAnalysis:
             repreprocess=preprocess_config.repreprocess,
         )
 
+        # Normalise shorthand aliases
+        if method == "fft":
+            method = "fft_based"
+
         # Detect breaths using the chosen method
         if method == "peaks":
             breath_intervals = self._detect_breaths_by_peaks(

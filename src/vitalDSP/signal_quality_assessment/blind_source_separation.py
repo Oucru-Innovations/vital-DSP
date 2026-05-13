@@ -91,14 +91,18 @@ def whiten_signal(signal):
             "Input signal contains NaN values. Please clean the data before processing."
         )
 
-    cov = np.cov(signal, rowvar=False)
+    # signal shape is (n_channels, n_samples); rowvar=True computes
+    # the (n_channels × n_channels) covariance matrix, not (n_samples × n_samples).
+    cov = np.cov(signal, rowvar=True)
 
     # Add a small positive constant to avoid numerical instability
     eigenvalues, eigenvectors = np.linalg.eigh(cov)
     eigenvalues = np.where(eigenvalues <= 0, 1e-10, eigenvalues)
 
     whitening_matrix = np.dot(eigenvectors, np.diag(1.0 / np.sqrt(eigenvalues)))
-    whitened_signal = np.dot(whitening_matrix.T, signal.T).T
+    # signal: (n_channels, n_samples); whitening_matrix: (n_channels, n_channels)
+    # whitened = W^T @ signal → (n_channels, n_samples)
+    whitened_signal = np.dot(whitening_matrix.T, signal)
 
     return whitened_signal, whitening_matrix
 

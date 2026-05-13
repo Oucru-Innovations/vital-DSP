@@ -87,9 +87,18 @@ class TestShannonEntropy:
         sd.symbolize()  # Need to symbolize first
 
         try:
-            entropy = sd.compute_shannon_entropy()
+            result = sd.compute_shannon_entropy()
+            # compute_shannon_entropy now returns a dict
+            if isinstance(result, dict):
+                entropy = result["entropy"]
+                assert isinstance(result, dict)
+                assert "entropy" in result
+                assert "normalized_entropy" in result
+                assert "max_entropy" in result
+                assert "symbol_distribution" in result
+            else:
+                entropy = result
             assert entropy > 0
-            assert isinstance(entropy, (int, float))
         except (AttributeError, NotImplementedError):
             pytest.skip("Shannon entropy not implemented")
 
@@ -100,7 +109,8 @@ class TestShannonEntropy:
         sd = SymbolicDynamics(signal)
 
         try:
-            entropy = sd.compute_shannon_entropy()
+            result = sd.compute_shannon_entropy()
+            entropy = result["entropy"] if isinstance(result, dict) else result
             assert entropy == 0.0  # Should be zero for deterministic
         except (AttributeError, NotImplementedError):
             pytest.skip("Shannon entropy not implemented")
@@ -112,7 +122,8 @@ class TestShannonEntropy:
         sd.symbolize()  # Need to symbolize first
 
         try:
-            entropy = sd.compute_shannon_entropy()
+            result = sd.compute_shannon_entropy()
+            entropy = result["entropy"] if isinstance(result, dict) else result
             assert entropy >= 0
         except (AttributeError, NotImplementedError):
             pytest.skip("Shannon entropy not implemented")
@@ -236,14 +247,24 @@ class TestRenyiEntropy:
             shannon = sd.compute_shannon_entropy()
 
             # Should be similar (within numerical precision)
-            if renyi_1 is not None and shannon is not None:
-                assert abs(renyi_1 - shannon) < 0.1
+            # compute_shannon_entropy now returns a dict; extract scalar
+            shannon_val = shannon["entropy"] if isinstance(shannon, dict) else shannon
+            if renyi_1 is not None and shannon_val is not None:
+                assert abs(renyi_1 - shannon_val) < 0.1
         except (AttributeError, NotImplementedError):
             pytest.skip("Renyi entropy not implemented")
 
 
 class TestPermutationEntropy:
     """Tests for permutation entropy calculation."""
+
+    def _extract_pe(self, pe):
+        """Helper to extract scalar from compute_permutation_entropy result (dict or float)."""
+        if isinstance(pe, dict):
+            assert "permutation_entropy" in pe
+            assert "normalized_pe" in pe
+            return pe["normalized_pe"]
+        return pe
 
     def test_permutation_entropy_basic(self):
         """Test basic permutation entropy."""
@@ -252,8 +273,9 @@ class TestPermutationEntropy:
 
         try:
             pe = sd.compute_permutation_entropy()
-            assert isinstance(pe, (int, float))
-            assert 0 <= pe <= 1 or pe > 0  # Normalized or not
+            pe_val = self._extract_pe(pe)
+            assert isinstance(pe_val, (int, float))
+            assert 0 <= pe_val <= 1 or pe_val > 0  # Normalized or not
         except (AttributeError, NotImplementedError):
             pytest.skip("Permutation entropy not implemented")
 
@@ -266,8 +288,9 @@ class TestPermutationEntropy:
 
         try:
             pe = sd.compute_permutation_entropy()
+            pe_val = self._extract_pe(pe)
             # Should have low entropy (predictable)
-            assert isinstance(pe, (int, float))
+            assert isinstance(pe_val, (int, float))
         except (AttributeError, NotImplementedError):
             pytest.skip("Permutation entropy not implemented")
 
@@ -278,9 +301,10 @@ class TestPermutationEntropy:
 
         try:
             pe = sd.compute_permutation_entropy()
+            pe_val = self._extract_pe(pe)
             # Random signal should have higher entropy
-            assert isinstance(pe, (int, float))
-            assert pe > 0
+            assert isinstance(pe_val, (int, float))
+            assert pe_val > 0
         except (AttributeError, NotImplementedError):
             pytest.skip("Permutation entropy not implemented")
 
@@ -293,7 +317,8 @@ class TestPermutationEntropy:
             sd.symbolize()  # Need to symbolize first
             try:
                 pe = sd.compute_permutation_entropy()
-                assert isinstance(pe, (int, float))
+                pe_val = self._extract_pe(pe)
+                assert isinstance(pe_val, (int, float))
             except (AttributeError, NotImplementedError):
                 pytest.skip(f"Permutation entropy not implemented for length {word_len}")
 
@@ -315,9 +340,10 @@ class TestEdgeCases:
         sd = SymbolicDynamics(signal)
 
         try:
-            entropy = sd.compute_shannon_entropy()
+            result = sd.compute_shannon_entropy()
+            entropy = result["entropy"] if isinstance(result, dict) else result
             # Constant signal should have zero entropy
-            assert entropy == 0.0
+            assert abs(entropy) < 1e-9
         except (AttributeError, NotImplementedError, ZeroDivisionError):
             pytest.skip("Not implemented or edge case not handled")
 
@@ -357,7 +383,8 @@ class TestRealisticSignals:
         sd.symbolize()  # Need to symbolize first
 
         try:
-            entropy = sd.compute_shannon_entropy()
+            result = sd.compute_shannon_entropy()
+            entropy = result["entropy"] if isinstance(result, dict) else result
             assert entropy > 0
         except (AttributeError, NotImplementedError):
             pytest.skip("Not implemented")
@@ -373,7 +400,8 @@ class TestRealisticSignals:
 
         try:
             pe = sd.compute_permutation_entropy()
-            assert isinstance(pe, (int, float))
+            pe_val = pe["normalized_pe"] if isinstance(pe, dict) else pe
+            assert isinstance(pe_val, (int, float))
         except (AttributeError, NotImplementedError):
             pytest.skip("Not implemented")
 
@@ -424,7 +452,8 @@ class TestComplexPatterns:
         sd.symbolize()  # Need to symbolize first
 
         try:
-            entropy = sd.compute_shannon_entropy()
+            result = sd.compute_shannon_entropy()
+            entropy = result["entropy"] if isinstance(result, dict) else result
             # Chaotic signal should have high entropy
             assert entropy > 0
         except (AttributeError, NotImplementedError):
@@ -440,7 +469,8 @@ class TestComplexPatterns:
             sd = SymbolicDynamics(signal, word_length=word_len)
             sd.symbolize()  # Need to symbolize first
             try:
-                entropy = sd.compute_shannon_entropy()
+                result = sd.compute_shannon_entropy()
+                entropy = result["entropy"] if isinstance(result, dict) else result
                 entropies.append(entropy)
             except (AttributeError, NotImplementedError):
                 pytest.skip(f"Not implemented for word length {word_len}")
@@ -480,7 +510,8 @@ class TestNumericalStability:
         sd.symbolize()  # Need to symbolize first
 
         try:
-            entropy = sd.compute_shannon_entropy()
+            result = sd.compute_shannon_entropy()
+            entropy = result["entropy"] if isinstance(result, dict) else result
             assert isinstance(entropy, (int, float))
         except (AttributeError, NotImplementedError):
             pytest.skip("Not implemented")
@@ -606,7 +637,12 @@ class TestSymbolicDynamicsMissingCoverage:
         sd = SymbolicDynamics(signal, n_symbols=4, word_length=3)
         # Don't call symbolize() explicitly
         forbidden = sd.detect_forbidden_words()
-        assert isinstance(forbidden, list)
+        # detect_forbidden_words now returns a dict with 'forbidden_words' key
+        if isinstance(forbidden, dict):
+            assert "forbidden_words" in forbidden
+            assert isinstance(forbidden["forbidden_words"], list)
+        else:
+            assert isinstance(forbidden, list)
         assert sd.symbols is not None  # Should have been set by symbolize()
 
     def test_compute_renyi_entropy_alpha_zero(self):

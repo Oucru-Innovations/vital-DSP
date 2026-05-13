@@ -83,7 +83,7 @@ lint:
 
 # Build the distribution packages
 build:
-	python setup.py sdist bdist_wheel
+	python -m build
 
 # Upload the package to PyPI
 upload:

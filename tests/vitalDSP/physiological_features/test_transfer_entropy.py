@@ -523,8 +523,14 @@ class TestBidirectionalTE:
         y = np.random.randn(1000)
         te = TransferEntropy(x, y)
         
-        te_forward, te_backward = te.compute_bidirectional_te()
-        
+        result = te.compute_bidirectional_te()
+        # compute_bidirectional_te now returns a dict
+        if isinstance(result, dict):
+            te_forward = result["te_forward"]
+            te_backward = result["te_backward"]
+        else:
+            te_forward, te_backward = result
+
         assert isinstance(te_forward, (int, float))
         assert isinstance(te_backward, (int, float))
         assert te_forward >= 0.0
@@ -540,8 +546,13 @@ class TestBidirectionalTE:
             y[i] = 0.7 * y[i-1] + 0.3 * x[i-1] + 0.1 * np.random.randn()
         
         te = TransferEntropy(x, y)
-        te_forward, te_backward = te.compute_bidirectional_te()
-        
+        result = te.compute_bidirectional_te()
+        if isinstance(result, dict):
+            te_forward = result["te_forward"]
+            te_backward = result["te_backward"]
+        else:
+            te_forward, te_backward = result
+
         assert isinstance(te_forward, (int, float))
         assert isinstance(te_backward, (int, float))
         # Forward should be larger than backward for unidirectional coupling
@@ -565,9 +576,16 @@ class TestTimeDelayedTE:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             result = te.compute_time_delayed_te(max_delay=50)
-            # Should handle exceptions gracefully and return array
-            assert isinstance(result, np.ndarray)
-            assert len(result) == 50
+            # compute_time_delayed_te now returns a dict with 'te_values' key
+            if isinstance(result, dict):
+                te_arr = result["te_values"]
+                assert "delays" in result
+                assert "optimal_delay" in result
+                assert "optimal_te" in result
+            else:
+                te_arr = result
+            assert isinstance(te_arr, np.ndarray)
+            assert len(te_arr) == 50
 
     def test_compute_time_delayed_te_normal(self):
         """Test compute_time_delayed_te with normal parameters."""
@@ -577,9 +595,13 @@ class TestTimeDelayedTE:
         
         result = te.compute_time_delayed_te(max_delay=10)
         
-        assert isinstance(result, np.ndarray)
-        assert len(result) == 10
-        assert all(r >= 0.0 for r in result)
+        if isinstance(result, dict):
+            te_arr = result["te_values"]
+        else:
+            te_arr = result
+        assert isinstance(te_arr, np.ndarray)
+        assert len(te_arr) == 10
+        assert all(r >= 0.0 for r in te_arr)
 
 
 @pytest.mark.skipif(not TRANSFER_ENTROPY_AVAILABLE, reason="Transfer entropy not available")
@@ -624,8 +646,14 @@ class TestSignificanceTesting:
         y = np.random.randn(500)
         te = TransferEntropy(x, y)
         
-        p_value, te_original = te.test_significance(n_surrogates=10, method="shuffle")
-        
+        result = te.test_significance(n_surrogates=10, method="shuffle")
+        # test_significance now returns a dict
+        if isinstance(result, dict):
+            p_value = result["p_value"]
+            te_original = result["te_original"]
+        else:
+            p_value, te_original = result
+
         assert isinstance(p_value, (int, float))
         assert isinstance(te_original, (int, float))
         assert 0.0 <= p_value <= 1.0
@@ -639,8 +667,13 @@ class TestSignificanceTesting:
         y = np.random.randn(500)
         te = TransferEntropy(x, y)
         
-        p_value, te_original = te.test_significance(n_surrogates=10, method="phase")
-        
+        result = te.test_significance(n_surrogates=10, method="phase")
+        if isinstance(result, dict):
+            p_value = result["p_value"]
+            te_original = result["te_original"]
+        else:
+            p_value, te_original = result
+
         assert isinstance(p_value, (int, float))
         assert isinstance(te_original, (int, float))
         assert 0.0 <= p_value <= 1.0
@@ -668,7 +701,9 @@ class TestSignificanceTesting:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             # Some surrogates might fail, but should handle gracefully
-            p_value, te_original = te.test_significance(n_surrogates=5, method="shuffle")
+            res5 = te.test_significance(n_surrogates=5, method="shuffle")
+            p_value = res5["p_value"] if isinstance(res5, dict) else res5[0]
+            te_original = res5["te_original"] if isinstance(res5, dict) else res5[1]
             assert isinstance(p_value, (int, float))
             assert isinstance(te_original, (int, float))
             assert 0.0 <= p_value <= 1.0
@@ -684,7 +719,9 @@ class TestSignificanceTesting:
         
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            p_value, te_original = te.test_significance(n_surrogates=3, method="shuffle")
+            res3 = te.test_significance(n_surrogates=3, method="shuffle")
+            p_value = res3["p_value"] if isinstance(res3, dict) else res3[0]
+            te_original = res3["te_original"] if isinstance(res3, dict) else res3[1]
             # Should return p_value=1.0 when all surrogates fail
             assert isinstance(p_value, (int, float))
             assert isinstance(te_original, (int, float))

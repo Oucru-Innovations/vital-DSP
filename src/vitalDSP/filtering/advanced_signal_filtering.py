@@ -201,13 +201,15 @@ class AdvancedSignalFiltering:
                 "Invalid loss_type. Must be 'mse', 'mae', 'huber', 'smooth_l1', 'log_cosh', 'quantile', or 'custom' with a custom_loss_func provided."
             )
 
-        x = initial_guess
-        for i in range(iterations):
-            grad = (
-                loss_func(self.signal - x, target)
-                - loss_func(self.signal - (x + 1e-5), target)
-            ) / 1e-5
-            x -= learning_rate * grad
+        # Optimise a per-sample additive correction vector (not a scalar)
+        x = np.full(len(self.signal), float(initial_guess), dtype=np.float64)
+        eps = 1e-5
+        for _ in range(iterations):
+            # Finite-difference gradient: d/dx loss(signal - x, target)
+            loss_plus = loss_func(self.signal - (x + eps), target)
+            loss_minus = loss_func(self.signal - (x - eps), target)
+            grad = (loss_plus - loss_minus) / (2 * eps)
+            x += learning_rate * grad  # x grows to cancel the error
 
         return self.signal - x
 
@@ -347,9 +349,9 @@ class AdvancedSignalFiltering:
         signal = self.signal.astype(np.float64)
         filtered_signal = signal.copy()
 
-        for i in range(iterations):
-            grad = np.sign(filtered_signal - target)
-            filtered_signal -= learning_rate * grad
+        for _ in range(iterations):
+            error = filtered_signal - target
+            filtered_signal -= learning_rate * error
         return filtered_signal
 
     def ensemble_filtering(
@@ -412,35 +414,41 @@ class AdvancedSignalFiltering:
             return np.average(filtered_signals, axis=0, weights=weights)
 
         elif method == "bagging":
-            aggregated_signal_parts = []
+            # Apply each filter num_iterations times with additive noise perturbations,
+            # then average — this is a valid variance-reduction strategy for time-series.
             original_signal = self.signal.copy()
+            noise_std = float(np.std(self.signal)) * 0.01  # 1% perturbation
+            aggregated = np.zeros(len(self.signal), dtype=np.float64)
+            count = 0
             for _ in range(num_iterations):
-                sampled_indices = np.random.choice(
-                    len(self.signal), size=len(self.signal), replace=True
-                )
-                sampled_signal = self.signal[sampled_indices]
-                self.signal = sampled_signal
+                perturbed = original_signal + np.random.randn(len(original_signal)) * noise_std
+                self.signal = perturbed
                 for filter_func in filters:
                     try:
-                        result = filter_func()
-                        if isinstance(result, np.ndarray) and len(result) == len(sampled_signal):
-                            aggregated_signal_parts.append(result)
+                        result = np.asarray(filter_func(), dtype=np.float64)
+                        if result.shape == original_signal.shape:
+                            aggregated += result
+                            count += 1
                     except Exception:
                         pass
-                self.signal = original_signal
-            if aggregated_signal_parts:
-                return np.mean(aggregated_signal_parts, axis=0)
-            return self.signal.copy()
+            self.signal = original_signal
+            if count > 0:
+                return aggregated / count
+            return original_signal.copy()
 
         elif method == "boosting":
-            # Cast the signal to float64 for numerical stability
             boosted_signal = np.zeros_like(self.signal, dtype=np.float64)
             residual = self.signal.astype(np.float64).copy()
+            original_signal = self.signal.copy()
 
             for _ in range(num_iterations):
                 for filter_func in filters:
-                    prediction = filter_func()
-                    # Update the residual
+                    # Each weak learner filters the current residual, not the original signal
+                    self.signal = residual
+                    try:
+                        prediction = np.asarray(filter_func(), dtype=np.float64)
+                    finally:
+                        self.signal = original_signal
                     residual -= learning_rate * prediction
                     boosted_signal += learning_rate * prediction
 
@@ -497,7 +505,8 @@ class AdvancedSignalFiltering:
                 "Invalid kernel_type. Must be 'smoothing', 'sharpening', 'edge_detection', or 'custom' with a custom_kernel provided."
             )
 
-        return np.convolve(self.signal, kernel, mode="same")
+        # Use correlate so asymmetric kernels (e.g. edge_detection [-1,0,1]) are not flipped
+        return np.correlate(self.signal, kernel, mode="same")
 
     def attention_based_filter(
         self, attention_type="uniform", custom_weights=None, size=5, **kwargs
@@ -553,7 +562,8 @@ class AdvancedSignalFiltering:
                 "Invalid attention_type. Must be 'uniform', 'linear', 'gaussian', 'exponential', or 'custom' with custom_weights provided."
             )
 
-        return np.convolve(self.signal, weights, mode="same")
+        # Use correlate so asymmetric attention windows (e.g. linear/exponential) are not flipped
+        return np.correlate(self.signal, weights, mode="same")
 
     def adaptive_filtering(self, desired_signal, mu=0.01, filter_order=4):
         """
@@ -587,33 +597,28 @@ class AdvancedSignalFiltering:
         """
         n = len(self.signal)
         filtered_signal = np.zeros(n)
-        w = np.random.randn(filter_order) * 1e-6  # Small random initialization
+        w = np.zeros(filter_order)  # Start from zero (unbiased)
 
-        for i in range(filter_order, n):
-            # Extract the input vector
-            x = self.signal[i - filter_order : i][
-                ::-1
-            ]  # Input vector (length filter_order)
+        for i in range(n):
+            # Build the tap-delay input vector (zero-pad before start of signal)
+            if i < filter_order:
+                x = np.concatenate([np.zeros(filter_order - i), self.signal[:i][::-1]])
+            else:
+                x = self.signal[i - filter_order:i][::-1]
 
-            # Ensure input vector size is correct
+            # Guard against unexpected slice lengths (e.g. from mock signals in tests)
             if len(x) != filter_order:
                 continue
 
-            # Compute the filter output
-            y = np.dot(w, x)  # Filter output
+            y = np.dot(w, x)
+            e = desired_signal[i] - y
 
-            # Compute the error signal
-            e = desired_signal[i] - y  # Error signal
-
-            # Check for NaN or Inf in error or input
             if np.isnan(e) or np.isinf(e):
+                filtered_signal[i] = self.signal[i]
                 continue
 
-            # Update filter coefficients with clipping to prevent overflow
             w += 2 * mu * e * x
-            np.clip(w, -1e10, 1e10, out=w)  # Clipping to prevent overflow
-
-            # Store the filtered signal output
+            np.clip(w, -1e10, 1e10, out=w)
             filtered_signal[i] = y
 
         return filtered_signal

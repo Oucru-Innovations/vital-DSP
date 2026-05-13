@@ -97,14 +97,19 @@ class WaveletFFTfusion:
         # Perform the FFT
         fft_coeffs = np.fft.fft(self.signal)
 
-        # Ensure wavelet_coeffs and fft_coeffs are compatible for multiplication
-        if len(fft_coeffs) > len(wavelet_coeffs):
-            fft_coeffs = fft_coeffs[: len(wavelet_coeffs)]
-        elif len(fft_coeffs) < len(wavelet_coeffs):
-            wavelet_coeffs = wavelet_coeffs[: len(fft_coeffs)]
+        # wavelet_coeffs is a list of per-level arrays of potentially different lengths.
+        # fft_coeffs is a 1D array (length = signal length).
+        # Scale each level array by the magnitude of the corresponding FFT coefficient,
+        # then pad all level arrays to the same length so np.array() produces a 2-D result.
+        n_levels = len(wavelet_coeffs)
+        fft_scalars = np.abs(fft_coeffs[:n_levels])
 
-        # wavelet_coeffs is a list of per-level arrays; fft_coeffs is a 1D array.
-        # Each level array is scaled by its corresponding FFT coefficient scalar.
-        fusion_result = np.array([w * f for w, f in zip(wavelet_coeffs, fft_coeffs)])
+        scaled = [w * scalar for w, scalar in zip(wavelet_coeffs, fft_scalars)]
+
+        # Pad each level to the length of the longest level so the result is rectangular.
+        max_len = max(len(a) for a in scaled)
+        fusion_result = np.array(
+            [np.pad(a, (0, max_len - len(a))) for a in scaled]
+        )
 
         return fusion_result

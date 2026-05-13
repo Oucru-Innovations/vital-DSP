@@ -115,13 +115,14 @@ def process_in_chunks(file_path, chunk_size=10000, fs=100, data_type="ppg"):
     return pleth_col, date_col
 
 
-def plot_trace(input_signal, output_signal, title="Processed Signal"):
-    trace1 = go.Scatter(y=input_signal, mode="lines", name="Original Signal")
-    trace2 = go.Scatter(y=output_signal, mode="lines", name="Processed Signal")
+def plot_trace(input_signal, output_signal=None, title="Processed Signal"):
+    traces = [go.Scatter(y=input_signal, mode="lines", name="Original Signal")]
+    if output_signal is not None:
+        traces.append(go.Scatter(y=output_signal, mode="lines", name="Processed Signal"))
     layout = go.Layout(
         title=title,
         xaxis=dict(title="Sample Index"),
         yaxis=dict(title="Amplitude"),
     )
-    fig = go.Figure(data=[trace1, trace2], layout=layout)
+    fig = go.Figure(data=traces, layout=layout)
     fig.show()

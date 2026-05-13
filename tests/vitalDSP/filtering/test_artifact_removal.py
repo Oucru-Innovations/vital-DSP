@@ -163,17 +163,39 @@ def test_wavelet_denoising(test_signal):
 
 
 def test_adaptive_filtering(test_signal):
-    reference_signal = np.ones_like(test_signal)
-    ar = ArtifactRemoval(test_signal)
+    # Build a contaminated signal: known clean + sinusoidal artifact correlated with reference.
+    # The LMS filter should learn to subtract the artifact, leaving a signal closer to clean.
+    t = np.linspace(0, 2 * np.pi, len(test_signal))
+    artifact = 0.8 * np.sin(t)
+    reference_signal = np.sin(t)  # reference correlated with the artifact
+    contaminated = test_signal + artifact
+
+    ar = ArtifactRemoval(contaminated)
     clean_signal = ar.adaptive_filtering(
-        reference_signal, learning_rate=0.01, num_iterations=100
+        reference_signal, learning_rate=0.05, num_iterations=100
     )
+
     assert len(clean_signal) == len(
-        test_signal
+        contaminated
     ), "Adaptive filtering output size mismatch."
-    assert np.all(
-        np.abs(clean_signal - reference_signal) < np.abs(test_signal - reference_signal)
-    ), "Adaptive filtering did not work properly."
+
+    # After LMS converges (second half), output should be closer to test_signal than input was.
+    half = len(test_signal) // 2
+    mse_input = np.mean((contaminated[half:] - test_signal[half:]) ** 2)
+    mse_output = np.mean((clean_signal[half:] - test_signal[half:]) ** 2)
+    assert mse_output < mse_input, (
+        f"Adaptive filtering did not reduce artifact: "
+        f"input MSE={mse_input:.4f}, output MSE={mse_output:.4f}"
+    )
+
+    # Without reference: no-reference mode should reduce the DC baseline.
+    dc_signal = test_signal + 3.0
+    ar_noref = ArtifactRemoval(dc_signal)
+    detrended = ar_noref.adaptive_filtering(learning_rate=0.1)
+    assert len(detrended) == len(dc_signal), "No-ref adaptive filtering output size mismatch."
+    assert abs(np.mean(detrended)) < abs(np.mean(dc_signal)), (
+        "No-reference adaptive filtering did not reduce DC baseline."
+    )
 
 
 def test_notch_filter(test_signal):
