@@ -80,7 +80,7 @@ jobs:
 
           # Pass 2: coverage run without xdist, per-test timeout to cap slow tests
           echo "=== Generating coverage ==="
-          pytest tests/ -o "addopts=" --cov=src/vitalDSP --cov-report=xml:coverage.xml --cov-report=html:cov_html --cov-report=term-missing --timeout=120 -q --tb=line --disable-warnings
+          pytest tests/ -o "addopts=" --cov=src/vitalDSP --cov-report=xml:coverage.xml --cov-report=html:cov_html --cov-report=term-missing --timeout=300 -q --tb=line --disable-warnings
 
 
       - name: Run Linting

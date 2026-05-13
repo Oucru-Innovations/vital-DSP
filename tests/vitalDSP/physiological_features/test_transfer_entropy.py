@@ -728,3 +728,294 @@ class TestSignificanceTesting:
             # p_value should be 1.0 if all surrogates failed
             if len(w) > 0 and "All surrogate calculations failed" in str(w[-1].message):
                 assert p_value == 1.0
+
+
+@pytest.mark.skipif(not TRANSFER_ENTROPY_AVAILABLE, reason="Transfer entropy not available")
+class TestAliasParameters:
+    """Tests covering lines 236, 238: k and l alias parameters."""
+
+    def test_k_alias_parameter(self):
+        """Test that k= alias sets k_coef (line 236)."""
+        np.random.seed(0)
+        x = np.random.randn(200)
+        y = np.random.randn(200)
+        te = TransferEntropy(x, y, k=2)
+        assert te.k == 2
+
+    def test_l_alias_parameter(self):
+        """Test that l= alias sets l_coef (line 238)."""
+        np.random.seed(0)
+        x = np.random.randn(200)
+        y = np.random.randn(200)
+        te = TransferEntropy(x, y, l=2)
+        assert te.l == 2
+
+    def test_k_and_l_alias_together(self):
+        """Test that both k= and l= aliases work together (lines 236, 238)."""
+        np.random.seed(0)
+        x = np.random.randn(200)
+        y = np.random.randn(200)
+        te = TransferEntropy(x, y, k=2, l=2)
+        assert te.k == 2
+        assert te.l == 2
+        result = te.compute_transfer_entropy()
+        assert isinstance(result, float)
+        assert result >= 0.0
+
+
+@pytest.mark.skipif(not TRANSFER_ENTROPY_AVAILABLE, reason="Transfer entropy not available")
+class TestMutualInformationReshape:
+    """Tests covering lines 430->432, 432->436: 1D reshape in _estimate_mutual_information_knn."""
+
+    def test_mutual_information_knn_with_1d_arrays(self):
+        """Directly call _estimate_mutual_information_knn with 1D arrays.
+
+        Covers lines 430->432 (x.ndim==1 reshape) and 432->436 (y.ndim==1 reshape).
+        """
+        np.random.seed(1)
+        x = np.random.randn(150)
+        y = np.random.randn(150)
+        te = TransferEntropy(x, y, k_coef=1, l_coef=1)
+        # Call the private method directly with 1D arrays to trigger both reshape branches
+        mi = te._estimate_mutual_information_knn(x, y, k=3)
+        assert isinstance(mi, float)
+        assert mi >= 0.0
+
+    def test_mutual_information_knn_with_2d_arrays(self):
+        """Call _estimate_mutual_information_knn with 2D arrays (no reshape needed)."""
+        np.random.seed(2)
+        x = np.random.randn(150, 1)
+        y = np.random.randn(150, 1)
+        te = TransferEntropy(x.ravel(), y.ravel(), k_coef=1, l_coef=1)
+        mi = te._estimate_mutual_information_knn(x, y, k=3)
+        assert isinstance(mi, float)
+        assert mi >= 0.0
+
+
+@pytest.mark.skipif(not TRANSFER_ENTROPY_AVAILABLE, reason="Transfer entropy not available")
+class TestBidirectionalTEInterpretation:
+    """Tests covering line 614: 'Target predominantly drives source' interpretation."""
+
+    def test_bidirectional_te_target_drives_source(self):
+        """Test interpretation when target drives source (line 614 branch)."""
+        np.random.seed(42)
+        # Y drives X: X[i] = 0.8*Y[i-1] + noise
+        y = np.random.randn(200)
+        x = np.zeros(200)
+        x[0] = np.random.randn()
+        for i in range(1, 200):
+            x[i] = 0.8 * y[i - 1] + 0.1 * np.random.randn()
+
+        te = TransferEntropy(x, y, k_coef=1, l_coef=1)
+        result = te.compute_bidirectional_te()
+        assert isinstance(result, dict)
+        assert "interpretation" in result
+        # The result dict must always have these keys
+        assert "te_forward" in result
+        assert "te_backward" in result
+
+    def test_bidirectional_te_ratio_infinite(self):
+        """Test bidirectional TE when te_backward is 0 (ratio becomes inf, line 610)."""
+        np.random.seed(7)
+        # Highly predictable coupling where backward TE is likely 0
+        x = np.sin(np.linspace(0, 20, 200))
+        y = np.sin(np.linspace(0, 20, 200) + 0.1)
+        te = TransferEntropy(x, y, k_coef=1, l_coef=1)
+        result = te.compute_bidirectional_te()
+        assert isinstance(result, dict)
+        assert "ratio" in result
+
+
+@pytest.mark.skipif(not TRANSFER_ENTROPY_AVAILABLE, reason="Transfer entropy not available")
+class TestTimeDelayedTEWarning:
+    """Tests covering lines 687-692: warning in compute_time_delayed_te when TE fails."""
+
+    def test_time_delayed_te_basic(self):
+        """Test compute_time_delayed_te returns expected keys (lines 680-700)."""
+        np.random.seed(3)
+        x = np.random.randn(200)
+        y = np.random.randn(200)
+        te = TransferEntropy(x, y)
+        result = te.compute_time_delayed_te(max_delay=5)
+        assert isinstance(result, dict)
+        assert "te_values" in result
+        assert "delays" in result
+        assert "optimal_delay" in result
+        assert "optimal_te" in result
+        assert len(result["te_values"]) == 5
+
+    def test_time_delayed_te_warning_on_failure(self):
+        """Test that a UserWarning is issued if TE fails for a delay (lines 687-692)."""
+        import warnings
+        import unittest.mock as mock
+
+        np.random.seed(9)
+        x = np.random.randn(150)
+        y = np.random.randn(150)
+        te = TransferEntropy(x, y, k_coef=1, l_coef=1)
+
+        # Make compute_transfer_entropy raise on delay==2 (second iteration)
+        original_compute = TransferEntropy.compute_transfer_entropy
+        call_count = [0]
+
+        def patched_compute(self_inner):
+            call_count[0] += 1
+            if call_count[0] == 2:
+                raise ValueError("Simulated TE failure at delay 2")
+            return original_compute(self_inner)
+
+        with mock.patch.object(TransferEntropy, "compute_transfer_entropy", patched_compute):
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                result = te.compute_time_delayed_te(max_delay=3)
+
+        assert isinstance(result, dict)
+        assert "te_values" in result
+        # Warning should have been issued for the failed delay
+        warning_msgs = [str(warning.message) for warning in w]
+        assert any("Failed to compute TE at delay" in msg for msg in warning_msgs)
+
+
+@pytest.mark.skipif(not TRANSFER_ENTROPY_AVAILABLE, reason="Transfer entropy not available")
+class TestSignificancePhaseMethod:
+    """Tests covering lines 819->821: phase randomization method in test_significance."""
+
+    def test_significance_phase_method(self):
+        """Test test_significance with method='phase' using even-length signal (lines 812-822)."""
+        np.random.seed(5)
+        x = np.random.randn(200)  # even length -> line 820 executed
+        y = np.random.randn(200)
+        te = TransferEntropy(x, y)
+        result = te.test_significance(n_surrogates=5, method="phase")
+        assert isinstance(result, dict)
+        assert "p_value" in result
+        assert "te_original" in result
+        assert 0.0 <= result["p_value"] <= 1.0
+
+    def test_significance_phase_method_odd_length(self):
+        """Test test_significance with method='phase' using odd-length signal.
+
+        Covers line 819->821: when n % 2 != 0 (odd), line 820 is skipped.
+        """
+        np.random.seed(6)
+        x = np.random.randn(201)  # odd length -> n%2 != 0, skip line 820
+        y = np.random.randn(201)
+        te = TransferEntropy(x, y)
+        result = te.test_significance(n_surrogates=5, method="phase")
+        assert isinstance(result, dict)
+        assert "p_value" in result
+        assert 0.0 <= result["p_value"] <= 1.0
+
+    def test_significance_shuffle_p_values(self):
+        """Test that shuffle surrogates produce valid statistics (lines 847-868)."""
+        np.random.seed(10)
+        x = np.random.randn(200)
+        y = np.random.randn(200)
+        te = TransferEntropy(x, y)
+        result = te.test_significance(n_surrogates=10, method="shuffle")
+        assert isinstance(result, dict)
+        assert "p_value" in result
+        assert "te_surrogates_mean" in result
+        assert "te_surrogates_std" in result
+        assert "effect_size" in result
+        assert "significance" in result
+        p = result["p_value"]
+        assert 0.0 <= p <= 1.0
+        # Check significance label is one of three expected strings
+        assert result["significance"] in [
+            "Highly significant (p < 0.01)",
+            "Significant (p < 0.05)",
+            "Not significant (p >= 0.05)",
+        ]
+
+    def test_significance_surrogate_exception_handling(self):
+        """Cover lines 839-844: exception in surrogate TE computation is caught and warned.
+
+        We mock compute_transfer_entropy to raise on the second call (surrogate).
+        """
+        import warnings
+        import unittest.mock as mock
+
+        np.random.seed(42)
+        x = np.random.randn(150)
+        y = np.random.randn(150)
+        te = TransferEntropy(x, y)
+
+        original_compute = TransferEntropy.compute_transfer_entropy
+        call_count = [0]
+
+        def patched_compute(self_inner):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return original_compute(self_inner)  # first call succeeds (te_original)
+            raise RuntimeError("Simulated surrogate failure")
+
+        with mock.patch.object(TransferEntropy, "compute_transfer_entropy", patched_compute):
+            with warnings.catch_warnings(record=True) as w:
+                warnings.simplefilter("always")
+                result = te.test_significance(n_surrogates=5, method="shuffle")
+
+        # All surrogates failed -> empty surrogate_tes -> warning about all surrogates failing
+        assert isinstance(result, dict)
+        assert result["p_value"] == 1.0  # lines 860: p_value = 1.0 when all fail
+        assert result["te_surrogates_std"] == 0.0
+
+    def test_significance_highly_significant_label(self):
+        """Cover line 866: 'Highly significant (p < 0.01)' label branch.
+
+        We mock surrogate TE values to all be 0 so p_value = 0.0 < 0.01.
+        """
+        import unittest.mock as mock
+
+        np.random.seed(0)
+        x = np.random.randn(150)
+        y = np.random.randn(150)
+        te = TransferEntropy(x, y)
+
+        # Make every surrogate return 0.0 so original TE (>0) beats all -> p=0.0
+        original_compute = TransferEntropy.compute_transfer_entropy
+        call_count = [0]
+
+        def patched_compute(self_inner):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return 1.0  # large te_original
+            return 0.0  # surrogate always 0 -> p_value = 0 < 0.01
+
+        with mock.patch.object(TransferEntropy, "compute_transfer_entropy", patched_compute):
+            result = te.test_significance(n_surrogates=20, method="shuffle")
+
+        assert result["significance"] == "Highly significant (p < 0.01)"
+
+    def test_significance_significant_label(self):
+        """Cover line 868: 'Significant (p < 0.05)' label branch.
+
+        We arrange p_value to be between 0.01 and 0.05.
+        """
+        import unittest.mock as mock
+
+        np.random.seed(1)
+        x = np.random.randn(150)
+        y = np.random.randn(150)
+        te = TransferEntropy(x, y)
+
+        # We need exactly 1 or 2 out of 100 surrogates to beat original TE
+        # Make original TE = 1.0, and 1 surrogate = 2.0, rest = 0.0 -> p = 1/101 ~ 0.0099
+        # For 0.01 < p < 0.05 with 100 surrogates, we need 2-4 surrogates to exceed original
+        call_count = [0]
+
+        def patched_compute(self_inner):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return 1.0  # te_original
+            # 3 out of 100 surrogates return 2.0 (beat original) -> p = 3/100 = 0.03
+            if call_count[0] in (2, 3, 4):
+                return 2.0
+            return 0.5
+
+        with mock.patch.object(TransferEntropy, "compute_transfer_entropy", patched_compute):
+            result = te.test_significance(n_surrogates=100, method="shuffle")
+
+        p = result["p_value"]
+        assert 0.01 <= p <= 0.05
+        assert result["significance"] == "Significant (p < 0.05)"

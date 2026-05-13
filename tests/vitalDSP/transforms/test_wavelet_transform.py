@@ -210,10 +210,112 @@ def test_invalid_wavelet_name():
 def test_different_wavelet_types(sample_signal):
     """Test different wavelet types"""
     wavelets = ["haar", "db4", "sym4", "coif2"]
-    
+
     for wavelet in wavelets:
         wt = WaveletTransform(sample_signal, wavelet_name=wavelet)
         coeffs = wt.perform_wavelet_transform(level=2)
         assert isinstance(coeffs, list)
         assert len(coeffs) > 0
+
+
+def test_continuous_wavelet_triggers_warning_and_default_highpass():
+    """Test that a continuous wavelet (returning single array) triggers warning and sets default high-pass.
+
+    Covers lines 132-139: else branch when filters is not a 2-tuple.
+    """
+    import warnings
+    signal = np.sin(np.linspace(0, 10, 100))
+    # mexican_hat returns a single array, not a tuple -> triggers else branch
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        wt = WaveletTransform(signal, wavelet_name="mexh")
+        assert any("continuous wavelet" in str(warning.message) for warning in w), \
+            "Expected UserWarning about continuous wavelet"
+    # high_pass should be the default [1, -1]
+    np.testing.assert_array_equal(wt.high_pass, np.array([1, -1]))
+    # low_pass should be the mexican_hat array
+    assert isinstance(wt.low_pass, np.ndarray)
+    assert len(wt.low_pass) > 0
+
+
+def test_morlet_wavelet_triggers_warning_and_default_highpass():
+    """Test morlet wavelet (continuous) also triggers UserWarning and sets default high-pass.
+
+    Covers lines 132-139: else branch for morlet continuous wavelet.
+    """
+    import warnings
+    signal = np.sin(np.linspace(0, 10, 100))
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        wt = WaveletTransform(signal, wavelet_name="morl")
+        assert any("continuous wavelet" in str(warning.message) for warning in w)
+    np.testing.assert_array_equal(wt.high_pass, np.array([1, -1]))
+
+
+def test_wavelet_decompose_fallback_no_scipy():
+    """Test _wavelet_decompose fallback when scipy.signal raises ImportError.
+
+    Covers lines 193-205: the except ImportError fallback loop.
+    We patch scipy.signal itself so the 'from scipy.signal import convolve' in
+    the try block raises ImportError at runtime.
+    """
+    import sys
+    import unittest.mock as mock
+    signal = np.sin(np.linspace(0, 10, 30))  # small signal for speed
+    wt = WaveletTransform(signal, wavelet_name="haar", same_length=True)
+
+    # Remove scipy.signal from sys.modules so 'from scipy.signal import convolve' fails
+    saved = sys.modules.get("scipy.signal")
+    sys.modules["scipy.signal"] = None  # type: ignore
+    try:
+        approximation, detail = wt._wavelet_decompose(signal)
+    finally:
+        if saved is not None:
+            sys.modules["scipy.signal"] = saved
+        else:
+            del sys.modules["scipy.signal"]
+
+    assert isinstance(approximation, np.ndarray)
+    assert isinstance(detail, np.ndarray)
+    assert len(approximation) == len(signal)
+    assert len(detail) == len(signal)
+
+
+def test_wavelet_decompose_fallback_same_length_false():
+    """Test fallback loop in _wavelet_decompose with same_length=False.
+
+    Covers lines 193-205 for the same_length=False padding path.
+    """
+    import sys
+    signal = np.sin(np.linspace(0, 10, 30))
+    wt = WaveletTransform(signal, wavelet_name="haar", same_length=False)
+
+    saved = sys.modules.get("scipy.signal")
+    sys.modules["scipy.signal"] = None  # type: ignore
+    try:
+        approximation, detail = wt._wavelet_decompose(signal)
+    finally:
+        if saved is not None:
+            sys.modules["scipy.signal"] = saved
+        else:
+            del sys.modules["scipy.signal"]
+
+    assert isinstance(approximation, np.ndarray)
+    assert isinstance(detail, np.ndarray)
+    assert len(approximation) == len(signal)
+
+
+def test_wavelet_decompose_length_truncation():
+    """Test that approximation/detail are truncated when longer than output_length.
+
+    Covers lines 189 and 191: the truncation branches when len > output_length.
+    Uses same_length=False to produce output that may be longer than input.
+    """
+    signal = np.sin(np.linspace(0, 10, 20))
+    # same_length=False pads with zeros at end; this can yield longer output
+    wt = WaveletTransform(signal, wavelet_name="db4", same_length=False)
+    approximation, detail = wt._wavelet_decompose(signal)
+    # After truncation, length must equal input length
+    assert len(approximation) == len(signal)
+    assert len(detail) == len(signal)
 
