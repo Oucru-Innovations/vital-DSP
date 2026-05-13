@@ -6728,9 +6728,11 @@ def calculate_entropy(data):
     try:
         from vitalDSP.physiological_features.symbolic_dynamics import SymbolicDynamics
 
-        # Create symbolic dynamics object and compute Shannon entropy
         sd = SymbolicDynamics(data)
-        return sd.compute_shannon_entropy()
+        result = sd.compute_shannon_entropy()
+        if isinstance(result, dict):
+            return result["entropy"]
+        return float(result)
     except Exception as e:
         logger.error(f"Error calculating entropy: {e}")
         return 0
