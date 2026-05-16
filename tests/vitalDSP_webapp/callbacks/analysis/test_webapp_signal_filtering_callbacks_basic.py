@@ -43,11 +43,6 @@ class TestBasicFunctions:
         assert isinstance(filtered, np.ndarray)
         assert len(filtered) == len(SAMPLE_DATA)
     
-    def test_calculate_snr_improvement(self):
-        filtered = SAMPLE_DATA * 0.9
-        snr = calculate_snr_improvement(SAMPLE_DATA, filtered)
-        assert isinstance(snr, (int, float))
-    
     def test_calculate_mse(self):
         filtered = SAMPLE_DATA * 0.9
         mse = calculate_mse(SAMPLE_DATA, filtered)

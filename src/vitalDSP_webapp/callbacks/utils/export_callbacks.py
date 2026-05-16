@@ -45,103 +45,12 @@ logger = logging.getLogger(__name__)
 
 
 def register_filtering_export_callbacks(app):
-    """Register export callbacks for filtering page."""
-
-    @app.callback(
-        Output("download-filtered-csv", "data"),
-        Input("btn-export-filtered-csv", "n_clicks"),
-        [
-            State("store-filtered-signal", "data"),
-            State("sampling-freq", "value"),
-        ],
-        prevent_initial_call=True,
-    )
-    def export_filtered_csv(n_clicks, filtered_data, sampling_freq):
-        """Export filtered signal to CSV."""
-        if not n_clicks or not filtered_data:
-            raise PreventUpdate
-
-        try:
-            signal = np.array(filtered_data.get("signal", []))
-            time = np.array(filtered_data.get("time", []))
-
-            if len(signal) == 0:
-                raise PreventUpdate
-
-            # If no time array, generate one
-            if len(time) == 0:
-                fs = sampling_freq or filtered_data.get("sampling_freq", 100)
-                time = np.arange(len(signal)) / fs
-
-            metadata = {
-                "filter_type": filtered_data.get("filter_type", "Unknown"),
-                "filter_params": filtered_data.get("filter_params", {}),
-                "signal_type": filtered_data.get("signal_type", "Unknown"),
-            }
-
-            csv_content = export_filtered_signal_csv(
-                signal=signal,
-                time=time,
-                sampling_freq=sampling_freq or 100,
-                metadata=metadata,
-            )
-
-            return {
-                "content": csv_content,
-                "filename": f'filtered_signal_{filtered_data.get("filter_type", "unknown")}.csv',
-            }
-
-        except Exception as e:
-            logger.error(f"Error exporting filtered signal to CSV: {e}")
-            raise PreventUpdate
-
-    @app.callback(
-        Output("download-filtered-json", "data"),
-        Input("btn-export-filtered-json", "n_clicks"),
-        [
-            State("store-filtered-signal", "data"),
-            State("sampling-freq", "value"),
-        ],
-        prevent_initial_call=True,
-    )
-    def export_filtered_json(n_clicks, filtered_data, sampling_freq):
-        """Export filtered signal to JSON."""
-        if not n_clicks or not filtered_data:
-            raise PreventUpdate
-
-        try:
-            signal = np.array(filtered_data.get("signal", []))
-            time = np.array(filtered_data.get("time", []))
-
-            if len(signal) == 0:
-                raise PreventUpdate
-
-            # If no time array, generate one
-            if len(time) == 0:
-                fs = sampling_freq or filtered_data.get("sampling_freq", 100)
-                time = np.arange(len(signal)) / fs
-
-            metadata = {
-                "filter_type": filtered_data.get("filter_type", "Unknown"),
-                "filter_params": filtered_data.get("filter_params", {}),
-                "signal_type": filtered_data.get("signal_type", "Unknown"),
-            }
-
-            json_content = export_filtered_signal_json(
-                signal=signal,
-                time=time,
-                sampling_freq=sampling_freq or 100,
-                metadata=metadata,
-            )
-
-            return {
-                "content": json_content,
-                "filename": f'filtered_signal_{filtered_data.get("filter_type", "unknown")}.json',
-            }
-
-        except Exception as e:
-            logger.error(f"Error exporting filtered signal to JSON: {e}")
-            raise PreventUpdate
+    """No-op: filtering-page CSV / JSON export was removed (the buttons
+    didn't work reliably and lived on a stale signal-source contract).
+    Kept as a stub so :func:`register_all_export_callbacks` can still
+    call it without conditional logic.
+    """
+    return None
 
 
 def register_time_domain_export_callbacks(app):
@@ -441,43 +350,43 @@ def register_all_export_callbacks(app):
 
     try:
         register_filtering_export_callbacks(app)
-        logger.info("✓ Filtering export callbacks registered")
+        logger.info(" Filtering export callbacks registered")
     except Exception as e:
         logger.warning(f"Could not register filtering export callbacks: {e}")
 
     try:
         register_time_domain_export_callbacks(app)
-        logger.info("✓ Time domain export callbacks registered")
+        logger.info(" Time domain export callbacks registered")
     except Exception as e:
         logger.warning(f"Could not register time domain export callbacks: {e}")
 
     try:
         register_frequency_domain_export_callbacks(app)
-        logger.info("✓ Frequency domain export callbacks registered")
+        logger.info(" Frequency domain export callbacks registered")
     except Exception as e:
         logger.warning(f"Could not register frequency domain export callbacks: {e}")
 
     try:
         register_physiological_export_callbacks(app)
-        logger.info("✓ Physiological export callbacks registered")
+        logger.info(" Physiological export callbacks registered")
     except Exception as e:
         logger.warning(f"Could not register physiological export callbacks: {e}")
 
     try:
         register_quality_export_callbacks(app)
-        logger.info("✓ Quality export callbacks registered")
+        logger.info(" Quality export callbacks registered")
     except Exception as e:
         logger.warning(f"Could not register quality export callbacks: {e}")
 
     try:
         register_respiratory_export_callbacks(app)
-        logger.info("✓ Respiratory export callbacks registered")
+        logger.info(" Respiratory export callbacks registered")
     except Exception as e:
         logger.warning(f"Could not register respiratory export callbacks: {e}")
 
     try:
         register_transforms_export_callbacks(app)
-        logger.info("✓ Transforms export callbacks registered")
+        logger.info(" Transforms export callbacks registered")
     except Exception as e:
         logger.warning(f"Could not register transforms export callbacks: {e}")
 

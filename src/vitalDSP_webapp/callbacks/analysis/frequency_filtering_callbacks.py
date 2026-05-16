@@ -604,10 +604,38 @@ def register_frequency_filtering_callbacks(app):
                                 else:
                                     signal_data_detrended = windowed_original_signal
 
+                                # Chain short-circuit: when the filtering page
+                                # saved a multi-stage chain, replay it here
+                                # instead of the single-filter dispatch.  The
+                                # ``selected_signal`` we computed above is set
+                                # to the chain output; the rest of the
+                                # branch is skipped via ``filter_type=chain``.
+                                saved_chain = filter_info.get("chain") or []
+                                if saved_chain:
+                                    from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                                        apply_filter_chain,
+                                    )
+
+                                    selected_signal = apply_filter_chain(
+                                        signal_data_detrended,
+                                        sampling_freq,
+                                        None,
+                                        saved_chain,
+                                        logger=logger,
+                                    )
+                                    logger.info(
+                                        "Frequency page re-applied saved chain (%d stages)",
+                                        len(saved_chain),
+                                    )
+
                                 # Apply the same filter type as used in filtering screen
                                 filter_type = filter_info.get(
                                     "filter_type", "traditional"
                                 )
+                                if saved_chain:
+                                    # Mark dispatch as done; the chain
+                                    # already produced ``selected_signal``.
+                                    filter_type = "__chain_done__"
 
                                 if filter_type == "traditional":
                                     # Extract traditional filter parameters

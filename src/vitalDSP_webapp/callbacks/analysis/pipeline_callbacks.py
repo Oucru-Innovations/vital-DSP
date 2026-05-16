@@ -127,7 +127,7 @@ def _execute_pipeline_stage(
                 overall_sqi = quality_results.get("overall_sqi", 0.5)
 
                 logger.info(
-                    f"✓ Stage 2 - {sqi_type}: {overall_sqi:.3f} "
+                    f" Stage 2 - {sqi_type}: {overall_sqi:.3f} "
                     f"(normal: {len(normal_segments)}, abnormal: {len(abnormal_segments)})"
                 )
 
@@ -203,7 +203,7 @@ def _execute_pipeline_stage(
                 from scipy import signal as scipy_signal
 
                 working_signal = scipy_signal.detrend(working_signal)
-                logger.info("✓ Applied detrending")
+                logger.info(" Applied detrending")
 
             # Apply filtering based on filter type (with multiple applications if specified)
             filtered = working_signal.copy()
@@ -234,7 +234,7 @@ def _execute_pipeline_stage(
                                 filter_type=filter_family,
                             )
                             logger.info(
-                                f"✓ Applied {filter_family} lowpass: {highcut} Hz, order {filter_order}"
+                                f" Applied {filter_family} lowpass: {highcut} Hz, order {filter_order}"
                             )
                         elif filter_response == "highpass":
                             filtered = sf.highpass(
@@ -244,7 +244,7 @@ def _execute_pipeline_stage(
                                 filter_type=filter_family,
                             )
                             logger.info(
-                                f"✓ Applied {filter_family} highpass: {lowcut} Hz, order {filter_order}"
+                                f" Applied {filter_family} highpass: {lowcut} Hz, order {filter_order}"
                             )
                         elif filter_response == "bandpass":
                             filtered = sf.bandpass(
@@ -255,7 +255,7 @@ def _execute_pipeline_stage(
                                 filter_type=filter_family,
                             )
                             logger.info(
-                                f"✓ Applied {filter_family} bandpass: {lowcut}-{highcut} Hz, order {filter_order}"
+                                f" Applied {filter_family} bandpass: {lowcut}-{highcut} Hz, order {filter_order}"
                             )
                         elif filter_response == "bandstop":
                             filtered = sf.bandstop(
@@ -266,7 +266,7 @@ def _execute_pipeline_stage(
                                 filter_type=filter_family,
                             )
                             logger.info(
-                                f"✓ Applied {filter_family} bandstop: {lowcut}-{highcut} Hz, order {filter_order}"
+                                f" Applied {filter_family} bandstop: {lowcut}-{highcut} Hz, order {filter_order}"
                             )
                     except Exception as e:
                         logger.warning(
@@ -292,7 +292,7 @@ def _execute_pipeline_stage(
                             filtered, savgol_window, savgol_polyorder
                         )
                         logger.info(
-                            f"✓ Applied Savitzky-Golay: window={savgol_window}, polyorder={savgol_polyorder}"
+                            f" Applied Savitzky-Golay: window={savgol_window}, polyorder={savgol_polyorder}"
                         )
 
                     moving_avg_window = pipeline_data.get("stage3_moving_avg_window")
@@ -303,7 +303,7 @@ def _execute_pipeline_stage(
                             mode="same",
                         )
                         logger.info(
-                            f"✓ Applied Moving Average: window={moving_avg_window}"
+                            f" Applied Moving Average: window={moving_avg_window}"
                         )
 
                     gaussian_sigma = pipeline_data.get("stage3_gaussian_sigma")
@@ -312,7 +312,7 @@ def _execute_pipeline_stage(
 
                         filtered = gaussian_filter1d(filtered, sigma=gaussian_sigma)
                         logger.info(
-                            f"✓ Applied Gaussian filter: sigma={gaussian_sigma}"
+                            f" Applied Gaussian filter: sigma={gaussian_sigma}"
                         )
 
                 elif stage3_filter_type == "advanced":
@@ -326,7 +326,7 @@ def _execute_pipeline_stage(
                         kalman_q = pipeline_data.get("stage3_kalman_q", 1.0)
                         filtered = asf.kalman_filter(R=kalman_r, Q=kalman_q)
                         logger.info(
-                            f"✓ Applied Kalman filter: R={kalman_r}, Q={kalman_q}"
+                            f" Applied Kalman filter: R={kalman_r}, Q={kalman_q}"
                         )
                     elif advanced_method == "adaptive":
                         adaptive_mu = pipeline_data.get("stage3_adaptive_mu", 0.01)
@@ -335,7 +335,7 @@ def _execute_pipeline_stage(
                             mu=adaptive_mu, order=adaptive_order
                         )
                         logger.info(
-                            f"✓ Applied Adaptive filter: μ={adaptive_mu}, order={adaptive_order}"
+                            f" Applied Adaptive filter: μ={adaptive_mu}, order={adaptive_order}"
                         )
                     else:
                         logger.warning(
@@ -362,12 +362,12 @@ def _execute_pipeline_stage(
                             cutoff=artifact_strength, fs=fs
                         )
                         logger.info(
-                            f"✓ Applied baseline correction: cutoff={artifact_strength} Hz"
+                            f" Applied baseline correction: cutoff={artifact_strength} Hz"
                         )
                     elif artifact_type == "spike":
                         filtered = ar.spike_removal(threshold=threshold_value)
                         logger.info(
-                            f"✓ Applied spike removal: threshold={threshold_value}"
+                            f" Applied spike removal: threshold={threshold_value}"
                         )
                     elif artifact_type == "noise":
                         filtered = ar.wavelet_denoising(
@@ -376,7 +376,7 @@ def _execute_pipeline_stage(
                             threshold_type=threshold_type,
                         )
                         logger.info(
-                            f"✓ Applied wavelet denoising: {wavelet_type}, level={wavelet_level}, {threshold_type}"
+                            f" Applied wavelet denoising: {wavelet_type}, level={wavelet_level}, {threshold_type}"
                         )
                     elif artifact_type in ["powerline", "pca", "ica"]:
                         logger.info(
@@ -421,7 +421,7 @@ def _execute_pipeline_stage(
                 ar = ArtifactRemoval(filtered)
                 preprocessed = ar.baseline_correction(cutoff=0.5, fs=fs)
                 results["preprocessed"] = preprocessed
-                logger.info("✓ Created preprocessed signal (baseline corrected)")
+                logger.info(" Created preprocessed signal (baseline corrected)")
 
             result = {
                 "paths": list(results.keys()),
@@ -549,7 +549,7 @@ def _execute_pipeline_stage(
                     }
 
                     logger.info(
-                        f"✓ {path_name}: {sqi_type}={overall_sqi:.3f} "
+                        f" {path_name}: {sqi_type}={overall_sqi:.3f} "
                         f"(normal: {len(normal_segments)}, abnormal: {len(abnormal_segments)})"
                     )
 
@@ -595,7 +595,7 @@ def _execute_pipeline_stage(
             }
             pipeline_data["best_path"] = best_path
             logger.info(
-                f"✓ Stage 4 - Best path selected: {best_path} (quality: {best_quality:.3f})"
+                f" Stage 4 - Best path selected: {best_path} (quality: {best_quality:.3f})"
             )
             return True, result
 
@@ -635,7 +635,7 @@ def _execute_pipeline_stage(
                     wf = WindowFunctions()
                     window_func = wf.gaussian(window_samples, std=window_samples / 6)
 
-                logger.info(f"✓ Using {window_function} window function")
+                logger.info(f" Using {window_function} window function")
 
             segments = []
             segment_positions = []  # Store positions for visualization
@@ -666,7 +666,7 @@ def _execute_pipeline_stage(
             pipeline_data["segment_positions"] = segment_positions
 
             logger.info(
-                f"✓ Created {len(segments)} segments with {window_function} window"
+                f" Created {len(segments)} segments with {window_function} window"
             )
             return True, result
 
@@ -978,7 +978,7 @@ def _execute_pipeline_stage(
             pipeline_data["features"] = features
 
             logger.info(
-                f"✓ Extracted {len(feature_names_used)} feature types from {len(segments)} segments"
+                f" Extracted {len(feature_names_used)} feature types from {len(segments)} segments"
             )
             return True, result
 
@@ -1060,14 +1060,14 @@ def _execute_pipeline_stage(
             if generate_recommendations:
                 if confidence >= confidence_threshold:
                     recommendations.append(
-                        f"✓ High confidence ({confidence:.2f}) - Recommended path: {selected_path.upper()}"
+                        f" High confidence ({confidence:.2f}) - Recommended path: {selected_path.upper()}"
                     )
                     recommendations.append(
                         f"Signal quality is {['poor', 'fair', 'good', 'excellent'][min(3, int(confidence * 4))]} - suitable for analysis"
                     )
                 else:
                     recommendations.append(
-                        f"⚠ Low confidence ({confidence:.2f}) - Additional preprocessing may be needed"
+                        f" Low confidence ({confidence:.2f}) - Additional preprocessing may be needed"
                     )
                     recommendations.append(
                         "Consider adjusting filter parameters or artifact removal methods"
@@ -1078,11 +1078,11 @@ def _execute_pipeline_stage(
                     for path_name, metrics in quality_metrics.items():
                         if metrics.get("artifact_score", 1.0) < 0.6:
                             recommendations.append(
-                                f"⚠ {path_name.upper()}: High artifact level detected"
+                                f" {path_name.upper()}: High artifact level detected"
                             )
                         if metrics.get("snr_score", 1.0) < 0.5:
                             recommendations.append(
-                                f"⚠ {path_name.upper()}: Low SNR - consider noise reduction"
+                                f" {path_name.upper()}: Low SNR - consider noise reduction"
                             )
 
             result = {
@@ -1098,7 +1098,7 @@ def _execute_pipeline_stage(
             pipeline_data["best_path"] = selected_path
 
             logger.info(
-                f"✓ Selected path: {selected_path} (confidence: {confidence:.3f}, criterion: {selection_criterion})"
+                f" Selected path: {selected_path} (confidence: {confidence:.3f}, criterion: {selection_criterion})"
             )
             return True, result
 
@@ -1205,7 +1205,7 @@ def _execute_pipeline_stage(
             }
 
             logger.info(
-                f"✓ Output package created: {len(output_contents)} content types, {len(output_formats)} formats"
+                f" Output package created: {len(output_contents)} content types, {len(output_formats)} formats"
             )
             return True, result
 
@@ -1226,7 +1226,7 @@ def _execute_pipeline_stage(
         }
         stage_name = stage_names.get(stage, f"Stage {stage}")
 
-        logger.error(f"❌ Error in {stage_name} (Stage {stage}): {e}")
+        logger.error(f" Error in {stage_name} (Stage {stage}): {e}")
         import traceback
 
         logger.error(f"Full traceback:\n{traceback.format_exc()}")
@@ -1585,7 +1585,7 @@ def register_pipeline_callbacks(app):
                         df = data_service.get_data(latest_id)
                         if df is not None:
                             logger.info(
-                                f"✓ Loaded data from data service: ID={latest_id}, shape={df.shape}, columns={list(df.columns)}"
+                                f" Loaded data from data service: ID={latest_id}, shape={df.shape}, columns={list(df.columns)}"
                             )
                             data_loaded = True
                         else:
@@ -1602,16 +1602,29 @@ def register_pipeline_callbacks(app):
 
                 logger.warning(f"Traceback: {traceback.format_exc()}")
 
-            # Fallback: try uploaded_data store (for smaller files)
+            # Fallback: try uploaded_data store (for smaller files).
+            # Handles both the legacy list-of-records shape and the
+            # current compact dict-of-lists payload from
+            # upload_callbacks._df_to_compact_payload, including the
+            # ``__ns__`` datetime suffix produced by that helper.
             if not data_loaded and uploaded_data:
                 try:
-                    # pandas is already imported at the top of the file
                     if isinstance(uploaded_data, list) and len(uploaded_data) > 0:
                         df = pd.DataFrame(uploaded_data)
-                        logger.info(
-                            f"✓ Loaded data from store: shape={df.shape}, columns={list(df.columns)}"
-                        )
                         data_loaded = True
+                    elif isinstance(uploaded_data, dict) and uploaded_data:
+                        from vitalDSP_webapp.callbacks.core.upload_callbacks import (
+                            rehydrate_payload,
+                        )
+
+                        df = rehydrate_payload(uploaded_data)
+                        data_loaded = bool(len(df))
+                    if data_loaded:
+                        logger.info(
+                            "Loaded data from store: shape=%s, columns=%s",
+                            df.shape,
+                            list(df.columns),
+                        )
                 except Exception as e:
                     logger.warning(f"Could not load from store: {e}")
 
@@ -1621,7 +1634,7 @@ def register_pipeline_callbacks(app):
                 return (
                     {"display": "block"},
                     0,
-                    "⚠️ Error: No data uploaded. Please upload and process data first.",
+                    " Error: No data uploaded. Please upload and process data first.",
                     False,
                     True,
                     True,
@@ -1662,7 +1675,7 @@ def register_pipeline_callbacks(app):
 
                 signal_data = df[signal_col].values
                 logger.info(
-                    f"✓ Signal data extracted: column='{signal_col}', length={len(signal_data)}, range=[{signal_data.min():.3f}, {signal_data.max():.3f}]"
+                    f" Signal data extracted: column='{signal_col}', length={len(signal_data)}, range=[{signal_data.min():.3f}, {signal_data.max():.3f}]"
                 )
 
                 # Determine sampling frequency from data config if available
@@ -1678,7 +1691,7 @@ def register_pipeline_callbacks(app):
                         latest_id = sorted(all_data.keys(), reverse=True)[0]
                         data_info = data_service.get_data_info(latest_id)
                         fs = data_info.get("sampling_freq", 128) if data_info else 128
-                        logger.info(f"✓ Sampling frequency from data service: {fs} Hz")
+                        logger.info(f" Sampling frequency from data service: {fs} Hz")
                     else:
                         fs = 128  # Default
                         logger.warning("No data info found, using default fs=128 Hz")
@@ -1823,7 +1836,7 @@ def register_pipeline_callbacks(app):
                 return (
                     {"display": "block"},
                     0,
-                    f"⚠️ Error: {str(e)}",
+                    f" Error: {str(e)}",
                     False,
                     True,
                     True,
@@ -1974,12 +1987,12 @@ def register_pipeline_callbacks(app):
                 # If pipeline already marked as completed OR stage >= 8, stop the interval IMMEDIATELY
                 if is_completed or current_stage_num >= 8:
                     logger.info(
-                        f"⚠️ Interval fired but pipeline already completed (stage={current_stage_num}, completed={is_completed}) - STOPPING INTERVAL"
+                        f" Interval fired but pipeline already completed (stage={current_stage_num}, completed={is_completed}) - STOPPING INTERVAL"
                     )
                     return (
                         {"display": "block"},
                         100,
-                        "🔴 REAL DATA MODE - Pipeline completed successfully!",
+                        " REAL DATA MODE - Pipeline completed successfully!",
                         False,  # Enable run button
                         True,  # Disable stop button
                         False,  # Enable export button
@@ -2016,15 +2029,15 @@ def register_pipeline_callbacks(app):
                             "Intelligent Output",
                             "Output Package",
                         ]
-                        status = f"🔴 REAL DATA MODE - Stage {new_stage}/8: {stage_names[new_stage - 1]}"
+                        status = f" REAL DATA MODE - Stage {new_stage}/8: {stage_names[new_stage - 1]}"
 
                         logger.info(
-                            f"✓ Stage {new_stage} completed: {stage_names[new_stage - 1]}"
+                            f" Stage {new_stage} completed: {stage_names[new_stage - 1]}"
                         )
 
                         # Check if pipeline is complete
                         if new_stage == 8:
-                            logger.info("🎉 Pipeline completed successfully!")
+                            logger.info(" Pipeline completed successfully!")
                             # Mark pipeline as completed
                             pipeline_data["completed"] = True
                             pipeline_data["completion_time"] = time.time()
@@ -2033,7 +2046,7 @@ def register_pipeline_callbacks(app):
                             return (
                                 {"display": "block"},
                                 100,
-                                "🔴 REAL DATA MODE - Pipeline completed successfully!",
+                                " REAL DATA MODE - Pipeline completed successfully!",
                                 False,
                                 True,
                                 False,  # Enable export
@@ -2079,13 +2092,13 @@ def register_pipeline_callbacks(app):
                             error_msg = error_msg[:200] + "..."
 
                         user_message = (
-                            f"❌ Error in {stage_name} (Stage {new_stage})\n\n"
-                            f"📋 Details: {error_msg}\n\n"
-                            f"💡 Tip: Check console logs for full details or try adjusting stage parameters."
+                            f" Error in {stage_name} (Stage {new_stage})\n\n"
+                            f" Details: {error_msg}\n\n"
+                            f" Tip: Check console logs for full details or try adjusting stage parameters."
                         )
 
                         logger.error(
-                            f"❌ Stage {new_stage} ({stage_name}) failed: {result}"
+                            f" Stage {new_stage} ({stage_name}) failed: {result}"
                         )
                         return (
                             {"display": "block"},
@@ -2101,12 +2114,12 @@ def register_pipeline_callbacks(app):
                 else:
                     # Stage is >= 8, should have been caught earlier but add safety
                     logger.warning(
-                        f"⚠️ Interval fired for completed pipeline (stage {current_stage_num}) - STOPPING"
+                        f" Interval fired for completed pipeline (stage {current_stage_num}) - STOPPING"
                     )
                     return (
                         {"display": "block"},
                         100,
-                        "🔴 REAL DATA MODE - Pipeline completed!",
+                        " REAL DATA MODE - Pipeline completed!",
                         False,
                         True,
                         False,
@@ -2188,14 +2201,14 @@ def register_pipeline_callbacks(app):
                     "Intelligent Output",
                     "Output Package",
                 ]
-                status = f"🟡 SIMULATION MODE - Stage {new_stage}/8: {stage_names[new_stage - 1]}"
+                status = f" SIMULATION MODE - Stage {new_stage}/8: {stage_names[new_stage - 1]}"
 
                 # Check if pipeline is complete
                 if new_stage == 8:
                     return (
                         {"display": "block"},
                         100,
-                        "🟡 SIMULATION MODE - Pipeline completed successfully!",
+                        " SIMULATION MODE - Pipeline completed successfully!",
                         False,
                         True,
                         False,  # Enable export
@@ -2484,9 +2497,9 @@ def register_pipeline_callbacks(app):
                     [
                         dbc.Badge(
                             (
-                                "🔴 REAL DATA MODE"
+                                " REAL DATA MODE"
                                 if pipeline_data
-                                else "🟡 SIMULATION MODE"
+                                else " SIMULATION MODE"
                             ),
                             color="success" if pipeline_data else "warning",
                             className="mb-2",
@@ -2716,7 +2729,7 @@ def register_pipeline_callbacks(app):
                 trace.y = trace.y[:max_samples]
 
             title = (
-                "🔴 REAL DATA MODE - Processing Paths Comparison (First 10 seconds)"
+                " REAL DATA MODE - Processing Paths Comparison (First 10 seconds)"
             )
 
         else:
@@ -2782,7 +2795,7 @@ def register_pipeline_callbacks(app):
                 )
 
             title = (
-                "🟡 SIMULATION MODE - Processing Paths Comparison (First 10 seconds)"
+                " SIMULATION MODE - Processing Paths Comparison (First 10 seconds)"
             )
 
         return {
@@ -2813,16 +2826,16 @@ def register_pipeline_callbacks(app):
 
         # Sample quality results
         quality_data = {
-            "Stage 1: SNR Assessment": {"SNR (dB)": 15.2, "Status": "✅ PASS"},
+            "Stage 1: SNR Assessment": {"SNR (dB)": 15.2, "Status": " PASS"},
             "Stage 2: Statistical Screen": {
                 "Outlier Ratio": 0.05,
                 "Jump Ratio": 0.08,
-                "Status": "✅ PASS",
+                "Status": " PASS",
             },
             "Stage 3: Signal-Specific": {
                 "Baseline Wander": 0.72,
                 "Amplitude Variability": 0.81,
-                "Status": "✅ PASS",
+                "Status": " PASS",
             },
         }
 
@@ -4139,9 +4152,9 @@ def register_pipeline_callbacks(app):
                         normal = len(metrics.get("normal_segments", []))
                         abnormal = len(metrics.get("abnormal_segments", []))
                         passed = (
-                            "✅ Passed"
+                            " Passed"
                             if metrics.get("passed", False)
-                            else "⚠️ Below Threshold"
+                            else " Below Threshold"
                         )
                         report_lines.append(
                             f"| {path_name.upper()} | {quality:.3f} | {normal} | {abnormal} | {passed} |"
@@ -4216,7 +4229,7 @@ def register_pipeline_callbacks(app):
         report_lines.append("## Summary")
         report_lines.append("")
         report_lines.append(
-            f"- **Pipeline Completed:** {'Yes ✅' if pipeline_data.get('completed', False) else 'No ⚠️'}"
+            f"- **Pipeline Completed:** {'Yes ' if pipeline_data.get('completed', False) else 'No '}"
         )
         if pipeline_data.get("completion_time"):
             start_time = pipeline_data.get("start_time", 0)
@@ -4453,12 +4466,12 @@ def register_pipeline_callbacks(app):
                 status_text = "Processing..."
                 progress_color = "primary"
             elif pipeline_state.get("status") == "completed":
-                status_text = "✓ Pipeline Complete"
+                status_text = " Pipeline Complete"
                 progress_color = "success"
                 progress_value = 100
                 progress_text = "100%"
             elif pipeline_state.get("status") == "error":
-                status_text = "✗ Error Occurred"
+                status_text = " Error Occurred"
                 progress_color = "danger"
 
             # Highlight active and completed stages
@@ -4588,7 +4601,7 @@ def register_pipeline_callbacks(app):
         Updates every second when pipeline is running.
         """
         # Default values
-        status_indicator = "🔴"
+        status_indicator = " "
         run_id = "N/A"
         start_time = "N/A"
         elapsed_time = "00:00:00"
@@ -4635,11 +4648,11 @@ def register_pipeline_callbacks(app):
 
         # Update status indicator
         if pipeline_state.get("status") == "running":
-            status_indicator = "🟢"
+            status_indicator = " "
         elif pipeline_state.get("status") == "completed":
-            status_indicator = "✅"
+            status_indicator = " "
         elif pipeline_state.get("status") == "error":
-            status_indicator = "🔴"
+            status_indicator = " "
 
         # Update stage progress
         current_stage = pipeline_state.get("current_stage", 0)
@@ -4704,9 +4717,9 @@ def register_pipeline_callbacks(app):
         raw_quality = "N/A"
         filtered_quality = "N/A"
         preprocessed_quality = "N/A"
-        raw_status = "⚪ Pending"
-        filtered_status = "⚪ Pending"
-        preprocessed_status = "⚪ Pending"
+        raw_status = " Pending"
+        filtered_status = " Pending"
+        preprocessed_status = " Pending"
         metrics_style = {"display": "none"}
         signal_viz_style = {"display": "none"}
 
@@ -4743,19 +4756,19 @@ def register_pipeline_callbacks(app):
 
         # Update status icons based on completion
         if "raw" in completed_paths:
-            raw_status = "✅ Complete"
+            raw_status = " Complete"
         elif current_stage >= 3:
-            raw_status = "🔵 Processing"
+            raw_status = " Processing"
 
         if "filtered" in completed_paths:
-            filtered_status = "✅ Complete"
+            filtered_status = " Complete"
         elif current_stage >= 3:
-            filtered_status = "🔵 Processing"
+            filtered_status = " Processing"
 
         if "preprocessed" in completed_paths:
-            preprocessed_status = "✅ Complete"
+            preprocessed_status = " Complete"
         elif current_stage >= 3:
-            preprocessed_status = "🔵 Processing"
+            preprocessed_status = " Processing"
 
         # Show metrics and signal visualization after stage 4
         if current_stage >= 4:

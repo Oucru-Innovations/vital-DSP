@@ -1374,8 +1374,34 @@ def register_physiological_callbacks(app):
                             else:
                                 signal_data_detrended = windowed_original_signal
 
+                            # Chain short-circuit (same shape as in the
+                            # time-domain / frequency pages): when the
+                            # filtering page saved a multi-stage chain,
+                            # replay it on this window.
+                            saved_chain = filter_info.get("chain") or []
+                            if saved_chain:
+                                from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                                    apply_filter_chain,
+                                )
+
+                                selected_signal = apply_filter_chain(
+                                    signal_data_detrended,
+                                    sampling_freq,
+                                    None,
+                                    saved_chain,
+                                    logger=logger,
+                                )
+                                logger.info(
+                                    "Physiological page re-applied saved chain (%d stages)",
+                                    len(saved_chain),
+                                )
+
                             # Apply the same filter type as used in filtering screen
-                            filter_type = filter_info.get("filter_type", "traditional")
+                            filter_type = (
+                                "__chain_done__"
+                                if saved_chain
+                                else filter_info.get("filter_type", "traditional")
+                            )
 
                             if filter_type == "traditional":
                                 # Extract traditional filter parameters
@@ -3150,7 +3176,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 "pnn_20": results["hrv_metrics"].get("pnn_20", 0),
             }
             hrv_time_card = create_metric_card(
-                "HRV - Time Domain", "💓", hrv_time_metrics, "danger"
+                "HRV - Time Domain", " ", hrv_time_metrics, "danger"
             )
             if hrv_time_card:
                 sections.append(
@@ -3171,7 +3197,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 "hfnu_power": results["hrv_metrics"].get("hfnu_power", 0),
             }
             hrv_freq_card = create_metric_card(
-                "HRV - Frequency Domain", "📡", hrv_freq_metrics, "warning"
+                "HRV - Frequency Domain", " ", hrv_freq_metrics, "warning"
             )
             if hrv_freq_card:
                 sections.append(
@@ -3209,7 +3235,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
 
             if hrv_nonlinear_metrics:
                 hrv_nonlinear_card = create_metric_card(
-                    "HRV - Nonlinear", "🌀", hrv_nonlinear_metrics, "info"
+                    "HRV - Nonlinear", " ", hrv_nonlinear_metrics, "info"
                 )
                 if hrv_nonlinear_card:
                     sections.append(
@@ -3233,7 +3259,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 "std_amplitude": results["morphology_metrics"].get("std_amplitude", 0),
             }
             morph_card = create_metric_card(
-                "Morphology Analysis", "📊", morph_metrics, "info"
+                "Morphology Analysis", " ", morph_metrics, "info"
             )
             if morph_card:
                 sections.append(
@@ -3258,7 +3284,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 ),
             }
             b2b_card = create_metric_card(
-                "Beat-to-Beat Analysis", "🫀", b2b_metrics, "success"
+                "Beat-to-Beat Analysis", " ", b2b_metrics, "success"
             )
             if b2b_card:
                 sections.append(
@@ -3276,7 +3302,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 ),
             }
             energy_card = create_metric_card(
-                "Energy Analysis", "⚡", energy_metrics, "warning"
+                "Energy Analysis", " ", energy_metrics, "warning"
             )
             if energy_card:
                 sections.append(
@@ -3291,7 +3317,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 "envelope_peaks": results["envelope_metrics"].get("envelope_peaks", 0),
             }
             env_card = create_metric_card(
-                "Envelope Analysis", "📦", env_metrics, "secondary"
+                "Envelope Analysis", " ", env_metrics, "secondary"
             )
             if env_card:
                 sections.append(
@@ -3313,7 +3339,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 ),
             }
             seg_card = create_metric_card(
-                "Signal Segmentation", "✂️", seg_metrics, "dark"
+                "Signal Segmentation", " ", seg_metrics, "dark"
             )
             if seg_card:
                 sections.append(
@@ -3329,7 +3355,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 "peak_to_peak": results["waveform_metrics"].get("peak_to_peak", 0),
             }
             wave_card = create_metric_card(
-                "Waveform Analysis", "🌊", wave_metrics, "primary"
+                "Waveform Analysis", " ", wave_metrics, "primary"
             )
             if wave_card:
                 sections.append(
@@ -3348,7 +3374,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 "iqr": results["statistical_metrics"].get("iqr", 0),
             }
             stat_card = create_metric_card(
-                "Statistical Analysis", "📊", stat_metrics, "info"
+                "Statistical Analysis", " ", stat_metrics, "info"
             )
             if stat_card:
                 sections.append(
@@ -3375,7 +3401,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 .get("high", 0),
             }
             freq_card = create_metric_card(
-                "Frequency Analysis", "🔊", freq_metrics, "success"
+                "Frequency Analysis", " ", freq_metrics, "success"
             )
             if freq_card:
                 sections.append(
@@ -3396,7 +3422,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 ),
             }
             adv_card = create_metric_card(
-                "Advanced Features", "🚀", adv_metrics, "warning"
+                "Advanced Features", " ", adv_metrics, "warning"
             )
             if adv_card:
                 sections.append(
@@ -3416,7 +3442,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 "artifact_ratio": results["quality_metrics"].get("artifact_ratio", 0),
             }
             quality_card = create_metric_card(
-                "Signal Quality", "⚖️", quality_metrics, "danger"
+                "Signal Quality", " ", quality_metrics, "danger"
             )
             if quality_card:
                 sections.append(
@@ -3434,7 +3460,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 "hilbert_phase": results["transform_metrics"].get("hilbert_phase", 0),
             }
             transform_card = create_metric_card(
-                "Signal Transforms", "🔄", transform_metrics, "primary"
+                "Signal Transforms", " ", transform_metrics, "primary"
             )
             if transform_card:
                 sections.append(
@@ -3457,7 +3483,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 ),
             }
             comp_card = create_metric_card(
-                "Advanced Computation", "🧠", comp_metrics, "dark"
+                "Advanced Computation", " ", comp_metrics, "dark"
             )
             if comp_card:
                 sections.append(
@@ -3481,7 +3507,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 ),
             }
             feat_card = create_metric_card(
-                "Feature Engineering", "🔧", feat_metrics, "info"
+                "Feature Engineering", " ", feat_metrics, "info"
             )
             if feat_card:
                 sections.append(
@@ -3500,7 +3526,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 ),
             }
             prep_card = create_metric_card(
-                "Preprocessing Analysis", "🔧", prep_metrics, "secondary"
+                "Preprocessing Analysis", " ", prep_metrics, "secondary"
             )
             if prep_card:
                 sections.append(
@@ -3516,7 +3542,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 "trend_strength": results["trend_metrics"].get("trend_strength", 0),
             }
             trend_card = create_metric_card(
-                "Trend Analysis", "📈", trend_metrics, "success"
+                "Trend Analysis", " ", trend_metrics, "success"
             )
             if trend_card:
                 sections.append(
@@ -3551,7 +3577,7 @@ def create_comprehensive_results_display(results, signal_type, sampling_freq):
                 html.Div(
                     [
                         html.H4(
-                            "📋 Analysis Results",
+                            " Analysis Results",
                             className="text-center mb-4 text-dark",
                         ),
                         html.P(
@@ -6207,25 +6233,25 @@ def register_additional_physiological_callbacks(app):
             if metrics and "error" not in metrics:
                 # Map feature types to appropriate icons and colors
                 icon_map = {
-                    "hrv_metrics": ("💓", "danger"),
-                    "morphology_metrics": ("📊", "info"),
-                    "beat2beat_metrics": ("🫀", "success"),
-                    "energy_metrics": ("⚡", "warning"),
-                    "envelope_metrics": ("📦", "secondary"),
-                    "segmentation_metrics": ("✂️", "dark"),
-                    "waveform_metrics": ("🌊", "primary"),
-                    "statistical_metrics": ("📈", "info"),
-                    "frequency_metrics": ("🔊", "success"),
-                    "advanced_features_metrics": ("🚀", "warning"),
-                    "quality_metrics": ("⚖️", "danger"),
-                    "transform_metrics": ("🔄", "primary"),
-                    "advanced_computation_metrics": ("🧠", "dark"),
-                    "feature_engineering_metrics": ("🔧", "info"),
-                    "preprocessing_metrics": ("🔧", "secondary"),
-                    "trend_metrics": ("📈", "success"),
+                    "hrv_metrics": (" ", "danger"),
+                    "morphology_metrics": (" ", "info"),
+                    "beat2beat_metrics": (" ", "success"),
+                    "energy_metrics": (" ", "warning"),
+                    "envelope_metrics": (" ", "secondary"),
+                    "segmentation_metrics": (" ", "dark"),
+                    "waveform_metrics": (" ", "primary"),
+                    "statistical_metrics": (" ", "info"),
+                    "frequency_metrics": (" ", "success"),
+                    "advanced_features_metrics": (" ", "warning"),
+                    "quality_metrics": (" ", "danger"),
+                    "transform_metrics": (" ", "primary"),
+                    "advanced_computation_metrics": (" ", "dark"),
+                    "feature_engineering_metrics": (" ", "info"),
+                    "preprocessing_metrics": (" ", "secondary"),
+                    "trend_metrics": (" ", "success"),
                 }
 
-                icon, color = icon_map.get(feature_type, ("📊", "primary"))
+                icon, color = icon_map.get(feature_type, (" ", "primary"))
                 title = feature_type.replace("_", " ").title()
 
                 # Create compact metric card
@@ -6265,7 +6291,7 @@ def register_additional_physiological_callbacks(app):
                 html.Div(
                     [
                         html.H4(
-                            "📋 Detailed Feature Analysis",
+                            " Detailed Feature Analysis",
                             className="text-center mb-3 text-dark",
                         ),
                         html.P(

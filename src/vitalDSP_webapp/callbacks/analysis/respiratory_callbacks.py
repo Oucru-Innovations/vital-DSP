@@ -65,9 +65,9 @@ def _import_vitaldsp_modules():
             RespiratoryAnalysis,
         )
 
-        logger.info("✓ RespiratoryAnalysis imported successfully")
+        logger.info(" RespiratoryAnalysis imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import RespiratoryAnalysis: {e}")
+        logger.error(f" Failed to import RespiratoryAnalysis: {e}")
         RespiratoryAnalysis = None
 
     try:
@@ -75,17 +75,17 @@ def _import_vitaldsp_modules():
             peak_detection_rr,
         )
 
-        logger.info("✓ peak_detection_rr imported successfully")
+        logger.info(" peak_detection_rr imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import peak_detection_rr: {e}")
+        logger.error(f" Failed to import peak_detection_rr: {e}")
         peak_detection_rr = None
 
     try:
         from vitalDSP.respiratory_analysis.estimate_rr.fft_based_rr import fft_based_rr
 
-        logger.info("✓ fft_based_rr imported successfully")
+        logger.info(" fft_based_rr imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import fft_based_rr: {e}")
+        logger.error(f" Failed to import fft_based_rr: {e}")
         fft_based_rr = None
 
     try:
@@ -93,9 +93,9 @@ def _import_vitaldsp_modules():
             frequency_domain_rr,
         )
 
-        logger.info("✓ frequency_domain_rr imported successfully")
+        logger.info(" frequency_domain_rr imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import frequency_domain_rr: {e}")
+        logger.error(f" Failed to import frequency_domain_rr: {e}")
         frequency_domain_rr = None
 
     try:
@@ -103,9 +103,9 @@ def _import_vitaldsp_modules():
             time_domain_rr,
         )
 
-        logger.info("✓ time_domain_rr imported successfully")
+        logger.info(" time_domain_rr imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import time_domain_rr: {e}")
+        logger.error(f" Failed to import time_domain_rr: {e}")
         time_domain_rr = None
 
     try:
@@ -113,9 +113,9 @@ def _import_vitaldsp_modules():
             detect_apnea_amplitude,
         )
 
-        logger.info("✓ detect_apnea_amplitude imported successfully")
+        logger.info(" detect_apnea_amplitude imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import detect_apnea_amplitude: {e}")
+        logger.error(f" Failed to import detect_apnea_amplitude: {e}")
         detect_apnea_amplitude = None
 
     try:
@@ -123,9 +123,9 @@ def _import_vitaldsp_modules():
             detect_apnea_pauses,
         )
 
-        logger.info("✓ detect_apnea_pauses imported successfully")
+        logger.info(" detect_apnea_pauses imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import detect_apnea_pauses: {e}")
+        logger.error(f" Failed to import detect_apnea_pauses: {e}")
         detect_apnea_pauses = None
 
     try:
@@ -133,17 +133,17 @@ def _import_vitaldsp_modules():
             multimodal_analysis,
         )
 
-        logger.info("✓ multimodal_analysis imported successfully")
+        logger.info(" multimodal_analysis imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import multimodal_analysis: {e}")
+        logger.error(f" Failed to import multimodal_analysis: {e}")
         multimodal_analysis = None
 
     try:
         from vitalDSP.respiratory_analysis.fusion.ppg_ecg_fusion import ppg_ecg_fusion
 
-        logger.info("✓ ppg_ecg_fusion imported successfully")
+        logger.info(" ppg_ecg_fusion imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import ppg_ecg_fusion: {e}")
+        logger.error(f" Failed to import ppg_ecg_fusion: {e}")
         ppg_ecg_fusion = None
 
     try:
@@ -151,9 +151,9 @@ def _import_vitaldsp_modules():
             respiratory_cardiac_fusion,
         )
 
-        logger.info("✓ respiratory_cardiac_fusion imported successfully")
+        logger.info(" respiratory_cardiac_fusion imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import respiratory_cardiac_fusion: {e}")
+        logger.error(f" Failed to import respiratory_cardiac_fusion: {e}")
         respiratory_cardiac_fusion = None
 
     try:
@@ -161,9 +161,9 @@ def _import_vitaldsp_modules():
             PPGAutonomicFeatures,
         )
 
-        logger.info("✓ PPGAutonomicFeatures imported successfully")
+        logger.info(" PPGAutonomicFeatures imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import PPGAutonomicFeatures: {e}")
+        logger.error(f" Failed to import PPGAutonomicFeatures: {e}")
         PPGAutonomicFeatures = None
 
     try:
@@ -171,9 +171,9 @@ def _import_vitaldsp_modules():
             ECGPPGSynchronization,
         )
 
-        logger.info("✓ ECGPPGSynchronization imported successfully")
+        logger.info(" ECGPPGSynchronization imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import ECGPPGSynchronization: {e}")
+        logger.error(f" Failed to import ECGPPGSynchronization: {e}")
         ECGPPGSynchronization = None
 
     try:
@@ -182,9 +182,9 @@ def _import_vitaldsp_modules():
             preprocess_signal,
         )
 
-        logger.info("✓ PreprocessConfig and preprocess_signal imported successfully")
+        logger.info(" PreprocessConfig and preprocess_signal imported successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to import PreprocessConfig/preprocess_signal: {e}")
+        logger.error(f" Failed to import PreprocessConfig/preprocess_signal: {e}")
         PreprocessConfig = None
         preprocess_signal = None
 
@@ -618,7 +618,7 @@ def register_respiratory_callbacks(app):
                 or np.any(np.abs(signal_data) > 1e6)
             ):
                 logger.error(
-                    f"⚠️  DETECTED EXTREME SIGNAL VALUES - Possible data corruption!"
+                    f" DETECTED EXTREME SIGNAL VALUES - Possible data corruption!"
                 )
                 logger.error(f"   Signal range: {signal_range:.3e}")
                 logger.error(f"   Signal std: {signal_std:.3e}")
@@ -655,7 +655,7 @@ def register_respiratory_callbacks(app):
                     logger.error("Using original data (may cause analysis issues)")
             else:
                 logger.info(
-                    "✓ Signal data validation passed - values are within reasonable range"
+                    " Signal data validation passed - values are within reasonable range"
                 )
 
             # Check for filtered signal from filtering page
@@ -689,7 +689,7 @@ def register_respiratory_callbacks(app):
                                 or np.any(np.abs(signal_data) > 1e6)
                             ):
                                 logger.error(
-                                    f"⚠️  FILTERED SIGNAL ALSO HAS EXTREME VALUES!"
+                                    f" FILTERED SIGNAL ALSO HAS EXTREME VALUES!"
                                 )
                                 logger.error(
                                     f"   Filtered signal range: {filtered_range:.3e}"
@@ -719,7 +719,7 @@ def register_respiratory_callbacks(app):
                                     logger.info("Falling back to original signal data")
                                     signal_data = windowed_data[signal_column].values
                             else:
-                                logger.info("✓ Filtered signal data validation passed")
+                                logger.info(" Filtered signal data validation passed")
                         else:
                             logger.warning(
                                 f"Filtered signal too short ({len(filtered_signal)} < {end_sample}), using original"
@@ -805,7 +805,7 @@ def register_respiratory_callbacks(app):
                         or np.any(np.abs(respiratory_signal) > 1e6)
                     ):
                         logger.error(
-                            f"⚠️  RESPIRATORY EXTRACTION CREATED EXTREME VALUES!"
+                            f" RESPIRATORY EXTRACTION CREATED EXTREME VALUES!"
                         )
                         logger.error(f"   Respiratory signal range: {resp_range:.3e}")
                         logger.error(f"   Respiratory signal std: {resp_std:.3e}")
@@ -831,7 +831,7 @@ def register_respiratory_callbacks(app):
                             logger.info("Falling back to original signal")
                             respiratory_signal = signal_data
                     else:
-                        logger.info("✓ Respiratory signal extraction validation passed")
+                        logger.info(" Respiratory signal extraction validation passed")
 
                 except Exception as e:
                     logger.error(f"Error extracting respiratory signal: {e}")
@@ -1269,7 +1269,7 @@ def generate_comprehensive_respiratory_analysis(
             results.append(
                 html.Div(
                     [
-                        html.H5("⚠️ Using Fallback Analysis", className="text-warning"),
+                        html.H5(" Using Fallback Analysis", className="text-warning"),
                         html.P(
                             "vitalDSP modules not available. Using basic signal processing methods.",
                             className="text-muted",
@@ -1368,7 +1368,7 @@ def generate_comprehensive_respiratory_analysis(
                 logger.error(f"Failed to initialize RespiratoryAnalysis: {e}")
                 logger.info("Falling back to basic analysis")
                 resp_analysis = None
-                results.append(html.H5("⚠️ Fallback Analysis", className="text-warning"))
+                results.append(html.H5(" Fallback Analysis", className="text-warning"))
                 results.append(
                     html.P(
                         "vitalDSP initialization failed. Using basic signal analysis.",
@@ -1388,7 +1388,7 @@ def generate_comprehensive_respiratory_analysis(
         logger.info(f"Processing estimation methods: {estimation_methods}")
         if estimation_methods and resp_analysis is not None:
             logger.info("Adding respiratory rate estimation header...")
-            results.append(html.H5("🫁 Respiratory Rate Estimation", className="mb-3"))
+            results.append(html.H5(" Respiratory Rate Estimation", className="mb-3"))
 
             for method in estimation_methods:
                 logger.info(f"Processing method: {method}")
@@ -1664,7 +1664,7 @@ def generate_comprehensive_respiratory_analysis(
                                     html.Div(
                                         [
                                             html.Strong(
-                                                "🎯 Ensemble Respiratory Rate: "
+                                                " Ensemble Respiratory Rate: "
                                             ),
                                             html.Span(
                                                 f"{rr_estimate:.2f} ± {std_dev:.2f} BPM",
@@ -1744,7 +1744,7 @@ def generate_comprehensive_respiratory_analysis(
                 "Estimation methods requested but RespiratoryAnalysis not available"
             )
             results.append(
-                html.H5("⚠️ Respiratory Rate Estimation", className="text-warning")
+                html.H5(" Respiratory Rate Estimation", className="text-warning")
             )
             results.append(
                 html.P(
@@ -1758,7 +1758,7 @@ def generate_comprehensive_respiratory_analysis(
             logger.info("Adding method agreement analysis...")
             results.append(html.Hr())
             results.append(
-                html.H5("📊 METHOD AGREEMENT ANALYSIS", className="text-primary mb-3")
+                html.H5(" METHOD AGREEMENT ANALYSIS", className="text-primary mb-3")
             )
 
             try:
@@ -1859,7 +1859,7 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H6(
-                                            "📊 METHOD RESULTS",
+                                            " METHOD RESULTS",
                                             className="text-dark mb-2",
                                         ),
                                         html.P(
@@ -1885,7 +1885,7 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H6(
-                                            "🔬 INDIVIDUAL METHODS",
+                                            " INDIVIDUAL METHODS",
                                             className="text-dark mb-2",
                                         ),
                                         *[
@@ -1902,7 +1902,7 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H6(
-                                            "🎯 AGREEMENT ASSESSMENT",
+                                            " AGREEMENT ASSESSMENT",
                                             className="text-dark mb-2",
                                         ),
                                         html.P(
@@ -1925,7 +1925,7 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H6(
-                                            "🏥 CLINICAL INTERPRETATION",
+                                            " CLINICAL INTERPRETATION",
                                             className="text-dark mb-2",
                                         ),
                                         html.P(
@@ -1981,7 +1981,7 @@ def generate_comprehensive_respiratory_analysis(
                         html.Div(
                             [
                                 html.H6(
-                                    "⚠️ INSUFFICIENT METHODS",
+                                    " INSUFFICIENT METHODS",
                                     className="text-warning mb-2",
                                 ),
                                 html.P(
@@ -2000,7 +2000,7 @@ def generate_comprehensive_respiratory_analysis(
                 results.append(
                     html.Div(
                         [
-                            html.H6("❌ ANALYSIS FAILED", className="text-danger mb-2"),
+                            html.H6(" ANALYSIS FAILED", className="text-danger mb-2"),
                             html.P(f"Error: {str(e)}"),
                             html.P("Please check signal quality and try again."),
                         ],
@@ -2014,14 +2014,14 @@ def generate_comprehensive_respiratory_analysis(
             logger.info("Adding advanced analysis section...")
             results.append(html.Hr())
             results.append(
-                html.H5("🔬 ADVANCED ANALYSIS", className="text-primary mb-2")
+                html.H5(" ADVANCED ANALYSIS", className="text-primary mb-2")
             )
 
             # Debug: Show what options are selected
             results.append(
                 html.Div(
                     [
-                        html.H6("📋 SELECTED OPTIONS", className="text-dark mb-2"),
+                        html.H6(" SELECTED OPTIONS", className="text-dark mb-2"),
                         html.P(
                             f"Selected: {', '.join(advanced_options)}", className="mb-1"
                         ),
@@ -2078,7 +2078,7 @@ def generate_comprehensive_respiratory_analysis(
                         apnea_card = html.Div(
                             [
                                 html.H6(
-                                    "😴 SLEEP APNEA", className="text-warning mb-1"
+                                    " SLEEP APNEA", className="text-warning mb-1"
                                 ),
                                 html.P(
                                     f"Events: {total_apnea_events}",
@@ -2109,7 +2109,7 @@ def generate_comprehensive_respiratory_analysis(
                         no_apnea_card = html.Div(
                             [
                                 html.H6(
-                                    "😴 SLEEP APNEA", className="text-success mb-1"
+                                    " SLEEP APNEA", className="text-success mb-1"
                                 ),
                                 html.P(
                                     "No events detected",
@@ -2125,7 +2125,7 @@ def generate_comprehensive_respiratory_analysis(
                     # Create error card
                     error_card = html.Div(
                         [
-                            html.H6("😴 SLEEP APNEA", className="text-danger mb-1"),
+                            html.H6(" SLEEP APNEA", className="text-danger mb-1"),
                             html.P(
                                 "Analysis failed", className="mb-0 fw-bold text-danger"
                             ),
@@ -2219,7 +2219,7 @@ def generate_comprehensive_respiratory_analysis(
                         breathing_card = html.Div(
                             [
                                 html.H6(
-                                    "🫁 BREATHING PATTERN",
+                                    " BREATHING PATTERN",
                                     className="text-primary mb-1",
                                 ),
                                 html.P(
@@ -2252,7 +2252,7 @@ def generate_comprehensive_respiratory_analysis(
                         insufficient_card = html.Div(
                             [
                                 html.H6(
-                                    "🫁 BREATHING PATTERN",
+                                    " BREATHING PATTERN",
                                     className="text-warning mb-1",
                                 ),
                                 html.P(
@@ -2274,7 +2274,7 @@ def generate_comprehensive_respiratory_analysis(
                     error_card = html.Div(
                         [
                             html.H6(
-                                "🫁 BREATHING PATTERN", className="text-danger mb-1"
+                                " BREATHING PATTERN", className="text-danger mb-1"
                             ),
                             html.P(
                                 "Analysis failed", className="mb-1 fw-bold text-danger"
@@ -2319,13 +2319,13 @@ def generate_comprehensive_respiratory_analysis(
                                         html.Div(
                                             [
                                                 html.H5(
-                                                    "📊 RESPIRATORY RATE VARIABILITY",
+                                                    " RESPIRATORY RATE VARIABILITY",
                                                     className="text-primary mb-3",
                                                 ),
                                                 html.Div(
                                                     [
                                                         html.H6(
-                                                            "🫁 BASIC RRV METRICS",
+                                                            " BASIC RRV METRICS",
                                                             className="text-dark mb-2",
                                                         ),
                                                         html.P(
@@ -2360,13 +2360,13 @@ def generate_comprehensive_respiratory_analysis(
                                         html.Div(
                                             [
                                                 html.H5(
-                                                    "📊 RESPIRATORY RATE VARIABILITY",
+                                                    " RESPIRATORY RATE VARIABILITY",
                                                     className="text-warning mb-3",
                                                 ),
                                                 html.Div(
                                                     [
                                                         html.H6(
-                                                            "⚠️ INSUFFICIENT DATA",
+                                                            " INSUFFICIENT DATA",
                                                             className="text-warning",
                                                         ),
                                                         html.P(
@@ -2388,13 +2388,13 @@ def generate_comprehensive_respiratory_analysis(
                                     html.Div(
                                         [
                                             html.H5(
-                                                "📊 RESPIRATORY RATE VARIABILITY",
+                                                " RESPIRATORY RATE VARIABILITY",
                                                 className="text-danger mb-3",
                                             ),
                                             html.Div(
                                                 [
                                                     html.H6(
-                                                        "❌ ANALYSIS FAILED",
+                                                        " ANALYSIS FAILED",
                                                         className="text-danger",
                                                     ),
                                                     html.P(
@@ -2421,7 +2421,7 @@ def generate_comprehensive_respiratory_analysis(
                                 ppg_rrv_card = html.Div(
                                     [
                                         html.H6(
-                                            "📊 PPG RRV", className="text-success mb-1"
+                                            " PPG RRV", className="text-success mb-1"
                                         ),
                                         html.P(
                                             f"RRV: {rrv:.4f}s", className="mb-1 fw-bold"
@@ -2441,13 +2441,13 @@ def generate_comprehensive_respiratory_analysis(
                                     html.Div(
                                         [
                                             html.H5(
-                                                "📊 RESPIRATORY RATE VARIABILITY",
+                                                " RESPIRATORY RATE VARIABILITY",
                                                 className="text-danger mb-3",
                                             ),
                                             html.Div(
                                                 [
                                                     html.H6(
-                                                        "❌ PPG ANALYSIS FAILED",
+                                                        " PPG ANALYSIS FAILED",
                                                         className="text-danger",
                                                     ),
                                                     html.P(
@@ -2484,7 +2484,7 @@ def generate_comprehensive_respiratory_analysis(
                                 basic_rrv_card = html.Div(
                                     [
                                         html.H6(
-                                            "📊 BASIC RRV", className="text-info mb-1"
+                                            " BASIC RRV", className="text-info mb-1"
                                         ),
                                         html.P(
                                             f"RRV: {rrv:.3f}s", className="mb-1 fw-bold"
@@ -2509,7 +2509,7 @@ def generate_comprehensive_respiratory_analysis(
                                 insufficient_rrv_card = html.Div(
                                     [
                                         html.H6(
-                                            "📊 BASIC RRV",
+                                            " BASIC RRV",
                                             className="text-warning mb-1",
                                         ),
                                         html.P(
@@ -2530,7 +2530,7 @@ def generate_comprehensive_respiratory_analysis(
                             error_rrv_card = html.Div(
                                 [
                                     html.H6(
-                                        "📊 BASIC RRV", className="text-danger mb-1"
+                                        " BASIC RRV", className="text-danger mb-1"
                                     ),
                                     html.P(
                                         "Analysis failed",
@@ -2550,7 +2550,7 @@ def generate_comprehensive_respiratory_analysis(
                     # Create error card
                     error_rrv_main_card = html.Div(
                         [
-                            html.H6("📊 RRV ANALYSIS", className="text-danger mb-1"),
+                            html.H6(" RRV ANALYSIS", className="text-danger mb-1"),
                             html.P(
                                 "Analysis failed", className="mb-1 fw-bold text-danger"
                             ),
@@ -2603,13 +2603,13 @@ def generate_comprehensive_respiratory_analysis(
                                     html.Div(
                                         [
                                             html.H5(
-                                                "🔗 PPG-ECG FUSION",
+                                                " PPG-ECG FUSION",
                                                 className="text-primary mb-3",
                                             ),
                                             html.Div(
                                                 [
                                                     html.H6(
-                                                        "🫁 FUSION RESULTS",
+                                                        " FUSION RESULTS",
                                                         className="text-dark mb-2",
                                                     ),
                                                     html.P(
@@ -2640,13 +2640,13 @@ def generate_comprehensive_respiratory_analysis(
                                     html.Div(
                                         [
                                             html.H6(
-                                                "🔗 PPG-ECG Fusion Analysis",
+                                                " PPG-ECG Fusion Analysis",
                                                 className="mb-3",
                                             ),
                                             html.Div(
                                                 [
                                                     html.Strong(
-                                                        "⚠️ Insufficient Data:",
+                                                        " Insufficient Data:",
                                                         className="text-warning",
                                                     ),
                                                     html.Br(),
@@ -2669,13 +2669,13 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H6(
-                                            "🔗 PPG-ECG Fusion Analysis",
+                                            " PPG-ECG Fusion Analysis",
                                             className="mb-3",
                                         ),
                                         html.Div(
                                             [
                                                 html.Strong(
-                                                    "❌ Analysis Failed:",
+                                                    " Analysis Failed:",
                                                     className="text-danger",
                                                 ),
                                                 html.Br(),
@@ -2706,13 +2706,13 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H5(
-                                            "🔗 PPG-ECG FUSION",
+                                            " PPG-ECG FUSION",
                                             className="text-success mb-3",
                                         ),
                                         html.Div(
                                             [
                                                 html.H6(
-                                                    "🫁 VITALDSP RESULT",
+                                                    " VITALDSP RESULT",
                                                     className="text-dark mb-2",
                                                 ),
                                                 html.P(
@@ -2738,13 +2738,13 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H6(
-                                            "🔗 PPG-ECG Fusion Analysis",
+                                            " PPG-ECG Fusion Analysis",
                                             className="mb-3",
                                         ),
                                         html.Div(
                                             [
                                                 html.Strong(
-                                                    "❌ vitalDSP Fusion Failed:",
+                                                    " vitalDSP Fusion Failed:",
                                                     className="text-danger",
                                                 ),
                                                 html.Br(),
@@ -2770,11 +2770,11 @@ def generate_comprehensive_respiratory_analysis(
                     results.append(
                         html.Div(
                             [
-                                html.H6("🔗 PPG-ECG Fusion Analysis", className="mb-3"),
+                                html.H6(" PPG-ECG Fusion Analysis", className="mb-3"),
                                 html.Div(
                                     [
                                         html.Strong(
-                                            "❌ Analysis Failed:",
+                                            " Analysis Failed:",
                                             className="text-danger",
                                         ),
                                         html.Br(),
@@ -2831,13 +2831,13 @@ def generate_comprehensive_respiratory_analysis(
                                     html.Div(
                                         [
                                             html.H6(
-                                                "🫀 Respiratory-Cardiac Fusion Analysis",
+                                                " Respiratory-Cardiac Fusion Analysis",
                                                 className="mb-3",
                                             ),
                                             html.Div(
                                                 [
                                                     html.Strong(
-                                                        "🫁 Fusion Respiratory Rate:",
+                                                        " Fusion Respiratory Rate:",
                                                         className="text-primary",
                                                     ),
                                                     html.Br(),
@@ -2872,13 +2872,13 @@ def generate_comprehensive_respiratory_analysis(
                                     html.Div(
                                         [
                                             html.H6(
-                                                "🫀 Respiratory-Cardiac Fusion Analysis",
+                                                " Respiratory-Cardiac Fusion Analysis",
                                                 className="mb-3",
                                             ),
                                             html.Div(
                                                 [
                                                     html.Strong(
-                                                        "⚠️ Insufficient Data:",
+                                                        " Insufficient Data:",
                                                         className="text-warning",
                                                     ),
                                                     html.Br(),
@@ -2901,13 +2901,13 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H6(
-                                            "🫀 Respiratory-Cardiac Fusion Analysis",
+                                            " Respiratory-Cardiac Fusion Analysis",
                                             className="mb-3",
                                         ),
                                         html.Div(
                                             [
                                                 html.Strong(
-                                                    "❌ Analysis Failed:",
+                                                    " Analysis Failed:",
                                                     className="text-danger",
                                                 ),
                                                 html.Br(),
@@ -2938,13 +2938,13 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H6(
-                                            "🫀 Respiratory-Cardiac Fusion Analysis",
+                                            " Respiratory-Cardiac Fusion Analysis",
                                             className="mb-3",
                                         ),
                                         html.Div(
                                             [
                                                 html.Strong(
-                                                    "🫁 vitalDSP Fusion Result:",
+                                                    " vitalDSP Fusion Result:",
                                                     className="text-primary",
                                                 ),
                                                 html.Br(),
@@ -2972,13 +2972,13 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H6(
-                                            "🫀 Respiratory-Cardiac Fusion Analysis",
+                                            " Respiratory-Cardiac Fusion Analysis",
                                             className="mb-3",
                                         ),
                                         html.Div(
                                             [
                                                 html.Strong(
-                                                    "❌ vitalDSP Fusion Failed:",
+                                                    " vitalDSP Fusion Failed:",
                                                     className="text-danger",
                                                 ),
                                                 html.Br(),
@@ -3005,13 +3005,13 @@ def generate_comprehensive_respiratory_analysis(
                         html.Div(
                             [
                                 html.H6(
-                                    "🫀 Respiratory-Cardiac Fusion Analysis",
+                                    " Respiratory-Cardiac Fusion Analysis",
                                     className="mb-3",
                                 ),
                                 html.Div(
                                     [
                                         html.Strong(
-                                            "❌ Analysis Failed:",
+                                            " Analysis Failed:",
                                             className="text-danger",
                                         ),
                                         html.Br(),
@@ -3066,13 +3066,13 @@ def generate_comprehensive_respiratory_analysis(
                                     html.Div(
                                         [
                                             html.H5(
-                                                "🔗 MULTIMODAL FUSION",
+                                                " MULTIMODAL FUSION",
                                                 className="text-primary mb-3",
                                             ),
                                             html.Div(
                                                 [
                                                     html.H6(
-                                                        "🫁 MULTIMODAL RESULTS",
+                                                        " MULTIMODAL RESULTS",
                                                         className="text-dark mb-2",
                                                     ),
                                                     html.P(
@@ -3103,13 +3103,13 @@ def generate_comprehensive_respiratory_analysis(
                                     html.Div(
                                         [
                                             html.H5(
-                                                "🔗 MULTIMODAL FUSION",
+                                                " MULTIMODAL FUSION",
                                                 className="text-warning mb-3",
                                             ),
                                             html.Div(
                                                 [
                                                     html.H6(
-                                                        "⚠️ INSUFFICIENT DATA",
+                                                        " INSUFFICIENT DATA",
                                                         className="text-warning",
                                                     ),
                                                     html.P(
@@ -3131,13 +3131,13 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H5(
-                                            "🔗 MULTIMODAL FUSION",
+                                            " MULTIMODAL FUSION",
                                             className="text-danger mb-3",
                                         ),
                                         html.Div(
                                             [
                                                 html.H6(
-                                                    "❌ ANALYSIS FAILED",
+                                                    " ANALYSIS FAILED",
                                                     className="text-danger",
                                                 ),
                                                 html.P(
@@ -3169,13 +3169,13 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H5(
-                                            "🔗 MULTIMODAL FUSION",
+                                            " MULTIMODAL FUSION",
                                             className="text-success mb-3",
                                         ),
                                         html.Div(
                                             [
                                                 html.H6(
-                                                    "🫁 VITALDSP RESULT",
+                                                    " VITALDSP RESULT",
                                                     className="text-dark mb-2",
                                                 ),
                                                 html.P(
@@ -3201,13 +3201,13 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H5(
-                                            "🔗 MULTIMODAL FUSION",
+                                            " MULTIMODAL FUSION",
                                             className="text-danger mb-3",
                                         ),
                                         html.Div(
                                             [
                                                 html.H6(
-                                                    "❌ VITALDSP FAILED",
+                                                    " VITALDSP FAILED",
                                                     className="text-danger",
                                                 ),
                                                 html.P(
@@ -3232,12 +3232,12 @@ def generate_comprehensive_respiratory_analysis(
                         html.Div(
                             [
                                 html.H6(
-                                    "🔗 Multimodal Fusion Analysis", className="mb-3"
+                                    " Multimodal Fusion Analysis", className="mb-3"
                                 ),
                                 html.Div(
                                     [
                                         html.Strong(
-                                            "❌ Analysis Failed:",
+                                            " Analysis Failed:",
                                             className="text-danger",
                                         ),
                                         html.Br(),
@@ -3323,14 +3323,14 @@ def generate_comprehensive_respiratory_analysis(
                         html.Div(
                             [
                                 html.H5(
-                                    "🎯 SIGNAL QUALITY ASSESSMENT",
+                                    " SIGNAL QUALITY ASSESSMENT",
                                     className="text-primary mb-2",
                                 ),
                                 # Quality Summary
                                 html.Div(
                                     [
                                         html.H6(
-                                            "📊 QUALITY SUMMARY",
+                                            " QUALITY SUMMARY",
                                             className="text-dark mb-2",
                                         ),
                                         html.P(
@@ -3356,7 +3356,7 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H6(
-                                            "📈 SIGNAL STATISTICS",
+                                            " SIGNAL STATISTICS",
                                             className="text-dark mb-2",
                                         ),
                                         html.P(
@@ -3382,7 +3382,7 @@ def generate_comprehensive_respiratory_analysis(
                                 html.Div(
                                     [
                                         html.H6(
-                                            "🔍 SIGNAL CHARACTERISTICS",
+                                            " SIGNAL CHARACTERISTICS",
                                             className="text-dark mb-2",
                                         ),
                                         html.P(
@@ -3422,13 +3422,13 @@ def generate_comprehensive_respiratory_analysis(
                         html.Div(
                             [
                                 html.H5(
-                                    "🎯 SIGNAL QUALITY ASSESSMENT",
+                                    " SIGNAL QUALITY ASSESSMENT",
                                     className="text-danger mb-3",
                                 ),
                                 html.Div(
                                     [
                                         html.H6(
-                                            "❌ ANALYSIS FAILED",
+                                            " ANALYSIS FAILED",
                                             className="text-danger",
                                         ),
                                         html.P(f"Error: {str(e)}", className="mb-1"),
@@ -3445,7 +3445,7 @@ def generate_comprehensive_respiratory_analysis(
             results.append(
                 html.Div(
                     [
-                        html.H6("📊 ANALYSIS RESULTS", className="text-dark mb-2"),
+                        html.H6(" ANALYSIS RESULTS", className="text-dark mb-2"),
                         html.Div(
                             [
                                 dbc.Row(
@@ -3466,7 +3466,7 @@ def generate_comprehensive_respiratory_analysis(
         logger.info("Adding enhanced signal analysis section...")
         results.append(html.Hr())
         results.append(
-            html.H5("🔍 ENHANCED SIGNAL ANALYSIS", className="text-primary mb-2")
+            html.H5(" ENHANCED SIGNAL ANALYSIS", className="text-primary mb-2")
         )
 
         # Basic statistics
@@ -3552,7 +3552,7 @@ def generate_comprehensive_respiratory_analysis(
             html.Div(
                 [
                     # Signal Quality Metrics
-                    html.H6("📊 Signal Quality Metrics", className="mb-2"),
+                    html.H6(" Signal Quality Metrics", className="mb-2"),
                     html.Div(
                         [
                             html.Small(f"SNR: {snr_db:.1f} dB", className="text-muted"),
@@ -3572,7 +3572,7 @@ def generate_comprehensive_respiratory_analysis(
                         className="ms-3 mb-2",
                     ),
                     # Frequency Analysis
-                    html.H6("🌊 Frequency Analysis", className="mb-2"),
+                    html.H6(" Frequency Analysis", className="mb-2"),
                     html.Div(
                         [
                             html.Small(
@@ -3588,7 +3588,7 @@ def generate_comprehensive_respiratory_analysis(
                         className="ms-3 mb-2",
                     ),
                     # Breathing Pattern Analysis
-                    html.H6("🫁 Breathing Pattern Analysis", className="mb-2"),
+                    html.H6(" Breathing Pattern Analysis", className="mb-2"),
                     html.Div(
                         [
                             html.Small("Pattern Type: ", className="text-muted"),
@@ -3607,7 +3607,7 @@ def generate_comprehensive_respiratory_analysis(
                         className="ms-3 mb-2",
                     ),
                     # Clinical Interpretation
-                    html.H6("🏥 Clinical Interpretation", className="mb-2"),
+                    html.H6(" Clinical Interpretation", className="mb-2"),
                     html.Div(
                         [
                             html.Small("Status: ", className="text-muted"),
@@ -3624,7 +3624,7 @@ def generate_comprehensive_respiratory_analysis(
         results.append(
             html.Div(
                 [
-                    html.H6("📈 Basic Statistics", className="mb-2"),
+                    html.H6(" Basic Statistics", className="mb-2"),
                     html.Small(f"Mean: {mean_val:.3f}", className="text-muted"),
                     html.Br(),
                     html.Small(f"Std: {std_val:.3f}", className="text-muted"),
@@ -3684,7 +3684,7 @@ def generate_comprehensive_respiratory_analysis(
         # Comprehensive Summary
         logger.info("Adding comprehensive summary section...")
         results.append(html.Hr())
-        results.append(html.H5("🎯 Comprehensive Summary", className="mb-3"))
+        results.append(html.H5(" Comprehensive Summary", className="mb-3"))
 
         # Calculate overall respiratory rate if we have estimates
         try:
@@ -3723,7 +3723,7 @@ def generate_comprehensive_respiratory_analysis(
                 results.append(
                     html.Div(
                         [
-                            html.H6("📈 Overall Assessment", className="mb-2"),
+                            html.H6(" Overall Assessment", className="mb-2"),
                             html.Div(
                                 [
                                     html.Small(
@@ -3760,7 +3760,7 @@ def generate_comprehensive_respiratory_analysis(
         results.append(
             html.Div(
                 [
-                    html.H6("💡 Recommendations", className="mb-2"),
+                    html.H6(" Recommendations", className="mb-2"),
                     html.Div(
                         [
                             html.Small(
@@ -3798,7 +3798,7 @@ def generate_comprehensive_respiratory_analysis(
         logger.error(f"Error generating respiratory analysis results: {e}")
         return html.Div(
             [
-                html.H5("❌ Analysis Failed", className="text-danger"),
+                html.H5(" Analysis Failed", className="text-danger"),
                 html.P(f"Error: {str(e)}", className="text-muted"),
             ]
         )

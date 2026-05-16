@@ -39,7 +39,7 @@ def respiratory_layout():
             # Page Header
             html.Div(
                 [
-                    html.H1("🫁 Respiratory Analysis", className="text-center mb-2"),
+                    html.H1(" Respiratory Analysis", className="text-center mb-2"),
                     html.P(
                         [
                             "Comprehensive respiratory rate estimation and breathing pattern analysis using vitalDSP. ",
@@ -61,7 +61,7 @@ def respiratory_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "🎛️ Respiratory Analysis Controls",
+                                                " Respiratory Analysis Controls",
                                                 className="mb-0",
                                             ),
                                             html.Small(
@@ -438,13 +438,13 @@ def respiratory_layout():
                                             html.Div(
                                                 [
                                                     dbc.Button(
-                                                        "🔄 Update Analysis",
+                                                        " Update Analysis",
                                                         id="resp-analyze-btn",
                                                         color="primary",
                                                         className="w-100 mb-1",
                                                     ),
                                                     dbc.Button(
-                                                        "📊 Export Results",
+                                                        " Export Results",
                                                         id="resp-btn-export-results",
                                                         color="success",
                                                         className="w-100",
@@ -469,7 +469,7 @@ def respiratory_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "📈 Respiratory Signal Analysis & Results",
+                                                " Respiratory Signal Analysis & Results",
                                                 className="mb-0",
                                             ),
                                             html.Small(

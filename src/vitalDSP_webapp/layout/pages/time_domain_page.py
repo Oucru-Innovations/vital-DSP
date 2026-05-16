@@ -17,7 +17,7 @@ def time_domain_layout():
             # Page Header
             html.Div(
                 [
-                    html.H1("⏱️ Time Domain Analysis", className="text-center mb-4"),
+                    html.H1("⏱ Time Domain Analysis", className="text-center mb-4"),
                     html.P(
                         [
                             "Analyze your PPG/ECG signals in the time domain with interactive plots, ",
@@ -42,7 +42,7 @@ def time_domain_layout():
                                                     dbc.Col(
                                                         [
                                                             dbc.Button(
-                                                                "🔄 Update Analysis",
+                                                                " Update Analysis",
                                                                 id="btn-update-analysis",
                                                                 color="primary",
                                                                 size="lg",
@@ -88,7 +88,7 @@ def time_domain_layout():
                                                     dbc.Col(
                                                         [
                                                             dbc.Button(
-                                                                "🎯 Comprehensive Dashboard",
+                                                                " Comprehensive Dashboard",
                                                                 id="btn-comprehensive-dashboard",
                                                                 color="info",
                                                                 outline=True,
@@ -121,7 +121,7 @@ def time_domain_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "🎛️ Analysis Controls", className="mb-0"
+                                                " Analysis Controls", className="mb-0"
                                             ),
                                             html.Small(
                                                 "Configure analysis parameters and filters",
@@ -381,7 +381,7 @@ def time_domain_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "📈 Raw Signal with Critical Points",
+                                                " Raw Signal with Critical Points",
                                                 className="mb-0",
                                             ),
                                             html.Small(
@@ -413,43 +413,18 @@ def time_domain_layout():
                                 ],
                                 className="mb-4",
                             ),
-                            # Signal Comparison Plot
-                            dbc.Card(
-                                [
-                                    dbc.CardHeader(
-                                        [
-                                            html.H4(
-                                                "🔍 Signal Comparison",
-                                                className="mb-0",
-                                            ),
-                                            html.Small(
-                                                "Side-by-side comparison of original and filtered signals",
-                                                className="text-muted",
-                                            ),
-                                        ]
-                                    ),
-                                    dbc.CardBody(
-                                        [
-                                            dcc.Loading(
-                                                dcc.Graph(
-                                                    id="signal-comparison-plot",
-                                                    style={"height": "400px"},
-                                                    config={
-                                                        "displayModeBar": True,
-                                                        "modeBarButtonsToRemove": [
-                                                            "pan2d",
-                                                            "lasso2d",
-                                                            "select2d",
-                                                        ],
-                                                        "displaylogo": False,
-                                                    },
-                                                ),
-                                                type="default",
-                                            )
-                                        ]
-                                    ),
-                                ],
-                                className="mb-4",
+                            # The dedicated "Signal Comparison" card was
+                            # dropped: the main signal plot above already
+                            # overlays the filtered trace when the user picks
+                            # Filtered as the signal source, making this
+                            # second chart a redundant repeat (and it ran a
+                            # second pass of WaveformMorphology peak detection
+                            # on the same data, doubling Apply latency).
+                            # The Graph id stays so any external callback
+                            # writing to it doesn't crash.
+                            dcc.Graph(
+                                id="signal-comparison-plot",
+                                style={"display": "none"},
                             ),
                             # Analysis Results - Reorganized for Better Display
                             dbc.Card(
@@ -457,7 +432,7 @@ def time_domain_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "📊 Analysis Results", className="mb-0"
+                                                " Analysis Results", className="mb-0"
                                             ),
                                             html.Small(
                                                 "Key metrics and insights from your signal",
@@ -482,14 +457,27 @@ def time_domain_layout():
                                                 className="mb-4",
                                             ),
                                             # Signal Source Information Table
+                                            # duplicates the "Signal Source" /
+                                            # "Filter Info" rows already shown
+                                            # in ``analysis-results`` above.
+                                            # Hidden; analysis-results is now
+                                            # the single source of truth for
+                                            # those facts.
                                             html.Div(
                                                 id="signal-source-table",
-                                                className="mb-4",
+                                                style={"display": "none"},
                                             ),
-                                            # Additional Metrics Table
+                                            # Additional Metrics Table was a
+                                            # mixed bag of statistical, entropy,
+                                            # fractal AND frequency-domain
+                                            # features (FFT, spectral centroid /
+                                            # rolloff / bandwidth) - that last
+                                            # group belongs on the Frequency
+                                            # Domain page, not here.  Hidden;
+                                            # callbacks targeting it no-op.
                                             html.Div(
                                                 id="additional-metrics-table",
-                                                className="mb-4",
+                                                style={"display": "none"},
                                             ),
                                         ]
                                     ),

@@ -118,6 +118,55 @@ class DataProcessor:
             return None
 
     @staticmethod
+    def generate_sample_ecg_data(
+        sampling_freq: float,
+        duration: float = 10.0,
+        heart_rate: float = 70,
+        noise_level: float = 0.04,
+    ) -> pd.DataFrame:
+        """Generate a sample ECG-like signal for testing.
+
+        Builds a beat by summing four narrow Gaussian bumps (the P, Q,
+        R, S, T deflections), tiles it at ``heart_rate`` bpm, and adds
+        a touch of Gaussian noise.  Cheap, recognisable, no external
+        deps — same shape contract as
+        :meth:`generate_sample_ppg_data` (a ``time``/``signal`` two-
+        column DataFrame).
+        """
+        try:
+            if sampling_freq <= 0 or duration <= 0:
+                logger.error("Sampling frequency and duration must be positive")
+                return None
+
+            t = np.arange(0, duration, 1.0 / sampling_freq)
+            rr = 60.0 / max(heart_rate, 1.0)  # one R-R interval, seconds
+            sig = np.zeros_like(t)
+
+            # Deflection model (relative position within an R-R, amplitude, width-seconds).
+            # Order: P, Q, R, S, T.
+            beats = [
+                (0.20, 0.10, 0.030),   # P
+                (0.46, -0.10, 0.010),  # Q
+                (0.50, 1.00, 0.010),   # R
+                (0.54, -0.25, 0.012),  # S
+                (0.72, 0.30, 0.060),   # T
+            ]
+
+            n_beats = int(np.ceil(duration / rr)) + 1
+            for k in range(n_beats):
+                beat_start = k * rr
+                for rel_pos, amp, width in beats:
+                    centre = beat_start + rel_pos * rr
+                    sig += amp * np.exp(-((t - centre) ** 2) / (2.0 * width ** 2))
+
+            sig += noise_level * np.random.randn(len(t))
+            df = pd.DataFrame({"time": t, "signal": sig})
+            return df
+        except Exception as e:  # pragma: no cover — defensive
+            logger.error(f"Error generating sample ECG data: {e}")
+            return None
+
+    @staticmethod
     def process_uploaded_data(
         df: pd.DataFrame,
         filename: str,

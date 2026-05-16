@@ -48,27 +48,19 @@ def sample_filtered_data():
 
 
 class TestExportCallbacksRegistration:
-    """Test export callback registration."""
+    """Test export callback registration.
 
-    def test_register_filtering_export_callbacks(self, mock_app):
-        """Test that export callbacks are properly registered."""
-        register_filtering_export_callbacks(mock_app)
-        
-        # Verify that callback decorator was called
-        assert mock_app.callback.called
-        assert mock_app.callback.call_count >= 1
+    The filtering CSV/JSON export was removed (broken buttons,
+    superseded).  :func:`register_filtering_export_callbacks` is now a
+    no-op stub kept so :func:`register_all_export_callbacks` can still
+    call it.  Confirm the stub runs without raising.
+    """
 
-    def test_csv_export_callback_registered(self, mock_app):
-        """Test that CSV export callback is registered."""
-        register_filtering_export_callbacks(mock_app)
-        # Just verify callbacks were registered - functional tests verify they work
-        assert mock_app.callback.call_count > 0
-
-    def test_json_export_callback_registered(self, mock_app):
-        """Test that JSON export callback is registered."""
-        register_filtering_export_callbacks(mock_app)
-        # Just verify callbacks were registered - functional tests verify they work
-        assert mock_app.callback.call_count > 0
+    def test_register_filtering_export_callbacks_noop(self, mock_app):
+        # Stub returns None and registers nothing.
+        result = register_filtering_export_callbacks(mock_app)
+        assert result is None
+        assert mock_app.callback.called is False
 
 
 class TestExportCallbacksFunctionality:

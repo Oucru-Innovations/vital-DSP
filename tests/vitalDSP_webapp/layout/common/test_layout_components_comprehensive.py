@@ -245,9 +245,12 @@ class TestSidebar:
         sidebar = Sidebar()
         content = sidebar.children[1]
         upload_section = content.children[1]
-        
+
         upload_link = upload_section.children[0]
-        assert upload_link.__class__.__name__ == 'A'
+        # Was html.A; now dcc.Link so the browser doesn't reload the
+        # whole app shell on each nav click (which used to flash the
+        # welcome page in between).
+        assert upload_link.__class__.__name__ == 'Link'
         assert upload_link.href == "/upload"
         assert "nav-link" in upload_link.className
         assert "text-white" in upload_link.className
@@ -382,10 +385,10 @@ class TestSidebar:
         sidebar = Sidebar()
         icons_section = sidebar.children[2]
         
-        # Test upload icon
+        # Test upload icon.  Was html.A; now dcc.Link (see test_sidebar_upload_link).
         upload_icon_section = icons_section.children[0]
         upload_icon_link = upload_icon_section.children[0]
-        assert upload_icon_link.__class__.__name__ == 'A'
+        assert upload_icon_link.__class__.__name__ == 'Link'
         assert upload_icon_link.href == "/upload"
         assert "nav-icon" in upload_icon_link.className
         assert "text-white" in upload_icon_link.className

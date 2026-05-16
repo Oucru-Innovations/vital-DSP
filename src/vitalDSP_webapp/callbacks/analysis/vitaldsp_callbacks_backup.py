@@ -1733,7 +1733,7 @@ def generate_analysis_results(
         signal_data = selected_signal
 
         # Signal source information
-        results.append(html.H6("📋 Signal Source Information", className="mb-2"))
+        results.append(html.H6(" Signal Source Information", className="mb-2"))
         results.append(
             dbc.Table(
                 [
@@ -1793,7 +1793,7 @@ def generate_analysis_results(
 
         # Filter information (if applicable)
         if filter_info:
-            results.append(html.H6("🔧 Filter Information", className="mb-2"))
+            results.append(html.H6(" Filter Information", className="mb-2"))
 
             # Create filter information rows
             filter_rows = [
@@ -1989,7 +1989,7 @@ def generate_analysis_results(
                 )
             )
         else:
-            results.append(html.H6("🔧 Filter Information", className="mb-2"))
+            results.append(html.H6(" Filter Information", className="mb-2"))
             results.append(
                 dbc.Table(
                     [
@@ -2022,7 +2022,7 @@ def generate_analysis_results(
             )
 
         # Basic statistics
-        results.append(html.H6("📊 Signal Statistics", className="mb-2"))
+        results.append(html.H6(" Signal Statistics", className="mb-2"))
         results.append(
             dbc.Table(
                 [
@@ -2146,7 +2146,7 @@ def generate_analysis_results(
                     )
 
                     results.append(html.Hr())
-                    results.append(html.H6("❤️ Heart Rate Analysis", className="mb-2"))
+                    results.append(html.H6(" Heart Rate Analysis", className="mb-2"))
                     results.append(
                         dbc.Table(
                             [
@@ -2251,7 +2251,7 @@ def generate_analysis_results(
                     )
                 else:
                     results.append(html.Hr())
-                    results.append(html.H6("❤️ Heart Rate Analysis", className="mb-2"))
+                    results.append(html.H6(" Heart Rate Analysis", className="mb-2"))
                     results.append(
                         html.P(
                             "Insufficient peaks detected for heart rate analysis",
@@ -2262,7 +2262,7 @@ def generate_analysis_results(
             except Exception as e:
                 logger.error(f"Peak detection failed: {e}")
                 results.append(html.Hr())
-                results.append(html.H6("❤️ Heart Rate Analysis", className="mb-2"))
+                results.append(html.H6(" Heart Rate Analysis", className="mb-2"))
                 results.append(
                     html.P(
                         f"Error in peak detection: {str(e)}", className="text-danger"
@@ -2330,7 +2330,7 @@ def generate_analysis_results(
 
                 results.append(html.Hr())
                 results.append(
-                    html.H6("🎯 Signal Quality Assessment", className="mb-2")
+                    html.H6(" Signal Quality Assessment", className="mb-2")
                 )
                 results.append(
                     dbc.Table(
@@ -2466,7 +2466,7 @@ def generate_analysis_results(
                 logger.error(f"Signal quality assessment failed: {e}")
                 results.append(html.Hr())
                 results.append(
-                    html.H6("🎯 Signal Quality Assessment", className="mb-2")
+                    html.H6(" Signal Quality Assessment", className="mb-2")
                 )
                 results.append(
                     html.P(
@@ -2500,7 +2500,7 @@ def create_peak_analysis_table(
         if "peaks" not in analysis_options:
             return html.Div(
                 [
-                    html.H6("🔍 Peak Analysis", className="text-muted"),
+                    html.H6(" Peak Analysis", className="text-muted"),
                     html.P(
                         "Peak detection not enabled in analysis options",
                         className="text-muted",
@@ -2541,7 +2541,7 @@ def create_peak_analysis_table(
         if len(peaks) < 2:
             return html.Div(
                 [
-                    html.H6("🔍 Peak Analysis", className="text-muted"),
+                    html.H6(" Peak Analysis", className="text-muted"),
                     html.P(
                         "Insufficient peaks detected for analysis",
                         className="text-muted",
@@ -2572,7 +2572,7 @@ def create_peak_analysis_table(
 
         return html.Div(
             [
-                html.H6("🔍 Peak Analysis Summary", className="text-primary mb-3"),
+                html.H6(" Peak Analysis Summary", className="text-primary mb-3"),
                 # Summary metrics
                 dbc.Row(
                     [
@@ -2883,7 +2883,7 @@ def create_signal_quality_table(
         if "quality" not in analysis_options:
             return html.Div(
                 [
-                    html.H6("🎯 Signal Quality Assessment", className="text-muted"),
+                    html.H6(" Signal Quality Assessment", className="text-muted"),
                     html.P(
                         "Signal quality assessment not enabled in analysis options",
                         className="text-muted",
@@ -3029,7 +3029,7 @@ def create_signal_quality_table(
 
         return html.Div(
             [
-                html.H6("🎯 Signal Quality Assessment", className="text-primary mb-3"),
+                html.H6(" Signal Quality Assessment", className="text-primary mb-3"),
                 # Quality summary cards
                 dbc.Row(
                     [
@@ -3503,7 +3503,7 @@ def create_filtering_results_table(
         if filtered_data is None or np.array_equal(raw_signal, filtered_data):
             return html.Div(
                 [
-                    html.H6("🔧 Filtering Results", className="text-muted"),
+                    html.H6(" Filtering Results", className="text-muted"),
                     html.P(
                         "No filtering applied or filtered data identical to raw data",
                         className="text-muted",
@@ -3690,7 +3690,7 @@ def create_filtering_results_table(
 
         return html.Div(
             [
-                html.H6("🔧 Filtering Results Analysis", className="text-primary mb-3"),
+                html.H6(" Filtering Results Analysis", className="text-primary mb-3"),
                 # Summary metrics cards
                 dbc.Row(
                     [
@@ -4280,7 +4280,7 @@ def create_additional_metrics_table(
         return html.Div(
             [
                 html.H6(
-                    "📈 Additional Metrics & Advanced Features",
+                    " Additional Metrics & Advanced Features",
                     className="text-primary mb-3",
                 ),
                 # Summary metrics cards

@@ -309,10 +309,10 @@ def _create_report_preview(
     """Create report preview display."""
     return html.Div(
         [
-            html.H4(f"📋 Health Report Preview", className="mb-3"),
+            html.H4(f" Health Report Preview", className="mb-3"),
             dbc.Alert(
                 [
-                    html.Strong("✅ Report Generated Successfully!"),
+                    html.Strong(" Report Generated Successfully!"),
                     html.Br(),
                     html.Br(),
                     html.Div(
@@ -362,7 +362,7 @@ def _create_report_content(report_html):
         [
             html.Div(
                 [
-                    html.H5("📊 Complete Health Report", className="mb-3"),
+                    html.H5(" Complete Health Report", className="mb-3"),
                     dbc.Badge(
                         "Generated with vitalDSP", color="primary", className="mb-3"
                     ),
@@ -383,7 +383,7 @@ def _create_report_content(report_html):
             html.Div(
                 [
                     html.P(
-                        "💡 Tip: Use the 'Save Report' button in the Report Actions section to download this report.",
+                        " Tip: Use the 'Save Report' button in the Report Actions section to download this report.",
                         className="text-muted small mt-3",
                     )
                 ]
@@ -463,7 +463,7 @@ def _create_templates_display(selected_template):
                             className="mb-2",
                         ),
                         dbc.Badge(
-                            "✓ Selected" if is_selected else "Available",
+                            " Selected" if is_selected else "Available",
                             color="success" if is_selected else "secondary",
                             className="mt-2",
                         ),
@@ -478,7 +478,7 @@ def _create_templates_display(selected_template):
 
     return html.Div(
         [
-            html.H6("📋 Available Report Templates", className="mb-3"),
+            html.H6(" Available Report Templates", className="mb-3"),
             dbc.Row(template_cards),
         ]
     )
@@ -488,7 +488,7 @@ def _create_template_settings(report_type, style, format_type, sections, customi
     """Create template settings display."""
     return html.Div(
         [
-            html.H6("⚙️ Current Configuration", className="mb-3"),
+            html.H6(" Current Configuration", className="mb-3"),
             dbc.Table(
                 [
                     html.Thead(
@@ -557,7 +557,7 @@ def _create_report_history():
     # For now, show placeholder
     return html.Div(
         [
-            html.H6("📚 Recent Reports", className="mb-3"),
+            html.H6(" Recent Reports", className="mb-3"),
             dbc.Alert(
                 [
                     html.I(className="bi bi-info-circle me-2"),
@@ -575,13 +575,13 @@ def _generate_initial_content():
     """Generate initial content when page loads."""
     instructions = html.Div(
         [
-            html.H5("👋 Welcome to Health Report Generator", className="mb-3"),
+            html.H5(" Welcome to Health Report Generator", className="mb-3"),
             html.P(
                 "Generate comprehensive health reports from your physiological signal data with professional "
                 "formatting and detailed analysis.",
                 className="mb-3",
             ),
-            html.H6("📋 How to Use:", className="mb-2"),
+            html.H6(" How to Use:", className="mb-2"),
             html.Ol(
                 [
                     html.Li(
@@ -595,7 +595,7 @@ def _generate_initial_content():
                 ],
                 className="mb-3",
             ),
-            html.H6("✨ Features:", className="mb-2"),
+            html.H6(" Features:", className="mb-2"),
             html.Ul(
                 [
                     html.Li("Automatic feature extraction from signals"),
@@ -609,7 +609,7 @@ def _generate_initial_content():
             ),
             dbc.Alert(
                 [
-                    html.Strong("💡 Note: "),
+                    html.Strong(" Note: "),
                     "Make sure you have uploaded signal data before generating a report.",
                 ],
                 color="info",
@@ -633,7 +633,7 @@ def _generate_error_content(error_title, error_message):
     """Generate error content display."""
     error_display = html.Div(
         [
-            html.H5(f"❌ {error_title}", className="text-danger mb-3"),
+            html.H5(f" {error_title}", className="text-danger mb-3"),
             dbc.Alert(
                 [
                     html.Pre(
@@ -643,7 +643,7 @@ def _generate_error_content(error_title, error_message):
                 ],
                 color="danger",
             ),
-            html.H6("🔧 Troubleshooting:", className="mt-4 mb-2"),
+            html.H6(" Troubleshooting:", className="mt-4 mb-2"),
             html.Ul(
                 [
                     html.Li("Ensure you have uploaded signal data via the Upload page"),

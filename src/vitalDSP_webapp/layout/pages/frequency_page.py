@@ -18,7 +18,7 @@ def frequency_layout():
             html.Div(
                 [
                     html.H1(
-                        "📊 Frequency Domain Analysis", className="text-center mb-4"
+                        " Frequency Domain Analysis", className="text-center mb-4"
                     ),
                     html.P(
                         [
@@ -44,7 +44,7 @@ def frequency_layout():
                                                     dbc.Col(
                                                         [
                                                             dbc.Button(
-                                                                "📊 Analyze Frequency Domain",
+                                                                " Analyze Frequency Domain",
                                                                 id="freq-btn-update-analysis",
                                                                 color="primary",
                                                                 size="lg",
@@ -246,7 +246,7 @@ def frequency_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "🎛️ Analysis Controls", className="mb-0"
+                                                " Analysis Controls", className="mb-0"
                                             ),
                                             html.Small(
                                                 "Configure frequency analysis parameters",
@@ -842,7 +842,7 @@ def frequency_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📈 Main Frequency Analysis",
+                                                " Main Frequency Analysis",
                                                 className="mb-0",
                                             )
                                         ]
@@ -873,7 +873,7 @@ def frequency_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📊 Power Spectral Density",
+                                                " Power Spectral Density",
                                                 className="mb-0",
                                             )
                                         ]
@@ -904,7 +904,7 @@ def frequency_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "🌊 Time-Frequency Analysis (Spectrogram)",
+                                                " Time-Frequency Analysis (Spectrogram)",
                                                 className="mb-0",
                                             )
                                         ]
@@ -944,7 +944,7 @@ def frequency_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📋 Analysis Results", className="mb-0"
+                                                " Analysis Results", className="mb-0"
                                             )
                                         ]
                                     ),
@@ -962,7 +962,7 @@ def frequency_layout():
                             dbc.Card(
                                 [
                                     dbc.CardHeader(
-                                        [html.H5("🔍 Peak Analysis", className="mb-0")]
+                                        [html.H5(" Peak Analysis", className="mb-0")]
                                     ),
                                     dbc.CardBody(
                                         [html.Div(id="freq-peak-analysis-table")]
@@ -985,7 +985,7 @@ def frequency_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📊 Band Power Analysis",
+                                                " Band Power Analysis",
                                                 className="mb-0",
                                             )
                                         ]
@@ -1005,7 +1005,7 @@ def frequency_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "🔬 Frequency Stability",
+                                                " Frequency Stability",
                                                 className="mb-0",
                                             )
                                         ]
@@ -1029,7 +1029,7 @@ def frequency_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "🎵 Harmonic Analysis", className="mb-0"
+                                                " Harmonic Analysis", className="mb-0"
                                             )
                                         ]
                                     ),

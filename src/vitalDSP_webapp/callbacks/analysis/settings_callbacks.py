@@ -438,11 +438,11 @@ def create_settings_status_display():
 
         return html.Div(
             [
-                html.H6("📊 Current Settings Status", className="text-primary mb-3"),
+                html.H6(" Current Settings Status", className="text-primary mb-3"),
                 # General Status
                 html.Div(
                     [
-                        html.H6("🌐 General", className="text-info"),
+                        html.H6(" General", className="text-info"),
                         html.P(f"Theme: {summary['general']['theme'].title()}"),
                         html.P(f"Page Size: {summary['general']['page_size']} items"),
                         html.P(f"Auto-refresh: {summary['general']['auto_refresh']}s"),
@@ -452,7 +452,7 @@ def create_settings_status_display():
                 # Analysis Status
                 html.Div(
                     [
-                        html.H6("📊 Analysis", className="text-success"),
+                        html.H6(" Analysis", className="text-success"),
                         html.P(
                             f"Sampling Freq: {summary['analysis']['sampling_freq']} Hz"
                         ),
@@ -467,7 +467,7 @@ def create_settings_status_display():
                 html.Div(
                     [
                         html.H6(
-                            "🖥️ System Health",
+                            " System Health",
                             className=f"text-{system_health.get('color', 'info')}",
                         ),
                         html.P(
@@ -504,7 +504,7 @@ def create_system_monitor_display():
 
         return html.Div(
             [
-                html.H6("🖥️ Real-time System Monitor", className="text-primary mb-3"),
+                html.H6(" Real-time System Monitor", className="text-primary mb-3"),
                 # System Information
                 html.Div(
                     [
@@ -617,32 +617,32 @@ def create_settings_validation_display():
         return html.Div(
             [
                 html.H6(
-                    "✅ Settings Validation Results", className="text-primary mb-3"
+                    " Settings Validation Results", className="text-primary mb-3"
                 ),
                 # General Settings Validation
                 html.Div(
                     [
                         html.H6(
-                            "🌐 General Settings",
+                            " General Settings",
                             className=f"text-{'success' if general_validation['valid'] else 'danger'}",
                         ),
                         html.Div(
                             [
                                 html.P(
-                                    f"Status: {'✅ Valid' if general_validation['valid'] else '❌ Invalid'}"
+                                    f"Status: {' Valid' if general_validation['valid'] else ' Invalid'}"
                                 ),
                                 *[
-                                    html.P(f"❌ Error: {error}")
+                                    html.P(f" Error: {error}")
                                     for error in general_validation.get("errors", [])
                                 ],
                                 *[
-                                    html.P(f"⚠️ Warning: {warning}")
+                                    html.P(f" Warning: {warning}")
                                     for warning in general_validation.get(
                                         "warnings", []
                                     )
                                 ],
                                 *[
-                                    html.P(f"💡 Recommendation: {rec}")
+                                    html.P(f" Recommendation: {rec}")
                                     for rec in general_validation.get(
                                         "recommendations", []
                                     )
@@ -656,26 +656,26 @@ def create_settings_validation_display():
                 html.Div(
                     [
                         html.H6(
-                            "📊 Analysis Settings",
+                            " Analysis Settings",
                             className=f"text-{'success' if analysis_validation['valid'] else 'danger'}",
                         ),
                         html.Div(
                             [
                                 html.P(
-                                    f"Status: {'✅ Valid' if analysis_validation['valid'] else '❌ Invalid'}"
+                                    f"Status: {' Valid' if analysis_validation['valid'] else ' Invalid'}"
                                 ),
                                 *[
-                                    html.P(f"❌ Error: {error}")
+                                    html.P(f" Error: {error}")
                                     for error in analysis_validation.get("errors", [])
                                 ],
                                 *[
-                                    html.P(f"⚠️ Warning: {warning}")
+                                    html.P(f" Warning: {warning}")
                                     for warning in analysis_validation.get(
                                         "warnings", []
                                     )
                                 ],
                                 *[
-                                    html.P(f"💡 Recommendation: {rec}")
+                                    html.P(f" Recommendation: {rec}")
                                     for rec in analysis_validation.get(
                                         "recommendations", []
                                     )
@@ -689,24 +689,24 @@ def create_settings_validation_display():
                 html.Div(
                     [
                         html.H6(
-                            "💾 Data Settings",
+                            " Data Settings",
                             className=f"text-{'success' if data_validation['valid'] else 'danger'}",
                         ),
                         html.Div(
                             [
                                 html.P(
-                                    f"Status: {'✅ Valid' if data_validation['valid'] else '❌ Invalid'}"
+                                    f"Status: {' Valid' if data_validation['valid'] else ' Invalid'}"
                                 ),
                                 *[
-                                    html.P(f"❌ Error: {error}")
+                                    html.P(f" Error: {error}")
                                     for error in data_validation.get("errors", [])
                                 ],
                                 *[
-                                    html.P(f"⚠️ Warning: {warning}")
+                                    html.P(f" Warning: {warning}")
                                     for warning in data_validation.get("warnings", [])
                                 ],
                                 *[
-                                    html.P(f"💡 Recommendation: {rec}")
+                                    html.P(f" Recommendation: {rec}")
                                     for rec in data_validation.get(
                                         "recommendations", []
                                     )
@@ -720,24 +720,24 @@ def create_settings_validation_display():
                 html.Div(
                     [
                         html.H6(
-                            "🖥️ System Settings",
+                            " System Settings",
                             className=f"text-{'success' if system_validation['valid'] else 'danger'}",
                         ),
                         html.Div(
                             [
                                 html.P(
-                                    f"Status: {'✅ Valid' if system_validation['valid'] else '❌ Invalid'}"
+                                    f"Status: {' Valid' if system_validation['valid'] else ' Invalid'}"
                                 ),
                                 *[
-                                    html.P(f"❌ Error: {error}")
+                                    html.P(f" Error: {error}")
                                     for error in system_validation.get("errors", [])
                                 ],
                                 *[
-                                    html.P(f"⚠️ Warning: {warning}")
+                                    html.P(f" Warning: {warning}")
                                     for warning in system_validation.get("warnings", [])
                                 ],
                                 *[
-                                    html.P(f"💡 Recommendation: {rec}")
+                                    html.P(f" Recommendation: {rec}")
                                     for rec in system_validation.get(
                                         "recommendations", []
                                     )
@@ -763,7 +763,7 @@ def create_theme_preview_display(theme):
         return html.Div(
             [
                 html.H6(
-                    f"🎨 {theme.title()} Theme Preview", className="text-primary mb-3"
+                    f" {theme.title()} Theme Preview", className="text-primary mb-3"
                 ),
                 # Color preview
                 html.Div(
@@ -853,7 +853,7 @@ def create_settings_recommendations_display():
 
         return html.Div(
             [
-                html.H6("💡 Settings Recommendations", className="text-primary mb-3"),
+                html.H6(" Settings Recommendations", className="text-primary mb-3"),
                 html.Div(
                     [
                         html.H6("General Recommendations", className="text-info"),
@@ -902,7 +902,7 @@ def create_success_display(title, message):
     """Create success message display."""
     return html.Div(
         [
-            html.H6(f"✅ {title}", className="text-success"),
+            html.H6(f" {title}", className="text-success"),
             html.P(message, className="text-success"),
             html.Small("Settings updated successfully", className="text-muted"),
         ]
@@ -913,7 +913,7 @@ def create_error_display(title, message):
     """Create error message display."""
     return html.Div(
         [
-            html.H6(f"❌ {title}", className="text-danger"),
+            html.H6(f" {title}", className="text-danger"),
             html.P(message, className="text-danger"),
             html.Small(
                 "Please check the settings and try again", className="text-muted"
@@ -926,7 +926,7 @@ def create_info_display(title, message):
     """Create info message display."""
     return html.Div(
         [
-            html.H6(f"ℹ️ {title}", className="text-info"),
+            html.H6(f"ℹ {title}", className="text-info"),
             html.P(message, className="text-info"),
             html.Small("Information message", className="text-muted"),
         ]

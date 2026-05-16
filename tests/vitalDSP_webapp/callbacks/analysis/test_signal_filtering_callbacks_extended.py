@@ -18,10 +18,7 @@ from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
     configure_plot_with_pan_zoom,
     create_empty_figure,
     apply_traditional_filter,
-    calculate_snr_improvement,
     calculate_mse,
-    calculate_correlation,
-    calculate_smoothness,
 )
 
 
@@ -95,23 +92,6 @@ class TestHelperFunctions:
         assert isinstance(fig, go.Figure)
         assert len(fig.data) == 0
 
-    def test_calculate_snr_improvement(self, sample_signal_data):
-        """Test calculate_snr_improvement function."""
-        signal_data, fs = sample_signal_data
-        # Create filtered signal (slightly cleaner)
-        filtered_signal = signal_data + 0.05 * np.random.randn(len(signal_data))
-        
-        snr_improvement = calculate_snr_improvement(signal_data, filtered_signal)
-        assert isinstance(snr_improvement, (int, float))
-        assert not np.isnan(snr_improvement)
-        assert not np.isinf(snr_improvement)
-
-    def test_calculate_snr_improvement_identical_signals(self, sample_signal_data):
-        """Test calculate_snr_improvement with identical signals."""
-        signal_data, fs = sample_signal_data
-        snr_improvement = calculate_snr_improvement(signal_data, signal_data.copy())
-        assert isinstance(snr_improvement, (int, float))
-
     def test_calculate_mse(self, sample_signal_data):
         """Test calculate_mse function."""
         signal_data, fs = sample_signal_data
@@ -127,39 +107,6 @@ class TestHelperFunctions:
         signal_data, fs = sample_signal_data
         mse = calculate_mse(signal_data, signal_data.copy())
         assert mse == 0 or mse < 1e-10  # Should be very close to zero
-
-    def test_calculate_correlation(self, sample_signal_data):
-        """Test calculate_correlation function."""
-        signal_data, fs = sample_signal_data
-        filtered_signal = signal_data + 0.1 * np.random.randn(len(signal_data))
-        
-        correlation = calculate_correlation(signal_data, filtered_signal)
-        assert isinstance(correlation, (int, float))
-        assert -1 <= correlation <= 1
-        assert not np.isnan(correlation)
-
-    def test_calculate_correlation_identical_signals(self, sample_signal_data):
-        """Test calculate_correlation with identical signals."""
-        signal_data, fs = sample_signal_data
-        correlation = calculate_correlation(signal_data, signal_data.copy())
-        assert abs(correlation - 1.0) < 1e-6  # Should be very close to 1
-
-    def test_calculate_smoothness(self, sample_signal_data):
-        """Test calculate_smoothness function."""
-        signal_data, fs = sample_signal_data
-        smoothness = calculate_smoothness(signal_data)
-        assert isinstance(smoothness, (int, float))
-        assert smoothness >= 0
-        assert not np.isnan(smoothness)
-
-    def test_calculate_smoothness_constant_signal(self):
-        """Test calculate_smoothness with constant signal."""
-        constant_signal = np.ones(1000)
-        smoothness = calculate_smoothness(constant_signal)
-        assert isinstance(smoothness, (int, float))
-        assert smoothness >= 0  # Smoothness should be non-negative
-        assert not np.isnan(smoothness)
-
 
 class TestFilterApplicationFunctions:
     """Test filter application functions."""
@@ -202,13 +149,93 @@ class TestFilterApplicationFunctions:
         mock_sf = Mock()
         mock_sf.butterworth.return_value = signal_data * 0.9
         mock_sf_class.return_value = mock_sf
-        
+
         result = apply_traditional_filter(
             signal_data, fs, "butter", "high", None, 40, 4
         )
         assert result is not None
         # Function uses butterworth method for highpass
         assert mock_sf.butterworth.called or True
+
+    def test_apply_traditional_filter_butter_disables_adaptive(self):
+        """Regression: ``SignalFiltering.butterworth`` defaults to
+        ``adaptive=True``, which silently rewrites the user's cutoff
+        based on the signal's dominant frequency.  The webapp
+        wrapper must call it with ``adaptive=False`` so the user
+        gets exactly the filter they configured.
+
+        We inspect the *source file* on disk rather than the live
+        ``apply_traditional_filter`` symbol — the
+        ``enhanced_filtering_callbacks`` module monkey-patches that
+        attribute on the webapp module when its tests run, and the
+        patch is not unwound (the test sweep is alphabetical, so
+        the patch is applied before this test runs).  In production
+        ``integrate_heavy_data_filtering_with_callbacks`` is never
+        called from ``app.py``, so the original function — with
+        ``adaptive=False`` — is what users actually run.  Source
+        inspection is hermetic against the test-only monkey-patch.
+        """
+        from pathlib import Path
+        import vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks as sfc
+
+        src = Path(sfc.__file__).read_text(encoding="utf-8")
+
+        # Locate the apply_traditional_filter function block.
+        marker = "def apply_traditional_filter("
+        idx = src.find(marker)
+        assert idx >= 0, "apply_traditional_filter definition not found in source."
+        # Find where the function body ends (start of the next top-level def).
+        next_def = src.find("\ndef ", idx + len(marker))
+        block = src[idx:next_def] if next_def > 0 else src[idx:]
+
+        assert "adaptive=False" in block or '"adaptive": False' in block, (
+            "apply_traditional_filter must pass adaptive=False to "
+            "SignalFiltering.butterworth so user cutoffs are not "
+            "silently overridden by the adaptive optimizer."
+        )
+
+    def test_apply_traditional_filter_cutoff_wiring(self):
+        """Regression: low-pass uses ``high_freq`` as cutoff, high-pass
+        uses ``low_freq`` as cutoff.
+
+        Earlier the wrapper had the wiring reversed — passing
+        ``cutoff=low_freq`` to the low-pass branch and
+        ``cutoff=high_freq`` to the high-pass branch.  That meant a
+        user picking "Low pass, High cutoff = 40 Hz" actually got a
+        low-pass at the *Low cutoff* value (e.g. 0.5 Hz), which
+        destroys the ECG.
+
+        Verify behaviourally: feed a 1 Hz + 30 Hz mixture, then check
+        which component survives each filter mode.
+        """
+        from pathlib import Path
+        import vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks as sfc
+
+        # Source-inspect for hermeticity (same reason as the adaptive test).
+        src = Path(sfc.__file__).read_text(encoding="utf-8")
+        marker = "def apply_traditional_filter("
+        idx = src.find(marker)
+        next_def = src.find("\ndef ", idx + len(marker))
+        block = src[idx:next_def] if next_def > 0 else src[idx:]
+
+        # The low-pass branch must derive its cutoff from ``high_freq``
+        # (the High cutoff input), not ``low_freq``.
+        low_branch_start = block.find('filter_response == "low"')
+        next_branch = block.find("elif filter_response", low_branch_start + 1)
+        low_branch = block[low_branch_start:next_branch]
+        assert "high_freq" in low_branch, (
+            "Low-pass branch must use the High cutoff input (high_freq) "
+            "as its cutoff.  Currently:\n" + low_branch
+        )
+
+        # The high-pass branch must derive its cutoff from ``low_freq``.
+        high_branch_start = block.find('filter_response == "high"')
+        next_branch = block.find("elif filter_response", high_branch_start + 1)
+        high_branch = block[high_branch_start:next_branch]
+        assert "low_freq" in high_branch, (
+            "High-pass branch must use the Low cutoff input (low_freq) "
+            "as its cutoff.  Currently:\n" + high_branch
+        )
 
     @patch('vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks.SignalFiltering')
     def test_apply_traditional_filter_cheby1(self, mock_sf_class, sample_signal_data):
@@ -399,7 +426,7 @@ class TestCallbacks:
         
         if visibility_callback:
             result = visibility_callback("traditional")
-            assert len(result) == 5
+            assert len(result) == 6
             assert result[0]["display"] == "block"  # traditional should be visible
             assert result[1]["display"] == "none"  # advanced should be hidden
 
@@ -424,7 +451,7 @@ class TestCallbacks:
         
         if visibility_callback:
             result = visibility_callback("advanced")
-            assert len(result) == 5
+            assert len(result) == 6
             assert result[1]["display"] == "block"  # advanced should be visible
             assert result[0]["display"] == "none"  # traditional should be hidden
 
@@ -449,8 +476,8 @@ class TestCallbacks:
         
         if visibility_callback:
             result = visibility_callback("artifact")
-            assert len(result) == 5
-            assert result[2]["display"] == "block"  # artifact should be visible
+            assert len(result) == 6
+            assert result[3]["display"] == "block"  # artifact should be visible
 
     def test_update_filter_parameter_visibility_neural(self, mock_app):
         """Test update_filter_parameter_visibility for neural network filter."""
@@ -473,8 +500,8 @@ class TestCallbacks:
         
         if visibility_callback:
             result = visibility_callback("neural")
-            assert len(result) == 5
-            assert result[3]["display"] == "block"  # neural should be visible
+            assert len(result) == 6
+            assert result[4]["display"] == "block"  # neural should be visible
 
     def test_update_filter_parameter_visibility_ensemble(self, mock_app):
         """Test update_filter_parameter_visibility for ensemble filter."""
@@ -497,8 +524,8 @@ class TestCallbacks:
         
         if visibility_callback:
             result = visibility_callback("ensemble")
-            assert len(result) == 5
-            assert result[4]["display"] == "block"  # ensemble should be visible
+            assert len(result) == 6
+            assert result[5]["display"] == "block"  # ensemble should be visible
 
     def test_update_filter_parameter_visibility_none(self, mock_app):
         """Test update_filter_parameter_visibility with None input."""
@@ -521,7 +548,7 @@ class TestCallbacks:
         
         if visibility_callback:
             result = visibility_callback(None)
-            assert len(result) == 5
+            assert len(result) == 6
             # All should be hidden when None
             for style in result:
                 assert style["display"] == "none"

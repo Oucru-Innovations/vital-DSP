@@ -89,7 +89,7 @@ def register_features_callbacks(app):
             if n_clicks is None:
                 logger.info("No button click - showing instructions")
                 return (
-                    "Data is available! Click '🚀 Analyze Features' to start analysis.",
+                    "Data is available! Click ' Analyze Features' to start analysis.",
                     create_empty_figure(),
                     None,
                     None,
@@ -1598,7 +1598,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
         header_section = html.Div(
             [
                 html.H4(
-                    "🚀 Advanced Feature Analysis Results",
+                    " Advanced Feature Analysis Results",
                     className="text-primary mb-3",
                 ),
                 html.Div(
@@ -1608,7 +1608,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
                             className="badge bg-primary me-2",
                         ),
                         html.Span(
-                            f"vitalDSP: {'✅ Used' if vitaldsp_used else '⚠️ Fallback'}",
+                            f"vitalDSP: {' Used' if vitaldsp_used else ' Fallback'}",
                             className=f"badge {'bg-success' if vitaldsp_used else 'bg-warning'} me-2",
                         ),
                         html.Span(
@@ -1628,7 +1628,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
             stats = features["statistical"]
             stats_section = html.Div(
                 [
-                    html.H5("📊 Statistical Features", className="text-success"),
+                    html.H5(" Statistical Features", className="text-success"),
                     html.Div(
                         [
                             html.Div(
@@ -1692,7 +1692,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
             spec = features["spectral"]
             spec_section = html.Div(
                 [
-                    html.H5("🌊 Spectral Features", className="text-info"),
+                    html.H5(" Spectral Features", className="text-info"),
                     html.Div(
                         [
                             html.Div(
@@ -1729,7 +1729,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
                                         className="mb-1",
                                     ),
                                     html.P(
-                                        f"STFT Available: {'✅' if spec.get('stft_available', False) else '❌'}",
+                                        f"STFT Available: {' ' if spec.get('stft_available', False) else ' '}",
                                         className="mb-1",
                                     ),
                                 ],
@@ -1748,7 +1748,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
             temp = features["temporal"]
             temp_section = html.Div(
                 [
-                    html.H5("⏱️ Temporal Features", className="text-warning"),
+                    html.H5("⏱ Temporal Features", className="text-warning"),
                     html.Div(
                         [
                             html.Div(
@@ -1822,7 +1822,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
             morph = features["morphological"]
             morph_section = html.Div(
                 [
-                    html.H5("🔍 Morphological Features", className="text-danger"),
+                    html.H5(" Morphological Features", className="text-danger"),
                     html.Div(
                         [
                             html.Div(
@@ -1889,7 +1889,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
             ent_section = html.Div(
                 [
                     html.H5(
-                        "🧠 Entropy & Complexity Features", className="text-secondary"
+                        " Entropy & Complexity Features", className="text-secondary"
                     ),
                     html.Div(
                         [
@@ -1939,7 +1939,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
                     html.Div(
                         [
                             html.Small(
-                                f"vitalDSP: {'✅ Used' if ent.get('vitaldsp_used', False) else '⚠️ Fallback'}",
+                                f"vitalDSP: {' Used' if ent.get('vitaldsp_used', False) else ' Fallback'}",
                                 className="text-muted",
                             )
                         ],
@@ -1955,7 +1955,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
             adv = features["advanced"]
             adv_section = html.Div(
                 [
-                    html.H5("🚀 Advanced Features", className="text-dark"),
+                    html.H5(" Advanced Features", className="text-dark"),
                     html.Div(
                         [
                             (
@@ -1987,7 +1987,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
                                         ),
                                         (
                                             html.P(
-                                                f"vitalDSP: {'✅' if adv.get('cross_correlation', {}).get('vitaldsp_used', False) else '⚠️'}",
+                                                f"vitalDSP: {' ' if adv.get('cross_correlation', {}).get('vitaldsp_used', False) else ' '}",
                                                 className="mb-1",
                                             )
                                             if "cross_correlation" in adv
@@ -2028,7 +2028,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
                                         ),
                                         (
                                             html.P(
-                                                f"vitalDSP: {'✅' if adv.get('phase_analysis', {}).get('vitaldsp_used', False) else '⚠️'}",
+                                                f"vitalDSP: {' ' if adv.get('phase_analysis', {}).get('vitaldsp_used', False) else ' '}",
                                                 className="mb-1",
                                             )
                                             if "phase_analysis" in adv
@@ -2055,7 +2055,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
             sq = features["signal_quality"]
             sq_section = html.Div(
                 [
-                    html.H5("🔍 Signal Quality Assessment", className="text-success"),
+                    html.H5(" Signal Quality Assessment", className="text-success"),
                     html.Div(
                         [
                             html.Div(
@@ -2084,7 +2084,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
                                         "Quality Assessment", className="text-primary"
                                     ),
                                     html.P(
-                                        f"vitalDSP: {'✅ Used' if sq.get('vitaldsp_used', False) else '⚠️ Fallback'}",
+                                        f"vitalDSP: {' Used' if sq.get('vitaldsp_used', False) else ' Fallback'}",
                                         className="mb-1",
                                     ),
                                     html.P(
@@ -2110,13 +2110,13 @@ def create_comprehensive_features_display(features, signal_type, categories):
             if phys.get("vitaldsp_used", False) and "waveform_features" in phys:
                 phys_section = html.Div(
                     [
-                        html.H5("💓 Physiological Features", className="text-danger"),
+                        html.H5(" Physiological Features", className="text-danger"),
                         html.Div(
                             [
                                 html.H6(
                                     "Waveform Morphology", className="text-primary"
                                 ),
-                                html.P("vitalDSP: ✅ Used", className="mb-1"),
+                                html.P("vitalDSP: Used", className="mb-1"),
                                 html.P(
                                     f"Features Available: {len(phys.get('waveform_features', {}))}",
                                     className="mb-1",
@@ -2144,7 +2144,7 @@ def create_comprehensive_features_display(features, signal_type, categories):
         summary_section = html.Div(
             [
                 html.Hr(),
-                html.H6("📋 Analysis Summary", className="text-primary"),
+                html.H6(" Analysis Summary", className="text-primary"),
                 html.P(
                     f"Successfully extracted features from {len(categories)} categories"
                 ),

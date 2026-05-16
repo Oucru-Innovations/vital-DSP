@@ -14,7 +14,7 @@ def transforms_layout():
             # Page Header
             html.Div(
                 [
-                    html.H1("🔄 Signal Transforms", className="text-center mb-4"),
+                    html.H1(" Signal Transforms", className="text-center mb-4"),
                     html.P(
                         [
                             "Apply various signal transformations including FFT, wavelet, Hilbert, STFT, ",
@@ -36,7 +36,7 @@ def transforms_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "🎛️ Transform Configuration",
+                                                " Transform Configuration",
                                                 className="mb-0",
                                             ),
                                             html.Small(
@@ -281,7 +281,7 @@ def transforms_layout():
                                             ),
                                             # Main Analysis Button
                                             dbc.Button(
-                                                "🔄 Apply Transform",
+                                                " Apply Transform",
                                                 id="transforms-analyze-btn",
                                                 color="primary",
                                                 size="lg",
@@ -304,7 +304,7 @@ def transforms_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📈 Main Transform Result",
+                                                " Main Transform Result",
                                                 className="mb-0",
                                             )
                                         ]
@@ -330,7 +330,7 @@ def transforms_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📊 Additional Analysis",
+                                                " Additional Analysis",
                                                 className="mb-0",
                                             )
                                         ]
@@ -365,7 +365,7 @@ def transforms_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📋 Transform Results", className="mb-0"
+                                                " Transform Results", className="mb-0"
                                             )
                                         ]
                                     ),
@@ -382,7 +382,7 @@ def transforms_layout():
                             dbc.Card(
                                 [
                                     dbc.CardHeader(
-                                        [html.H5("🔍 Peak Analysis", className="mb-0")]
+                                        [html.H5(" Peak Analysis", className="mb-0")]
                                     ),
                                     dbc.CardBody(
                                         [html.Div(id="transforms-peak-analysis")]
@@ -405,7 +405,7 @@ def transforms_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📊 Frequency Band Analysis",
+                                                " Frequency Band Analysis",
                                                 className="mb-0",
                                             )
                                         ]

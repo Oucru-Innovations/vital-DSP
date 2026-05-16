@@ -53,10 +53,10 @@ try:
     )
 
     FEATURES_EXTRACTION_AVAILABLE = True
-    logger.info("✅ Imported comprehensive feature extraction from features_callbacks")
+    logger.info(" Imported comprehensive feature extraction from features_callbacks")
 except ImportError as e:
     FEATURES_EXTRACTION_AVAILABLE = False
-    logger.warning(f"⚠️ Could not import from features_callbacks: {e}")
+    logger.warning(f" Could not import from features_callbacks: {e}")
     logger.warning("Will use local feature extraction functions")
 
 
@@ -3483,7 +3483,7 @@ def create_main_advanced_plot(time_axis, signal_data, analysis_results, signal_t
                 temporal = features["temporal"]
                 if "heart_rate" in temporal and temporal["heart_rate"] > 0:
                     hr = temporal["heart_rate"]
-                    hr_status = "✅" if 30 <= hr <= 200 else "⚠️"
+                    hr_status = " " if 30 <= hr <= 200 else " "
                     title_text += f" | Heart Rate: {hr:.1f} bpm {hr_status}"
 
         # PHASE D: Enhanced layout with modern styling and interactivity
@@ -4669,7 +4669,7 @@ def create_detailed_analysis_report(
         sections.append(
             html.Div(
                 [
-                    html.H4("📋 Comprehensive Analysis Report", className="mb-3"),
+                    html.H4(" Comprehensive Analysis Report", className="mb-3"),
                     html.Hr(),
                 ]
             )
@@ -4773,7 +4773,7 @@ def create_detailed_analysis_report(
             if anomaly_rate > 20:
                 warning_msg = html.Div(
                     [
-                        html.Strong("⚠️ Warning: "),
+                        html.Strong(" Warning: "),
                         f"Anomaly rate ({anomaly_rate:.2f}%) is unusually high. This may indicate noisy signal or overly sensitive detection parameters.",
                     ],
                     className="alert alert-warning mt-2 mb-2",
@@ -4890,7 +4890,7 @@ def create_detailed_analysis_report(
                 if r_squared < 0.01:
                     rsq_warning = html.P(
                         html.Small(
-                            "⚠️ Note: Very low R-squared indicates weak linear relationship."
+                            " Note: Very low R-squared indicates weak linear relationship."
                         ),
                         className="text-muted mt-1",
                     )
@@ -5385,7 +5385,7 @@ def create_advanced_analysis_summary(
         sections.append(
             html.Div(
                 [
-                    html.H5("🧠 Advanced Analysis Summary"),
+                    html.H5(" Advanced Analysis Summary"),
                     html.P(f"Signal Type: {signal_type.upper()}"),
                     html.P(
                         f"Analysis Categories Completed: {len([k for k, v in analysis_results.items() if 'error' not in str(v)])}"
@@ -5397,7 +5397,7 @@ def create_advanced_analysis_summary(
         # PHASE 4: Show configuration info (NEW)
         if feature_categories or preprocessing or advanced_options:
             sections.append(html.Hr())
-            sections.append(html.H6("⚙️ Configuration"))
+            sections.append(html.H6(" Configuration"))
 
             if feature_categories:
                 sections.append(html.P(html.Strong("Feature Categories:")))
@@ -5430,7 +5430,7 @@ def create_advanced_analysis_summary(
         ):
             features = analysis_results["features"]
             sections.append(html.Hr())
-            sections.append(html.H6("📊 Extracted Features"))
+            sections.append(html.H6(" Extracted Features"))
 
             # Statistical features
             if "statistical" in features and "error" not in features["statistical"]:
@@ -5566,7 +5566,7 @@ def create_advanced_analysis_summary(
         ):
             patterns = analysis_results["patterns"]
             sections.append(html.Hr())
-            sections.append(html.H6("🎯 Pattern Recognition"))
+            sections.append(html.H6(" Pattern Recognition"))
 
             if "peaks" in patterns and "error" not in patterns["peaks"]:
                 peak_pat = patterns["peaks"]
@@ -5627,7 +5627,7 @@ def create_advanced_analysis_summary(
         ):
             anomaly = analysis_results["anomaly_detection"]
             sections.append(html.Hr())
-            sections.append(html.H6("⚠️ Anomaly Detection"))
+            sections.append(html.H6(" Anomaly Detection"))
             sections.append(html.P(f"Method: {anomaly.get('method', 'N/A')}"))
             sections.append(
                 html.P(f"Total Anomalies: {anomaly.get('total_anomalies', 0)}")
@@ -5649,7 +5649,7 @@ def create_advanced_analysis_summary(
         ):
             classification = analysis_results["classification"]
             sections.append(html.Hr())
-            sections.append(html.H6("🏷️ Classification Results"))
+            sections.append(html.H6(" Classification Results"))
 
             if "signal_quality_classification" in classification:
                 sq_class = classification["signal_quality_classification"]
@@ -5696,7 +5696,7 @@ def create_advanced_analysis_summary(
         ):
             regression = analysis_results["regression"]
             sections.append(html.Hr())
-            sections.append(html.H6("📈 Regression Analysis"))
+            sections.append(html.H6(" Regression Analysis"))
 
             if (
                 "linear_trend_regression" in regression
@@ -5717,7 +5717,7 @@ def create_advanced_analysis_summary(
         ):
             clustering = analysis_results["clustering"]
             sections.append(html.Hr())
-            sections.append(html.H6("🔗 Clustering Analysis"))
+            sections.append(html.H6(" Clustering Analysis"))
             sections.append(
                 html.P(f"Total Clusters: {clustering.get('total_clusters', 0)}")
             )
@@ -5739,7 +5739,7 @@ def create_advanced_analysis_summary(
         ):
             dim_red = analysis_results["dimensionality_reduction"]
             sections.append(html.Hr())
-            sections.append(html.H6("📉 Dimensionality Reduction"))
+            sections.append(html.H6(" Dimensionality Reduction"))
             sections.append(html.P(f"Total Methods: {dim_red.get('total_methods', 0)}"))
 
             if "feature_importance" in dim_red:
@@ -5760,7 +5760,7 @@ def create_advanced_analysis_summary(
         ):
             forecasting = analysis_results["forecasting"]
             sections.append(html.Hr())
-            sections.append(html.H6("🔮 Forecasting Analysis"))
+            sections.append(html.H6(" Forecasting Analysis"))
             sections.append(
                 html.P(f"Total Forecasts: {forecasting.get('total_forecasts', 0)}")
             )
@@ -5806,7 +5806,7 @@ def create_advanced_model_details(analysis_results, analysis_categories):
             and "error" not in analysis_results["ml_results"]
         ):
             ml_results = analysis_results["ml_results"]
-            sections.append(html.H6("🤖 Machine Learning Models"))
+            sections.append(html.H6(" Machine Learning Models"))
 
             for model_name, model_info in ml_results.items():
                 model_title = model_name.replace("_", " ").title()
@@ -5841,7 +5841,7 @@ def create_advanced_model_details(analysis_results, analysis_categories):
         ):
             dl_results = analysis_results["dl_results"]
             sections.append(html.Hr())
-            sections.append(html.H6("🧠 Deep Learning Models"))
+            sections.append(html.H6(" Deep Learning Models"))
 
             for model_name, model_info in dl_results.items():
                 model_title = model_name.replace("_", " ").upper()
@@ -5881,7 +5881,7 @@ def create_advanced_model_details(analysis_results, analysis_categories):
         ):
             ensemble = analysis_results["ensemble"]
             sections.append(html.Hr())
-            sections.append(html.H6("🎭 Ensemble Models"))
+            sections.append(html.H6(" Ensemble Models"))
 
             for ensemble_type, ensemble_info in ensemble.items():
                 if "error" not in str(ensemble_info):
@@ -5954,7 +5954,7 @@ def create_advanced_performance_metrics(analysis_results):
             )
 
         sections = []
-        sections.append(html.H6("📈 Performance Metrics"))
+        sections.append(html.H6(" Performance Metrics"))
 
         # ML Model Performance
         if (
@@ -6074,7 +6074,7 @@ def create_advanced_feature_importance(analysis_results):
             )
 
         sections = []
-        sections.append(html.H6("🎯 Feature Categories"))
+        sections.append(html.H6(" Feature Categories"))
 
         # Show feature categories and their statistics
         if (

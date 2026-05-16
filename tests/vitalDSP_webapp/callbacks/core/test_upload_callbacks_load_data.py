@@ -14,11 +14,6 @@ from pathlib import Path
 
 from vitalDSP_webapp.callbacks.core.upload_callbacks import (
     load_data_with_format,
-    create_file_path_loading_indicator,
-    create_upload_progress_bar,
-    create_processing_progress_section,
-    create_error_status,
-    create_success_status,
     create_data_preview,
 )
 
@@ -182,36 +177,6 @@ class TestLoadDataWithFormat:
 
 class TestCreateHelperFunctions:
     """Test helper creation functions."""
-
-    def test_create_file_path_loading_indicator(self):
-        """Test create_file_path_loading_indicator function."""
-        result = create_file_path_loading_indicator()
-        assert result is not None
-        assert hasattr(result, '__class__') or isinstance(result, (str, list, dict))
-
-    def test_create_upload_progress_bar(self):
-        """Test create_upload_progress_bar function."""
-        result = create_upload_progress_bar()
-        assert result is not None
-        assert hasattr(result, '__class__') or isinstance(result, (str, list, dict))
-
-    def test_create_processing_progress_section(self):
-        """Test create_processing_progress_section function."""
-        result = create_processing_progress_section()
-        assert result is not None
-        assert hasattr(result, '__class__') or isinstance(result, (str, list, dict))
-
-    def test_create_error_status(self):
-        """Test create_error_status function."""
-        result = create_error_status("Test error message")
-        assert result is not None
-        assert hasattr(result, '__class__') or isinstance(result, (str, list, dict))
-
-    def test_create_success_status(self):
-        """Test create_success_status function."""
-        result = create_success_status("Test success message")
-        assert result is not None
-        assert hasattr(result, '__class__') or isinstance(result, (str, list, dict))
 
     def test_create_data_preview(self):
         """Test create_data_preview function."""

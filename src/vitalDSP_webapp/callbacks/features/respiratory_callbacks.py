@@ -306,7 +306,7 @@ def generate_comprehensive_respiratory_analysis(
 
             # Add comparison with fallback implementation for debugging
             results.append(html.Hr())
-            results.append(html.H6("🔍 Debug: Fallback vs vitalDSP Comparison"))
+            results.append(html.H6(" Debug: Fallback vs vitalDSP Comparison"))
 
             # Fallback FFT implementation (the one giving good results)
             try:
@@ -375,7 +375,7 @@ def generate_comprehensive_respiratory_analysis(
 
             # Signal quality assessment
             results.append(html.Hr())
-            results.append(html.H6("📊 Signal Quality Assessment"))
+            results.append(html.H6(" Signal Quality Assessment"))
             results.append(html.P(f"Signal Length: {len(signal_data)} samples"))
             results.append(
                 html.P(f"Duration: {len(signal_data)/sampling_freq:.2f} seconds")

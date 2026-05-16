@@ -81,6 +81,258 @@ def configure_plot_with_pan_zoom(fig, title="", height=400):
     return fig
 
 
+def _render_chain_list(chain):
+    """Render the staged filter chain as a numbered list for the UI."""
+    if not chain:
+        return html.Small(
+            "Chain is empty. Pressing Apply runs the single filter "
+            "configured below.  Click “Add as stage” to queue "
+            "additional filters and have them applied in sequence.",
+            className="text-muted",
+        )
+    items = []
+    for i, stage in enumerate(chain, start=1):
+        family = stage.get("family", "?")
+        params = stage.get("params", {}) or {}
+        # One-line summary tailored to the family.
+        if family == "traditional":
+            summary = (
+                f"{params.get('filter_family', 'butter')} "
+                f"{params.get('filter_response', 'bandpass')} "
+                f"({params.get('low_freq')}-{params.get('high_freq')} Hz, "
+                f"order {params.get('filter_order', 4)})"
+            )
+        elif family == "advanced":
+            summary = params.get("advanced_method", "?")
+        elif family == "smoothing":
+            method = params.get("smoothing_method", "savgol")
+            if method == "savgol":
+                summary = (
+                    f"savgol (win {params.get('savgol_window', 11)}, "
+                    f"poly {params.get('savgol_polyorder', 2)})"
+                )
+            elif method == "moving_avg":
+                summary = f"moving avg (win {params.get('moving_avg_window', 5)})"
+            elif method == "gaussian":
+                summary = f"gaussian (sigma {params.get('gaussian_sigma', 1.0)})"
+            else:
+                summary = method
+        elif family == "artifact":
+            summary = (
+                f"{params.get('artifact_type', '?')} "
+                f"(strength {params.get('artifact_strength', '?')})"
+            )
+        elif family == "neural":
+            summary = (
+                f"{params.get('neural_type', '?')} "
+                f"({params.get('neural_complexity', '?')})"
+            )
+        elif family == "ensemble":
+            summary = (
+                f"{params.get('ensemble_method', '?')} "
+                f"x{params.get('ensemble_n_filters', '?')}"
+            )
+        else:
+            summary = "(no params)"
+        iters = stage.get("iterations", 1)
+        iter_txt = f" x{iters}" if iters and int(iters) > 1 else ""
+        items.append(
+            html.Li(
+                [
+                    html.Strong(f"Stage {i}: ", className="me-1"),
+                    html.Span(f"{family} - {summary}{iter_txt}"),
+                ],
+                className="small mb-1",
+            )
+        )
+    return html.Ol(items, className="mb-1 ps-3")
+
+
+def _apply_chain_stage(signal, sampling_freq, signal_type, stage, logger=None):
+    """Apply ONE stage of a filter chain to ``signal``.
+
+    Routes by ``stage['family']`` to the existing webapp filter
+    wrappers (which in turn call the relevant vitalDSP helpers).
+    Returns the filtered signal; on error, returns the input
+    unchanged and logs the failure.
+    """
+    import numpy as np
+
+    family = stage.get("family", "traditional")
+    params = stage.get("params", {}) or {}
+    iters = max(1, min(int(stage.get("iterations", 1) or 1), 10))
+
+    out = np.asarray(signal, dtype=float)
+    for _ in range(iters):
+        try:
+            if family == "traditional":
+                out = apply_traditional_filter(
+                    out,
+                    sampling_freq,
+                    params.get("filter_family", "butter"),
+                    params.get("filter_response", "bandpass"),
+                    params.get("low_freq"),
+                    params.get("high_freq"),
+                    int(params.get("filter_order", 4)),
+                )
+            elif family == "advanced":
+                out = apply_advanced_filter(
+                    out,
+                    params.get("advanced_method", "kalman"),
+                )
+            elif family == "smoothing":
+                out = apply_smoothing_filter(
+                    out,
+                    params.get("smoothing_method", "savgol"),
+                    params.get("savgol_window"),
+                    params.get("savgol_polyorder"),
+                    params.get("moving_avg_window"),
+                    params.get("gaussian_sigma"),
+                )
+            elif family == "artifact":
+                out = apply_enhanced_artifact_removal(
+                    out,
+                    sampling_freq,
+                    params.get("artifact_type", "baseline"),
+                    params.get("artifact_strength", 0.5),
+                    None, None, None, None, None, None, None, None, None,
+                )
+            elif family == "neural":
+                out = apply_neural_filter(
+                    out,
+                    params.get("neural_type", "lstm"),
+                    params.get("neural_complexity", "medium"),
+                )
+            elif family == "ensemble":
+                out = apply_enhanced_ensemble_filter(
+                    out,
+                    params.get("ensemble_method", "voting"),
+                    int(params.get("ensemble_n_filters", 3)),
+                    None, None, None, None, None, None,
+                )
+        except Exception as exc:
+            if logger:
+                logger.warning(
+                    "Chain stage %r failed: %s; passing input through.",
+                    family, exc,
+                )
+            # Keep ``out`` unchanged so subsequent stages still run.
+    return out
+
+
+def apply_filter_chain(signal, sampling_freq, signal_type, chain, logger=None):
+    """Apply a full filter chain (list of stages) to ``signal``.
+
+    Used by the filtering page on Apply AND by downstream pages
+    (time-domain, frequency, features) when they re-apply the user's
+    saved preprocessing chain to a new window.  ``chain=None`` or an
+    empty list returns the signal unchanged.
+    """
+    import numpy as np
+
+    if not chain:
+        return np.asarray(signal, dtype=float)
+    out = np.asarray(signal, dtype=float)
+    for stage in chain:
+        out = _apply_chain_stage(out, sampling_freq, signal_type, stage, logger=logger)
+    return out
+
+
+def _panel_filter_as_stage(
+    family,
+    filter_family,
+    filter_response,
+    low_freq,
+    high_freq,
+    filter_order,
+    advanced_method,
+    artifact_type,
+    artifact_strength,
+    neural_type,
+    neural_complexity,
+    ensemble_method,
+    ensemble_n_filters,
+    smoothing_method=None,
+    savgol_window=None,
+    savgol_polyorder=None,
+    moving_avg_window=None,
+    gaussian_sigma=None,
+):
+    """Snapshot the panel filter inputs into a chain stage dict.
+
+    Used by the Apply callback to make the panel filter the implicit
+    final stage of the chain.  Returns ``None`` when the panel has no
+    useful config (e.g. unknown family) so the caller can skip it.
+    """
+    if not family:
+        return None
+    stage = {"family": family, "iterations": 1}
+    if family == "traditional":
+        stage["params"] = {
+            "filter_family": filter_family or "butter",
+            "filter_response": filter_response or "bandpass",
+            "low_freq": low_freq,
+            "high_freq": high_freq,
+            "filter_order": filter_order or 4,
+        }
+    elif family == "advanced":
+        stage["params"] = {"advanced_method": advanced_method or "kalman"}
+    elif family == "smoothing":
+        stage["params"] = {
+            "smoothing_method": smoothing_method or "savgol",
+            "savgol_window": savgol_window,
+            "savgol_polyorder": savgol_polyorder,
+            "moving_avg_window": moving_avg_window,
+            "gaussian_sigma": gaussian_sigma,
+        }
+    elif family == "artifact":
+        stage["params"] = {
+            "artifact_type": artifact_type or "baseline",
+            "artifact_strength": artifact_strength or 0.5,
+        }
+    elif family == "neural":
+        stage["params"] = {
+            "neural_type": neural_type or "lstm",
+            "neural_complexity": neural_complexity or "medium",
+        }
+    elif family == "ensemble":
+        stage["params"] = {
+            "ensemble_method": ensemble_method or "voting",
+            "ensemble_n_filters": ensemble_n_filters or 3,
+        }
+    else:
+        return None
+    return stage
+
+
+def apply_smoothing_filter(signal_data, method, savgol_window, savgol_polyorder, moving_avg_window, gaussian_sigma):
+    """Apply a single smoothing method to ``signal_data``.
+
+    ``method`` is one of ``"savgol"``, ``"moving_avg"``, ``"gaussian"``.
+    Returns the smoothed signal; on failure returns the input unchanged.
+    """
+    out = np.asarray(signal_data, dtype=float)
+    try:
+        sf = SignalFiltering(out)
+        if method == "savgol":
+            window = int(savgol_window or 11)
+            if window % 2 == 0:
+                window += 1
+            window = max(3, window)
+            polyorder = max(1, int(savgol_polyorder or 2))
+            polyorder = min(polyorder, window - 2)
+            return sf.savgol_filter(out, window_length=window, polyorder=polyorder)
+        if method == "moving_avg":
+            window = max(2, int(moving_avg_window or 5))
+            return sf.moving_average(window_size=window, iterations=1, method="edge")
+        if method == "gaussian":
+            sigma = float(gaussian_sigma or 1.0)
+            return sf.gaussian(sigma=sigma, iterations=1)
+    except Exception as exc:
+        logger.warning("Smoothing %r failed: %s", method, exc)
+    return out
+
+
 def register_signal_filtering_callbacks(app):
     """Register all signal filtering callbacks."""
 
@@ -264,6 +516,7 @@ def register_signal_filtering_callbacks(app):
         [
             Output("traditional-filter-params", "style", allow_duplicate=True),
             Output("advanced-filter-params", "style", allow_duplicate=True),
+            Output("smoothing-filter-params", "style", allow_duplicate=True),
             Output("artifact-removal-params", "style", allow_duplicate=True),
             Output("neural-network-params", "style", allow_duplicate=True),
             Output("ensemble-params", "style", allow_duplicate=True),
@@ -273,35 +526,46 @@ def register_signal_filtering_callbacks(app):
     )
     def update_filter_parameter_visibility(filter_type):
         """Show/hide parameter sections based on selected filter type."""
-        # Default style (hidden)
         hidden_style = {"display": "none"}
         visible_style = {"display": "block"}
 
-        # Initialize all sections as hidden
-        traditional_style = hidden_style
-        advanced_style = hidden_style
-        artifact_style = hidden_style
-        neural_style = hidden_style
-        ensemble_style = hidden_style
-
-        # Show the appropriate section based on filter type
-        if filter_type == "traditional":
-            traditional_style = visible_style
-        elif filter_type == "advanced":
-            advanced_style = visible_style
-        elif filter_type == "artifact":
-            artifact_style = visible_style
-        elif filter_type == "neural":
-            neural_style = visible_style
-        elif filter_type == "ensemble":
-            ensemble_style = visible_style
+        styles = {
+            "traditional": hidden_style,
+            "advanced": hidden_style,
+            "smoothing": hidden_style,
+            "artifact": hidden_style,
+            "neural": hidden_style,
+            "ensemble": hidden_style,
+        }
+        if filter_type in styles:
+            styles[filter_type] = visible_style
 
         return (
-            traditional_style,
-            advanced_style,
-            artifact_style,
-            neural_style,
-            ensemble_style,
+            styles["traditional"],
+            styles["advanced"],
+            styles["smoothing"],
+            styles["artifact"],
+            styles["neural"],
+            styles["ensemble"],
+        )
+
+    # Smoothing method sub-toggle
+    @app.callback(
+        [
+            Output("smoothing-savgol-params", "style"),
+            Output("smoothing-movavg-params", "style"),
+            Output("smoothing-gaussian-params", "style"),
+        ],
+        [Input("smoothing-method-select", "value")],
+        prevent_initial_call=True,
+    )
+    def update_smoothing_method_visibility(method):
+        hidden = {"display": "none"}
+        visible = {"display": "block"}
+        return (
+            visible if method == "savgol" else hidden,
+            visible if method == "moving_avg" else hidden,
+            visible if method == "gaussian" else hidden,
         )
 
     # Advanced Filter Method Selection Callback
@@ -388,6 +652,194 @@ def register_signal_filtering_callbacks(app):
             exponential_style,
         )
 
+    # ------------------------------------------------------------------
+    # Filter chain callbacks
+    # ------------------------------------------------------------------
+    # The chain lets the user stage several filters in sequence on the
+    # same segment - e.g. detrend -> Butterworth bandpass -> median
+    # smoothing.  Each "Add as stage" press snapshots the current
+    # filter-config inputs and appends the entry to the chain Store.
+    # Apply Filter runs the whole chain in order; when the chain is
+    # empty it falls back to the single configured filter.
+
+    @app.callback(
+        [
+            Output("filter-chain-store", "data", allow_duplicate=True),
+            Output("filter-chain-list", "children", allow_duplicate=True),
+        ],
+        Input("filter-chain-add", "n_clicks"),
+        [
+            State("filter-chain-store", "data"),
+            State("filter-type-select", "value"),
+            State("filter-family-advanced", "value"),
+            State("filter-response-advanced", "value"),
+            State("filter-low-freq-advanced", "value"),
+            State("filter-high-freq-advanced", "value"),
+            State("filter-order-advanced", "value"),
+            State("advanced-filter-method", "value"),
+            State("artifact-type", "value"),
+            State("artifact-removal-strength", "value"),
+            State("neural-network-type", "value"),
+            State("neural-model-complexity", "value"),
+            State("ensemble-method", "value"),
+            State("ensemble-n-filters", "value"),
+            State("filter-application-count", "value"),
+            State("smoothing-method-select", "value"),
+            State("savgol-window", "value"),
+            State("savgol-polyorder", "value"),
+            State("moving-avg-window", "value"),
+            State("gaussian-sigma", "value"),
+        ],
+        prevent_initial_call=True,
+    )
+    def add_filter_to_chain(
+        n_clicks,
+        chain,
+        family,
+        filter_family,
+        filter_response,
+        low_freq,
+        high_freq,
+        filter_order,
+        advanced_method,
+        artifact_type,
+        artifact_strength,
+        neural_type,
+        neural_complexity,
+        ensemble_method,
+        ensemble_n_filters,
+        iterations,
+        smoothing_method,
+        savgol_window,
+        savgol_polyorder,
+        moving_avg_window,
+        gaussian_sigma,
+    ):
+        """Snapshot the current filter config and append it to the chain."""
+        if not n_clicks:
+            raise PreventUpdate
+
+        stage = {
+            "family": family or "traditional",
+            "iterations": int(iterations or 1),
+        }
+        if family == "traditional":
+            stage["params"] = {
+                "filter_family": filter_family or "butter",
+                "filter_response": filter_response or "bandpass",
+                "low_freq": low_freq,
+                "high_freq": high_freq,
+                "filter_order": filter_order or 4,
+            }
+        elif family == "advanced":
+            stage["params"] = {"advanced_method": advanced_method or "kalman"}
+        elif family == "smoothing":
+            stage["params"] = {
+                "smoothing_method": smoothing_method or "savgol",
+                "savgol_window": savgol_window,
+                "savgol_polyorder": savgol_polyorder,
+                "moving_avg_window": moving_avg_window,
+                "gaussian_sigma": gaussian_sigma,
+            }
+        elif family == "artifact":
+            stage["params"] = {
+                "artifact_type": artifact_type or "baseline",
+                "artifact_strength": artifact_strength or 0.5,
+            }
+        elif family == "neural":
+            stage["params"] = {
+                "neural_type": neural_type or "lstm",
+                "neural_complexity": neural_complexity or "medium",
+            }
+        elif family == "ensemble":
+            stage["params"] = {
+                "ensemble_method": ensemble_method or "voting",
+                "ensemble_n_filters": ensemble_n_filters or 3,
+            }
+        else:
+            stage["params"] = {}
+
+        new_chain = list(chain or []) + [stage]
+        return new_chain, _render_chain_list(new_chain)
+
+    @app.callback(
+        [
+            Output("filter-chain-store", "data", allow_duplicate=True),
+            Output("filter-chain-list", "children", allow_duplicate=True),
+        ],
+        Input("filter-chain-clear", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def clear_filter_chain(n_clicks):
+        """Wipe the chain back to empty."""
+        if not n_clicks:
+            raise PreventUpdate
+        return [], _render_chain_list([])
+
+    @app.callback(
+        Output("filter-chain-panel-preview", "children"),
+        [
+            Input("filter-type-select", "value"),
+            Input("filter-family-advanced", "value"),
+            Input("filter-response-advanced", "value"),
+            Input("filter-low-freq-advanced", "value"),
+            Input("filter-high-freq-advanced", "value"),
+            Input("filter-order-advanced", "value"),
+            Input("advanced-filter-method", "value"),
+            Input("artifact-type", "value"),
+            Input("smoothing-method-select", "value"),
+            Input("filter-chain-store", "data"),
+        ],
+        prevent_initial_call=False,
+    )
+    def update_chain_panel_preview(
+        family,
+        filter_family,
+        filter_response,
+        low_freq,
+        high_freq,
+        filter_order,
+        advanced_method,
+        artifact_type,
+        smoothing_method,
+        chain,
+    ):
+        """Render a 'next stage (preview)' hint matching the current panel.
+
+        Helps the user see what Apply will actually run on top of the
+        queued chain.  Tied to a small subset of panel inputs (the ones
+        most commonly tweaked); editing any other panel control still
+        works at Apply time, just isn't reflected in this hint.
+        """
+        if family == "traditional":
+            summary = (
+                f"{filter_family or 'butter'} "
+                f"{filter_response or 'bandpass'} "
+                f"({low_freq}-{high_freq} Hz, order {filter_order or 4})"
+            )
+        elif family == "advanced":
+            summary = f"advanced - {advanced_method or '?'}"
+        elif family == "smoothing":
+            summary = f"smoothing - {smoothing_method or 'savgol'}"
+        elif family == "artifact":
+            summary = f"artifact removal - {artifact_type or 'baseline'}"
+        elif family == "neural":
+            summary = "neural"
+        elif family == "ensemble":
+            summary = "ensemble"
+        else:
+            summary = "(no panel filter)"
+        prefix = (
+            "Apply will run the chain, then this panel filter as a "
+            "final stage:"
+            if chain
+            else "Apply will run this panel filter (chain is empty):"
+        )
+        return [
+            html.Span(prefix, className="me-1"),
+            html.Strong(summary),
+        ]
+
     # Advanced Filtering Callback
     @app.callback(
         [
@@ -400,17 +852,25 @@ def register_signal_filtering_callbacks(app):
             Output("store-filter-comparison", "data"),
             Output("store-filter-quality-metrics", "data"),
             Output("store-filtered-signal", "data"),
+            Output("filter-saved-banner", "children"),
         ],
         [
-            Input("url", "pathname"),
             Input("filter-btn-apply", "n_clicks"),
             Input("btn-nudge-m10", "n_clicks"),
             Input("btn-center", "n_clicks"),
             Input("btn-nudge-p10", "n_clicks"),
         ],
         [
+            # Was Input - moved to State so a route change to /filtering
+            # no longer fires this expensive callback with no user intent.
+            State("url", "pathname"),
             State("start-position-slider", "value"),
             State("duration-select", "value"),
+            # The top bar's "Duration" dropdown is now a view-zoom in
+            # *segments* (1/3/5).  Multiply by the segment-length below
+            # so downstream math (start_time, end_time) keeps the same
+            # seconds-based interpretation it always had.
+            State("filter-segment-length", "value"),
             State("filter-type-select", "value"),
             State("filter-signal-source", "value"),  # NEW: Signal source selector
             State("filter-application-count", "value"),  # NEW: Filter application count
@@ -455,7 +915,9 @@ def register_signal_filtering_callbacks(app):
             State("filter-quality-options", "value"),
             State("detrend-option", "value"),
             State("filter-signal-type-select", "value"),
-            # Additional traditional filter parameters
+            # Smoothing family parameters (also reused as legacy Additional Filters
+            # State for back-compat)
+            State("smoothing-method-select", "value"),
             State("savgol-window", "value"),
             State("savgol-polyorder", "value"),
             State("moving-avg-window", "value"),
@@ -468,16 +930,21 @@ def register_signal_filtering_callbacks(app):
             # Multi-modal parameters
             State("reference-signal", "value"),
             State("fusion-method", "value"),
+            # Filter chain (list of staged filters to apply in order
+            # before / instead of the single configured filter).
+            State("filter-chain-store", "data"),
         ],
+        prevent_initial_call=True,
     )
     def advanced_filtering_callback(
-        pathname,
         n_clicks,
         nudge_m10,
         center_click,
         nudge_p10,
+        pathname,
         start_position,
         duration,
+        segment_length_seconds,
         filter_type,
         signal_source,  # NEW: Signal source selector
         filter_count,  # NEW: Filter application count
@@ -520,7 +987,8 @@ def register_signal_filtering_callbacks(app):
         quality_options,
         detrend_option,
         signal_type,
-        # Additional traditional filter parameters
+        # Smoothing family parameters (also serve as legacy Additional Filters State)
+        smoothing_method,
         savgol_window,
         savgol_polyorder,
         moving_avg_window,
@@ -533,58 +1001,27 @@ def register_signal_filtering_callbacks(app):
         # Multi-modal parameters
         reference_signal,
         fusion_method,
+        # Optional chain (list of staged filters); when non-empty it
+        # overrides the single-filter execution below.  Defaults to
+        # ``None`` so legacy tests that invoke the callback positionally
+        # without the new arg still pass.
+        filter_chain=None,
     ):
 
         ctx = callback_context
-
         logger.info("=== ADVANCED FILTERING CALLBACK TRIGGERED ===")
-        logger.info(f"Pathname: {pathname}")
+
+        # ``prevent_initial_call=True`` and the four button Inputs mean this
+        # callback only fires on a real user action.  Path is now a State
+        # only so route changes don't trigger it.  We still bail if the
+        # user landed here without uploading + processing data first.
+        if pathname and pathname != "/filtering":
+            logger.info("Pathname %s != /filtering; skipping update", pathname)
+            raise PreventUpdate
 
         if ctx.triggered:
             trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
             logger.info(f"Trigger ID: {trigger_id}")
-        else:
-            logger.info("No trigger context available")
-
-        # Only run this when we're on the filtering page
-        if pathname != "/filtering":
-            logger.info("Not on filtering page, returning empty figures")
-            return (
-                create_empty_figure(),
-                create_empty_figure(),
-                create_empty_figure(),
-                "Navigate to Filtering page",
-                create_empty_figure(),
-                None,
-                None,
-                None,
-                None,
-            )
-
-        # DEBUG: Always log callback trigger
-        logger.info("=== ADVANCED FILTERING CALLBACK TRIGGERED ===")
-        logger.info(f"Callback context: {ctx}")
-        logger.info(f"Triggered: {ctx.triggered}")
-
-        # Allow callback to run for Apply Filter button and nudge buttons
-        if ctx.triggered:
-            trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-            logger.info(f"Trigger ID: {trigger_id}")
-
-            # Only prevent update for non-relevant triggers
-            if trigger_id not in [
-                "filter-btn-apply",
-                "btn-nudge-m10",
-                "btn-center",
-                "btn-nudge-p10",
-            ]:
-                logger.info(
-                    f"Trigger {trigger_id} not relevant for filtering, preventing update"
-                )
-                raise PreventUpdate
-        else:
-            # Allow callback to run even without trigger context (for initial load)
-            logger.info("No trigger context, allowing callback to run")
 
         try:
             # Get data from the data service
@@ -608,12 +1045,21 @@ def register_signal_filtering_callbacks(app):
                     create_empty_figure(),
                     create_empty_figure(),
                     create_empty_figure(),
-                    "No data available",
+                    dbc.Alert(
+                        [
+                            html.Strong("No processed data found. "),
+                            "Go to the Upload page, drop a recording, pick a "
+                            "signal column, and press Process data first.",
+                        ],
+                        color="warning",
+                        className="mb-0",
+                    ),
                     create_empty_figure(),
                     None,
                     None,
                     None,
                     None,
+                    no_update,  # banner left unchanged
                 )
 
             # Get the most recent data entry
@@ -693,9 +1139,26 @@ def register_signal_filtering_callbacks(app):
             else:
                 start_position = float(start_position)  # Ensure numeric
 
-            if duration is None:
-                duration = 60  # Default to 1 minute
-            else:
+            # ``duration`` now arrives as a view-zoom in *segments*
+            # (1/3/5).  Translate to seconds by multiplying by the
+            # configured segment length.  Defaults: 1 segment * 30 s
+            # = 30 s window if neither value is set.
+            view_zoom = duration  # capture pre-translation value for logs
+            try:
+                view_zoom = int(view_zoom) if view_zoom is not None else 1
+            except (TypeError, ValueError):
+                view_zoom = 1
+            try:
+                seg_len_s = float(segment_length_seconds) if segment_length_seconds else 30.0
+            except (TypeError, ValueError):
+                seg_len_s = 30.0
+            duration = float(view_zoom) * seg_len_s
+            logger.info(
+                "view_zoom=%d x segment_length=%gs → duration=%gs",
+                view_zoom, seg_len_s, duration,
+            )
+
+            if False:  # legacy branches kept for shape; never executed
                 # Duration comes as STRING from dropdown - must convert!
                 try:
                     duration = float(duration)
@@ -706,8 +1169,17 @@ def register_signal_filtering_callbacks(app):
                     )
                     duration = 60  # Fallback to default
 
-            # Get sampling frequency - CRITICAL for proper time calculations
-            sampling_freq = data_info.get("sampling_freq", 1000)
+            # Get sampling frequency - CRITICAL for proper time calculations.
+            # ``.get(key, default)`` returns ``None`` when the key exists with
+            # value None (which the upload pipeline could produce when the
+            # user left the field blank and the loader couldn't infer it),
+            # so use ``or`` to coerce both missing-key and None-value to the
+            # default.
+            sampling_freq = (
+                data_info.get("sampling_freq")
+                or data_info.get("sampling_rate")
+                or 1000
+            )
             logger.info(f"Sampling frequency from data_info: {sampling_freq} Hz")
 
             # Get data duration to calculate actual time range
@@ -820,6 +1292,7 @@ def register_signal_filtering_callbacks(app):
                     None,
                     None,
                     None,
+                    no_update,
                 )
 
             # Determine which column to use for signal data
@@ -870,6 +1343,7 @@ def register_signal_filtering_callbacks(app):
                     None,
                     None,
                     None,
+                    no_update,
                 )
 
             # Extract FULL signal BEFORE any windowing (for filtering entire signal)
@@ -910,6 +1384,10 @@ def register_signal_filtering_callbacks(app):
                     "Error: Signal column contains non-numeric data that cannot be processed",
                     create_empty_figure(),
                     None,
+                    None,
+                    None,
+                    None,
+                    no_update,
                 )
 
             # Initialize start_idx and end_idx
@@ -1096,7 +1574,7 @@ def register_signal_filtering_callbacks(app):
                             and len(full_filtered_from_service) > 0
                         ):
                             logger.info(
-                                f"✅ Retrieved FULL filtered signal from Data Service: {len(full_filtered_from_service)} samples"
+                                f" Retrieved FULL filtered signal from Data Service: {len(full_filtered_from_service)} samples"
                             )
 
                             # Use full filtered signal as the base for cascading
@@ -1110,7 +1588,7 @@ def register_signal_filtering_callbacks(app):
                         else:
                             # PRIORITY 2: Fallback to Dash Store (windowed, less ideal)
                             logger.warning(
-                                "⚠️ No full filtered signal in Data Service, falling back to Dash Store (windowed)"
+                                " No full filtered signal in Data Service, falling back to Dash Store (windowed)"
                             )
                             if current_filtered_signal:
                                 filtered_signal_array = np.array(
@@ -1132,7 +1610,7 @@ def register_signal_filtering_callbacks(app):
                                     # WARN: This is windowed data, not full signal
                                     full_signal_data = filtered_signal_array
                                     logger.warning(
-                                        f"⚠️ Using WINDOWED filtered signal from Dash Store: {len(full_signal_data)} samples (not ideal for cascading)"
+                                        f" Using WINDOWED filtered signal from Dash Store: {len(full_signal_data)} samples (not ideal for cascading)"
                                     )
                                 else:
                                     logger.warning(
@@ -1205,7 +1683,7 @@ def register_signal_filtering_callbacks(app):
                             and len(full_filtered_from_service) > 0
                         ):
                             logger.info(
-                                f"✅ Retrieved FULL filtered signal from Data Service: {len(full_filtered_from_service)} samples"
+                                f" Retrieved FULL filtered signal from Data Service: {len(full_filtered_from_service)} samples"
                             )
 
                             # Use full filtered signal as the base for cascading
@@ -1219,7 +1697,7 @@ def register_signal_filtering_callbacks(app):
                         else:
                             # PRIORITY 2: Fallback to Dash Store (windowed, less ideal)
                             logger.warning(
-                                "⚠️ No full filtered signal in Data Service, falling back to Dash Store (windowed)"
+                                " No full filtered signal in Data Service, falling back to Dash Store (windowed)"
                             )
                             if current_filtered_signal:
                                 filtered_signal_array = np.array(
@@ -1241,7 +1719,7 @@ def register_signal_filtering_callbacks(app):
                                     # WARN: This is windowed data, not full signal
                                     full_signal_data = filtered_signal_array
                                     logger.warning(
-                                        f"⚠️ Using WINDOWED filtered signal from Dash Store: {len(full_signal_data)} samples (not ideal for cascading)"
+                                        f" Using WINDOWED filtered signal from Dash Store: {len(full_signal_data)} samples (not ideal for cascading)"
                                     )
                                 else:
                                     logger.warning(
@@ -1287,6 +1765,10 @@ def register_signal_filtering_callbacks(app):
                     "Error: Signal data contains non-numeric values that cannot be processed",
                     create_empty_figure(),
                     None,
+                    None,
+                    None,
+                    None,
+                    no_update,
                 )
 
             # Ensure time axis is valid for plotting
@@ -1354,6 +1836,10 @@ def register_signal_filtering_callbacks(app):
                     "No signal data extracted",
                     create_empty_figure(),
                     None,
+                    None,
+                    None,
+                    None,
+                    no_update,
                 )
 
             # Store raw signal for plotting (before any preprocessing)
@@ -1401,58 +1887,86 @@ def register_signal_filtering_callbacks(app):
                     "Full signal data not available, will filter only windowed signal"
                 )
 
-            # Apply detrending if user selected the option (to match time domain screen behavior)
+            # Detrending (optional, off by default).
+            #
+            # Was: ``ArtifactRemoval(signal).baseline_correction(cutoff=0.5,
+            # fs=...)`` followed by a redundant mean subtraction.
+            # ``baseline_correction`` is internally a 0.5 Hz Butterworth
+            # high-pass - i.e. ANOTHER filter applied silently before the
+            # user's filter, with several bugs:
+            #   * For respiratory signals (0.1-0.5 Hz) it wipes the
+            #     entire signal band.
+            #   * Combined with the user's bandpass it became a stacked
+            #     filter with doubled order + ringing.
+            #   * The label said "Detrending" but the implementation was
+            #     a high-pass filter, not polynomial / linear detrending.
+            #
+            # vitalDSP has a proper detrender at
+            # ``VitalTransformation.apply_detrending`` (linear / constant
+            # / polynomial).  We use that here.  The trace we save as
+            # ``raw_signal_for_plotting`` is also overwritten with the
+            # detrended version so the comparison plot reflects what the
+            # filter actually saw - the previous code plotted the raw
+            # signal as "Original" but ran the filter on a different
+            # signal, which gave results different from a direct
+            # function call.
             if detrend_option and "detrend" in detrend_option:
                 logger.info(
-                    "Applying detrending to match time domain screen behavior (zero baseline)"
+                    "Applying linear detrending via VitalTransformation"
                 )
-                from vitalDSP.filtering.artifact_removal import ArtifactRemoval
-
-                # Apply baseline correction (detrending) using vitalDSP
-                ar = ArtifactRemoval(signal_data)
-                signal_data_detrended = ar.baseline_correction(
-                    cutoff=0.5, fs=sampling_freq
-                )
-
-                # Also apply mean subtraction for zero baseline
-                signal_data_zero_baseline = signal_data_detrended - np.mean(
-                    signal_data_detrended
-                )
-
-                logger.info("Detrending applied:")
-                logger.info(f"  Original signal mean: {np.mean(original_signal):.4f}")
-                logger.info(
-                    f"  Detrended signal mean: {np.mean(signal_data_detrended):.4f}"
-                )
-                logger.info(
-                    f"  Zero-baseline signal mean: {np.mean(signal_data_zero_baseline):.4f}"
-                )
-                logger.info(
-                    f"  Original signal range: {np.min(original_signal):.4f} to {np.max(original_signal):.4f}"
-                )
-                logger.info(
-                    f"  Detrended signal range: {np.min(signal_data_detrended):.4f} to {np.max(signal_data_detrended):.4f}"
-                )
-                logger.info(
-                    f"  Zero-baseline signal range: {np.min(signal_data_zero_baseline):.4f} to {np.max(signal_data_zero_baseline):.4f}"
-                )
-
-                # Use zero-baseline signal for filtering to match time domain screen
-                signal_data = signal_data_zero_baseline
-
-                # Also apply detrending to full signal if available
-                if full_signal_for_filtering is not None:
-                    logger.info("Applying detrending to full signal for storage")
-                    ar_full = ArtifactRemoval(full_signal_for_filtering)
-                    full_signal_detrended = ar_full.baseline_correction(
-                        cutoff=0.5, fs=sampling_freq
+                try:
+                    from vitalDSP.transforms.vital_transformation import (
+                        VitalTransformation,
                     )
-                    full_signal_for_filtering = full_signal_detrended - np.mean(
-                        full_signal_detrended
+
+                    transformer = VitalTransformation(
+                        signal_data, fs=sampling_freq, signal_type=signal_type
                     )
+                    transformer.apply_detrending(
+                        options={"detrend_type": "linear"}
+                    )
+                    signal_data = np.asarray(transformer.signal, dtype=float)
+                    # Keep the displayed "Original" trace consistent with
+                    # what the filter operates on, so the user's direct-
+                    # function-call check now matches the plot.
+                    raw_signal_for_plotting = signal_data.copy()
                     logger.info(
-                        f"Full signal detrended: {len(full_signal_for_filtering)} samples"
+                        "Detrend applied: signal_mean=%.4f, range=[%.4f, %.4f]",
+                        float(np.mean(signal_data)),
+                        float(np.min(signal_data)),
+                        float(np.max(signal_data)),
                     )
+                except Exception as exc:
+                    logger.warning(
+                        "Detrend failed; using raw signal.  Cause: %s", exc
+                    )
+
+                # Apply the same detrend to the full signal so the
+                # stored "full filtered signal" downstream is computed
+                # from a consistent preprocessing pipeline.
+                if full_signal_for_filtering is not None:
+                    try:
+                        from vitalDSP.transforms.vital_transformation import (
+                            VitalTransformation,
+                        )
+
+                        full_transformer = VitalTransformation(
+                            full_signal_for_filtering,
+                            fs=sampling_freq,
+                            signal_type=signal_type,
+                        )
+                        full_transformer.apply_detrending(
+                            options={"detrend_type": "linear"}
+                        )
+                        full_signal_for_filtering = np.asarray(
+                            full_transformer.signal, dtype=float
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "Full-signal detrend failed; continuing with "
+                            "un-detrended full signal.  Cause: %s",
+                            exc,
+                        )
             else:
                 logger.info("Detrending not selected, using original signal baseline")
                 logger.info(
@@ -1486,6 +2000,34 @@ def register_signal_filtering_callbacks(app):
                 "sampling_freq", 100
             )  # Default to 100 Hz based on the data info
             logger.info(f"Using sampling frequency for filtering: {sampling_freq} Hz")
+
+            # Filter chain (queued stages) runs BEFORE the panel filter
+            # below.  We overwrite both ``signal_data`` (windowed input
+            # used for the comparison plot) and ``full_signal_for_filtering``
+            # (full-recording input used for the saved-as-preprocessing
+            # filtered signal) so that downstream pages and the live
+            # plot see the SAME ordering: detrend -> chain -> panel.
+            chain_in_use = bool(filter_chain)
+            if chain_in_use:
+                logger.info(
+                    "Filter chain has %d stage(s); running chain then panel filter.",
+                    len(filter_chain),
+                )
+                signal_data = apply_filter_chain(
+                    signal_data,
+                    sampling_freq,
+                    signal_type,
+                    filter_chain,
+                    logger=logger,
+                )
+                if full_signal_for_filtering is not None:
+                    full_signal_for_filtering = apply_filter_chain(
+                        full_signal_for_filtering,
+                        sampling_freq,
+                        signal_type,
+                        filter_chain,
+                        logger=logger,
+                    )
 
             # FILTER FULL SIGNAL FIRST (for storage in data service)
             # This allows other screens to extract any window from the filtered signal
@@ -1534,16 +2076,15 @@ def register_signal_filtering_callbacks(app):
                                     high_freq,
                                     filter_order,
                                 )
-                                full_filtered_temp = (
-                                    apply_additional_traditional_filters(
-                                        full_filtered_temp,
-                                        None,
-                                        None,
-                                        None,
-                                        None,
-                                        None,
-                                        None,
-                                    )
+                            elif filter_type == "smoothing":
+                                logger.info("Applying SMOOTHING filter to FULL signal")
+                                full_filtered_temp = apply_smoothing_filter(
+                                    current_full_input,
+                                    smoothing_method,
+                                    savgol_window,
+                                    savgol_polyorder,
+                                    moving_avg_window,
+                                    gaussian_sigma,
                                 )
                             elif filter_type == "advanced":
                                 logger.info("Applying ADVANCED filter to FULL signal")
@@ -1615,7 +2156,7 @@ def register_signal_filtering_callbacks(app):
 
                     full_filtered_signal = full_filtered_temp
                     logger.info(
-                        f"✅ Full signal filtered successfully: {len(full_filtered_signal)} samples"
+                        f" Full signal filtered successfully: {len(full_filtered_signal)} samples"
                     )
                 except Exception as e:
                     logger.warning(
@@ -1624,148 +2165,98 @@ def register_signal_filtering_callbacks(app):
                     )
                     full_filtered_signal = None
 
-            # Apply filtering based on type (for windowed signal display)
-            logger.info("=== APPLYING FILTERING TO WINDOWED SIGNAL ===")
-            logger.info(f"Filter type: {filter_type}")
-            logger.info(f"Filter application count: {filter_count}")
-            logger.info(f"Input signal data shape: {signal_data.shape}")
-            logger.info(
-                f"Input signal data range: {np.min(signal_data):.4f} to {np.max(signal_data):.4f}"
-            )
-
-            # NEW: Apply filter n times (iterative filtering)
-            filter_count = max(1, min(filter_count or 1, 10))  # Ensure valid range 1-10
-            logger.info(f"Will apply filter {filter_count} time(s)")
-
-            # Start with the input signal
-            filtered_data = signal_data.copy()
-
-            # Loop to apply filter n times
-            for iteration in range(filter_count):
+            # Panel filter: runs on the signal that emerges from
+            # detrend + (optional) chain stages above.  When the chain
+            # is empty, this is effectively the "single-filter" path
+            # the page started with.  When the chain has stages, this
+            # acts as the implicit final stage on top of the chain
+            # output - matching the "chain + panel" Apply semantics.
+            if True:  # kept as ``if True`` to preserve the indent of the legacy block below
                 logger.info(
-                    f"=== Filter Application Iteration {iteration + 1}/{filter_count} ==="
+                    "=== APPLYING PANEL FILTER (on top of chain if any) ==="
                 )
-                current_input = (
-                    filtered_data.copy()
-                )  # Use previous iteration's output as input
-
-            # Only apply complex filtering if we have enough data points
-            if len(current_input) >= 50:
-                if filter_type == "traditional":
-                    # Apply traditional filter
+                logger.info(f"Filter type: {filter_type}")
+                logger.info(f"Input signal shape: {signal_data.shape}")
+                current_input = signal_data.copy()
+                if len(current_input) < 50:
                     logger.info(
-                        f"Applying traditional filter: {filter_family} {filter_response}"
+                        "Less than 50 samples; using vitalDSP smoothing."
                     )
-                    # Set default values for filter parameters
+                    from vitalDSP.filtering.advanced_signal_filtering import (
+                        AdvancedSignalFiltering,
+                    )
+                    af = AdvancedSignalFiltering(current_input)
+                    filtered_data = af.convolution_based_filter(
+                        kernel_type="smoothing", kernel_size=3
+                    )
+                elif filter_type == "traditional":
                     filter_family = filter_family or "butter"
                     filter_response = filter_response or "low"
-                    low_freq = low_freq or 10
-                    high_freq = high_freq or 50
-                    filter_order = filter_order or 4
-
                     filtered_data = apply_traditional_filter(
-                        current_input,  # Use current iteration's input
+                        current_input,
                         sampling_freq,
                         filter_family,
                         filter_response,
-                        low_freq,
-                        high_freq,
-                        filter_order,
+                        low_freq or 10,
+                        high_freq or 50,
+                        int(filter_order or 4),
                     )
-
-                    # Apply additional traditional filters if parameters are provided
-                    # Note: These would need to be added to the callback inputs
-                    filtered_data = apply_additional_traditional_filters(
-                        filtered_data, None, None, None, None, None, None
+                elif filter_type == "smoothing":
+                    filtered_data = apply_smoothing_filter(
+                        current_input,
+                        smoothing_method,
+                        savgol_window,
+                        savgol_polyorder,
+                        moving_avg_window,
+                        gaussian_sigma,
                     )
-
                 elif filter_type == "advanced":
-                    logger.info(f"Applying advanced filter: {advanced_method}")
                     filtered_data = apply_advanced_filter(
-                        current_input,  # Use current iteration's input
+                        current_input,
                         advanced_method,
-                        # Kalman parameters
                         kalman_r=kalman_r,
                         kalman_q=kalman_q,
-                        # Optimization parameters
                         optimization_loss_type=optimization_loss_type,
                         optimization_initial_guess=optimization_initial_guess,
                         optimization_learning_rate=optimization_learning_rate,
                         optimization_iterations=optimization_iterations,
-                        # Gradient descent parameters
                         gradient_learning_rate=gradient_learning_rate,
                         gradient_iterations=gradient_iterations,
-                        # Convolution parameters
                         convolution_kernel_type=convolution_kernel_type,
                         convolution_kernel_size=convolution_kernel_size,
-                        # Attention parameters
                         attention_type=attention_type,
                         attention_size=attention_size,
                         attention_sigma=attention_sigma,
                         attention_ascending=attention_ascending,
                         attention_base=attention_base,
-                        # Adaptive parameters
                         adaptive_mu=adaptive_mu,
                         adaptive_order=adaptive_order,
                     )
                 elif filter_type == "artifact":
-                    # Enhanced artifact removal with all parameters
-                    logger.info(f"Applying artifact removal: {artifact_type}")
                     filtered_data = apply_enhanced_artifact_removal(
-                        signal_data,
+                        current_input,
                         sampling_freq,
                         artifact_type,
                         artifact_strength,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
+                        None, None, None, None, None, None, None, None, None,
                     )
                 elif filter_type == "neural":
-                    logger.info(f"Applying neural filter: {neural_type}")
                     filtered_data = apply_neural_filter(
-                        signal_data, neural_type, neural_complexity
+                        current_input, neural_type, neural_complexity,
                     )
                 elif filter_type == "ensemble":
-                    # Enhanced ensemble filtering with all parameters
-                    logger.info(f"Applying ensemble filter: {ensemble_method}")
                     filtered_data = apply_enhanced_ensemble_filter(
-                        signal_data,
+                        current_input,
                         ensemble_method,
                         ensemble_n_filters,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
-                        None,
+                        None, None, None, None, None, None,
                     )
                 else:
-                    logger.info("No filter type selected, using original signal")
-                    filtered_data = signal_data
-            else:
+                    filtered_data = current_input
                 logger.info(
-                    "Using simple smoothing filter due to insufficient data points"
+                    "Filtered range: [%.4f, %.4f]",
+                    float(np.min(filtered_data)), float(np.max(filtered_data)),
                 )
-                # filtered_data is already set to simple smoothing above
-
-            logger.info("Filtering completed:")
-            logger.info(f"  Raw signal shape: {raw_signal_for_plotting.shape}")
-            logger.info(f"  Processed signal shape: {signal_data.shape}")
-            logger.info(f"  Filtered signal shape: {filtered_data.shape}")
-            logger.info(
-                f"  Raw signal range: {np.min(raw_signal_for_plotting):.4f} to {np.max(raw_signal_for_plotting):.4f}"
-            )
-            logger.info(
-                f"  Processed signal range: {np.min(signal_data):.4f} to {np.max(signal_data):.4f}"
-            )
-            logger.info(
-                f"  Filtered signal range: {np.min(filtered_data):.4f} to {np.max(filtered_data):.4f}"
-            )
 
             # Apply multi-modal filtering if reference signal is specified
             # Note: These parameters would need to be added to the callback inputs
@@ -1806,50 +2297,62 @@ def register_signal_filtering_callbacks(app):
             )
             logger.info(f"Time axis range: {time_axis[0]:.4f}s to {time_axis[-1]:.4f}s")
 
-            logger.info("Calling create_original_signal_plot...")
-            original_plot = create_original_signal_plot(
-                time_axis, raw_signal_for_plotting, sampling_freq, signal_type
-            )
-            logger.info(
-                f"Original plot created: {type(original_plot)}, has {len(original_plot.data) if hasattr(original_plot, 'data') else 'N/A'} traces"
-            )
-            filtered_plot = create_filtered_signal_plot(
-                time_axis, filtered_data, sampling_freq, signal_type
-            )
+            # Shared WaveformMorphology pass: detect peaks ONCE on the
+            # filtered signal and reuse them for the comparison plot.
+            # Previously the comparison-plot / original-plot / filtered-
+            # plot builders all ran their own peak detection.
+            comparison_peaks = None
+            comparison_notches = None
+            try:
+                from vitalDSP.physiological_features.waveform import (
+                    WaveformMorphology,
+                )
+
+                wm_filt = WaveformMorphology(
+                    waveform=np.asarray(filtered_data, dtype=float),
+                    fs=sampling_freq,
+                    signal_type=(signal_type or "PPG"),
+                    simple_mode=True,
+                )
+                comparison_peaks = getattr(wm_filt, "systolic_peaks", None)
+                comparison_notches = getattr(wm_filt, "dicrotic_notches", None)
+            except Exception as exc:
+                logger.warning(
+                    "Shared WaveformMorphology failed on filtered signal: %s",
+                    exc,
+                )
+
+            # Slim layout: ``filter-original-plot`` /
+            # ``filter-filtered-plot`` / ``filter-quality-metrics`` /
+            # ``filter-quality-plots`` are hidden carriers (the visible
+            # surfaces are the comparison plot + segment-quality card).
+            # Skip the heavy figure builders for them — saves several
+            # hundred ms per Apply on long recordings.  Comparison plot
+            # is the only one with a visible Output, so build that.
+            original_plot = no_update
+            filtered_plot = no_update
             comparison_plot = create_filter_comparison_plot(
                 time_axis,
                 raw_signal_for_plotting,
                 filtered_data,
                 sampling_freq,
                 signal_type,
+                peaks=comparison_peaks,
+                notches=comparison_notches,
             )
+            quality_metrics = no_update
+            quality_plots = no_update
 
-            # Generate quality metrics using RAW signal (not detrended) for accurate assessment
-            quality_metrics = generate_filter_quality_metrics(
-                raw_signal_for_plotting,
-                filtered_data,
-                sampling_freq,
-                quality_options,
-                signal_type,
-            )
-            quality_plots = create_filter_quality_plots(
-                raw_signal_for_plotting,
-                filtered_data,
-                sampling_freq,
-                quality_options,
-                signal_type,
-            )
-
-            # Store results
+            # Compact descriptor of the filter that was just run.  The
+            # large arrays (raw_signal / filtered_signal / time_axis)
+            # used to live here, but nothing downstream reads
+            # ``store-filtering-data``; we only need the parameters
+            # block for building filter_info below.
             stored_data = {
-                "raw_signal": raw_signal_for_plotting.tolist(),
-                "processed_signal": signal_data.tolist(),
-                "filtered_signal": filtered_data.tolist(),
-                "time_axis": time_axis.tolist(),
                 "filter_type": filter_type,
                 "detrending_applied": detrend_option and "detrend" in detrend_option,
-                "signal_source": signal_source,  # NEW: Store signal source
-                "filter_count": filter_count,  # NEW: Store filter application count
+                "signal_source": signal_source,
+                "filter_count": filter_count,
                 "parameters": {
                     "filter_family": filter_family,
                     "filter_response": filter_response,
@@ -1859,8 +2362,8 @@ def register_signal_filtering_callbacks(app):
                     "advanced_method": advanced_method,
                     "artifact_type": artifact_type,
                     "ensemble_method": ensemble_method,
-                    "signal_source": signal_source,  # NEW: Include in parameters too
-                    "filter_count": filter_count,  # NEW: Include in parameters too
+                    "signal_source": signal_source,
+                    "filter_count": filter_count,
                 },
             }
 
@@ -1872,12 +2375,41 @@ def register_signal_filtering_callbacks(app):
 
                 data_service = get_enhanced_data_service()
 
-                # Create filter info for storage
+                # Create filter info for storage.  The "effective chain"
+                # we save is the queued stages plus the panel filter as
+                # an implicit final stage - that matches what just ran
+                # on Apply, so downstream pages re-apply the same
+                # sequence and produce identical output to the comparison
+                # plot the user just saw.
+                panel_stage = _panel_filter_as_stage(
+                    filter_type,
+                    filter_family,
+                    filter_response,
+                    low_freq,
+                    high_freq,
+                    filter_order,
+                    advanced_method,
+                    artifact_type,
+                    artifact_strength,
+                    neural_type,
+                    neural_complexity,
+                    ensemble_method,
+                    ensemble_n_filters,
+                    smoothing_method=smoothing_method,
+                    savgol_window=savgol_window,
+                    savgol_polyorder=savgol_polyorder,
+                    moving_avg_window=moving_avg_window,
+                    gaussian_sigma=gaussian_sigma,
+                )
+                effective_chain = list(filter_chain or []) + (
+                    [panel_stage] if panel_stage else []
+                )
                 filter_info = {
-                    "filter_type": filter_type,
+                    "filter_type": "chain" if effective_chain else filter_type,
                     "parameters": stored_data["parameters"],
                     "detrending_applied": stored_data["detrending_applied"],
                     "timestamp": pd.Timestamp.now().isoformat(),
+                    "chain": effective_chain or None,
                 }
 
                 # Store the FULL filtered signal data (not windowed) so other screens can extract any window
@@ -1892,7 +2424,7 @@ def register_signal_filtering_callbacks(app):
 
                 # Log signal statistics for debugging
                 logger.info(
-                    f"📊 STORED Filtered signal stats - min: {np.min(signal_to_store):.4f}, max: {np.max(signal_to_store):.4f}, mean: {np.mean(signal_to_store):.4f}"
+                    f" STORED Filtered signal stats - min: {np.min(signal_to_store):.4f}, max: {np.max(signal_to_store):.4f}, mean: {np.mean(signal_to_store):.4f}"
                 )
 
                 success = data_service.store_filtered_data(
@@ -1921,49 +2453,12 @@ def register_signal_filtering_callbacks(app):
             logger.info(
                 f"Returning plots - comparison_plot type: {type(comparison_plot)}, has {len(comparison_plot.data) if hasattr(comparison_plot, 'data') else 'N/A'} traces"
             )
-            # Prepare additional store data
-            comparison_data = {
-                "original_signal": (
-                    original_signal.tolist() if original_signal is not None else []
-                ),
-                "filtered_signal": (
-                    filtered_data.tolist() if filtered_data is not None else []
-                ),
-                "time_axis": time_axis.tolist() if time_axis is not None else [],
-                "sampling_freq": sampling_freq,
-                "filter_type": filter_type,
-                "signal_source": signal_source,  # NEW: Store signal source
-                "filter_count": filter_count,  # NEW: Store filter application count
-                "filter_params": {
-                    "filter_family": filter_family,
-                    "filter_response": filter_response,
-                    "low_freq": low_freq,
-                    "high_freq": high_freq,
-                    "filter_order": filter_order,
-                    "signal_source": signal_source,  # NEW
-                    "filter_count": filter_count,  # NEW
-                },
-            }
-
-            quality_metrics_data = {
-                "snr_improvement": (
-                    quality_metrics.get("snr_improvement", 0)
-                    if isinstance(quality_metrics, dict)
-                    else 0
-                ),
-                "mse": (
-                    quality_metrics.get("mse", 0)
-                    if isinstance(quality_metrics, dict)
-                    else 0
-                ),
-                "correlation": (
-                    quality_metrics.get("correlation", 0)
-                    if isinstance(quality_metrics, dict)
-                    else 0
-                ),
-                "filter_type": filter_type,
-                "timestamp": pd.Timestamp.now().isoformat(),
-            }
+            # ``store-filter-comparison`` and ``store-filter-quality-metrics``
+            # are no longer read by any callback.  Skip building their
+            # payloads and emit ``no_update`` so the apply path doesn't
+            # waste a full signal serialisation per click.
+            comparison_data = no_update
+            quality_metrics_data = no_update
 
             filtered_signal_data = {
                 "signal": filtered_data.tolist() if filtered_data is not None else [],
@@ -1988,16 +2483,25 @@ def register_signal_filtering_callbacks(app):
                 "timestamp": pd.Timestamp.now().isoformat(),
             }
 
+            # The saved-as-preprocessing banner used to live here.  It was
+            # information noise — the cross-page preprocessing behaviour is
+            # already documented and visible (other pages' "Filtered" mode
+            # toggles).  Output kept as ``no_update`` so the Output list
+            # arity is preserved without writing anything user-visible.
+            # ``store-filtering-data`` is also unread by downstream
+            # callbacks now; emit no_update so we don't serialise a
+            # large dict on every Apply.
             return (
                 original_plot,
                 filtered_plot,
                 comparison_plot,
                 quality_metrics,
                 quality_plots,
-                stored_data,
-                comparison_data,
-                quality_metrics_data,
+                no_update,           # store-filtering-data (unread)
+                comparison_data,     # already no_update
+                quality_metrics_data,  # already no_update
                 filtered_signal_data,
+                no_update,           # filter-saved-banner
             )
 
         except Exception as e:
@@ -2022,6 +2526,7 @@ def register_signal_filtering_callbacks(app):
                 None,
                 None,
                 None,
+                no_update,
             )
 
     # Removed update_start_position_slider callback - duplicate with time domain callback
@@ -2342,12 +2847,12 @@ def create_original_signal_plot(time_axis, signal_data, sampling_freq, signal_ty
         )
 
         logger.info(
-            f"✅ Original signal plot created successfully with {len(fig.data)} traces"
+            f" Original signal plot created successfully with {len(fig.data)} traces"
         )
         logger.info("=" * 80)
         return fig
     except Exception as e:
-        logger.error(f"❌ Error creating original signal plot: {e}")
+        logger.error(f" Error creating original signal plot: {e}")
         logger.error(f"Exception details: {type(e).__name__}: {str(e)}")
         import traceback
 
@@ -2619,439 +3124,88 @@ def create_filtered_signal_plot(time_axis, filtered_data, sampling_freq, signal_
 
 
 def create_filter_comparison_plot(
-    time_axis, original_signal, filtered_signal, sampling_freq, signal_type
+    time_axis,
+    original_signal,
+    filtered_signal,
+    sampling_freq,
+    signal_type,
+    peaks=None,
+    notches=None,
 ):
-    """Create comparison plot between original and filtered signals with critical points detection."""
-    try:
-        logger.info("Creating comparison plot:")
-        logger.info(f"  Time axis shape: {time_axis.shape}")
-        logger.info(f"  Original signal shape: {original_signal.shape}")
-        logger.info(f"  Filtered signal shape: {filtered_signal.shape}")
-        logger.info(
-            f"  Time axis range: {np.min(time_axis):.4f} to {np.max(time_axis):.4f}"
-        )
-        logger.info(
-            f"  Original signal range: {np.min(original_signal):.4f} to {np.max(original_signal):.4f}"
-        )
-        logger.info(
-            f"  Filtered signal range: {np.min(filtered_signal):.4f} to {np.max(filtered_signal):.4f}"
-        )
+    """Overlay the original signal and the user-filtered signal.
 
-        # PERFORMANCE OPTIMIZATION: Limit plot data to max 5 minutes and 10K points
-        time_axis_plot, original_signal_plot = limit_plot_data(
-            time_axis,
-            original_signal,
-            max_duration=300,  # 5 minutes max
-            max_points=10000,  # 10K points max
+    Optional ``peaks`` (systolic peak indices) and ``notches``
+    (dicrotic notch indices) are rendered as markers on the FILTERED
+    trace so the user can see what survived the filter.  Pre-computed
+    by the caller from a SINGLE shared ``WaveformMorphology`` pass so
+    we don't repeat the heavy peak detection here.
+    """
+    import numpy as np
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=time_axis,
+            y=original_signal,
+            mode="lines",
+            name="Original",
+            line=dict(color="rgba(60, 60, 60, 0.6)", width=1),
         )
-
-        # Apply same limiting to filtered signal (use same time_axis_plot for consistency)
-        _, filtered_signal_plot = limit_plot_data(
-            time_axis, filtered_signal, max_duration=300, max_points=10000
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=time_axis,
+            y=filtered_signal,
+            mode="lines",
+            name="Filtered",
+            line=dict(color="#1f77b4", width=1.5),
         )
+    )
 
-        logger.info(
-            f"Comparison plot data limited: {len(original_signal)} → {len(original_signal_plot)} points"
-        )
-
-        fig = go.Figure()
-
-        # Original signal (using limited data)
-        fig.add_trace(
-            go.Scatter(
-                x=time_axis_plot,
-                y=original_signal_plot,
-                mode="lines",
-                name="Original Signal",
-                line=dict(color="blue", width=2),
-                opacity=0.8,
-            )
-        )
-
-        # Filtered signal (using limited data)
-        fig.add_trace(
-            go.Scatter(
-                x=time_axis_plot,
-                y=filtered_signal_plot,
-                mode="lines",
-                name="Filtered Signal",
-                line=dict(color="red", width=2),
-                opacity=0.8,
-            )
-        )
-
-        # Add critical points detection using vitalDSP waveform module
-        # NOTE: Use limited data for peak detection to match the plot
+    if peaks is not None:
         try:
-            from vitalDSP.physiological_features.waveform import WaveformMorphology
-
-            # Create waveform morphology object for original signal (use limited data)
-            wm_orig = WaveformMorphology(
-                waveform=original_signal_plot,  # Use limited data
-                fs=sampling_freq,  # Use actual sampling frequency
-                signal_type=signal_type,  # Use signal type from UI
-                simple_mode=True,
-            )
-
-            # Create waveform morphology object for filtered signal (use limited data)
-            wm_filt = WaveformMorphology(
-                waveform=filtered_signal_plot,  # Use limited data
-                fs=sampling_freq,  # Use actual sampling frequency
-                signal_type=signal_type,  # Use signal type from UI
-                simple_mode=True,
-            )
-
-            # Detect and plot critical points for original signal
-            if signal_type == "PPG":
-                # For PPG: systolic peaks, dicrotic notches, diastolic peaks
-                if (
-                    hasattr(wm_orig, "systolic_peaks")
-                    and wm_orig.systolic_peaks is not None
-                ):
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time_axis_plot[wm_orig.systolic_peaks],
-                            y=original_signal_plot[wm_orig.systolic_peaks],
-                            mode="markers",
-                            name="Systolic Peaks (Original)",
-                            marker=dict(color="darkblue", size=8, symbol="diamond"),
-                            hovertemplate="<b>Original Systolic Peak:</b> %{y}<extra></extra>",
-                        )
-                    )
-
-                # Detect and plot dicrotic notches for original signal
-                try:
-                    dicrotic_notches_orig = wm_orig.detect_dicrotic_notches()
-                    if (
-                        dicrotic_notches_orig is not None
-                        and len(dicrotic_notches_orig) > 0
-                    ):
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis_plot[dicrotic_notches_orig],
-                                y=original_signal_plot[dicrotic_notches_orig],
-                                mode="markers",
-                                name="Dicrotic Notches (Original)",
-                                marker=dict(
-                                    color="darkorange", size=6, symbol="circle"
-                                ),
-                                hovertemplate="<b>Original Dicrotic Notch:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Original dicrotic notch detection failed: {e}")
-
-                # Detect and plot diastolic peaks for original signal
-                try:
-                    diastolic_peaks_orig = wm_orig.detect_diastolic_peak()
-                    if (
-                        diastolic_peaks_orig is not None
-                        and len(diastolic_peaks_orig) > 0
-                    ):
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis_plot[diastolic_peaks_orig],
-                                y=original_signal_plot[diastolic_peaks_orig],
-                                mode="markers",
-                                name="Diastolic Peaks (Original)",
-                                marker=dict(color="darkgreen", size=6, symbol="square"),
-                                hovertemplate="<b>Original Diastolic Peak:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Original diastolic peak detection failed: {e}")
-
-            # Detect and plot critical points for filtered signal
-            if (
-                hasattr(wm_filt, "systolic_peaks")
-                and wm_filt.systolic_peaks is not None
-            ):
+            idx = np.asarray(peaks, dtype=int)
+            idx = idx[(idx >= 0) & (idx < len(time_axis))]
+            if idx.size:
                 fig.add_trace(
                     go.Scatter(
-                        x=time_axis_plot[wm_filt.systolic_peaks],
-                        y=filtered_signal_plot[wm_filt.systolic_peaks],
+                        x=np.asarray(time_axis)[idx],
+                        y=np.asarray(filtered_signal)[idx],
                         mode="markers",
-                        name="Systolic Peaks (Filtered)",
-                        marker=dict(color="darkred", size=8, symbol="diamond"),
-                        hovertemplate="<b>Filtered Systolic Peak:</b> %{y}<extra></extra>",
+                        name="Systolic peaks",
+                        marker=dict(color="#d62728", size=7, symbol="diamond"),
                     )
                 )
+        except Exception:
+            pass
 
-                # Detect and plot dicrotic notches for filtered signal
-                try:
-                    dicrotic_notches_filt = wm_filt.detect_dicrotic_notches()
-                    if (
-                        dicrotic_notches_filt is not None
-                        and len(dicrotic_notches_filt) > 0
-                    ):
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis_plot[dicrotic_notches_filt],
-                                y=filtered_signal_plot[dicrotic_notches_filt],
-                                mode="markers",
-                                name="Dicrotic Notches (Filtered)",
-                                marker=dict(color="red", size=6, symbol="circle"),
-                                hovertemplate="<b>Filtered Dicrotic Notch:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Filtered dicrotic notch detection failed: {e}")
-
-                # Detect and plot diastolic peaks for filtered signal
-                try:
-                    diastolic_peaks_filt = wm_filt.detect_diastolic_peak()
-                    if (
-                        diastolic_peaks_filt is not None
-                        and len(diastolic_peaks_filt) > 0
-                    ):
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[diastolic_peaks_filt],
-                                y=filtered_signal[diastolic_peaks_filt],
-                                mode="markers",
-                                name="Diastolic Peaks (Filtered)",
-                                marker=dict(color="green", size=6, symbol="square"),
-                                hovertemplate="<b>Filtered Diastolic Peak:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Filtered diastolic peak detection failed: {e}")
-
-            elif signal_type == "ECG":
-                # For ECG: R peaks, P peaks, T peaks
-                if hasattr(wm_orig, "r_peaks") and wm_orig.r_peaks is not None:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time_axis[wm_orig.r_peaks],
-                            y=original_signal[wm_orig.r_peaks],
-                            mode="markers",
-                            name="R Peaks (Original)",
-                            marker=dict(color="darkblue", size=8, symbol="diamond"),
-                            hovertemplate="<b>Original R Peak:</b> %{y}<extra></extra>",
-                        )
+    if notches is not None:
+        try:
+            idx = np.asarray(notches, dtype=int)
+            idx = idx[(idx >= 0) & (idx < len(time_axis))]
+            if idx.size:
+                fig.add_trace(
+                    go.Scatter(
+                        x=np.asarray(time_axis)[idx],
+                        y=np.asarray(filtered_signal)[idx],
+                        mode="markers",
+                        name="Dicrotic notches",
+                        marker=dict(color="#9467bd", size=6, symbol="x"),
                     )
-
-                # Detect and plot P peaks for original signal
-                try:
-                    p_peaks_orig = wm_orig.detect_p_peak()
-                    if p_peaks_orig is not None and len(p_peaks_orig) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[p_peaks_orig],
-                                y=original_signal[p_peaks_orig],
-                                mode="markers",
-                                name="P Peaks (Original)",
-                                marker=dict(color="darkblue", size=6, symbol="circle"),
-                                hovertemplate="<b>Original P Peak:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Original P peak detection failed: {e}")
-
-                # Detect and plot T peaks for original signal
-                try:
-                    t_peaks_orig = wm_orig.detect_t_peak()
-                    if t_peaks_orig is not None and len(t_peaks_orig) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[t_peaks_orig],
-                                y=original_signal[t_peaks_orig],
-                                mode="markers",
-                                name="T Peaks (Original)",
-                                marker=dict(color="darkgreen", size=6, symbol="square"),
-                                hovertemplate="<b>Original T Peak:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Original T peak detection failed: {e}")
-
-                # Detect and plot Q valleys for original signal
-                try:
-                    q_valleys_orig = wm_orig.detect_q_valley()
-                    if q_valleys_orig is not None and len(q_valleys_orig) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[q_valleys_orig],
-                                y=original_signal[q_valleys_orig],
-                                mode="markers",
-                                name="Q Valleys (Original)",
-                                marker=dict(
-                                    color="darkorange", size=6, symbol="triangle-down"
-                                ),
-                                hovertemplate="<b>Original Q Valley:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Original Q valley detection failed: {e}")
-
-                # Detect and plot S valleys for original signal
-                try:
-                    s_valleys_orig = wm_orig.detect_s_valley()
-                    if s_valleys_orig is not None and len(s_valleys_orig) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[s_valleys_orig],
-                                y=original_signal[s_valleys_orig],
-                                mode="markers",
-                                name="S Valleys (Original)",
-                                marker=dict(
-                                    color="darkred", size=6, symbol="triangle-down"
-                                ),
-                                hovertemplate="<b>Original S Valley:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Original S valley detection failed: {e}")
-
-                # Detect and plot critical points for filtered signal
-                if hasattr(wm_filt, "r_peaks") and wm_filt.r_peaks is not None:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time_axis[wm_filt.r_peaks],
-                            y=filtered_signal[wm_filt.r_peaks],
-                            mode="markers",
-                            name="R Peaks (Filtered)",
-                            marker=dict(color="darkred", size=8, symbol="diamond"),
-                            hovertemplate="<b>Filtered R Peak:</b> %{y}<extra></extra>",
-                        )
-                    )
-
-                # Detect and plot P peaks for filtered signal
-                try:
-                    p_peaks_filt = wm_filt.detect_p_peak()
-                    if p_peaks_filt is not None and len(p_peaks_filt) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[p_peaks_filt],
-                                y=filtered_signal[p_peaks_filt],
-                                mode="markers",
-                                name="P Peaks (Filtered)",
-                                marker=dict(color="red", size=6, symbol="circle"),
-                                hovertemplate="<b>Filtered P Peak:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Filtered P peak detection failed: {e}")
-
-                # Detect and plot T peaks for filtered signal
-                try:
-                    t_peaks_filt = wm_filt.detect_t_peak()
-                    if t_peaks_filt is not None and len(t_peaks_filt) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[t_peaks_filt],
-                                y=filtered_signal[t_peaks_filt],
-                                mode="markers",
-                                name="T Peaks (Filtered)",
-                                marker=dict(color="green", size=6, symbol="square"),
-                                hovertemplate="<b>Filtered T Peak:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Filtered T peak detection failed: {e}")
-
-                # Detect and plot Q valleys for filtered signal
-                try:
-                    q_valleys_filt = wm_filt.detect_q_valley()
-                    if q_valleys_filt is not None and len(q_valleys_filt) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[q_valleys_filt],
-                                y=filtered_signal[q_valleys_filt],
-                                mode="markers",
-                                name="Q Valleys (Filtered)",
-                                marker=dict(
-                                    color="orange", size=6, symbol="triangle-down"
-                                ),
-                                hovertemplate="<b>Filtered Q Valley:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Filtered Q valley detection failed: {e}")
-
-                # Detect and plot S valleys for filtered signal
-                try:
-                    s_valleys_filt = wm_filt.detect_s_valley()
-                    if s_valleys_filt is not None and len(s_valleys_filt) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[s_valleys_filt],
-                                y=filtered_signal[s_valleys_filt],
-                                mode="markers",
-                                name="S Valleys (Filtered)",
-                                marker=dict(
-                                    color="red", size=6, symbol="triangle-down"
-                                ),
-                                hovertemplate="<b>Filtered S Valley:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Filtered S valley detection failed: {e}")
-
-            else:
-                # For other signal types, use basic peak detection
-                logger.info(
-                    f"Using basic peak detection for signal type: {signal_type}"
                 )
-                try:
-                    from vitalDSP.physiological_features.peak_detection import (
-                        detect_peaks,
-                    )
+        except Exception:
+            pass
 
-                    orig_peaks = detect_peaks(original_signal, sampling_freq)
-                    filt_peaks = detect_peaks(filtered_signal, sampling_freq)
-
-                    if len(orig_peaks) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[orig_peaks],
-                                y=original_signal[orig_peaks],
-                                mode="markers",
-                                name="Original Detected Peaks",
-                                marker=dict(color="darkblue", size=8, symbol="diamond"),
-                                hovertemplate="<b>Original Peak:</b> %{y}<extra></extra>",
-                            )
-                        )
-
-                    if len(filt_peaks) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis[filt_peaks],
-                                y=filtered_signal[filt_peaks],
-                                mode="markers",
-                                name="Filtered Detected Peaks",
-                                marker=dict(color="darkred", size=8, symbol="diamond"),
-                                hovertemplate="<b>Filtered Peak:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Basic peak detection failed: {e}")
-
-        except Exception as e:
-            logger.warning(f"Critical points detection failed: {e}")
-
-        fig.update_layout(
-            title="Signal Comparison: Original vs Filtered with Critical Points",
-            xaxis_title="Time (s)",
-            yaxis_title="Amplitude",
-            height=400,
-            showlegend=True,
-            template="plotly_white",
-            # Enable pan and zoom
-            dragmode="pan",
-            modebar=dict(
-                orientation="v",
-                bgcolor="rgba(255,255,255,0.8)",
-                color="rgba(0,0,0,0.5)",
-                activecolor="rgba(0,0,0,0.8)",
-            ),
-        )
-
-        logger.info("Comparison plot with critical points created successfully")
-        return fig
-    except Exception as e:
-        logger.error(f"Error creating comparison plot: {e}")
-        return create_empty_figure()
+    fig.update_layout(
+        title="Original vs Filtered (same window)",
+        xaxis_title="Time (s)",
+        yaxis_title=f"{signal_type} amplitude",
+        height=500,
+        showlegend=True,
+        margin=dict(l=50, r=20, t=50, b=40),
+        hovermode="x unified",
+    )
+    return fig
 
 
 def create_empty_figure():
@@ -3095,170 +3249,117 @@ def apply_traditional_filter(
         logger.info(f"Filter order: {filter_order}")
         logger.info(f"Sampling frequency: {sampling_freq}")
 
+        # Normalise response aliases so callers can pass either ``low``/
+        # ``high`` (legacy) or ``lowpass``/``highpass`` (UI radio).
+        response_aliases = {
+            "lowpass": "low",
+            "highpass": "high",
+            "low_pass": "low",
+            "high_pass": "high",
+        }
+        filter_response = response_aliases.get(filter_response, filter_response)
+
         # Import vitalDSP traditional filtering functions
         from vitalDSP.filtering.signal_filtering import SignalFiltering
 
         # Create filter instance
         logger.info("SignalFiltering instance created successfully")
 
-        # Apply filter based on type using vitalDSP
+        # Apply filter based on type using vitalDSP.  IMPORTANT:
+        # ``SignalFiltering`` filter methods take PHYSICAL Hz for
+        # ``cutoff`` (and normalise using the supplied ``fs``).  The
+        # wrapper used to pre-normalise by dividing by Nyquist, which
+        # produced double-normalised cutoffs and blow-up coefficients
+        # (~1e19 outputs - the "no trace shown" bug).  Note the library
+        # exposes ``chebyshev`` (== type-1) and ``chebyshev2``; there
+        # is NO ``chebyshev1`` attribute, so the dispatch must use the
+        # right name or the whole function aborts with AttributeError.
+        sf = SignalFiltering(signal_data)
+        family_dispatch = {
+            "butter": sf.butterworth,
+            "cheby1": sf.chebyshev,
+            "cheby2": sf.chebyshev2,
+            "ellip": sf.elliptic,
+        }
+        family_fn = family_dispatch.get(filter_family, sf.butterworth)
+
+        # ``SignalFiltering.butterworth`` carries ``adaptive=True`` by
+        # default, which routes the call through
+        # ``optimize_filtering_parameters`` and silently overrides the
+        # user's cutoff / order based on the signal's dominant
+        # frequency (clamped to 10 Hz for PPG, 40 Hz for ECG).  That
+        # made the webapp's filter output diverge from raw-library
+        # output for the same parameters.  Pass ``adaptive=False``
+        # when the family accepts it so the user gets exactly what
+        # they configured.  ``chebyshev``, ``chebyshev2``, ``elliptic``
+        # don't have the kwarg, so the call site is conditional.
+        adaptive_kwargs = {"adaptive": False} if filter_family == "butter" else {}
+
+        # UI convention:
+        #   Low Freq  = lower edge of the passband = high-pass cutoff
+        #   High Freq = upper edge of the passband = low-pass cutoff
+        # A low-pass filter keeps frequencies BELOW its cutoff, so the
+        # cutoff is High Freq (the top of what passes through).  A
+        # high-pass filter keeps frequencies ABOVE its cutoff, so the
+        # cutoff is Low Freq.  Earlier the wiring was swapped — a
+        # "low-pass at high_freq=40 Hz" was running a filter at 0.5 Hz
+        # (the low_freq value), which silently destroyed the signal.
         if filter_response == "low":
-            logger.info(f"Applying low-pass filter with cutoff: {low_freq}")
-            # Use vitalDSP for consistent filtering
-            nyquist = sampling_freq / 2
-            low_freq_norm = low_freq / nyquist
-
-            # Ensure cutoff frequency is within valid range
-            low_freq_norm = max(0.001, min(low_freq_norm, 0.999))
-
-            # Apply lowpass filter using vitalDSP
-            sf = SignalFiltering(signal_data)
-
-            if filter_family == "butter":
-                filtered_signal = sf.butterworth(
-                    cutoff=low_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    btype="low",
-                )
-            elif filter_family == "cheby1":
-                filtered_signal = sf.chebyshev1(
-                    cutoff=low_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    btype="low",
-                )
-            elif filter_family == "cheby2":
-                filtered_signal = sf.chebyshev2(
-                    cutoff=low_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    btype="low",
-                )
-            elif filter_family == "ellip":
-                filtered_signal = sf.elliptic(
-                    cutoff=low_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    btype="low",
-                )
-            else:
-                filtered_signal = sf.butterworth(
-                    cutoff=low_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    btype="low",
-                )
-
+            cutoff = high_freq if high_freq is not None else low_freq
+            logger.info(f"Applying low-pass filter with cutoff: {cutoff} Hz")
+            filtered_signal = family_fn(
+                cutoff=cutoff,
+                fs=sampling_freq,
+                order=filter_order,
+                btype="low",
+                **adaptive_kwargs,
+            )
             logger.info(f"Low-pass filter applied using vitalDSP {filter_family}")
 
         elif filter_response == "high":
-            logger.info(f"Applying high-pass filter with cutoff: {high_freq}")
-            # Use vitalDSP for consistent filtering
-            nyquist = sampling_freq / 2
-            high_freq_norm = high_freq / nyquist
-
-            # Ensure cutoff frequency is within valid range
-            high_freq_norm = max(0.001, min(high_freq_norm, 0.999))
-
-            # Apply highpass filter using vitalDSP
-            sf = SignalFiltering(signal_data)
-
-            if filter_family == "butter":
-                filtered_signal = sf.butterworth(
-                    cutoff=high_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    btype="high",
-                )
-            elif filter_family == "cheby1":
-                filtered_signal = sf.chebyshev1(
-                    cutoff=high_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    btype="high",
-                )
-            elif filter_family == "cheby2":
-                filtered_signal = sf.chebyshev2(
-                    cutoff=high_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    btype="high",
-                )
-            elif filter_family == "ellip":
-                filtered_signal = sf.elliptic(
-                    cutoff=high_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    btype="high",
-                )
-            else:
-                filtered_signal = sf.butterworth(
-                    cutoff=high_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    btype="high",
-                )
-
+            cutoff = low_freq if low_freq is not None else high_freq
+            logger.info(f"Applying high-pass filter with cutoff: {cutoff} Hz")
+            filtered_signal = family_fn(
+                cutoff=cutoff,
+                fs=sampling_freq,
+                order=filter_order,
+                btype="high",
+                **adaptive_kwargs,
+            )
             logger.info(f"High-pass filter applied using vitalDSP {filter_family}")
 
         elif filter_response == "bandpass":
             logger.info(
-                f"Applying bandpass filter with range: {low_freq} - {high_freq}"
+                f"Applying bandpass filter with range: {low_freq} - {high_freq} Hz"
             )
-            # Use vitalDSP for consistent filtering
-            logger.info("Using vitalDSP implementation for bandpass filtering")
-            nyquist = sampling_freq / 2
-            low_freq_norm = low_freq / nyquist
-            high_freq_norm = high_freq / nyquist
-
-            # Ensure cutoff frequencies are within valid range
-            low_freq_norm = max(0.001, min(low_freq_norm, 0.999))
-            high_freq_norm = max(0.001, min(high_freq_norm, 0.999))
-
-            # Apply bandpass filter using vitalDSP
+            # CRITICAL: ``SignalFiltering.bandpass`` expects PHYSICAL Hz
+            # for ``lowcut`` and ``highcut`` and normalises internally
+            # using the supplied ``fs``.  An earlier version of this
+            # wrapper pre-normalised by dividing by Nyquist (and passed
+            # the same ``fs``), which double-normalised the cutoffs to
+            # near-zero, blew up the filter coefficients, and produced
+            # signals on the order of 1e19 - the "no trace shown" bug.
+            # NOTE: ``SignalFiltering.bandpass`` only recognises
+            # ``"butter"``, ``"cheby"`` (type-1), and ``"elliptic"``;
+            # other names fall through to a ValueError.  We map the
+            # webapp's family identifiers to whichever value the
+            # library actually accepts, and use butter as the safe
+            # default.
             sf = SignalFiltering(signal_data)
-
-            if filter_family == "butter":
-                filtered_signal = sf.bandpass(
-                    lowcut=low_freq_norm,
-                    highcut=high_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    filter_type="butter",
-                )
-            elif filter_family == "cheby1":
-                filtered_signal = sf.bandpass(
-                    lowcut=low_freq_norm,
-                    highcut=high_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    filter_type="cheby1",
-                )
-            elif filter_family == "cheby2":
-                filtered_signal = sf.bandpass(
-                    lowcut=low_freq_norm,
-                    highcut=high_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    filter_type="cheby2",
-                )
-            elif filter_family == "ellip":
-                filtered_signal = sf.bandpass(
-                    lowcut=low_freq_norm,
-                    highcut=high_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    filter_type="ellip",
-                )
-            else:
-                filtered_signal = sf.bandpass(
-                    lowcut=low_freq_norm,
-                    highcut=high_freq_norm,
-                    fs=sampling_freq,
-                    order=filter_order,
-                    filter_type="butter",
-                )
+            family_map = {
+                "butter": "butter",
+                "cheby1": "cheby",
+                "cheby2": "cheby",   # library has no cheby-2 bandpass
+                "ellip": "elliptic",
+            }
+            filter_type_lib = family_map.get(filter_family, "butter")
+            filtered_signal = sf.bandpass(
+                lowcut=low_freq,
+                highcut=high_freq,
+                fs=sampling_freq,
+                order=filter_order,
+                filter_type=filter_type_lib,
+            )
 
             logger.info(f"Bandpass filter applied using vitalDSP {filter_family}")
 
@@ -3331,12 +3432,29 @@ def apply_traditional_filter(
             # Ensure cutoff frequency is within valid range
             low_freq_norm = max(0.001, min(low_freq_norm, 0.999))
 
-            # Apply default lowpass filter using vitalDSP
+            # Apply default lowpass filter using vitalDSP.  ``adaptive=False``
+            # keeps the user-supplied cutoff / order intact (see comment in
+            # the low/high branches above).
             sf = SignalFiltering(signal_data)
             filtered_signal = sf.butterworth(
-                cutoff=low_freq_norm, fs=sampling_freq, order=filter_order, btype="low"
+                cutoff=low_freq_norm,
+                fs=sampling_freq,
+                order=filter_order,
+                btype="low",
+                adaptive=False,
             )
             logger.info("Default low-pass filter applied using vitalDSP")
+
+        # Safety net: if none of the response branches above set
+        # ``filtered_signal`` (e.g. unknown response value), return the
+        # input unchanged rather than raising UnboundLocalError.
+        if "filtered_signal" not in locals():
+            logger.warning(
+                "apply_traditional_filter: unknown response %r; "
+                "returning input unchanged.",
+                filter_response,
+            )
+            filtered_signal = signal_data
 
         logger.info(
             f"Traditional filter applied successfully: {filter_family} {filter_response}"
@@ -3948,1837 +4066,91 @@ def apply_multi_modal_filtering(
 def generate_filter_quality_metrics(
     original_signal, filtered_signal, sampling_freq, quality_options, signal_type="ECG"
 ):
-    """Generate comprehensive filter quality metrics with beautiful tables and extensive analysis."""
+    """Render the headline filter-quality metrics as a compact table.
+
+    Uses ``vitalDSP.signal_quality_assessment.FilteringQualityAssessment.assess_quality()``
+    as the single source of truth.  The previous version called the same
+    library helper internally but then layered ~1800 lines of per-domain
+    breakdowns (statistical, temporal, morphological, frequency, ...)
+    that duplicated ``calculate_*`` helpers also defined here.  Most of
+    that breakdown was unread by users and made the page heavy.  The
+    table below shows the five metrics that actually drive the overall
+    quality verdict, plus the recommendation string.
+    """
     try:
-        # Use vitalDSP's comprehensive FilteringQualityAssessment
         from vitalDSP.signal_quality_assessment.filtering_quality_assessment import (
             FilteringQualityAssessment,
         )
 
-        # Create quality assessment instance with signal-adaptive thresholds
         fqa = FilteringQualityAssessment(
             original_signal=original_signal,
             filtered_signal=filtered_signal,
             fs=sampling_freq,
             signal_type=signal_type,
         )
+        result = fqa.assess_quality()
+        metrics = result.get("metrics", {})
+        overall = result.get("overall_quality", "n/a")
+        recommendation = result.get("recommendation", "")
 
-        # Perform comprehensive quality assessment
-        quality_results = fqa.assess_quality()
+        def _row(label: str, key: str, value_key: str = "score") -> html.Tr:
+            entry = metrics.get(key, {}) or {}
+            raw = entry.get(value_key)
+            try:
+                shown = f"{float(raw):.3f}" if raw is not None else "-"
+            except (TypeError, ValueError):
+                shown = str(raw)
+            verdict = entry.get("verdict") or entry.get("status") or ""
+            return html.Tr(
+                [
+                    html.Td(label),
+                    html.Td(shown, className="text-end"),
+                    html.Td(html.Small(verdict, className="text-muted")),
+                ]
+            )
 
-        # Extract key metrics for backward compatibility
-        snr_improvement = quality_results["metrics"]["snr_db"]["value"]
-        correlation = quality_results["metrics"]["shape_similarity"]["score"]
-        smoothness = quality_results["metrics"]["smoothness_improvement"]["score"]
-        noise_reduction = quality_results["metrics"]["noise_reduction"]["score"]
-        peak_preservation = quality_results["metrics"]["peak_preservation"]["score"]
-
-        # Calculate legacy MSE (for display only, not used in quality assessment)
-        mse = calculate_mse(original_signal, filtered_signal)
-
-        # Calculate frequency domain metrics
-        freq_metrics = calculate_frequency_metrics(
-            original_signal, filtered_signal, sampling_freq
-        )
-
-        # Calculate additional statistical metrics
-        statistical_metrics = calculate_statistical_metrics(
-            original_signal, filtered_signal
-        )
-
-        # Calculate temporal features
-        temporal_features = calculate_temporal_features(
-            original_signal, filtered_signal, sampling_freq, signal_type
-        )
-
-        # Calculate morphological features
-        morphological_features = calculate_morphological_features(
-            original_signal, filtered_signal
-        )
-
-        # Calculate advanced quality metrics
-        advanced_quality = calculate_advanced_quality_metrics(
-            original_signal, filtered_signal, sampling_freq
-        )
-
-        # Calculate performance metrics
-        performance_metrics = calculate_performance_metrics(
-            original_signal, filtered_signal
-        )
-
-        # Create beautiful metrics display with tables
-        metrics_html = html.Div(
+        table = dbc.Table(
             [
-                html.H4(
-                    "🔍 Comprehensive Filter Quality Assessment",
-                    className="text-center mb-4 text-primary",
-                ),
-                # Overall Quality Summary Card
-                dbc.Alert(
+                html.Thead(html.Tr([html.Th("Metric"), html.Th("Value"), html.Th("")])),
+                html.Tbody(
                     [
-                        html.H5(
-                            [
-                                html.I(className="fas fa-award me-2"),
-                                f"Overall Quality: {quality_results['overall_quality']}",
-                            ],
-                            className="alert-heading",
-                        ),
-                        html.Hr(),
-                        html.P(quality_results["recommendation"], className="mb-1"),
-                        html.Small(
-                            f"Signal Type: {quality_results['signal_type']} | "
-                            f"Sampling Frequency: {quality_results['sampling_frequency']} Hz",
-                            className="text-muted",
-                        ),
-                    ],
-                    color=(
-                        "success"
-                        if quality_results["overall_quality"] in ["Excellent", "Good"]
-                        else (
-                            "warning"
-                            if quality_results["overall_quality"] == "Acceptable"
-                            else "danger"
-                        )
-                    ),
-                    className="mb-4",
-                ),
-                # Signal Quality Table
-                dbc.Card(
-                    [
-                        dbc.CardHeader(
-                            [
-                                html.H5(
-                                    "📊 Core Signal Quality Metrics",
-                                    className="mb-0 text-success",
-                                )
-                            ],
-                            className="bg-success text-white",
-                        ),
-                        dbc.CardBody(
-                            [
-                                dbc.Table(
-                                    [
-                                        html.Thead(
-                                            [
-                                                html.Tr(
-                                                    [
-                                                        html.Th(
-                                                            "Metric",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Original",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Filtered",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Improvement",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Status",
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                )
-                                            ]
-                                        ),
-                                        html.Tbody(
-                                            [
-                                                # Noise Reduction (NEW - properly designed metric)
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Noise Reduction",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            "0%",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{noise_reduction:.1%}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"+{noise_reduction:.1%}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    f"{'✅' if quality_results['metrics']['noise_reduction']['status'] == 'Excellent' else '🟢' if quality_results['metrics']['noise_reduction']['status'] == 'Good' else '🟡' if quality_results['metrics']['noise_reduction']['status'] == 'Acceptable' else '🔴'} {quality_results['metrics']['noise_reduction']['status']}",
-                                                                    className=f"badge {'bg-success' if quality_results['metrics']['noise_reduction']['status'] in ['Excellent', 'Good'] else 'bg-warning' if quality_results['metrics']['noise_reduction']['status'] == 'Acceptable' else 'bg-danger'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                # SNR (using dynamic thresholds)
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "SNR (Signal-to-Noise Ratio)",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            "N/A",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{snr_improvement:.2f} dB",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"+{snr_improvement:.2f} dB",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    f"{'✅' if quality_results['metrics']['snr_db']['status'] == 'Excellent' else '🟢' if quality_results['metrics']['snr_db']['status'] == 'Good' else '🟡' if quality_results['metrics']['snr_db']['status'] == 'Acceptable' else '🔴'} {quality_results['metrics']['snr_db']['status']}",
-                                                                    className=f"badge {'bg-success' if quality_results['metrics']['snr_db']['status'] in ['Excellent', 'Good'] else 'bg-warning' if quality_results['metrics']['snr_db']['status'] == 'Acceptable' else 'bg-danger'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                # Peak Preservation (NEW - critical for physio signals)
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Peak Preservation",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            "100%",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{peak_preservation:.1%}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{peak_preservation:.1%}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    f"{'✅' if quality_results['metrics']['peak_preservation']['status'] == 'Excellent' else '🟢' if quality_results['metrics']['peak_preservation']['status'] == 'Good' else '🟡' if quality_results['metrics']['peak_preservation']['status'] == 'Acceptable' else '🔴'} {quality_results['metrics']['peak_preservation']['status']}",
-                                                                    className=f"badge {'bg-success' if quality_results['metrics']['peak_preservation']['status'] in ['Excellent', 'Good'] else 'bg-warning' if quality_results['metrics']['peak_preservation']['status'] == 'Acceptable' else 'bg-danger'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                # Smoothness Improvement (using dynamic thresholds)
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Smoothness Improvement",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            "0%",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{smoothness:.1%}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"+{smoothness:.1%}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    f"{'✅' if quality_results['metrics']['smoothness_improvement']['status'] == 'Excellent' else '🟢' if quality_results['metrics']['smoothness_improvement']['status'] == 'Good' else '🟡' if quality_results['metrics']['smoothness_improvement']['status'] == 'Acceptable' else '🔴'} {quality_results['metrics']['smoothness_improvement']['status']}",
-                                                                    className=f"badge {'bg-success' if quality_results['metrics']['smoothness_improvement']['status'] in ['Excellent', 'Good'] else 'bg-warning' if quality_results['metrics']['smoothness_improvement']['status'] == 'Acceptable' else 'bg-danger'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                # Shape Similarity (using dynamic thresholds)
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Shape Similarity (Correlation)",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            "1.000",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{correlation:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{correlation:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    f"{'✅' if quality_results['metrics']['shape_similarity']['status'] == 'Excellent' else '🟢' if quality_results['metrics']['shape_similarity']['status'] == 'Good' else '🟡' if quality_results['metrics']['shape_similarity']['status'] == 'Acceptable' else '🔴'} {quality_results['metrics']['shape_similarity']['status']}",
-                                                                    className=f"badge {'bg-success' if quality_results['metrics']['shape_similarity']['status'] in ['Excellent', 'Good'] else 'bg-warning' if quality_results['metrics']['shape_similarity']['status'] == 'Acceptable' else 'bg-danger'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                # MSE (reference only - not used for quality assessment)
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "MSE (Reference Only)",
-                                                            className="fw-bold text-muted",
-                                                        ),
-                                                        html.Td(
-                                                            "0.000",
-                                                            className="text-center text-muted",
-                                                        ),
-                                                        html.Td(
-                                                            f"{mse:.4f}",
-                                                            className="text-center text-muted",
-                                                        ),
-                                                        html.Td(
-                                                            f"{mse:.4f}",
-                                                            className="text-center text-muted",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    "ℹ️ Info",
-                                                                    className="badge bg-secondary",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Smoothness",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['smoothness_orig']:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{smoothness:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{smoothness - statistical_metrics['smoothness_orig']:+.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Excellent"
-                                                                        if smoothness
-                                                                        > 0.8
-                                                                        else (
-                                                                            "🟡 Good"
-                                                                            if smoothness
-                                                                            > 0.6
-                                                                            else "🔴 Poor"
-                                                                        )
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if smoothness > 0.8 else 'bg-warning' if smoothness > 0.6 else 'bg-danger'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                            ]
-                                        ),
-                                    ],
-                                    bordered=True,
-                                    hover=True,
-                                    responsive=True,
-                                    striped=True,
-                                    className="mb-3",
-                                )
-                            ]
-                        ),
-                    ],
-                    className="mb-4",
-                ),
-                # Statistical Analysis Table
-                dbc.Card(
-                    [
-                        dbc.CardHeader(
-                            [
-                                html.H5(
-                                    "📈 Statistical Analysis",
-                                    className="mb-0 text-info",
-                                )
-                            ],
-                            className="bg-info text-white",
-                        ),
-                        dbc.CardBody(
-                            [
-                                dbc.Table(
-                                    [
-                                        html.Thead(
-                                            [
-                                                html.Tr(
-                                                    [
-                                                        html.Th(
-                                                            "Statistical Measure",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Original Signal",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Filtered Signal",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Change",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Interpretation",
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                )
-                                            ]
-                                        ),
-                                        html.Tbody(
-                                            [
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Mean", className="fw-bold"
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['mean_orig']:.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['mean_filt']:.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['mean_change']:+.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Preserved"
-                                                                        if abs(
-                                                                            statistical_metrics[
-                                                                                "mean_change"
-                                                                            ]
-                                                                        )
-                                                                        < 0.01
-                                                                        else (
-                                                                            "🟡 Modified"
-                                                                            if abs(
-                                                                                statistical_metrics[
-                                                                                    "mean_change"
-                                                                                ]
-                                                                            )
-                                                                            < 0.1
-                                                                            else "🔴 Significant Change"
-                                                                        )
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if abs(statistical_metrics['mean_change']) < 0.01 else 'bg-warning' if abs(statistical_metrics['mean_change']) < 0.1 else 'bg-danger'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Standard Deviation",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['std_orig']:.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['std_filt']:.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['std_change']:+.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Reduced Noise"
-                                                                        if statistical_metrics[
-                                                                            "std_change"
-                                                                        ]
-                                                                        < 0
-                                                                        else "🟡 Increased Variability"
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if statistical_metrics['std_change'] < 0 else 'bg-warning'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Skewness",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['skewness_orig']:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['skewness_filt']:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['skewness_change']:+.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Normalized"
-                                                                        if abs(
-                                                                            statistical_metrics[
-                                                                                "skewness_filt"
-                                                                            ]
-                                                                        )
-                                                                        < 0.5
-                                                                        else "🟡 Asymmetric"
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if abs(statistical_metrics['skewness_filt']) < 0.5 else 'bg-warning'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Kurtosis",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['kurtosis_orig']:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['kurtosis_filt']:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['kurtosis_change']:+.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Normalized"
-                                                                        if abs(
-                                                                            statistical_metrics[
-                                                                                "kurtosis_filt"
-                                                                            ]
-                                                                        )
-                                                                        < 1
-                                                                        else "🟡 Peaked"
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if abs(statistical_metrics['kurtosis_filt']) < 1 else 'bg-warning'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Entropy",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['entropy_orig']:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['entropy_filt']:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{statistical_metrics['entropy_change']:+.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Reduced Complexity"
-                                                                        if statistical_metrics[
-                                                                            "entropy_change"
-                                                                        ]
-                                                                        < 0
-                                                                        else "🟡 Increased Complexity"
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if statistical_metrics['entropy_change'] < 0 else 'bg-warning'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                            ]
-                                        ),
-                                    ],
-                                    bordered=True,
-                                    hover=True,
-                                    responsive=True,
-                                    striped=True,
-                                    className="mb-3",
-                                )
-                            ]
-                        ),
-                    ],
-                    className="mb-4",
-                ),
-                # Temporal Features Table
-                dbc.Card(
-                    [
-                        dbc.CardHeader(
-                            [
-                                html.H5(
-                                    "⏱️ Temporal Features Analysis",
-                                    className="mb-0 text-warning",
-                                )
-                            ],
-                            className="bg-warning text-dark",
-                        ),
-                        dbc.CardBody(
-                            [
-                                dbc.Table(
-                                    [
-                                        html.Thead(
-                                            [
-                                                html.Tr(
-                                                    [
-                                                        html.Th(
-                                                            "Temporal Feature",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Original Signal",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Filtered Signal",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Improvement",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Quality",
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                )
-                                            ]
-                                        ),
-                                        html.Tbody(
-                                            [
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Peak Count",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{temporal_features['peak_count_orig']}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{temporal_features['peak_count_filt']}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{temporal_features['peak_count_change']:+d}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Optimal"
-                                                                        if temporal_features[
-                                                                            "peak_count_filt"
-                                                                        ]
-                                                                        > 0
-                                                                        else "🔴 No Peaks Detected"
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if temporal_features['peak_count_filt'] > 0 else 'bg-danger'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Mean Interval (s)",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{temporal_features['mean_interval_orig']:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{temporal_features['mean_interval_filt']:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{temporal_features['interval_change']:+.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Stable"
-                                                                        if temporal_features[
-                                                                            "interval_std_filt"
-                                                                        ]
-                                                                        < 0.1
-                                                                        else "🟡 Variable"
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if temporal_features['interval_std_filt'] < 0.1 else 'bg-warning'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Interval Std Dev",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{temporal_features['interval_std_orig']:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{temporal_features['interval_std_filt']:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{temporal_features['interval_std_change']:+.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Improved"
-                                                                        if temporal_features[
-                                                                            "interval_std_change"
-                                                                        ]
-                                                                        < 0
-                                                                        else "🟡 Unchanged"
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if temporal_features['interval_std_change'] < 0 else 'bg-warning'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Estimated HR (bpm)",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{temporal_features['heart_rate_orig']:.1f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{temporal_features['heart_rate_filt']:.1f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{temporal_features['heart_rate_change']:+.1f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Physiological"
-                                                                        if 40
-                                                                        <= temporal_features[
-                                                                            "heart_rate_filt"
-                                                                        ]
-                                                                        <= 200
-                                                                        else "🟡 Out of Range"
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if 40 <= temporal_features['heart_rate_filt'] <= 200 else 'bg-warning'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                            ]
-                                        ),
-                                    ],
-                                    bordered=True,
-                                    hover=True,
-                                    responsive=True,
-                                    striped=True,
-                                    className="mb-3",
-                                )
-                            ]
-                        ),
-                    ],
-                    className="mb-4",
-                ),
-                # Morphological Features Table
-                dbc.Card(
-                    [
-                        dbc.CardHeader(
-                            [
-                                html.H5(
-                                    "🔬 Morphological Features",
-                                    className="mb-0 text-secondary",
-                                )
-                            ],
-                            className="bg-secondary text-white",
-                        ),
-                        dbc.CardBody(
-                            [
-                                dbc.Table(
-                                    [
-                                        html.Thead(
-                                            [
-                                                html.Tr(
-                                                    [
-                                                        html.Th(
-                                                            "Morphological Feature",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Original Signal",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Filtered Signal",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Change",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Assessment",
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                )
-                                            ]
-                                        ),
-                                        html.Tbody(
-                                            [
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Amplitude Range",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{morphological_features['amplitude_range_orig']:.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{morphological_features['amplitude_range_filt']:.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{morphological_features['amplitude_range_change']:+.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Preserved"
-                                                                        if abs(
-                                                                            morphological_features[
-                                                                                "amplitude_range_change"
-                                                                            ]
-                                                                        )
-                                                                        < 0.1
-                                                                        else "🟡 Modified"
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if abs(morphological_features['amplitude_range_change']) < 0.1 else 'bg-warning'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Mean Amplitude",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{morphological_features['amplitude_mean_orig']:.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{morphological_features['amplitude_mean_filt']:.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{morphological_features['amplitude_mean_change']:+.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Maintained"
-                                                                        if abs(
-                                                                            morphological_features[
-                                                                                "amplitude_mean_change"
-                                                                            ]
-                                                                        )
-                                                                        < 0.01
-                                                                        else "🟡 Shifted"
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if abs(morphological_features['amplitude_mean_change']) < 0.01 else 'bg-warning'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Zero Crossings",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{morphological_features['zero_crossings_orig']}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{morphological_features['zero_crossings_filt']}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{morphological_features['zero_crossings_change']:+d}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Stable"
-                                                                        if abs(
-                                                                            morphological_features[
-                                                                                "zero_crossings_change"
-                                                                            ]
-                                                                        )
-                                                                        < 5
-                                                                        else "🟡 Variable"
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if abs(morphological_features['zero_crossings_change']) < 5 else 'bg-warning'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Signal Energy",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{morphological_features['signal_energy_orig']:.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{morphological_features['signal_energy_filt']:.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{morphological_features['signal_energy_change']:+.4f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Preserved"
-                                                                        if abs(
-                                                                            morphological_features[
-                                                                                "signal_energy_change"
-                                                                            ]
-                                                                        )
-                                                                        < 0.1
-                                                                        else "🟡 Modified"
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if abs(morphological_features['signal_energy_change']) < 0.1 else 'bg-warning'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                            ]
-                                        ),
-                                    ],
-                                    bordered=True,
-                                    hover=True,
-                                    responsive=True,
-                                    striped=True,
-                                    className="mb-3",
-                                )
-                            ]
-                        ),
-                    ],
-                    className="mb-4",
-                ),
-                # Advanced Quality Metrics Table
-                dbc.Card(
-                    [
-                        dbc.CardHeader(
-                            [
-                                html.H5(
-                                    "🎯 Advanced Quality Assessment",
-                                    className="mb-0 text-danger",
-                                )
-                            ],
-                            className="bg-danger text-white",
-                        ),
-                        dbc.CardBody(
-                            [
-                                dbc.Table(
-                                    [
-                                        html.Thead(
-                                            [
-                                                html.Tr(
-                                                    [
-                                                        html.Th(
-                                                            "Quality Metric",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Value",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Threshold",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Status",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Recommendation",
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                )
-                                            ]
-                                        ),
-                                        html.Tbody(
-                                            [
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Artifact Percentage",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{advanced_quality['artifact_percentage']:.2f}%",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            "< 5%",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Excellent"
-                                                                        if advanced_quality[
-                                                                            "artifact_percentage"
-                                                                        ]
-                                                                        < 5
-                                                                        else (
-                                                                            "🟡 Good"
-                                                                            if advanced_quality[
-                                                                                "artifact_percentage"
-                                                                            ]
-                                                                            < 15
-                                                                            else "🔴 Poor"
-                                                                        )
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if advanced_quality['artifact_percentage'] < 5 else 'bg-warning' if advanced_quality['artifact_percentage'] < 15 else 'bg-danger'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "No action needed"
-                                                                        if advanced_quality[
-                                                                            "artifact_percentage"
-                                                                        ]
-                                                                        < 5
-                                                                        else (
-                                                                            "Consider artifact removal"
-                                                                            if advanced_quality[
-                                                                                "artifact_percentage"
-                                                                            ]
-                                                                            < 15
-                                                                            else "Strong artifact removal needed"
-                                                                        )
-                                                                    ),
-                                                                    className="small text-muted",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Baseline Wander",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{advanced_quality['baseline_wander_percentage']:.2f}%",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            "< 10%",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Excellent"
-                                                                        if advanced_quality[
-                                                                            "baseline_wander_percentage"
-                                                                        ]
-                                                                        < 10
-                                                                        else (
-                                                                            "🟡 Good"
-                                                                            if advanced_quality[
-                                                                                "baseline_wander_percentage"
-                                                                            ]
-                                                                            < 20
-                                                                            else "🔴 Poor"
-                                                                        )
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if advanced_quality['baseline_wander_percentage'] < 10 else 'bg-warning' if advanced_quality['baseline_wander_percentage'] < 20 else 'bg-danger'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "Baseline stable"
-                                                                        if advanced_quality[
-                                                                            "baseline_wander_percentage"
-                                                                        ]
-                                                                        < 10
-                                                                        else (
-                                                                            "Consider high-pass filter"
-                                                                            if advanced_quality[
-                                                                                "baseline_wander_percentage"
-                                                                            ]
-                                                                            < 20
-                                                                            else "High-pass filtering recommended"
-                                                                        )
-                                                                    ),
-                                                                    className="small text-muted",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Motion Artifacts",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{advanced_quality['motion_artifact_score']:.2f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            "< 0.3",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Excellent"
-                                                                        if advanced_quality[
-                                                                            "motion_artifact_score"
-                                                                        ]
-                                                                        < 0.3
-                                                                        else (
-                                                                            "🟡 Good"
-                                                                            if advanced_quality[
-                                                                                "motion_artifact_score"
-                                                                            ]
-                                                                            < 0.6
-                                                                            else "🔴 Poor"
-                                                                        )
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if advanced_quality['motion_artifact_score'] < 0.3 else 'bg-warning' if advanced_quality['motion_artifact_score'] < 0.6 else 'bg-danger'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "Motion artifacts minimal"
-                                                                        if advanced_quality[
-                                                                            "motion_artifact_score"
-                                                                        ]
-                                                                        < 0.3
-                                                                        else (
-                                                                            "Consider motion correction"
-                                                                            if advanced_quality[
-                                                                                "motion_artifact_score"
-                                                                            ]
-                                                                            < 0.6
-                                                                            else "Motion artifact removal needed"
-                                                                        )
-                                                                    ),
-                                                                    className="small text-muted",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Signal Stability",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{advanced_quality['signal_stability']:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            "> 0.7",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Excellent"
-                                                                        if advanced_quality[
-                                                                            "signal_stability"
-                                                                        ]
-                                                                        > 0.7
-                                                                        else (
-                                                                            "🟡 Good"
-                                                                            if advanced_quality[
-                                                                                "signal_stability"
-                                                                            ]
-                                                                            > 0.5
-                                                                            else "🔴 Poor"
-                                                                        )
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if advanced_quality['signal_stability'] > 0.7 else 'bg-warning' if advanced_quality['signal_stability'] > 0.5 else 'bg-danger'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "Signal very stable"
-                                                                        if advanced_quality[
-                                                                            "signal_stability"
-                                                                        ]
-                                                                        > 0.7
-                                                                        else (
-                                                                            "Signal moderately stable"
-                                                                            if advanced_quality[
-                                                                                "signal_stability"
-                                                                            ]
-                                                                            > 0.5
-                                                                            else "Signal unstable, check quality"
-                                                                        )
-                                                                    ),
-                                                                    className="small text-muted",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                            ]
-                                        ),
-                                    ],
-                                    bordered=True,
-                                    hover=True,
-                                    responsive=True,
-                                    striped=True,
-                                    className="mb-3",
-                                )
-                            ]
-                        ),
-                    ],
-                    className="mb-4",
-                ),
-                # Performance Metrics Table
-                dbc.Card(
-                    [
-                        dbc.CardHeader(
-                            [
-                                html.H5(
-                                    "⚡ Performance & Efficiency Metrics",
-                                    className="mb-0 text-dark",
-                                )
-                            ],
-                            className="bg-dark text-white",
-                        ),
-                        dbc.CardBody(
-                            [
-                                dbc.Table(
-                                    [
-                                        html.Thead(
-                                            [
-                                                html.Tr(
-                                                    [
-                                                        html.Th(
-                                                            "Performance Metric",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Value",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Benchmark",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Efficiency",
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                )
-                                            ]
-                                        ),
-                                        html.Tbody(
-                                            [
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Processing Time",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{performance_metrics['processing_time']:.3f}s",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            "< 1.0s",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Fast"
-                                                                        if performance_metrics[
-                                                                            "processing_time"
-                                                                        ]
-                                                                        < 1.0
-                                                                        else (
-                                                                            "🟡 Moderate"
-                                                                            if performance_metrics[
-                                                                                "processing_time"
-                                                                            ]
-                                                                            < 5.0
-                                                                            else "🔴 Slow"
-                                                                        )
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if performance_metrics['processing_time'] < 1.0 else 'bg-warning' if performance_metrics['processing_time'] < 5.0 else 'bg-danger'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Memory Usage",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{performance_metrics['memory_usage']:.2f} MB",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            "< 100 MB",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Efficient"
-                                                                        if performance_metrics[
-                                                                            "memory_usage"
-                                                                        ]
-                                                                        < 100
-                                                                        else (
-                                                                            "🟡 Moderate"
-                                                                            if performance_metrics[
-                                                                                "memory_usage"
-                                                                            ]
-                                                                            < 500
-                                                                            else "🔴 High"
-                                                                        )
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if performance_metrics['memory_usage'] < 100 else 'bg-warning' if performance_metrics['memory_usage'] < 500 else 'bg-danger'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Data Reduction",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{performance_metrics['data_reduction']:.1f}%",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            "> 0%",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    (
-                                                                        "✅ Effective"
-                                                                        if performance_metrics[
-                                                                            "data_reduction"
-                                                                        ]
-                                                                        > 0
-                                                                        else "🟡 No Change"
-                                                                    ),
-                                                                    className=f"badge {'bg-success' if performance_metrics['data_reduction'] > 0 else 'bg-warning'}",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Td(
-                                                    "Algorithm Efficiency",
-                                                    className="fw-bold",
-                                                ),
-                                                html.Td(
-                                                    f"{performance_metrics['algorithm_efficiency']:.1f}%",
-                                                    className="text-center",
-                                                ),
-                                                html.Td(
-                                                    "> 80%", className="text-center"
-                                                ),
-                                                html.Td(
-                                                    [
-                                                        html.Span(
-                                                            (
-                                                                "✅ High"
-                                                                if performance_metrics[
-                                                                    "algorithm_efficiency"
-                                                                ]
-                                                                > 80
-                                                                else (
-                                                                    "🟡 Medium"
-                                                                    if performance_metrics[
-                                                                        "algorithm_efficiency"
-                                                                    ]
-                                                                    > 60
-                                                                    else "🔴 Low"
-                                                                )
-                                                            ),
-                                                            className=f"badge {'bg-success' if performance_metrics['algorithm_efficiency'] > 80 else 'bg-warning' if performance_metrics['algorithm_efficiency'] > 60 else 'bg-danger'}",
-                                                        )
-                                                    ],
-                                                    className="text-center",
-                                                ),
-                                            ]
-                                        ),
-                                    ],
-                                    bordered=True,
-                                    hover=True,
-                                    responsive=True,
-                                    striped=True,
-                                    className="mb-3",
-                                )
-                            ]
-                        ),
-                    ],
-                    className="mb-4",
-                ),
-                # Frequency Analysis Table
-                dbc.Card(
-                    [
-                        dbc.CardHeader(
-                            [
-                                html.H5(
-                                    "🌊 Frequency Domain Analysis",
-                                    className="mb-0 text-info",
-                                )
-                            ],
-                            className="bg-info text-white",
-                        ),
-                        dbc.CardBody(
-                            [
-                                dbc.Table(
-                                    [
-                                        html.Thead(
-                                            [
-                                                html.Tr(
-                                                    [
-                                                        html.Th(
-                                                            "Parameter",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Original Signal",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Filtered Signal",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Th(
-                                                            "Improvement",
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                )
-                                            ]
-                                        ),
-                                        html.Tbody(
-                                            [
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Peak Frequency",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{freq_metrics.get('peak_freq_orig', 0):.2f} Hz",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{freq_metrics['peak_freq']:.2f} Hz",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    f"{freq_metrics.get('peak_freq_orig', 0) - freq_metrics['peak_freq']:.2f} Hz",
-                                                                    className="badge bg-secondary",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Bandwidth",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{freq_metrics.get('bandwidth_orig', 0):.2f} Hz",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{freq_metrics['bandwidth']:.2f} Hz",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    f"{freq_metrics.get('bandwidth_orig', 0) - freq_metrics['bandwidth']:.2f} Hz",
-                                                                    className="badge bg-secondary",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Spectral Centroid",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{freq_metrics.get('spectral_centroid_orig', 0):.2f} Hz",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{freq_metrics['spectral_centroid']:.2f} Hz",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    f"{freq_metrics.get('spectral_centroid_orig', 0) - freq_metrics['spectral_centroid']:.2f} Hz",
-                                                                    className="badge bg-secondary",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                                html.Tr(
-                                                    [
-                                                        html.Td(
-                                                            "Frequency Stability",
-                                                            className="fw-bold",
-                                                        ),
-                                                        html.Td(
-                                                            f"{freq_metrics.get('freq_stability_orig', 0):.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            f"{freq_metrics['freq_stability']:.3f}",
-                                                            className="text-center",
-                                                        ),
-                                                        html.Td(
-                                                            [
-                                                                html.Span(
-                                                                    f"{freq_metrics.get('freq_stability_orig', 0) - freq_metrics['freq_stability']:.3f}",
-                                                                    className="badge bg-secondary",
-                                                                )
-                                                            ],
-                                                            className="text-center",
-                                                        ),
-                                                    ]
-                                                ),
-                                            ]
-                                        ),
-                                    ],
-                                    bordered=True,
-                                    hover=True,
-                                    responsive=True,
-                                    striped=True,
-                                    className="mb-3",
-                                )
-                            ]
-                        ),
-                    ],
-                    className="mb-4",
-                ),
-                # Summary Card with Overall Rating
-                dbc.Card(
-                    [
-                        dbc.CardHeader(
-                            [
-                                html.H5(
-                                    "📋 Comprehensive Filter Performance Summary",
-                                    className="mb-0 text-primary",
-                                )
-                            ],
-                            className="bg-primary text-white",
-                        ),
-                        dbc.CardBody(
-                            [
-                                html.Div(
-                                    [
-                                        html.Div(
-                                            [
-                                                html.H6(
-                                                    "Overall Quality Rating",
-                                                    className="text-center",
-                                                ),
-                                                html.Div(
-                                                    [
-                                                        html.Span(
-                                                            (
-                                                                "🟢 EXCELLENT"
-                                                                if snr_improvement > 10
-                                                                and correlation > 0.9
-                                                                and advanced_quality[
-                                                                    "artifact_percentage"
-                                                                ]
-                                                                < 5
-                                                                else (
-                                                                    "🟡 GOOD"
-                                                                    if snr_improvement
-                                                                    > 5
-                                                                    and correlation
-                                                                    > 0.7
-                                                                    and advanced_quality[
-                                                                        "artifact_percentage"
-                                                                    ]
-                                                                    < 15
-                                                                    else "🔴 NEEDS IMPROVEMENT"
-                                                                )
-                                                            ),
-                                                            className=f"badge fs-6 {'bg-success' if snr_improvement > 10 and correlation > 0.9 and advanced_quality['artifact_percentage'] < 5 else 'bg-warning' if snr_improvement > 5 and correlation > 0.7 and advanced_quality['artifact_percentage'] < 15 else 'bg-danger'}",
-                                                        )
-                                                    ],
-                                                    className="text-center",
-                                                ),
-                                            ],
-                                            className="col-md-3",
-                                        ),
-                                        html.Div(
-                                            [
-                                                html.H6(
-                                                    "Signal Quality",
-                                                    className="text-center",
-                                                ),
-                                                html.P(
-                                                    f"SNR enhanced by {snr_improvement:.1f} dB",
-                                                    className="text-center text-success mb-0",
-                                                ),
-                                                html.P(
-                                                    f"{(correlation * 100):.1f}% correlation maintained",
-                                                    className="text-center text-info mb-0",
-                                                ),
-                                            ],
-                                            className="col-md-3",
-                                        ),
-                                        html.Div(
-                                            [
-                                                html.H6(
-                                                    "Artifact Reduction",
-                                                    className="text-center",
-                                                ),
-                                                html.P(
-                                                    f"Artifacts reduced to {advanced_quality['artifact_percentage']:.1f}%",
-                                                    className="text-center text-success mb-0",
-                                                ),
-                                                html.P(
-                                                    f"Baseline wander: {advanced_quality['baseline_wander_percentage']:.1f}%",
-                                                    className="text-center text-warning mb-0",
-                                                ),
-                                            ],
-                                            className="col-md-3",
-                                        ),
-                                        html.Div(
-                                            [
-                                                html.H6(
-                                                    "Performance",
-                                                    className="text-center",
-                                                ),
-                                                html.P(
-                                                    f"Processing: {performance_metrics['processing_time']:.3f}s",
-                                                    className="text-center text-info mb-0",
-                                                ),
-                                                html.P(
-                                                    f"Efficiency: {performance_metrics['algorithm_efficiency']:.1f}%",
-                                                    className="text-center text-primary mb-0",
-                                                ),
-                                            ],
-                                            className="col-md-3",
-                                        ),
-                                    ],
-                                    className="row text-center",
-                                )
-                            ]
-                        ),
+                        _row("SNR (dB)", "snr_db", value_key="value"),
+                        _row("Shape similarity", "shape_similarity"),
+                        _row("Smoothness improvement", "smoothness_improvement"),
+                        _row("Noise reduction", "noise_reduction"),
+                        _row("Peak preservation", "peak_preservation"),
                     ]
                 ),
+            ],
+            bordered=False,
+            striped=True,
+            size="sm",
+            className="mb-2",
+        )
+
+        return html.Div(
+            [
+                dbc.Alert(
+                    [
+                        html.Strong(f"Overall quality: {overall}"),
+                        html.Br() if recommendation else None,
+                        html.Small(recommendation, className="text-muted")
+                        if recommendation
+                        else None,
+                    ],
+                    color="info",
+                    className="py-2 mb-2",
+                ),
+                table,
             ]
         )
 
-        return metrics_html
-
-    except Exception as e:
-        logger.error(f"Error generating quality metrics: {e}")
+    except Exception as exc:
+        logger.exception("generate_filter_quality_metrics failed: %s", exc)
         return html.Div(
             [
-                html.H5("Filter Quality Metrics"),
-                html.P(f"Error calculating metrics: {str(e)}"),
+                html.H6("Filter quality metrics"),
+                html.P(f"Could not compute metrics: {exc}", className="text-danger small"),
             ]
         )
 
@@ -5786,38 +4158,39 @@ def generate_filter_quality_metrics(
 def create_filter_quality_plots(
     original_signal, filtered_signal, sampling_freq, quality_options, signal_type="ECG"
 ):
-    """Create enhanced quality assessment plots with comprehensive analysis and critical points detection."""
+    """Two focused panels: amplitude overlay + frequency response.
+
+    Replaces the old 6-panel mega-plot (which mixed signal comparison,
+    frequency response, statistical distribution, temporal features,
+    error analysis, performance metrics, plus PPG-hardcoded critical-
+    point overlays).  Most of that information is better presented in
+    the text Quality Metrics panel below; here we keep only the two
+    plots a filter user actually reads.
+    """
     try:
-        # Create subplots for different quality metrics
+        if len(original_signal) == 0 or len(filtered_signal) == 0:
+            return create_empty_figure()
+
+        n = min(len(original_signal), len(filtered_signal))
+        original_signal = np.asarray(original_signal[:n], dtype=float)
+        filtered_signal = np.asarray(filtered_signal[:n], dtype=float)
+        time_axis = np.arange(n) / max(sampling_freq, 1e-9)
+
         fig = make_subplots(
-            rows=3,
+            rows=1,
             cols=2,
-            subplot_titles=(
-                "Signal Comparison with Critical Points",
-                "Frequency Response Analysis",
-                "Statistical Distribution Analysis",
-                "Temporal Features Analysis",
-                "Error Analysis & Quality Metrics",
-                "Performance & Efficiency Metrics",
-            ),
-            vertical_spacing=0.12,
-            horizontal_spacing=0.1,
-            specs=[
-                [{"secondary_y": False}, {"secondary_y": False}],
-                [{"secondary_y": False}, {"secondary_y": False}],
-                [{"secondary_y": False}, {"secondary_y": False}],
-            ],
+            subplot_titles=("Amplitude overlay", "Frequency response (FFT magnitude)"),
+            horizontal_spacing=0.12,
         )
 
-        # Time domain comparison with critical points
-        time_axis = np.arange(len(original_signal)) / sampling_freq
+        # Panel 1: amplitude overlay (same x-range)
         fig.add_trace(
             go.Scatter(
                 x=time_axis,
                 y=original_signal,
                 mode="lines",
-                name="Original Signal",
-                line=dict(color="blue", width=2),
+                name="Original",
+                line=dict(color="rgba(60, 60, 60, 0.6)", width=1),
             ),
             row=1,
             col=1,
@@ -5827,443 +4200,63 @@ def create_filter_quality_plots(
                 x=time_axis,
                 y=filtered_signal,
                 mode="lines",
-                name="Filtered Signal",
-                line=dict(color="red", width=2),
+                name="Filtered",
+                line=dict(color="#1f77b4", width=1.5),
             ),
             row=1,
             col=1,
         )
 
-        # Add critical points detection to the comparison plot
-        try:
-            from vitalDSP.physiological_features.waveform import WaveformMorphology
-
-            # Create waveform morphology object for original signal
-            wm_orig = WaveformMorphology(
-                waveform=original_signal,
-                fs=sampling_freq,
-                signal_type="PPG",
-                simple_mode=True,
-            )
-
-            # Create waveform morphology object for filtered signal
-            wm_filt = WaveformMorphology(
-                waveform=filtered_signal,
-                fs=sampling_freq,
-                signal_type="PPG",
-                simple_mode=True,
-            )
-
-            # Add systolic peaks for original signal
-            if (
-                hasattr(wm_orig, "systolic_peaks")
-                and wm_orig.systolic_peaks is not None
-            ):
-                fig.add_trace(
-                    go.Scatter(
-                        x=time_axis[wm_orig.systolic_peaks],
-                        y=original_signal[wm_orig.systolic_peaks],
-                        mode="markers",
-                        name="Systolic Peaks (Original)",
-                        marker=dict(color="darkblue", size=6, symbol="diamond"),
-                        showlegend=False,
-                    ),
-                    row=1,
-                    col=1,
-                )
-
-            # Add systolic peaks for filtered signal
-            if (
-                hasattr(wm_filt, "systolic_peaks")
-                and wm_filt.systolic_peaks is not None
-            ):
-                fig.add_trace(
-                    go.Scatter(
-                        x=time_axis[wm_filt.systolic_peaks],
-                        y=filtered_signal[wm_filt.systolic_peaks],
-                        mode="markers",
-                        name="Systolic Peaks (Filtered)",
-                        marker=dict(color="darkred", size=6, symbol="diamond"),
-                        showlegend=False,
-                    ),
-                    row=1,
-                    col=1,
-                )
-
-        except Exception as e:
-            logger.warning(f"Critical points detection failed in quality plots: {e}")
-
-        # Enhanced frequency response analysis using vitalDSP SignalPowerAnalysis
-        from vitalDSP.physiological_features.signal_power_analysis import (
-            SignalPowerAnalysis,
-        )
-
-        # Compute PSD for original signal
-        spa_orig = SignalPowerAnalysis(original_signal)
-        freqs_orig, psd_orig = spa_orig.compute_psd(
-            fs=sampling_freq, nperseg=min(256, len(original_signal) // 2)
-        )
-
-        # Compute PSD for filtered signal
-        spa_filt = SignalPowerAnalysis(filtered_signal)
-        freqs_filt, psd_filt = spa_filt.compute_psd(
-            fs=sampling_freq, nperseg=min(256, len(filtered_signal) // 2)
-        )
-
+        # Panel 2: FFT magnitude (positive frequencies up to Nyquist)
+        # Pad to next power of 2 for a slightly cleaner spectrum.
+        nfft = 1 << (n - 1).bit_length() if n > 1 else 1
+        freqs = np.fft.rfftfreq(nfft, d=1.0 / max(sampling_freq, 1e-9))
+        mag_orig = np.abs(np.fft.rfft(original_signal, n=nfft))
+        mag_filt = np.abs(np.fft.rfft(filtered_signal, n=nfft))
         fig.add_trace(
             go.Scatter(
-                x=freqs_orig,
-                y=10 * np.log10(psd_orig),
+                x=freqs,
+                y=mag_orig,
                 mode="lines",
-                name="Original PSD",
-                line=dict(color="blue", width=2),
+                name="Original (spectrum)",
+                line=dict(color="rgba(60, 60, 60, 0.6)", width=1),
+                showlegend=False,
             ),
             row=1,
             col=2,
         )
         fig.add_trace(
             go.Scatter(
-                x=freqs_filt,
-                y=10 * np.log10(psd_filt),
+                x=freqs,
+                y=mag_filt,
                 mode="lines",
-                name="Filtered PSD",
-                line=dict(color="red", width=2),
+                name="Filtered (spectrum)",
+                line=dict(color="#1f77b4", width=1.5),
+                showlegend=False,
             ),
             row=1,
             col=2,
         )
 
-        # Statistical distribution analysis
-        fig.add_trace(
-            go.Histogram(
-                x=original_signal,
-                nbinsx=50,
-                name="Original Distribution",
-                opacity=0.7,
-                marker_color="blue",
-            ),
-            row=2,
-            col=1,
-        )
-        fig.add_trace(
-            go.Histogram(
-                x=filtered_signal,
-                nbinsx=50,
-                name="Filtered Distribution",
-                opacity=0.7,
-                marker_color="red",
-            ),
-            row=2,
-            col=1,
-        )
-
-        # Add statistical metrics as annotations
-        mean_orig, std_orig = np.mean(original_signal), np.std(original_signal)
-        mean_filt, std_filt = np.mean(filtered_signal), np.std(filtered_signal)
-        fig.add_annotation(
-            text=f"Original: μ={mean_orig:.3f}, σ={std_orig:.3f}",
-            xref="x3",
-            yref="y3",
-            x=0.02,
-            y=0.98,
-            showarrow=False,
-            bgcolor="rgba(0,0,255,0.8)",
-            bordercolor="blue",
-            font=dict(color="white"),
-        )
-        fig.add_annotation(
-            text=f"Filtered: μ={mean_filt:.3f}, σ={std_filt:.3f}",
-            xref="x3",
-            yref="y3",
-            x=0.02,
-            y=0.92,
-            showarrow=False,
-            bgcolor="rgba(255,0,0,0.8)",
-            bordercolor="red",
-            font=dict(color="white"),
-        )
-
-        # Temporal features analysis
-        try:
-            # Peak detection and intervals using vitalDSP WaveformMorphology
-            from vitalDSP.physiological_features.waveform import WaveformMorphology
-
-            # Create waveform morphology objects for peak detection
-            wm_orig = WaveformMorphology(
-                waveform=original_signal,
-                fs=sampling_freq,
-                signal_type=signal_type,
-                simple_mode=True,
-            )
-            wm_filt = WaveformMorphology(
-                waveform=filtered_signal,
-                fs=sampling_freq,
-                signal_type=signal_type,
-                simple_mode=True,
-            )
-
-            # Get peaks based on signal type
-            if signal_type == "ECG":
-                peaks_orig = wm_orig.r_peaks if wm_orig.r_peaks is not None else []
-                peaks_filt = wm_filt.r_peaks if wm_filt.r_peaks is not None else []
-            elif signal_type == "PPG":
-                peaks_orig = (
-                    wm_orig.systolic_peaks if wm_orig.systolic_peaks is not None else []
-                )
-                peaks_filt = (
-                    wm_filt.systolic_peaks if wm_filt.systolic_peaks is not None else []
-                )
-            else:
-                # Fallback to generic peak detection for unknown signal types
-                from vitalDSP.physiological_features.peak_detection import detect_peaks
-
-                peaks_orig = detect_peaks(original_signal, sampling_freq)
-                peaks_filt = detect_peaks(filtered_signal, sampling_freq)
-
-            if len(peaks_orig) > 1 and len(peaks_filt) > 1:
-                intervals_orig = np.diff(peaks_orig) / sampling_freq
-                intervals_filt = np.diff(peaks_filt) / sampling_freq
-
-                time_centers_orig = peaks_orig[:-1] / sampling_freq
-                time_centers_filt = peaks_filt[:-1] / sampling_freq
-
-                fig.add_trace(
-                    go.Scatter(
-                        x=time_centers_orig,
-                        y=intervals_orig,
-                        mode="markers",
-                        name="Intervals (Original)",
-                        marker=dict(color="blue", size=6),
-                    ),
-                    row=2,
-                    col=2,
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        x=time_centers_filt,
-                        y=intervals_filt,
-                        mode="markers",
-                        name="Intervals (Filtered)",
-                        marker=dict(color="red", size=6),
-                    ),
-                    row=2,
-                    col=2,
-                )
-
-                # Add trend lines
-                z_orig = np.polyfit(time_centers_orig, intervals_orig, 1)
-                p_orig = np.poly1d(z_orig)
-                z_filt = np.polyfit(time_centers_filt, intervals_filt, 1)
-                p_filt = np.poly1d(z_filt)
-
-                fig.add_trace(
-                    go.Scatter(
-                        x=time_centers_orig,
-                        y=p_orig(time_centers_orig),
-                        mode="lines",
-                        name="Trend (Original)",
-                        line=dict(color="blue", dash="dash"),
-                    ),
-                    row=2,
-                    col=2,
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        x=time_centers_filt,
-                        y=p_filt(time_centers_filt),
-                        mode="lines",
-                        name="Trend (Filtered)",
-                        line=dict(color="red", dash="dash"),
-                    ),
-                    row=2,
-                    col=2,
-                )
-        except Exception as e:
-            logger.warning(f"Temporal features analysis failed: {e}")
-
-        # Enhanced error analysis
-        error = original_signal - filtered_signal
-        fig.add_trace(
-            go.Scatter(
-                x=time_axis,
-                y=error,
-                mode="lines",
-                name="Filtering Error",
-                line=dict(color="orange", width=2),
-            ),
-            row=3,
-            col=1,
-        )
-
-        # Add error statistics
-        error_mean = np.mean(error)
-        error_std = np.std(error)
-        error_skew = calculate_skewness(error)
-        error_kurt = calculate_kurtosis(error)
-
-        fig.add_annotation(
-            text=f"Error Statistics:<br>μ={error_mean:.3f}, σ={error_std:.3f}<br>Skew={error_skew:.3f}, Kurt={error_kurt:.3f}",
-            xref="x5",
-            yref="y5",
-            x=0.02,
-            y=0.98,
-            showarrow=False,
-            bgcolor="rgba(255,165,0,0.8)",
-            bordercolor="orange",
-            font=dict(size=10),
-        )
-
-        # Enhanced quality metrics over time
-        window_size = min(100, len(original_signal) // 10)
-        if window_size > 0:
-            quality_metrics = []
-            correlation_metrics = []
-            smoothness_metrics = []
-            snr_metrics = []
-
-            for i in range(0, len(original_signal) - window_size, window_size):
-                orig_window = original_signal[i : i + window_size]
-                filt_window = filtered_signal[i : i + window_size]
-
-                # Calculate various metrics for each window
-                snr = calculate_snr_improvement(orig_window, filt_window)
-                corr = calculate_correlation(orig_window, filt_window)
-                smooth = calculate_smoothness(filt_window)
-
-                quality_metrics.append(snr)
-                correlation_metrics.append(corr)
-                smoothness_metrics.append(smooth)
-                snr_metrics.append(snr)
-
-            time_centers = np.arange(len(quality_metrics)) * window_size / sampling_freq
-
-            # SNR over time
-            fig.add_trace(
-                go.Scatter(
-                    x=time_centers,
-                    y=snr_metrics,
-                    mode="lines+markers",
-                    name="SNR over Time",
-                    line=dict(color="green", width=2),
-                    marker=dict(size=4),
-                ),
-                row=3,
-                col=2,
-            )
-
-            # Correlation over time
-            fig.add_trace(
-                go.Scatter(
-                    x=time_centers,
-                    y=correlation_metrics,
-                    mode="lines+markers",
-                    name="Correlation over Time",
-                    line=dict(color="purple", width=2),
-                    marker=dict(size=4),
-                ),
-                row=3,
-                col=2,
-            )
-
-            # Smoothness over time
-            fig.add_trace(
-                go.Scatter(
-                    x=time_centers,
-                    y=smoothness_metrics,
-                    mode="lines+markers",
-                    name="Smoothness over Time",
-                    line=dict(color="brown", width=2),
-                    marker=dict(size=4),
-                ),
-                row=3,
-                col=2,
-            )
-
-            # Add quality metrics summary
-            avg_snr = np.mean(snr_metrics)
-            avg_corr = np.mean(correlation_metrics)
-            avg_smooth = np.mean(smoothness_metrics)
-
-            fig.add_annotation(
-                text=f"Average Metrics:<br>SNR: {avg_snr:.2f} dB<br>Corr: {avg_corr:.3f}<br>Smooth: {avg_smooth:.3f}",
-                xref="x6",
-                yref="y6",
-                x=0.98,
-                y=0.98,
-                showarrow=False,
-                bgcolor="rgba(0,128,0,0.8)",
-                bordercolor="green",
-                font=dict(color="white", size=10),
-                xanchor="right",
-            )
-
-        # Update layout for all subplots
         fig.update_xaxes(title_text="Time (s)", row=1, col=1)
-        fig.update_yaxes(title_text="Amplitude", row=1, col=1)
-
+        fig.update_yaxes(title_text=f"{signal_type} amplitude", row=1, col=1)
         fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=2)
-        fig.update_yaxes(title_text="Power Spectral Density (dB)", row=1, col=2)
-
-        fig.update_xaxes(title_text="Signal Amplitude", row=2, col=1)
-        fig.update_yaxes(title_text="Frequency", row=2, col=1)
-
-        fig.update_xaxes(title_text="Time (s)", row=2, col=2)
-        fig.update_yaxes(title_text="Peak Interval (s)", row=2, col=2)
-
-        fig.update_xaxes(title_text="Time (s)", row=3, col=1)
-        fig.update_yaxes(title_text="Error Amplitude", row=3, col=1)
-
-        fig.update_xaxes(title_text="Time (s)", row=3, col=2)
-        fig.update_yaxes(title_text="Metric Value", row=3, col=2)
+        fig.update_yaxes(title_text="Magnitude", type="log", row=1, col=2)
 
         fig.update_layout(
-            title="🔍 Comprehensive Filter Quality Assessment with Advanced Analysis",
-            height=900,
+            height=350,
             showlegend=True,
-            template="plotly_white",
-            font=dict(size=11),
-            margin=dict(l=60, r=60, t=100, b=60),
-            # Enable pan and zoom
-            dragmode="pan",
-            modebar=dict(
-                orientation="v",
-                bgcolor="rgba(255,255,255,0.8)",
-                color="rgba(0,0,0,0.5)",
-                activecolor="rgba(0,0,0,0.8)",
-            ),
-            legend=dict(
-                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-            ),
+            margin=dict(l=50, r=20, t=50, b=40),
+            hovermode="x",
         )
-
         return fig
 
-    except Exception as e:
-        logger.error(f"Error creating quality plots: {e}")
+    except Exception as exc:
+        # Keep this defensive - quality plots failing should never crash
+        # the filtering callback.
+        logger = __import__("logging").getLogger(__name__)
+        logger.exception("create_filter_quality_plots failed: %s", exc)
         return create_empty_figure()
-
-
-# Quality metric calculation functions
-def calculate_snr_improvement(original_signal, filtered_signal):
-    """Calculate SNR improvement after filtering."""
-    try:
-        # Calculate noise as the difference between original and filtered
-        noise = original_signal - filtered_signal
-
-        # Calculate signal power (filtered signal)
-        signal_power = np.mean(filtered_signal**2)
-
-        # Calculate noise power
-        noise_power = np.mean(noise**2)
-
-        if noise_power > 0:
-            snr = 10 * np.log10(signal_power / noise_power)
-            return snr
-        else:
-            return 0
-    except Exception as e:
-        logger.error(f"Error calculating SNR: {e}")
-        return 0
 
 
 def calculate_mse(original_signal, filtered_signal):
@@ -6274,1234 +4267,3 @@ def calculate_mse(original_signal, filtered_signal):
         logger.error(f"Error calculating MSE: {e}")
         return 0
 
-
-def calculate_correlation(original_signal, filtered_signal):
-    """Calculate correlation between original and filtered signals using vitalDSP."""
-    try:
-        from vitalDSP.utils.config_utilities.common import pearsonr
-
-        return pearsonr(original_signal, filtered_signal)
-    except Exception as e:
-        logger.error(f"Error calculating correlation: {e}")
-        return 0
-
-
-def calculate_smoothness(signal_data):
-    """Calculate signal smoothness using variance of first differences."""
-    try:
-        differences = np.diff(signal_data)
-        return 1 / (1 + np.var(differences))
-    except Exception as e:
-        logger.error(f"Error calculating smoothness: {e}")
-        return 0
-
-
-def calculate_frequency_metrics(original_signal, filtered_signal, sampling_freq):
-    """Calculate frequency domain metrics for both original and filtered signals."""
-    try:
-        # Calculate PSD for both signals using vitalDSP SignalPowerAnalysis
-        from vitalDSP.physiological_features.signal_power_analysis import (
-            SignalPowerAnalysis,
-        )
-
-        # Compute PSD for original signal
-        spa_orig = SignalPowerAnalysis(original_signal)
-        freqs_orig, psd_orig = spa_orig.compute_psd(
-            fs=sampling_freq, nperseg=min(256, len(original_signal) // 2)
-        )
-
-        # Compute PSD for filtered signal
-        spa_filt = SignalPowerAnalysis(filtered_signal)
-        freqs_filt, psd_filt = spa_filt.compute_psd(
-            fs=sampling_freq, nperseg=min(256, len(filtered_signal) // 2)
-        )
-
-        # Find peak frequency for filtered signal
-        peak_idx_filt = np.argmax(psd_filt)
-        peak_freq_filt = freqs_filt[peak_idx_filt]
-
-        # Find peak frequency for original signal
-        peak_idx_orig = np.argmax(psd_orig)
-        peak_freq_orig = freqs_orig[peak_idx_orig]
-
-        # Calculate bandwidth for filtered signal (3dB down from peak)
-        peak_power_filt = psd_filt[peak_idx_filt]
-        threshold_filt = peak_power_filt / 2  # 3dB down
-        above_threshold_filt = psd_filt > threshold_filt
-        bandwidth_filt = (
-            freqs_filt[-1] - freqs_filt[0] if np.any(above_threshold_filt) else 0
-        )
-
-        # Calculate bandwidth for original signal
-        peak_power_orig = psd_orig[peak_idx_orig]
-        threshold_orig = peak_power_orig / 2  # 3dB down
-        above_threshold_orig = psd_orig > threshold_orig
-        bandwidth_orig = (
-            freqs_orig[-1] - freqs_orig[0] if np.any(above_threshold_orig) else 0
-        )
-
-        # Calculate spectral centroid for filtered signal
-        spectral_centroid_filt = np.sum(freqs_filt * psd_filt) / np.sum(psd_filt)
-
-        # Calculate spectral centroid for original signal
-        spectral_centroid_orig = np.sum(freqs_orig * psd_orig) / np.sum(psd_orig)
-
-        # Calculate frequency stability for filtered signal (inverse of frequency variance)
-        freq_stability_filt = 1 / (1 + np.var(freqs_filt))
-
-        # Calculate frequency stability for original signal
-        freq_stability_orig = 1 / (1 + np.var(freqs_orig))
-
-        return {
-            "peak_freq": peak_freq_filt,
-            "peak_freq_orig": peak_freq_orig,
-            "bandwidth": bandwidth_filt,
-            "bandwidth_orig": bandwidth_orig,
-            "spectral_centroid": spectral_centroid_filt,
-            "spectral_centroid_orig": spectral_centroid_orig,
-            "freq_stability": freq_stability_filt,
-            "freq_stability_orig": freq_stability_orig,
-        }
-
-    except Exception as e:
-        logger.error(f"Error calculating frequency metrics: {e}")
-        return {
-            "peak_freq": 0,
-            "bandwidth": 0,
-            "spectral_centroid": 0,
-            "freq_stability": 0,
-        }
-
-
-def calculate_statistical_metrics(original_signal, filtered_signal):
-    """Calculate comprehensive statistical metrics for both signals."""
-    try:
-        # Basic statistics for original signal
-        mean_orig = np.mean(original_signal)
-        std_orig = np.std(original_signal)
-        skewness_orig = calculate_skewness(original_signal)
-        kurtosis_orig = calculate_kurtosis(original_signal)
-        entropy_orig = calculate_entropy(original_signal)
-        smoothness_orig = calculate_smoothness(original_signal)
-
-        # Basic statistics for filtered signal
-        mean_filt = np.mean(filtered_signal)
-        std_filt = np.std(filtered_signal)
-        skewness_filt = calculate_skewness(filtered_signal)
-        kurtosis_filt = calculate_kurtosis(filtered_signal)
-        entropy_filt = calculate_entropy(filtered_signal)
-
-        # Calculate changes
-        mean_change = mean_filt - mean_orig
-        std_change = std_filt - std_orig
-        skewness_change = skewness_filt - skewness_orig
-        kurtosis_change = kurtosis_filt - kurtosis_orig
-        entropy_change = entropy_filt - entropy_orig
-
-        return {
-            "mean_orig": mean_orig,
-            "mean_filt": mean_filt,
-            "mean_change": mean_change,
-            "std_orig": std_orig,
-            "std_filt": std_filt,
-            "std_change": std_change,
-            "skewness_orig": skewness_orig,
-            "skewness_filt": skewness_filt,
-            "skewness_change": skewness_change,
-            "kurtosis_orig": kurtosis_orig,
-            "kurtosis_filt": kurtosis_filt,
-            "kurtosis_change": kurtosis_change,
-            "entropy_orig": entropy_orig,
-            "entropy_filt": entropy_filt,
-            "entropy_change": entropy_change,
-            "smoothness_orig": smoothness_orig,
-        }
-
-    except Exception as e:
-        logger.error(f"Error calculating statistical metrics: {e}")
-        return {
-            "mean_orig": 0,
-            "mean_filt": 0,
-            "mean_change": 0,
-            "std_orig": 0,
-            "std_filt": 0,
-            "std_change": 0,
-            "skewness_orig": 0,
-            "skewness_filt": 0,
-            "skewness_change": 0,
-            "kurtosis_orig": 0,
-            "kurtosis_filt": 0,
-            "kurtosis_change": 0,
-            "entropy_orig": 0,
-            "entropy_filt": 0,
-            "entropy_change": 0,
-            "smoothness_orig": 0,
-        }
-
-
-def calculate_temporal_features(
-    original_signal, filtered_signal, sampling_freq, signal_type="ECG"
-):
-    """Calculate temporal features for both signals."""
-    try:
-        # Peak detection using vitalDSP WaveformMorphology
-        from vitalDSP.physiological_features.waveform import WaveformMorphology
-
-        # Create waveform morphology objects for peak detection
-        wm_orig = WaveformMorphology(
-            waveform=original_signal,
-            fs=sampling_freq,
-            signal_type=signal_type,
-            simple_mode=True,
-        )
-        wm_filt = WaveformMorphology(
-            waveform=filtered_signal,
-            fs=sampling_freq,
-            signal_type=signal_type,
-            simple_mode=True,
-        )
-
-        # Get peaks based on signal type
-        if signal_type == "ECG":
-            peaks_orig = wm_orig.r_peaks if wm_orig.r_peaks is not None else []
-            peaks_filt = wm_filt.r_peaks if wm_filt.r_peaks is not None else []
-        elif signal_type == "PPG":
-            peaks_orig = (
-                wm_orig.systolic_peaks if wm_orig.systolic_peaks is not None else []
-            )
-            peaks_filt = (
-                wm_filt.systolic_peaks if wm_filt.systolic_peaks is not None else []
-            )
-        else:
-            # Fallback to generic peak detection for unknown signal types
-            from vitalDSP.physiological_features.peak_detection import detect_peaks
-
-            peaks_orig = detect_peaks(original_signal, sampling_freq)
-            peaks_filt = detect_peaks(filtered_signal, sampling_freq)
-
-        peak_count_orig = len(peaks_orig)
-        peak_count_filt = len(peaks_filt)
-
-        # Calculate intervals for original signal
-        if len(peaks_orig) > 1:
-            intervals_orig = np.diff(peaks_orig) / sampling_freq
-            mean_interval_orig = np.mean(intervals_orig)
-            interval_std_orig = np.std(intervals_orig)
-            heart_rate_orig = 60 / mean_interval_orig if mean_interval_orig > 0 else 0
-        else:
-            mean_interval_orig = 0
-            interval_std_orig = 0
-            heart_rate_orig = 0
-
-        # Calculate intervals for filtered signal
-        if len(peaks_filt) > 1:
-            intervals_filt = np.diff(peaks_filt) / sampling_freq
-            mean_interval_filt = np.mean(intervals_filt)
-            interval_std_filt = np.std(intervals_filt)
-            heart_rate_filt = 60 / mean_interval_filt if mean_interval_filt > 0 else 0
-        else:
-            mean_interval_filt = 0
-            interval_std_filt = 0
-            heart_rate_filt = 0
-
-        # Calculate changes
-        peak_count_change = peak_count_filt - peak_count_orig
-        interval_change = mean_interval_filt - mean_interval_orig
-        interval_std_change = interval_std_filt - interval_std_orig
-        heart_rate_change = heart_rate_filt - heart_rate_orig
-
-        return {
-            "peak_count_orig": peak_count_orig,
-            "peak_count_filt": peak_count_filt,
-            "peak_count_change": peak_count_change,
-            "mean_interval_orig": mean_interval_orig,
-            "mean_interval_filt": mean_interval_filt,
-            "interval_change": interval_change,
-            "interval_std_orig": interval_std_orig,
-            "interval_std_filt": interval_std_filt,
-            "interval_std_change": interval_std_change,
-            "heart_rate_orig": heart_rate_orig,
-            "heart_rate_filt": heart_rate_filt,
-            "heart_rate_change": heart_rate_change,
-        }
-
-    except Exception as e:
-        logger.error(f"Error calculating temporal features: {e}")
-        return {
-            "peak_count_orig": 0,
-            "peak_count_filt": 0,
-            "peak_count_change": 0,
-            "mean_interval_orig": 0,
-            "mean_interval_filt": 0,
-            "interval_change": 0,
-            "interval_std_orig": 0,
-            "interval_std_filt": 0,
-            "interval_std_change": 0,
-            "heart_rate_orig": 0,
-            "heart_rate_filt": 0,
-            "heart_rate_change": 0,
-        }
-
-
-def calculate_morphological_features(original_signal, filtered_signal):
-    """Calculate morphological features for both signals."""
-    try:
-        # Original signal features
-        amplitude_range_orig = np.max(original_signal) - np.min(original_signal)
-        amplitude_mean_orig = np.mean(np.abs(original_signal))
-        zero_crossings_orig = np.sum(np.diff(np.sign(original_signal)) != 0)
-        signal_energy_orig = np.sum(original_signal**2)
-
-        # Filtered signal features
-        amplitude_range_filt = np.max(filtered_signal) - np.min(filtered_signal)
-        amplitude_mean_filt = np.mean(np.abs(filtered_signal))
-        zero_crossings_filt = np.sum(np.diff(np.sign(filtered_signal)) != 0)
-        signal_energy_filt = np.sum(filtered_signal**2)
-
-        # Calculate changes
-        amplitude_range_change = amplitude_range_filt - amplitude_range_orig
-        amplitude_mean_change = amplitude_mean_filt - amplitude_mean_orig
-        zero_crossings_change = zero_crossings_filt - zero_crossings_orig
-        signal_energy_change = signal_energy_filt - signal_energy_orig
-
-        return {
-            "amplitude_range_orig": amplitude_range_orig,
-            "amplitude_range_filt": amplitude_range_filt,
-            "amplitude_range_change": amplitude_range_change,
-            "amplitude_mean_orig": amplitude_mean_orig,
-            "amplitude_mean_filt": amplitude_mean_filt,
-            "amplitude_mean_change": amplitude_mean_change,
-            "zero_crossings_orig": zero_crossings_orig,
-            "zero_crossings_filt": zero_crossings_filt,
-            "zero_crossings_change": zero_crossings_change,
-            "signal_energy_orig": signal_energy_orig,
-            "signal_energy_filt": signal_energy_filt,
-            "signal_energy_change": signal_energy_change,
-        }
-
-    except Exception as e:
-        logger.error(f"Error calculating morphological features: {e}")
-        return {
-            "amplitude_range_orig": 0,
-            "amplitude_range_filt": 0,
-            "amplitude_range_change": 0,
-            "amplitude_mean_orig": 0,
-            "amplitude_mean_filt": 0,
-            "amplitude_mean_change": 0,
-            "zero_crossings_orig": 0,
-            "zero_crossings_filt": 0,
-            "zero_crossings_change": 0,
-            "signal_energy_orig": 0,
-            "signal_energy_filt": 0,
-            "signal_energy_change": 0,
-        }
-
-
-def calculate_advanced_quality_metrics(original_signal, filtered_signal, sampling_freq):
-    """Calculate advanced quality metrics including artifacts and stability."""
-    try:
-        # Artifact detection
-        mean_val = np.mean(original_signal)
-        std_val = np.std(original_signal)
-        artifact_threshold = mean_val + 3 * std_val
-        artifacts = np.where(np.abs(original_signal - mean_val) > artifact_threshold)[0]
-        artifact_percentage = len(artifacts) / len(original_signal) * 100
-
-        # Baseline wander assessment using vitalDSP
-        from vitalDSP.filtering.signal_filtering import SignalFiltering
-
-        # Create high-pass filter to remove baseline wander
-        sf = SignalFiltering(original_signal)
-        # Use butterworth with btype="high" instead of highpass method
-        filtered_baseline = sf.butterworth(
-            cutoff=0.5, fs=sampling_freq, order=4, btype="high"
-        )
-        baseline_wander = original_signal - filtered_baseline
-        baseline_wander_percentage = (
-            np.std(baseline_wander) / np.std(original_signal) * 100
-        )
-
-        # Motion artifact detection using vitalDSP EnvelopeDetection
-        from vitalDSP.physiological_features.envelope_detection import EnvelopeDetection
-
-        ed = EnvelopeDetection(original_signal)
-        envelope = ed.hilbert_envelope()
-        motion_artifact_score = (
-            np.std(envelope) / np.mean(envelope) if np.mean(envelope) > 0 else 0
-        )
-
-        # Signal stability (inverse of coefficient of variation)
-        signal_stability = (
-            1 / (1 + np.std(filtered_signal) / np.abs(np.mean(filtered_signal)))
-            if np.mean(filtered_signal) != 0
-            else 0
-        )
-
-        return {
-            "artifact_percentage": artifact_percentage,
-            "baseline_wander_percentage": baseline_wander_percentage,
-            "motion_artifact_score": motion_artifact_score,
-            "signal_stability": signal_stability,
-        }
-
-    except Exception as e:
-        logger.error(f"Error calculating advanced quality metrics: {e}")
-        return {
-            "artifact_percentage": 0,
-            "baseline_wander_percentage": 0,
-            "motion_artifact_score": 0,
-            "signal_stability": 0,
-        }
-
-
-def calculate_performance_metrics(original_signal, filtered_signal):
-    """Calculate performance and efficiency metrics."""
-    try:
-        import time
-        import psutil
-        import os
-
-        # Simulate processing time (in real implementation, this would be measured)
-        processing_time = 0.1 + np.random.random() * 0.5  # Simulated 0.1-0.6s
-
-        # Estimate memory usage
-        memory_usage = (
-            (len(original_signal) + len(filtered_signal)) * 8 / (1024 * 1024)
-        )  # MB
-
-        # Calculate data reduction (if any compression or downsampling occurred)
-        data_reduction = 0  # No reduction in basic filtering
-
-        # Calculate algorithm efficiency (based on signal improvement vs. processing cost)
-        snr_improvement = calculate_snr_improvement(original_signal, filtered_signal)
-        mse = calculate_mse(original_signal, filtered_signal)
-
-        # Efficiency score based on improvement vs. processing time
-        if processing_time > 0:
-            efficiency_score = min(
-                100, max(0, (snr_improvement * 10 - mse * 1000) / processing_time)
-            )
-        else:
-            efficiency_score = 0
-
-        return {
-            "processing_time": processing_time,
-            "memory_usage": memory_usage,
-            "data_reduction": data_reduction,
-            "algorithm_efficiency": efficiency_score,
-        }
-
-    except Exception as e:
-        logger.error(f"Error calculating performance metrics: {e}")
-        return {
-            "processing_time": 0,
-            "memory_usage": 0,
-            "data_reduction": 0,
-            "algorithm_efficiency": 0,
-        }
-
-
-def calculate_skewness(data):
-    """Calculate skewness of the data using vitalDSP."""
-    try:
-        from vitalDSP.ml_models.feature_extractor import FeatureExtractor
-
-        return FeatureExtractor._skewness(data)
-    except Exception as e:
-        logger.error(f"Error calculating skewness: {e}")
-        return 0
-
-
-def calculate_kurtosis(data):
-    """Calculate kurtosis of the data using vitalDSP."""
-    try:
-        from vitalDSP.ml_models.feature_extractor import FeatureExtractor
-
-        return FeatureExtractor._kurtosis(data)
-    except Exception as e:
-        logger.error(f"Error calculating kurtosis: {e}")
-        return 0
-
-
-def calculate_entropy(data):
-    """Calculate entropy of the data using vitalDSP."""
-    try:
-        from vitalDSP.physiological_features.symbolic_dynamics import SymbolicDynamics
-
-        sd = SymbolicDynamics(data)
-        result = sd.compute_shannon_entropy()
-        if isinstance(result, dict):
-            return result["entropy"]
-        return float(result)
-    except Exception as e:
-        logger.error(f"Error calculating entropy: {e}")
-        return 0
-
-
-def create_filtering_results_table(
-    raw_data,
-    filtered_data,
-    time_axis,
-    sampling_freq,
-    analysis_options,
-    column_mapping,
-    signal_type=None,
-):
-    """Create comprehensive filtering results table."""
-    try:
-        signal_col = column_mapping.get("signal")
-        if not signal_col or signal_col not in raw_data.columns:
-            return "Signal column not found in data"
-
-        raw_signal = raw_data[signal_col].values
-
-        # Check if we have filtered data to compare
-        if filtered_data is None or np.array_equal(raw_signal, filtered_data):
-            return html.Div(
-                [
-                    html.H6("🔧 Filtering Results", className="text-muted"),
-                    html.P(
-                        "No filtering applied or filtered data identical to raw data",
-                        className="text-muted",
-                    ),
-                ]
-            )
-
-        # Calculate comprehensive filtering metrics
-        # Ensure both signals have the same length for comparison
-        min_length = min(len(raw_signal), len(filtered_data))
-        raw_signal_trimmed = raw_signal[:min_length]
-        filtered_data_trimmed = filtered_data[:min_length]
-
-        # Power analysis
-        raw_power = np.mean(raw_signal_trimmed**2)
-        filtered_power = np.mean(filtered_data_trimmed**2)
-        power_reduction = (
-            (raw_power - filtered_power) / raw_power * 100 if raw_power > 0 else 0
-        )
-
-        # RMS analysis
-        raw_rms = np.sqrt(np.mean(raw_signal_trimmed**2))
-        filtered_rms = np.sqrt(np.mean(filtered_data_trimmed**2))
-        rms_reduction = (raw_rms - filtered_rms) / raw_rms * 100 if raw_rms > 0 else 0
-
-        # Frequency domain analysis
-        raw_fft = np.abs(np.fft.rfft(raw_signal_trimmed))
-        filtered_fft = np.abs(np.fft.rfft(filtered_data_trimmed))
-        freqs = np.fft.rfftfreq(min_length, 1 / sampling_freq)
-
-        # Ensure all arrays have the same length
-        min_fft_length = min(len(raw_fft), len(filtered_fft), len(freqs))
-        raw_fft = raw_fft[:min_fft_length]
-        filtered_fft = filtered_fft[:min_fft_length]
-        freqs = freqs[:min_fft_length]
-
-        # Power in different frequency bands
-        # DC and very low frequency (0-0.5 Hz)
-        dc_mask = freqs <= 0.5
-        if np.any(dc_mask):
-            dc_reduction = np.mean(raw_fft[dc_mask]) - np.mean(filtered_fft[dc_mask])
-            dc_reduction_percent = (
-                (dc_reduction / np.mean(raw_fft[dc_mask])) * 100
-                if np.mean(raw_fft[dc_mask]) > 0
-                else 0
-            )
-        else:
-            dc_reduction = 0
-            dc_reduction_percent = 0
-
-        # Low frequency (0.5-5 Hz) - respiratory and slow variations
-        low_freq_mask = (freqs > 0.5) & (freqs <= 5)
-        if np.any(low_freq_mask):
-            low_freq_reduction = np.mean(raw_fft[low_freq_mask]) - np.mean(
-                filtered_fft[low_freq_mask]
-            )
-            low_freq_reduction_percent = (
-                (low_freq_reduction / np.mean(raw_fft[low_freq_mask])) * 100
-                if np.mean(raw_fft[low_freq_mask]) > 0
-                else 0
-            )
-        else:
-            low_freq_reduction = 0
-            low_freq_reduction_percent = 0
-
-        # Mid frequency (5-40 Hz) - cardiac and physiological
-        mid_freq_mask = (freqs > 5) & (freqs <= 40)
-        if np.any(mid_freq_mask):
-            mid_freq_reduction = np.mean(raw_fft[mid_freq_mask]) - np.mean(
-                filtered_fft[mid_freq_mask]
-            )
-            mid_freq_reduction_percent = (
-                (mid_freq_reduction / np.mean(raw_fft[mid_freq_mask])) * 100
-                if np.mean(raw_fft[mid_freq_mask]) > 0
-                else 0
-            )
-        else:
-            mid_freq_reduction = 0
-            mid_freq_reduction_percent = 0
-
-        # High frequency (>40 Hz) - noise and artifacts
-        high_freq_mask = freqs > 40
-        if np.any(high_freq_mask):
-            high_freq_reduction = np.mean(raw_fft[high_freq_mask]) - np.mean(
-                filtered_fft[high_freq_mask]
-            )
-            high_freq_reduction_percent = (
-                (high_freq_reduction / np.mean(raw_fft[high_freq_mask])) * 100
-                if np.mean(raw_fft[high_freq_mask]) > 0
-                else 0
-            )
-        else:
-            high_freq_reduction = 0
-            high_freq_reduction_percent = 0
-
-        # Signal-to-noise ratio improvement
-        raw_snr = (
-            10 * np.log10(raw_power / np.var(raw_signal))
-            if np.var(raw_signal) > 0
-            else 0
-        )
-        filtered_snr = (
-            10 * np.log10(filtered_power / np.var(filtered_data))
-            if np.var(filtered_data) > 0
-            else 0
-        )
-        snr_improvement = filtered_snr - raw_snr
-
-        # Peak preservation analysis
-        # Use vitalDSP for ECG/PPG peak detection, scipy for others
-        if signal_type and signal_type.lower() in ["ecg", "ppg"]:
-            from vitalDSP.physiological_features.waveform import WaveformMorphology
-
-            try:
-                # Detect peaks in both signals using vitalDSP
-                wm_raw = WaveformMorphology(
-                    raw_signal, fs=sampling_freq, signal_type=signal_type.upper()
-                )
-                wm_filtered = WaveformMorphology(
-                    filtered_data, fs=sampling_freq, signal_type=signal_type.upper()
-                )
-
-                if signal_type.lower() == "ecg":
-                    raw_peaks = wm_raw.r_peaks
-                    filtered_peaks = wm_filtered.r_peaks
-                elif signal_type.lower() == "ppg":
-                    raw_peaks = wm_raw.systolic_peaks
-                    filtered_peaks = wm_filtered.systolic_peaks
-
-                peak_preservation = (
-                    len(filtered_peaks) / len(raw_peaks) * 100
-                    if len(raw_peaks) > 0
-                    else 0
-                )
-            except Exception:
-                peak_preservation = 0
-        else:
-            # Use scipy for other signal types
-            from scipy.signal import find_peaks
-
-            try:
-                # Detect peaks in both signals
-                raw_peaks, _ = find_peaks(
-                    raw_signal, prominence=0.1 * np.std(raw_signal)
-                )
-                filtered_peaks, _ = find_peaks(
-                    filtered_data, prominence=0.1 * np.std(filtered_data)
-                )
-
-                peak_preservation = (
-                    len(filtered_peaks) / len(raw_peaks) * 100
-                    if len(raw_peaks) > 0
-                    else 0
-                )
-
-                # Peak amplitude preservation
-                if len(raw_peaks) > 0 and len(filtered_peaks) > 0:
-                    raw_peak_amps = raw_signal[raw_peaks]
-                    filtered_peak_amps = filtered_data[filtered_peaks]
-                    amplitude_preservation = (
-                        np.mean(filtered_peak_amps) / np.mean(raw_peak_amps) * 100
-                        if np.mean(raw_peak_amps) > 0
-                        else 0
-                    )
-                else:
-                    amplitude_preservation = 0
-            except Exception:
-                peak_preservation = 0
-                amplitude_preservation = 0
-
-        # Phase distortion analysis
-        raw_phase = np.angle(np.fft.fft(raw_signal))
-        filtered_phase = np.angle(np.fft.fft(filtered_data))
-        phase_distortion = np.mean(np.abs(raw_phase - filtered_phase))
-
-        # Group delay analysis (simplified)
-        try:
-            # Calculate group delay as derivative of phase
-            raw_group_delay = np.gradient(raw_phase)
-            filtered_group_delay = np.gradient(filtered_phase)
-            group_delay_variation = np.std(filtered_group_delay - raw_group_delay)
-        except Exception:
-            group_delay_variation = 0
-
-        return html.Div(
-            [
-                html.H6("🔧 Filtering Results Analysis", className="text-primary mb-3"),
-                # Summary metrics cards
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            [
-                                dbc.Card(
-                                    [
-                                        dbc.CardBody(
-                                            [
-                                                html.H4(
-                                                    f"{power_reduction:.1f}%",
-                                                    className="text-center text-primary mb-0",
-                                                ),
-                                                html.Small(
-                                                    "Power Reduction",
-                                                    className="text-center d-block text-muted",
-                                                ),
-                                            ]
-                                        )
-                                    ],
-                                    className="text-center border-primary",
-                                )
-                            ],
-                            md=3,
-                        ),
-                        dbc.Col(
-                            [
-                                dbc.Card(
-                                    [
-                                        dbc.CardBody(
-                                            [
-                                                html.H4(
-                                                    f"{snr_improvement:.1f} dB",
-                                                    className="text-center text-success mb-0",
-                                                ),
-                                                html.Small(
-                                                    "SNR Improvement",
-                                                    className="text-center d-block text-muted",
-                                                ),
-                                            ]
-                                        )
-                                    ],
-                                    className="text-center border-success",
-                                )
-                            ],
-                            md=3,
-                        ),
-                        dbc.Col(
-                            [
-                                dbc.Card(
-                                    [
-                                        dbc.CardBody(
-                                            [
-                                                html.H4(
-                                                    f"{peak_preservation:.1f}%",
-                                                    className="text-center text-warning mb-0",
-                                                ),
-                                                html.Small(
-                                                    "Peak Preservation",
-                                                    className="text-center d-block text-muted",
-                                                ),
-                                            ]
-                                        )
-                                    ],
-                                    className="text-center border-warning",
-                                )
-                            ],
-                            md=3,
-                        ),
-                        dbc.Col(
-                            [
-                                dbc.Card(
-                                    [
-                                        dbc.CardBody(
-                                            [
-                                                html.H4(
-                                                    f"{phase_distortion:.3f}",
-                                                    className="text-center text-info mb-0",
-                                                ),
-                                                html.Small(
-                                                    "Phase Distortion",
-                                                    className="text-center d-block text-muted",
-                                                ),
-                                            ]
-                                        )
-                                    ],
-                                    className="text-center border-info",
-                                )
-                            ],
-                            md=3,
-                        ),
-                    ],
-                    className="mb-3",
-                ),
-                # Overall filtering metrics
-                html.H6("Overall Filtering Performance", className="mb-2"),
-                dbc.Table(
-                    [
-                        html.Thead(
-                            [
-                                html.Tr(
-                                    [
-                                        html.Th("Metric", className="text-center"),
-                                        html.Th("Raw Signal", className="text-center"),
-                                        html.Th(
-                                            "Filtered Signal", className="text-center"
-                                        ),
-                                        html.Th("Improvement", className="text-center"),
-                                        html.Th("Description", className="text-center"),
-                                    ]
-                                )
-                            ]
-                        ),
-                        html.Tbody(
-                            [
-                                html.Tr(
-                                    [
-                                        html.Td("Signal Power", className="fw-bold"),
-                                        html.Td(
-                                            f"{raw_power:.3f}", className="text-end"
-                                        ),
-                                        html.Td(
-                                            f"{filtered_power:.3f}",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            f"{power_reduction:.1f}%",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            "Mean squared amplitude",
-                                            className="text-muted",
-                                        ),
-                                    ]
-                                ),
-                                html.Tr(
-                                    [
-                                        html.Td("RMS Amplitude", className="fw-bold"),
-                                        html.Td(f"{raw_rms:.3f}", className="text-end"),
-                                        html.Td(
-                                            f"{filtered_rms:.3f}", className="text-end"
-                                        ),
-                                        html.Td(
-                                            f"{rms_reduction:.1f}%",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            "Root mean square amplitude",
-                                            className="text-muted",
-                                        ),
-                                    ]
-                                ),
-                                html.Tr(
-                                    [
-                                        html.Td("Signal-to-Noise", className="fw-bold"),
-                                        html.Td(
-                                            f"{raw_snr:.1f} dB", className="text-end"
-                                        ),
-                                        html.Td(
-                                            f"{filtered_snr:.1f} dB",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            f"{snr_improvement:.1f} dB",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            "Signal quality improvement",
-                                            className="text-muted",
-                                        ),
-                                    ]
-                                ),
-                                html.Tr(
-                                    [
-                                        html.Td("Peak Count", className="fw-bold"),
-                                        html.Td(
-                                            f"{len(raw_peaks) if 'raw_peaks' in locals() else 'N/A'}",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            f"{len(filtered_peaks) if 'filtered_peaks' in locals() else 'N/A'}",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            f"{peak_preservation:.1f}%",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            "Peak detection preservation",
-                                            className="text-muted",
-                                        ),
-                                    ]
-                                ),
-                            ]
-                        ),
-                    ],
-                    bordered=True,
-                    hover=True,
-                    responsive=True,
-                    className="mb-3",
-                ),
-                # Frequency-specific improvements
-                html.H6("Frequency-Domain Improvements", className="mb-2"),
-                dbc.Table(
-                    [
-                        html.Thead(
-                            [
-                                html.Tr(
-                                    [
-                                        html.Th(
-                                            "Frequency Band", className="text-center"
-                                        ),
-                                        html.Th("Raw Power", className="text-center"),
-                                        html.Th(
-                                            "Filtered Power", className="text-center"
-                                        ),
-                                        html.Th("Reduction", className="text-center"),
-                                        html.Th("Description", className="text-center"),
-                                    ]
-                                )
-                            ]
-                        ),
-                        html.Tbody(
-                            [
-                                html.Tr(
-                                    [
-                                        html.Td("DC (0-0.5 Hz)", className="fw-bold"),
-                                        html.Td(
-                                            f"{np.mean(raw_fft[dc_mask]):.3f}",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            f"{np.mean(filtered_fft[dc_mask]):.3f}",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            f"{dc_reduction_percent:.1f}%",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            "Baseline and drift reduction",
-                                            className="text-muted",
-                                        ),
-                                    ]
-                                ),
-                                html.Tr(
-                                    [
-                                        html.Td("Low (0.5-5 Hz)", className="fw-bold"),
-                                        html.Td(
-                                            f"{np.mean(raw_fft[low_freq_mask]):.3f}",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            f"{np.mean(filtered_fft[low_freq_mask]):.3f}",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            f"{low_freq_reduction_percent:.1f}%",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            "Respiratory noise reduction",
-                                            className="text-muted",
-                                        ),
-                                    ]
-                                ),
-                                html.Tr(
-                                    [
-                                        html.Td("Mid (5-40 Hz)", className="fw-bold"),
-                                        html.Td(
-                                            f"{np.mean(raw_fft[mid_freq_mask]):.3f}",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            f"{np.mean(filtered_fft[mid_freq_mask]):.3f}",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            f"{mid_freq_reduction_percent:.1f}%",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            "Cardiac signal preservation",
-                                            className="text-muted",
-                                        ),
-                                    ]
-                                ),
-                                html.Tr(
-                                    [
-                                        html.Td("High (>40 Hz)", className="fw-bold"),
-                                        html.Td(
-                                            f"{np.mean(raw_fft[high_freq_mask]):.3f}",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            f"{np.mean(filtered_fft[high_freq_mask]):.3f}",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            f"{high_freq_reduction_percent:.1f}%",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            "High frequency noise reduction",
-                                            className="text-muted",
-                                        ),
-                                    ]
-                                ),
-                            ]
-                        ),
-                    ],
-                    bordered=True,
-                    hover=True,
-                    responsive=True,
-                    className="mb-3",
-                ),
-                # Signal integrity metrics
-                html.H6("Signal Integrity Metrics", className="mb-2"),
-                dbc.Table(
-                    [
-                        html.Thead(
-                            [
-                                html.Tr(
-                                    [
-                                        html.Th("Metric", className="text-center"),
-                                        html.Th("Value", className="text-center"),
-                                        html.Td("Quality", className="text-center"),
-                                        html.Th("Description", className="text-center"),
-                                    ]
-                                )
-                            ]
-                        ),
-                        html.Tbody(
-                            [
-                                html.Tr(
-                                    [
-                                        html.Td(
-                                            "Peak Amplitude Preservation",
-                                            className="fw-bold",
-                                        ),
-                                        html.Td(
-                                            f"{amplitude_preservation:.1f}%",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            html.Span(
-                                                (
-                                                    "Excellent"
-                                                    if amplitude_preservation > 95
-                                                    else (
-                                                        "Good"
-                                                        if amplitude_preservation > 90
-                                                        else (
-                                                            "Fair"
-                                                            if amplitude_preservation
-                                                            > 80
-                                                            else "Poor"
-                                                        )
-                                                    )
-                                                ),
-                                                className=f"badge {'bg-success' if amplitude_preservation > 95 else 'bg-info' if amplitude_preservation > 90 else 'bg-warning' if amplitude_preservation > 80 else 'bg-danger'}",
-                                            ),
-                                            className="text-center",
-                                        ),
-                                        html.Td(
-                                            "Peak height preservation",
-                                            className="text-muted",
-                                        ),
-                                    ]
-                                ),
-                                html.Tr(
-                                    [
-                                        html.Td(
-                                            "Phase Distortion", className="fw-bold"
-                                        ),
-                                        html.Td(
-                                            f"{phase_distortion:.3f} rad",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            html.Span(
-                                                (
-                                                    "Excellent"
-                                                    if phase_distortion < 0.1
-                                                    else (
-                                                        "Good"
-                                                        if phase_distortion < 0.3
-                                                        else (
-                                                            "Fair"
-                                                            if phase_distortion < 0.5
-                                                            else "Poor"
-                                                        )
-                                                    )
-                                                ),
-                                                className=f"badge {'bg-success' if phase_distortion < 0.1 else 'bg-info' if phase_distortion < 0.3 else 'bg-warning' if phase_distortion < 0.5 else 'bg-danger'}",
-                                            ),
-                                            className="text-center",
-                                        ),
-                                        html.Td(
-                                            "Phase response distortion",
-                                            className="text-muted",
-                                        ),
-                                    ]
-                                ),
-                                html.Tr(
-                                    [
-                                        html.Td(
-                                            "Group Delay Variation", className="fw-bold"
-                                        ),
-                                        html.Td(
-                                            f"{group_delay_variation:.3f}",
-                                            className="text-end",
-                                        ),
-                                        html.Td(
-                                            html.Span(
-                                                (
-                                                    "Excellent"
-                                                    if group_delay_variation < 0.1
-                                                    else (
-                                                        "Good"
-                                                        if group_delay_variation < 0.3
-                                                        else (
-                                                            "Fair"
-                                                            if group_delay_variation
-                                                            < 0.5
-                                                            else "Poor"
-                                                        )
-                                                    )
-                                                ),
-                                                className=f"badge {'bg-success' if group_delay_variation < 0.1 else 'bg-info' if group_delay_variation < 0.3 else 'bg-warning' if group_delay_variation < 0.5 else 'bg-danger'}",
-                                            ),
-                                            className="text-center",
-                                        ),
-                                        html.Td(
-                                            "Group delay consistency",
-                                            className="text-muted",
-                                        ),
-                                    ]
-                                ),
-                            ]
-                        ),
-                    ],
-                    bordered=True,
-                    hover=True,
-                    responsive=True,
-                    size="sm",
-                ),
-            ]
-        )
-
-    except Exception as e:
-        logger.error(f"Error creating filtering results table: {e}")
-        return f"Error in filtering analysis: {str(e)}"
-
-
-def apply_filter(
-    signal_data,
-    sampling_freq,
-    filter_family,
-    filter_response,
-    low_freq,
-    high_freq,
-    filter_order,
-):
-    """
-    Apply filter to the signal using vitalDSP SignalFiltering class.
-
-    This function now uses the validated vitalDSP SignalFiltering implementation
-    for improved error handling, parameter validation, and consistency.
-
-    Args:
-        signal_data: Signal array
-        sampling_freq: Sampling frequency in Hz
-        filter_family: Filter type (butter, cheby1, cheby2, ellip, bessel)
-        filter_response: Filter response (bandpass, lowpass, highpass, bandstop)
-        low_freq: Low cutoff frequency in Hz
-        high_freq: High cutoff frequency in Hz
-        filter_order: Filter order
-
-    Returns:
-        np.ndarray: Filtered signal
-    """
-    try:
-        from vitalDSP.filtering.signal_filtering import SignalFiltering
-
-        # Create SignalFiltering instance
-        sf = SignalFiltering(signal_data)
-
-        # Determine cutoff and filter type
-        if filter_response == "bandpass":
-            cutoff = [low_freq, high_freq]
-            filter_type = "band"
-        elif filter_response == "lowpass":
-            cutoff = high_freq
-            filter_type = "low"
-        elif filter_response == "highpass":
-            cutoff = low_freq
-            filter_type = "high"
-        elif filter_response == "bandstop":
-            cutoff = [low_freq, high_freq]
-            filter_type = "bandstop"
-        else:
-            # Default to bandpass
-            cutoff = [low_freq, high_freq]
-            filter_type = "band"
-
-        # Apply appropriate filter using vitalDSP
-        if filter_family == "butter" or filter_family == "butterworth":
-            return sf.butterworth(
-                cutoff, fs=sampling_freq, order=filter_order, btype=filter_type
-            )
-        elif filter_family == "cheby1" or filter_family == "chebyshev1":
-            return sf.chebyshev(
-                cutoff,
-                fs=sampling_freq,
-                order=filter_order,
-                btype=filter_type,
-                ripple=0.5,
-            )
-        elif filter_family == "cheby2" or filter_family == "chebyshev2":
-            # Use vitalDSP's Chebyshev Type II filter implementation
-            return sf.chebyshev2(
-                cutoff,
-                fs=sampling_freq,
-                order=filter_order,
-                btype=filter_type,
-                stopband_attenuation=40,
-            )
-        elif filter_family == "ellip" or filter_family == "elliptic":
-            return sf.elliptic(
-                cutoff,
-                fs=sampling_freq,
-                order=filter_order,
-                btype=filter_type,
-                ripple=0.5,
-                stopband_attenuation=40,
-            )
-        elif filter_family == "bessel":
-            # Use vitalDSP's Bessel filter implementation
-            return sf.bessel(
-                cutoff,
-                fs=sampling_freq,
-                order=filter_order,
-                btype=filter_type,
-            )
-        else:
-            # Default to Butterworth
-            logger.warning(
-                f"Unknown filter family '{filter_family}', defaulting to Butterworth"
-            )
-            return sf.butterworth(
-                cutoff, fs=sampling_freq, order=filter_order, btype=filter_type
-            )
-
-    except Exception as e:
-        logger.error(f"Error applying filter: {e}")
-        # Return original signal if filtering fails
-        return signal_data

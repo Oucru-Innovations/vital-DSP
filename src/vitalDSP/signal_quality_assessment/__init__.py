@@ -42,8 +42,45 @@ Adaptive SNR estimation:
 
 from .signal_quality import SignalQuality
 from .signal_quality_index import SignalQualityIndex
+from .rule import Rule, RuleSet
+from .auto_threshold import (
+    Band,
+    DEGENERATE_BAND_HALF_WIDTH,
+    per_rule_quantile,
+    quantile_band,
+    sanitize_sqi,
+    strictest_columns,
+    tuned_bands,
+)
+from .segment_sqi import (
+    AVAILABLE_SQIS,
+    DEFAULT_SEGMENT_SQIS,
+    compute_segment_sqis,
+)
+from .segment_classifier import (
+    candidate_rule_columns,
+    classify_segments,
+    load_rule_dict,
+    per_rule_reject_counts,
+)
 
 __all__ = [
     "SignalQuality",
     "SignalQualityIndex",
+    "Rule",
+    "RuleSet",
+    "Band",
+    "DEGENERATE_BAND_HALF_WIDTH",
+    "per_rule_quantile",
+    "quantile_band",
+    "sanitize_sqi",
+    "strictest_columns",
+    "tuned_bands",
+    "AVAILABLE_SQIS",
+    "DEFAULT_SEGMENT_SQIS",
+    "compute_segment_sqis",
+    "candidate_rule_columns",
+    "classify_segments",
+    "load_rule_dict",
+    "per_rule_reject_counts",
 ]

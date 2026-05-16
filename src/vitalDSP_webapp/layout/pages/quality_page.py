@@ -15,7 +15,7 @@ def quality_layout():
             html.Div(
                 [
                     html.H1(
-                        "🎯 Signal Quality Assessment", className="text-center mb-4"
+                        " Signal Quality Assessment", className="text-center mb-4"
                     ),
                     html.P(
                         [
@@ -25,6 +25,131 @@ def quality_layout():
                         className="text-center text-muted mb-5",
                     ),
                 ],
+                className="mb-4",
+            ),
+            # Segment quality (accept/reject) - accordion at the top.
+            # The actual configuration controls live on the Filtering page;
+            # this section reads the shared stores and adds per-segment detail
+            # + the "Drop strictest rule" escape hatch.
+            dbc.Accordion(
+                [
+                    dbc.AccordionItem(
+                        [
+                            html.P(
+                                [
+                                    "Segment-level accept/reject decisions are computed on the ",
+                                    "Filtering page after Apply.  This panel mirrors the timeline ",
+                                    "and adds per-segment inspection.",
+                                ],
+                                className="small text-muted mb-2",
+                            ),
+                            # Timeline row
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            html.Div(
+                                                id="quality-segment-summary",
+                                                className="small mb-1",
+                                            ),
+                                            dcc.Graph(
+                                                id="quality-segment-timeline",
+                                                config={"displayModeBar": False},
+                                                style={"height": "100px"},
+                                            ),
+                                        ],
+                                        md=12,
+                                    )
+                                ],
+                                className="mb-2",
+                            ),
+                            # Drop-strictest button row
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            dbc.Button(
+                                                "Drop strictest rule",
+                                                id="quality-segment-drop-strictest",
+                                                color="warning",
+                                                outline=True,
+                                                size="sm",
+                                                n_clicks=0,
+                                                disabled=True,
+                                            ),
+                                            html.Span(
+                                                id="quality-segment-strictest-hint",
+                                                className="ms-2 small text-muted",
+                                            ),
+                                        ],
+                                        md=12,
+                                    )
+                                ],
+                                className="mb-3",
+                            ),
+                            # Segment detail row: picker + filter
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            html.Label("Pick segment:", className="form-label small"),
+                                            dcc.Dropdown(
+                                                id="quality-segment-picker",
+                                                placeholder="Apply a filter first.",
+                                                clearable=False,
+                                            ),
+                                        ],
+                                        md=6,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            html.Label("Filter:", className="form-label small"),
+                                            dbc.RadioItems(
+                                                id="quality-segment-filter",
+                                                options=[
+                                                    {"label": " all", "value": "all"},
+                                                    {"label": " accept", "value": "accept"},
+                                                    {"label": " reject", "value": "reject"},
+                                                ],
+                                                value="all",
+                                                inline=True,
+                                            ),
+                                        ],
+                                        md=6,
+                                    ),
+                                ],
+                                className="mb-2",
+                            ),
+                            # Waveform + SQI table
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        dcc.Graph(
+                                            id="quality-segment-waveform",
+                                            config={"displayModeBar": True},
+                                            style={"height": "280px"},
+                                        ),
+                                        md=8,
+                                    ),
+                                    dbc.Col(
+                                        [
+                                            html.H6("SQI values", className="mb-2"),
+                                            html.Div(id="quality-segment-sqi-table"),
+                                        ],
+                                        md=4,
+                                    ),
+                                ],
+                                className="mb-2",
+                            ),
+                            # Rule trace
+                            html.H6("Rule trace", className="mb-2 mt-2"),
+                            html.Div(id="quality-segment-rule-trace"),
+                        ],
+                        title="Segment quality (accept / reject)",
+                        item_id="segment-quality",
+                    ),
+                ],
+                active_item="segment-quality",  # open by default
                 className="mb-4",
             ),
             # Main Analysis Section
@@ -38,7 +163,7 @@ def quality_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "🎛️ Quality Assessment Configuration",
+                                                " Quality Assessment Configuration",
                                                 className="mb-0",
                                             ),
                                             html.Small(
@@ -317,7 +442,7 @@ def quality_layout():
                                             ),
                                             # Main Analysis Button
                                             dbc.Button(
-                                                "🎯 Assess Signal Quality",
+                                                " Assess Signal Quality",
                                                 id="quality-analyze-btn",
                                                 color="primary",
                                                 size="lg",
@@ -340,7 +465,7 @@ def quality_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📈 Signal Quality Overview",
+                                                " Signal Quality Overview",
                                                 className="mb-0",
                                             )
                                         ]
@@ -368,7 +493,7 @@ def quality_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📊 Quality Metrics Visualization",
+                                                " Quality Metrics Visualization",
                                                 className="mb-3",
                                             ),
                                             # Control Panel for Metrics Visualization
@@ -479,7 +604,7 @@ def quality_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📋 Quality Assessment Results",
+                                                " Quality Assessment Results",
                                                 className="mb-0",
                                             )
                                         ]
@@ -499,7 +624,7 @@ def quality_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "⚠️ Quality Issues & Recommendations",
+                                                " Quality Issues & Recommendations",
                                                 className="mb-0",
                                             )
                                         ]
@@ -525,7 +650,7 @@ def quality_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "🔍 Detailed Quality Analysis",
+                                                " Detailed Quality Analysis",
                                                 className="mb-0",
                                             )
                                         ]
@@ -551,7 +676,7 @@ def quality_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📊 Quality Score Dashboard",
+                                                " Quality Score Dashboard",
                                                 className="mb-0",
                                             )
                                         ]

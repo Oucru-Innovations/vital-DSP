@@ -28,7 +28,7 @@ def Sidebar():
                     # Upload section
                     html.Div(
                         [
-                            html.A(
+                            dcc.Link(
                                 [html.I(className="fas fa-upload"), " Upload Data"],
                                 href="/upload",
                                 className="nav-link text-white",
@@ -40,17 +40,17 @@ def Sidebar():
                     html.H6("Analysis", className="mt-4 mb-2 text-muted"),
                     html.Div(
                         [
-                            html.A(
+                            dcc.Link(
                                 [html.I(className="fas fa-filter"), " Filtering"],
                                 href="/filtering",
                                 className="nav-link text-white",
                             ),
-                            html.A(
+                            dcc.Link(
                                 [html.I(className="fas fa-chart-line"), " Time Domain"],
                                 href="/time-domain",
                                 className="nav-link text-white",
                             ),
-                            html.A(
+                            dcc.Link(
                                 [
                                     html.I(className="fas fa-wave-square"),
                                     " Frequency Domain",
@@ -65,7 +65,7 @@ def Sidebar():
                     html.H6("Feature Analysis", className="mt-4 mb-2 text-muted"),
                     html.Div(
                         [
-                            html.A(
+                            dcc.Link(
                                 [
                                     html.I(className="fas fa-heartbeat"),
                                     " Physiological",
@@ -73,14 +73,14 @@ def Sidebar():
                                 href="/physiological",
                                 className="nav-link text-white",
                             ),
-                            html.A(
+                            dcc.Link(
                                 [html.I(className="fas fa-lungs"), " Respiratory"],
                                 href="/respiratory",
                                 className="nav-link text-white",
                             ),
                             # PHASE 5: Removed "Advanced Features" entry (merged with Advanced Processing)
-                            # Old entry: html.A([...], " Advanced Features", href="/features", ...)
-                            html.A(
+                            # Old entry: dcc.Link([...], " Advanced Features", href="/features", ...)
+                            dcc.Link(
                                 [
                                     html.I(className="fas fa-exchange-alt"),
                                     " Transforms",
@@ -88,7 +88,7 @@ def Sidebar():
                                 href="/transforms",
                                 className="nav-link text-white",
                             ),
-                            html.A(
+                            dcc.Link(
                                 [
                                     html.I(className="fas fa-shield-alt"),
                                     " Quality",
@@ -96,7 +96,7 @@ def Sidebar():
                                 href="/quality",
                                 className="nav-link text-white",
                             ),
-                            html.A(
+                            dcc.Link(
                                 [
                                     html.I(className="fas fa-brain"),
                                     " Advanced Feature Engineering & Analysis",  # PHASE 5: Updated title
@@ -104,7 +104,7 @@ def Sidebar():
                                 href="/advanced",
                                 className="nav-link text-white",
                             ),
-                            html.A(
+                            dcc.Link(
                                 [
                                     html.I(className="fas fa-file-medical"),
                                     " Health Report",
@@ -119,7 +119,7 @@ def Sidebar():
                     html.H6("Pipeline", className="mt-4 mb-2 text-muted"),
                     html.Div(
                         [
-                            html.A(
+                            dcc.Link(
                                 [
                                     html.I(className="fas fa-project-diagram"),
                                     " Processing Pipeline",
@@ -127,7 +127,7 @@ def Sidebar():
                                 href="/pipeline",
                                 className="nav-link text-white",
                             ),
-                            html.A(
+                            dcc.Link(
                                 [html.I(className="fas fa-tasks"), " Background Tasks"],
                                 href="/tasks",
                                 className="nav-link text-white",
@@ -139,12 +139,12 @@ def Sidebar():
                     html.H6("Other", className="mt-4 mb-2 text-muted"),
                     html.Div(
                         [
-                            html.A(
+                            dcc.Link(
                                 [html.I(className="fas fa-eye"), " Preview"],
                                 href="/preview",
                                 className="nav-link text-white",
                             ),
-                            html.A(
+                            dcc.Link(
                                 [html.I(className="fas fa-cog"), " Settings"],
                                 href="/settings",
                                 className="nav-link text-white",
@@ -179,7 +179,7 @@ def Sidebar():
                     # Upload section
                     html.Div(
                         [
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-upload"),
                                 href="/upload",
                                 className="nav-icon text-white",
@@ -191,19 +191,19 @@ def Sidebar():
                     # Analysis section
                     html.Div(
                         [
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-filter"),
                                 href="/filtering",
                                 className="nav-icon text-white",
                                 title="Filtering",
                             ),
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-chart-line"),
                                 href="/time-domain",
                                 className="nav-icon text-white",
                                 title="Time Domain",
                             ),
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-wave-square"),
                                 href="/frequency",
                                 className="nav-icon text-white",
@@ -215,39 +215,39 @@ def Sidebar():
                     # Features section
                     html.Div(
                         [
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-heartbeat"),
                                 href="/physiological",
                                 className="nav-icon text-white",
                                 title="Physiological",
                             ),
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-lungs"),
                                 href="/respiratory",
                                 className="nav-icon text-white",
                                 title="Respiratory",
                             ),
                             # PHASE 5: Removed "Advanced Features" icon (merged with Advanced)
-                            # Old: html.A(html.I("fas fa-chart-bar"), href="/features", title="Advanced Features")
-                            html.A(
+                            # Old: dcc.Link(html.I("fas fa-chart-bar"), href="/features", title="Advanced Features")
+                            dcc.Link(
                                 html.I(className="fas fa-exchange-alt"),
                                 href="/transforms",
                                 className="nav-icon text-white",
                                 title="Transforms",
                             ),
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-shield-alt"),
                                 href="/quality",
                                 className="nav-icon text-white",
                                 title="Quality",
                             ),
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-brain"),
                                 href="/advanced",
                                 className="nav-icon text-white",
                                 title="Advanced Feature Engineering & Analysis",  # PHASE 5: Updated
                             ),
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-file-medical"),
                                 href="/health-report",
                                 className="nav-icon text-white",
@@ -259,13 +259,13 @@ def Sidebar():
                     # Pipeline section
                     html.Div(
                         [
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-project-diagram"),
                                 href="/pipeline",
                                 className="nav-icon text-white",
                                 title="Processing Pipeline",
                             ),
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-tasks"),
                                 href="/tasks",
                                 className="nav-icon text-white",
@@ -277,13 +277,13 @@ def Sidebar():
                     # Other sections
                     html.Div(
                         [
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-eye"),
                                 href="/preview",
                                 className="nav-icon text-white",
                                 title="Preview",
                             ),
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-cog"),
                                 href="/settings",
                                 className="nav-icon text-white",

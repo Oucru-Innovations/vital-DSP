@@ -689,7 +689,7 @@ def register_quality_callbacks(app):
                 and len(full_filtered_signal_from_service) > 0
             ):
                 logger.info(
-                    f"✅ Found FULL filtered signal from Enhanced Data Service: {len(full_filtered_signal_from_service)} samples"
+                    f" Found FULL filtered signal from Enhanced Data Service: {len(full_filtered_signal_from_service)} samples"
                 )
 
                 # Apply the same windowing to the full filtered signal
@@ -697,15 +697,15 @@ def register_quality_callbacks(app):
                     # Both signals are the same length - apply the same windowing mask
                     filtered_signal = full_filtered_signal_from_service[mask]
                     logger.info(
-                        f"✅ Successfully windowed full filtered signal from Data Service: {len(filtered_signal)} samples"
+                        f" Successfully windowed full filtered signal from Data Service: {len(filtered_signal)} samples"
                     )
 
                     # Log signal value statistics for debugging
                     logger.info(
-                        f"📊 FULL Filtered signal stats - min: {np.min(full_filtered_signal_from_service):.4f}, max: {np.max(full_filtered_signal_from_service):.4f}, mean: {np.mean(full_filtered_signal_from_service):.4f}"
+                        f" FULL Filtered signal stats - min: {np.min(full_filtered_signal_from_service):.4f}, max: {np.max(full_filtered_signal_from_service):.4f}, mean: {np.mean(full_filtered_signal_from_service):.4f}"
                     )
                     logger.info(
-                        f"📊 WINDOWED Filtered signal stats - min: {np.min(filtered_signal):.4f}, max: {np.max(filtered_signal):.4f}, mean: {np.mean(filtered_signal):.4f}"
+                        f" WINDOWED Filtered signal stats - min: {np.min(filtered_signal):.4f}, max: {np.max(filtered_signal):.4f}, mean: {np.mean(filtered_signal):.4f}"
                     )
                 else:
                     logger.warning(
@@ -752,7 +752,7 @@ def register_quality_callbacks(app):
                             # Verify the windowed signal is valid
                             if len(filtered_signal) > 0:
                                 logger.info(
-                                    f"✅ Successfully extracted filtered signal window: {len(filtered_signal)} samples"
+                                    f" Successfully extracted filtered signal window: {len(filtered_signal)} samples"
                                 )
                             else:
                                 logger.warning(
@@ -802,7 +802,7 @@ def register_quality_callbacks(app):
                                     )
                                     if filtered_signal is not None:
                                         logger.info(
-                                            f"✅ Successfully filtered current window on-the-fly: {len(filtered_signal)} samples"
+                                            f" Successfully filtered current window on-the-fly: {len(filtered_signal)} samples"
                                         )
                                     else:
                                         logger.warning(
@@ -903,7 +903,7 @@ def register_quality_callbacks(app):
                             and len(stored_filtered_signal) > 0
                         ):
                             logger.info(
-                                f"✅ Found filtered signal in data service with {len(stored_filtered_signal)} samples"
+                                f" Found filtered signal in data service with {len(stored_filtered_signal)} samples"
                             )
 
                             # Determine how to use the stored filtered signal
@@ -952,7 +952,7 @@ def register_quality_callbacks(app):
                                         )
                                         if filtered_signal is not None:
                                             logger.info(
-                                                f"✅ Successfully filtered current window on-the-fly: {len(filtered_signal)} samples"
+                                                f" Successfully filtered current window on-the-fly: {len(filtered_signal)} samples"
                                             )
                                         else:
                                             logger.warning(
@@ -1675,7 +1675,7 @@ def _apply_filter_to_signal(signal_data, filter_info, sampling_freq, signal_type
                 )
 
             logger.info(
-                f"✅ Traditional filter applied successfully: {filter_family} {filter_response}"
+                f" Traditional filter applied successfully: {filter_family} {filter_response}"
             )
             return filtered_signal
 
@@ -1691,7 +1691,7 @@ def _apply_filter_to_signal(signal_data, filter_info, sampling_freq, signal_type
                 from scipy.ndimage import uniform_filter1d
 
                 filtered_signal = uniform_filter1d(signal_data, size=kernel_size)
-                logger.info(f"✅ Convolution filter applied: kernel_size={kernel_size}")
+                logger.info(f" Convolution filter applied: kernel_size={kernel_size}")
                 return filtered_signal
             else:
                 # For other advanced methods, fall back to traditional filter if params available
@@ -1717,7 +1717,7 @@ def _apply_filter_to_signal(signal_data, filter_info, sampling_freq, signal_type
                     filter_type=filter_family,
                 )
                 logger.info(
-                    f"✅ Applied traditional filter as fallback for advanced method: {advanced_method}"
+                    f" Applied traditional filter as fallback for advanced method: {advanced_method}"
                 )
                 return filtered_signal
         else:
@@ -2006,7 +2006,7 @@ def create_quality_main_plot(
             )
 
         if filtered_signal is not None and len(filtered_signal) == len(signal_data):
-            logger.info("✅ Creating 5-subplot layout with filtered signal")
+            logger.info(" Creating 5-subplot layout with filtered signal")
             # 5 subplots: original + classification, original + SQI, filtered + classification, filtered + SQI, SQI values
             num_rows = 5
             subplot_titles = [

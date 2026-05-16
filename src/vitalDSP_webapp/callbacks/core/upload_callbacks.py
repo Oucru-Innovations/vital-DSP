@@ -35,6 +35,10 @@ try:
     from vitalDSP_webapp.utils.plot_utils import limit_plot_data, check_plot_data_size
     from vitalDSP.utils.data_processing.data_loader import DataLoader, load_oucru_csv
     from vitalDSP_webapp.services.progress_tracker import get_progress_tracker
+    from vitalDSP_webapp.utils.column_introspect import (
+        candidate_to_option,
+        introspect_columns,
+    )
 
     ENHANCED_SERVICE_AVAILABLE = True
 except ImportError as e:
@@ -234,6 +238,36 @@ def load_data_with_format(
     """
     metadata = {}
 
+    # Auto-detect OUCRU shape when the user left the format dropdown on
+    # "Auto-detect" (or didn't set one).  We only peek when the file
+    # extension is CSV-like; any positive hit promotes the format to
+    # 'oucru_csv' and fills in the detected signal column, so the rest
+    # of the function can take the OUCRU branch below.
+    if (not data_format or data_format == "auto") and file_path:
+        ext = Path(file_path).suffix.lower()
+        if ext in (".csv", ".txt", ".tsv"):
+            try:
+                from vitalDSP.utils.data_processing.oucru_detect import (
+                    detect_oucru_csv,
+                )
+
+                hint = signal_type if signal_type and signal_type != "auto" else None
+                detection = detect_oucru_csv(file_path, signal_type_hint=hint)
+            except Exception as exc:
+                logger.debug("OUCRU auto-detection skipped: %s", exc)
+                detection = None
+            if detection is not None:
+                logger.info(
+                    "Auto-detected OUCRU CSV: column=%r, samples/row=%d, style=%s",
+                    detection["signal_column"],
+                    detection["samples_per_row"],
+                    detection["bracket_style"],
+                )
+                data_format = "oucru_csv"
+                # Don't override an explicit user pick — only fill the gap.
+                if not signal_column:
+                    signal_column = detection["signal_column"]
+
     # Handle OUCRU CSV format specially
     if data_format == "oucru_csv":
         # Validate user's column selections
@@ -347,23 +381,15 @@ def load_data_with_format(
         metadata["detected_signal_column"] = signal_column
         metadata["detected_time_column"] = time_column
 
-        # Convert any DataFrame objects to JSON-serializable format
-        if "timestamps" in metadata and isinstance(
-            metadata["timestamps"], pd.DataFrame
-        ):
-            # Convert timestamps DataFrame to dict, ensuring timestamps are strings
-            timestamps_df = metadata["timestamps"].copy()
-            for col in timestamps_df.columns:
-                if pd.api.types.is_datetime64_any_dtype(timestamps_df[col]):
-                    timestamps_df[col] = timestamps_df[col].astype(str)
-            metadata["timestamps"] = timestamps_df.to_dict("records")
-        if "row_data" in metadata and isinstance(metadata["row_data"], pd.DataFrame):
-            # Convert row_data DataFrame to dict, ensuring timestamps are strings
-            row_data_df = metadata["row_data"].copy()
-            for col in row_data_df.columns:
-                if pd.api.types.is_datetime64_any_dtype(row_data_df[col]):
-                    row_data_df[col] = row_data_df[col].astype(str)
-            metadata["row_data"] = row_data_df.to_dict("records")
+        # ``metadata["timestamps"]`` is the SAME parsed (timestamp,signal)
+        # DataFrame that we already returned as ``df``; serialising it
+        # would double the dcc.Store payload.  ``row_data`` is the
+        # unexpanded source DataFrame - one row per second, each holding
+        # the full JSON-array-string, also huge.  Both are dropped here
+        # because the parsed signal in ``df`` is all downstream pages
+        # actually use.
+        metadata.pop("timestamps", None)
+        metadata.pop("row_data", None)
 
     elif data_format == "csv":
         # Handle normal CSV format
@@ -439,18 +465,14 @@ def load_data_with_format(
         # Load the data
         df = loader.load()
 
-        # Get metadata from loader
-        metadata = loader.metadata.copy()
-
-        # Convert any DataFrame objects to JSON-serializable format
-        for key, value in metadata.items():
-            if isinstance(value, pd.DataFrame):
-                # Convert DataFrame to dict, ensuring timestamps are strings
-                df_copy = value.copy()
-                for col in df_copy.columns:
-                    if pd.api.types.is_datetime64_any_dtype(df_copy[col]):
-                        df_copy[col] = df_copy[col].astype(str)
-                metadata[key] = df_copy.to_dict("records")
+        # Get metadata from loader, but drop any DataFrame entries -
+        # they're either duplicates of the parsed ``df`` we already
+        # return, or large source frames that bloat the dcc.Store and
+        # don't get used downstream.
+        metadata = {
+            k: v for k, v in loader.metadata.items()
+            if not isinstance(v, pd.DataFrame)
+        }
 
     # Add signal type to metadata if provided
     if signal_type and signal_type != "auto":
@@ -459,9 +481,177 @@ def load_data_with_format(
     return df, metadata
 
 
+def _spill_upload_to_tempfile(upload_contents: str, filename: str) -> str:
+    """Decode a ``dcc.Upload`` data URL into a NamedTemporaryFile and return its path.
+
+    The temp file is left on disk; the caller is responsible for cleanup
+    (typically once the load + process pipeline has consumed it).
+    """
+    _, content_string = upload_contents.split(",")
+    decoded = base64.b64decode(content_string)
+    suffix = Path(filename).suffix if filename else ""
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as fh:
+        fh.write(decoded)
+        return fh.name
+
+
+def _slim_progress_alert(message: str, color: str = "primary") -> html.Div:
+    """A one-line in-flight indicator that replaces the old multi-step card.
+
+    ``dbc.Progress`` keeps it lightweight and Plotly-friendly (no nested
+    icon trees re-rendered on every callback fire).
+    """
+    return html.Div(
+        [
+            html.Small(message, className=f"text-{color}"),
+            dbc.Progress(
+                value=100,
+                animated=True,
+                striped=True,
+                color=color,
+                style={"height": "8px"},
+                className="mt-1",
+            ),
+        ]
+    )
+
+
+def _staged_tuple(
+    summary: str,
+    metadata: dict,
+    options: list,
+    default_col,
+    row_style: dict,
+):
+    """Build the success-path 11-tuple for ``handle_all_uploads``.
+
+    The stores stay untouched at staging time - only headers were read.
+    Process Data is the callback that actually parses the file and
+    fills ``store-uploaded-data`` / ``data-preview-section``.
+    """
+    return (
+        summary,                              # upload-status.children
+        no_update,                            # store-uploaded-data.data
+        metadata,                             # store-data-config.data
+        no_update,                            # data-preview-section.children
+        options,                              # signal-column.options
+        default_col,                          # signal-column.value
+        row_style,                            # signal-column-row.style
+        no_update,                            # upload-progress-section.children
+        {"display": "none"},                  # upload-progress-section.style
+        False,                                # btn-load-sample-ppg.disabled
+        False,                                # btn-load-sample-ecg.disabled
+    )
+
+
+def _error_tuple(message: str):
+    """Build the error-path 11-tuple for ``handle_all_uploads``."""
+    return (
+        message,                # upload-status.children
+        no_update,
+        no_update,
+        no_update,
+        no_update,              # signal-column.options
+        no_update,              # signal-column.value
+        no_update,              # signal-column-row.style
+        no_update,              # upload-progress-section.children
+        {"display": "none"},    # upload-progress-section.style
+        False,                  # btn-load-sample-ppg.disabled
+        False,                  # btn-load-sample-ecg.disabled
+    )
+
+
+#: Suffix marker on datetime column names emitted by
+#: :func:`_df_to_compact_payload`.  The column values are int64
+#: nanoseconds since the epoch; consumers that need real timestamps
+#: call :func:`rehydrate_payload` (or just ``pd.to_datetime(arr,
+#: unit='ns')`` on the column).  A name suffix is used instead of a
+#: top-level sidecar so the payload remains a flat dict-of-lists that
+#: pandas can ingest directly with ``pd.DataFrame(payload)``.
+_NS_SUFFIX = "__ns__"
+
+
+def _df_to_compact_payload(df: pd.DataFrame) -> dict:
+    """Serialise a DataFrame for ``store-uploaded-data`` compactly.
+
+    Returns a dict-of-lists (one entry per column).  Datetime columns
+    are emitted as **int64 nanoseconds** under a name suffixed with
+    ``__ns__`` - benchmarked at ~20x faster than ``Series.tolist()``
+    for a 1 M-row datetime column.  Downstream consumers that just
+    need the signal can read ``payload['signal']`` directly; consumers
+    that need real timestamps use :func:`rehydrate_payload` (one
+    ``pd.to_datetime`` call per datetime column, also fast).
+    """
+    payload: dict = {}
+    for col in df.columns:
+        s = df[col]
+        if pd.api.types.is_datetime64_any_dtype(s):
+            # Strip timezone before viewing as int64 (datetime64[ns] only).
+            if getattr(s.dt, "tz", None) is not None:
+                s = s.dt.tz_convert("UTC").dt.tz_localize(None)
+            payload[f"{col}{_NS_SUFFIX}"] = (
+                s.values.astype("datetime64[ns]").astype("int64").tolist()
+            )
+        else:
+            payload[col] = s.tolist()
+    return payload
+
+
+def rehydrate_payload(payload: dict) -> pd.DataFrame:
+    """Inverse of :func:`_df_to_compact_payload`.
+
+    Detects ``__ns__``-suffixed columns and converts them back to
+    ``datetime64[ns]`` with their original names.  Other columns pass
+    through unchanged.  Returns an empty DataFrame on an empty payload.
+    """
+    if not isinstance(payload, dict) or not payload:
+        return pd.DataFrame()
+    df = pd.DataFrame(payload)
+    for col in list(df.columns):
+        if col.endswith(_NS_SUFFIX):
+            real_name = col[: -len(_NS_SUFFIX)]
+            df[real_name] = pd.to_datetime(df[col], unit="ns")
+            df = df.drop(columns=[col])
+    return df
+
+
+def _column_options_for(file_path: str, data_type: str):
+    """Build the signal-column dropdown options for a freshly staged file.
+
+    Returns ``(options, default_value, row_style)``.  Falls back to a
+    plain alphabetical list of all columns if introspection fails (e.g.
+    non-CSV format) so the dropdown still works.
+    """
+    try:
+        candidates = introspect_columns(file_path, signal_type=data_type)
+    except Exception as exc:
+        logger.debug("introspect_columns failed: %s", exc)
+        candidates = []
+    if candidates:
+        options = [candidate_to_option(c) for c in candidates]
+        default = candidates[0].name
+        return options, default, {"display": "block"}
+    # Fall back to header read + plain options
+    try:
+        df_head = pd.read_csv(file_path, nrows=0)
+        columns = list(df_head.columns)
+    except Exception:
+        columns = []
+    if not columns:
+        return [], None, {"display": "none"}
+    options = [{"label": col, "value": col} for col in columns]
+    return options, columns[0], {"display": "block"}
+
+
 def register_upload_callbacks(app):
-    """Register all upload-related callbacks"""
-    # Check if callbacks are already registered to prevent duplicates
+    """Register the slim upload-page callback set.
+
+    The page exposes one file dropzone, a signal-type select, a sampling
+    rate field, a single signal-column dropdown (populated post-upload),
+    and a Process Data button.  Everything else (OUCRU vs flat CSV
+    detection, signal-column auto-pick, sampling-rate inference) happens
+    behind the scenes in :func:`load_data_with_format`.
+    """
     if (
         hasattr(app, "_upload_callbacks_registered")
         and getattr(app, "_upload_callbacks_registered", False) is True
@@ -472,545 +662,196 @@ def register_upload_callbacks(app):
     logger.info("Registering upload callbacks...")
     app._upload_callbacks_registered = True
 
-    # Callback to toggle OUCRU-specific configuration section
-    @app.callback(
-        Output("oucru-config-section", "style"),
-        Input("data-format", "value"),
-    )
-    def toggle_oucru_config(data_format):
-        """Show/hide OUCRU-specific configuration based on format selection"""
-        if data_format == "oucru_csv":
-            return {"display": "block"}
-        return {"display": "none"}
-
-    # Callback to set default column values based on data config
-    @app.callback(
-        [
-            Output("time-column", "value"),
-            Output("signal-column", "value"),
-            Output("red-column", "value"),
-            Output("ir-column", "value"),
-            Output("waveform-column", "value"),
-        ],
-        Input("store-data-config", "data"),
-        prevent_initial_call=True,
-    )
-    def set_default_column_values(data_config):
-        """Set default values for column dropdowns based on detected columns"""
-        if not data_config:
-            return no_update, no_update, no_update, no_update, no_update
-
-        # Set default signal column for OUCRU CSV
-        default_signal_column = data_config.get("default_signal_column")
-        if default_signal_column:
-            logger.info(
-                f"Setting default signal column value to: {default_signal_column}"
-            )
-            return no_update, default_signal_column, no_update, no_update, no_update
-
-        return no_update, no_update, no_update, no_update, no_update
-
     @app.callback(
         [
             Output("upload-status", "children", allow_duplicate=True),
             Output("store-uploaded-data", "data", allow_duplicate=True),
             Output("store-data-config", "data", allow_duplicate=True),
             Output("data-preview-section", "children", allow_duplicate=True),
-            Output("time-column", "options"),
             Output("signal-column", "options"),
-            Output("red-column", "options"),
-            Output("ir-column", "options"),
-            Output("waveform-column", "options"),
+            Output("signal-column", "value"),
+            Output("signal-column-row", "style"),
             Output("upload-progress-section", "children"),
             Output("upload-progress-section", "style"),
-            Output("btn-load-path", "disabled"),
-            Output("btn-load-sample", "disabled"),
-            Output("file-path-loading", "children"),
-            Output("file-path-loading", "style"),
-            Output("upload-data", "className"),
+            Output("btn-load-sample-ppg", "disabled"),
+            Output("btn-load-sample-ecg", "disabled"),
         ],
         [
             Input("upload-data", "contents"),
-            Input("btn-load-path", "n_clicks"),
-            Input("btn-load-sample", "n_clicks"),
+            Input("btn-load-sample-ppg", "n_clicks"),
+            Input("btn-load-sample-ecg", "n_clicks"),
         ],
         [
             State("upload-data", "filename"),
-            State("file-path-input", "value"),
             State("sampling-freq", "value"),
-            State("time-unit", "value"),
             State("data-type", "value"),
-            State("data-format", "value"),
-            State("oucru-sampling-rate-column", "value"),
-            State("oucru-interpolate-time", "value"),
         ],
         prevent_initial_call="initial_duplicate",
     )
     def handle_all_uploads(
         upload_contents,
-        load_path_clicks,
-        load_sample_clicks,
+        load_ppg_clicks,
+        load_ecg_clicks,
         filename,
-        file_path,
         sampling_freq,
-        time_unit,
         data_type,
-        data_format,
-        oucru_sampling_rate_column,
-        oucru_interpolate_time,
     ):
-        """Handle all types of data uploads"""
+        """Stage a freshly uploaded or synthetic recording.
+
+        Three trigger sources share the same handler: the drop-zone,
+        and the two synthetic-data buttons (PPG / ECG).  Each produces
+        the same 11-tuple of outputs.
+        """
         ctx = callback_context
         if not ctx.triggered:
             raise PreventUpdate
 
         trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-        # Validate trigger before processing
-        if trigger_id not in ["upload-data", "btn-load-path", "btn-load-sample"]:
+        if trigger_id not in (
+            "upload-data", "btn-load-sample-ppg", "btn-load-sample-ecg",
+        ):
             raise PreventUpdate
 
-        # Show upload progress and disable buttons
-        progress_bar = create_upload_progress_bar()
-        progress_style = {"display": "block", "animation": "slideInDown 0.5s ease-out"}
-        buttons_disabled = True
-
-        # Create file path loading indicator
-        file_path_loading = create_file_path_loading_indicator()
-        file_path_loading_style = {
-            "display": "block",
-            "animation": "fadeInUp 0.4s ease-out",
-        }
-
-        # Add uploading class to upload area
-        upload_area_class = "upload-area uploading"
-
         try:
-            # Process the upload
-            df = None
-            metadata = {}
-
             if trigger_id == "upload-data" and upload_contents:
-                # Handle file upload - save to temp file and use DataLoader
-                content_type, content_string = upload_contents.split(",")
-                decoded = base64.b64decode(content_string)
-
-                # Create temporary file
-                with tempfile.NamedTemporaryFile(
-                    delete=False, suffix=Path(filename).suffix
-                ) as tmp_file:
-                    tmp_file.write(decoded)
-                    temp_path = tmp_file.name
-
+                temp_path = _spill_upload_to_tempfile(upload_contents, filename)
                 try:
-                    # Load headers only for file uploads too
                     available_columns, metadata = load_data_headers_only(
-                        temp_path,
-                        data_format,
-                        sampling_freq,
-                        data_type,
+                        temp_path, "auto", sampling_freq, data_type
                     )
-
-                    # Store the temp file path for later processing
                     metadata["file_path"] = temp_path
-
-                except Exception as e:
-                    # Clean up temp file on error
+                except Exception:
                     try:
                         os.unlink(temp_path)
-                    except Exception:
+                    except OSError:
                         pass
-                    raise e
+                    raise
 
-                # Store headers and metadata for later processing
-                data_service = get_enhanced_data_service()
-                data_service.current_headers = available_columns
-                data_service.current_metadata = metadata
-
-                # Create column options for dropdowns
-                column_options = [
-                    {"label": col, "value": col} for col in available_columns
-                ]
-
-                # Auto-detect potential signal columns
-                potential_signal_columns = [
-                    "signal",
-                    "ecg",
-                    "ppg",
-                    "rri",
-                    "rr",
-                    "hr",
-                    "waveform",
-                    "pleth",
-                ]
-                detected_signal_column = None
-                for col in potential_signal_columns:
-                    if col in available_columns:
-                        detected_signal_column = col
-                        break
-
-                # Auto-detect potential time columns
-                potential_time_columns = ["timestamp", "time", "ts", "datetime"]
-                detected_time_column = None
-                for col in potential_time_columns:
-                    if col in available_columns:
-                        detected_time_column = col
-                        break
-
-                # Update metadata with detected columns
-                metadata["detected_signal_column"] = detected_signal_column
-                metadata["detected_time_column"] = detected_time_column
-
-                # Create preview message
-                preview_message = "✅ File uploaded successfully!\n\n"
-                preview_message += f"📁 File: {filename}\n"
-                preview_message += f"📊 Format: {metadata['format']}\n"
-                preview_message += (
-                    f"📋 Available columns: {', '.join(available_columns)}\n"
+                # Metadata + headers travel through store-data-config now;
+                # no per-process state on the data service is needed (which
+                # also makes background callbacks usable).
+                options, default_col, row_style = _column_options_for(
+                    temp_path, data_type
                 )
-                if detected_signal_column:
-                    preview_message += (
-                        f"🎯 Auto-detected signal column: {detected_signal_column}\n"
-                    )
-                if detected_time_column:
-                    preview_message += (
-                        f"⏰ Auto-detected time column: {detected_time_column}\n"
-                    )
-                preview_message += "\n💡 Please select your columns below and click 'Process Data' to continue."
-
-                return (
-                    preview_message,
-                    no_update,  # store-uploaded-data.data
-                    metadata,  # store-data-config.data
-                    html.Div(
-                        [
-                            html.H5("📋 Available Columns", className="mb-3"),
-                            html.P(
-                                f"Found {len(available_columns)} columns in the file:",
-                                className="text-muted mb-3",
-                            ),
-                            html.Ul(
-                                [html.Li(col) for col in available_columns],
-                                className="list-unstyled",
-                            ),
-                            html.Hr(),
-                            html.P(
-                                "Please configure your column mapping below and click 'Process Data' to continue.",
-                                className="text-info",
-                            ),
-                        ]
-                    ),
-                    column_options,  # time-column.options
-                    column_options,  # signal-column.options
-                    column_options,  # red-column.options
-                    column_options,  # ir-column.options
-                    column_options,  # waveform-column.options
-                    no_update,  # upload-progress-section.children
-                    {"display": "none"},  # upload-progress-section.style
-                    False,  # btn-load-path.disabled
-                    False,  # btn-load-sample.disabled
-                    no_update,  # file-path-loading.children
-                    {"display": "none"},  # file-path-loading.style
-                    "upload-area",  # upload-data.className
+                # NB: don't parse the whole file here.  The original
+                # design did, but for OUCRU recordings the heavy parse
+                # blocked the signal-column dropdown from showing for
+                # seconds.  Vital-sqi shows the dropdown as soon as the
+                # headers are read; full parsing happens on Process Data.
+                summary = (
+                    f"{filename} loaded - "
+                    f"{len(available_columns)} columns, "
+                    f"format: {metadata.get('format', 'auto')}"
+                )
+                return _staged_tuple(
+                    summary, metadata, options, default_col, row_style,
                 )
 
-            elif trigger_id == "btn-load-path" and file_path:
-                # Handle load from file path - load headers only for column selection
-                try:
-                    available_columns, metadata = load_data_headers_only(
-                        file_path,
-                        data_format,
-                        sampling_freq,
-                        data_type,
-                    )
-                except Exception as e:
-                    return (
-                        f"❌ Error loading file: {str(e)}",
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        no_update,
-                        False,
-                        False,
-                        no_update,
-                        {"display": "none"},
-                    )
+            elif trigger_id in ("btn-load-sample-ppg", "btn-load-sample-ecg"):
+                fs = sampling_freq or 1000
+                if trigger_id == "btn-load-sample-ecg":
+                    df = DataProcessor.generate_sample_ecg_data(fs)
+                    signal_kind = "ECG"
+                    filename_synth = "sample_ecg.csv"
+                else:
+                    df = DataProcessor.generate_sample_ppg_data(fs)
+                    signal_kind = "PPG"
+                    filename_synth = "sample_ppg.csv"
 
-                # Store headers and metadata for later processing
-                data_service = get_enhanced_data_service()
-                data_service.current_headers = available_columns
-                data_service.current_metadata = metadata
-
-                # Create column options for dropdowns
-                column_options = [
-                    {"label": col, "value": col} for col in available_columns
-                ]
-
-                # Auto-detect potential signal columns
-                potential_signal_columns = [
-                    "signal",
-                    "ecg",
-                    "ppg",
-                    "rri",
-                    "rr",
-                    "hr",
-                    "waveform",
-                    "pleth",
-                ]
-                detected_signal_column = None
-                for col in potential_signal_columns:
-                    if col in available_columns:
-                        detected_signal_column = col
-                        break
-
-                # Auto-detect potential time columns
-                potential_time_columns = ["timestamp", "time", "ts", "datetime"]
-                detected_time_column = None
-                for col in potential_time_columns:
-                    if col in available_columns:
-                        detected_time_column = col
-                        break
-
-                # Update metadata with detected columns
-                metadata["detected_signal_column"] = detected_signal_column
-                metadata["detected_time_column"] = detected_time_column
-
-                # Create preview message
-                preview_message = "✅ File loaded successfully!\n\n"
-                preview_message += f"📁 File: {Path(file_path).name}\n"
-                preview_message += f"📊 Format: {metadata['format']}\n"
-                preview_message += (
-                    f"📋 Available columns: {', '.join(available_columns)}\n"
-                )
-                if detected_signal_column:
-                    preview_message += (
-                        f"🎯 Auto-detected signal column: {detected_signal_column}\n"
-                    )
-                if detected_time_column:
-                    preview_message += (
-                        f"⏰ Auto-detected time column: {detected_time_column}\n"
-                    )
-                preview_message += "\n💡 Please select your columns below and click 'Process Data' to continue."
-
-                return (
-                    preview_message,
-                    no_update,  # store-uploaded-data.data
-                    metadata,  # store-data-config.data
-                    html.Div(
-                        [
-                            html.H5("📋 Available Columns", className="mb-3"),
-                            html.P(
-                                f"Found {len(available_columns)} columns in the file:",
-                                className="text-muted mb-3",
-                            ),
-                            html.Ul(
-                                [html.Li(col) for col in available_columns],
-                                className="list-unstyled",
-                            ),
-                            html.Hr(),
-                            html.P(
-                                "Please configure your column mapping below and click 'Process Data' to continue.",
-                                className="text-info",
-                            ),
-                        ]
-                    ),
-                    column_options,  # time-column.options
-                    column_options,  # signal-column.options
-                    column_options,  # red-column.options
-                    column_options,  # ir-column.options
-                    column_options,  # waveform-column.options
-                    no_update,  # upload-progress-section.children
-                    {"display": "none"},  # upload-progress-section.style
-                    False,  # btn-load-path.disabled
-                    False,  # btn-load-sample.disabled
-                    no_update,  # file-path-loading.children
-                    {"display": "none"},  # file-path-loading.style
-                    "upload-area",  # upload-data.className
-                )
-
-            elif trigger_id == "btn-load-sample":
-                # Handle sample data generation
-                df = DataProcessor.generate_sample_ppg_data(sampling_freq or 1000)
-                filename = "sample_data.csv"
-                metadata = {"sampling_rate": sampling_freq or 1000}
-
-                # Get column options for dropdowns
-                column_options = [{"label": col, "value": col} for col in df.columns]
-
-                # Process the data - merge metadata with config
-                sampling_freq = metadata.get("sampling_rate", sampling_freq)
-                time_unit = time_unit or "seconds"  # Default time unit
-
-                # Create data_info from metadata and user config
                 data_info = {
-                    "filename": "sample_data.csv",
-                    "sampling_freq": sampling_freq,
-                    "time_unit": time_unit,
-                    "format": data_format or "auto",
+                    "filename": filename_synth,
+                    "sampling_freq": fs,
+                    "format": "synthetic",
                     "rows": len(df),
                     "columns": len(df.columns),
-                    "duration": len(df) / sampling_freq if sampling_freq else None,
+                    "duration": len(df) / fs,
+                    # User can override the kind via the radio; default to
+                    # whichever button was pressed.
+                    "signal_type": (
+                        data_type.upper()
+                        if data_type and data_type != "auto"
+                        else signal_kind
+                    ),
                 }
-
-                # Add metadata from loader
-                data_info.update(metadata)
-
-                # Add signal type to the data info
-                logger.info(f"Signal type from upload: {data_type}")
-                if data_type and data_type != "auto":
-                    data_info["signal_type"] = data_type.upper()
-                    logger.info(f"Set signal_type to: {data_info['signal_type']}")
-                else:
-                    data_info["signal_type"] = metadata.get("signal_type", "AUTO")
-                    logger.info(f"Set signal_type to: {data_info['signal_type']}")
-
-                # Store data temporarily (will be processed after column mapping)
                 data_service = get_enhanced_data_service()
-                data_service.current_data = df
-                data_service.update_config(data_info)
+                data_id = data_service.store_data(df, data_info)
+                if data_id:
+                    data_info["data_id"] = data_id
 
-                # Generate preview
                 preview = create_data_preview(df, data_info)
-
-                format_display = (
-                    data_format if data_format != "auto" else "Auto-detected"
+                status = (
+                    f"Synthetic {signal_kind} loaded: {len(df)} rows, "
+                    f"{len(df.columns)} columns @ {fs} Hz"
                 )
-                status = f"✅ Data loaded successfully [{format_display}]: {data_info.get('filename', filename)} ({len(df)} rows, {len(df.columns)} columns, {sampling_freq} Hz)"
-
-                # Hide progress bar after completion and re-enable buttons
-                progress_style = {"display": "none"}
-                buttons_disabled = False
-                file_path_loading_style = {"display": "none"}
-                upload_area_class = "upload-area"
+                options = [{"label": col, "value": col} for col in df.columns]
+                default_col = "signal" if "signal" in df.columns else df.columns[0]
 
                 return (
                     status,
-                    df.to_dict("records"),
+                    _df_to_compact_payload(df),
                     data_info,
                     preview,
-                    column_options,
-                    column_options,
-                    column_options,
-                    column_options,
-                    column_options,
-                    progress_bar,
-                    progress_style,
-                    buttons_disabled,
-                    buttons_disabled,
-                    file_path_loading,
-                    file_path_loading_style,
-                    "upload-area",  # upload-data.className
+                    options,                # signal-column.options
+                    default_col,            # signal-column.value
+                    {"display": "block"},   # signal-column-row.style
+                    no_update,              # upload-progress-section.children
+                    {"display": "none"},    # upload-progress-section.style
+                    False,                  # btn-load-sample-ppg.disabled
+                    False,                  # btn-load-sample-ecg.disabled
                 )
 
-        except Exception as e:
-            logging.error(f"Error in upload: {str(e)}")
-            # Hide progress bar on error and re-enable buttons
-            progress_style = {"display": "none"}
-            buttons_disabled = False
-            file_path_loading_style = {"display": "none"}
-            upload_area_class = "upload-area"
-            return (
-                f"❌ Error loading data: {str(e)}",
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                progress_bar,
-                progress_style,
-                buttons_disabled,
-                buttons_disabled,
-                file_path_loading,
-                file_path_loading_style,
-            )
+        except Exception as exc:
+            logger.exception("Error in upload: %s", exc)
+            return _error_tuple(f"Error loading data: {exc}")
 
     @app.callback(
         [
             Output("btn-process-data", "disabled", allow_duplicate=True),
             Output("btn-process-data", "color"),
         ],
-        [Input("time-column", "value"), Input("signal-column", "value")],
+        Input("signal-column", "value"),
         prevent_initial_call="initial_duplicate",
     )
-    def update_process_button_state(time_col, signal_col):
-        """Enable/disable process button based on required column selections"""
-        if time_col and signal_col:
-            return False, "success"
+    def update_process_button_state(signal_col):
+        """Enable Process Data once the user has a signal column picked."""
+        if signal_col:
+            return False, "primary"
         return True, "secondary"
 
     @app.callback(
-        [
-            Output("time-column", "value", allow_duplicate=True),
-            Output("signal-column", "value", allow_duplicate=True),
-            Output("red-column", "value", allow_duplicate=True),
-            Output("ir-column", "value", allow_duplicate=True),
-            Output("waveform-column", "value", allow_duplicate=True),
-            Output("btn-auto-detect", "disabled"),
-            Output("btn-auto-detect", "children"),
-        ],
-        Input("btn-auto-detect", "n_clicks"),
-        [State("store-uploaded-data", "data"), State("store-data-config", "data")],
-        prevent_initial_call="initial_duplicate",
+        Output("store-data-config", "data", allow_duplicate=True),
+        Input("signal-column", "value"),
+        State("store-data-config", "data"),
+        prevent_initial_call=True,
     )
-    def auto_detect_columns(n_clicks, uploaded_data, data_config):
-        """Auto-detect columns based on data content and column names"""
-        if not n_clicks or not uploaded_data:
+    def restage_on_column_change(signal_col, data_config):
+        """Record the user's column pick in the config without re-parsing.
+
+        Heavy work (full file parse) is deferred to the Process Data
+        click - so changing the dropdown stays instant.  The selected
+        column travels with ``store-data-config`` so Process Data
+        knows which column to expand.
+        """
+        if not signal_col or not data_config:
             raise PreventUpdate
+        if data_config.get("signal_column") == signal_col:
+            raise PreventUpdate
+        new_config = dict(data_config)
+        new_config["signal_column"] = signal_col
+        return new_config
 
-        # Disable button and show loading state
-        button_disabled = True
-        button_content = [
-            html.I(className="fas fa-spinner fa-spin me-2", style={"fontSize": "1rem"}),
-            html.Span("Detecting...", className="fw-semibold"),
-        ]
-
-        try:
-            # Process the auto-detection
-
-            df = pd.DataFrame(uploaded_data)
-            data_service = get_enhanced_data_service()
-            column_mapping = data_service._auto_detect_columns(df)
-
-            # Re-enable button and restore original content
-            button_disabled = False
-            button_content = [html.I(className="fas fa-magic me-2"), "Auto-detect"]
-
-            return (
-                column_mapping.get("time", None),
-                column_mapping.get("signal", None),
-                column_mapping.get("red", None),
-                column_mapping.get("ir", None),
-                column_mapping.get("waveform", None),
-                button_disabled,
-                button_content,
-            )
-
-        except Exception as e:
-            logging.error(f"Error in auto-detect: {str(e)}")
-            # Re-enable button on error
-            button_disabled = False
-            button_content = [html.I(className="fas fa-magic me-2"), "Auto-detect"]
-            return (
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                no_update,
-                button_disabled,
-                button_content,
-            )
-
+    # NOTE: Process Data runs SYNCHRONOUSLY in the main Dash process.
+    # An earlier version wired this through Dash's DiskcacheManager
+    # (background=True) for non-blocking UI + cancellation, but the
+    # background worker is a separate subprocess and so doesn't share
+    # the in-memory ``enhanced_data_service`` singleton with the main
+    # UI - the data analysis pages on /filtering, /features etc. would
+    # see an empty data registry.  After the parse-once / vectorise /
+    # compact-payload work this callback typically runs in 50-200 ms
+    # for normal recordings, so synchronous is fine.  If we later want
+    # the responsiveness back, the data service needs a filesystem
+    # backing (see dev_docs/webapp_perf_followup.md).
     @app.callback(
         [
             Output("upload-status", "children", allow_duplicate=True),
@@ -1024,602 +865,218 @@ def register_upload_callbacks(app):
         ],
         Input("btn-process-data", "n_clicks"),
         [
-            State("time-column", "value"),
             State("signal-column", "value"),
-            State("red-column", "value"),
-            State("ir-column", "value"),
-            State("waveform-column", "value"),
             State("store-uploaded-data", "data"),
             State("store-data-config", "data"),
             State("sampling-freq", "value"),
-            State("time-unit", "value"),
         ],
         prevent_initial_call=True,
     )
     def process_data_with_columns(
         n_clicks,
-        time_col,
         signal_col,
-        red_col,
-        ir_col,
-        waveform_col,
         uploaded_data,
         data_config,
         sampling_freq,
-        time_unit,
     ):
-        """Process data with selected column mapping"""
+        """Persist the already-parsed data and render the final preview.
+
+        Parses the staged file using the chosen signal column, persists
+        the result via the data service, and renders the preview.  This
+        is where the heavy work happens - the upload + column-change
+        callbacks above only read headers, so the UI stays responsive
+        until the user explicitly asks to process.
+        """
         if not n_clicks:
             raise PreventUpdate
+        if not signal_col:
+            return (
+                "Pick a signal column before pressing Process Data.",
+                no_update,
+                no_update,
+                no_update,
+                no_update,
+                {"display": "none"},
+                False,
+                "Process data",
+            )
 
-        # Initialize progress tracking
         tracker = get_progress_tracker()
         task_id = tracker.start_task(
             operation_name="Data Processing",
-            total_steps=3,
-            metadata={
-                "bytes_processed": 0,
-                "total_bytes": 0,
-                "chunks_processed": 0,
-                "total_chunks": 3,  # 3 stages: validate, process, store
-            },
+            total_steps=1,
+            metadata={"chunks_processed": 0, "total_chunks": 1},
         )
 
-        # Show processing progress and disable process button
-        progress_style = {"display": "block", "animation": "slideInDown 0.5s ease-out"}
-
-        # Create initial processing progress section (Step 1: Validating)
-        html.Div(
-            [
-                html.Div(
-                    [
-                        html.I(
-                            className="fas fa-cogs fa-spin me-3 text-primary",
-                            style={"fontSize": "2rem"},
-                        ),
-                        html.H3("Processing Your Data", className="text-primary mb-0"),
-                    ],
-                    className="d-flex align-items-center justify-content-center mb-4",
-                ),
-                dbc.Progress(
-                    value=33,
-                    animated=True,
-                    striped=True,
-                    color="primary",
-                    className="mb-4",
-                    style={"height": "25px", "fontSize": "1.1rem"},
-                ),
-                html.Div(
-                    [
-                        html.Div(
-                            [
-                                html.I(
-                                    className="fas fa-spinner fa-spin text-primary me-3",
-                                    style={"fontSize": "1.2rem"},
-                                ),
-                                html.Span(
-                                    "Validating column mapping...",
-                                    className="fw-semibold fs-5 text-primary",
-                                ),
-                            ],
-                            className="mb-3 progress-step active",
-                        ),
-                        html.Div(
-                            [
-                                html.I(
-                                    className="fas fa-clock text-muted me-3",
-                                    style={"fontSize": "1.2rem"},
-                                ),
-                                html.Span(
-                                    "Processing signal data",
-                                    className="fw-semibold fs-5 text-muted",
-                                ),
-                            ],
-                            className="mb-3 progress-step pending",
-                        ),
-                        html.Div(
-                            [
-                                html.I(
-                                    className="fas fa-clock text-muted me-3",
-                                    style={"fontSize": "1.2rem"},
-                                ),
-                                html.Span(
-                                    "Storing processed data",
-                                    className="fw-semibold fs-5 text-muted",
-                                ),
-                            ],
-                            className="mb-3 progress-step pending",
-                        ),
-                    ],
-                    className="mb-4",
-                ),
-                html.Div(
-                    [
-                        html.Strong(
-                            "Step 1 of 3: Validating column mapping",
-                            className="text-primary fs-5",
-                        ),
-                        html.Br(),
-                        html.Small(
-                            "Checking column selections and data format",
-                            className="text-muted",
-                        ),
-                    ],
-                    className="text-center mb-4",
-                ),
-                html.Div(
-                    [
-                        dbc.Button(
-                            "Hide Progress",
-                            id="hide-progress-btn",
-                            color="outline-secondary",
-                            size="md",
-                            className="mt-2",
-                        )
-                    ],
-                    className="text-center",
-                ),
-            ],
-            className="p-4 bg-light border border-primary shadow",
-            style={
-                "zIndex": 1000,
-                "position": "relative",
-                "minHeight": "250px",
-                "fontSize": "1.1rem",
-            },
-        )
-
-        process_button_disabled = True
-        process_button_content = [
-            html.I(className="fas fa-spinner fa-spin me-2", style={"fontSize": "1rem"}),
-            html.Span("Processing...", className="fw-semibold"),
-        ]
+        progress_style = {"display": "block"}
 
         try:
-            # Process the data (removed artificial delay)
+            metadata = data_config or {}
 
-            # Parse the actual signal data based on user's column selection
-            # Now using enhanced data service with compatibility layer
-            data_service = get_enhanced_data_service()
+            # Synthetic-data short-circuit.  When the user clicks one
+            # of the synthetic-data buttons we already parsed the
+            # DataFrame, stored it on the data service, and wrote it
+            # to ``store-uploaded-data``.  There is no file on disk,
+            # so the file-path branch below would fail with
+            # "No staged file found".  Just re-render the preview
+            # against the chosen signal column and confirm.
+            if metadata.get("format") == "synthetic":
+                df = rehydrate_payload(uploaded_data) if uploaded_data else None
+                if df is None or df.empty:
+                    raise ValueError(
+                        "Synthetic data missing from store; please regenerate."
+                    )
+                data_config = {**metadata, "signal_column": signal_col}
+                # Make sure sampling_freq is numeric and stays put.
+                fs = (
+                    data_config.get("sampling_freq")
+                    or data_config.get("sampling_rate")
+                    or sampling_freq
+                    or 1000
+                )
+                try:
+                    fs = float(fs)
+                except (TypeError, ValueError):
+                    fs = 1000.0
+                data_config["sampling_freq"] = fs
+                data_config["sampling_rate"] = fs
 
-            # Get the stored metadata and headers
-            metadata = data_service.current_metadata
-            if not metadata:
-                raise ValueError("No file metadata found. Please upload a file first.")
+                # Refresh the data-service entry with the up-to-date
+                # config (in case the user changed signal_type or
+                # sampling rate after the synthetic load).
+                data_service = get_enhanced_data_service()
+                data_id = metadata.get("data_id") or data_service.store_data(
+                    df, data_config
+                )
+                data_config["data_id"] = data_id
+
+                tracker.complete_task(
+                    task_id=task_id,
+                    metadata={"data_id": data_id, "chunks_processed": 1},
+                )
+
+                preview = create_data_preview(df, data_config)
+                kind = metadata.get("signal_type", "synthetic")
+                status = (
+                    f"Processed synthetic {kind}: "
+                    f"{df.shape[0]:,} rows × {df.shape[1]} columns @ {fs:g} Hz."
+                )
+                done_indicator = _slim_progress_alert("Done", color="success")
+                return (
+                    status,
+                    uploaded_data,           # already correct, just echo it
+                    data_config,
+                    preview,
+                    done_indicator,
+                    progress_style,
+                    False,
+                    "Process data",
+                )
 
             file_path = metadata.get("file_path")
-            if not file_path:
-                raise ValueError("No file path found in metadata.")
-
-            logger.info(f"Processing signal data from: {file_path}")
-            logger.info(f"User selected columns: time={time_col}, signal={signal_col}")
-
-            # Check file size to determine loading strategy
-            file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-            file_size_bytes = int(file_size_mb * 1024 * 1024)
-            logger.info(f"File size: {file_size_mb:.2f} MB")
-
-            # Update progress: Step 1 - Validation complete
-            tracker.update_progress(
-                task_id=task_id,
-                progress_percentage=33.3,
-                current_step="Loading signal data",
-                step_number=1,
-                metadata={
-                    "bytes_processed": 0,
-                    "total_bytes": file_size_bytes,
-                    "chunks_processed": 1,
-                    "total_chunks": 3,
-                },
-            )
-
-            # Parse the actual signal data using the user's column selection
-            # Determine format based on original format and signal column content
-            original_format = metadata.get("original_format", "csv")
-
+            if not file_path or not os.path.exists(file_path):
+                raise ValueError(
+                    "No staged file found. Please upload a file first."
+                )
+            original_format = metadata.get("original_format", "auto")
+            data_type = metadata.get("data_type", "auto")
             df, processed_metadata = load_data_with_format(
                 file_path,
-                original_format,  # Use original format (oucru_csv, csv, etc.)
-                metadata.get("sampling_freq"),
-                metadata.get("data_type"),
-                signal_column=signal_col,  # Use user's signal column selection
-                time_column=time_col,  # Use user's time column selection
-                oucru_interpolate_time=[
-                    True
-                ],  # Enable timestamp interpolation for OUCRU CSV
+                original_format,
+                metadata.get("sampling_freq") or sampling_freq,
+                data_type,
+                signal_column=signal_col,
+                time_column=None,
+                oucru_interpolate_time=[True],
             )
 
-            # Log file size and memory usage warning for large files
-            if file_size_mb > 50:
-                logger.warning(
-                    f"Large file ({file_size_mb:.1f}MB) loaded into memory. "
-                    "Consider using EnhancedDataService with memory mapping for better performance."
-                )
+            data_config = {**metadata, **processed_metadata}
+            data_config["signal_column"] = signal_col
 
-            logger.info(f"Parsed signal data shape: {df.shape}")
-            logger.info(f"Parsed signal data columns: {list(df.columns)}")
-
-            # Update progress: Step 2 - Data loaded
-            tracker.update_progress(
-                task_id=task_id,
-                progress_percentage=66.6,
-                current_step="Processing signal data",
-                step_number=2,
-                metadata={
-                    "bytes_processed": file_size_bytes,
-                    "total_bytes": file_size_bytes,
-                    "chunks_processed": 2,
-                    "total_chunks": 3,
-                },
-            )
-
-            # Update data config with column mapping
-            # Use the user's actual column selections from the frontend UI
-            column_mapping = {
-                "time": time_col,
-                "signal": signal_col,
-                "red": red_col,
-                "ir": ir_col,
-                "waveform": waveform_col,
-            }
-
-            # Log the user's selections and available columns for debugging
-            logger.info(f"User selected columns: {column_mapping}")
-            logger.info(f"Available columns in processed data: {list(df.columns)}")
-
-            # For OUCRU CSV, we need to ensure the user's selected columns exist in the processed data
-            if original_format == "oucru_csv":
-                logger.info("OUCRU CSV format detected - validating column selections")
-                logger.info(f"Processed OUCRU data columns: {list(df.columns)}")
-                logger.info(f"User selected signal column: {signal_col}")
-                logger.info(f"User selected time column: {time_col}")
-
-                # For OUCRU CSV, the processed data should have standardized column names
-                # Map user selections to the actual processed column names
-                if "signal" in df.columns:
-                    logger.info("Using 'signal' column from processed OUCRU data")
-                    column_mapping["signal"] = "signal"
-                else:
-                    logger.warning("No 'signal' column found in processed OUCRU data")
-
-                if "timestamp" in df.columns:
-                    logger.info("Using 'timestamp' column from processed OUCRU data")
-                    column_mapping["time"] = "timestamp"
-                elif "time" in df.columns:
-                    logger.info("Using 'time' column from processed OUCRU data")
-                    column_mapping["time"] = "time"
-                else:
-                    logger.warning("No time column found in processed OUCRU data")
-
-            # Debug: Log the data_config before and after
-            logger.info(f"Data config before column mapping: {data_config}")
-            data_config["column_mapping"] = column_mapping
-            logger.info(f"Data config after column mapping: {data_config}")
-
-            # Log essential signal data info (optimized for performance)
-            logger.info("=== SIGNAL DATA SUMMARY ===")
-            logger.info(f"DataFrame shape: {df.shape}")
-            logger.info(f"DataFrame columns: {list(df.columns)}")
-
-            # Log signal column summary (not full data)
-            signal_col = column_mapping.get("signal")
-            if signal_col and signal_col in df.columns:
-                signal_data = df[signal_col]
-
-                # Check if signal data is numeric before trying to format min/max
-                if pd.api.types.is_numeric_dtype(signal_data):
-                    logger.info(
-                        f"Signal column '{signal_col}': dtype={signal_data.dtype}, range={signal_data.min():.3f} to {signal_data.max():.3f}, count={signal_data.count()}"
-                    )
-                else:
-                    logger.info(
-                        f"Signal column '{signal_col}': dtype={signal_data.dtype}, count={signal_data.count()}, unique_values={signal_data.nunique()}"
-                    )
-
-                # Check for non-numeric values (only log if there are issues)
+            # Normalise the sampling-rate key so downstream consumers always
+            # see a numeric ``sampling_freq``.  OUCRU loaders write
+            # ``sampling_rate`` but the analysis callbacks (filtering,
+            # features, ...) read ``sampling_freq``; without this they
+            # crashed with TypeError on ``len(df) / sampling_freq``.
+            #
+            # ``data_config`` may already carry ``sampling_freq=None``
+            # from the staged-header pass (when the user left the field
+            # blank); we must *overwrite* that None, not fall through to
+            # a missing-key default.  Try, in order: the rate inferred
+            # by the OUCRU loader, the user's input, the existing
+            # config value, and finally a 1000 Hz fallback so the
+            # downstream maths never see None.
+            candidates = [
+                processed_metadata.get("sampling_rate"),
+                sampling_freq,
+                data_config.get("sampling_freq"),
+                data_config.get("sampling_rate"),
+            ]
+            inferred_fs = None
+            for c in candidates:
+                if c is None:
+                    continue
                 try:
-                    numeric_data = pd.to_numeric(signal_data, errors="coerce")
-                    non_numeric_count = (
-                        numeric_data.isnull().sum() - signal_data.isnull().sum()
-                    )
-                    if non_numeric_count > 0:
-                        logger.warning(
-                            f"Signal column '{signal_col}' contains {non_numeric_count} non-numeric values!"
-                        )
-                except Exception as e:
-                    logger.error(f"Error checking numeric values: {str(e)}")
-            else:
-                logger.error(f"Signal column '{signal_col}' not found in DataFrame!")
-
-            # Log time column summary
-            time_col = column_mapping.get("time")
-            if time_col and time_col in df.columns:
-                time_data = df[time_col]
-                logger.info(
-                    f"Time column '{time_col}': dtype={time_data.dtype}, count={time_data.count()}"
+                    val = float(c)
+                except (TypeError, ValueError):
+                    continue
+                if val > 0:
+                    inferred_fs = val
+                    break
+            if inferred_fs is None:
+                # Last-resort fallback so the analysis pages don't crash
+                # on ``len(df) / None``.  Logged so it's not silent.
+                logger.warning(
+                    "Could not infer sampling frequency from metadata or "
+                    "user input; falling back to 1000 Hz.  Tried: %s",
+                    candidates,
                 )
-            else:
-                logger.error(f"Time column '{time_col}' not found in DataFrame!")
+                inferred_fs = 1000.0
+            data_config["sampling_freq"] = inferred_fs
+            data_config["sampling_rate"] = inferred_fs
 
-            logger.info("=== END SIGNAL DATA SUMMARY ===")
-
-            # Store the final processed data
             data_service = get_enhanced_data_service()
-            logger.info(
-                f"Storing processed data: shape={df.shape}, columns={list(df.columns)}"
-            )
             data_id = data_service.store_data(df, data_config)
-            logger.info(f"Data stored successfully with ID: {data_id}")
+            data_config["data_id"] = data_id
 
-            # Update progress: Step 3 - Complete!
             tracker.complete_task(
                 task_id=task_id,
-                metadata={
-                    "bytes_processed": file_size_bytes,
-                    "total_bytes": file_size_bytes,
-                    "chunks_processed": 3,
-                    "total_chunks": 3,
-                    "data_id": data_id,
-                },
+                metadata={"data_id": data_id, "chunks_processed": 1},
             )
 
-            # Clean up temp file if it exists
-            temp_file_path = metadata.get("file_path")
-            if temp_file_path and os.path.exists(temp_file_path):
-                try:
-                    os.unlink(temp_file_path)
-                    logger.info(f"Cleaned up temp file: {temp_file_path}")
-                except Exception as e:
-                    logger.warning(
-                        f"Could not clean up temp file {temp_file_path}: {str(e)}"
-                    )
-
-            # Update status
-            status = f"✅ Data processed and stored successfully! Data ID: {data_id}"
-
-            # Generate final preview
             preview = create_data_preview(df, data_config)
-
-            # Update progress section to show completion
-            completed_progress = html.Div(
-                [
-                    html.Div(
-                        [
-                            html.I(
-                                className="fas fa-check-circle text-success me-3",
-                                style={"fontSize": "2rem"},
-                            ),
-                            html.H3(
-                                "Processing Complete!", className="text-success mb-0"
-                            ),
-                        ],
-                        className="d-flex align-items-center justify-content-center mb-4",
-                    ),
-                    dbc.Progress(
-                        value=100,
-                        animated=False,
-                        striped=False,
-                        color="success",
-                        className="mb-4",
-                        style={"height": "25px", "fontSize": "1.1rem"},
-                    ),
-                    html.Div(
-                        [
-                            html.Div(
-                                [
-                                    html.I(
-                                        className="fas fa-check-circle text-success me-3",
-                                        style={"fontSize": "1.2rem"},
-                                    ),
-                                    html.Span(
-                                        "Column mapping validated",
-                                        className="fw-semibold fs-5 text-success",
-                                    ),
-                                ],
-                                className="mb-3 progress-step completed",
-                            ),
-                            html.Div(
-                                [
-                                    html.I(
-                                        className="fas fa-check-circle text-success me-3",
-                                        style={"fontSize": "1.2rem"},
-                                    ),
-                                    html.Span(
-                                        "Signal data processed",
-                                        className="fw-semibold fs-5 text-success",
-                                    ),
-                                ],
-                                className="mb-3 progress-step completed",
-                            ),
-                            html.Div(
-                                [
-                                    html.I(
-                                        className="fas fa-check-circle text-success me-3",
-                                        style={"fontSize": "1.2rem"},
-                                    ),
-                                    html.Span(
-                                        "Data stored successfully",
-                                        className="fw-semibold fs-5 text-success",
-                                    ),
-                                ],
-                                className="mb-3 progress-step completed",
-                            ),
-                        ],
-                        className="mb-4",
-                    ),
-                    html.Div(
-                        [
-                            html.Strong(
-                                "All steps completed successfully!",
-                                className="text-success fs-5",
-                            ),
-                            html.Br(),
-                            html.Small(f"Data ID: {data_id}", className="text-muted"),
-                        ],
-                        className="text-center mb-4",
-                    ),
-                    html.Div(
-                        [
-                            dbc.Button(
-                                "Hide Progress",
-                                id="hide-progress-btn",
-                                color="outline-success",
-                                size="md",
-                                className="mt-2",
-                            )
-                        ],
-                        className="text-center",
-                    ),
-                ],
-                className="p-4 bg-light border border-success shadow",
-                style={
-                    "zIndex": 1000,
-                    "position": "relative",
-                    "minHeight": "250px",
-                    "fontSize": "1.1rem",
-                },
+            status = (
+                f"Processed {df.shape[0]:,} rows x {df.shape[1]} columns "
+                f"@ {processed_metadata.get('sampling_rate', sampling_freq)} Hz."
             )
-
-            progress_style = {
-                "display": "block",
-                "animation": "slideInDown 0.5s ease-out",
-            }
-            process_button_disabled = False
-            process_button_content = [
-                html.I(className="fas fa-check me-2"),
-                "Process Data",
-            ]
-
+            done_indicator = _slim_progress_alert("Done", color="success")
             return (
                 status,
-                df.to_dict("records"),
+                _df_to_compact_payload(df),
                 data_config,
                 preview,
-                completed_progress,
+                done_indicator,
                 progress_style,
-                process_button_disabled,
-                process_button_content,
+                False,
+                "Process data",
             )
-
-        except Exception as e:
-            logging.error(f"Error processing data: {str(e)}")
-
-            # Create error progress section
-            error_progress = html.Div(
+        except Exception as exc:
+            logger.exception("Process Data failed: %s", exc)
+            err_indicator = html.Div(
                 [
-                    html.Div(
-                        [
-                            html.I(
-                                className="fas fa-exclamation-triangle text-danger me-3",
-                                style={"fontSize": "2rem"},
-                            ),
-                            html.H3("Processing Failed", className="text-danger mb-0"),
-                        ],
-                        className="d-flex align-items-center justify-content-center mb-4",
-                    ),
-                    dbc.Progress(
-                        value=33,
-                        animated=False,
-                        striped=False,
-                        color="danger",
-                        className="mb-4",
-                        style={"height": "25px", "fontSize": "1.1rem"},
-                    ),
-                    html.Div(
-                        [
-                            html.Div(
-                                [
-                                    html.I(
-                                        className="fas fa-check-circle text-success me-3",
-                                        style={"fontSize": "1.2rem"},
-                                    ),
-                                    html.Span(
-                                        "Column mapping validated",
-                                        className="fw-semibold fs-5 text-success",
-                                    ),
-                                ],
-                                className="mb-3 progress-step completed",
-                            ),
-                            html.Div(
-                                [
-                                    html.I(
-                                        className="fas fa-times-circle text-danger me-3",
-                                        style={"fontSize": "1.2rem"},
-                                    ),
-                                    html.Span(
-                                        "Processing failed",
-                                        className="fw-semibold fs-5 text-danger",
-                                    ),
-                                ],
-                                className="mb-3 progress-step error",
-                            ),
-                            html.Div(
-                                [
-                                    html.I(
-                                        className="fas fa-clock text-muted me-3",
-                                        style={"fontSize": "1.2rem"},
-                                    ),
-                                    html.Span(
-                                        "Data storage skipped",
-                                        className="fw-semibold fs-5 text-muted",
-                                    ),
-                                ],
-                                className="mb-3 progress-step pending",
-                            ),
-                        ],
-                        className="mb-4",
-                    ),
-                    html.Div(
-                        [
-                            html.Strong(
-                                "Error occurred during processing",
-                                className="text-danger fs-5",
-                            ),
-                            html.Br(),
-                            html.Small(f"Error: {str(e)}", className="text-muted"),
-                        ],
-                        className="text-center mb-4",
-                    ),
-                    html.Div(
-                        [
-                            dbc.Button(
-                                "Hide Progress",
-                                id="hide-progress-btn",
-                                color="outline-danger",
-                                size="md",
-                                className="mt-2",
-                            )
-                        ],
-                        className="text-center",
-                    ),
+                    html.Small(f"Error: {exc}", className="text-danger"),
                 ],
-                className="p-4 bg-light border border-danger shadow",
-                style={
-                    "zIndex": 1000,
-                    "position": "relative",
-                    "minHeight": "250px",
-                    "fontSize": "1.1rem",
-                },
+                className="alert alert-danger py-2 mb-0 small",
             )
-
-            progress_style = {
-                "display": "block",
-                "animation": "slideInDown 0.5s ease-out",
-            }
-            process_button_disabled = False
-            process_button_content = [
-                html.I(className="fas fa-check me-2"),
-                "Process Data",
-            ]
             return (
-                f"❌ Error processing data: {str(e)}",
+                f"Error: {exc}",
                 no_update,
                 no_update,
                 no_update,
-                error_progress,
+                err_indicator,
                 progress_style,
-                process_button_disabled,
-                process_button_content,
+                False,
+                "Process data",
             )
 
     # Add a callback to hide the progress section when a hide button is clicked
@@ -1650,378 +1107,150 @@ def register_upload_callbacks(app):
         return no_update
 
 
-def create_file_path_loading_indicator():
-    """Create a file path loading indicator."""
-    return html.Div(
-        [
-            dbc.Alert(
-                [
-                    html.Div(
-                        [
-                            html.I(
-                                className="fas fa-spinner fa-spin me-2 text-primary",
-                                style={"fontSize": "1.2rem"},
-                            ),
-                            html.Span(
-                                "Loading file from path...",
-                                className="fw-semibold text-primary",
-                            ),
-                        ],
-                        className="d-flex align-items-center justify-content-center mb-2",
-                    ),
-                    dbc.Progress(
-                        value=100,
-                        animated=True,
-                        striped=True,
-                        color="primary",
-                        style={"height": "15px"},
-                    ),
-                ],
-                color="primary",
-                className="border-0 mb-0",
-                style={"backgroundColor": "rgba(13, 110, 253, 0.1)"},
-            )
-        ]
-    )
-
-
-def create_upload_progress_bar():
-    """Create an upload progress bar with spinner."""
-    return html.Div(
-        [
-            dbc.Alert(
-                [
-                    html.Div(
-                        [
-                            html.I(
-                                className="fas fa-upload fa-spin me-3 text-primary",
-                                style={"fontSize": "1.5rem"},
-                            ),
-                            html.Span(
-                                "Uploading data...",
-                                className="fw-bold text-primary",
-                                style={"fontSize": "1.1rem"},
-                            ),
-                        ],
-                        className="mb-3 text-center",
-                    ),
-                    dbc.Progress(
-                        value=100,
-                        animated=True,
-                        striped=True,
-                        color="primary",
-                        className="mb-3",
-                        style={"height": "20px"},
-                    ),
-                    html.Div(
-                        [
-                            html.Div(
-                                [
-                                    html.I(
-                                        className="fas fa-check-circle text-success me-2"
-                                    ),
-                                    html.Span(
-                                        "File selected",
-                                        className="fw-semibold text-success",
-                                    ),
-                                ],
-                                className="mb-2 progress-step completed",
-                            ),
-                            html.Div(
-                                [
-                                    html.I(
-                                        className="fas fa-spinner fa-spin text-primary me-2"
-                                    ),
-                                    html.Span(
-                                        "Reading file contents",
-                                        className="fw-semibold text-primary",
-                                    ),
-                                ],
-                                className="mb-2 progress-step active",
-                            ),
-                            html.Div(
-                                [
-                                    html.I(className="fas fa-clock text-muted me-2"),
-                                    html.Span(
-                                        "Processing data",
-                                        className="fw-semibold text-muted",
-                                    ),
-                                ],
-                                className="mb-2 progress-step pending",
-                            ),
-                        ]
-                    ),
-                ],
-                color="primary",
-                className="border-0",
-                style={"backgroundColor": "rgba(13, 110, 253, 0.1)"},
-            )
-        ]
-    )
-
-
-def create_processing_progress_section():
-    """Create a processing progress section with multiple steps."""
-    return html.Div(
-        [
-            dbc.Alert(
-                [
-                    html.Div(
-                        [
-                            html.I(
-                                className="fas fa-cogs fa-spin me-3 text-info",
-                                style={"fontSize": "1.5rem"},
-                            ),
-                            html.Span(
-                                "Processing Data",
-                                className="fw-bold text-info",
-                                style={"fontSize": "1.1rem"},
-                            ),
-                        ],
-                        className="mb-3 text-center",
-                    ),
-                    html.Div(
-                        [
-                            html.Div(
-                                [
-                                    html.I(
-                                        className="fas fa-check-circle text-success me-2"
-                                    ),
-                                    html.Span(
-                                        "Validating column mapping",
-                                        className="fw-semibold",
-                                    ),
-                                ],
-                                className="mb-2 progress-step completed",
-                            ),
-                            html.Div(
-                                [
-                                    html.I(
-                                        className="fas fa-spinner fa-spin text-primary me-2"
-                                    ),
-                                    html.Span(
-                                        "Processing signal data",
-                                        className="fw-semibold text-primary",
-                                    ),
-                                ],
-                                className="mb-2 progress-step active",
-                            ),
-                            html.Div(
-                                [
-                                    html.I(className="fas fa-clock text-muted me-2"),
-                                    html.Span(
-                                        "Storing processed data",
-                                        className="fw-semibold text-muted",
-                                    ),
-                                ],
-                                className="mb-2 progress-step pending",
-                            ),
-                        ]
-                    ),
-                    dbc.Progress(
-                        value=66,
-                        animated=True,
-                        striped=True,
-                        color="info",
-                        className="mt-3 mb-3",
-                        style={"height": "20px"},
-                    ),
-                    html.Div(
-                        [
-                            html.Strong(
-                                "Step 2 of 3: Processing signal data",
-                                className="text-info",
-                            ),
-                            html.Br(),
-                            html.Small(
-                                "This may take a few moments depending on data size",
-                                className="text-muted",
-                            ),
-                        ],
-                        className="text-center",
-                    ),
-                ],
-                color="info",
-                className="border-0",
-                style={"backgroundColor": "rgba(23, 162, 184, 0.1)"},
-            )
-        ]
-    )
-
-
-def create_error_status(message: str) -> html.Div:
-    """Create an error status message."""
-    return html.Div(
-        [
-            html.I(className="fas fa-exclamation-triangle text-danger me-2"),
-            html.Span(message, className="text-danger"),
-        ],
-        className="alert alert-danger",
-    )
-
-
-def create_success_status(message: str) -> html.Div:
-    """Create a success status message."""
-    return html.Div(
-        [
-            html.I(className="fas fa-check-circle text-success me-2"),
-            html.Span(message, className="text-success"),
-        ],
-        className="alert alert-success",
-    )
-
-
 def create_data_preview(df: pd.DataFrame, data_info: dict) -> html.Div:
-    """Create a data preview section with pagination for large datasets."""
-    # Determine if we need pagination based on data size
+    """Render a modern Data Preview block: stat chips + styled DataTable.
+
+    Stat chips replace the four bulleted ``html.P`` lines (rows, fs,
+    duration, memory) so the most-used numbers are scannable at a
+    glance.  The table picks up the page-scoped styles defined in
+    ``upload_page.css`` via the ``data-preview-table-wrap`` class on
+    the outer wrapper.
+    """
     total_rows = df.shape[0]
     total_cols = df.shape[1]
 
-    # For large datasets, use pagination
     if total_rows > 1000:
-        # Use first 100 rows for preview with pagination
         preview_data = df.head(100).to_dict("records")
         page_size = 25
         page_action = "native"
         virtualization = True
         show_pagination_info = True
     else:
-        # For smaller datasets, show all data
         preview_data = df.to_dict("records")
         page_size = 10
         page_action = "native"
         virtualization = False
         show_pagination_info = False
 
+    fs_val = data_info.get("sampling_freq")
+    fs_text = f"{fs_val} Hz" if fs_val not in (None, "N/A") else "—"
+
+    dur_val = data_info.get("duration")
+    try:
+        dur_text = f"{float(dur_val):.1f} s" if dur_val not in (None, "N/A") else "—"
+    except (TypeError, ValueError):
+        dur_text = str(dur_val)
+
+    mem_mb = df.memory_usage(deep=True).sum() / (1024 ** 2)
+
+    def _chip(icon: str, label: str, value: str) -> html.Span:
+        return html.Span(
+            [
+                html.I(className=f"{icon} me-2 text-primary"),
+                html.Span(label, className="me-1 text-muted small"),
+                html.Span(value, className="fw-semibold"),
+            ],
+            className="preview-chip",
+        )
+
+    chips_row = html.Div(
+        [
+            _chip("fas fa-table", "Shape", f"{total_rows:,} × {total_cols}"),
+            _chip("fas fa-clock", "Sampling", fs_text),
+            _chip("fas fa-stopwatch", "Duration", dur_text),
+            _chip("fas fa-memory", "Memory", f"{mem_mb:.2f} MB"),
+        ],
+        className="preview-chip-row mb-3",
+    )
+
+    pagination_hint = (
+        f"Showing first 100 of {total_rows:,} rows  ·  use pagination below for more"
+        if show_pagination_info
+        else f"Showing all {total_rows:,} rows"
+    )
+
     return html.Div(
         [
-            html.H4("Data Preview", className="mb-3"),
-            html.Div(
-                [
-                    html.P(f"Shape: {total_rows:,} rows × {total_cols} columns"),
-                    html.P(
-                        f"Sampling Frequency: {data_info.get('sampling_freq', 'N/A')} Hz"
-                    ),
-                    html.P(f"Duration: {data_info.get('duration', 'N/A')} seconds"),
-                    html.P(
-                        f"Memory Usage: {df.memory_usage(deep=True).sum() / 1024**2:.2f} MB",
-                        className="text-muted small",
-                    ),
-                ],
-                className="mb-3",
+            # Keep the literal "Data Preview" heading visible so screen
+            # readers and tests both have an anchor; the visual weight
+            # comes from the chip row below it.
+            html.H6(
+                "Data Preview",
+                className="fw-semibold text-uppercase text-muted small mb-2",
+                style={"letterSpacing": "0.04em"},
             ),
+            chips_row,
+            html.Small(pagination_hint, className="text-muted d-block mb-2"),
             html.Div(
-                [
-                    html.H6("Data Table:"),
-                    html.P(
-                        (
-                            f"Showing {min(100, total_rows)} of {total_rows:,} rows"
-                            if show_pagination_info
-                            else ""
+                dash_table.DataTable(
+                    id="data-preview-table",
+                    data=preview_data,
+                    columns=[{"name": c, "id": c} for c in df.columns],
+                    style_table={"overflowX": "auto", "borderRadius": "10px"},
+                    style_cell={
+                        "textAlign": "left",
+                        "fontSize": "0.825rem",
+                        "fontFamily": (
+                            "ui-monospace, 'SF Mono', Menlo, Consolas, monospace"
                         ),
-                        className="text-muted small mb-2",
-                    ),
-                    dash_table.DataTable(
-                        id="data-preview-table",
-                        data=preview_data,
-                        columns=[{"name": i, "id": i} for i in df.columns],
-                        style_table={"overflowX": "auto"},
-                        style_cell={
-                            "textAlign": "left",
-                            "fontSize": "12px",
-                            "fontFamily": "monospace",
+                        "padding": "0.55rem 0.75rem",
+                        "border": "0",
+                        "borderBottom": "1px solid #f1f3f5",
+                        "color": "#212529",
+                    },
+                    style_header={
+                        "backgroundColor": "#f8f9fa",
+                        "color": "#495057",
+                        "fontWeight": "600",
+                        "textTransform": "uppercase",
+                        "letterSpacing": "0.04em",
+                        "fontSize": "0.72rem",
+                        "border": "0",
+                        "borderBottom": "2px solid #dee2e6",
+                    },
+                    style_data={
+                        "whiteSpace": "normal",
+                        "height": "auto",
+                        "backgroundColor": "#ffffff",
+                    },
+                    style_data_conditional=[
+                        {
+                            "if": {"row_index": "odd"},
+                            "backgroundColor": "#fbfbfd",
                         },
-                        style_header={
-                            "backgroundColor": "rgb(230, 230, 230)",
-                            "fontWeight": "bold",
+                        {
+                            "if": {"state": "active"},
+                            "backgroundColor": "#e7f1ff",
+                            "border": "0",
                         },
-                        style_data={
-                            "whiteSpace": "normal",
-                            "height": "auto",
+                        {
+                            "if": {"state": "selected"},
+                            "backgroundColor": "#cfe2ff",
+                            "border": "0",
                         },
-                        # Pagination settings
-                        page_size=page_size,
-                        page_action=page_action,
-                        virtualization=virtualization,
-                        # Sorting and filtering
-                        sort_action="native",
-                        filter_action="native",
-                        # Performance optimizations
-                        fixed_rows={"headers": True},
-                        # Export options
-                        export_format="csv",
-                        export_headers="display",
-                    ),
-                ]
+                    ],
+                    style_filter={
+                        "backgroundColor": "#ffffff",
+                        "color": "#495057",
+                        "fontSize": "0.78rem",
+                        "border": "0",
+                        "borderBottom": "1px solid #dee2e6",
+                    },
+                    css=[
+                        # Round the wrapper so style_table's radius is visible.
+                        {"selector": ".dash-spreadsheet", "rule": "border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);"},
+                    ],
+                    page_size=page_size,
+                    page_action=page_action,
+                    virtualization=virtualization,
+                    sort_action="native",
+                    filter_action="native",
+                    fixed_rows={"headers": True},
+                    export_format="csv",
+                    export_headers="display",
+                ),
+                className="data-preview-table-wrap",
             ),
         ]
     )
 
-    # NOTE: The following callbacks are orphaned (outside register_upload_callbacks)
-    # They should be moved inside the registration function if needed
-    # Commented out to fix F821 linting errors
-    #
-    # # Progress tracking callback - updates upload progress in real-time
-    # @app.callback(
-    #     [
-    #         Output("upload-progress-store", "data"),
-    #         Output("upload-progress-interval", "disabled"),
-    #     ],
-    #     [Input("upload-progress-interval", "n_intervals")],
-    #     [State("upload-progress-store", "data")],
-    # )
-    # def update_upload_progress(n_intervals, current_progress):
-    #     """
-    #     Update upload progress from progress tracker.
-    #
-    #     This callback is triggered by the interval component and polls the
-    #     progress tracker for updates.
-    #     """
-    #     if n_intervals is None or n_intervals == 0:
-    #         raise PreventUpdate
-    #
-    #     try:
-    #         # Get progress tracker
-    #         tracker = get_progress_tracker()
-    #
-    #         # Get active tasks
-    #         active_tasks = tracker.get_all_active_tasks()
-    #
-    #         # Find upload task (most recent task)
-    #         if active_tasks:
-    #             latest_task = active_tasks[-1]
-    #
-    #             # Convert to LoadingProgress format
-    #             progress_data = tracker.to_loading_progress(
-    #                 latest_task.task_id, loading_strategy="standard"
-    #             )
-    #
-    #             if progress_data:
-    #                 # Check if task is completed
-    #                 if progress_data["status"] in ["completed", "failed", "cancelled"]:
-    #                     # Disable interval
-    #                     return progress_data, True
-    #                 else:
-    #                     # Keep interval running
-    #                     return progress_data, False
-    #
-    #         # No active tasks - disable interval
-    #         return current_progress, True
-    #
-    #     except Exception as e:
-    #         logger.error(f"Error updating progress: {str(e)}")
-    #         # Disable interval on error
-    #         return current_progress, True
-    #
-    # # Callback to enable interval when processing starts
-    # @app.callback(
-    #     Output("upload-progress-interval", "disabled", allow_duplicate=True),
-    #     Input("btn-process-data", "n_clicks"),
-    #     prevent_initial_call=True,
-    # )
-    # def enable_progress_tracking(n_clicks):
-    #     """Enable progress tracking interval when processing starts."""
-    #     if not n_clicks:
-    #         raise PreventUpdate
-    #     # Enable the interval to start polling for progress
-    #     return False

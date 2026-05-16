@@ -16,7 +16,7 @@ def filtering_layout():
             html.Div(
                 [
                     html.H1(
-                        "🔧 Advanced Signal Filtering", className="text-center mb-3"
+                        " Advanced Signal Filtering", className="text-center mb-3"
                     ),
                     html.P(
                         [
@@ -280,7 +280,7 @@ def filtering_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H6(
-                                                "🎛️ Filter Configuration",
+                                                " Filter Configuration",
                                                 className="mb-0",
                                             ),
                                             html.Small(
@@ -1081,7 +1081,7 @@ def filtering_layout():
                                                     dbc.CardHeader(
                                                         [
                                                             html.H6(
-                                                                "📈 Original Signal",
+                                                                " Original Signal",
                                                                 className="mb-0",
                                                             ),
                                                             html.Small(
@@ -1124,7 +1124,7 @@ def filtering_layout():
                                                     dbc.CardHeader(
                                                         [
                                                             html.H6(
-                                                                "🔧 Filtered Signal",
+                                                                " Filtered Signal",
                                                                 className="mb-0",
                                                             ),
                                                             html.Small(
@@ -1173,7 +1173,7 @@ def filtering_layout():
                                                     dbc.CardHeader(
                                                         [
                                                             html.H6(
-                                                                "⚖️ Filter Comparison",
+                                                                " Filter Comparison",
                                                                 className="mb-0",
                                                             ),
                                                             html.Small(
@@ -1222,7 +1222,7 @@ def filtering_layout():
                                                     dbc.CardHeader(
                                                         [
                                                             html.H6(
-                                                                "📊 Quality Metrics",
+                                                                " Quality Metrics",
                                                                 className="mb-0",
                                                             ),
                                                             html.Small(
@@ -1296,7 +1296,7 @@ def features_layout():
             html.Div(
                 [
                     html.H1(
-                        "🚀 Advanced Feature Engineering", className="text-center mb-4"
+                        " Advanced Feature Engineering", className="text-center mb-4"
                     ),
                     html.P(
                         [
@@ -1319,7 +1319,7 @@ def features_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "🎛️ Feature Configuration",
+                                                " Feature Configuration",
                                                 className="mb-0",
                                             ),
                                             html.Small(
@@ -1492,7 +1492,7 @@ def features_layout():
                                             ),
                                             # Main Analysis Button
                                             dbc.Button(
-                                                "🚀 Analyze Features",
+                                                " Analyze Features",
                                                 id="features-analyze-btn",
                                                 color="primary",
                                                 size="lg",
@@ -1515,7 +1515,7 @@ def features_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📋 Feature Analysis Results",
+                                                " Feature Analysis Results",
                                                 className="mb-0",
                                             )
                                         ]
@@ -1532,7 +1532,7 @@ def features_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📊 Feature Analysis Plots",
+                                                " Feature Analysis Plots",
                                                 className="mb-0",
                                             )
                                         ]
@@ -1571,7 +1571,7 @@ def health_report_layout():
             # Page Header
             html.Div(
                 [
-                    html.H1("📋 Health Report Generator", className="text-center mb-4"),
+                    html.H1(" Health Report Generator", className="text-center mb-4"),
                     html.P(
                         [
                             "Generate comprehensive health reports with customizable templates, ",
@@ -1593,7 +1593,7 @@ def health_report_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "⚙️ Report Configuration",
+                                                " Report Configuration",
                                                 className="mb-0",
                                             ),
                                             html.Small(
@@ -1880,7 +1880,7 @@ def health_report_layout():
                                             ),
                                             # Generate Report Button
                                             dbc.Button(
-                                                "📋 Generate Health Report",
+                                                " Generate Health Report",
                                                 id="health-report-generate-btn",
                                                 color="primary",
                                                 size="lg",
@@ -1901,7 +1901,7 @@ def health_report_layout():
                             dbc.Card(
                                 [
                                     dbc.CardHeader(
-                                        [html.H5("👁️ Report Preview", className="mb-0")]
+                                        [html.H5(" Report Preview", className="mb-0")]
                                     ),
                                     dbc.CardBody(
                                         [html.Div(id="health-report-preview")]
@@ -1913,32 +1913,32 @@ def health_report_layout():
                             dbc.Card(
                                 [
                                     dbc.CardHeader(
-                                        [html.H5("📤 Report Actions", className="mb-0")]
+                                        [html.H5(" Report Actions", className="mb-0")]
                                     ),
                                     dbc.CardBody(
                                         [
                                             html.Div(
                                                 [
                                                     dbc.Button(
-                                                        "💾 Save Report",
+                                                        " Save Report",
                                                         id="health-report-save-btn",
                                                         color="success",
                                                         className="me-2 mb-2",
                                                     ),
                                                     dbc.Button(
-                                                        "📧 Email Report",
+                                                        " Email Report",
                                                         id="health-report-email-btn",
                                                         color="info",
                                                         className="me-2 mb-2",
                                                     ),
                                                     dbc.Button(
-                                                        "🖨️ Print Report",
+                                                        " Print Report",
                                                         id="health-report-print-btn",
                                                         color="secondary",
                                                         className="me-2 mb-2",
                                                     ),
                                                     dbc.Button(
-                                                        "📱 Mobile View",
+                                                        " Mobile View",
                                                         id="health-report-mobile-btn",
                                                         color="warning",
                                                         className="me-2 mb-2",
@@ -1964,7 +1964,7 @@ def health_report_layout():
                             dbc.Card(
                                 [
                                     dbc.CardHeader(
-                                        [html.H5("📊 Report Content", className="mb-0")]
+                                        [html.H5(" Report Content", className="mb-0")]
                                     ),
                                     dbc.CardBody(
                                         [html.Div(id="health-report-content")]
@@ -1987,7 +1987,7 @@ def health_report_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📋 Report Templates", className="mb-0"
+                                                " Report Templates", className="mb-0"
                                             )
                                         ]
                                     ),
@@ -2006,7 +2006,7 @@ def health_report_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "⚙️ Template Settings", className="mb-0"
+                                                " Template Settings", className="mb-0"
                                             )
                                         ]
                                     ),
@@ -2029,7 +2029,7 @@ def health_report_layout():
                             dbc.Card(
                                 [
                                     dbc.CardHeader(
-                                        [html.H5("📚 Report History", className="mb-0")]
+                                        [html.H5(" Report History", className="mb-0")]
                                     ),
                                     dbc.CardBody(
                                         [html.Div(id="health-report-history")]
@@ -2056,7 +2056,7 @@ def settings_layout():
             # Page Header
             html.Div(
                 [
-                    html.H1("⚙️ Settings", className="text-center mb-4"),
+                    html.H1(" Settings", className="text-center mb-4"),
                     html.P(
                         [
                             "Configure application settings, user preferences, analysis parameters, ",
@@ -2078,7 +2078,7 @@ def settings_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "🌐 General Settings", className="mb-0"
+                                                " General Settings", className="mb-0"
                                             )
                                         ]
                                     ),
@@ -2262,7 +2262,7 @@ def settings_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "📊 Analysis Settings", className="mb-0"
+                                                " Analysis Settings", className="mb-0"
                                             )
                                         ]
                                     ),
@@ -2417,7 +2417,7 @@ def settings_layout():
                             dbc.Card(
                                 [
                                     dbc.CardHeader(
-                                        [html.H4("💾 Data Settings", className="mb-0")]
+                                        [html.H4(" Data Settings", className="mb-0")]
                                     ),
                                     dbc.CardBody(
                                         [
@@ -2594,7 +2594,7 @@ def settings_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "🔧 System Settings", className="mb-0"
+                                                " System Settings", className="mb-0"
                                             )
                                         ]
                                     ),
@@ -2734,7 +2734,7 @@ def settings_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "💾 Settings Actions", className="mb-0"
+                                                " Settings Actions", className="mb-0"
                                             )
                                         ]
                                     ),
@@ -2743,37 +2743,37 @@ def settings_layout():
                                             html.Div(
                                                 [
                                                     dbc.Button(
-                                                        "💾 Save Settings",
+                                                        " Save Settings",
                                                         id="settings-save-btn",
                                                         color="success",
                                                         className="me-2 mb-2",
                                                     ),
                                                     dbc.Button(
-                                                        "🔄 Reset to Defaults",
+                                                        " Reset to Defaults",
                                                         id="settings-reset-btn",
                                                         color="warning",
                                                         className="me-2 mb-2",
                                                     ),
                                                     dbc.Button(
-                                                        "📤 Export Settings",
+                                                        " Export Settings",
                                                         id="settings-export-btn",
                                                         color="info",
                                                         className="me-2 mb-2",
                                                     ),
                                                     dbc.Button(
-                                                        "📥 Import Settings",
+                                                        " Import Settings",
                                                         id="settings-import-btn",
                                                         color="secondary",
                                                         className="me-2 mb-2",
                                                     ),
                                                     dbc.Button(
-                                                        "✅ Validate Settings",
+                                                        " Validate Settings",
                                                         id="settings-validate-btn",
                                                         color="primary",
                                                         className="me-2 mb-2",
                                                     ),
                                                     dbc.Button(
-                                                        "💡 Get Recommendations",
+                                                        " Get Recommendations",
                                                         id="settings-recommendations-btn",
                                                         color="info",
                                                         className="me-2 mb-2",
@@ -2795,7 +2795,7 @@ def settings_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📊 Settings Status", className="mb-0"
+                                                " Settings Status", className="mb-0"
                                             )
                                         ]
                                     ),
@@ -2816,7 +2816,7 @@ def settings_layout():
                             dbc.Card(
                                 [
                                     dbc.CardHeader(
-                                        [html.H5("🎨 Theme Preview", className="mb-0")]
+                                        [html.H5(" Theme Preview", className="mb-0")]
                                     ),
                                     dbc.CardBody(
                                         [html.Div(id="theme-preview-display")]
@@ -2833,7 +2833,7 @@ def settings_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "✅ Settings Validation",
+                                                " Settings Validation",
                                                 className="mb-0",
                                             )
                                         ]
@@ -2859,7 +2859,7 @@ def settings_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "🖥️ System Monitoring", className="mb-0"
+                                                " System Monitoring", className="mb-0"
                                             )
                                         ]
                                     ),
@@ -2885,7 +2885,7 @@ def settings_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "💡 Smart Recommendations",
+                                                " Smart Recommendations",
                                                 className="mb-0",
                                             )
                                         ]

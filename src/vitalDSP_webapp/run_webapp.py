@@ -45,7 +45,7 @@ def setup_logging(debug_mode: bool = False, production_mode: bool = False):
                 logging.FileHandler("logs/webapp_production.log"),
             ],
         )
-        print("✅ PRODUCTION MODE: Optimized logging (WARNING level)")
+        print(" PRODUCTION MODE: Optimized logging (WARNING level)")
     elif debug_mode:
         # Debug mode: Comprehensive logging for development
         logging.basicConfig(
@@ -56,7 +56,7 @@ def setup_logging(debug_mode: bool = False, production_mode: bool = False):
                 logging.FileHandler("logs/webapp_debug.log"),
             ],
         )
-        print("🐛 DEBUG MODE: Comprehensive logging (DEBUG level)")
+        print(" DEBUG MODE: Comprehensive logging (DEBUG level)")
         print("   Debug logs → logs/webapp_debug.log")
     else:
         # Normal mode: Standard logging for general use
@@ -68,7 +68,7 @@ def setup_logging(debug_mode: bool = False, production_mode: bool = False):
                 logging.FileHandler("logs/webapp.log"),
             ],
         )
-        print("ℹ️  NORMAL MODE: Standard logging (INFO level)")
+        print("ℹ NORMAL MODE: Standard logging (INFO level)")
         print("   Logs → logs/webapp.log")
 
     # Configure specific logger levels
@@ -125,17 +125,17 @@ def run_webapp(
     auto_reload = reload or (debug_mode and not production_mode)
 
     print("\n" + "=" * 70)
-    print("🚀 VitalDSP Web Application")
+    print(" VitalDSP Web Application")
     print("=" * 70)
     print(
-        f"   Mode:        {'🐛 DEBUG' if debug_mode else '✅ PRODUCTION' if production_mode else 'ℹ️  NORMAL'}"
+        f" Mode: {' DEBUG' if debug_mode else ' PRODUCTION' if production_mode else 'ℹ NORMAL'}"
     )
     print(f"   Host:        {host}")
     print(f"   Port:        {port}")
-    print(f"   Auto-reload: {'✓ Enabled' if auto_reload else '✗ Disabled'}")
-    print(f"\n   🌐 Application:  http://localhost:{port}")
-    print(f"   📚 API Docs:     http://localhost:{port}/docs")
-    print(f"   💚 Health Check: http://localhost:{port}/api/health")
+    print(f" Auto-reload: {' Enabled' if auto_reload else ' Disabled'}")
+    print(f"\n Application: http://localhost:{port}")
+    print(f" API Docs: http://localhost:{port}/docs")
+    print(f" Health Check: http://localhost:{port}/api/health")
     print("=" * 70 + "\n")
 
     # Run the FastAPI app using Uvicorn
@@ -183,7 +183,7 @@ if __name__ == "__main__":
             port_index = sys.argv.index("--port")
             port = int(sys.argv[port_index + 1])
         except (IndexError, ValueError):
-            print("❌ Error: --port requires a valid port number")
+            print(" Error: --port requires a valid port number")
             sys.exit(1)
 
     # Parse host
@@ -192,7 +192,7 @@ if __name__ == "__main__":
             host_index = sys.argv.index("--host")
             host = sys.argv[host_index + 1]
         except IndexError:
-            print("❌ Error: --host requires a host address")
+            print(" Error: --host requires a host address")
             sys.exit(1)
 
     # Show help
@@ -200,7 +200,7 @@ if __name__ == "__main__":
         print(
             """
 ╔════════════════════════════════════════════════════════════════════╗
-║              🚀 VitalDSP Webapp Runner v2.0                        ║
+║ VitalDSP Webapp Runner v2.0 ║
 ╚════════════════════════════════════════════════════════════════════╝
 
 USAGE:
@@ -216,15 +216,15 @@ OPTIONS:
 
 DEPLOYMENT MODES:
 
-    🐛 DEBUG MODE (Development)
+      DEBUG MODE (Development)
     └─ Debug logging, auto-reload, detailed error traces
     └─ Command: python src/vitalDSP_webapp/run_webapp.py --debug
 
-    ℹ️  NORMAL MODE (Testing)
+    ℹ NORMAL MODE (Testing)
     └─ Standard logging, no auto-reload, suitable for local testing
     └─ Command: python src/vitalDSP_webapp/run_webapp.py
 
-    ✅ PRODUCTION MODE (Deployment)
+      PRODUCTION MODE (Deployment)
     └─ Minimal logging, optimized performance, no reload
     └─ Command: python src/vitalDSP_webapp/run_webapp.py --production
 
@@ -269,7 +269,7 @@ For more information, visit: https://vitaldsp.readthedocs.io/
 
     # Validate conflicting options
     if debug_mode and production_mode:
-        print("❌ Error: Cannot use --debug and --production together")
+        print(" Error: Cannot use --debug and --production together")
         sys.exit(1)
 
     # Run the webapp

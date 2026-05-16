@@ -17,7 +17,7 @@ def advanced_layout():
             html.Div(
                 [
                     html.H1(
-                        "🧠 Advanced Feature Engineering & Analysis",
+                        " Advanced Feature Engineering & Analysis",
                         className="text-center mb-4",
                     ),
                     html.P(
@@ -41,7 +41,7 @@ def advanced_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "🎛️ Advanced Analysis Configuration",
+                                                " Advanced Analysis Configuration",
                                                 className="mb-0",
                                             ),
                                             html.Small(
@@ -387,7 +387,7 @@ def advanced_layout():
                                                                         className="mb-2",
                                                                     ),
                                                                     html.Small(
-                                                                        "ℹ️ Removes trend from signal",
+                                                                        "ℹ Removes trend from signal",
                                                                         className="text-muted",
                                                                     ),
                                                                 ],
@@ -427,7 +427,7 @@ def advanced_layout():
                                                                         className="mb-2",
                                                                     ),
                                                                     html.Small(
-                                                                        "ℹ️ Scales signal to standard range",
+                                                                        "ℹ Scales signal to standard range",
                                                                         className="text-muted",
                                                                     ),
                                                                 ],
@@ -570,7 +570,7 @@ def advanced_layout():
                                                                         className="mb-2",
                                                                     ),
                                                                     html.Small(
-                                                                        "ℹ️ Advanced filtering with multiple filter families and responses",
+                                                                        "ℹ Advanced filtering with multiple filter families and responses",
                                                                         className="text-muted",
                                                                     ),
                                                                 ],
@@ -623,7 +623,7 @@ def advanced_layout():
                                                                         className="mb-2",
                                                                     ),
                                                                     html.Small(
-                                                                        "ℹ️ Detects and removes outliers",
+                                                                        "ℹ Detects and removes outliers",
                                                                         className="text-muted",
                                                                     ),
                                                                 ],
@@ -677,7 +677,7 @@ def advanced_layout():
                                                                         className="mb-2",
                                                                     ),
                                                                     html.Small(
-                                                                        "ℹ️ Reduces noise in signal",
+                                                                        "ℹ Reduces noise in signal",
                                                                         className="text-muted",
                                                                     ),
                                                                 ],
@@ -925,7 +925,7 @@ def advanced_layout():
                                                                         className="mb-2",
                                                                     ),
                                                                     html.Small(
-                                                                        "ℹ️ SVM finds optimal hyperplane for classification",
+                                                                        "ℹ SVM finds optimal hyperplane for classification",
                                                                         className="text-muted",
                                                                     ),
                                                                 ],
@@ -983,7 +983,7 @@ def advanced_layout():
                                                                         className="mb-2",
                                                                     ),
                                                                     html.Small(
-                                                                        "ℹ️ Ensemble of decision trees for robust predictions",
+                                                                        "ℹ Ensemble of decision trees for robust predictions",
                                                                         className="text-muted",
                                                                     ),
                                                                 ],
@@ -1049,7 +1049,7 @@ def advanced_layout():
                                                                         className="mb-2",
                                                                     ),
                                                                     html.Small(
-                                                                        "ℹ️ Multi-layer perceptron for complex patterns",
+                                                                        "ℹ Multi-layer perceptron for complex patterns",
                                                                         className="text-muted",
                                                                     ),
                                                                 ],
@@ -1174,7 +1174,7 @@ def advanced_layout():
                                                                         className="mb-2",
                                                                     ),
                                                                     html.Small(
-                                                                        "ℹ️ LSTM networks excel at time series analysis",
+                                                                        "ℹ LSTM networks excel at time series analysis",
                                                                         className="text-muted",
                                                                     ),
                                                                 ],
@@ -1244,7 +1244,7 @@ def advanced_layout():
                                                                         className="mb-2",
                                                                     ),
                                                                     html.Small(
-                                                                        "ℹ️ CNN extracts local patterns from signal data",
+                                                                        "ℹ CNN extracts local patterns from signal data",
                                                                         className="text-muted",
                                                                     ),
                                                                 ],
@@ -1302,7 +1302,7 @@ def advanced_layout():
                                                                         className="mb-2",
                                                                     ),
                                                                     html.Small(
-                                                                        "ℹ️ Transformer uses self-attention mechanisms",
+                                                                        "ℹ Transformer uses self-attention mechanisms",
                                                                         className="text-muted",
                                                                     ),
                                                                 ],
@@ -1518,7 +1518,7 @@ def advanced_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📈 Advanced Analysis Results",
+                                                " Advanced Analysis Results",
                                                 className="mb-0",
                                             )
                                         ]
@@ -1548,7 +1548,7 @@ def advanced_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📊 Model Performance & Metrics",
+                                                " Model Performance & Metrics",
                                                 className="mb-0",
                                             )
                                         ]
@@ -1583,7 +1583,7 @@ def advanced_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📋 Analysis Summary", className="mb-0"
+                                                " Analysis Summary", className="mb-0"
                                             )
                                         ]
                                     ),
@@ -1600,7 +1600,7 @@ def advanced_layout():
                             dbc.Card(
                                 [
                                     dbc.CardHeader(
-                                        [html.H5("🔍 Model Details", className="mb-0")]
+                                        [html.H5(" Model Details", className="mb-0")]
                                     ),
                                     dbc.CardBody(
                                         [html.Div(id="advanced-model-details")]
@@ -1623,7 +1623,7 @@ def advanced_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📊 Performance Metrics",
+                                                " Performance Metrics",
                                                 className="mb-0",
                                             )
                                         ]
@@ -1643,7 +1643,7 @@ def advanced_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "🎯 Feature Importance",
+                                                " Feature Importance",
                                                 className="mb-0",
                                             )
                                         ]
@@ -1669,7 +1669,7 @@ def advanced_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "🌊 Advanced Visualizations",
+                                                " Advanced Visualizations",
                                                 className="mb-0",
                                             )
                                         ]
@@ -1708,7 +1708,7 @@ def advanced_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📝 Detailed Analysis Report",
+                                                " Detailed Analysis Report",
                                                 className="mb-0",
                                             )
                                         ]

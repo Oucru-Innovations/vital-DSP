@@ -138,7 +138,7 @@ def create_error_alert(
         message = error
         error_type = "Error"
 
-    alert_content = [html.H5(f"❌ {title}", className="alert-heading"), html.P(message)]
+    alert_content = [html.H5(f" {title}", className="alert-heading"), html.P(message)]
 
     if show_details and isinstance(error, Exception):
         alert_content.extend(
@@ -430,7 +430,7 @@ def create_warning_alert(message: str, title: str = "Warning") -> dbc.Alert:
         Warning alert component
     """
     return dbc.Alert(
-        [html.H5(f"⚠️ {title}", className="alert-heading"), html.P(message)],
+        [html.H5(f" {title}", className="alert-heading"), html.P(message)],
         color="warning",
         className="mt-3",
     )
@@ -453,7 +453,7 @@ def create_info_alert(message: str, title: str = "Information") -> dbc.Alert:
         Info alert component
     """
     return dbc.Alert(
-        [html.H5(f"ℹ️ {title}", className="alert-heading"), html.P(message)],
+        [html.H5(f"ℹ {title}", className="alert-heading"), html.P(message)],
         color="info",
         className="mt-3",
     )
@@ -476,7 +476,7 @@ def create_success_alert(message: str, title: str = "Success") -> dbc.Alert:
         Success alert component
     """
     return dbc.Alert(
-        [html.H5(f"✅ {title}", className="alert-heading"), html.P(message)],
+        [html.H5(f" {title}", className="alert-heading"), html.P(message)],
         color="success",
         className="mt-3",
     )

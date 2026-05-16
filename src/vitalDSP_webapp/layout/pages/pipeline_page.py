@@ -318,7 +318,7 @@ def create_live_status_panel():
         [
             dbc.CardHeader(
                 [
-                    html.Span("🔴", id="pipeline-status-indicator", className="mr-2"),
+                    html.Span(" ", id="pipeline-status-indicator", className="mr-2"),
                     html.Strong("LIVE PIPELINE STATUS"),
                 ],
             ),
@@ -520,7 +520,7 @@ def create_path_comparison_dashboard():
                                             ),
                                             html.Td(
                                                 id="path-table-raw-status",
-                                                children="⚪ Pending",
+                                                children=" Pending",
                                             ),
                                         ]
                                     ),
@@ -542,7 +542,7 @@ def create_path_comparison_dashboard():
                                             ),
                                             html.Td(
                                                 id="path-table-filtered-status",
-                                                children="⚪ Pending",
+                                                children=" Pending",
                                             ),
                                         ]
                                     ),
@@ -564,7 +564,7 @@ def create_path_comparison_dashboard():
                                             ),
                                             html.Td(
                                                 id="path-table-preprocessed-status",
-                                                children="⚪ Pending",
+                                                children=" Pending",
                                             ),
                                         ]
                                     ),

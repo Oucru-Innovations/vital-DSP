@@ -25,7 +25,7 @@ def physiological_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "⚡ Quick Actions",
+                                                " Quick Actions",
                                                 className="mb-0 text-primary",
                                             ),
                                             html.Small(
@@ -42,7 +42,7 @@ def physiological_layout():
                                                     dbc.Col(
                                                         [
                                                             dbc.Button(
-                                                                "🔄 Update Analysis",
+                                                                " Update Analysis",
                                                                 id="physio-btn-update-analysis",
                                                                 color="primary",
                                                                 size="lg",
@@ -98,7 +98,7 @@ def physiological_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📁 Data & Signal",
+                                                " Data & Signal",
                                                 className="mb-0 text-info",
                                             ),
                                             html.Small(
@@ -119,11 +119,11 @@ def physiological_layout():
                                                 id="physio-data-source-select",
                                                 options=[
                                                     {
-                                                        "label": "📤 Uploaded Data",
+                                                        "label": " Uploaded Data",
                                                         "value": "uploaded",
                                                     },
                                                     {
-                                                        "label": "📋 Sample Data",
+                                                        "label": " Sample Data",
                                                         "value": "sample",
                                                     },
                                                 ],
@@ -139,19 +139,19 @@ def physiological_layout():
                                                 id="physio-signal-type",
                                                 options=[
                                                     {
-                                                        "label": "💓 PPG (Photoplethysmography)",
+                                                        "label": " PPG (Photoplethysmography)",
                                                         "value": "ppg",
                                                     },
                                                     {
-                                                        "label": "❤️ ECG (Electrocardiogram)",
+                                                        "label": " ECG (Electrocardiogram)",
                                                         "value": "ecg",
                                                     },
                                                     {
-                                                        "label": "🧠 EEG (Electroencephalogram)",
+                                                        "label": " EEG (Electroencephalogram)",
                                                         "value": "eeg",
                                                     },
                                                     {
-                                                        "label": "🔍 Auto-detect",
+                                                        "label": " Auto-detect",
                                                         "value": "auto",
                                                     },
                                                 ],
@@ -326,47 +326,47 @@ def physiological_layout():
                                                 id="physio-analysis-categories",
                                                 options=[
                                                     {
-                                                        "label": "💓 Heart Rate & Variability (HRV)",
+                                                        "label": " Heart Rate & Variability (HRV)",
                                                         "value": "hrv",
                                                     },
                                                     {
-                                                        "label": "📊 Morphological Features",
+                                                        "label": " Morphological Features",
                                                         "value": "morphology",
                                                     },
                                                     {
-                                                        "label": "🫀 Beat-to-Beat Analysis",
+                                                        "label": " Beat-to-Beat Analysis",
                                                         "value": "beat2beat",
                                                     },
                                                     {
-                                                        "label": "⚡ Energy Analysis",
+                                                        "label": " Energy Analysis",
                                                         "value": "energy",
                                                     },
                                                     {
-                                                        "label": "📦 Envelope Detection",
+                                                        "label": " Envelope Detection",
                                                         "value": "envelope",
                                                     },
                                                     {
-                                                        "label": "✂️ Signal Segmentation",
+                                                        "label": " Signal Segmentation",
                                                         "value": "segmentation",
                                                     },
                                                     {
-                                                        "label": "📈 Trend Analysis",
+                                                        "label": " Trend Analysis",
                                                         "value": "trend",
                                                     },
                                                     {
-                                                        "label": "🌊 Waveform Analysis",
+                                                        "label": " Waveform Analysis",
                                                         "value": "waveform",
                                                     },
                                                     {
-                                                        "label": "📊 Statistical Analysis",
+                                                        "label": " Statistical Analysis",
                                                         "value": "statistical",
                                                     },
                                                     {
-                                                        "label": "🔊 Frequency Analysis",
+                                                        "label": " Frequency Analysis",
                                                         "value": "frequency",
                                                     },
                                                     {
-                                                        "label": "🔄 Signal Transforms",
+                                                        "label": " Signal Transforms",
                                                         "value": "transforms",
                                                     },
                                                 ],
@@ -385,7 +385,7 @@ def physiological_layout():
                                                 className="small",
                                             )
                                         ],
-                                        title="🎯 Core Analysis Categories",
+                                        title=" Core Analysis Categories",
                                         item_id="core-analysis",
                                     ),
                                     # HRV Options
@@ -395,23 +395,23 @@ def physiological_layout():
                                                 id="physio-hrv-options",
                                                 options=[
                                                     {
-                                                        "label": "⏱️ Time Domain Features",
+                                                        "label": "⏱ Time Domain Features",
                                                         "value": "time_domain",
                                                     },
                                                     {
-                                                        "label": "🔊 Frequency Domain Features",
+                                                        "label": " Frequency Domain Features",
                                                         "value": "freq_domain",
                                                     },
                                                     {
-                                                        "label": "🌀 Nonlinear Features",
+                                                        "label": " Nonlinear Features",
                                                         "value": "nonlinear",
                                                     },
                                                     {
-                                                        "label": "💜 Poincaré Plot",
+                                                        "label": " Poincaré Plot",
                                                         "value": "poincare",
                                                     },
                                                     {
-                                                        "label": "📏 Detrended Fluctuation",
+                                                        "label": " Detrended Fluctuation",
                                                         "value": "dfa",
                                                     },
                                                 ],
@@ -423,7 +423,7 @@ def physiological_layout():
                                                 className="small",
                                             )
                                         ],
-                                        title="💓 HRV Analysis Options",
+                                        title=" HRV Analysis Options",
                                         item_id="hrv-options",
                                     ),
                                     # Morphology Options
@@ -433,27 +433,27 @@ def physiological_layout():
                                                 id="physio-morphology-options",
                                                 options=[
                                                     {
-                                                        "label": "🔝 Peak Detection",
+                                                        "label": " Peak Detection",
                                                         "value": "peaks",
                                                     },
                                                     {
-                                                        "label": "⏱️ Duration Analysis",
+                                                        "label": "⏱ Duration Analysis",
                                                         "value": "duration",
                                                     },
                                                     {
-                                                        "label": "📐 Area Calculations",
+                                                        "label": " Area Calculations",
                                                         "value": "area",
                                                     },
                                                     {
-                                                        "label": "📊 Amplitude Variability",
+                                                        "label": " Amplitude Variability",
                                                         "value": "amplitude",
                                                     },
                                                     {
-                                                        "label": "📈 Slope Analysis",
+                                                        "label": " Slope Analysis",
                                                         "value": "slope",
                                                     },
                                                     {
-                                                        "label": "🔄 Dicrotic Notch (PPG)",
+                                                        "label": " Dicrotic Notch (PPG)",
                                                         "value": "dicrotic",
                                                     },
                                                 ],
@@ -461,7 +461,7 @@ def physiological_layout():
                                                 className="small",
                                             )
                                         ],
-                                        title="📊 Morphology Analysis",
+                                        title=" Morphology Analysis",
                                         item_id="morphology-options",
                                     ),
                                     # Advanced Features
@@ -471,27 +471,27 @@ def physiological_layout():
                                                 id="physio-advanced-features",
                                                 options=[
                                                     {
-                                                        "label": "🔗 Cross-Signal Analysis",
+                                                        "label": " Cross-Signal Analysis",
                                                         "value": "cross_signal",
                                                     },
                                                     {
-                                                        "label": "👥 Ensemble Methods",
+                                                        "label": " Ensemble Methods",
                                                         "value": "ensemble",
                                                     },
                                                     {
-                                                        "label": "🔍 Change Detection",
+                                                        "label": " Change Detection",
                                                         "value": "change_detection",
                                                     },
                                                     {
-                                                        "label": "⚡ Power Analysis",
+                                                        "label": " Power Analysis",
                                                         "value": "power_analysis",
                                                     },
                                                     {
-                                                        "label": "🔗 Coherence Analysis",
+                                                        "label": " Coherence Analysis",
                                                         "value": "coherence",
                                                     },
                                                     {
-                                                        "label": "🔄 Cross-Correlation",
+                                                        "label": " Cross-Correlation",
                                                         "value": "cross_correlation",
                                                     },
                                                 ],
@@ -504,7 +504,7 @@ def physiological_layout():
                                                 className="small",
                                             )
                                         ],
-                                        title="🚀 Advanced Features",
+                                        title=" Advanced Features",
                                         item_id="advanced-features",
                                     ),
                                     # Signal Quality
@@ -514,23 +514,23 @@ def physiological_layout():
                                                 id="physio-quality-options",
                                                 options=[
                                                     {
-                                                        "label": "⚖️ Signal Quality Index",
+                                                        "label": " Signal Quality Index",
                                                         "value": "quality_index",
                                                     },
                                                     {
-                                                        "label": "📊 SNR Estimation",
+                                                        "label": " SNR Estimation",
                                                         "value": "snr_estimation",
                                                     },
                                                     {
-                                                        "label": "🚫 Artifact Detection",
+                                                        "label": " Artifact Detection",
                                                         "value": "artifact_detection",
                                                     },
                                                     {
-                                                        "label": "🔍 Blind Source Separation",
+                                                        "label": " Blind Source Separation",
                                                         "value": "blind_source",
                                                     },
                                                     {
-                                                        "label": "🔄 Multi-modal Artifact Detection",
+                                                        "label": " Multi-modal Artifact Detection",
                                                         "value": "multimodal_artifacts",
                                                     },
                                                 ],
@@ -541,7 +541,7 @@ def physiological_layout():
                                                 className="small",
                                             )
                                         ],
-                                        title="⚖️ Signal Quality",
+                                        title=" Signal Quality",
                                         item_id="signal-quality",
                                     ),
                                     # Signal Transforms
@@ -551,31 +551,31 @@ def physiological_layout():
                                                 id="physio-transform-options",
                                                 options=[
                                                     {
-                                                        "label": "🌊 Wavelet Transform",
+                                                        "label": " Wavelet Transform",
                                                         "value": "wavelet",
                                                     },
                                                     {
-                                                        "label": "🔊 Fourier Transform",
+                                                        "label": " Fourier Transform",
                                                         "value": "fourier",
                                                     },
                                                     {
-                                                        "label": "🔄 Hilbert Transform",
+                                                        "label": " Hilbert Transform",
                                                         "value": "hilbert",
                                                     },
                                                     {
-                                                        "label": "⏱️ STFT Analysis",
+                                                        "label": "⏱ STFT Analysis",
                                                         "value": "stft",
                                                     },
                                                     {
-                                                        "label": "📊 PCA/ICA Decomposition",
+                                                        "label": " PCA/ICA Decomposition",
                                                         "value": "pca_ica",
                                                     },
                                                     {
-                                                        "label": "🎵 MFCC Features",
+                                                        "label": " MFCC Features",
                                                         "value": "mfcc",
                                                     },
                                                     {
-                                                        "label": "🎨 Chroma Features",
+                                                        "label": " Chroma Features",
                                                         "value": "chroma",
                                                     },
                                                 ],
@@ -583,7 +583,7 @@ def physiological_layout():
                                                 className="small",
                                             )
                                         ],
-                                        title="🔄 Signal Transforms",
+                                        title=" Signal Transforms",
                                         item_id="signal-transforms",
                                     ),
                                     # Advanced Computation
@@ -593,31 +593,31 @@ def physiological_layout():
                                                 id="physio-advanced-computation",
                                                 options=[
                                                     {
-                                                        "label": "🚨 Anomaly Detection",
+                                                        "label": " Anomaly Detection",
                                                         "value": "anomaly_detection",
                                                     },
                                                     {
-                                                        "label": "📊 Bayesian Analysis",
+                                                        "label": " Bayesian Analysis",
                                                         "value": "bayesian",
                                                     },
                                                     {
-                                                        "label": "🧠 Neural Network Filtering",
+                                                        "label": " Neural Network Filtering",
                                                         "value": "neural_network",
                                                     },
                                                     {
-                                                        "label": "🔍 Kalman Filtering",
+                                                        "label": " Kalman Filtering",
                                                         "value": "kalman",
                                                     },
                                                     {
-                                                        "label": "🌀 EMD Analysis",
+                                                        "label": " EMD Analysis",
                                                         "value": "emd",
                                                     },
                                                     {
-                                                        "label": "🔗 Multimodal Fusion",
+                                                        "label": " Multimodal Fusion",
                                                         "value": "multimodal_fusion",
                                                     },
                                                     {
-                                                        "label": "⚡ Real-time Processing",
+                                                        "label": " Real-time Processing",
                                                         "value": "realtime",
                                                     },
                                                 ],
@@ -629,7 +629,7 @@ def physiological_layout():
                                                 className="small",
                                             )
                                         ],
-                                        title="🧠 Advanced Computation",
+                                        title=" Advanced Computation",
                                         item_id="advanced-computation",
                                     ),
                                     # Feature Engineering
@@ -639,23 +639,23 @@ def physiological_layout():
                                                 id="physio-feature-engineering",
                                                 options=[
                                                     {
-                                                        "label": "💡 PPG Light Features",
+                                                        "label": " PPG Light Features",
                                                         "value": "ppg_light",
                                                     },
                                                     {
-                                                        "label": "🫀 PPG Autonomic Features",
+                                                        "label": " PPG Autonomic Features",
                                                         "value": "ppg_autonomic",
                                                     },
                                                     {
-                                                        "label": "❤️ ECG Autonomic Features",
+                                                        "label": " ECG Autonomic Features",
                                                         "value": "ecg_autonomic",
                                                     },
                                                     {
-                                                        "label": "📊 Morphology Features",
+                                                        "label": " Morphology Features",
                                                         "value": "morphology_eng",
                                                     },
                                                     {
-                                                        "label": "🔗 ECG-PPG Synchronization",
+                                                        "label": " ECG-PPG Synchronization",
                                                         "value": "ecg_ppg_sync",
                                                     },
                                                 ],
@@ -667,7 +667,7 @@ def physiological_layout():
                                                 className="small",
                                             )
                                         ],
-                                        title="🔧 Feature Engineering",
+                                        title=" Feature Engineering",
                                         item_id="feature-engineering",
                                     ),
                                     # Preprocessing
@@ -677,23 +677,23 @@ def physiological_layout():
                                                 id="physio-preprocessing",
                                                 options=[
                                                     {
-                                                        "label": "🔇 Noise Reduction",
+                                                        "label": " Noise Reduction",
                                                         "value": "noise_reduction",
                                                     },
                                                     {
-                                                        "label": "📏 Baseline Correction",
+                                                        "label": " Baseline Correction",
                                                         "value": "baseline_correction",
                                                     },
                                                     {
-                                                        "label": "🔍 Filtering",
+                                                        "label": " Filtering",
                                                         "value": "filtering",
                                                     },
                                                     {
-                                                        "label": "📊 Normalization",
+                                                        "label": " Normalization",
                                                         "value": "normalization",
                                                     },
                                                     {
-                                                        "label": "📈 Interpolation",
+                                                        "label": " Interpolation",
                                                         "value": "interpolation",
                                                     },
                                                 ],
@@ -705,7 +705,7 @@ def physiological_layout():
                                                 className="small",
                                             )
                                         ],
-                                        title="🔧 Preprocessing",
+                                        title=" Preprocessing",
                                         item_id="preprocessing",
                                     ),
                                 ],
@@ -718,7 +718,7 @@ def physiological_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H5(
-                                                "📋 Analysis Summary",
+                                                " Analysis Summary",
                                                 className="mb-0 text-success",
                                             ),
                                             html.Small(
@@ -750,7 +750,7 @@ def physiological_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "📈 Signal Overview", className="mb-0"
+                                                " Signal Overview", className="mb-0"
                                             ),
                                             html.Small(
                                                 "Raw signal with annotations and detected features",
@@ -786,7 +786,7 @@ def physiological_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "📊 Analysis Plots", className="mb-0"
+                                                " Analysis Plots", className="mb-0"
                                             ),
                                             html.Small(
                                                 "Visual representation of physiological features and analysis",
@@ -822,7 +822,7 @@ def physiological_layout():
                                     dbc.CardHeader(
                                         [
                                             html.H4(
-                                                "📈 Analysis Statistics",
+                                                " Analysis Statistics",
                                                 className="mb-0",
                                             ),
                                             html.Small(

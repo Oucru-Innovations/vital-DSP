@@ -104,7 +104,7 @@ def apply_fft_transform(
         phase = np.angle(fft_values)
         power = magnitude**2
 
-        logger.info(f"[vitalDSP FFT] ✓ FFT computed: {len(frequencies)} frequency bins")
+        logger.info(f"[vitalDSP FFT] FFT computed: {len(frequencies)} frequency bins")
 
         # Create main plot (magnitude spectrum)
         main_fig = go.Figure()
@@ -188,7 +188,7 @@ def apply_fft_transform(
                     f"Frequency Resolution: {frequencies[1] - frequencies[0]:.4f} Hz"
                 ),
                 html.P(
-                    "✓ Using vitalDSP.transforms.fourier_transform.FourierTransform",
+                    " Using vitalDSP.transforms.fourier_transform.FourierTransform",
                     className="text-success small",
                 ),
             ]
@@ -300,7 +300,7 @@ def apply_stft_transform(
         t = np.arange(Zxx.shape[1]) * hop_size / sampling_freq
 
         logger.info(
-            f"[vitalDSP STFT] ✓ STFT computed: {Zxx.shape[0]} freq bins x {Zxx.shape[1]} time frames"
+            f"[vitalDSP STFT] STFT computed: {Zxx.shape[0]} freq bins x {Zxx.shape[1]} time frames"
         )
 
         # Create spectrogram
@@ -367,7 +367,7 @@ def apply_stft_transform(
                     else "N/A"
                 ),
                 html.P(
-                    "✓ Using vitalDSP.transforms.stft.STFT",
+                    " Using vitalDSP.transforms.stft.STFT",
                     className="text-success small",
                 ),
             ]
@@ -438,7 +438,7 @@ def apply_wavelet_transform(
         # This is an approximation since DWT doesn't directly give us a time-frequency plot like CWT
 
         logger.info(
-            f"[vitalDSP Wavelet] ✓ Wavelet transform computed: {len(coefficients)} decomposition levels"
+            f"[vitalDSP Wavelet] Wavelet transform computed: {len(coefficients)} decomposition levels"
         )
 
         # Create a simplified visualization showing coefficients at each level
@@ -499,7 +499,7 @@ def apply_wavelet_transform(
                 html.P(f"Decomposition Levels: {len(coefficients) - 1}"),
                 html.P(f"Total Energy: {sum(energies):.2e}"),
                 html.P(
-                    "✓ Using vitalDSP.transforms.wavelet_transform.WaveletTransform",
+                    " Using vitalDSP.transforms.wavelet_transform.WaveletTransform",
                     className="text-success small",
                 ),
                 html.P(
@@ -564,7 +564,7 @@ def apply_hilbert_transform(time_data, signal_data, sampling_freq, options):
             np.diff(np.unwrap(instantaneous_phase)) / (2.0 * np.pi) * sampling_freq
         )
 
-        logger.info(f"[vitalDSP Hilbert] ✓ Hilbert transform computed")
+        logger.info(f"[vitalDSP Hilbert] Hilbert transform computed")
 
         # Main plot: amplitude envelope
         main_fig = go.Figure()
@@ -646,7 +646,7 @@ def apply_hilbert_transform(time_data, signal_data, sampling_freq, options):
                 ),
                 html.P(f"Frequency Std Dev: {np.std(instantaneous_frequency):.2f} Hz"),
                 html.P(
-                    "✓ Using vitalDSP.transforms.hilbert_transform.HilbertTransform",
+                    " Using vitalDSP.transforms.hilbert_transform.HilbertTransform",
                     className="text-success small",
                 ),
             ]
@@ -713,7 +713,7 @@ def apply_mfcc_transform(time_data, signal_data, sampling_freq, options, n_mfcc,
 
         mfccs = mfcc.compute_mfcc()  # Returns 2D array (num_frames x num_coefficients)
 
-        logger.info(f"[vitalDSP MFCC] ✓ MFCC computed: {mfccs.shape}")
+        logger.info(f"[vitalDSP MFCC] MFCC computed: {mfccs.shape}")
 
         # Generate time axis for MFCC frames
         frame_stride = 0.01  # 10 ms (from MFCC implementation)
@@ -758,7 +758,7 @@ def apply_mfcc_transform(time_data, signal_data, sampling_freq, options, n_mfcc,
                 html.P(f"Number of Frames: {mfccs.shape[0]}"),
                 html.P(f"Dominant Coefficient: C{np.argmax(np.abs(avg_mfccs))}"),
                 html.P(
-                    "✓ Using vitalDSP.transforms.mfcc.MFCC",
+                    " Using vitalDSP.transforms.mfcc.MFCC",
                     className="text-success small",
                 ),
                 html.P(
