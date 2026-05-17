@@ -24,6 +24,11 @@
     --background-tertiary: #e9ecef;
     --card-background: #ffffff;
     --sidebar-background: #2c3e50;
+    --sidebar-bg: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+    --sidebar-text: #ffffff;
+    --sidebar-link: rgba(255, 255, 255, 0.85);
+    --sidebar-link-hover-bg: rgba(255, 255, 255, 0.12);
+    --sidebar-heading: rgba(255, 255, 255, 0.55);
     --header-background: linear-gradient(135deg, #2c3e50, #3498db);
     
     /* Border Colors */
@@ -131,9 +136,9 @@ body[data-theme="auto"] {
     color: var(--text-light);
     overflow-y: auto;
     overflow-x: hidden;
-    z-index: 900;
+    z-index: 1001;
     transition: var(--transition);
-    box-shadow: var(--shadow-light);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
 }
@@ -211,17 +216,10 @@ body[data-theme="auto"] {
     display: none !important;
 }
 
-/* Ensure proper sidebar behavior */
+/* Ensure proper sidebar behavior (overrides above, keep in sync) */
 .sidebar {
-    position: fixed;
-    top: var(--header-height);
-    left: 0;
-    height: calc(100vh - var(--header-height));
-    background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
-    color: white;
-    z-index: 900;
-    transition: width 0.3s ease;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    background: var(--sidebar-bg) !important;
+    color: var(--sidebar-text) !important;
 }
 
 .sidebar-toggle:hover {
@@ -245,7 +243,7 @@ body[data-theme="auto"] {
 .sidebar .nav-link {
     display: block;
     padding: 8px 0;
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--sidebar-link);
     text-decoration: none;
     border-radius: 6px;
     margin-bottom: 5px;
@@ -254,29 +252,30 @@ body[data-theme="auto"] {
 }
 
 .sidebar .nav-link:hover {
-    color: white;
-    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--sidebar-text);
+    background-color: var(--sidebar-link-hover-bg);
     transform: translateX(5px);
 }
 
 .sidebar .nav-link.active {
     background-color: var(--secondary-color);
-    color: white;
+    color: var(--sidebar-text);
 }
 
 /* Sidebar Section Headers */
-.sidebar h5, .sidebar h6 {
-    color: white;
+.sidebar h5 {
+    color: var(--sidebar-text);
     margin-bottom: 15px;
     font-weight: 600;
 }
 
 .sidebar h6 {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.9rem;
+    color: var(--sidebar-heading);
+    font-size: 0.72rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-top: 25px;
+    letter-spacing: 0.08em;
+    margin-top: 20px;
+    margin-bottom: 8px;
 }
 
 /* Theme toggle button styles */
@@ -1039,6 +1038,11 @@ body[data-theme="auto"] #page-content {
     --background-tertiary: #404040;
     --card-background: #2d2d2d;
     --sidebar-background: #1a1a1a;
+    --sidebar-bg: linear-gradient(180deg, #111827 0%, #1f2937 100%);
+    --sidebar-text: #f1f5f9;
+    --sidebar-link: rgba(241, 245, 249, 0.80);
+    --sidebar-link-hover-bg: rgba(255, 255, 255, 0.08);
+    --sidebar-heading: rgba(148, 163, 184, 0.80);
     --header-background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
     
     /* Border Colors - Dark Theme */
@@ -2076,6 +2080,7 @@ body[data-theme="auto"] #page-content {
     display: block;
     padding: 15px 10px;
     font-size: 24px;
+    color: var(--sidebar-link);
     text-decoration: none;
     border-radius: 6px;
     transition: all 0.2s ease;
@@ -2083,15 +2088,15 @@ body[data-theme="auto"] #page-content {
 }
 
 .nav-icon:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white !important;
+    background-color: var(--sidebar-link-hover-bg);
+    color: var(--sidebar-text) !important;
     text-decoration: none;
 }
 
 .nav-icon:focus {
     outline: none;
-    background-color: rgba(255, 255, 255, 0.2);
-    color: white !important;
+    background-color: var(--sidebar-link-hover-bg);
+    color: var(--sidebar-text) !important;
 }
 
 /* Form Controls Z-Index Fixes */

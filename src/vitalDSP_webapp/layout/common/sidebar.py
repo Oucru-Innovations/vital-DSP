@@ -25,30 +25,42 @@ def Sidebar():
                 className="sidebar-content",
                 children=[
                     html.H5("Navigation", className="mb-3"),
-                    # Upload section
+                    # Introduction
+                    html.Div(
+                        [
+                            dcc.Link(
+                                [html.I(className="fas fa-home"), " Introduction"],
+                                href="/preview",
+                                className="nav-link",
+                            )
+                        ],
+                        className="mb-2",
+                    ),
+                    # Preprocessing section
+                    html.H6("Preprocessing", className="mt-3 mb-2"),
                     html.Div(
                         [
                             dcc.Link(
                                 [html.I(className="fas fa-upload"), " Upload Data"],
                                 href="/upload",
-                                className="nav-link text-white",
-                            )
+                                className="nav-link",
+                            ),
+                            dcc.Link(
+                                [html.I(className="fas fa-filter"), " Filtering"],
+                                href="/filtering",
+                                className="nav-link",
+                            ),
                         ],
                         className="mb-2",
                     ),
                     # Analysis section
-                    html.H6("Analysis", className="mt-4 mb-2 text-muted"),
+                    html.H6("Analysis", className="mt-3 mb-2"),
                     html.Div(
                         [
                             dcc.Link(
-                                [html.I(className="fas fa-filter"), " Filtering"],
-                                href="/filtering",
-                                className="nav-link text-white",
-                            ),
-                            dcc.Link(
                                 [html.I(className="fas fa-chart-line"), " Time Domain"],
                                 href="/time-domain",
-                                className="nav-link text-white",
+                                className="nav-link",
                             ),
                             dcc.Link(
                                 [
@@ -56,23 +68,17 @@ def Sidebar():
                                     " Frequency Domain",
                                 ],
                                 href="/frequency",
-                                className="nav-link text-white",
-                            ),
-                            dcc.Link(
-                                [html.I(className="fas fa-eye"), " Preview"],
-                                href="/preview",
-                                className="nav-link text-white",
+                                className="nav-link",
                             ),
                             dcc.Link(
                                 [html.I(className="fas fa-lungs"), " Respiratory Rate"],
                                 href="/respiratory",
-                                className="nav-link text-white",
+                                className="nav-link",
                             ),
                         ],
                         className="mb-2",
                     ),
-                    # Theme toggle section
-                    html.H6("Theme", className="mt-4 mb-2 text-muted"),
+                    # Theme toggle
                     html.Div(
                         [
                             html.Button(
@@ -95,49 +101,49 @@ def Sidebar():
             html.Div(
                 className="sidebar-icons",
                 children=[
-                    # Upload section
+                    # Introduction
+                    html.Div(
+                        [
+                            dcc.Link(
+                                html.I(className="fas fa-home"),
+                                href="/preview",
+                                className="nav-icon",
+                                title="Introduction",
+                            )
+                        ],
+                        className="mb-3",
+                    ),
+                    # Preprocessing + Analysis icons
                     html.Div(
                         [
                             dcc.Link(
                                 html.I(className="fas fa-upload"),
                                 href="/upload",
-                                className="nav-icon text-white",
+                                className="nav-icon",
                                 title="Upload Data",
-                            )
-                        ],
-                        className="mb-3",
-                    ),
-                    # Analysis section
-                    html.Div(
-                        [
+                            ),
                             dcc.Link(
                                 html.I(className="fas fa-filter"),
                                 href="/filtering",
-                                className="nav-icon text-white",
+                                className="nav-icon",
                                 title="Filtering",
                             ),
                             dcc.Link(
                                 html.I(className="fas fa-chart-line"),
                                 href="/time-domain",
-                                className="nav-icon text-white",
+                                className="nav-icon",
                                 title="Time Domain",
                             ),
                             dcc.Link(
                                 html.I(className="fas fa-wave-square"),
                                 href="/frequency",
-                                className="nav-icon text-white",
+                                className="nav-icon",
                                 title="Frequency Domain",
-                            ),
-                            dcc.Link(
-                                html.I(className="fas fa-eye"),
-                                href="/preview",
-                                className="nav-icon text-white",
-                                title="Preview",
                             ),
                             dcc.Link(
                                 html.I(className="fas fa-lungs"),
                                 href="/respiratory",
-                                className="nav-icon text-white",
+                                className="nav-icon",
                                 title="Respiratory Rate",
                             ),
                         ],

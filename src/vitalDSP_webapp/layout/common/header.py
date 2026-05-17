@@ -17,7 +17,7 @@ def Header():
             "top": "0",
             "left": "0",
             "right": "0",
-            "height": "60px",
+            "height": "64px",
             "backgroundColor": "#2c3e50",
             "color": "white",
             "zIndex": 1000,
