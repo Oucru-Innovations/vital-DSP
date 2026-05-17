@@ -114,7 +114,7 @@ class TestHeader:
         assert style['top'] == '0'
         assert style['left'] == '0'
         assert style['right'] == '0'
-        assert style['height'] == '60px'
+        assert style['height'] == '64px'
         assert style['backgroundColor'] == '#2c3e50'
         assert style['color'] == 'white'
         assert style['zIndex'] == 1000
@@ -241,20 +241,24 @@ class TestSidebar:
         assert "mb-2" in upload_section.className
         
     def test_sidebar_upload_link(self):
-        """Test Sidebar upload link"""
+        """Test Sidebar upload and introduction links"""
         sidebar = Sidebar()
         content = sidebar.children[1]
-        upload_section = content.children[1]
 
-        upload_link = upload_section.children[0]
-        # Was html.A; now dcc.Link so the browser doesn't reload the
-        # whole app shell on each nav click (which used to flash the
-        # welcome page in between).
+        # First link is Introduction (/preview)
+        intro_section = content.children[1]
+        intro_link = intro_section.children[0]
+        assert intro_link.__class__.__name__ == 'Link'
+        assert intro_link.href == "/preview"
+        assert "nav-link" in intro_link.className
+
+        # Upload Data is inside the Preprocessing section (children[3])
+        preprocessing_section = content.children[3]
+        upload_link = preprocessing_section.children[0]
         assert upload_link.__class__.__name__ == 'Link'
         assert upload_link.href == "/upload"
         assert "nav-link" in upload_link.className
-        assert "text-white" in upload_link.className
-        
+
         # Test link content
         assert len(upload_link.children) == 2
         icon = upload_link.children[0]
@@ -263,138 +267,118 @@ class TestSidebar:
         assert upload_link.children[1] == " Upload Data"
         
     def test_sidebar_analysis_section(self):
-        """Test Sidebar analysis section"""
+        """Test Sidebar analysis section header and links exist."""
         sidebar = Sidebar()
         content = sidebar.children[1]
-        
-        # Find analysis section header
+
         analysis_header = None
         analysis_links = None
-        
         for i, child in enumerate(content.children):
             if hasattr(child, 'children') and child.children == "Analysis":
                 analysis_header = child
                 analysis_links = content.children[i + 1]
                 break
-                
+
         assert analysis_header is not None
         assert analysis_header.__class__.__name__ == 'H6'
-        assert "text-muted" in analysis_header.className
-        
         assert analysis_links is not None
         assert analysis_links.__class__.__name__ == 'Div'
-        assert len(analysis_links.children) >= 3  # Time domain, frequency, filtering
-        
+        assert len(analysis_links.children) >= 3  # Time Domain, Frequency Domain, Respiratory Rate
+
     def test_sidebar_analysis_links(self):
-        """Test Sidebar analysis links"""
+        """Test Sidebar analysis links point to correct routes."""
         sidebar = Sidebar()
         content = sidebar.children[1]
-        
-        # Find analysis links section
+
+        # Analysis section links div: children[4] in current layout
+        # (intro-div, preprocessing-H6, preprocessing-div, analysis-H6, analysis-div, theme-div)
         analysis_links = None
         for child in content.children:
-            if (hasattr(child, 'children') and 
-                len(child.children) >= 3 and
-                hasattr(child.children[0], 'href') and
-                child.children[0].href == "/filtering"):
+            if (hasattr(child, 'children') and
+                    isinstance(child.children, list) and
+                    len(child.children) >= 3 and
+                    hasattr(child.children[0], 'href') and
+                    child.children[0].href == "/time-domain"):
                 analysis_links = child
                 break
-                
+
         assert analysis_links is not None
-        
-        # Test filtering link (now first)
-        filtering_link = analysis_links.children[0]
-        assert filtering_link.href == "/filtering"
-        assert "nav-link" in filtering_link.className
-        
-        # Test time domain link (now second)
-        time_link = analysis_links.children[1]
+
+        time_link = analysis_links.children[0]
         assert time_link.href == "/time-domain"
         assert "nav-link" in time_link.className
-        assert "text-white" in time_link.className
-        
-        # Test frequency link (now at index 2)
-        freq_link = analysis_links.children[2]
+
+        freq_link = analysis_links.children[1]
         assert freq_link.href == "/frequency"
-        
-    def test_sidebar_features_section(self):
-        """Test Sidebar features section"""
-        sidebar = Sidebar()
-        content = sidebar.children[1]
-        
-        # Find features section
-        features_links = None
-        for child in content.children:
-            if (hasattr(child, 'children') and 
-                len(child.children) >= 3 and
-                hasattr(child.children[0], 'href') and
-                child.children[0].href == "/physiological"):
-                features_links = child
-                break
-                
-        assert features_links is not None
-        
-        # Test physiological link
-        physio_link = features_links.children[0]
-        assert physio_link.href == "/physiological"
-        
-        # Test respiratory link
-        resp_link = features_links.children[1]
+        assert "nav-link" in freq_link.className
+
+        resp_link = analysis_links.children[2]
         assert resp_link.href == "/respiratory"
-        
-        # Test transforms link (third link in features section)
-        transforms_link = features_links.children[2]
-        assert transforms_link.href == "/transforms"
-        
-    def test_sidebar_other_section(self):
-        """Test Sidebar other section"""
+        assert "nav-link" in resp_link.className
+
+    def test_sidebar_features_section(self):
+        """Test Sidebar preprocessing section contains upload and filtering links."""
         sidebar = Sidebar()
         content = sidebar.children[1]
-        
-        # Find other section
-        other_links = None
+
+        preprocessing_links = None
         for child in content.children:
-            if (hasattr(child, 'children') and 
-                len(child.children) >= 2 and
-                hasattr(child.children[0], 'href') and
-                child.children[0].href == "/preview"):
-                other_links = child
+            if (hasattr(child, 'children') and
+                    isinstance(child.children, list) and
+                    len(child.children) >= 2 and
+                    hasattr(child.children[0], 'href') and
+                    child.children[0].href == "/upload"):
+                preprocessing_links = child
                 break
-                
-        assert other_links is not None
-        
-        # Test preview link
-        preview_link = other_links.children[0]
-        assert preview_link.href == "/preview"
-        
-        # Test settings link
-        settings_link = other_links.children[1]
-        assert settings_link.href == "/settings"
-        
-    def test_sidebar_icons_section(self):
-        """Test Sidebar icons section (collapsed view)"""
+
+        assert preprocessing_links is not None
+
+        upload_link = preprocessing_links.children[0]
+        assert upload_link.href == "/upload"
+
+        filtering_link = preprocessing_links.children[1]
+        assert filtering_link.href == "/filtering"
+
+    def test_sidebar_other_section(self):
+        """Test Sidebar introduction link points to /preview."""
         sidebar = Sidebar()
-        
+        content = sidebar.children[1]
+
+        intro_section = content.children[1]
+        intro_link = intro_section.children[0]
+        assert intro_link.__class__.__name__ == 'Link'
+        assert intro_link.href == "/preview"
+
+    def test_sidebar_icons_section(self):
+        """Test Sidebar icons section (collapsed view) has correct groups."""
+        sidebar = Sidebar()
         icons_section = sidebar.children[2]
         assert icons_section.__class__.__name__ == 'Div'
         assert "sidebar-icons" in icons_section.className
-        assert len(icons_section.children) >= 4  # Different icon groups
-        
+        # intro group + combined nav group + theme group = 3
+        assert len(icons_section.children) >= 3
+
     def test_sidebar_icon_links(self):
-        """Test Sidebar icon links structure"""
+        """Test Sidebar icon links structure."""
         sidebar = Sidebar()
         icons_section = sidebar.children[2]
-        
-        # Test upload icon.  Was html.A; now dcc.Link (see test_sidebar_upload_link).
-        upload_icon_section = icons_section.children[0]
-        upload_icon_link = upload_icon_section.children[0]
+
+        # First group: Introduction icon → /preview
+        intro_icon_section = icons_section.children[0]
+        intro_icon_link = intro_icon_section.children[0]
+        assert intro_icon_link.__class__.__name__ == 'Link'
+        assert intro_icon_link.href == "/preview"
+        assert "nav-icon" in intro_icon_link.className
+        assert intro_icon_link.title == "Introduction"
+
+        # Second group: first icon → Upload Data
+        nav_icon_section = icons_section.children[1]
+        upload_icon_link = nav_icon_section.children[0]
         assert upload_icon_link.__class__.__name__ == 'Link'
         assert upload_icon_link.href == "/upload"
         assert "nav-icon" in upload_icon_link.className
-        assert "text-white" in upload_icon_link.className
         assert upload_icon_link.title == "Upload Data"
-        
-        # Test icon element
+
         icon = upload_icon_link.children
         assert icon.__class__.__name__ == 'I'
         assert "fas fa-upload" in icon.className
@@ -504,12 +488,11 @@ class TestLayoutIntegration:
                     
         extract_hrefs(sidebar)
         
-        # Test that all expected pages are linked
-        # Note: /features was merged into /advanced
+        # Test that all current pages are linked
         expected_pages = {
-            "/upload", "/time-domain", "/frequency", "/filtering",
-            "/physiological", "/respiratory", "/advanced",
-            "/preview", "/settings"
+            "/upload", "/filtering",
+            "/time-domain", "/frequency", "/respiratory",
+            "/preview",
         }
         
         for page in expected_pages:
