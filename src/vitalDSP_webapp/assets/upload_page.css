@@ -1,0 +1,234 @@
+/* ------------------------------------------------------------------
+ * Upload-page polish.
+ *
+ * Scoped to ``.upload-page``.  Mirrors the design language of the
+ * filtering page (filtering_page.css): 12px card radii, section
+ * labels, gradient primary button, pill-style toggle.  Loaded
+ * automatically by Dash via the ``assets/`` convention.
+ * ------------------------------------------------------------------ */
+
+.upload-page .card {
+    border-radius: 12px;
+}
+
+.upload-page .form-label.section-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+}
+
+.upload-page .btn {
+    border-radius: 8px;
+}
+
+/* Dropzone — modern dashed border, subtle hover lift. */
+.upload-page .upload-dropzone {
+    width: 100%;
+    min-height: 140px;
+    padding: 1.5rem 1rem;
+    border: 2px dashed #ced4da;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #fbfbfd 0%, #f4f6f9 100%);
+    color: #495057;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.upload-page .upload-dropzone:hover {
+    border-color: #0d6efd;
+    background: linear-gradient(180deg, #f5f9ff 0%, #eaf2ff 100%);
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.10);
+}
+
+.upload-page .upload-dropzone .dropzone-icon {
+    font-size: 1.6rem;
+    color: #0d6efd;
+    margin-bottom: 0.1rem;
+}
+
+.upload-page .upload-dropzone strong {
+    color: #212529;
+    font-weight: 600;
+}
+
+.upload-page .upload-dropzone .dropzone-hint {
+    font-size: 0.78rem;
+    color: #6c757d;
+}
+
+/* Signal-type pills — same idiom as filter-family on the filtering page.
+ *
+ * Hide the actual radio input and zero out the form-check wrapper's
+ * padding so the label looks (and clicks) like a standalone pill. */
+.upload-page .signal-type-pills .form-check {
+    padding-left: 0;
+    margin-right: 0;
+}
+
+.upload-page .signal-type-pills .form-check-input {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+    margin: 0;
+}
+
+.upload-page .signal-type-pills label.btn {
+    padding: 0.3rem 0.85rem;
+    font-size: 0.825rem;
+    border-radius: 999px;
+    margin: 0 0.2rem 0.2rem 0;
+    border: 1px solid #dee2e6;
+    color: #495057;
+    background: #fff;
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.upload-page .signal-type-pills label.btn:hover {
+    background: #f1f3f5;
+    border-color: #adb5bd;
+}
+
+.upload-page .signal-type-pills input[type="radio"]:checked + label.btn,
+.upload-page .signal-type-pills label.btn.active {
+    background: #0d6efd;
+    color: #fff;
+    border-color: #0d6efd;
+}
+
+/* Primary Process button — gradient, lift on hover. */
+.upload-page .process-btn {
+    background: linear-gradient(135deg, #0d6efd 0%, #084298 100%);
+    border: 0;
+    font-weight: 500;
+    padding: 0.5rem 1.2rem;
+    box-shadow: 0 2px 6px rgba(13, 110, 253, 0.25);
+    transition: all 0.15s ease;
+}
+
+.upload-page .process-btn:hover:not(:disabled),
+.upload-page .process-btn:focus:not(:disabled) {
+    box-shadow: 0 4px 10px rgba(13, 110, 253, 0.35);
+    transform: translateY(-1px);
+    background: linear-gradient(135deg, #0d6efd 0%, #084298 100%);
+}
+
+.upload-page .process-btn:disabled {
+    background: #adb5bd;
+    box-shadow: none;
+}
+
+/* Quick-actions card — subtler, less competing. */
+.upload-page .quick-actions-card h6 {
+    color: #495057;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.upload-page .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.22rem 0.7rem;
+    border-radius: 999px;
+    background: #f1f3f5;
+    color: #495057;
+    font-size: 0.78rem;
+    font-weight: 500;
+}
+
+.upload-page .status-chip.is-success {
+    background: #d1e7dd;
+    color: #0a3622;
+}
+
+.upload-page .status-chip.is-error {
+    background: #f8d7da;
+    color: #842029;
+}
+
+.upload-page .status-chip .dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: #adb5bd;
+}
+
+.upload-page .status-chip.is-success .dot {
+    background: #198754;
+}
+
+.upload-page .status-chip.is-error .dot {
+    background: #dc3545;
+}
+
+/* Data Preview — stat chips above the table. */
+.upload-page .preview-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.upload-page .preview-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    font-size: 0.825rem;
+    color: #212529;
+    transition: all 0.15s ease;
+}
+
+.upload-page .preview-chip:hover {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+    transform: translateY(-1px);
+}
+
+/* DataTable wrapper polish. */
+.upload-page .data-preview-table-wrap {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.upload-page .data-preview-table-wrap .dash-table-container .dash-spreadsheet-container {
+    border-radius: 10px !important;
+    border: 1px solid #e9ecef !important;
+}
+
+.upload-page .data-preview-table-wrap .previous-next-container,
+.upload-page .data-preview-table-wrap .first-last-container {
+    padding-top: 0.5rem;
+}
+
+.upload-page .data-preview-table-wrap .page-number input {
+    font-size: 0.82rem !important;
+    border-radius: 6px !important;
+    padding: 0.18rem 0.4rem !important;
+}
+
+.upload-page .data-preview-table-wrap .export {
+    border-radius: 6px !important;
+    background: #0d6efd !important;
+    color: #fff !important;
+    border: 0 !important;
+    padding: 0.3rem 0.75rem !important;
+    font-size: 0.78rem !important;
+    cursor: pointer;
+}
+
+.upload-page .data-preview-table-wrap .export:hover {
+    background: #084298 !important;
+}

@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - web
+      - webapp
     paths-ignore:
       - 'docs/**'
   pull_request:

@@ -4,12 +4,48 @@ Main application module for vitalDSP webapp.
 This module provides the main Dash and FastAPI application setup.
 """
 
-from dash import Dash, html, dcc
+import logging
+import os
+import pathlib
+
+from dash import Dash, DiskcacheManager, html, dcc
 from fastapi import FastAPI
 
 # Use the built-in FastAPI mounting approach instead of WSGI middleware
 # This avoids compatibility issues between FastAPI and Dash
 import dash_bootstrap_components as dbc
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Background-callback manager
+#
+# When ``diskcache`` is installed we enable Dash background callbacks so the
+# heavy "Process data" path stays interactive and cancellable.  Without it
+# the app still imports fine; background-capable callbacks just fall back to
+# synchronous execution.  Mirrors the vital-sqi setup.
+# ---------------------------------------------------------------------------
+_CACHE_DIR = pathlib.Path(
+    os.environ.get("VITAL_DSP_WEBAPP_CACHE_DIR", ".cache/vitaldsp_webapp")
+).expanduser()
+try:
+    _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+except OSError as exc:
+    logger.warning("Could not create cache dir %s: %s", _CACHE_DIR, exc)
+
+try:
+    import diskcache  # noqa: F401  -- imported for availability check
+
+    background_callback_manager = DiskcacheManager(diskcache.Cache(str(_CACHE_DIR)))
+    logger.info("Background callbacks enabled; cache at %s", _CACHE_DIR)
+except ImportError:  # pragma: no cover - exercised when diskcache is absent
+    background_callback_manager = None
+    logger.warning(
+        "diskcache is not installed; Dash background callbacks will fall back "
+        "to synchronous execution.  Run `pip install diskcache` to enable "
+        "the long-running, cancellable Process Data path."
+    )
 
 # Import configuration
 from vitalDSP_webapp.config.settings import app_config, ui_styles
@@ -30,17 +66,9 @@ from vitalDSP_webapp.callbacks import (
     register_time_domain_callbacks,
     register_frequency_filtering_callbacks,
     register_signal_filtering_callbacks,
-    register_respiratory_callbacks,
-    register_transform_callbacks,
-    register_quality_callbacks,
-    register_advanced_callbacks,
-    register_health_report_callbacks,
-    register_settings_callbacks,
-    register_tasks_callbacks,
-    register_pipeline_callbacks,
-    register_physiological_callbacks,
-    register_features_callbacks,
+    register_segment_quality_callbacks,
     register_preview_callbacks,
+    register_respiratory_callbacks,
 )
 from vitalDSP_webapp.callbacks.core.theme_callbacks import (
     register_theme_callbacks,
@@ -56,7 +84,8 @@ def create_dash_app() -> Dash:
     app : Dash
         A Dash application object configured with layout and callbacks.
     """
-    # Initialize Dash app with Bootstrap CSS theme
+    # Initialize Dash app with Bootstrap CSS theme.  ``background_callback_manager``
+    # is None when diskcache is not installed, which Dash treats as a no-op.
     app = Dash(
         __name__,
         external_stylesheets=[
@@ -64,6 +93,7 @@ def create_dash_app() -> Dash:
             "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css",
         ],
         suppress_callback_exceptions=True,
+        background_callback_manager=background_callback_manager,
     )
     app.title = app_config.APP_NAME
 
@@ -101,7 +131,14 @@ def create_dash_app() -> Dash:
             dcc.Location(id="url", refresh=False),  # For page routing
             Header(),
             Sidebar(),
-            # Placeholder for main content area, dynamically updated by the callback
+            # Placeholder for main content area, populated by the routing
+            # callback on first load.  Previously this carried the full
+            # welcome layout inline, which Dash rendered before any
+            # callback fired - so every page refresh (and every full-
+            # reload nav click, see ``dcc.Link`` swap in sidebar.py) flashed
+            # the welcome page before the real layout swapped in.  Leaving
+            # it empty lets the routing callback be the single source of
+            # truth; ``_get_welcome_layout`` still serves "/" cleanly.
             html.Div(
                 id="page-content",
                 style={
@@ -115,64 +152,6 @@ def create_dash_app() -> Dash:
                     "zIndex": 100,
                     "transition": "left 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                 },
-                children=[
-                    # Default welcome content - will be replaced by routing callback
-                    html.H1(app_config.APP_NAME, className="text-center mb-4"),
-                    html.Div(
-                        [
-                            html.H3(
-                                app_config.APP_DESCRIPTION, className="text-center mb-4"
-                            ),
-                            html.P(
-                                [
-                                    "This dashboard provides comprehensive access to all vitalDSP features including:",
-                                    html.Br(),
-                                    "• Time and frequency domain analysis",
-                                    html.Br(),
-                                    "• Advanced signal filtering and processing",
-                                    html.Br(),
-                                    "• Physiological feature extraction",
-                                    html.Br(),
-                                    "• Respiratory analysis",
-                                    html.Br(),
-                                    "• Signal quality assessment",
-                                    html.Br(),
-                                    "• Advanced computational methods",
-                                    html.Br(),
-                                    "• Health report generation",
-                                ],
-                                className="text-center",
-                            ),
-                            html.Hr(),
-                            html.Div(
-                                [
-                                    html.H4("Getting Started:"),
-                                    html.Ol(
-                                        [
-                                            html.Li(
-                                                "Upload your PPG/ECG data using the Upload page"
-                                            ),
-                                            html.Li(
-                                                "Configure your data parameters (sampling frequency, etc.)"
-                                            ),
-                                            html.Li(
-                                                "Navigate to the analysis page of your choice"
-                                            ),
-                                            html.Li(
-                                                "Adjust parameters and view results in real-time"
-                                            ),
-                                            html.Li(
-                                                "Export your analysis results and reports"
-                                            ),
-                                        ]
-                                    ),
-                                ],
-                                className="text-left",
-                            ),
-                        ],
-                        className="container",
-                    ),
-                ],
             ),
             Footer(),
         ],
@@ -190,17 +169,9 @@ def create_dash_app() -> Dash:
         app
     )  # Register frequency and filtering callbacks
     register_signal_filtering_callbacks(app)  # Register signal filtering callbacks
-    register_respiratory_callbacks(app)  # Register respiratory analysis callbacks
-    register_transform_callbacks(app)  # Register transform analysis callbacks
-    register_physiological_callbacks(app)  # Register physiological features callbacks
-    register_features_callbacks(app)  # Register feature engineering callbacks
+    register_segment_quality_callbacks(app)  # Register segment-quality callbacks
     register_preview_callbacks(app)  # Register preview callbacks
-    register_quality_callbacks(app)  # Register signal quality assessment callbacks
-    register_advanced_callbacks(app)  # Register advanced processing callbacks
-    register_health_report_callbacks(app)  # Register health report generation callbacks
-    register_settings_callbacks(app)  # Register settings management callbacks
-    register_pipeline_callbacks(app)
-    register_tasks_callbacks(app)  # Register pipeline visualization callbacks
+    register_respiratory_callbacks(app)
 
     # Register export callbacks
     from vitalDSP_webapp.callbacks.utils.export_callbacks import (

@@ -12,322 +12,495 @@ def filtering_layout():
     """Create the comprehensive signal filtering page layout with optimized space usage."""
     return html.Div(
         [
-            # Page Header - Compact
+            # Visual polish lives in ``assets/filtering_page.css``,
+            # auto-loaded by Dash.  Everything below scopes to the
+            # ``signal-filtering-page`` class on the outer Div.
+            # Page header — single tight line, no over-explained subtitle.
             html.Div(
                 [
-                    html.H1(
-                        "🔧 Advanced Signal Filtering", className="text-center mb-3"
-                    ),
-                    html.P(
+                    html.Div(
                         [
-                            "Apply advanced filtering techniques including traditional filters, Kalman filters, ",
-                            "neural network filtering, and artifact removal for optimal signal quality.",
+                            html.I(className="fas fa-wave-square me-2 text-primary"),
+                            html.Span("Signal Filtering", className="fw-semibold"),
                         ],
-                        className="text-center text-muted mb-3",
+                        className="h4 mb-0 d-flex align-items-center",
+                    ),
+                    html.Small(
+                        "Pick a segment in the timeline, build a filter chain, then Apply.",
+                        className="text-muted",
                     ),
                 ],
                 className="mb-3",
             ),
-            # Main Controller Bar - Top
+            # ------------------------------------------------------------------
+            # Top controller bar.
+            #
+            # Two rows, 12-column grid, never overflowing:
+            #   Row 1 : timeline strip + scoring toggle (full width)
+            #   Row 2 : filter-family radios | view-zoom | nudge buttons | Apply
+            # ------------------------------------------------------------------
             dbc.Card(
+                dbc.CardBody(
+                    [
+                        # Row 1 — segment timeline + scoring toggle.  The
+                        # timeline IS the position picker; clicking a cell
+                        # jumps the comparison plot below.
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    [
+                                        html.Div(
+                                            [
+                                                html.Span(
+                                                    id="filter-segment-headline-top",
+                                                    className="small text-muted",
+                                                    children="Upload data to see segments.",
+                                                ),
+                                                dbc.Checkbox(
+                                                    id="filter-segment-scoring-enabled",
+                                                    label=" Show accept / reject scoring",
+                                                    value=False,
+                                                    className="small ms-auto mb-0",
+                                                ),
+                                            ],
+                                            className="d-flex align-items-center justify-content-between mb-1",
+                                        ),
+                                        dcc.Loading(
+                                            dcc.Graph(
+                                                id="filter-segment-timeline-top",
+                                                config={
+                                                    "displayModeBar": False,
+                                                    "staticPlot": False,
+                                                },
+                                                className="segment-timeline-graph",
+                                            ),
+                                            type="default",
+                                        ),
+                                    ],
+                                    md=12,
+                                ),
+                            ],
+                            className="g-2 mb-3",
+                        ),
+                        # Row 2 — primary controls.  Filter family takes
+                        # the wide column; view-zoom + nudge + Apply share
+                        # the right half.
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    [
+                                        html.Label(
+                                            "Filter family",
+                                            className="form-label section-label mb-1",
+                                        ),
+                                        # Pill-style toggle: Bootstrap's
+                                        # btn-check input + btn label
+                                        # idiom, plus our own pill CSS.
+                                        dbc.RadioItems(
+                                            id="filter-type-select",
+                                            options=[
+                                                {
+                                                    "label": "Traditional",
+                                                    "value": "traditional",
+                                                },
+                                                {
+                                                    "label": "Smoothing",
+                                                    "value": "smoothing",
+                                                },
+                                                {
+                                                    "label": "Advanced",
+                                                    "value": "advanced",
+                                                },
+                                                {
+                                                    "label": "Artifact",
+                                                    "value": "artifact",
+                                                },
+                                                {"label": "Neural", "value": "neural"},
+                                                {
+                                                    "label": "Ensemble",
+                                                    "value": "ensemble",
+                                                },
+                                            ],
+                                            value="traditional",
+                                            inline=True,
+                                            className="filter-family-pills",
+                                            inputClassName="btn-check",
+                                            labelClassName="btn",
+                                            labelCheckedClassName="active",
+                                        ),
+                                    ],
+                                    md=6,
+                                ),
+                                dbc.Col(
+                                    [
+                                        html.Label(
+                                            "View zoom",
+                                            className="form-label section-label mb-1",
+                                        ),
+                                        dbc.Select(
+                                            id="duration-select",
+                                            options=[
+                                                {"label": "1 segment", "value": 1},
+                                                {"label": "3 segments", "value": 3},
+                                                {"label": "5 segments", "value": 5},
+                                            ],
+                                            value=1,
+                                            size="sm",
+                                        ),
+                                    ],
+                                    md=2,
+                                ),
+                                dbc.Col(
+                                    [
+                                        html.Label(
+                                            "Nudge",
+                                            className="form-label section-label mb-1",
+                                        ),
+                                        dbc.ButtonGroup(
+                                            [
+                                                dbc.Button(
+                                                    html.I(
+                                                        className="fas fa-chevron-left"
+                                                    ),
+                                                    id="btn-nudge-m10",
+                                                    color="light",
+                                                    size="sm",
+                                                    title="Back 10%",
+                                                ),
+                                                dbc.Button(
+                                                    html.I(
+                                                        className="fas fa-compress-arrows-alt"
+                                                    ),
+                                                    id="btn-center",
+                                                    color="light",
+                                                    size="sm",
+                                                    title="Center",
+                                                ),
+                                                dbc.Button(
+                                                    html.I(
+                                                        className="fas fa-chevron-right"
+                                                    ),
+                                                    id="btn-nudge-p10",
+                                                    color="light",
+                                                    size="sm",
+                                                    title="Forward 10%",
+                                                ),
+                                            ],
+                                            size="sm",
+                                            className="w-100",
+                                        ),
+                                    ],
+                                    md=2,
+                                ),
+                                dbc.Col(
+                                    [
+                                        html.Label(
+                                            "Action",
+                                            className="form-label section-label mb-1",
+                                        ),
+                                        dbc.Button(
+                                            [
+                                                html.I(className="fas fa-play me-1"),
+                                                "Apply Filter",
+                                            ],
+                                            id="filter-btn-apply",
+                                            color="primary",
+                                            size="sm",
+                                            className="w-100 apply-btn",
+                                        ),
+                                    ],
+                                    md=2,
+                                ),
+                            ],
+                            className="g-2",
+                        ),
+                        # Hidden carriers — IDs preserved for callbacks
+                        # that still read them as State, but no visible
+                        # widgets.  ``start-position-slider`` is driven
+                        # by the timeline click handler.
+                        html.Div(
+                            [
+                                dcc.Slider(
+                                    id="start-position-slider",
+                                    min=0,
+                                    max=100,
+                                    step=1,
+                                    value=0,
+                                    marks={},
+                                ),
+                                dcc.Store(id="store-picked-segment", data=0),
+                                dbc.Select(
+                                    id="filter-signal-source",
+                                    options=[
+                                        {"label": "Original", "value": "original"}
+                                    ],
+                                    value="original",
+                                ),
+                                dbc.Input(
+                                    id="filter-application-count",
+                                    type="number",
+                                    value=1,
+                                ),
+                                dbc.Select(
+                                    id="filter-signal-type-select",
+                                    options=[
+                                        {"label": "PPG", "value": "PPG"},
+                                        {"label": "ECG", "value": "ECG"},
+                                        {"label": "Other", "value": "Other"},
+                                    ],
+                                    value="PPG",
+                                ),
+                                dbc.Checklist(
+                                    id="filter-quality-options",
+                                    options=[{"label": "SNR", "value": "snr"}],
+                                    value=["snr"],
+                                ),
+                            ],
+                            style={"display": "none"},
+                        ),
+                    ]
+                ),
+                className="mb-3 shadow-sm border-0",
+            ),
+            # Hidden carrier for the legacy saved-banner ID — kept alive
+            # so the apply callback's Output list resolves; the banner
+            # itself was removed because it was pure information noise.
+            html.Div(id="filter-saved-banner", style={"display": "none"}),
+            # Filter chain — optional ordered stages applied on Apply.
+            # Wrapped in an accordion so the panel only takes one line
+            # of vertical space when the user just wants to see what's
+            # queued (the common case after they've built their chain).
+            dbc.Accordion(
                 [
-                    dbc.CardBody(
+                    dbc.AccordionItem(
+                        [
+                            html.Div(
+                                id="filter-chain-list",
+                                children=html.Small(
+                                    "Chain is empty. Apply runs the single filter "
+                                    "configured below; click + Add as stage to queue more.",
+                                    className="text-muted",
+                                ),
+                                className="mb-2",
+                            ),
+                            html.Div(
+                                id="filter-chain-panel-preview",
+                                className="mb-2 small text-muted",
+                            ),
+                            dbc.ButtonGroup(
+                                [
+                                    dbc.Button(
+                                        [
+                                            html.I(className="fas fa-plus me-1"),
+                                            "Add as stage",
+                                        ],
+                                        id="filter-chain-add",
+                                        color="primary",
+                                        outline=True,
+                                        size="sm",
+                                    ),
+                                    dbc.Button(
+                                        "Clear",
+                                        id="filter-chain-clear",
+                                        color="secondary",
+                                        outline=True,
+                                        size="sm",
+                                    ),
+                                ]
+                            ),
+                            dcc.Store(id="filter-chain-store", data=[]),
+                        ],
+                        title="Filter chain  ·  optional, apply several filters in sequence",
+                        item_id="filter-chain",
+                    ),
+                ],
+                start_collapsed=True,
+                className="mb-3 shadow-sm border-0",
+            ),
+            # Segment-quality controls: collapsed accordion (minimalist).
+            # Auto-populates on page load from the uploaded recording; the
+            # green/red timeline at the top is its read-out.
+            dbc.Accordion(
+                [
+                    dbc.AccordionItem(
                         [
                             dbc.Row(
                                 [
-                                    # Filter Type Selection
                                     dbc.Col(
                                         [
                                             html.Label(
-                                                "Filter Type:",
-                                                className="form-label mb-1",
+                                                "Segment length:",
+                                                className="form-label small",
                                             ),
                                             dbc.Select(
-                                                id="filter-type-select",
+                                                id="filter-segment-length",
                                                 options=[
-                                                    {
-                                                        "label": "Traditional Filters",
-                                                        "value": "traditional",
-                                                    },
-                                                    {
-                                                        "label": "Advanced Filters",
-                                                        "value": "advanced",
-                                                    },
-                                                    {
-                                                        "label": "Artifact Removal",
-                                                        "value": "artifact",
-                                                    },
-                                                    {
-                                                        "label": "Neural Network",
-                                                        "value": "neural",
-                                                    },
-                                                    {
-                                                        "label": "Ensemble Methods",
-                                                        "value": "ensemble",
-                                                    },
+                                                    {"label": "5 s", "value": 5},
+                                                    {"label": "10 s", "value": 10},
+                                                    {"label": "15 s", "value": 15},
+                                                    {"label": "30 s", "value": 30},
+                                                    {"label": "60 s", "value": 60},
                                                 ],
-                                                value="traditional",
+                                                value=30,
                                                 size="sm",
                                             ),
                                         ],
-                                        md=2,
+                                        md=3,
                                     ),
-                                    # Modern Time Range Controls
                                     dbc.Col(
                                         [
                                             html.Label(
-                                                "Start Position (%)",
-                                                className="form-label mb-1",
+                                                "Overlap:", className="form-label small"
                                             ),
-                                            dcc.Slider(
-                                                id="start-position-slider",
-                                                min=0,
-                                                max=100,
-                                                step=1,
+                                            dbc.Select(
+                                                id="filter-segment-overlap",
+                                                options=[
+                                                    {"label": "0%", "value": 0},
+                                                    {"label": "25%", "value": 25},
+                                                    {"label": "50%", "value": 50},
+                                                    {"label": "75%", "value": 75},
+                                                ],
                                                 value=0,
-                                                marks={
-                                                    0: "0%",
-                                                    25: "25%",
-                                                    50: "50%",
-                                                    75: "75%",
-                                                    100: "100%",
-                                                },
-                                                tooltip={
-                                                    "placement": "bottom",
-                                                    "always_visible": True,
-                                                },
-                                                className="mb-2",
-                                            ),
-                                        ],
-                                        md=3,
-                                    ),
-                                    # Duration Selection
-                                    dbc.Col(
-                                        [
-                                            html.Label(
-                                                "Duration",
-                                                className="form-label mb-1",
-                                            ),
-                                            dbc.Select(
-                                                id="duration-select",
-                                                options=[
-                                                    {"label": "30s", "value": 30},
-                                                    {"label": "1min", "value": 60},
-                                                    {"label": "2min", "value": 120},
-                                                    {"label": "5min", "value": 300},
-                                                ],
-                                                value=60,  # Default to 1 minute
                                                 size="sm",
                                             ),
                                         ],
                                         md=2,
                                     ),
-                                    # Quick Navigation
                                     dbc.Col(
                                         [
                                             html.Label(
-                                                "Navigation:",
-                                                className="form-label mb-1",
+                                                "Mode:", className="form-label small"
                                             ),
-                                            dbc.ButtonGroup(
-                                                [
-                                                    dbc.Button(
-                                                        "-10%",
-                                                        id="btn-nudge-m10",
-                                                        color="secondary",
-                                                        size="sm",
-                                                        className="me-1",
-                                                    ),
-                                                    dbc.Button(
-                                                        "Center",
-                                                        id="btn-center",
-                                                        color="info",
-                                                        size="sm",
-                                                        className="me-1",
-                                                    ),
-                                                    dbc.Button(
-                                                        "+10%",
-                                                        id="btn-nudge-p10",
-                                                        color="secondary",
-                                                        size="sm",
-                                                    ),
+                                            dbc.RadioItems(
+                                                id="filter-segment-mode",
+                                                options=[
+                                                    {
+                                                        "label": " Auto-tune",
+                                                        "value": "tune",
+                                                    },
+                                                    {
+                                                        "label": " Quantile",
+                                                        "value": "quantile",
+                                                    },
+                                                    {
+                                                        "label": " Manual",
+                                                        "value": "manual",
+                                                    },
                                                 ],
-                                                size="sm",
+                                                value="tune",
+                                                inline=True,
                                             ),
                                         ],
-                                        md=3,
+                                        md=7,
                                     ),
                                 ],
                                 className="mb-2",
                             ),
-                            # Second Row: Signal Source and Filter Count
                             dbc.Row(
                                 [
-                                    # Signal Source Selector
                                     dbc.Col(
                                         [
-                                            html.Label(
-                                                "Signal Source:",
-                                                className="form-label mb-1",
-                                            ),
-                                            dbc.Select(
-                                                id="filter-signal-source",
-                                                options=[
-                                                    {
-                                                        "label": "Original Signal",
-                                                        "value": "original",
-                                                    },
-                                                    {
-                                                        "label": "Filtered Signal (Iterative)",
-                                                        "value": "filtered",
-                                                    },
-                                                ],
-                                                value="original",
-                                                size="sm",
-                                            ),
-                                            html.Small(
-                                                "Select 'Filtered' to apply filter on already filtered signal",
-                                                className="text-muted d-block",
-                                            ),
-                                        ],
-                                        md=4,
-                                    ),
-                                    # Filter Application Count
-                                    dbc.Col(
-                                        [
-                                            html.Label(
-                                                "Apply Filter (n times):",
-                                                className="form-label mb-1",
-                                            ),
-                                            dbc.Input(
-                                                id="filter-application-count",
-                                                type="number",
-                                                value=1,
-                                                min=1,
-                                                max=10,
-                                                step=1,
-                                                size="sm",
-                                            ),
-                                            html.Small(
-                                                "Number of times to apply the filter (1-10)",
-                                                className="text-muted d-block",
-                                            ),
-                                        ],
-                                        md=3,
-                                    ),
-                                    # Empty column for spacing
-                                    dbc.Col(md=3),
-                                    # Apply Filter Button
-                                    dbc.Col(
-                                        [
-                                            html.Label(
-                                                "Action:", className="form-label mb-1"
-                                            ),
-                                            dbc.Button(
-                                                "Apply Filter",
-                                                id="filter-btn-apply",
-                                                color="primary",
-                                                size="sm",
-                                                className="w-100",
-                                            ),
-                                        ],
-                                        md=2,
-                                    ),
-                                    # Export Buttons
-                                    dbc.Col(
-                                        [
-                                            html.Label(
-                                                "Export:", className="form-label mb-1"
-                                            ),
-                                            dbc.ButtonGroup(
+                                            html.Div(
                                                 [
-                                                    dbc.Button(
-                                                        [
-                                                            html.I(
-                                                                className="fas fa-file-csv me-1"
-                                                            ),
-                                                            "CSV",
-                                                        ],
-                                                        id="btn-export-filtered-csv",
-                                                        color="success",
-                                                        outline=True,
-                                                        size="sm",
+                                                    html.Label(
+                                                        "Joint accept target:",
+                                                        className="form-label small",
                                                     ),
-                                                    dbc.Button(
-                                                        [
-                                                            html.I(
-                                                                className="fas fa-file-code me-1"
-                                                            ),
-                                                            "JSON",
-                                                        ],
-                                                        id="btn-export-filtered-json",
-                                                        color="info",
-                                                        outline=True,
-                                                        size="sm",
+                                                    dcc.Slider(
+                                                        id="filter-segment-tune-slider",
+                                                        min=0.5,
+                                                        max=0.99,
+                                                        step=0.01,
+                                                        value=0.90,
+                                                        marks={
+                                                            0.5: "50%",
+                                                            0.7: "70%",
+                                                            0.85: "85%",
+                                                            0.9: "90%",
+                                                            0.95: "95%",
+                                                        },
+                                                        tooltip={
+                                                            "placement": "bottom",
+                                                            "always_visible": False,
+                                                        },
                                                     ),
                                                 ],
-                                                size="sm",
+                                                id="filter-segment-tune-row",
                                             ),
-                                        ],
-                                        md=2,
-                                    ),
-                                    # Signal Type Selection
-                                    dbc.Col(
-                                        [
-                                            html.Label(
-                                                "Signal Type:",
-                                                className="form-label mb-1",
-                                            ),
-                                            dbc.Select(
-                                                id="filter-signal-type-select",
-                                                options=[
-                                                    {
-                                                        "label": "PPG (Photoplethysmography)",
-                                                        "value": "PPG",
-                                                    },
-                                                    {
-                                                        "label": "ECG (Electrocardiography)",
-                                                        "value": "ECG",
-                                                    },
-                                                    {
-                                                        "label": "Other",
-                                                        "value": "Other",
-                                                    },
+                                            html.Div(
+                                                [
+                                                    html.Label(
+                                                        "Per-rule trim (each tail):",
+                                                        className="form-label small",
+                                                    ),
+                                                    dcc.Slider(
+                                                        id="filter-segment-quantile-slider",
+                                                        min=0.0,
+                                                        max=0.25,
+                                                        step=0.005,
+                                                        value=0.05,
+                                                        marks={
+                                                            0.0: "p0",
+                                                            0.01: "p1",
+                                                            0.025: "p2.5",
+                                                            0.05: "p5",
+                                                            0.10: "p10",
+                                                            0.25: "p25",
+                                                        },
+                                                        tooltip={
+                                                            "placement": "bottom",
+                                                            "always_visible": False,
+                                                        },
+                                                    ),
                                                 ],
-                                                value="PPG",
-                                                className="mb-1",
+                                                id="filter-segment-quantile-row",
+                                                style={"display": "none"},
                                             ),
                                         ],
-                                        md=2,
-                                    ),
-                                    # Quality Assessment Toggle
-                                    dbc.Col(
-                                        [
-                                            html.Label(
-                                                "Quality:", className="form-label mb-1"
-                                            ),
-                                            dbc.Checklist(
-                                                id="filter-quality-options",
-                                                options=[
-                                                    {"label": "SNR", "value": "snr"},
-                                                    {
-                                                        "label": "Metrics",
-                                                        "value": "metrics",
-                                                    },
-                                                ],
-                                                value=["snr"],
-                                                inline=True,
-                                            ),
-                                        ],
-                                        md=2,
+                                        md=12,
                                     ),
                                 ],
-                                className="g-2",
+                                className="mb-2",
                             ),
-                        ]
+                            dbc.Row(
+                                [
+                                    dbc.Col(
+                                        [
+                                            html.Div(
+                                                [
+                                                    html.Label(
+                                                        "SQIs:",
+                                                        className="form-label small mb-0 me-2 d-inline",
+                                                    ),
+                                                    html.Span(
+                                                        id="filter-segment-rules-summary",
+                                                        className="small text-muted",
+                                                    ),
+                                                ]
+                                            ),
+                                            dbc.Checklist(
+                                                id="filter-segment-rules-checklist",
+                                                options=[],
+                                                value=[],
+                                                inline=True,
+                                                switch=False,
+                                            ),
+                                            html.Div(
+                                                id="filter-segment-rules-skipped",
+                                                className="small text-muted",
+                                            ),
+                                        ],
+                                        md=12,
+                                    ),
+                                ],
+                            ),
+                        ],
+                        title="Segment-quality tuning  ·  thresholds, SQIs, segmentation",
+                        item_id="segment-quality-tuning",
                     )
                 ],
-                className="mb-3",
+                start_collapsed=True,
+                className="mb-3 shadow-sm border-0",
             ),
             # Main Analysis Section
             dbc.Row(
@@ -339,20 +512,21 @@ def filtering_layout():
                                 [
                                     dbc.CardHeader(
                                         [
-                                            html.H6(
-                                                "🎛️ Filter Configuration",
-                                                className="mb-0",
+                                            html.Span(
+                                                "Filter configuration",
+                                                className="fw-semibold small text-uppercase text-muted",
                                             ),
-                                            html.Small(
-                                                "Customize filter parameters",
-                                                className="text-muted",
-                                            ),
-                                        ]
+                                        ],
+                                        className="bg-white border-0 pb-1",
                                     ),
                                     dbc.CardBody(
-                                        [
+                                        className="filter-config-body",
+                                        children=[
                                             # Preprocessing Options
-                                            html.H6("Preprocessing", className="mb-2"),
+                                            html.Div(
+                                                "Preprocessing",
+                                                className="config-section-title",
+                                            ),
                                             dbc.Checklist(
                                                 id="detrend-option",
                                                 options=[
@@ -450,7 +624,7 @@ def filtering_layout():
                                                             dbc.Col(
                                                                 [
                                                                     html.Label(
-                                                                        "Low Freq (Hz):",
+                                                                        "Low cutoff (Hz)",
                                                                         className="form-label",
                                                                     ),
                                                                     dbc.Input(
@@ -467,13 +641,13 @@ def filtering_layout():
                                                             dbc.Col(
                                                                 [
                                                                     html.Label(
-                                                                        "High Freq (Hz):",
+                                                                        "High cutoff (Hz)",
                                                                         className="form-label",
                                                                     ),
                                                                     dbc.Input(
                                                                         id="filter-high-freq-advanced",
                                                                         type="number",
-                                                                        value=5,
+                                                                        value=40,
                                                                         min=0,
                                                                         step=0.1,
                                                                         size="sm",
@@ -482,7 +656,18 @@ def filtering_layout():
                                                                 width=6,
                                                             ),
                                                         ],
-                                                        className="mb-2",
+                                                        className="mb-1",
+                                                    ),
+                                                    html.Small(
+                                                        [
+                                                            html.Strong("Bandpass: "),
+                                                            "keeps low–high.  ",
+                                                            html.Strong("Low pass: "),
+                                                            "uses High cutoff.  ",
+                                                            html.Strong("High pass: "),
+                                                            "uses Low cutoff.",
+                                                        ],
+                                                        className="text-muted d-block mb-2",
                                                     ),
                                                     dbc.Row(
                                                         [
@@ -507,91 +692,11 @@ def filtering_layout():
                                                         ],
                                                         className="mb-3",
                                                     ),
-                                                    # Additional Traditional Filters
-                                                    html.H6(
-                                                        "Additional Filters",
-                                                        className="mb-2",
-                                                    ),
-                                                    dbc.Row(
-                                                        [
-                                                            dbc.Col(
-                                                                [
-                                                                    html.Label(
-                                                                        "Savitzky-Golay:",
-                                                                        className="form-label",
-                                                                    ),
-                                                                    dbc.Input(
-                                                                        id="savgol-window",
-                                                                        type="number",
-                                                                        placeholder="Window",
-                                                                        min=3,
-                                                                        step=2,
-                                                                        size="sm",
-                                                                    ),
-                                                                ],
-                                                                width=6,
-                                                            ),
-                                                            dbc.Col(
-                                                                [
-                                                                    html.Label(
-                                                                        "Poly Order:",
-                                                                        className="form-label",
-                                                                    ),
-                                                                    dbc.Input(
-                                                                        id="savgol-polyorder",
-                                                                        type="number",
-                                                                        placeholder="Order",
-                                                                        min=1,
-                                                                        max=5,
-                                                                        step=1,
-                                                                        size="sm",
-                                                                    ),
-                                                                ],
-                                                                width=6,
-                                                            ),
-                                                        ],
-                                                        className="mb-2",
-                                                    ),
-                                                    dbc.Row(
-                                                        [
-                                                            dbc.Col(
-                                                                [
-                                                                    html.Label(
-                                                                        "Moving Avg:",
-                                                                        className="form-label",
-                                                                    ),
-                                                                    dbc.Input(
-                                                                        id="moving-avg-window",
-                                                                        type="number",
-                                                                        placeholder="Window",
-                                                                        min=3,
-                                                                        step=1,
-                                                                        size="sm",
-                                                                    ),
-                                                                ],
-                                                                width=6,
-                                                            ),
-                                                            dbc.Col(
-                                                                [
-                                                                    html.Label(
-                                                                        "Gaussian σ:",
-                                                                        className="form-label",
-                                                                    ),
-                                                                    dbc.Input(
-                                                                        id="gaussian-sigma",
-                                                                        type="number",
-                                                                        placeholder="Sigma",
-                                                                        min=0.1,
-                                                                        max=10.0,
-                                                                        step=0.1,
-                                                                        size="sm",
-                                                                    ),
-                                                                ],
-                                                                width=6,
-                                                            ),
-                                                        ],
-                                                        className="mb-3",
-                                                    ),
+                                                    # The legacy "Additional Filters"
+                                                    # subsection (Savgol/MovAvg/Gaussian)
+                                                    # used to live here.  Promoted to a
+                                                    # top-level "Smoothing" family - see
+                                                    # smoothing-filter-params below.
                                                 ],
                                                 id="traditional-filter-params",
                                             ),
@@ -1156,6 +1261,145 @@ def filtering_layout():
                                                 id="advanced-filter-params",
                                                 style={"display": "none"},
                                             ),
+                                            # Smoothing Filter Parameters
+                                            html.Div(
+                                                [
+                                                    html.H6(
+                                                        "Smoothing",
+                                                        className="mb-2",
+                                                    ),
+                                                    dbc.Row(
+                                                        [
+                                                            dbc.Col(
+                                                                [
+                                                                    html.Label(
+                                                                        "Method:",
+                                                                        className="form-label",
+                                                                    ),
+                                                                    dbc.Select(
+                                                                        id="smoothing-method-select",
+                                                                        options=[
+                                                                            {
+                                                                                "label": "Savitzky-Golay",
+                                                                                "value": "savgol",
+                                                                            },
+                                                                            {
+                                                                                "label": "Moving Average",
+                                                                                "value": "moving_avg",
+                                                                            },
+                                                                            {
+                                                                                "label": "Gaussian",
+                                                                                "value": "gaussian",
+                                                                            },
+                                                                        ],
+                                                                        value="savgol",
+                                                                    ),
+                                                                ],
+                                                                width=12,
+                                                            ),
+                                                        ],
+                                                        className="mb-2",
+                                                    ),
+                                                    # Savitzky-Golay params
+                                                    html.Div(
+                                                        [
+                                                            dbc.Row(
+                                                                [
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label(
+                                                                                "Window length (odd):",
+                                                                                className="form-label",
+                                                                            ),
+                                                                            dbc.Input(
+                                                                                id="savgol-window",
+                                                                                type="number",
+                                                                                value=11,
+                                                                                min=3,
+                                                                                step=2,
+                                                                            ),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label(
+                                                                                "Polyorder:",
+                                                                                className="form-label",
+                                                                            ),
+                                                                            dbc.Input(
+                                                                                id="savgol-polyorder",
+                                                                                type="number",
+                                                                                value=2,
+                                                                                min=1,
+                                                                                step=1,
+                                                                            ),
+                                                                        ],
+                                                                        width=6,
+                                                                    ),
+                                                                ],
+                                                            ),
+                                                        ],
+                                                        id="smoothing-savgol-params",
+                                                    ),
+                                                    # Moving average params
+                                                    html.Div(
+                                                        [
+                                                            dbc.Row(
+                                                                [
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label(
+                                                                                "Window size:",
+                                                                                className="form-label",
+                                                                            ),
+                                                                            dbc.Input(
+                                                                                id="moving-avg-window",
+                                                                                type="number",
+                                                                                value=5,
+                                                                                min=2,
+                                                                                step=1,
+                                                                            ),
+                                                                        ],
+                                                                        width=12,
+                                                                    ),
+                                                                ],
+                                                            ),
+                                                        ],
+                                                        id="smoothing-movavg-params",
+                                                        style={"display": "none"},
+                                                    ),
+                                                    # Gaussian params
+                                                    html.Div(
+                                                        [
+                                                            dbc.Row(
+                                                                [
+                                                                    dbc.Col(
+                                                                        [
+                                                                            html.Label(
+                                                                                "Sigma:",
+                                                                                className="form-label",
+                                                                            ),
+                                                                            dbc.Input(
+                                                                                id="gaussian-sigma",
+                                                                                type="number",
+                                                                                value=1.0,
+                                                                                min=0.1,
+                                                                                step=0.1,
+                                                                            ),
+                                                                        ],
+                                                                        width=12,
+                                                                    ),
+                                                                ],
+                                                            ),
+                                                        ],
+                                                        id="smoothing-gaussian-params",
+                                                        style={"display": "none"},
+                                                    ),
+                                                ],
+                                                id="smoothing-filter-params",
+                                                style={"display": "none"},
+                                            ),
                                             # Artifact Removal Parameters
                                             html.Div(
                                                 [
@@ -1495,299 +1739,139 @@ def filtering_layout():
                                                 id="ensemble-params",
                                                 style={"display": "none"},
                                             ),
-                                            # Multi-modal Filtering Options
-                                            html.H6("Multi-modal", className="mb-2"),
-                                            dbc.Row(
+                                            # Multi-modal filtering UI is
+                                            # hidden in the slim panel - the
+                                            # underlying ``apply_multi_modal_filtering``
+                                            # implementation remains in the
+                                            # callback for future use.  IDs
+                                            # are kept alive (default values
+                                            # = the historic defaults) so the
+                                            # callback's State reads still
+                                            # find them.
+                                            html.Div(
                                                 [
-                                                    dbc.Col(
-                                                        [
-                                                            html.Label(
-                                                                "Reference:",
-                                                                className="form-label",
-                                                            ),
-                                                            dbc.Select(
-                                                                id="reference-signal",
-                                                                options=[
-                                                                    {
-                                                                        "label": "None",
-                                                                        "value": "none",
-                                                                    },
-                                                                    {
-                                                                        "label": "ECG",
-                                                                        "value": "ecg",
-                                                                    },
-                                                                    {
-                                                                        "label": "PPG",
-                                                                        "value": "ppg",
-                                                                    },
-                                                                    {
-                                                                        "label": "Respiration",
-                                                                        "value": "respiration",
-                                                                    },
-                                                                    {
-                                                                        "label": "Motion",
-                                                                        "value": "motion",
-                                                                    },
-                                                                ],
-                                                                value="none",
-                                                                size="sm",
-                                                            ),
+                                                    dbc.Select(
+                                                        id="reference-signal",
+                                                        options=[
+                                                            {
+                                                                "label": "None",
+                                                                "value": "none",
+                                                            },
                                                         ],
-                                                        width=6,
+                                                        value="none",
                                                     ),
-                                                    dbc.Col(
-                                                        [
-                                                            html.Label(
-                                                                "Fusion:",
-                                                                className="form-label",
-                                                            ),
-                                                            dbc.Select(
-                                                                id="fusion-method",
-                                                                options=[
-                                                                    {
-                                                                        "label": "Weighted",
-                                                                        "value": "weighted",
-                                                                    },
-                                                                    {
-                                                                        "label": "Kalman",
-                                                                        "value": "kalman",
-                                                                    },
-                                                                    {
-                                                                        "label": "Bayesian",
-                                                                        "value": "bayesian",
-                                                                    },
-                                                                    {
-                                                                        "label": "Deep Learning",
-                                                                        "value": "deep_learning",
-                                                                    },
-                                                                ],
-                                                                value="weighted",
-                                                                size="sm",
-                                                            ),
+                                                    dbc.Select(
+                                                        id="fusion-method",
+                                                        options=[
+                                                            {
+                                                                "label": "Weighted",
+                                                                "value": "weighted",
+                                                            },
                                                         ],
-                                                        width=6,
+                                                        value="weighted",
                                                     ),
                                                 ],
-                                                className="mb-3",
+                                                style={"display": "none"},
                                             ),
-                                        ]
+                                        ],
                                     ),
                                 ],
-                                className="h-100",
+                                className="h-100 shadow-sm border-0",
                             )
                         ],
                         md=3,
                     ),
-                    # Right Panel - Results & Plots (Larger)
+                    # Right Panel — Comparison plot (the primary
+                    # surface).  Shows the picked segment, original vs
+                    # filtered, with critical-point markers.  Replaces
+                    # the old triplet of Original / Filtered / Comparison
+                    # cards — all redundant with this single overlay.
                     dbc.Col(
                         [
-                            # Top Row - Original and Filtered Signals (Increased height)
-                            dbc.Row(
+                            dbc.Card(
                                 [
-                                    dbc.Col(
+                                    dbc.CardHeader(
                                         [
-                                            dbc.Card(
-                                                [
-                                                    dbc.CardHeader(
-                                                        [
-                                                            html.H6(
-                                                                "📈 Original Signal",
-                                                                className="mb-0",
-                                                            ),
-                                                            html.Small(
-                                                                "Input signal",
-                                                                className="text-muted",
-                                                            ),
-                                                        ]
-                                                    ),
-                                                    dbc.CardBody(
-                                                        [
-                                                            dcc.Loading(
-                                                                dcc.Graph(
-                                                                    id="filter-original-plot",
-                                                                    style={
-                                                                        "height": "450px"
-                                                                    },
-                                                                    config={
-                                                                        "displayModeBar": True,
-                                                                        "modeBarButtonsToRemove": [
-                                                                            "pan2d",
-                                                                            "lasso2d",
-                                                                            "select2d",
-                                                                        ],
-                                                                        "displaylogo": False,
-                                                                    },
-                                                                ),
-                                                                type="default",
-                                                            )
-                                                        ]
-                                                    ),
-                                                ]
-                                            )
+                                            html.Span(
+                                                "Filter comparison",
+                                                className="fw-semibold small text-uppercase text-muted",
+                                            ),
+                                            html.Span(
+                                                "original vs filtered, critical points overlaid",
+                                                className="text-muted small ms-2",
+                                            ),
                                         ],
-                                        md=6,
+                                        className="bg-white border-0 pb-1",
                                     ),
-                                    dbc.Col(
-                                        [
-                                            dbc.Card(
-                                                [
-                                                    dbc.CardHeader(
-                                                        [
-                                                            html.H6(
-                                                                "🔧 Filtered Signal",
-                                                                className="mb-0",
-                                                            ),
-                                                            html.Small(
-                                                                "After filtering",
-                                                                className="text-muted",
-                                                            ),
-                                                        ]
-                                                    ),
-                                                    dbc.CardBody(
-                                                        [
-                                                            dcc.Loading(
-                                                                dcc.Graph(
-                                                                    id="filter-filtered-plot",
-                                                                    style={
-                                                                        "height": "450px"
-                                                                    },
-                                                                    config={
-                                                                        "displayModeBar": True,
-                                                                        "modeBarButtonsToRemove": [
-                                                                            "pan2d",
-                                                                            "lasso2d",
-                                                                            "select2d",
-                                                                        ],
-                                                                        "displaylogo": False,
-                                                                    },
-                                                                ),
-                                                                type="default",
-                                                            )
-                                                        ]
-                                                    ),
-                                                ]
-                                            )
-                                        ],
-                                        md=6,
+                                    dbc.CardBody(
+                                        dcc.Loading(
+                                            dcc.Graph(
+                                                id="filter-comparison-plot",
+                                                className="comparison-plot-graph",
+                                                config={
+                                                    "displayModeBar": True,
+                                                    "modeBarButtonsToRemove": [
+                                                        "pan2d",
+                                                        "lasso2d",
+                                                        "select2d",
+                                                    ],
+                                                    "displaylogo": False,
+                                                },
+                                            ),
+                                            type="default",
+                                        )
                                     ),
                                 ],
-                                className="mb-3",
+                                className="shadow-sm border-0",
                             ),
-                            # Filter Comparison - Full Width
-                            dbc.Row(
+                            # Hidden carriers for dead-but-still-wired Outputs.
+                            html.Div(
                                 [
-                                    dbc.Col(
-                                        [
-                                            dbc.Card(
-                                                [
-                                                    dbc.CardHeader(
-                                                        [
-                                                            html.H6(
-                                                                "⚖️ Filter Comparison",
-                                                                className="mb-0",
-                                                            ),
-                                                            html.Small(
-                                                                "Compare different filtering approaches",
-                                                                className="text-muted",
-                                                            ),
-                                                        ]
-                                                    ),
-                                                    dbc.CardBody(
-                                                        [
-                                                            dcc.Loading(
-                                                                dcc.Graph(
-                                                                    id="filter-comparison-plot",
-                                                                    style={
-                                                                        "height": "350px"
-                                                                    },
-                                                                    config={
-                                                                        "displayModeBar": True,
-                                                                        "modeBarButtonsToRemove": [
-                                                                            "pan2d",
-                                                                            "lasso2d",
-                                                                            "select2d",
-                                                                        ],
-                                                                        "displaylogo": False,
-                                                                    },
-                                                                ),
-                                                                type="default",
-                                                            )
-                                                        ]
-                                                    ),
-                                                ]
-                                            )
-                                        ],
-                                        md=12,
-                                    )
+                                    dcc.Graph(id="filter-original-plot"),
+                                    dcc.Graph(id="filter-filtered-plot"),
+                                    html.Div(id="filter-quality-metrics"),
+                                    dcc.Graph(id="filter-quality-plots"),
                                 ],
-                                className="mb-3",
-                            ),
-                            # Quality Metrics - Full Width
-                            dbc.Row(
-                                [
-                                    dbc.Col(
-                                        [
-                                            dbc.Card(
-                                                [
-                                                    dbc.CardHeader(
-                                                        [
-                                                            html.H6(
-                                                                "📊 Quality Metrics",
-                                                                className="mb-0",
-                                                            ),
-                                                            html.Small(
-                                                                "Quantitative assessment of filtering performance",
-                                                                className="text-muted",
-                                                            ),
-                                                        ]
-                                                    ),
-                                                    dbc.CardBody(
-                                                        [
-                                                            html.Div(
-                                                                id="filter-quality-metrics",
-                                                                className="mb-3",
-                                                            ),
-                                                            dcc.Loading(
-                                                                dcc.Graph(
-                                                                    id="filter-quality-plots",
-                                                                    style={
-                                                                        "height": "350px"
-                                                                    },
-                                                                    config={
-                                                                        "displayModeBar": True,
-                                                                        "modeBarButtonsToRemove": [
-                                                                            "pan2d",
-                                                                            "lasso2d",
-                                                                            "select2d",
-                                                                        ],
-                                                                        "displaylogo": False,
-                                                                    },
-                                                                ),
-                                                                type="default",
-                                                            ),
-                                                        ]
-                                                    ),
-                                                ]
-                                            )
-                                        ],
-                                        md=12,
-                                    )
-                                ]
+                                style={"display": "none"},
                             ),
                         ],
                         md=9,
                     ),
                 ]
             ),
-            # Bottom Section - Additional Analysis
-            html.Div(id="filter-additional-analysis-section", className="mt-3"),
+            # Hidden carriers for the IDs the segment-quality callback
+            # still writes to.  The visible copies are the
+            # ``-top`` widgets in the controller bar.  A small bridge
+            # callback copies the hidden Output into the visible widget
+            # each time the segment-quality engine re-renders.
+            html.Div(
+                [
+                    html.Div(id="filter-segment-headline"),
+                    dcc.Graph(
+                        id="filter-segment-timeline",
+                        config={"displayModeBar": False, "staticPlot": True},
+                    ),
+                    dbc.Checkbox(
+                        id="filter-segment-auto-sync",
+                        value=True,
+                    ),
+                ],
+                style={"display": "none"},
+            ),
             # Stores for data management
             dcc.Store(id="store-filtering-data"),
             dcc.Store(id="store-filter-comparison"),
             dcc.Store(id="store-filter-quality-metrics"),
             dcc.Store(id="store-filtered-signal"),  # For export
-            # Download components for export
-            dcc.Download(id="download-filtered-csv"),
-            dcc.Download(id="download-filtered-json"),
-        ]
+            # Segment-quality shared stores (read by Quality page accordion).
+            dcc.Store(id="store-segment-decisions"),
+            dcc.Store(id="store-segment-sqis"),
+            dcc.Store(id="store-segment-milestones"),
+            # The whole-signal filtered-through-the-chain payload the
+            # segment-quality compute produced.  Per-segment waveform
+            # inspection slices this rather than ``store-filtered-signal``
+            # (which is the displayed-window slice, not the recording).
+            dcc.Store(id="store-segment-filtered-signal"),
+        ],
+        className="signal-filtering-page",
     )

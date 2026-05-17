@@ -13,11 +13,6 @@ from dash.exceptions import PreventUpdate
 try:
     from vitalDSP_webapp.callbacks.core.upload_callbacks import (
         register_upload_callbacks,
-        create_file_path_loading_indicator,
-        create_upload_progress_bar,
-        create_processing_progress_section,
-        create_error_status,
-        create_success_status,
         create_data_preview
     )
 except ImportError:
@@ -31,11 +26,6 @@ except ImportError:
         sys.path.insert(0, src_path)
     from vitalDSP_webapp.callbacks.core.upload_callbacks import (
         register_upload_callbacks,
-        create_file_path_loading_indicator,
-        create_upload_progress_bar,
-        create_processing_progress_section,
-        create_error_status,
-        create_success_status,
         create_data_preview
     )
 
@@ -75,13 +65,15 @@ class TestUploadCallbacks:
     def test_register_upload_callbacks_structure(self):
         """Test the structure of registered callbacks"""
         register_upload_callbacks(self.mock_app)
-        
-        # Should register 5 callbacks based on the implementation
+
+        # Should register at least 5 callbacks (slim-flow baseline).
         assert self.mock_app.callback.call_count >= 5
-        
-        # Check that each callback was registered (we can't easily test the exact structure 
-        # without more complex mocking, but we can verify they were called)
-        assert all(call[0] for call in self.mock_app.callback.call_args_list)
+
+        # Each registered callback must have either positional Output/Input
+        # args (the historic pattern) or keyword-only args (the
+        # background-callback pattern used by process_data_with_columns).
+        for call in self.mock_app.callback.call_args_list:
+            assert call[0] or call[1]
 
     def test_handle_csv_upload_integration(self):
         """Test CSV upload integration (simplified)"""
@@ -119,7 +111,7 @@ class TestUploadCallbacks:
         # Check that we have the expected inputs
         # Handle case where inputs might be single objects instead of lists
         if hasattr(inputs, '__len__') and not isinstance(inputs, str):
-            assert len(inputs) == 3  # upload-data, btn-load-path, btn-load-sample
+            assert len(inputs) == 3  # upload-data, btn-load-sample-ppg, btn-load-sample-ecg
         else:
             assert inputs is not None
 
@@ -141,23 +133,24 @@ class TestUploadCallbacks:
         # Verify that multiple callbacks were registered
         assert len(captured_callbacks) >= 5
         
-        # Test the structure of each callback
+        # Test the structure of each callback.  The historic pattern is
+        # ``@app.callback(outputs, inputs, ...)`` (positional), but the
+        # background-callback path uses ``@app.callback(output=..., inputs=...,
+        # state=..., background=True, manager=...)`` (kw-only).  Accept both.
         for i, (args, kwargs, func) in enumerate(captured_callbacks):
-            outputs = args[0] if args else []
-            inputs = args[1] if len(args) > 1 else []
-            
-            # Each callback should have outputs and inputs
-            # Handle case where outputs/inputs might be single objects instead of lists
-            if hasattr(outputs, '__len__') and not isinstance(outputs, str):
+            outputs = args[0] if args else kwargs.get("output")
+            inputs = (args[1] if len(args) > 1 else None) or kwargs.get("inputs")
+
+            if hasattr(outputs, "__len__") and not isinstance(outputs, str):
                 assert len(outputs) > 0, f"Callback {i} should have outputs"
             else:
                 assert outputs is not None, f"Callback {i} should have outputs"
-                
-            if hasattr(inputs, '__len__') and not isinstance(inputs, str):
-                assert len(inputs) > 0, f"Callback {i} should have inputs"  
+
+            if hasattr(inputs, "__len__") and not isinstance(inputs, str):
+                assert len(inputs) > 0, f"Callback {i} should have inputs"
             else:
                 assert inputs is not None, f"Callback {i} should have inputs"
-                
+
             assert callable(func), f"Callback {i} should be callable"
 
     def test_callback_functions_exist(self):
@@ -183,48 +176,6 @@ class TestUploadCallbacks:
             sig = inspect.signature(func)
             assert len(sig.parameters) > 0  # Should have parameters
 
-    def test_create_file_path_loading_indicator(self):
-        """Test file path loading indicator creation"""
-        result = create_file_path_loading_indicator()
-        
-        assert isinstance(result, html.Div)
-        # Check that it contains expected elements
-        assert "Loading file from path" in str(result)
-
-    def test_create_upload_progress_bar(self):
-        """Test upload progress bar creation"""
-        result = create_upload_progress_bar()
-        
-        assert isinstance(result, html.Div)
-        # Check that it contains expected elements
-        assert "Uploading data" in str(result)
-
-    def test_create_processing_progress_section(self):
-        """Test processing progress section creation"""
-        result = create_processing_progress_section()
-        
-        assert isinstance(result, html.Div)
-        # Check that it contains expected elements
-        assert "Processing Data" in str(result)
-
-    def test_create_error_status(self):
-        """Test error status creation"""
-        message = "Test error message"
-        result = create_error_status(message)
-        
-        assert isinstance(result, html.Div)
-        assert message in str(result)
-        assert "text-danger" in str(result)
-
-    def test_create_success_status(self):
-        """Test success status creation"""
-        message = "Test success message"
-        result = create_success_status(message)
-        
-        assert isinstance(result, html.Div)
-        assert message in str(result)
-        assert "text-success" in str(result)
-
     def test_create_data_preview(self):
         """Test data preview creation"""
         df = pd.DataFrame({'time': [1, 2, 3], 'signal': [0.1, 0.2, 0.3]})
@@ -232,12 +183,13 @@ class TestUploadCallbacks:
             'sampling_freq': 1000,
             'duration': 3.0
         }
-        
+
         result = create_data_preview(df, data_info)
-        
+
         assert isinstance(result, html.Div)
-        # Check that it contains expected information
-        assert "Data Preview" in str(result)
-        assert "3 rows × 2 columns" in str(result)
-        assert "1000 Hz" in str(result)
-        assert "3.0 seconds" in str(result)
+        rendered = str(result)
+        # Modern chip layout: shape as "3 × 2", duration as "3.0 s".
+        assert "Data Preview" in rendered
+        assert "3 × 2" in rendered
+        assert "1000 Hz" in rendered
+        assert "3.0 s" in rendered

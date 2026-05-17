@@ -1,0 +1,44 @@
+{
+  "kurtosis_sqi": {
+    "name": "kurtosis_sqi",
+    "lower": 2.0,
+    "upper": 30.0,
+    "desc": "Pearson kurtosis (non-Fisher).  Clean ECG has high kurtosis due to the narrow QRS spike: typical values 5-20 depending on segment length and HR.  Below ~2 indicates flat / saturated signal; above 30 typically indicates a single spike artifact dominating the segment.",
+    "ref": "Adapted from vital-sqi rule_dict.json (kurtosis_sqi)."
+  },
+  "skewness_sqi": {
+    "name": "skewness_sqi",
+    "lower": -3.0,
+    "upper": 3.0,
+    "desc": "Sample skewness with bias correction.  Clean ECG is mildly skewed (positive in lead II, can be either sign in other leads).  |skew| > 3 typically indicates an artifact dominating one polarity.",
+    "ref": "Heuristic."
+  },
+  "entropy_sqi": {
+    "name": "entropy_sqi",
+    "lower": 1.0,
+    "upper": 2.6,
+    "desc": "Shannon entropy of a 16-bin amplitude histogram, in nats.  Clean ECG is more peaked than PPG (most samples sit near baseline between QRS spikes), so its entropy is lower: typically 1.2-2.2.  Saturated or pure-noise segments fall outside this band.",
+    "ref": "Empirical; calibrate via auto-tune mode for production."
+  },
+  "snr_sqi": {
+    "name": "snr_sqi",
+    "lower": 5.0,
+    "upper": 40.0,
+    "desc": "Per-segment SNR in dB (20*log10(rms / mad)).  Clean ECG should sit higher than PPG because the QRS spike dominates the RMS while the inter-beat baseline keeps the MAD low.  Below 5 dB indicates noise-dominated; above 40 dB indicates over-filtered.",
+    "ref": "Heuristic."
+  },
+  "zero_crossing_sqi": {
+    "name": "zero_crossing_sqi",
+    "lower": 0.001,
+    "upper": 0.05,
+    "desc": "Zero-crossings per sample (after mean-removal).  Clean ECG should cross the mean a small number of times per cardiac cycle.  High values indicate high-frequency noise; very low values indicate a flat-line segment.",
+    "ref": "Derived from cardiac physiology; calibrate per recording in production."
+  },
+  "peak_to_peak_amplitude_sqi": {
+    "name": "peak_to_peak_amplitude_sqi",
+    "lower": 0.05,
+    "upper": 1.0e6,
+    "desc": "Raw segment peak-to-peak.  Lower bound rejects nearly-flat segments.  Upper bound is permissive — absolute ECG amplitude varies by lead and acquisition.",
+    "ref": "Heuristic; use auto-tune mode for meaningful per-recording bounds."
+  }
+}

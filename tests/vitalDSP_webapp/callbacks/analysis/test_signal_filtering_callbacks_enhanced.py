@@ -402,9 +402,10 @@ class TestUpdateFilterParameterVisibility:
                 result = cb['func']("artifact")
                 assert result[0] == {"display": "none"}   # traditional
                 assert result[1] == {"display": "none"}   # advanced
-                assert result[2] == {"display": "block"}  # artifact
-                assert result[3] == {"display": "none"}   # neural
-                assert result[4] == {"display": "none"}   # ensemble
+                assert result[2] == {"display": "none"}   # smoothing
+                assert result[3] == {"display": "block"}  # artifact
+                assert result[4] == {"display": "none"}   # neural
+                assert result[5] == {"display": "none"}   # ensemble
 
     def test_neural_filter_visibility(self):
         """Test visibility for neural network filter"""
@@ -427,9 +428,10 @@ class TestUpdateFilterParameterVisibility:
                 result = cb['func']("neural")
                 assert result[0] == {"display": "none"}   # traditional
                 assert result[1] == {"display": "none"}   # advanced
-                assert result[2] == {"display": "none"}   # artifact
-                assert result[3] == {"display": "block"}  # neural
-                assert result[4] == {"display": "none"}   # ensemble
+                assert result[2] == {"display": "none"}   # smoothing
+                assert result[3] == {"display": "none"}   # artifact
+                assert result[4] == {"display": "block"}  # neural
+                assert result[5] == {"display": "none"}   # ensemble
 
     def test_ensemble_filter_visibility(self):
         """Test visibility for ensemble filter"""
@@ -452,9 +454,10 @@ class TestUpdateFilterParameterVisibility:
                 result = cb['func']("ensemble")
                 assert result[0] == {"display": "none"}   # traditional
                 assert result[1] == {"display": "none"}   # advanced
-                assert result[2] == {"display": "none"}   # artifact
-                assert result[3] == {"display": "none"}   # neural
-                assert result[4] == {"display": "block"}  # ensemble
+                assert result[2] == {"display": "none"}   # smoothing
+                assert result[3] == {"display": "none"}   # artifact
+                assert result[4] == {"display": "none"}   # neural
+                assert result[5] == {"display": "block"}  # ensemble
 
 
 class TestAdvancedFilteringCallback:
@@ -499,6 +502,7 @@ class TestAdvancedFilteringCallback:
                         nudge_p10=None,
                         start_position=0,
                         duration=10,
+                        segment_length_seconds=30,
                         filter_type="traditional",
                         signal_source="original",
                         filter_count=1,
@@ -535,6 +539,7 @@ class TestAdvancedFilteringCallback:
                         quality_options=["snr", "rmse"],
                         detrend_option=None,
                         signal_type="PPG",
+                        smoothing_method="savgol",
                         savgol_window=5,
                         savgol_polyorder=2,
                         moving_avg_window=5,
@@ -579,6 +584,7 @@ class TestAdvancedFilteringCallback:
                             nudge_p10=None,
                             start_position=0,
                             duration=10,
+                            segment_length_seconds=30,
                             filter_type="traditional",
                             signal_source="original",
                             filter_count=1,
@@ -615,6 +621,7 @@ class TestAdvancedFilteringCallback:
                             quality_options=["snr", "rmse"],
                             detrend_option=None,
                             signal_type="PPG",
+                            smoothing_method="savgol",
                             savgol_window=5,
                             savgol_polyorder=2,
                             moving_avg_window=5,

@@ -4,6 +4,50 @@ All notable changes to vitalDSP are documented in this file.
 
 ---
 
+## [0.2.5] - 2026-05-17
+
+This release delivers a significant redesign and cleanup of the **vitalDSP web application**, improving accuracy of respiratory rate estimation, consolidating the page structure, and polishing the UI.
+
+### Web Application — New Features and Improvements
+
+#### Respiratory Rate Analysis
+
+- Fixed double-preprocessing bug: the already-bandpass-filtered signal was being re-preprocessed internally by `RespiratoryAnalysis`, causing inconsistent results across methods. Resolved by passing `PreprocessConfig(filter_type="ignore", noise_reduction_method="ignore")` to skip internal preprocessing.
+- Fixed counting and zero-crossing methods returning inflated rates (~2×) caused by residual cardiac AM ripple. A 1.25 s moving-average is now applied before peak/zero-crossing detection.
+- Fixed peak interval method returning no result (`—`) by calling `compute_respiratory_rate()` directly with physiologically correct duration bounds (1.25–10 s from the 0.1–0.8 Hz band), bypassing the ensemble's hardcoded 0.5–6 s limits.
+- All 6 methods (counting, FFT-based, frequency domain, time domain, peaks, zero-crossing) now run simultaneously and agree within ±1 bpm on clean signals.
+- Enhanced per-method plots: breath-cycle shading, inter-peak interval annotations, valid/rejected cycle colour coding, normal adult range (12–20 bpm) bands on spectral plots, autocorrelation lag shading, inspiration/expiration phase shading on zero-crossing plot.
+- Added Methods Comparison & Ensemble panel at the top of the page showing consensus, mean, std dev, confidence, and quality rating.
+- Removed Agreement (±2 bpm) card from the summary panel.
+
+#### Sidebar and Navigation
+
+- Restructured sidebar into two categories: **Preprocessing** (Upload Data, Filtering) and **Analysis** (Time Domain, Frequency Domain, Respiratory Rate).
+- Added Introduction page link at the top of the sidebar (maps to `/preview`).
+- Category headers styled as small uppercase labels with letter-spacing for readability.
+- Removed Pipeline and Background Tasks pages (and all associated callbacks).
+
+#### Theme
+
+- Sidebar now fully responds to the light/dark theme toggle: light mode uses the existing dark-navy gradient; dark mode switches to a deep blue-black gradient (`#111827 → #1f2937`).
+- All sidebar nav links, hover states, and section headers use CSS variables that update with the theme.
+- Fixed header/sidebar gap caused by a `60 px` inline header height mismatching the `4 rem` (64 px) CSS variable.
+
+### Web Application — Removed Pages and Callbacks
+
+Removed unused pages and their associated callbacks, tests, and export functions:
+
+- Pages: Advanced, Physiological Analysis, Pipeline, Quality, Background Tasks, Transforms
+- Analysis callbacks: `advanced_callbacks`, `enhanced_filtering_callbacks`, `health_report_callbacks`, `pipeline_callbacks`, `quality_callbacks`, `settings_callbacks`, `tasks_callbacks`, `transform_callbacks`
+- Feature callbacks: `features_callbacks`, `physiological_callbacks`, `features/respiratory_callbacks`
+- 35 orphaned test files that imported the deleted modules
+
+### Documentation
+
+- Rewrote `docs/source/webapp.rst` to match the current application structure: updated navigation table, signal flow diagram, per-screen descriptions, theme section, and troubleshooting entries.
+
+---
+
 ## [0.2.2] - 2026-03-04
 
 This release is a focused quality and correctness release for the `vitalDSP` core library. It resolves **38 bugs and algorithm errors** identified in a two-agent independent code review, covering crashes, wrong numerical results, silent failures, and API inconsistencies across all core modules. No new features are introduced; all changes are fixes and robustness improvements.

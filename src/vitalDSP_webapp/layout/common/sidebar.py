@@ -25,135 +25,60 @@ def Sidebar():
                 className="sidebar-content",
                 children=[
                     html.H5("Navigation", className="mb-3"),
-                    # Upload section
+                    # Introduction
                     html.Div(
                         [
-                            html.A(
-                                [html.I(className="fas fa-upload"), " Upload Data"],
-                                href="/upload",
-                                className="nav-link text-white",
+                            dcc.Link(
+                                [html.I(className="fas fa-home"), " Introduction"],
+                                href="/preview",
+                                className="nav-link",
                             )
                         ],
                         className="mb-2",
                     ),
-                    # Analysis section
-                    html.H6("Analysis", className="mt-4 mb-2 text-muted"),
+                    # Preprocessing section
+                    html.H6("Preprocessing", className="mt-3 mb-2"),
                     html.Div(
                         [
-                            html.A(
+                            dcc.Link(
+                                [html.I(className="fas fa-upload"), " Upload Data"],
+                                href="/upload",
+                                className="nav-link",
+                            ),
+                            dcc.Link(
                                 [html.I(className="fas fa-filter"), " Filtering"],
                                 href="/filtering",
-                                className="nav-link text-white",
+                                className="nav-link",
                             ),
-                            html.A(
+                        ],
+                        className="mb-2",
+                    ),
+                    # Analysis section
+                    html.H6("Analysis", className="mt-3 mb-2"),
+                    html.Div(
+                        [
+                            dcc.Link(
                                 [html.I(className="fas fa-chart-line"), " Time Domain"],
                                 href="/time-domain",
-                                className="nav-link text-white",
+                                className="nav-link",
                             ),
-                            html.A(
+                            dcc.Link(
                                 [
                                     html.I(className="fas fa-wave-square"),
                                     " Frequency Domain",
                                 ],
                                 href="/frequency",
-                                className="nav-link text-white",
+                                className="nav-link",
                             ),
-                        ],
-                        className="mb-2",
-                    ),
-                    # Features section
-                    html.H6("Feature Analysis", className="mt-4 mb-2 text-muted"),
-                    html.Div(
-                        [
-                            html.A(
-                                [
-                                    html.I(className="fas fa-heartbeat"),
-                                    " Physiological",
-                                ],
-                                href="/physiological",
-                                className="nav-link text-white",
-                            ),
-                            html.A(
-                                [html.I(className="fas fa-lungs"), " Respiratory"],
+                            dcc.Link(
+                                [html.I(className="fas fa-lungs"), " Respiratory Rate"],
                                 href="/respiratory",
-                                className="nav-link text-white",
-                            ),
-                            # PHASE 5: Removed "Advanced Features" entry (merged with Advanced Processing)
-                            # Old entry: html.A([...], " Advanced Features", href="/features", ...)
-                            html.A(
-                                [
-                                    html.I(className="fas fa-exchange-alt"),
-                                    " Transforms",
-                                ],
-                                href="/transforms",
-                                className="nav-link text-white",
-                            ),
-                            html.A(
-                                [
-                                    html.I(className="fas fa-shield-alt"),
-                                    " Quality",
-                                ],
-                                href="/quality",
-                                className="nav-link text-white",
-                            ),
-                            html.A(
-                                [
-                                    html.I(className="fas fa-brain"),
-                                    " Advanced Feature Engineering & Analysis",  # PHASE 5: Updated title
-                                ],
-                                href="/advanced",
-                                className="nav-link text-white",
-                            ),
-                            html.A(
-                                [
-                                    html.I(className="fas fa-file-medical"),
-                                    " Health Report",
-                                ],
-                                href="/health-report",
-                                className="nav-link text-white",
+                                className="nav-link",
                             ),
                         ],
                         className="mb-2",
                     ),
-                    # Pipeline section
-                    html.H6("Pipeline", className="mt-4 mb-2 text-muted"),
-                    html.Div(
-                        [
-                            html.A(
-                                [
-                                    html.I(className="fas fa-project-diagram"),
-                                    " Processing Pipeline",
-                                ],
-                                href="/pipeline",
-                                className="nav-link text-white",
-                            ),
-                            html.A(
-                                [html.I(className="fas fa-tasks"), " Background Tasks"],
-                                href="/tasks",
-                                className="nav-link text-white",
-                            ),
-                        ],
-                        className="mb-2",
-                    ),
-                    # Other sections
-                    html.H6("Other", className="mt-4 mb-2 text-muted"),
-                    html.Div(
-                        [
-                            html.A(
-                                [html.I(className="fas fa-eye"), " Preview"],
-                                href="/preview",
-                                className="nav-link text-white",
-                            ),
-                            html.A(
-                                [html.I(className="fas fa-cog"), " Settings"],
-                                href="/settings",
-                                className="nav-link text-white",
-                            ),
-                        ],
-                        className="mb-2",
-                    ),
-                    # Theme toggle section
-                    html.H6("Theme", className="mt-4 mb-2 text-muted"),
+                    # Theme toggle
                     html.Div(
                         [
                             html.Button(
@@ -176,118 +101,50 @@ def Sidebar():
             html.Div(
                 className="sidebar-icons",
                 children=[
-                    # Upload section
+                    # Introduction
                     html.Div(
                         [
-                            html.A(
-                                html.I(className="fas fa-upload"),
-                                href="/upload",
-                                className="nav-icon text-white",
-                                title="Upload Data",
+                            dcc.Link(
+                                html.I(className="fas fa-home"),
+                                href="/preview",
+                                className="nav-icon",
+                                title="Introduction",
                             )
                         ],
                         className="mb-3",
                     ),
-                    # Analysis section
+                    # Preprocessing + Analysis icons
                     html.Div(
                         [
-                            html.A(
+                            dcc.Link(
+                                html.I(className="fas fa-upload"),
+                                href="/upload",
+                                className="nav-icon",
+                                title="Upload Data",
+                            ),
+                            dcc.Link(
                                 html.I(className="fas fa-filter"),
                                 href="/filtering",
-                                className="nav-icon text-white",
+                                className="nav-icon",
                                 title="Filtering",
                             ),
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-chart-line"),
                                 href="/time-domain",
-                                className="nav-icon text-white",
+                                className="nav-icon",
                                 title="Time Domain",
                             ),
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-wave-square"),
                                 href="/frequency",
-                                className="nav-icon text-white",
+                                className="nav-icon",
                                 title="Frequency Domain",
                             ),
-                        ],
-                        className="mb-3",
-                    ),
-                    # Features section
-                    html.Div(
-                        [
-                            html.A(
-                                html.I(className="fas fa-heartbeat"),
-                                href="/physiological",
-                                className="nav-icon text-white",
-                                title="Physiological",
-                            ),
-                            html.A(
+                            dcc.Link(
                                 html.I(className="fas fa-lungs"),
                                 href="/respiratory",
-                                className="nav-icon text-white",
-                                title="Respiratory",
-                            ),
-                            # PHASE 5: Removed "Advanced Features" icon (merged with Advanced)
-                            # Old: html.A(html.I("fas fa-chart-bar"), href="/features", title="Advanced Features")
-                            html.A(
-                                html.I(className="fas fa-exchange-alt"),
-                                href="/transforms",
-                                className="nav-icon text-white",
-                                title="Transforms",
-                            ),
-                            html.A(
-                                html.I(className="fas fa-shield-alt"),
-                                href="/quality",
-                                className="nav-icon text-white",
-                                title="Quality",
-                            ),
-                            html.A(
-                                html.I(className="fas fa-brain"),
-                                href="/advanced",
-                                className="nav-icon text-white",
-                                title="Advanced Feature Engineering & Analysis",  # PHASE 5: Updated
-                            ),
-                            html.A(
-                                html.I(className="fas fa-file-medical"),
-                                href="/health-report",
-                                className="nav-icon text-white",
-                                title="Health Report",
-                            ),
-                        ],
-                        className="mb-3",
-                    ),
-                    # Pipeline section
-                    html.Div(
-                        [
-                            html.A(
-                                html.I(className="fas fa-project-diagram"),
-                                href="/pipeline",
-                                className="nav-icon text-white",
-                                title="Processing Pipeline",
-                            ),
-                            html.A(
-                                html.I(className="fas fa-tasks"),
-                                href="/tasks",
-                                className="nav-icon text-white",
-                                title="Background Tasks",
-                            ),
-                        ],
-                        className="mb-3",
-                    ),
-                    # Other sections
-                    html.Div(
-                        [
-                            html.A(
-                                html.I(className="fas fa-eye"),
-                                href="/preview",
-                                className="nav-icon text-white",
-                                title="Preview",
-                            ),
-                            html.A(
-                                html.I(className="fas fa-cog"),
-                                href="/settings",
-                                className="nav-icon text-white",
-                                title="Settings",
+                                className="nav-icon",
+                                title="Respiratory Rate",
                             ),
                         ],
                         className="mb-3",
