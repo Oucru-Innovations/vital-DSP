@@ -470,8 +470,7 @@ def load_data_with_format(
         # return, or large source frames that bloat the dcc.Store and
         # don't get used downstream.
         metadata = {
-            k: v for k, v in loader.metadata.items()
-            if not isinstance(v, pd.DataFrame)
+            k: v for k, v in loader.metadata.items() if not isinstance(v, pd.DataFrame)
         }
 
     # Add signal type to metadata if provided
@@ -530,34 +529,34 @@ def _staged_tuple(
     fills ``store-uploaded-data`` / ``data-preview-section``.
     """
     return (
-        summary,                              # upload-status.children
-        no_update,                            # store-uploaded-data.data
-        metadata,                             # store-data-config.data
-        no_update,                            # data-preview-section.children
-        options,                              # signal-column.options
-        default_col,                          # signal-column.value
-        row_style,                            # signal-column-row.style
-        no_update,                            # upload-progress-section.children
-        {"display": "none"},                  # upload-progress-section.style
-        False,                                # btn-load-sample-ppg.disabled
-        False,                                # btn-load-sample-ecg.disabled
+        summary,  # upload-status.children
+        no_update,  # store-uploaded-data.data
+        metadata,  # store-data-config.data
+        no_update,  # data-preview-section.children
+        options,  # signal-column.options
+        default_col,  # signal-column.value
+        row_style,  # signal-column-row.style
+        no_update,  # upload-progress-section.children
+        {"display": "none"},  # upload-progress-section.style
+        False,  # btn-load-sample-ppg.disabled
+        False,  # btn-load-sample-ecg.disabled
     )
 
 
 def _error_tuple(message: str):
     """Build the error-path 11-tuple for ``handle_all_uploads``."""
     return (
-        message,                # upload-status.children
+        message,  # upload-status.children
         no_update,
         no_update,
         no_update,
-        no_update,              # signal-column.options
-        no_update,              # signal-column.value
-        no_update,              # signal-column-row.style
-        no_update,              # upload-progress-section.children
-        {"display": "none"},    # upload-progress-section.style
-        False,                  # btn-load-sample-ppg.disabled
-        False,                  # btn-load-sample-ecg.disabled
+        no_update,  # signal-column.options
+        no_update,  # signal-column.value
+        no_update,  # signal-column-row.style
+        no_update,  # upload-progress-section.children
+        {"display": "none"},  # upload-progress-section.style
+        False,  # btn-load-sample-ppg.disabled
+        False,  # btn-load-sample-ecg.disabled
     )
 
 
@@ -709,7 +708,9 @@ def register_upload_callbacks(app):
         trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
         if trigger_id not in (
-            "upload-data", "btn-load-sample-ppg", "btn-load-sample-ecg",
+            "upload-data",
+            "btn-load-sample-ppg",
+            "btn-load-sample-ecg",
         ):
             raise PreventUpdate
 
@@ -745,7 +746,11 @@ def register_upload_callbacks(app):
                     f"format: {metadata.get('format', 'auto')}"
                 )
                 return _staged_tuple(
-                    summary, metadata, options, default_col, row_style,
+                    summary,
+                    metadata,
+                    options,
+                    default_col,
+                    row_style,
                 )
 
             elif trigger_id in ("btn-load-sample-ppg", "btn-load-sample-ecg"):
@@ -792,13 +797,13 @@ def register_upload_callbacks(app):
                     _df_to_compact_payload(df),
                     data_info,
                     preview,
-                    options,                # signal-column.options
-                    default_col,            # signal-column.value
-                    {"display": "block"},   # signal-column-row.style
-                    no_update,              # upload-progress-section.children
-                    {"display": "none"},    # upload-progress-section.style
-                    False,                  # btn-load-sample-ppg.disabled
-                    False,                  # btn-load-sample-ecg.disabled
+                    options,  # signal-column.options
+                    default_col,  # signal-column.value
+                    {"display": "block"},  # signal-column-row.style
+                    no_update,  # upload-progress-section.children
+                    {"display": "none"},  # upload-progress-section.style
+                    False,  # btn-load-sample-ppg.disabled
+                    False,  # btn-load-sample-ecg.disabled
                 )
 
         except Exception as exc:
@@ -964,7 +969,7 @@ def register_upload_callbacks(app):
                 done_indicator = _slim_progress_alert("Done", color="success")
                 return (
                     status,
-                    uploaded_data,           # already correct, just echo it
+                    uploaded_data,  # already correct, just echo it
                     data_config,
                     preview,
                     done_indicator,
@@ -975,9 +980,7 @@ def register_upload_callbacks(app):
 
             file_path = metadata.get("file_path")
             if not file_path or not os.path.exists(file_path):
-                raise ValueError(
-                    "No staged file found. Please upload a file first."
-                )
+                raise ValueError("No staged file found. Please upload a file first.")
             original_format = metadata.get("original_format", "auto")
             data_type = metadata.get("data_type", "auto")
             df, processed_metadata = load_data_with_format(
@@ -1141,7 +1144,7 @@ def create_data_preview(df: pd.DataFrame, data_info: dict) -> html.Div:
     except (TypeError, ValueError):
         dur_text = str(dur_val)
 
-    mem_mb = df.memory_usage(deep=True).sum() / (1024 ** 2)
+    mem_mb = df.memory_usage(deep=True).sum() / (1024**2)
 
     def _chip(icon: str, label: str, value: str) -> html.Span:
         return html.Span(
@@ -1238,7 +1241,10 @@ def create_data_preview(df: pd.DataFrame, data_info: dict) -> html.Div:
                     },
                     css=[
                         # Round the wrapper so style_table's radius is visible.
-                        {"selector": ".dash-spreadsheet", "rule": "border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);"},
+                        {
+                            "selector": ".dash-spreadsheet",
+                            "rule": "border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);",
+                        },
                     ],
                     page_size=page_size,
                     page_action=page_action,
@@ -1253,4 +1259,3 @@ def create_data_preview(df: pd.DataFrame, data_info: dict) -> html.Div:
             ),
         ]
     )
-

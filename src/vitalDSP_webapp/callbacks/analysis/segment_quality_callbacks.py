@@ -48,8 +48,8 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-_ACCEPT_COLOR = "#198754"   # bootstrap success green
-_REJECT_COLOR = "#dc3545"   # bootstrap danger red
+_ACCEPT_COLOR = "#198754"  # bootstrap success green
+_REJECT_COLOR = "#dc3545"  # bootstrap danger red
 _NEUTRAL_COLOR = "#0d6efd"  # bootstrap primary blue — scoring off
 _UNKNOWN_COLOR = "#adb5bd"  # bootstrap secondary grey
 
@@ -81,12 +81,16 @@ def _make_timeline_figure(decisions: List[dict]) -> go.Figure:
     if not decisions:
         return go.Figure(
             layout={
-                "annotations": [{
-                    "text": "No segments yet",
-                    "showarrow": False,
-                    "xref": "paper", "yref": "paper",
-                    "x": 0.5, "y": 0.5,
-                }],
+                "annotations": [
+                    {
+                        "text": "No segments yet",
+                        "showarrow": False,
+                        "xref": "paper",
+                        "yref": "paper",
+                        "x": 0.5,
+                        "y": 0.5,
+                    }
+                ],
                 "xaxis": {"visible": False},
                 "yaxis": {"visible": False},
                 "margin": {"l": 0, "r": 0, "t": 4, "b": 4},
@@ -94,6 +98,7 @@ def _make_timeline_figure(decisions: List[dict]) -> go.Figure:
             }
         )
     n = len(decisions)
+
     def _color_for(d):
         decision = d.get("decision")
         if decision == "accept":
@@ -103,6 +108,7 @@ def _make_timeline_figure(decisions: List[dict]) -> go.Figure:
         if decision == "neutral":
             return _NEUTRAL_COLOR
         return _UNKNOWN_COLOR
+
     colors = [_color_for(d) for d in decisions]
     hover = [d.get("decision", "?") for d in decisions]
     fig = go.Figure(
@@ -172,7 +178,9 @@ def _checklist_options_and_value(
     candidates = candidate_rule_columns(sqi_df, rule_dict)
     options = [
         {
-            "label": (f" {c['name']}" if c["usable"] else f" {c['name']}  ✗ {c['reason']}"),
+            "label": (
+                f" {c['name']}" if c["usable"] else f" {c['name']}  ✗ {c['reason']}"
+            ),
             "value": c["name"],
             "disabled": not c["usable"],
         }
@@ -181,7 +189,8 @@ def _checklist_options_and_value(
     usable_names = [c["name"] for c in candidates if c["usable"]]
 
     defaults = [
-        n for n in DEFAULT_SEGMENT_SQIS.get(signal_type.upper(), ())
+        n
+        for n in DEFAULT_SEGMENT_SQIS.get(signal_type.upper(), ())
         if n in usable_names
     ]
 
@@ -197,9 +206,7 @@ def _checklist_options_and_value(
         skipped_text = "Auto-skipped: " + ", ".join(c["name"] for c in skipped)
     else:
         skipped_text = ""
-    summary_text = (
-        f"{len(usable_names)} usable, {len(value)} active"
-    )
+    summary_text = f"{len(usable_names)} usable, {len(value)} active"
     return options, value, skipped_text, summary_text
 
 
@@ -262,7 +269,9 @@ def register_segment_quality_callbacks(app):
         ],
         prevent_initial_call=False,
     )
-    def compute_sqis(pathname, _filter_apply_signal, segment_length, overlap_pct, scoring_enabled):
+    def compute_sqis(
+        pathname, _filter_apply_signal, segment_length, overlap_pct, scoring_enabled
+    ):
         # The URL Input fires on every page change; only run when we're
         # on the filtering page (the only place these IDs exist).
         if pathname and pathname not in ("/filtering", "/"):
@@ -279,7 +288,9 @@ def register_segment_quality_callbacks(app):
             raise PreventUpdate
 
         data_service = get_enhanced_data_service()
-        all_data = data_service.get_all_data() if hasattr(data_service, "get_all_data") else {}
+        all_data = (
+            data_service.get_all_data() if hasattr(data_service, "get_all_data") else {}
+        )
         if not all_data:
             raise PreventUpdate
         # Latest data id == last key inserted (mirrors how other pages do it).
@@ -305,9 +316,7 @@ def register_segment_quality_callbacks(app):
 
         full_signal = np.asarray(df[signal_column].values, dtype=float)
         sampling_freq = (
-            data_info.get("sampling_freq")
-            or data_info.get("sampling_rate")
-            or 1000
+            data_info.get("sampling_freq") or data_info.get("sampling_rate") or 1000
         )
         try:
             sampling_freq = float(sampling_freq)
@@ -325,12 +334,14 @@ def register_segment_quality_callbacks(app):
         overlap = float(overlap_pct or 0) / 100.0
         if not scoring_enabled:
             from vitalDSP.signal_quality_assessment.segment_sqi import _segment_indices
+
             window_samples = max(1, int(round(seg_s * sampling_freq)))
             step_samples = max(1, int(round(window_samples * (1.0 - overlap))))
             spans = _segment_indices(full_signal.size, window_samples, step_samples)
             milestones = [
                 {
-                    "start_idx": int(s), "end_idx": int(e),
+                    "start_idx": int(s),
+                    "end_idx": int(e),
                     "t_start": float(s / sampling_freq),
                     "t_end": float(e / sampling_freq),
                 }
@@ -338,7 +349,10 @@ def register_segment_quality_callbacks(app):
             ]
             logger.info(
                 "Scoring OFF: %d neutral segments (seg=%ds, overlap=%d%%, fs=%g).",
-                len(milestones), seg_s, int(overlap * 100), sampling_freq,
+                len(milestones),
+                seg_s,
+                int(overlap * 100),
+                sampling_freq,
             )
             # No SQI table, no whole-signal filtered cache; just
             # milestones.  ``store-segment-sqis`` set to ``None`` is the
@@ -355,12 +369,16 @@ def register_segment_quality_callbacks(app):
         try:
             if saved_chain:
                 filtered_full = apply_filter_chain(
-                    full_signal, sampling_freq, signal_type, saved_chain,
+                    full_signal,
+                    sampling_freq,
+                    signal_type,
+                    saved_chain,
                     logger=logger,
                 )
                 logger.info(
                     "compute_sqis: replayed %d-stage chain on full %d-sample signal.",
-                    len(saved_chain), full_signal.size,
+                    len(saved_chain),
+                    full_signal.size,
                 )
             else:
                 cached = data_service.get_filtered_data(latest_id)
@@ -381,8 +399,10 @@ def register_segment_quality_callbacks(app):
 
         try:
             sqi_df, milestones = compute_segment_sqis(
-                filtered_full, sampling_freq=sampling_freq,
-                segment_seconds=seg_s, overlap_pct=overlap,
+                filtered_full,
+                sampling_freq=sampling_freq,
+                segment_seconds=seg_s,
+                overlap_pct=overlap,
             )
         except Exception as exc:
             logger.exception("compute_segment_sqis failed: %s", exc)
@@ -390,7 +410,11 @@ def register_segment_quality_callbacks(app):
 
         logger.info(
             "Segment SQIs: %d segments x %d SQIs (seg=%ds, overlap=%d%%, fs=%g).",
-            len(sqi_df), sqi_df.shape[1], seg_s, int(overlap * 100), sampling_freq,
+            len(sqi_df),
+            sqi_df.shape[1],
+            seg_s,
+            int(overlap * 100),
+            sampling_freq,
         )
 
         # Cache the full filtered signal for the Quality page's
@@ -431,7 +455,10 @@ def register_segment_quality_callbacks(app):
             # columns as disabled with a reason.
             df = pd.DataFrame(sqi_payload)
             options, value, skipped, summary = _checklist_options_and_value(
-                df, rule_dict, signal_type or "PPG", current_value,
+                df,
+                rule_dict,
+                signal_type or "PPG",
+                current_value,
             )
             return options, value, skipped, summary
         # Scoring off — show every SQI the rule dict knows about as a
@@ -443,9 +470,9 @@ def register_segment_quality_callbacks(app):
         ]
         usable_names = list(rule_dict.keys())
         defaults = [
-            n for n in DEFAULT_SEGMENT_SQIS.get(
-                (signal_type or "PPG").upper(), ()
-            ) if n in usable_names
+            n
+            for n in DEFAULT_SEGMENT_SQIS.get((signal_type or "PPG").upper(), ())
+            if n in usable_names
         ]
         if current_value:
             retained = [c for c in current_value if c in usable_names]
@@ -479,28 +506,45 @@ def register_segment_quality_callbacks(app):
         prevent_initial_call=False,
     )
     def reclassify(
-        sqi_payload, milestones,
-        mode, tune_target, quantile_trim, selected_sqis,
-        signal_type, segment_length,
+        sqi_payload,
+        milestones,
+        mode,
+        tune_target,
+        quantile_trim,
+        selected_sqis,
+        signal_type,
+        segment_length,
     ):
         # Scoring OFF: SQIs are not computed.  Emit a neutral
         # decisions list driven purely by the segment count from
         # milestones so the timeline still draws something.
         if not sqi_payload:
             if not milestones:
-                return [], _make_timeline_figure([]), _headline_text(
-                    [], 0, int(segment_length or 30),
+                return (
+                    [],
+                    _make_timeline_figure([]),
+                    _headline_text(
+                        [],
+                        0,
+                        int(segment_length or 30),
+                    ),
                 )
             decisions = [{"decision": "neutral", "trace": []} for _ in milestones]
             fig = _make_timeline_figure(decisions)
             headline = _headline_text(
-                decisions, len(milestones), int(segment_length or 30),
+                decisions,
+                len(milestones),
+                int(segment_length or 30),
             )
             return decisions, fig, headline
 
         df = pd.DataFrame(sqi_payload)
         if df.empty:
-            return [], _make_timeline_figure([]), _headline_text([], 0, int(segment_length or 30))
+            return (
+                [],
+                _make_timeline_figure([]),
+                _headline_text([], 0, int(segment_length or 30)),
+            )
 
         try:
             q_trim = float(np.clip(quantile_trim or 0.05, 0.0, 0.49))
@@ -516,8 +560,13 @@ def register_segment_quality_callbacks(app):
             )
         except Exception as exc:
             logger.exception("classify_segments failed: %s", exc)
-            return no_update, no_update, html.Span(
-                f"Classification failed: {exc}", className="text-danger small",
+            return (
+                no_update,
+                no_update,
+                html.Span(
+                    f"Classification failed: {exc}",
+                    className="text-danger small",
+                ),
             )
 
         fig = _make_timeline_figure(decisions)
@@ -563,7 +612,8 @@ def register_segment_quality_callbacks(app):
         if not decisions:
             return [], None
         indices = [
-            i for i, d in enumerate(decisions)
+            i
+            for i, d in enumerate(decisions)
             if filter_mode == "all" or d.get("decision") == filter_mode
         ]
         options = [
@@ -613,7 +663,9 @@ def register_segment_quality_callbacks(app):
         ],
         prevent_initial_call=True,
     )
-    def render_segment_detail(seg_idx, decisions, sqi_payload, milestones, filtered_payload):
+    def render_segment_detail(
+        seg_idx, decisions, sqi_payload, milestones, filtered_payload
+    ):
         if seg_idx is None or not decisions:
             return go.Figure(), html.Em("No segment selected."), html.Em("")
         seg_idx = int(seg_idx)
@@ -665,19 +717,38 @@ def register_segment_quality_callbacks(app):
             sqi_row = sqi_payload[seg_idx]
             sqi_table_children = dbc.Table(
                 [
-                    html.Thead(html.Tr([html.Th("SQI"), html.Th("Value", style={"textAlign": "right"})])),
-                    html.Tbody([
-                        html.Tr([
-                            html.Td(name),
-                            html.Td(
-                                f"{float(val):.4f}" if isinstance(val, (int, float)) and val == val else str(val),
-                                style={"textAlign": "right"},
-                            ),
-                        ])
-                        for name, val in sqi_row.items()
-                    ]),
+                    html.Thead(
+                        html.Tr(
+                            [
+                                html.Th("SQI"),
+                                html.Th("Value", style={"textAlign": "right"}),
+                            ]
+                        )
+                    ),
+                    html.Tbody(
+                        [
+                            html.Tr(
+                                [
+                                    html.Td(name),
+                                    html.Td(
+                                        (
+                                            f"{float(val):.4f}"
+                                            if isinstance(val, (int, float))
+                                            and val == val
+                                            else str(val)
+                                        ),
+                                        style={"textAlign": "right"},
+                                    ),
+                                ]
+                            )
+                            for name, val in sqi_row.items()
+                        ]
+                    ),
                 ],
-                striped=True, bordered=False, hover=True, size="sm",
+                striped=True,
+                bordered=False,
+                hover=True,
+                size="sm",
             )
 
         # Rule trace — first reject marked as decisive
@@ -693,32 +764,53 @@ def register_segment_quality_callbacks(app):
                 is_decisive = outcome != "accept" and not decisive_marked
                 if is_decisive:
                     decisive_marked = True
-                cls = "table-danger" if is_decisive else (
-                    "" if outcome == "accept" else "text-muted"
+                cls = (
+                    "table-danger"
+                    if is_decisive
+                    else ("" if outcome == "accept" else "text-muted")
                 )
                 val = entry.get("value")
                 try:
                     val_str = f"{float(val):.4f}"
                 except (TypeError, ValueError):
                     val_str = str(val)
-                rows.append(html.Tr(
-                    [
-                        html.Td(entry.get("name", "?")),
-                        html.Td(val_str),
-                        html.Td(outcome.upper(), style={"fontWeight": "bold" if is_decisive else "normal"}),
-                        html.Td("← decisive" if is_decisive else "", className="text-muted small"),
-                    ],
-                    className=cls,
-                ))
+                rows.append(
+                    html.Tr(
+                        [
+                            html.Td(entry.get("name", "?")),
+                            html.Td(val_str),
+                            html.Td(
+                                outcome.upper(),
+                                style={
+                                    "fontWeight": "bold" if is_decisive else "normal"
+                                },
+                            ),
+                            html.Td(
+                                "← decisive" if is_decisive else "",
+                                className="text-muted small",
+                            ),
+                        ],
+                        className=cls,
+                    )
+                )
             trace_node = dbc.Table(
                 [
-                    html.Thead(html.Tr([
-                        html.Th("Rule"), html.Th("Value"),
-                        html.Th("Outcome"), html.Th(""),
-                    ])),
+                    html.Thead(
+                        html.Tr(
+                            [
+                                html.Th("Rule"),
+                                html.Th("Value"),
+                                html.Th("Outcome"),
+                                html.Th(""),
+                            ]
+                        )
+                    ),
                     html.Tbody(rows),
                 ],
-                striped=True, bordered=False, hover=True, size="sm",
+                striped=True,
+                bordered=False,
+                hover=True,
+                size="sm",
             )
 
         return waveform_fig, sqi_table_children, trace_node
@@ -888,9 +980,7 @@ def register_segment_quality_callbacks(app):
             raise PreventUpdate
 
         sampling_freq = (
-            data_info.get("sampling_freq")
-            or data_info.get("sampling_rate")
-            or 1000
+            data_info.get("sampling_freq") or data_info.get("sampling_rate") or 1000
         )
         try:
             sampling_freq = float(sampling_freq)
@@ -915,7 +1005,10 @@ def register_segment_quality_callbacks(app):
         try:
             if saved_chain:
                 filtered_segment = apply_filter_chain(
-                    original_segment, sampling_freq, sig_type, saved_chain,
+                    original_segment,
+                    sampling_freq,
+                    sig_type,
+                    saved_chain,
                     logger=logger,
                 )
             else:
@@ -924,10 +1017,14 @@ def register_segment_quality_callbacks(app):
                 # been applied yet.
                 filtered_segment = original_segment
         except Exception as exc:
-            logger.warning("preview: chain replay failed on segment %d: %s", seg_idx, exc)
+            logger.warning(
+                "preview: chain replay failed on segment %d: %s", seg_idx, exc
+            )
             filtered_segment = original_segment
 
-        time_axis = np.arange(original_segment.size) / sampling_freq + (s / sampling_freq)
+        time_axis = np.arange(original_segment.size) / sampling_freq + (
+            s / sampling_freq
+        )
 
         # Critical points overlay — only when a real filter chain has
         # produced ``filtered_segment``.  Running WaveformMorphology on
@@ -942,6 +1039,7 @@ def register_segment_quality_callbacks(app):
                 from vitalDSP.physiological_features.waveform import (
                     WaveformMorphology,
                 )
+
                 wm = WaveformMorphology(
                     waveform=np.asarray(filtered_segment, dtype=float),
                     fs=sampling_freq,

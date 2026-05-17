@@ -104,7 +104,8 @@ def _build_rules_auto(
     """Build Rules whose bounds are derived from this recording's SQI distribution."""
     whitelist = set(selected_columns) if selected_columns else None
     columns = [
-        c for c in sqi_df.columns
+        c
+        for c in sqi_df.columns
         if c in rule_dict and (whitelist is None or c in whitelist)
     ]
     if not columns:
@@ -117,8 +118,10 @@ def _build_rules_auto(
         bands = []
         for column in columns:
             band = quantile_band(
-                column, sanitize_sqi(sqi_df[column].values),
-                lower_pct=quantile_lo, upper_pct=quantile_hi,
+                column,
+                sanitize_sqi(sqi_df[column].values),
+                lower_pct=quantile_lo,
+                upper_pct=quantile_hi,
             )
             if band is not None:
                 bands.append(band)
@@ -225,9 +228,7 @@ def classify_segments(
         trace, plus a warning is logged.
     """
     if mode not in ("manual", "quantile", "tune"):
-        raise ValueError(
-            f"mode must be 'manual', 'quantile', or 'tune'; got {mode!r}."
-        )
+        raise ValueError(f"mode must be 'manual', 'quantile', or 'tune'; got {mode!r}.")
     if sqi_df is None or sqi_df.empty:
         return []
 
@@ -244,16 +245,20 @@ def classify_segments(
         rules = _build_rules_manual(rule_dict, selected_columns)
     else:
         rules = _build_rules_auto(
-            sqi_df, rule_dict, selected_columns,
+            sqi_df,
+            rule_dict,
+            selected_columns,
             mode=mode,
-            quantile_lo=quantile_lo, quantile_hi=quantile_hi,
+            quantile_lo=quantile_lo,
+            quantile_hi=quantile_hi,
             target_accept_rate=target_accept_rate,
         )
 
     if not rules:
         logger.warning(
             "No usable rules for %s under mode=%r; accepting all segments.",
-            signal_type, mode,
+            signal_type,
+            mode,
         )
         return [{"decision": "accept", "trace": []} for _ in range(len(sqi_df))]
 
@@ -268,10 +273,14 @@ def classify_segments(
             # blow up the whole classification — emit a reject with
             # an explanatory trace entry.
             logger.warning("Missing SQI column at segment %d: %s", idx, exc)
-            decisions.append({
-                "decision": "reject",
-                "trace": [{"name": str(exc), "value": float("nan"), "outcome": "reject"}],
-            })
+            decisions.append(
+                {
+                    "decision": "reject",
+                    "trace": [
+                        {"name": str(exc), "value": float("nan"), "outcome": "reject"}
+                    ],
+                }
+            )
     return decisions
 
 

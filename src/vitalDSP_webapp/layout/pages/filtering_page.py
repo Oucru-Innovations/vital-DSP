@@ -82,7 +82,6 @@ def filtering_layout():
                             ],
                             className="g-2 mb-3",
                         ),
-
                         # Row 2 — primary controls.  Filter family takes
                         # the wide column; view-zoom + nudge + Apply share
                         # the right half.
@@ -100,12 +99,27 @@ def filtering_layout():
                                         dbc.RadioItems(
                                             id="filter-type-select",
                                             options=[
-                                                {"label": "Traditional", "value": "traditional"},
-                                                {"label": "Smoothing", "value": "smoothing"},
-                                                {"label": "Advanced", "value": "advanced"},
-                                                {"label": "Artifact", "value": "artifact"},
+                                                {
+                                                    "label": "Traditional",
+                                                    "value": "traditional",
+                                                },
+                                                {
+                                                    "label": "Smoothing",
+                                                    "value": "smoothing",
+                                                },
+                                                {
+                                                    "label": "Advanced",
+                                                    "value": "advanced",
+                                                },
+                                                {
+                                                    "label": "Artifact",
+                                                    "value": "artifact",
+                                                },
                                                 {"label": "Neural", "value": "neural"},
-                                                {"label": "Ensemble", "value": "ensemble"},
+                                                {
+                                                    "label": "Ensemble",
+                                                    "value": "ensemble",
+                                                },
                                             ],
                                             value="traditional",
                                             inline=True,
@@ -145,21 +159,27 @@ def filtering_layout():
                                         dbc.ButtonGroup(
                                             [
                                                 dbc.Button(
-                                                    html.I(className="fas fa-chevron-left"),
+                                                    html.I(
+                                                        className="fas fa-chevron-left"
+                                                    ),
                                                     id="btn-nudge-m10",
                                                     color="light",
                                                     size="sm",
                                                     title="Back 10%",
                                                 ),
                                                 dbc.Button(
-                                                    html.I(className="fas fa-compress-arrows-alt"),
+                                                    html.I(
+                                                        className="fas fa-compress-arrows-alt"
+                                                    ),
                                                     id="btn-center",
                                                     color="light",
                                                     size="sm",
                                                     title="Center",
                                                 ),
                                                 dbc.Button(
-                                                    html.I(className="fas fa-chevron-right"),
+                                                    html.I(
+                                                        className="fas fa-chevron-right"
+                                                    ),
                                                     id="btn-nudge-p10",
                                                     color="light",
                                                     size="sm",
@@ -194,7 +214,6 @@ def filtering_layout():
                             ],
                             className="g-2",
                         ),
-
                         # Hidden carriers — IDs preserved for callbacks
                         # that still read them as State, but no visible
                         # widgets.  ``start-position-slider`` is driven
@@ -203,16 +222,25 @@ def filtering_layout():
                             [
                                 dcc.Slider(
                                     id="start-position-slider",
-                                    min=0, max=100, step=1, value=0,
+                                    min=0,
+                                    max=100,
+                                    step=1,
+                                    value=0,
                                     marks={},
                                 ),
                                 dcc.Store(id="store-picked-segment", data=0),
                                 dbc.Select(
                                     id="filter-signal-source",
-                                    options=[{"label": "Original", "value": "original"}],
+                                    options=[
+                                        {"label": "Original", "value": "original"}
+                                    ],
                                     value="original",
                                 ),
-                                dbc.Input(id="filter-application-count", type="number", value=1),
+                                dbc.Input(
+                                    id="filter-application-count",
+                                    type="number",
+                                    value=1,
+                                ),
                                 dbc.Select(
                                     id="filter-signal-type-select",
                                     options=[
@@ -262,7 +290,10 @@ def filtering_layout():
                             dbc.ButtonGroup(
                                 [
                                     dbc.Button(
-                                        [html.I(className="fas fa-plus me-1"), "Add as stage"],
+                                        [
+                                            html.I(className="fas fa-plus me-1"),
+                                            "Add as stage",
+                                        ],
                                         id="filter-chain-add",
                                         color="primary",
                                         outline=True,
@@ -297,7 +328,10 @@ def filtering_layout():
                                 [
                                     dbc.Col(
                                         [
-                                            html.Label("Segment length:", className="form-label small"),
+                                            html.Label(
+                                                "Segment length:",
+                                                className="form-label small",
+                                            ),
                                             dbc.Select(
                                                 id="filter-segment-length",
                                                 options=[
@@ -315,7 +349,9 @@ def filtering_layout():
                                     ),
                                     dbc.Col(
                                         [
-                                            html.Label("Overlap:", className="form-label small"),
+                                            html.Label(
+                                                "Overlap:", className="form-label small"
+                                            ),
                                             dbc.Select(
                                                 id="filter-segment-overlap",
                                                 options=[
@@ -332,13 +368,24 @@ def filtering_layout():
                                     ),
                                     dbc.Col(
                                         [
-                                            html.Label("Mode:", className="form-label small"),
+                                            html.Label(
+                                                "Mode:", className="form-label small"
+                                            ),
                                             dbc.RadioItems(
                                                 id="filter-segment-mode",
                                                 options=[
-                                                    {"label": " Auto-tune", "value": "tune"},
-                                                    {"label": " Quantile", "value": "quantile"},
-                                                    {"label": " Manual", "value": "manual"},
+                                                    {
+                                                        "label": " Auto-tune",
+                                                        "value": "tune",
+                                                    },
+                                                    {
+                                                        "label": " Quantile",
+                                                        "value": "quantile",
+                                                    },
+                                                    {
+                                                        "label": " Manual",
+                                                        "value": "manual",
+                                                    },
                                                 ],
                                                 value="tune",
                                                 inline=True,
@@ -355,34 +402,55 @@ def filtering_layout():
                                         [
                                             html.Div(
                                                 [
-                                                    html.Label("Joint accept target:", className="form-label small"),
+                                                    html.Label(
+                                                        "Joint accept target:",
+                                                        className="form-label small",
+                                                    ),
                                                     dcc.Slider(
                                                         id="filter-segment-tune-slider",
-                                                        min=0.5, max=0.99, step=0.01,
+                                                        min=0.5,
+                                                        max=0.99,
+                                                        step=0.01,
                                                         value=0.90,
                                                         marks={
-                                                            0.5: "50%", 0.7: "70%",
-                                                            0.85: "85%", 0.9: "90%",
+                                                            0.5: "50%",
+                                                            0.7: "70%",
+                                                            0.85: "85%",
+                                                            0.9: "90%",
                                                             0.95: "95%",
                                                         },
-                                                        tooltip={"placement": "bottom", "always_visible": False},
+                                                        tooltip={
+                                                            "placement": "bottom",
+                                                            "always_visible": False,
+                                                        },
                                                     ),
                                                 ],
                                                 id="filter-segment-tune-row",
                                             ),
                                             html.Div(
                                                 [
-                                                    html.Label("Per-rule trim (each tail):", className="form-label small"),
+                                                    html.Label(
+                                                        "Per-rule trim (each tail):",
+                                                        className="form-label small",
+                                                    ),
                                                     dcc.Slider(
                                                         id="filter-segment-quantile-slider",
-                                                        min=0.0, max=0.25, step=0.005,
+                                                        min=0.0,
+                                                        max=0.25,
+                                                        step=0.005,
                                                         value=0.05,
                                                         marks={
-                                                            0.0: "p0", 0.01: "p1",
-                                                            0.025: "p2.5", 0.05: "p5",
-                                                            0.10: "p10", 0.25: "p25",
+                                                            0.0: "p0",
+                                                            0.01: "p1",
+                                                            0.025: "p2.5",
+                                                            0.05: "p5",
+                                                            0.10: "p10",
+                                                            0.25: "p25",
                                                         },
-                                                        tooltip={"placement": "bottom", "always_visible": False},
+                                                        tooltip={
+                                                            "placement": "bottom",
+                                                            "always_visible": False,
+                                                        },
                                                     ),
                                                 ],
                                                 id="filter-segment-quantile-row",
@@ -400,15 +468,27 @@ def filtering_layout():
                                         [
                                             html.Div(
                                                 [
-                                                    html.Label("SQIs:", className="form-label small mb-0 me-2 d-inline"),
-                                                    html.Span(id="filter-segment-rules-summary", className="small text-muted"),
+                                                    html.Label(
+                                                        "SQIs:",
+                                                        className="form-label small mb-0 me-2 d-inline",
+                                                    ),
+                                                    html.Span(
+                                                        id="filter-segment-rules-summary",
+                                                        className="small text-muted",
+                                                    ),
                                                 ]
                                             ),
                                             dbc.Checklist(
                                                 id="filter-segment-rules-checklist",
-                                                options=[], value=[], inline=True, switch=False,
+                                                options=[],
+                                                value=[],
+                                                inline=True,
+                                                switch=False,
                                             ),
-                                            html.Div(id="filter-segment-rules-skipped", className="small text-muted"),
+                                            html.Div(
+                                                id="filter-segment-rules-skipped",
+                                                className="small text-muted",
+                                            ),
                                         ],
                                         md=12,
                                     ),
@@ -1673,21 +1753,27 @@ def filtering_layout():
                                                     dbc.Select(
                                                         id="reference-signal",
                                                         options=[
-                                                            {"label": "None", "value": "none"},
+                                                            {
+                                                                "label": "None",
+                                                                "value": "none",
+                                                            },
                                                         ],
                                                         value="none",
                                                     ),
                                                     dbc.Select(
                                                         id="fusion-method",
                                                         options=[
-                                                            {"label": "Weighted", "value": "weighted"},
+                                                            {
+                                                                "label": "Weighted",
+                                                                "value": "weighted",
+                                                            },
                                                         ],
                                                         value="weighted",
                                                     ),
                                                 ],
                                                 style={"display": "none"},
                                             ),
-                                        ]
+                                        ],
                                     ),
                                 ],
                                 className="h-100 shadow-sm border-0",

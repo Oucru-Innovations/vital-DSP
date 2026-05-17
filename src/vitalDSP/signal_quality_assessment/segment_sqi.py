@@ -123,7 +123,7 @@ def _snr_sqi(segment: np.ndarray) -> float:
     if finite.size < 4:
         return float("nan")
     centered = finite - np.median(finite)
-    rms = float(np.sqrt(np.mean(centered ** 2)))
+    rms = float(np.sqrt(np.mean(centered**2)))
     mad = float(np.median(np.abs(centered)))
     if mad < 1e-12 or rms < 1e-12:
         return float("nan")
@@ -263,11 +263,13 @@ def compute_segment_sqis(
         segment = arr[s:e]
         row = {name: _SQI_FUNCS[name](segment) for name in sqi_names}
         rows.append(row)
-        milestones.append({
-            "start_idx": int(s),
-            "end_idx": int(e),
-            "t_start": float(s / sampling_freq),
-            "t_end": float(e / sampling_freq),
-        })
+        milestones.append(
+            {
+                "start_idx": int(s),
+                "end_idx": int(e),
+                "t_start": float(s / sampling_freq),
+                "t_end": float(e / sampling_freq),
+            }
+        )
 
     return pd.DataFrame(rows, columns=list(sqi_names)), milestones

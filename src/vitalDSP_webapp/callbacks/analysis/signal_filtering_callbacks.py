@@ -195,7 +195,15 @@ def _apply_chain_stage(signal, sampling_freq, signal_type, stage, logger=None):
                     sampling_freq,
                     params.get("artifact_type", "baseline"),
                     params.get("artifact_strength", 0.5),
-                    None, None, None, None, None, None, None, None, None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
                 )
             elif family == "neural":
                 out = apply_neural_filter(
@@ -208,13 +216,19 @@ def _apply_chain_stage(signal, sampling_freq, signal_type, stage, logger=None):
                     out,
                     params.get("ensemble_method", "voting"),
                     int(params.get("ensemble_n_filters", 3)),
-                    None, None, None, None, None, None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
                 )
         except Exception as exc:
             if logger:
                 logger.warning(
                     "Chain stage %r failed: %s; passing input through.",
-                    family, exc,
+                    family,
+                    exc,
                 )
             # Keep ``out`` unchanged so subsequent stages still run.
     return out
@@ -305,7 +319,14 @@ def _panel_filter_as_stage(
     return stage
 
 
-def apply_smoothing_filter(signal_data, method, savgol_window, savgol_polyorder, moving_avg_window, gaussian_sigma):
+def apply_smoothing_filter(
+    signal_data,
+    method,
+    savgol_window,
+    savgol_polyorder,
+    moving_avg_window,
+    gaussian_sigma,
+):
     """Apply a single smoothing method to ``signal_data``.
 
     ``method`` is one of ``"savgol"``, ``"moving_avg"``, ``"gaussian"``.
@@ -830,8 +851,7 @@ def register_signal_filtering_callbacks(app):
         else:
             summary = "(no panel filter)"
         prefix = (
-            "Apply will run the chain, then this panel filter as a "
-            "final stage:"
+            "Apply will run the chain, then this panel filter as a " "final stage:"
             if chain
             else "Apply will run this panel filter (chain is empty):"
         )
@@ -1149,13 +1169,17 @@ def register_signal_filtering_callbacks(app):
             except (TypeError, ValueError):
                 view_zoom = 1
             try:
-                seg_len_s = float(segment_length_seconds) if segment_length_seconds else 30.0
+                seg_len_s = (
+                    float(segment_length_seconds) if segment_length_seconds else 30.0
+                )
             except (TypeError, ValueError):
                 seg_len_s = 30.0
             duration = float(view_zoom) * seg_len_s
             logger.info(
                 "view_zoom=%d x segment_length=%gs → duration=%gs",
-                view_zoom, seg_len_s, duration,
+                view_zoom,
+                seg_len_s,
+                duration,
             )
 
             if False:  # legacy branches kept for shape; never executed
@@ -1176,9 +1200,7 @@ def register_signal_filtering_callbacks(app):
             # so use ``or`` to coerce both missing-key and None-value to the
             # default.
             sampling_freq = (
-                data_info.get("sampling_freq")
-                or data_info.get("sampling_rate")
-                or 1000
+                data_info.get("sampling_freq") or data_info.get("sampling_rate") or 1000
             )
             logger.info(f"Sampling frequency from data_info: {sampling_freq} Hz")
 
@@ -1911,9 +1933,7 @@ def register_signal_filtering_callbacks(app):
             # signal, which gave results different from a direct
             # function call.
             if detrend_option and "detrend" in detrend_option:
-                logger.info(
-                    "Applying linear detrending via VitalTransformation"
-                )
+                logger.info("Applying linear detrending via VitalTransformation")
                 try:
                     from vitalDSP.transforms.vital_transformation import (
                         VitalTransformation,
@@ -1922,9 +1942,7 @@ def register_signal_filtering_callbacks(app):
                     transformer = VitalTransformation(
                         signal_data, fs=sampling_freq, signal_type=signal_type
                     )
-                    transformer.apply_detrending(
-                        options={"detrend_type": "linear"}
-                    )
+                    transformer.apply_detrending(options={"detrend_type": "linear"})
                     signal_data = np.asarray(transformer.signal, dtype=float)
                     # Keep the displayed "Original" trace consistent with
                     # what the filter operates on, so the user's direct-
@@ -1937,9 +1955,7 @@ def register_signal_filtering_callbacks(app):
                         float(np.max(signal_data)),
                     )
                 except Exception as exc:
-                    logger.warning(
-                        "Detrend failed; using raw signal.  Cause: %s", exc
-                    )
+                    logger.warning("Detrend failed; using raw signal.  Cause: %s", exc)
 
                 # Apply the same detrend to the full signal so the
                 # stored "full filtered signal" downstream is computed
@@ -2171,20 +2187,19 @@ def register_signal_filtering_callbacks(app):
             # the page started with.  When the chain has stages, this
             # acts as the implicit final stage on top of the chain
             # output - matching the "chain + panel" Apply semantics.
-            if True:  # kept as ``if True`` to preserve the indent of the legacy block below
-                logger.info(
-                    "=== APPLYING PANEL FILTER (on top of chain if any) ==="
-                )
+            if (
+                True
+            ):  # kept as ``if True`` to preserve the indent of the legacy block below
+                logger.info("=== APPLYING PANEL FILTER (on top of chain if any) ===")
                 logger.info(f"Filter type: {filter_type}")
                 logger.info(f"Input signal shape: {signal_data.shape}")
                 current_input = signal_data.copy()
                 if len(current_input) < 50:
-                    logger.info(
-                        "Less than 50 samples; using vitalDSP smoothing."
-                    )
+                    logger.info("Less than 50 samples; using vitalDSP smoothing.")
                     from vitalDSP.filtering.advanced_signal_filtering import (
                         AdvancedSignalFiltering,
                     )
+
                     af = AdvancedSignalFiltering(current_input)
                     filtered_data = af.convolution_based_filter(
                         kernel_type="smoothing", kernel_size=3
@@ -2238,24 +2253,40 @@ def register_signal_filtering_callbacks(app):
                         sampling_freq,
                         artifact_type,
                         artifact_strength,
-                        None, None, None, None, None, None, None, None, None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
                     )
                 elif filter_type == "neural":
                     filtered_data = apply_neural_filter(
-                        current_input, neural_type, neural_complexity,
+                        current_input,
+                        neural_type,
+                        neural_complexity,
                     )
                 elif filter_type == "ensemble":
                     filtered_data = apply_enhanced_ensemble_filter(
                         current_input,
                         ensemble_method,
                         ensemble_n_filters,
-                        None, None, None, None, None, None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
                     )
                 else:
                     filtered_data = current_input
                 logger.info(
                     "Filtered range: [%.4f, %.4f]",
-                    float(np.min(filtered_data)), float(np.max(filtered_data)),
+                    float(np.min(filtered_data)),
+                    float(np.max(filtered_data)),
                 )
 
             # Apply multi-modal filtering if reference signal is specified
@@ -2497,11 +2528,11 @@ def register_signal_filtering_callbacks(app):
                 comparison_plot,
                 quality_metrics,
                 quality_plots,
-                no_update,           # store-filtering-data (unread)
-                comparison_data,     # already no_update
+                no_update,  # store-filtering-data (unread)
+                comparison_data,  # already no_update
                 quality_metrics_data,  # already no_update
                 filtered_signal_data,
-                no_update,           # filter-saved-banner
+                no_update,  # filter-saved-banner
             )
 
         except Exception as e:
@@ -3349,7 +3380,7 @@ def apply_traditional_filter(
             family_map = {
                 "butter": "butter",
                 "cheby1": "cheby",
-                "cheby2": "cheby",   # library has no cheby-2 bandpass
+                "cheby2": "cheby",  # library has no cheby-2 bandpass
                 "ellip": "elliptic",
             }
             filter_type_lib = family_map.get(filter_family, "butter")
@@ -4134,9 +4165,11 @@ def generate_filter_quality_metrics(
                     [
                         html.Strong(f"Overall quality: {overall}"),
                         html.Br() if recommendation else None,
-                        html.Small(recommendation, className="text-muted")
-                        if recommendation
-                        else None,
+                        (
+                            html.Small(recommendation, className="text-muted")
+                            if recommendation
+                            else None
+                        ),
                     ],
                     color="info",
                     className="py-2 mb-2",
@@ -4150,7 +4183,9 @@ def generate_filter_quality_metrics(
         return html.Div(
             [
                 html.H6("Filter quality metrics"),
-                html.P(f"Could not compute metrics: {exc}", className="text-danger small"),
+                html.P(
+                    f"Could not compute metrics: {exc}", className="text-danger small"
+                ),
             ]
         )
 
@@ -4266,4 +4301,3 @@ def calculate_mse(original_signal, filtered_signal):
     except Exception as e:
         logger.error(f"Error calculating MSE: {e}")
         return 0
-

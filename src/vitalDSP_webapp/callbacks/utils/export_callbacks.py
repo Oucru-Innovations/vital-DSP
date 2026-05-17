@@ -18,14 +18,31 @@ try:
         export_frequency_domain_analysis_json,
     )
 except ImportError:
-    def export_filtered_signal_csv(*args, **kwargs): return "CSV Export not available"
-    def export_filtered_signal_json(*args, **kwargs): return "{}"
-    def export_respiratory_analysis_csv(*args, **kwargs): return "CSV Export not available"
-    def export_respiratory_analysis_json(*args, **kwargs): return "{}"
-    def export_time_domain_analysis_csv(*args, **kwargs): return "CSV Export not available"
-    def export_time_domain_analysis_json(*args, **kwargs): return "{}"
-    def export_frequency_domain_analysis_csv(*args, **kwargs): return "CSV Export not available"
-    def export_frequency_domain_analysis_json(*args, **kwargs): return "{}"
+
+    def export_filtered_signal_csv(*args, **kwargs):
+        return "CSV Export not available"
+
+    def export_filtered_signal_json(*args, **kwargs):
+        return "{}"
+
+    def export_respiratory_analysis_csv(*args, **kwargs):
+        return "CSV Export not available"
+
+    def export_respiratory_analysis_json(*args, **kwargs):
+        return "{}"
+
+    def export_time_domain_analysis_csv(*args, **kwargs):
+        return "CSV Export not available"
+
+    def export_time_domain_analysis_json(*args, **kwargs):
+        return "{}"
+
+    def export_frequency_domain_analysis_csv(*args, **kwargs):
+        return "CSV Export not available"
+
+    def export_frequency_domain_analysis_json(*args, **kwargs):
+        return "{}"
+
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +63,10 @@ def register_time_domain_export_callbacks(app):
         if not n_clicks or not features_data:
             raise PreventUpdate
         try:
-            return {"content": export_time_domain_analysis_csv(features_data), "filename": "time_domain_features.csv"}
+            return {
+                "content": export_time_domain_analysis_csv(features_data),
+                "filename": "time_domain_features.csv",
+            }
         except Exception as e:
             logger.error(f"Error exporting time domain CSV: {e}")
             raise PreventUpdate
@@ -61,7 +81,10 @@ def register_time_domain_export_callbacks(app):
         if not n_clicks or not features_data:
             raise PreventUpdate
         try:
-            return {"content": export_time_domain_analysis_json(features_data), "filename": "time_domain_features.json"}
+            return {
+                "content": export_time_domain_analysis_json(features_data),
+                "filename": "time_domain_features.json",
+            }
         except Exception as e:
             logger.error(f"Error exporting time domain JSON: {e}")
             raise PreventUpdate
@@ -78,7 +101,10 @@ def register_frequency_domain_export_callbacks(app):
         if not n_clicks or not features_data:
             raise PreventUpdate
         try:
-            return {"content": export_frequency_domain_analysis_csv(features_data), "filename": "frequency_domain_features.csv"}
+            return {
+                "content": export_frequency_domain_analysis_csv(features_data),
+                "filename": "frequency_domain_features.csv",
+            }
         except Exception as e:
             logger.error(f"Error exporting frequency domain CSV: {e}")
             raise PreventUpdate
@@ -93,7 +119,10 @@ def register_frequency_domain_export_callbacks(app):
         if not n_clicks or not features_data:
             raise PreventUpdate
         try:
-            return {"content": export_frequency_domain_analysis_json(features_data), "filename": "frequency_domain_features.json"}
+            return {
+                "content": export_frequency_domain_analysis_json(features_data),
+                "filename": "frequency_domain_features.json",
+            }
         except Exception as e:
             logger.error(f"Error exporting frequency domain JSON: {e}")
             raise PreventUpdate
@@ -110,7 +139,10 @@ def register_respiratory_export_callbacks(app):
         if not n_clicks or not respiratory_data:
             raise PreventUpdate
         try:
-            return {"content": export_respiratory_analysis_csv(respiratory_data), "filename": "respiratory_analysis.csv"}
+            return {
+                "content": export_respiratory_analysis_csv(respiratory_data),
+                "filename": "respiratory_analysis.csv",
+            }
         except Exception as e:
             logger.error(f"Error exporting respiratory CSV: {e}")
             raise PreventUpdate
@@ -125,7 +157,10 @@ def register_respiratory_export_callbacks(app):
         if not n_clicks or not respiratory_data:
             raise PreventUpdate
         try:
-            return {"content": export_respiratory_analysis_json(respiratory_data), "filename": "respiratory_analysis.json"}
+            return {
+                "content": export_respiratory_analysis_json(respiratory_data),
+                "filename": "respiratory_analysis.json",
+            }
         except Exception as e:
             logger.error(f"Error exporting respiratory JSON: {e}")
             raise PreventUpdate

@@ -12,7 +12,9 @@ from scipy.fft import rfft, rfftfreq
 from scipy.signal import welch, spectrogram as scipy_spectrogram
 import logging
 
-from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import apply_traditional_filter
+from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+    apply_traditional_filter,
+)
 from vitalDSP_webapp.callbacks.core.theme_callbacks import apply_plot_theme
 
 logger = logging.getLogger(__name__)
@@ -22,9 +24,15 @@ logger = logging.getLogger(__name__)
 # Compat stubs — kept so existing test imports don't break
 # ─────────────────────────────────────────────────────────────
 
+
 def configure_plot_with_pan_zoom(fig, title="", height=400):
-    fig.update_layout(title=title, height=height, showlegend=True,
-                      template="plotly_white", dragmode="pan")
+    fig.update_layout(
+        title=title,
+        height=height,
+        showlegend=True,
+        template="plotly_white",
+        dragmode="pan",
+    )
     return fig
 
 
@@ -45,10 +53,18 @@ def format_large_number(value, precision=3, use_scientific=False):
 
 def create_empty_figure(theme="light"):
     fig = go.Figure()
-    fig.add_annotation(text="No data available", xref="paper", yref="paper",
-                       x=0.5, y=0.5, showarrow=False, font=dict(size=16, color="gray"))
-    fig.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False),
-                      plot_bgcolor="white")
+    fig.add_annotation(
+        text="No data available",
+        xref="paper",
+        yref="paper",
+        x=0.5,
+        y=0.5,
+        showarrow=False,
+        font=dict(size=16, color="gray"),
+    )
+    fig.update_layout(
+        xaxis=dict(visible=False), yaxis=dict(visible=False), plot_bgcolor="white"
+    )
     return apply_plot_theme(fig, theme)
 
 
@@ -56,8 +72,16 @@ def create_empty_figure(theme="light"):
 # Legacy compat stubs — kept so existing tests don't break
 # ─────────────────────────────────────────────────────────────
 
-def create_fft_plot(selected_signal=None, sampling_freq=100, window_type="hann",
-                    n_points=None, freq_min=0, freq_max=25, **kwargs):
+
+def create_fft_plot(
+    selected_signal=None,
+    sampling_freq=100,
+    window_type="hann",
+    n_points=None,
+    freq_min=0,
+    freq_max=25,
+    **kwargs,
+):
     if selected_signal is None or len(selected_signal) < 4:
         return create_empty_figure()
     sig = np.asarray(selected_signal, dtype=float)
@@ -67,8 +91,15 @@ def create_fft_plot(selected_signal=None, sampling_freq=100, window_type="hann",
     return fig
 
 
-def create_stft_plot(selected_signal=None, sampling_freq=100, window_size=256,
-                     hop_size=128, window_type="hann", freq_max=25, **kwargs):
+def create_stft_plot(
+    selected_signal=None,
+    sampling_freq=100,
+    window_size=256,
+    hop_size=128,
+    window_type="hann",
+    freq_max=25,
+    **kwargs,
+):
     if selected_signal is None or len(selected_signal) < 64:
         return create_empty_figure()
     try:
@@ -79,40 +110,129 @@ def create_stft_plot(selected_signal=None, sampling_freq=100, window_size=256,
         return create_empty_figure()
 
 
-def create_wavelet_plot(selected_signal=None, sampling_freq=100, wavelet_type="db4",
-                        levels=4, freq_min=0, freq_max=25, **kwargs):
+def create_wavelet_plot(
+    selected_signal=None,
+    sampling_freq=100,
+    wavelet_type="db4",
+    levels=4,
+    freq_min=0,
+    freq_max=25,
+    **kwargs,
+):
     return create_empty_figure()
 
 
-def perform_fft_analysis(time_data=None, selected_signal=None, sampling_freq=100,
-                          window_type="hann", n_points=None, freq_min=0, freq_max=25,
-                          analysis_options=None, **kwargs):
+def perform_fft_analysis(
+    time_data=None,
+    selected_signal=None,
+    sampling_freq=100,
+    window_type="hann",
+    n_points=None,
+    freq_min=0,
+    freq_max=25,
+    analysis_options=None,
+    **kwargs,
+):
     ef = create_empty_figure()
-    return ef, ef, ef, html.Div(), html.Div(), html.Div(), html.Div(), html.Div(), None, None
+    return (
+        ef,
+        ef,
+        ef,
+        html.Div(),
+        html.Div(),
+        html.Div(),
+        html.Div(),
+        html.Div(),
+        None,
+        None,
+    )
 
 
-def perform_psd_analysis(time_data=None, selected_signal=None, sampling_freq=100,
-                          psd_window=2.0, psd_overlap=50, psd_freq_max=25,
-                          psd_log_scale=None, psd_normalize=None, psd_channel="signal",
-                          freq_min=0, freq_max=25, analysis_options=None, **kwargs):
+def perform_psd_analysis(
+    time_data=None,
+    selected_signal=None,
+    sampling_freq=100,
+    psd_window=2.0,
+    psd_overlap=50,
+    psd_freq_max=25,
+    psd_log_scale=None,
+    psd_normalize=None,
+    psd_channel="signal",
+    freq_min=0,
+    freq_max=25,
+    analysis_options=None,
+    **kwargs,
+):
     ef = create_empty_figure()
-    return ef, ef, ef, html.Div(), html.Div(), html.Div(), html.Div(), html.Div(), None, None
+    return (
+        ef,
+        ef,
+        ef,
+        html.Div(),
+        html.Div(),
+        html.Div(),
+        html.Div(),
+        html.Div(),
+        None,
+        None,
+    )
 
 
-def perform_stft_analysis(time_data=None, selected_signal=None, sampling_freq=100,
-                           stft_window_size=256, stft_hop_size=128, stft_window_type="hann",
-                           stft_overlap=50, stft_scaling="density", stft_freq_max=25,
-                           stft_colormap="viridis", freq_min=0, freq_max=25,
-                           analysis_options=None, **kwargs):
+def perform_stft_analysis(
+    time_data=None,
+    selected_signal=None,
+    sampling_freq=100,
+    stft_window_size=256,
+    stft_hop_size=128,
+    stft_window_type="hann",
+    stft_overlap=50,
+    stft_scaling="density",
+    stft_freq_max=25,
+    stft_colormap="viridis",
+    freq_min=0,
+    freq_max=25,
+    analysis_options=None,
+    **kwargs,
+):
     ef = create_empty_figure()
-    return ef, ef, ef, html.Div(), html.Div(), html.Div(), html.Div(), html.Div(), None, None
+    return (
+        ef,
+        ef,
+        ef,
+        html.Div(),
+        html.Div(),
+        html.Div(),
+        html.Div(),
+        html.Div(),
+        None,
+        None,
+    )
 
 
-def perform_wavelet_analysis(time_data=None, selected_signal=None, sampling_freq=100,
-                              wavelet_type="db4", wavelet_levels=4, freq_min=0, freq_max=25,
-                              analysis_options=None, **kwargs):
+def perform_wavelet_analysis(
+    time_data=None,
+    selected_signal=None,
+    sampling_freq=100,
+    wavelet_type="db4",
+    wavelet_levels=4,
+    freq_min=0,
+    freq_max=25,
+    analysis_options=None,
+    **kwargs,
+):
     ef = create_empty_figure()
-    return ef, ef, ef, html.Div(), html.Div(), html.Div(), html.Div(), html.Div(), None, None
+    return (
+        ef,
+        ef,
+        ef,
+        html.Div(),
+        html.Div(),
+        html.Div(),
+        html.Div(),
+        html.Div(),
+        None,
+        None,
+    )
 
 
 def generate_frequency_analysis_results(*args, **kwargs):
@@ -141,23 +261,23 @@ def generate_harmonics_table(*args, **kwargs):
 
 _BANDS = {
     "PPG": {
-        "VLF": (0.003, 0.04,  "rgba(147,112,219,0.15)", "#9370db"),
-        "LF":  (0.04,  0.15,  "rgba(70,130,180,0.15)",  "#4682b4"),
-        "HF":  (0.15,  0.40,  "rgba(42,157,143,0.15)",  "#2a9d8f"),
-        "HR":  (0.67,  3.33,  "rgba(230,57,70,0.10)",   "#e63946"),
+        "VLF": (0.003, 0.04, "rgba(147,112,219,0.15)", "#9370db"),
+        "LF": (0.04, 0.15, "rgba(70,130,180,0.15)", "#4682b4"),
+        "HF": (0.15, 0.40, "rgba(42,157,143,0.15)", "#2a9d8f"),
+        "HR": (0.67, 3.33, "rgba(230,57,70,0.10)", "#e63946"),
     },
     "ECG": {
-        "VLF": (0.003, 0.04,  "rgba(147,112,219,0.15)", "#9370db"),
-        "LF":  (0.04,  0.15,  "rgba(70,130,180,0.15)",  "#4682b4"),
-        "HF":  (0.15,  0.40,  "rgba(42,157,143,0.15)",  "#2a9d8f"),
-        "HR":  (0.67,  3.33,  "rgba(230,57,70,0.10)",   "#e63946"),
+        "VLF": (0.003, 0.04, "rgba(147,112,219,0.15)", "#9370db"),
+        "LF": (0.04, 0.15, "rgba(70,130,180,0.15)", "#4682b4"),
+        "HF": (0.15, 0.40, "rgba(42,157,143,0.15)", "#2a9d8f"),
+        "HR": (0.67, 3.33, "rgba(230,57,70,0.10)", "#e63946"),
     },
     "EEG": {
-        "Delta": (0.5,  4.0,  "rgba(147,112,219,0.15)", "#9370db"),
-        "Theta": (4.0,  8.0,  "rgba(70,130,180,0.15)",  "#4682b4"),
-        "Alpha": (8.0,  13.0, "rgba(42,157,143,0.15)",  "#2a9d8f"),
-        "Beta":  (13.0, 30.0, "rgba(230,57,70,0.10)",   "#e63946"),
-        "Gamma": (30.0, 80.0, "rgba(244,162,97,0.10)",  "#f4a261"),
+        "Delta": (0.5, 4.0, "rgba(147,112,219,0.15)", "#9370db"),
+        "Theta": (4.0, 8.0, "rgba(70,130,180,0.15)", "#4682b4"),
+        "Alpha": (8.0, 13.0, "rgba(42,157,143,0.15)", "#2a9d8f"),
+        "Beta": (13.0, 30.0, "rgba(230,57,70,0.10)", "#e63946"),
+        "Gamma": (30.0, 80.0, "rgba(244,162,97,0.10)", "#f4a261"),
     },
 }
 
@@ -177,21 +297,27 @@ def _apply_window(sig, window_type):
     return sig  # rectangular
 
 
-
 # ─────────────────────────────────────────────────────────────
 # Metric card
 # ─────────────────────────────────────────────────────────────
 
+
 def _metric_card(title, value, unit, description, color="primary"):
     return dbc.Card(
-        dbc.CardBody([
-            html.Div(title, className="text-muted small mb-1"),
-            html.Div(
-                [html.Span(value, className=f"fs-4 fw-bold text-{color}"),
-                 html.Span(f" {unit}", className="text-muted small")],
-            ),
-            html.Div(description, className="text-muted", style={"fontSize": "0.72rem"}),
-        ]),
+        dbc.CardBody(
+            [
+                html.Div(title, className="text-muted small mb-1"),
+                html.Div(
+                    [
+                        html.Span(value, className=f"fs-4 fw-bold text-{color}"),
+                        html.Span(f" {unit}", className="text-muted small"),
+                    ],
+                ),
+                html.Div(
+                    description, className="text-muted", style={"fontSize": "0.72rem"}
+                ),
+            ]
+        ),
         className="h-100 border-0 shadow-sm",
     )
 
@@ -199,6 +325,7 @@ def _metric_card(title, value, unit, description, color="primary"):
 # ─────────────────────────────────────────────────────────────
 # Core spectrum computation
 # ─────────────────────────────────────────────────────────────
+
 
 def _compute_psd_welch(sig, fs, window_type="hann", nperseg_s=2.0):
     """Return (freqs, psd) via Welch's method."""
@@ -216,7 +343,7 @@ def _compute_fft(sig, fs, window_type="hann"):
     fft_vals = rfft(windowed, n=n)
     freqs = rfftfreq(n, 1.0 / fs)
     magnitude = np.abs(fft_vals) * 2 / n  # single-sided, amplitude-normalised
-    power = magnitude ** 2
+    power = magnitude**2
     return freqs, magnitude, power
 
 
@@ -225,8 +352,9 @@ def _compute_spectrogram(sig, fs, window_type="hann", nperseg_s=2.0):
     nperseg = min(int(nperseg_s * fs), len(sig))
     nperseg = max(nperseg, 64)
     w = window_type if window_type != "none" else "boxcar"
-    f, t, Sxx = scipy_spectrogram(sig, fs=fs, window=w, nperseg=nperseg,
-                                   noverlap=nperseg // 2)
+    f, t, Sxx = scipy_spectrogram(
+        sig, fs=fs, window=w, nperseg=nperseg, noverlap=nperseg // 2
+    )
     Sxx_db = 10 * np.log10(Sxx + 1e-12)
     return t, f, Sxx_db
 
@@ -242,11 +370,21 @@ def _band_power(freqs, psd, lo, hi):
 # Main spectrum figure
 # ─────────────────────────────────────────────────────────────
 
-def _build_spectrum_fig(freqs, power_db, power_linear, analysis_type,
-                        signal_type, scale, max_hz, theme, peaks=None):
+
+def _build_spectrum_fig(
+    freqs,
+    power_db,
+    power_linear,
+    analysis_type,
+    signal_type,
+    scale,
+    max_hz,
+    theme,
+    peaks=None,
+):
     """Single-panel spectrum plot with band shading and peak markers."""
     bands = _bands_for(signal_type)
-    use_db = (scale == "db")
+    use_db = scale == "db"
 
     y = power_db if use_db else power_linear
     ylabel = "Power (dB)" if use_db else "Power"
@@ -262,33 +400,51 @@ def _build_spectrum_fig(freqs, power_db, power_linear, analysis_type,
         if lo >= max_hz:
             continue
         hi_clipped = min(hi, max_hz)
-        fig.add_vrect(x0=lo, x1=hi_clipped, fillcolor=fill,
-                      layer="below", line_width=0,
-                      annotation_text=band_name,
-                      annotation_position="top left",
-                      annotation_font=dict(size=9, color=line_col))
+        fig.add_vrect(
+            x0=lo,
+            x1=hi_clipped,
+            fillcolor=fill,
+            layer="below",
+            line_width=0,
+            annotation_text=band_name,
+            annotation_position="top left",
+            annotation_font=dict(size=9, color=line_col),
+        )
 
     # Main spectrum
-    method_label = {"psd": "PSD (Welch)", "fft": "FFT Amplitude"}.get(analysis_type, "Spectrum")
-    fig.add_trace(go.Scatter(
-        x=xd, y=yd, mode="lines", name=method_label,
-        line=dict(color="#1f77b4", width=1.8),
-        hovertemplate="<b>%{x:.3f} Hz</b><br>%{y:.2f}" + (" dB" if use_db else "") + "<extra></extra>",
-    ))
+    method_label = {"psd": "PSD (Welch)", "fft": "FFT Amplitude"}.get(
+        analysis_type, "Spectrum"
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=xd,
+            y=yd,
+            mode="lines",
+            name=method_label,
+            line=dict(color="#1f77b4", width=1.8),
+            hovertemplate="<b>%{x:.3f} Hz</b><br>%{y:.2f}"
+            + (" dB" if use_db else "")
+            + "<extra></extra>",
+        )
+    )
 
     # Peak markers
     if peaks is not None and len(peaks) > 0:
         px_arr = np.array(peaks)
         valid = px_arr[(px_arr >= 0) & (px_arr < len(freqs[mask]))]
         if len(valid):
-            fig.add_trace(go.Scatter(
-                x=freqs[mask][valid], y=y[mask][valid],
-                mode="markers+text", name="Peaks",
-                marker=dict(color="#e63946", size=8, symbol="diamond"),
-                text=[f"{freqs[mask][i]:.2f} Hz" for i in valid],
-                textposition="top center",
-                textfont=dict(size=9),
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=freqs[mask][valid],
+                    y=y[mask][valid],
+                    mode="markers+text",
+                    name="Peaks",
+                    marker=dict(color="#e63946", size=8, symbol="diamond"),
+                    text=[f"{freqs[mask][i]:.2f} Hz" for i in valid],
+                    textposition="top center",
+                    textfont=dict(size=9),
+                )
+            )
 
     fig.update_layout(
         xaxis_title="Frequency (Hz)",
@@ -307,14 +463,19 @@ def _build_spectrum_fig(freqs, power_db, power_linear, analysis_type,
 # Spectrogram figure
 # ─────────────────────────────────────────────────────────────
 
+
 def _build_spectrogram_fig(t, f, Sxx_db, max_hz, theme):
     mask = f <= max_hz
-    fig = go.Figure(go.Heatmap(
-        x=t, y=f[mask], z=Sxx_db[mask],
-        colorscale="Viridis",
-        colorbar=dict(title="dB", thickness=14),
-        hovertemplate="Time: %{x:.2f}s<br>Freq: %{y:.2f}Hz<br>%{z:.1f} dB<extra></extra>",
-    ))
+    fig = go.Figure(
+        go.Heatmap(
+            x=t,
+            y=f[mask],
+            z=Sxx_db[mask],
+            colorscale="Viridis",
+            colorbar=dict(title="dB", thickness=14),
+            hovertemplate="Time: %{x:.2f}s<br>Freq: %{y:.2f}Hz<br>%{z:.1f} dB<extra></extra>",
+        )
+    )
     fig.update_layout(
         xaxis_title="Time (s)",
         yaxis_title="Frequency (Hz)",
@@ -330,6 +491,7 @@ def _build_spectrogram_fig(t, f, Sxx_db, max_hz, theme):
 # Results panels
 # ─────────────────────────────────────────────────────────────
 
+
 def _build_peak_table(freqs, power, max_hz, n_peaks=8):
     """Top N spectral peaks table."""
     mask = freqs <= max_hz
@@ -337,7 +499,9 @@ def _build_peak_table(freqs, power, max_hz, n_peaks=8):
     p_clip = power[mask]
 
     if len(f_clip) < 3:
-        return html.P("Not enough data for peak detection.", className="small text-muted")
+        return html.P(
+            "Not enough data for peak detection.", className="small text-muted"
+        )
 
     # Simple local-max peak picking (min distance = 0.02 Hz)
     min_dist = max(1, int(0.02 / (f_clip[1] - f_clip[0]))) if len(f_clip) > 1 else 1
@@ -357,18 +521,39 @@ def _build_peak_table(freqs, power, max_hz, n_peaks=8):
         freq = f_clip[idx]
         power_val = p_clip[idx]
         power_db = 10 * np.log10(power_val + 1e-12)
-        rows.append(html.Tr([
-            html.Td(f"#{rank}", className="small text-muted"),
-            html.Td(f"{freq:.3f} Hz", className="fw-semibold small font-monospace"),
-            html.Td(f"{power_db:.1f} dB", className="small font-monospace"),
-            html.Td(f"{power_val:.3e}", className="small font-monospace text-muted"),
-        ]))
+        rows.append(
+            html.Tr(
+                [
+                    html.Td(f"#{rank}", className="small text-muted"),
+                    html.Td(
+                        f"{freq:.3f} Hz", className="fw-semibold small font-monospace"
+                    ),
+                    html.Td(f"{power_db:.1f} dB", className="small font-monospace"),
+                    html.Td(
+                        f"{power_val:.3e}", className="small font-monospace text-muted"
+                    ),
+                ]
+            )
+        )
 
     return dbc.Table(
-        [html.Thead(html.Tr([html.Th("Rank", className="small"), html.Th("Frequency", className="small"),
-                              html.Th("Power (dB)", className="small"), html.Th("Power (lin)", className="small")])),
-         html.Tbody(rows)],
-        bordered=False, striped=True, hover=True, size="sm",
+        [
+            html.Thead(
+                html.Tr(
+                    [
+                        html.Th("Rank", className="small"),
+                        html.Th("Frequency", className="small"),
+                        html.Th("Power (dB)", className="small"),
+                        html.Th("Power (lin)", className="small"),
+                    ]
+                )
+            ),
+            html.Tbody(rows),
+        ],
+        bordered=False,
+        striped=True,
+        hover=True,
+        size="sm",
     )
 
 
@@ -380,25 +565,51 @@ def _build_band_power_panel(freqs, psd, signal_type, total_power):
     for band_name, (lo, hi, fill, color) in bands.items():
         bp = _band_power(freqs, psd, lo, hi)
         pct = 100.0 * bp / total_power if total_power > 0 else 0.0
-        rows.append(html.Tr([
-            html.Td(html.Span(band_name, style={"color": color, "fontWeight": "600"}), className="small"),
-            html.Td(f"{lo:.3f}–{hi:.3f} Hz", className="small font-monospace text-muted"),
-            html.Td(f"{bp:.4f} ms²", className="small font-monospace"),
-            html.Td(f"{pct:.1f}%", className="small font-monospace"),
-        ]))
+        rows.append(
+            html.Tr(
+                [
+                    html.Td(
+                        html.Span(
+                            band_name, style={"color": color, "fontWeight": "600"}
+                        ),
+                        className="small",
+                    ),
+                    html.Td(
+                        f"{lo:.3f}–{hi:.3f} Hz",
+                        className="small font-monospace text-muted",
+                    ),
+                    html.Td(f"{bp:.4f} ms²", className="small font-monospace"),
+                    html.Td(f"{pct:.1f}%", className="small font-monospace"),
+                ]
+            )
+        )
 
-    return html.Div([
-        dbc.Table(
-            [html.Thead(html.Tr([
-                html.Th("Band", className="small"), html.Th("Range", className="small"),
-                html.Th("Power (ms²)", className="small"), html.Th("Share (%)", className="small"),
-            ])),
-             html.Tbody(rows)],
-            bordered=False, striped=True, size="sm",
-        ),
-        html.P(f"Total power (all bands): {total_power:.4f} ms²",
-               className="small text-muted text-end mt-1"),
-    ])
+    return html.Div(
+        [
+            dbc.Table(
+                [
+                    html.Thead(
+                        html.Tr(
+                            [
+                                html.Th("Band", className="small"),
+                                html.Th("Range", className="small"),
+                                html.Th("Power (ms²)", className="small"),
+                                html.Th("Share (%)", className="small"),
+                            ]
+                        )
+                    ),
+                    html.Tbody(rows),
+                ],
+                bordered=False,
+                striped=True,
+                size="sm",
+            ),
+            html.P(
+                f"Total power (all bands): {total_power:.4f} ms²",
+                className="small text-muted text-end mt-1",
+            ),
+        ]
+    )
 
 
 def _build_harmonic_panel(freqs, power, fs, max_hz):
@@ -413,7 +624,9 @@ def _build_harmonic_panel(freqs, power, fs, max_hz):
     # Find fundamental = highest-power peak above 0.05 Hz
     lo_mask = f_clip > 0.05
     if not np.any(lo_mask):
-        return html.P("No fundamental detected above 0.05 Hz.", className="small text-muted")
+        return html.P(
+            "No fundamental detected above 0.05 Hz.", className="small text-muted"
+        )
 
     f_lo = f_clip[lo_mask]
     p_lo = p_clip[lo_mask]
@@ -423,13 +636,21 @@ def _build_harmonic_panel(freqs, power, fs, max_hz):
 
     # Harmonics: 2nd … 5th
     harmonic_rows = [
-        html.Tr([
-            html.Td("Fundamental (1st)", className="small fw-semibold"),
-            html.Td(f"{fund_freq:.3f} Hz", className="small font-monospace"),
-            html.Td(f"{60 * fund_freq:.1f} bpm", className="small font-monospace text-muted"),
-            html.Td(f"{10 * np.log10(fund_power + 1e-12):.1f} dB", className="small font-monospace"),
-            html.Td("—", className="small text-muted"),
-        ])
+        html.Tr(
+            [
+                html.Td("Fundamental (1st)", className="small fw-semibold"),
+                html.Td(f"{fund_freq:.3f} Hz", className="small font-monospace"),
+                html.Td(
+                    f"{60 * fund_freq:.1f} bpm",
+                    className="small font-monospace text-muted",
+                ),
+                html.Td(
+                    f"{10 * np.log10(fund_power + 1e-12):.1f} dB",
+                    className="small font-monospace",
+                ),
+                html.Td("—", className="small text-muted"),
+            ]
+        )
     ]
     for k in range(2, 6):
         hf = fund_freq * k
@@ -440,20 +661,48 @@ def _build_harmonic_panel(freqs, power, fs, max_hz):
         actual_f = float(f_clip[idx])
         hp = float(p_clip[idx])
         ratio_db = 10 * np.log10(hp / (fund_power + 1e-12))
-        harmonic_rows.append(html.Tr([
-            html.Td(f"{k}{'nd' if k==2 else 'rd' if k==3 else 'th'} harmonic", className="small text-muted"),
-            html.Td(f"{actual_f:.3f} Hz", className="small font-monospace"),
-            html.Td(f"{60 * actual_f:.1f} bpm", className="small font-monospace text-muted"),
-            html.Td(f"{10 * np.log10(hp + 1e-12):.1f} dB", className="small font-monospace"),
-            html.Td(f"{ratio_db:+.1f} dB", className="small font-monospace text-muted"),
-        ]))
+        harmonic_rows.append(
+            html.Tr(
+                [
+                    html.Td(
+                        f"{k}{'nd' if k==2 else 'rd' if k==3 else 'th'} harmonic",
+                        className="small text-muted",
+                    ),
+                    html.Td(f"{actual_f:.3f} Hz", className="small font-monospace"),
+                    html.Td(
+                        f"{60 * actual_f:.1f} bpm",
+                        className="small font-monospace text-muted",
+                    ),
+                    html.Td(
+                        f"{10 * np.log10(hp + 1e-12):.1f} dB",
+                        className="small font-monospace",
+                    ),
+                    html.Td(
+                        f"{ratio_db:+.1f} dB",
+                        className="small font-monospace text-muted",
+                    ),
+                ]
+            )
+        )
 
     return dbc.Table(
-        [html.Thead(html.Tr([html.Th("Component", className="small"), html.Th("Freq (Hz)", className="small"),
-                              html.Th("Rate (bpm)", className="small"), html.Th("Power (dB)", className="small"),
-                              html.Th("Rel. fund.", className="small")])),
-         html.Tbody(harmonic_rows)],
-        bordered=False, striped=True, size="sm",
+        [
+            html.Thead(
+                html.Tr(
+                    [
+                        html.Th("Component", className="small"),
+                        html.Th("Freq (Hz)", className="small"),
+                        html.Th("Rate (bpm)", className="small"),
+                        html.Th("Power (dB)", className="small"),
+                        html.Th("Rel. fund.", className="small"),
+                    ]
+                )
+            ),
+            html.Tbody(harmonic_rows),
+        ],
+        bordered=False,
+        striped=True,
+        size="sm",
     )
 
 
@@ -461,16 +710,23 @@ def _build_stability_panel(sig, fs, window_type, max_hz):
     """Spectral stability: compute PSD on 4 equal sub-windows, show CoV of band powers."""
     n = len(sig)
     if n < 256:
-        return html.P("Signal too short for stability analysis (need ≥ 256 samples).",
-                      className="small text-muted")
+        return html.P(
+            "Signal too short for stability analysis (need ≥ 256 samples).",
+            className="small text-muted",
+        )
 
     n_segs = 4
     seg_len = n // n_segs
     band_powers = {k: [] for k in ["VLF", "LF", "HF", "HR"]}
-    band_ranges = {"VLF": (0.003, 0.04), "LF": (0.04, 0.15), "HF": (0.15, 0.40), "HR": (0.67, 3.33)}
+    band_ranges = {
+        "VLF": (0.003, 0.04),
+        "LF": (0.04, 0.15),
+        "HF": (0.15, 0.40),
+        "HR": (0.67, 3.33),
+    }
 
     for i in range(n_segs):
-        seg = sig[i * seg_len: (i + 1) * seg_len]
+        seg = sig[i * seg_len : (i + 1) * seg_len]
         freqs_s, psd_s = _compute_psd_welch(seg, fs, window_type)
         for bname, (lo, hi) in band_ranges.items():
             band_powers[bname].append(_band_power(freqs_s, psd_s, lo, hi))
@@ -483,29 +739,49 @@ def _build_stability_panel(sig, fs, window_type, max_hz):
         cov = std_v / mean_v if mean_v > 0 else 0.0
         stability = "High" if cov < 0.2 else ("Moderate" if cov < 0.5 else "Low")
         color = "success" if cov < 0.2 else ("warning" if cov < 0.5 else "danger")
-        rows.append(html.Tr([
-            html.Td(bname, className="small fw-semibold"),
-            html.Td(f"{mean_v:.4f} ms²", className="small font-monospace"),
-            html.Td(f"{std_v:.4f} ms²", className="small font-monospace text-muted"),
-            html.Td(f"{cov:.2f}", className="small font-monospace"),
-            html.Td(dbc.Badge(stability, color=color, className="small")),
-        ]))
+        rows.append(
+            html.Tr(
+                [
+                    html.Td(bname, className="small fw-semibold"),
+                    html.Td(f"{mean_v:.4f} ms²", className="small font-monospace"),
+                    html.Td(
+                        f"{std_v:.4f} ms²", className="small font-monospace text-muted"
+                    ),
+                    html.Td(f"{cov:.2f}", className="small font-monospace"),
+                    html.Td(dbc.Badge(stability, color=color, className="small")),
+                ]
+            )
+        )
 
     note = html.P(
         f"Computed over {n_segs} equal segments. CoV < 0.2 = High, 0.2–0.5 = Moderate, > 0.5 = Low.",
         className="small text-muted mt-2",
     )
 
-    return html.Div([
-        dbc.Table(
-            [html.Thead(html.Tr([html.Th("Band", className="small"), html.Th("Mean Power", className="small"),
-                                  html.Th("Std Dev", className="small"), html.Th("CoV", className="small"),
-                                  html.Th("Stability", className="small")])),
-             html.Tbody(rows)],
-            bordered=False, striped=True, size="sm",
-        ),
-        note,
-    ])
+    return html.Div(
+        [
+            dbc.Table(
+                [
+                    html.Thead(
+                        html.Tr(
+                            [
+                                html.Th("Band", className="small"),
+                                html.Th("Mean Power", className="small"),
+                                html.Th("Std Dev", className="small"),
+                                html.Th("CoV", className="small"),
+                                html.Th("Stability", className="small"),
+                            ]
+                        )
+                    ),
+                    html.Tbody(rows),
+                ],
+                bordered=False,
+                striped=True,
+                size="sm",
+            ),
+            note,
+        ]
+    )
 
 
 def _build_metric_cards(freqs, psd, signal_type, fs, duration_s):
@@ -534,26 +810,91 @@ def _build_metric_cards(freqs, psd, signal_type, fs, duration_s):
 
     return dbc.Row(
         [
-            dbc.Col(_metric_card("Dominant Freq", f"{dom_freq:.3f}", "Hz",
-                                 f"{dom_freq * 60:.1f} bpm", "primary"), md=3, className="mb-3"),
-            dbc.Col(_metric_card("LF/HF Ratio", f"{lf_hf:.2f}", "",
-                                 "Autonomic balance (HRV bands)", "warning"), md=3, className="mb-3"),
-            dbc.Col(_metric_card("Total Power", f"{total_power:.4f}", "ms²",
-                                 "VLF + LF + HF (0.003–0.4 Hz)", "success"), md=3, className="mb-3"),
-            dbc.Col(_metric_card("Spectral Entropy", f"{spectral_entropy:.2f}", "bits",
-                                 "Signal complexity / randomness", "info"), md=3, className="mb-3"),
+            dbc.Col(
+                _metric_card(
+                    "Dominant Freq",
+                    f"{dom_freq:.3f}",
+                    "Hz",
+                    f"{dom_freq * 60:.1f} bpm",
+                    "primary",
+                ),
+                md=3,
+                className="mb-3",
+            ),
+            dbc.Col(
+                _metric_card(
+                    "LF/HF Ratio",
+                    f"{lf_hf:.2f}",
+                    "",
+                    "Autonomic balance (HRV bands)",
+                    "warning",
+                ),
+                md=3,
+                className="mb-3",
+            ),
+            dbc.Col(
+                _metric_card(
+                    "Total Power",
+                    f"{total_power:.4f}",
+                    "ms²",
+                    "VLF + LF + HF (0.003–0.4 Hz)",
+                    "success",
+                ),
+                md=3,
+                className="mb-3",
+            ),
+            dbc.Col(
+                _metric_card(
+                    "Spectral Entropy",
+                    f"{spectral_entropy:.2f}",
+                    "bits",
+                    "Signal complexity / randomness",
+                    "info",
+                ),
+                md=3,
+                className="mb-3",
+            ),
         ],
         className="g-2",
     )
 
 
-def _build_signal_summary(signal_source_info, filter_info, fs, n_samples, signal_type, start_s, duration_s):
+def _build_signal_summary(
+    signal_source_info, filter_info, fs, n_samples, signal_type, start_s, duration_s
+):
     rows = [
-        html.Tr([html.Td("Signal source", className="fw-semibold text-muted small"), html.Td(signal_source_info or "—")]),
-        html.Tr([html.Td("Signal type", className="fw-semibold text-muted small"), html.Td(signal_type or "—")]),
-        html.Tr([html.Td("Sampling rate", className="fw-semibold text-muted small"), html.Td(f"{fs:.0f} Hz")]),
-        html.Tr([html.Td("Window", className="fw-semibold text-muted small"), html.Td(f"{start_s:.1f}s – {start_s + duration_s:.1f}s ({duration_s:.1f}s)")]),
-        html.Tr([html.Td("Samples", className="fw-semibold text-muted small"), html.Td(f"{n_samples:,}")]),
+        html.Tr(
+            [
+                html.Td("Signal source", className="fw-semibold text-muted small"),
+                html.Td(signal_source_info or "—"),
+            ]
+        ),
+        html.Tr(
+            [
+                html.Td("Signal type", className="fw-semibold text-muted small"),
+                html.Td(signal_type or "—"),
+            ]
+        ),
+        html.Tr(
+            [
+                html.Td("Sampling rate", className="fw-semibold text-muted small"),
+                html.Td(f"{fs:.0f} Hz"),
+            ]
+        ),
+        html.Tr(
+            [
+                html.Td("Window", className="fw-semibold text-muted small"),
+                html.Td(
+                    f"{start_s:.1f}s – {start_s + duration_s:.1f}s ({duration_s:.1f}s)"
+                ),
+            ]
+        ),
+        html.Tr(
+            [
+                html.Td("Samples", className="fw-semibold text-muted small"),
+                html.Td(f"{n_samples:,}"),
+            ]
+        ),
     ]
 
     if isinstance(filter_info, dict) and filter_info:
@@ -561,36 +902,66 @@ def _build_signal_summary(signal_source_info, filter_info, fs, n_samples, signal
         chain = filter_info.get("chain") or []
         if chain:
             # Render each chain step as its own row
-            rows.append(html.Tr([
-                html.Td("Filter chain", className="fw-semibold text-muted small",
-                        rowSpan=len(chain) + 1),
-                html.Td(html.Span(f"{len(chain)} stage{'s' if len(chain) != 1 else ''}",
-                                  className="text-muted small")),
-            ]))
+            rows.append(
+                html.Tr(
+                    [
+                        html.Td(
+                            "Filter chain",
+                            className="fw-semibold text-muted small",
+                            rowSpan=len(chain) + 1,
+                        ),
+                        html.Td(
+                            html.Span(
+                                f"{len(chain)} stage{'s' if len(chain) != 1 else ''}",
+                                className="text-muted small",
+                            )
+                        ),
+                    ]
+                )
+            )
             for i, step in enumerate(chain, 1):
                 family = step.get("family", "—")
                 params = step.get("params", {}) or {}
-                param_str = ", ".join(f"{k}={v}" for k, v in params.items() if v is not None)
+                param_str = ", ".join(
+                    f"{k}={v}" for k, v in params.items() if v is not None
+                )
                 label = f"  Step {i}: {family}"
                 value = param_str or "—"
-                rows.append(html.Tr([
-                    html.Td(label, className="text-muted small ps-3 font-monospace"),
-                    html.Td(value, className="small font-monospace"),
-                ]))
+                rows.append(
+                    html.Tr(
+                        [
+                            html.Td(
+                                label, className="text-muted small ps-3 font-monospace"
+                            ),
+                            html.Td(value, className="small font-monospace"),
+                        ]
+                    )
+                )
         else:
             params = filter_info.get("parameters", {}) or {}
-            param_str = ", ".join(f"{k}={v}" for k, v in params.items() if v is not None) if params else ""
-            rows.append(html.Tr([
-                html.Td("Filter", className="fw-semibold text-muted small"),
-                html.Td(f"{ftype}" + (f" ({param_str})" if param_str else "")),
-            ]))
+            param_str = (
+                ", ".join(f"{k}={v}" for k, v in params.items() if v is not None)
+                if params
+                else ""
+            )
+            rows.append(
+                html.Tr(
+                    [
+                        html.Td("Filter", className="fw-semibold text-muted small"),
+                        html.Td(f"{ftype}" + (f" ({param_str})" if param_str else "")),
+                    ]
+                )
+            )
 
-    return dbc.Table([html.Tbody(rows)], bordered=False, size="sm", className="table-borderless")
+    return dbc.Table(
+        [html.Tbody(rows)], bordered=False, size="sm", className="table-borderless"
+    )
 
 
 # ─────────────────────────────────────────────────────────────
 # Callback registration
 # ─────────────────────────────────────────────────────────────
+
 
 def register_frequency_filtering_callbacks(app):
     """Register all frequency domain analysis callbacks."""
@@ -608,15 +979,15 @@ def register_frequency_filtering_callbacks(app):
     # ── main analysis callback (index 1) ────────────────────────
     @app.callback(
         [
-            Output("freq-main-plot",          "figure"),
-            Output("freq-spectrogram-plot",   "figure"),
-            Output("freq-metric-cards",       "children"),
-            Output("freq-peak-analysis-table","children"),
-            Output("freq-band-power-table",   "children"),
-            Output("freq-harmonics-table",    "children"),
-            Output("freq-stability-table",    "children"),
-            Output("freq-analysis-results",   "children"),
-            Output("store-frequency-data",    "data"),
+            Output("freq-main-plot", "figure"),
+            Output("freq-spectrogram-plot", "figure"),
+            Output("freq-metric-cards", "children"),
+            Output("freq-peak-analysis-table", "children"),
+            Output("freq-band-power-table", "children"),
+            Output("freq-harmonics-table", "children"),
+            Output("freq-stability-table", "children"),
+            Output("freq-analysis-results", "children"),
+            Output("store-frequency-data", "data"),
         ],
         [
             Input("freq-btn-update-analysis", "n_clicks"),
@@ -625,19 +996,26 @@ def register_frequency_filtering_callbacks(app):
         ],
         [
             State("freq-start-position-slider", "value"),
-            State("freq-duration-select",       "value"),
-            State("freq-analysis-type",         "value"),
-            State("freq-window-type",           "value"),
-            State("freq-max-hz",                "value"),
-            State("freq-scale",                 "value"),
-            State("freq-signal-type",           "value"),
-            State("store-filtered-signal",      "data"),
+            State("freq-duration-select", "value"),
+            State("freq-analysis-type", "value"),
+            State("freq-window-type", "value"),
+            State("freq-max-hz", "value"),
+            State("freq-scale", "value"),
+            State("freq-signal-type", "value"),
+            State("store-filtered-signal", "data"),
         ],
     )
     def run_frequency_analysis(
-        n_clicks, current_theme, pathname,
-        start_position, duration,
-        analysis_type, window_type, max_hz, scale, signal_type,
+        n_clicks,
+        current_theme,
+        pathname,
+        start_position,
+        duration,
+        analysis_type,
+        window_type,
+        max_hz,
+        scale,
+        signal_type,
         filtered_signal_data,
     ):
         logger.info("=== FREQUENCY DOMAIN ANALYSIS ===")
@@ -645,25 +1023,42 @@ def register_frequency_filtering_callbacks(app):
         def _empty(msg):
             ef = create_empty_figure(current_theme)
             empty_div = html.P(msg, className="text-muted small p-3")
-            return ef, ef, html.Div(), empty_div, empty_div, empty_div, empty_div, empty_div, None
+            return (
+                ef,
+                ef,
+                html.Div(),
+                empty_div,
+                empty_div,
+                empty_div,
+                empty_div,
+                empty_div,
+                None,
+            )
 
         if pathname != "/frequency":
             return _empty("Navigate to the Frequency Domain Analysis page.")
 
         try:
-            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
+            from vitalDSP_webapp.services.data.enhanced_data_service import (
+                get_enhanced_data_service,
+            )
+
             data_service = get_enhanced_data_service()
             all_data = data_service.get_all_data()
 
             if not all_data:
-                return _empty("No data available. Please upload and process data first.")
+                return _empty(
+                    "No data available. Please upload and process data first."
+                )
 
             latest_data_id = list(all_data.keys())[-1]
             latest_data = all_data[latest_data_id]
             column_mapping = data_service.get_column_mapping(latest_data_id)
 
             if not column_mapping:
-                return _empty("Please configure column mapping on the Upload page first.")
+                return _empty(
+                    "Please configure column mapping on the Upload page first."
+                )
 
             df = data_service.get_data(latest_data_id)
             if df is None or df.empty:
@@ -674,7 +1069,16 @@ def register_frequency_filtering_callbacks(app):
             # ── resolve signal column ──────────────────────────
             signal_col = column_mapping.get("signal")
             if not signal_col or signal_col not in df.columns:
-                for cand in ["waveform", "pleth", "pl", "signal", "ppg", "ecg", "red", "ir"]:
+                for cand in [
+                    "waveform",
+                    "pleth",
+                    "pl",
+                    "signal",
+                    "ppg",
+                    "ecg",
+                    "red",
+                    "ir",
+                ]:
                     matches = [c for c in df.columns if c.lower() == cand]
                     if matches:
                         signal_col = matches[0]
@@ -696,7 +1100,9 @@ def register_frequency_filtering_callbacks(app):
 
             raw_signal = df[signal_col].values[start_sample:end_sample]
             if len(raw_signal) < 64:
-                return _empty(f"Window too short ({len(raw_signal)} samples). Increase duration or move start position.")
+                return _empty(
+                    f"Window too short ({len(raw_signal)} samples). Increase duration or move start position."
+                )
 
             # ── always prefer filtered signal ────────────────────
             selected_signal = raw_signal
@@ -712,12 +1118,17 @@ def register_frequency_filtering_callbacks(app):
             if svc_filtered is not None:
                 filtered_full = svc_filtered
                 stored_filter_info = svc_filter_info
-            elif isinstance(filtered_signal_data, dict) and "signal" in filtered_signal_data:
+            elif (
+                isinstance(filtered_signal_data, dict)
+                and "signal" in filtered_signal_data
+            ):
                 try:
                     filtered_full = np.array(filtered_signal_data["signal"])
                     if "filter_params" in filtered_signal_data:
                         stored_filter_info = {
-                            "filter_type": filtered_signal_data.get("filter_type", "unknown"),
+                            "filter_type": filtered_signal_data.get(
+                                "filter_type", "unknown"
+                            ),
                             "parameters": filtered_signal_data.get("filter_params", {}),
                         }
                 except Exception as e:
@@ -736,18 +1147,28 @@ def register_frequency_filtering_callbacks(app):
                     saved_chain = (stored_filter_info or {}).get("chain") or []
                     if saved_chain:
                         try:
-                            from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import apply_filter_chain
+                            from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
+                                apply_filter_chain,
+                            )
+
                             selected_signal = apply_filter_chain(
-                                raw_signal, fs, signal_type, saved_chain, logger=logger)
-                            signal_source_info = f"Filtered Signal (chain x{len(saved_chain)})"
+                                raw_signal, fs, signal_type, saved_chain, logger=logger
+                            )
+                            signal_source_info = (
+                                f"Filtered Signal (chain x{len(saved_chain)})"
+                            )
                             filter_info = stored_filter_info
                         except Exception as e:
                             logger.warning("Re-applying filter chain failed: %s", e)
-                    elif stored_filter_info and stored_filter_info.get("filter_type") == "traditional":
+                    elif (
+                        stored_filter_info
+                        and stored_filter_info.get("filter_type") == "traditional"
+                    ):
                         try:
                             p = stored_filter_info.get("parameters", {})
                             selected_signal = apply_traditional_filter(
-                                raw_signal, fs,
+                                raw_signal,
+                                fs,
                                 p.get("filter_family", "butter"),
                                 p.get("filter_response", "bandpass"),
                                 p.get("low_freq", 0.5),
@@ -757,7 +1178,9 @@ def register_frequency_filtering_callbacks(app):
                             signal_source_info = "Filtered Signal (re-applied)"
                             filter_info = stored_filter_info
                         except Exception as e:
-                            logger.warning("Re-applying traditional filter failed: %s", e)
+                            logger.warning(
+                                "Re-applying traditional filter failed: %s", e
+                            )
 
             # ── zero-mean the signal before spectral analysis ────
             sig = np.asarray(selected_signal, dtype=float)
@@ -786,17 +1209,29 @@ def register_frequency_filtering_callbacks(app):
             p_clip = power_lin[mask_main]
             peak_indices = []
             if len(p_clip) > 3:
-                min_dist = max(1, int(0.02 / (freqs_main[1] - freqs_main[0]))) if len(freqs_main) > 1 else 1
+                min_dist = (
+                    max(1, int(0.02 / (freqs_main[1] - freqs_main[0])))
+                    if len(freqs_main) > 1
+                    else 1
+                )
                 for i in range(1, len(p_clip) - 1):
                     if p_clip[i] > p_clip[i - 1] and p_clip[i] > p_clip[i + 1]:
                         if not peak_indices or (i - peak_indices[-1]) >= min_dist:
                             peak_indices.append(i)
-                peak_indices = sorted(peak_indices, key=lambda i: p_clip[i], reverse=True)[:5]
+                peak_indices = sorted(
+                    peak_indices, key=lambda i: p_clip[i], reverse=True
+                )[:5]
 
             # ── figures ──────────────────────────────────────────
             main_fig = _build_spectrum_fig(
-                freqs_main, power_db, power_lin,
-                analysis_type, stype, scale, max_f, current_theme,
+                freqs_main,
+                power_db,
+                power_lin,
+                analysis_type,
+                stype,
+                scale,
+                max_f,
+                current_theme,
                 peaks=peak_indices,
             )
 
@@ -822,47 +1257,125 @@ def register_frequency_filtering_callbacks(app):
             harmonic_panel = _build_harmonic_panel(freqs_main, power_lin, fs, max_f)
             stability_panel = _build_stability_panel(sig, fs, win, max_f)
             summary = _build_signal_summary(
-                signal_source_info, filter_info, fs,
-                len(sig), stype, start_s, duration,
+                signal_source_info,
+                filter_info,
+                fs,
+                len(sig),
+                stype,
+                start_s,
+                duration,
             )
 
             # ── unified Analysis Results panel ────────────────────
-            unified_results = html.Div([
-                # Config context strip
-                html.Div(
-                    dbc.Row([
-                        dbc.Col(html.Small([html.B("Method: "), analysis_type.upper()], className="text-muted"), md="auto"),
-                        dbc.Col(html.Small([html.B("Window fn: "), win], className="text-muted"), md="auto"),
-                        dbc.Col(html.Small([html.B("Max freq: "), f"{max_f:.1f} Hz"], className="text-muted"), md="auto"),
-                        dbc.Col(html.Small([html.B("Scale: "), scale], className="text-muted"), md="auto"),
-                        dbc.Col(html.Small([html.B("Signal type: "), stype], className="text-muted"), md="auto"),
-                        dbc.Col(html.Small([html.B("fs: "), f"{fs:.0f} Hz"], className="text-muted"), md="auto"),
-                    ], className="g-3"),
-                    className="p-2 mb-3 rounded",
-                    style={"background": "var(--bs-light, #f8f9fa)"},
-                ),
-                dbc.Row([
-                    dbc.Col([
-                        html.H6("Peak Frequencies", className="fw-semibold mb-2 text-muted small text-uppercase"),
-                        peak_panel,
-                    ], md=6, className="mb-3"),
-                    dbc.Col([
-                        html.H6("Band Power", className="fw-semibold mb-2 text-muted small text-uppercase"),
-                        band_panel,
-                    ], md=6, className="mb-3"),
-                ]),
-                html.Hr(className="my-2"),
-                dbc.Row([
-                    dbc.Col([
-                        html.H6("Harmonic Analysis", className="fw-semibold mb-2 text-muted small text-uppercase"),
-                        harmonic_panel,
-                    ], md=6, className="mb-3"),
-                    dbc.Col([
-                        html.H6("Spectral Stability", className="fw-semibold mb-2 text-muted small text-uppercase"),
-                        stability_panel,
-                    ], md=6, className="mb-3"),
-                ]),
-            ])
+            unified_results = html.Div(
+                [
+                    # Config context strip
+                    html.Div(
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    html.Small(
+                                        [html.B("Method: "), analysis_type.upper()],
+                                        className="text-muted",
+                                    ),
+                                    md="auto",
+                                ),
+                                dbc.Col(
+                                    html.Small(
+                                        [html.B("Window fn: "), win],
+                                        className="text-muted",
+                                    ),
+                                    md="auto",
+                                ),
+                                dbc.Col(
+                                    html.Small(
+                                        [html.B("Max freq: "), f"{max_f:.1f} Hz"],
+                                        className="text-muted",
+                                    ),
+                                    md="auto",
+                                ),
+                                dbc.Col(
+                                    html.Small(
+                                        [html.B("Scale: "), scale],
+                                        className="text-muted",
+                                    ),
+                                    md="auto",
+                                ),
+                                dbc.Col(
+                                    html.Small(
+                                        [html.B("Signal type: "), stype],
+                                        className="text-muted",
+                                    ),
+                                    md="auto",
+                                ),
+                                dbc.Col(
+                                    html.Small(
+                                        [html.B("fs: "), f"{fs:.0f} Hz"],
+                                        className="text-muted",
+                                    ),
+                                    md="auto",
+                                ),
+                            ],
+                            className="g-3",
+                        ),
+                        className="p-2 mb-3 rounded",
+                        style={"background": "var(--bs-light, #f8f9fa)"},
+                    ),
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.H6(
+                                        "Peak Frequencies",
+                                        className="fw-semibold mb-2 text-muted small text-uppercase",
+                                    ),
+                                    peak_panel,
+                                ],
+                                md=6,
+                                className="mb-3",
+                            ),
+                            dbc.Col(
+                                [
+                                    html.H6(
+                                        "Band Power",
+                                        className="fw-semibold mb-2 text-muted small text-uppercase",
+                                    ),
+                                    band_panel,
+                                ],
+                                md=6,
+                                className="mb-3",
+                            ),
+                        ]
+                    ),
+                    html.Hr(className="my-2"),
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.H6(
+                                        "Harmonic Analysis",
+                                        className="fw-semibold mb-2 text-muted small text-uppercase",
+                                    ),
+                                    harmonic_panel,
+                                ],
+                                md=6,
+                                className="mb-3",
+                            ),
+                            dbc.Col(
+                                [
+                                    html.H6(
+                                        "Spectral Stability",
+                                        className="fw-semibold mb-2 text-muted small text-uppercase",
+                                    ),
+                                    stability_panel,
+                                ],
+                                md=6,
+                                className="mb-3",
+                            ),
+                        ]
+                    ),
+                ]
+            )
 
             freq_data = {
                 "data_id": latest_data_id,
@@ -873,9 +1386,15 @@ def register_frequency_filtering_callbacks(app):
 
             logger.info("Frequency domain analysis completed.")
             return (
-                main_fig, spec_fig, metric_cards,
-                unified_results, band_panel, harmonic_panel,
-                stability_panel, summary, freq_data,
+                main_fig,
+                spec_fig,
+                metric_cards,
+                unified_results,
+                band_panel,
+                harmonic_panel,
+                stability_panel,
+                summary,
+                freq_data,
             )
 
         except Exception as e:
@@ -907,8 +1426,8 @@ def register_frequency_filtering_callbacks(app):
         Output("freq-start-position-slider", "value"),
         [
             Input("freq-btn-nudge-m10", "n_clicks"),
-            Input("freq-btn-nudge-m5",  "n_clicks"),
-            Input("freq-btn-nudge-p5",  "n_clicks"),
+            Input("freq-btn-nudge-m5", "n_clicks"),
+            Input("freq-btn-nudge-p5", "n_clicks"),
             Input("freq-btn-nudge-p10", "n_clicks"),
         ],
         State("freq-start-position-slider", "value"),
@@ -919,8 +1438,11 @@ def register_frequency_filtering_callbacks(app):
         if not ctx.triggered:
             return no_update
         trigger = ctx.triggered[0]["prop_id"].split(".")[0]
-        delta = {"freq-btn-nudge-m10": -10, "freq-btn-nudge-m5": -5,
-                 "freq-btn-nudge-p5": 5, "freq-btn-nudge-p10": 10}.get(trigger, 0)
+        delta = {
+            "freq-btn-nudge-m10": -10,
+            "freq-btn-nudge-m5": -5,
+            "freq-btn-nudge-p5": 5,
+            "freq-btn-nudge-p10": 10,
+        }.get(trigger, 0)
         pos = float(current or 0)
         return max(0.0, min(100.0, pos + delta))
-

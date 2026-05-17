@@ -454,20 +454,18 @@ class DataLoader:
             # parse_array_column already raises with "Failed to parse signal
             # array at row ..." messages on bad cells, matching the legacy
             # contract.  No outer wrap needed.
-            signal_block, n_samples_per_row = parse_array_column(
-                data[signal_column]
-            )
+            signal_block, n_samples_per_row = parse_array_column(data[signal_column])
 
             # Infer / cross-check the sampling rate against the array width.
             if fs is None:
                 fs = n_samples_per_row
                 import sys
+
                 if "pytest" not in sys.modules:
-                    warnings.warn(
-                        f"Sampling rate inferred from array length: {fs} Hz"
-                    )
+                    warnings.warn(f"Sampling rate inferred from array length: {fs} Hz")
             elif fs != n_samples_per_row:
                 import sys
+
                 if "pytest" not in sys.modules:
                     warnings.warn(
                         f"Array length ({n_samples_per_row}) does not match "
@@ -507,10 +505,7 @@ class DataLoader:
                 # int64 ns the whole way and build the (n_rows, k) grid
                 # with a single broadcast - benchmarked at ~30x faster on
                 # 128k samples.
-                if (
-                    hasattr(timestamps.dtype, "tz")
-                    and timestamps.dtype.tz is not None
-                ):
+                if hasattr(timestamps.dtype, "tz") and timestamps.dtype.tz is not None:
                     logger.info(
                         "Converting timezone-aware timestamps to UTC naive "
                         "for interpolation"

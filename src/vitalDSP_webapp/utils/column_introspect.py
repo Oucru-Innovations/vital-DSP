@@ -32,9 +32,9 @@ class ColumnCandidate:
     """A column that could plausibly hold the signal."""
 
     name: str
-    kind: str           # "array" (OUCRU row-per-second) or "numeric"
-    sample_size: int    # array: elements per row; numeric: row count
-    preferred: bool     # True if this matches the signal type's default name
+    kind: str  # "array" (OUCRU row-per-second) or "numeric"
+    sample_size: int  # array: elements per row; numeric: row count
+    preferred: bool  # True if this matches the signal type's default name
 
 
 def introspect_columns(

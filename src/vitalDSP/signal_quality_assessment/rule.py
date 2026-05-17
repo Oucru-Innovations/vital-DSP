@@ -83,9 +83,7 @@ class Rule:
         if not math.isfinite(lo) or not math.isfinite(hi):
             raise ValueError(f"Rule bounds must be finite; got ({lo}, {hi}).")
         if lo >= hi:
-            raise ValueError(
-                f"Rule {name!r}: lower ({lo}) must be < upper ({hi})."
-            )
+            raise ValueError(f"Rule {name!r}: lower ({lo}) must be < upper ({hi}).")
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "lower", lo)
         object.__setattr__(self, "upper", hi)
@@ -215,7 +213,9 @@ class RuleSet:
             )
         for r in normalised.values():
             if not isinstance(r, Rule):
-                raise ValueError(f"RuleSet values must be Rule instances; got {type(r)}.")
+                raise ValueError(
+                    f"RuleSet values must be Rule instances; got {type(r)}."
+                )
         self.rules = normalised
 
     def __len__(self) -> int:

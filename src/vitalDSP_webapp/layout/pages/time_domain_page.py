@@ -21,7 +21,6 @@ def time_domain_layout():
                 ],
                 className="mb-3",
             ),
-
             # Top Action Bar
             dbc.Row(
                 [
@@ -33,7 +32,12 @@ def time_domain_layout():
                                         # Run button
                                         dbc.Col(
                                             dbc.Button(
-                                                [html.I(className="fas fa-play me-2"), "Run Analysis"],
+                                                [
+                                                    html.I(
+                                                        className="fas fa-play me-2"
+                                                    ),
+                                                    "Run Analysis",
+                                                ],
                                                 id="btn-update-analysis",
                                                 color="primary",
                                                 size="lg",
@@ -44,15 +48,27 @@ def time_domain_layout():
                                         # Start position
                                         dbc.Col(
                                             [
-                                                html.Label("Start Position", className="form-label fw-semibold small mb-1"),
+                                                html.Label(
+                                                    "Start Position",
+                                                    className="form-label fw-semibold small mb-1",
+                                                ),
                                                 dcc.Slider(
                                                     id="start-position-slider",
                                                     min=0,
                                                     max=100,
                                                     step=1,
                                                     value=0,
-                                                    marks={0: "0%", 25: "25%", 50: "50%", 75: "75%", 100: "100%"},
-                                                    tooltip={"placement": "bottom", "always_visible": True},
+                                                    marks={
+                                                        0: "0%",
+                                                        25: "25%",
+                                                        50: "50%",
+                                                        75: "75%",
+                                                        100: "100%",
+                                                    },
+                                                    tooltip={
+                                                        "placement": "bottom",
+                                                        "always_visible": True,
+                                                    },
                                                     className="mt-1",
                                                 ),
                                             ],
@@ -61,14 +77,23 @@ def time_domain_layout():
                                         # Duration
                                         dbc.Col(
                                             [
-                                                html.Label("Window", className="form-label fw-semibold small mb-1"),
+                                                html.Label(
+                                                    "Window",
+                                                    className="form-label fw-semibold small mb-1",
+                                                ),
                                                 dbc.Select(
                                                     id="duration-select",
                                                     options=[
                                                         {"label": "30 s", "value": 30},
                                                         {"label": "1 min", "value": 60},
-                                                        {"label": "2 min", "value": 120},
-                                                        {"label": "5 min", "value": 300},
+                                                        {
+                                                            "label": "2 min",
+                                                            "value": 120,
+                                                        },
+                                                        {
+                                                            "label": "5 min",
+                                                            "value": 300,
+                                                        },
                                                     ],
                                                     value=60,
                                                 ),
@@ -78,13 +103,39 @@ def time_domain_layout():
                                         # Quick navigation
                                         dbc.Col(
                                             [
-                                                html.Label("Navigate", className="form-label fw-semibold small mb-1"),
+                                                html.Label(
+                                                    "Navigate",
+                                                    className="form-label fw-semibold small mb-1",
+                                                ),
                                                 html.Div(
                                                     [
-                                                        dbc.Button("« -10%", id="btn-nudge-m10", color="outline-secondary", size="sm", className="me-1"),
-                                                        dbc.Button("‹ -5%",  id="btn-nudge-m5",  color="outline-secondary", size="sm", className="me-1"),
-                                                        dbc.Button("+5% ›",  id="btn-nudge-p5",  color="outline-secondary", size="sm", className="me-1"),
-                                                        dbc.Button("+10% »", id="btn-nudge-p10", color="outline-secondary", size="sm"),
+                                                        dbc.Button(
+                                                            "« -10%",
+                                                            id="btn-nudge-m10",
+                                                            color="outline-secondary",
+                                                            size="sm",
+                                                            className="me-1",
+                                                        ),
+                                                        dbc.Button(
+                                                            "‹ -5%",
+                                                            id="btn-nudge-m5",
+                                                            color="outline-secondary",
+                                                            size="sm",
+                                                            className="me-1",
+                                                        ),
+                                                        dbc.Button(
+                                                            "+5% ›",
+                                                            id="btn-nudge-p5",
+                                                            color="outline-secondary",
+                                                            size="sm",
+                                                            className="me-1",
+                                                        ),
+                                                        dbc.Button(
+                                                            "+10% »",
+                                                            id="btn-nudge-p10",
+                                                            color="outline-secondary",
+                                                            size="sm",
+                                                        ),
                                                     ],
                                                     className="d-flex",
                                                 ),
@@ -101,7 +152,6 @@ def time_domain_layout():
                     )
                 ]
             ),
-
             # Main Two-Column Layout
             dbc.Row(
                 [
@@ -116,8 +166,14 @@ def time_domain_layout():
                                             [
                                                 dbc.Col(
                                                     [
-                                                        html.H5("Signal with Critical Points", className="mb-0"),
-                                                        html.Small("Morphological features detected by vitalDSP", className="text-muted"),
+                                                        html.H5(
+                                                            "Signal with Critical Points",
+                                                            className="mb-0",
+                                                        ),
+                                                        html.Small(
+                                                            "Morphological features detected by vitalDSP",
+                                                            className="text-muted",
+                                                        ),
                                                     ]
                                                 ),
                                             ]
@@ -128,7 +184,10 @@ def time_domain_layout():
                                             dcc.Graph(
                                                 id="main-signal-plot",
                                                 style={"height": "420px"},
-                                                config={"displayModeBar": True, "displaylogo": False},
+                                                config={
+                                                    "displayModeBar": True,
+                                                    "displaylogo": False,
+                                                },
                                             ),
                                             type="default",
                                         )
@@ -136,13 +195,17 @@ def time_domain_layout():
                                 ],
                                 className="mb-4",
                             ),
-
                             # Signal summary (collapsible)
                             dbc.Card(
                                 [
                                     dbc.CardHeader(
                                         dbc.Button(
-                                            [html.I(className="fas fa-info-circle me-2"), "Signal Summary"],
+                                            [
+                                                html.I(
+                                                    className="fas fa-info-circle me-2"
+                                                ),
+                                                "Signal Summary",
+                                            ],
                                             id="btn-collapse-summary",
                                             color="link",
                                             className="p-0 text-decoration-none fw-semibold",
@@ -157,13 +220,14 @@ def time_domain_layout():
                                 ],
                                 className="mb-4",
                             ),
-
                             # Analysis Results Card
                             dbc.Card(
                                 [
                                     dbc.CardHeader(
                                         [
-                                            html.H5("Analysis Results", className="mb-0"),
+                                            html.H5(
+                                                "Analysis Results", className="mb-0"
+                                            ),
                                             html.Small(
                                                 "Time-domain features and HRV metrics from vitalDSP",
                                                 className="text-muted",
@@ -184,17 +248,14 @@ def time_domain_layout():
                     ),
                 ]
             ),
-
             # Hidden outputs kept for callback compat
             dcc.Graph(id="signal-comparison-plot", style={"display": "none"}),
             html.Div(id="signal-quality-table", style={"display": "none"}),
             html.Div(id="signal-source-table", style={"display": "none"}),
             html.Div(id="additional-metrics-table", style={"display": "none"}),
             html.Div(id="additional-analysis-section"),
-
             # btn-center is used by signal_filtering_callbacks as an Input
             html.Button(id="btn-center", style={"display": "none"}),
-
             # Hidden filtering-page shadow components (for cross-page callback compat)
             html.Div(id="filter-btn-apply", style={"display": "none"}),
             dcc.Dropdown(id="filter-type-select", style={"display": "none"}),
@@ -234,23 +295,30 @@ def time_domain_layout():
             dcc.Store(id="store-filtering-data"),
             dcc.Store(id="store-filter-comparison"),
             dcc.Store(id="store-filter-quality-metrics"),
-
             # Data stores
             dcc.Store(id="store-time-domain-data"),
             dcc.Store(id="store-filtered-data"),
             dcc.Store(id="store-filtered-signal"),
             dcc.Store(id="store-analysis-results"),
             dcc.Store(id="store-time-domain-features"),
-
             # Removed: download components (export CSV/JSON removed)
             # Kept as empty placeholders so any stale callback IDs don't crash
             html.Div(id="download-time-domain-csv", style={"display": "none"}),
             html.Div(id="download-time-domain-json", style={"display": "none"}),
-
             # Hidden inputs removed from left panel - kept for callback State() compat
-            dcc.Dropdown(id="signal-source-select", value="filtered", style={"display": "none"}),
-            dcc.Checklist(id="analysis-options", value=["peaks", "critical_points", "hr"], style={"display": "none"}),
-            dcc.Dropdown(id="signal-type-select", value="PPG", style={"display": "none"}),
-            dcc.Dropdown(id="data-source-select", value="uploaded", style={"display": "none"}),
+            dcc.Dropdown(
+                id="signal-source-select", value="filtered", style={"display": "none"}
+            ),
+            dcc.Checklist(
+                id="analysis-options",
+                value=["peaks", "critical_points", "hr"],
+                style={"display": "none"},
+            ),
+            dcc.Dropdown(
+                id="signal-type-select", value="PPG", style={"display": "none"}
+            ),
+            dcc.Dropdown(
+                id="data-source-select", value="uploaded", style={"display": "none"}
+            ),
         ]
     )

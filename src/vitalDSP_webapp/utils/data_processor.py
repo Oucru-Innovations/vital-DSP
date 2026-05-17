@@ -145,11 +145,11 @@ class DataProcessor:
             # Deflection model (relative position within an R-R, amplitude, width-seconds).
             # Order: P, Q, R, S, T.
             beats = [
-                (0.20, 0.10, 0.030),   # P
+                (0.20, 0.10, 0.030),  # P
                 (0.46, -0.10, 0.010),  # Q
-                (0.50, 1.00, 0.010),   # R
+                (0.50, 1.00, 0.010),  # R
                 (0.54, -0.25, 0.012),  # S
-                (0.72, 0.30, 0.060),   # T
+                (0.72, 0.30, 0.060),  # T
             ]
 
             n_beats = int(np.ceil(duration / rr)) + 1
@@ -157,7 +157,7 @@ class DataProcessor:
                 beat_start = k * rr
                 for rel_pos, amp, width in beats:
                     centre = beat_start + rel_pos * rr
-                    sig += amp * np.exp(-((t - centre) ** 2) / (2.0 * width ** 2))
+                    sig += amp * np.exp(-((t - centre) ** 2) / (2.0 * width**2))
 
             sig += noise_level * np.random.randn(len(t))
             df = pd.DataFrame({"time": t, "signal": sig})

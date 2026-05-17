@@ -71,14 +71,11 @@ def parse_array_column(series: pd.Series) -> "tuple[np.ndarray, int]":
     # "Cannot convert" error matching the legacy single-value path.
     parsed: list = []
     for idx, cell in enumerate(series):
-        if isinstance(cell, str) and (
-            cell.lstrip().startswith("[") or "," in cell
-        ):
+        if isinstance(cell, str) and (cell.lstrip().startswith("[") or "," in cell):
             arr = parse_array_cell(cell)
             if arr.size == 0:
                 raise ValueError(
-                    f"Failed to parse signal array at row {idx}: "
-                    f"{cell!r}"
+                    f"Failed to parse signal array at row {idx}: " f"{cell!r}"
                 )
             parsed.append(arr)
         elif isinstance(cell, (list, tuple, np.ndarray)):
@@ -87,9 +84,7 @@ def parse_array_column(series: pd.Series) -> "tuple[np.ndarray, int]":
             isinstance(cell, float) and np.isnan(cell)
         ):
             parsed.append(np.asarray([float(cell)]))
-        elif cell is None or (
-            isinstance(cell, float) and np.isnan(cell)
-        ):
+        elif cell is None or (isinstance(cell, float) and np.isnan(cell)):
             parsed.append(np.array([], dtype=float))
         elif isinstance(cell, str):
             # Bare scalar string: legacy behaviour was to coerce via float()
