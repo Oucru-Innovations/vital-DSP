@@ -14,21 +14,6 @@ from vitalDSP_webapp.layout.pages.filtering_page import filtering_layout
 from vitalDSP_webapp.layout.pages.time_domain_page import time_domain_layout
 from vitalDSP_webapp.layout.pages.frequency_page import frequency_layout
 from vitalDSP_webapp.layout.pages.respiratory_page import respiratory_layout
-from vitalDSP_webapp.layout.pages.analysis_pages import (
-    # physiological_layout,
-    features_layout,
-    # transforms_layout,
-    # quality_layout,
-    # advanced_layout,
-    health_report_layout,
-    settings_layout,
-)
-from vitalDSP_webapp.layout.pages.advanced_page import advanced_layout
-from vitalDSP_webapp.layout.pages.quality_page import quality_layout
-from vitalDSP_webapp.layout.pages.transform_page import transforms_layout
-from vitalDSP_webapp.layout.pages.physiological_page import physiological_layout
-from vitalDSP_webapp.layout.pages.pipeline_page import pipeline_layout
-from vitalDSP_webapp.layout.pages.tasks_page import tasks_layout
 
 logger = logging.getLogger(__name__)
 
@@ -67,37 +52,12 @@ def display_page(pathname: str) -> html.Div:
         elif pathname == "/filtering":
             logger.info("Returning filtering layout")
             return filtering_layout()
-        elif pathname == "/physiological":
-            logger.info("Returning physiological layout")
-            return physiological_layout()
+        elif pathname == "/preview":
+            logger.info("Returning welcome layout for preview")
+            return _get_welcome_layout()
         elif pathname == "/respiratory":
             logger.info("Returning respiratory layout")
             return respiratory_layout()
-        elif pathname == "/features":
-            # PHASE 5: Redirect /features to /advanced (merged pages)
-            logger.info("Redirecting /features to /advanced (merged)")
-            return advanced_layout()
-        elif pathname == "/transforms":
-            logger.info("Returning transforms layout")
-            return transforms_layout()
-        elif pathname == "/quality":
-            logger.info("Returning quality layout")
-            return quality_layout()
-        elif pathname == "/advanced":
-            logger.info("Returning advanced layout")
-            return advanced_layout()
-        elif pathname == "/health-report":
-            logger.info("Returning health report layout")
-            return health_report_layout()
-        elif pathname == "/settings":
-            logger.info("Returning settings layout")
-            return settings_layout()
-        elif pathname == "/pipeline":
-            logger.info("Returning pipeline layout")
-            return pipeline_layout()
-        elif pathname == "/tasks":
-            logger.info("Returning tasks layout")
-            return tasks_layout()
         else:
             logger.info("Returning default welcome page")
             return _get_welcome_layout()
@@ -114,7 +74,7 @@ def _get_welcome_layout():
     return html.Div(
         [
             html.H1(
-                "Welcome to vitalDSP Comprehensive Dashboard",
+                "Welcome to vitalDSP Dashboard",
                 className="text-center mb-4",
             ),
             html.Div(
@@ -125,21 +85,13 @@ def _get_welcome_layout():
                     ),
                     html.P(
                         [
-                            "This dashboard provides comprehensive access to all vitalDSP features including:",
+                            "This dashboard provides access to vitalDSP features including:",
                             html.Br(),
                             "• Time and frequency domain analysis",
                             html.Br(),
                             "• Advanced signal filtering and processing",
                             html.Br(),
-                            "• Physiological feature extraction",
-                            html.Br(),
-                            "• Respiratory analysis",
-                            html.Br(),
-                            "• Signal quality assessment",
-                            html.Br(),
-                            "• Advanced computational methods",
-                            html.Br(),
-                            "• Health report generation",
+                            "• Signal preview and visualization",
                         ],
                         className="text-center",
                     ),
@@ -156,12 +108,11 @@ def _get_welcome_layout():
                                         "Configure your data parameters (sampling frequency, etc.)"
                                     ),
                                     html.Li(
-                                        "Navigate to the analysis page of your choice"
+                                        "Navigate to Filtering, Time Domain, or Frequency Domain"
                                     ),
                                     html.Li(
                                         "Adjust parameters and view results in real-time"
                                     ),
-                                    html.Li("Export your analysis results and reports"),
                                 ]
                             ),
                         ],

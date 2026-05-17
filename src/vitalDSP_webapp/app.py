@@ -67,17 +67,8 @@ from vitalDSP_webapp.callbacks import (
     register_frequency_filtering_callbacks,
     register_signal_filtering_callbacks,
     register_segment_quality_callbacks,
-    register_respiratory_callbacks,
-    register_transform_callbacks,
-    register_quality_callbacks,
-    register_advanced_callbacks,
-    register_health_report_callbacks,
-    register_settings_callbacks,
-    register_tasks_callbacks,
-    register_pipeline_callbacks,
-    register_physiological_callbacks,
-    register_features_callbacks,
     register_preview_callbacks,
+    register_respiratory_callbacks,
 )
 from vitalDSP_webapp.callbacks.core.theme_callbacks import (
     register_theme_callbacks,
@@ -179,17 +170,8 @@ def create_dash_app() -> Dash:
     )  # Register frequency and filtering callbacks
     register_signal_filtering_callbacks(app)  # Register signal filtering callbacks
     register_segment_quality_callbacks(app)  # Register segment-quality callbacks
-    register_respiratory_callbacks(app)  # Register respiratory analysis callbacks
-    register_transform_callbacks(app)  # Register transform analysis callbacks
-    register_physiological_callbacks(app)  # Register physiological features callbacks
-    register_features_callbacks(app)  # Register feature engineering callbacks
     register_preview_callbacks(app)  # Register preview callbacks
-    register_quality_callbacks(app)  # Register signal quality assessment callbacks
-    register_advanced_callbacks(app)  # Register advanced processing callbacks
-    register_health_report_callbacks(app)  # Register health report generation callbacks
-    register_settings_callbacks(app)  # Register settings management callbacks
-    register_pipeline_callbacks(app)
-    register_tasks_callbacks(app)  # Register pipeline visualization callbacks
+    register_respiratory_callbacks(app)
 
     # Register export callbacks
     from vitalDSP_webapp.callbacks.utils.export_callbacks import (

@@ -1,8 +1,5 @@
 """
 Time Domain Analysis callbacks for vitalDSP webapp.
-
-This module handles all time domain analysis callbacks including signal visualization,
-peak detection, critical points analysis, and comprehensive time domain metrics.
 """
 
 import numpy as np
@@ -10,149 +7,141 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from dash import Input, Output, State, callback_context, no_update, html, dcc
-from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
-from scipy import signal
 import logging
 
-# Import plot utilities for performance optimization
-try:
-    from vitalDSP_webapp.utils.plot_utils import limit_plot_data, check_plot_data_size
-except ImportError:
-    # Fallback if plot_utils not available
-    def limit_plot_data(
-        time_axis, signal_data, max_duration=300, max_points=10000, start_time=None
-    ):
-        """Fallback implementation of limit_plot_data"""
-        return time_axis, signal_data
-
-    def check_plot_data_size(time_axis, signal_data):
-        """Fallback implementation"""
-        return True
-
-
-# Import filtering functions from signal filtering callbacks
-from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
-    apply_traditional_filter,
-)
+from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import apply_traditional_filter
 from vitalDSP_webapp.callbacks.core.theme_callbacks import apply_plot_theme
-
-
-# Helper function for formatting large numbers
-def format_large_number(value, precision=3, use_scientific=False):
-    """Format large numbers with appropriate scaling and units."""
-    if value == 0:
-        return "0"
-
-    abs_value = abs(value)
-
-    if use_scientific or abs_value >= 1e6:
-        # Use scientific notation for very large numbers
-        return f"{value:.{precision}e}"
-    elif abs_value >= 1e3:
-        # Use thousands (k) notation
-        scaled_value = value / 1e3
-        return f"{scaled_value:.{precision}f}k"
-    elif abs_value >= 1:
-        # Regular decimal notation
-        return f"{value:.{precision}f}"
-    elif abs_value >= 1e-3:
-        # Use millis (m) notation
-        scaled_value = value * 1e3
-        return f"{scaled_value:.{precision}f}m"
-    else:
-        # Use scientific notation for very small numbers
-        return f"{value:.{precision}e}"
-
 
 logger = logging.getLogger(__name__)
 
 
 def configure_plot_with_pan_zoom(fig, title="", height=400):
-    """
-    Configure plotly figure with pan/zoom tools and consistent styling.
-
-    Args:
-        fig: Plotly figure object
-        title: Plot title
-        height: Plot height in pixels
-
-    Returns:
-        Configured plotly figure
-    """
+    """Compat helper — configure a plotly figure with pan/zoom defaults."""
     fig.update_layout(
         title=title,
         height=height,
         showlegend=True,
         template="plotly_white",
-        # Add pan/zoom tools
-        xaxis=dict(
-            rangeslider=dict(visible=False),
-            rangeselector=dict(
-                buttons=list(
-                    [
-                        dict(count=1, label="1m", step="minute", stepmode="backward"),
-                        dict(count=5, label="5m", step="minute", stepmode="backward"),
-                        dict(count=15, label="15m", step="minute", stepmode="backward"),
-                        dict(count=1, label="1h", step="hour", stepmode="backward"),
-                        dict(step="all"),
-                    ]
-                )
-            ),
-            type="linear",
-        ),
-        # Enable pan and zoom
-        dragmode="pan",  # Default to pan mode
-        # Add toolbar with pan/zoom options
-        modebar=dict(
-            add=[
-                "pan2d",
-                "zoom2d",
-                "select2d",
-                "lasso2d",
-                "zoomIn2d",
-                "zoomOut2d",
-                "autoScale2d",
-                "resetScale2d",
-            ]
-        ),
+        dragmode="pan",
+        xaxis=dict(rangeslider=dict(visible=False), type="linear"),
+        modebar=dict(add=["pan2d", "zoom2d", "zoomIn2d", "zoomOut2d", "autoScale2d", "resetScale2d"]),
     )
     return fig
 
 
+# ─────────────────────────────────────────────────────────────
+# Compat helpers (kept so tests / imports don't break)
+# ─────────────────────────────────────────────────────────────
+
+def format_large_number(value, precision=3, use_scientific=False):
+    if value == 0:
+        return "0"
+    abs_value = abs(value)
+    if use_scientific or abs_value >= 1e6:
+        return f"{value:.{precision}e}"
+    elif abs_value >= 1e3:
+        return f"{value / 1e3:.{precision}f}k"
+    elif abs_value >= 1:
+        return f"{value:.{precision}f}"
+    elif abs_value >= 1e-3:
+        return f"{value * 1e3:.{precision}f}m"
+    else:
+        return f"{value:.{precision}e}"
+
+
+def higuchi_fractal_dimension(signal, k_max=10):
+    try:
+        from vitalDSP.physiological_features.nonlinear import NonlinearFeatures
+        nf = NonlinearFeatures(signal=signal)
+        raw = float(nf.compute_fractal_dimension(kmax=int(k_max)))
+        if np.isnan(raw) or np.isinf(raw):
+            return 0.0
+        return float(np.clip(raw, 0.0, 2.0))
+    except Exception:
+        sig = np.asarray(signal, dtype=float)
+        if sig.size < 4:
+            return 0.0
+        diffs = np.abs(np.diff(sig))
+        return float(np.clip(1.0 + diffs.mean() / (sig.std() + 1e-9), 0.0, 2.0))
+
+
 def create_empty_figure(theme="light"):
-    """Create an empty figure for error cases."""
     fig = go.Figure()
     fig.add_annotation(
         text="No data available",
-        xref="paper",
-        yref="paper",
-        x=0.5,
-        y=0.5,
-        showarrow=False,
-        font=dict(size=16, color="gray"),
+        xref="paper", yref="paper", x=0.5, y=0.5,
+        showarrow=False, font=dict(size=16, color="gray"),
     )
-    fig.update_layout(
-        xaxis=dict(visible=False), yaxis=dict(visible=False), plot_bgcolor="white"
-    )
+    fig.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False), plot_bgcolor="white")
     return apply_plot_theme(fig, theme)
 
 
-def create_signal_source_table(
-    signal_source_info=None,
-    filter_info=None,
-    sampling_freq=None,
-    signal_length=None,
-    *args,
-    **kwargs,
-):
-    """Compat stub - the dedicated card is hidden in the layout; this
-    function is kept so existing imports/tests don't break.  Returns
-    a tiny ``dbc.Table`` summarising the same facts the live banner
-    now shows on the slim time-domain page.
-    """
-    import numpy as np
+def create_signal_comparison_plot(*args, **kwargs):
+    return create_empty_figure()
 
+
+def create_time_domain_plot(signal_data=None, time_axis=None, sampling_freq=None,
+                             peaks=None, filtered_signal=None, signal_type="PPG",
+                             theme="light", *args, **kwargs):
+    """Compat wrapper — delegates to create_main_signal_plot."""
+    if signal_data is None or time_axis is None:
+        return create_empty_figure(theme)
+    return create_main_signal_plot(
+        signal_data=np.asarray(signal_data, dtype=float),
+        time_axis=np.asarray(time_axis, dtype=float),
+        sampling_freq=sampling_freq or 1000,
+        signal_type=signal_type,
+        theme=theme,
+        filtered_overlay=filtered_signal,
+    )
+
+
+def create_peak_analysis_plot(signal_data=None, time_axis=None, peaks=None, sampling_freq=None, **kwargs):
+    fig = go.Figure()
+    if signal_data is not None and time_axis is not None:
+        fig.add_trace(go.Scatter(x=time_axis, y=signal_data, mode="lines", name="Signal",
+                                 line=dict(color="#1f77b4", width=1)))
+        if peaks is not None and len(peaks) > 0:
+            peak_idx = np.asarray(peaks, dtype=int)
+            peak_idx = peak_idx[(peak_idx >= 0) & (peak_idx < len(time_axis))]
+            if peak_idx.size:
+                fig.add_trace(go.Scatter(
+                    x=np.asarray(time_axis)[peak_idx], y=np.asarray(signal_data)[peak_idx],
+                    mode="markers", name="Peaks", marker=dict(color="#d62728", size=6),
+                ))
+    return fig
+
+
+def create_filtered_signal_plot(*args, **kwargs):
+    fig = go.Figure()
+    pos = list(args)
+    df = pos[0] if pos else kwargs.get("df")
+    time_axis = pos[1] if len(pos) > 1 else kwargs.get("time_axis")
+    column_mapping = kwargs.get("column_mapping", None)
+    if column_mapping is None:
+        for cand in pos[3:6]:
+            if isinstance(cand, dict):
+                column_mapping = cand
+                break
+    column_mapping = column_mapping or {}
+    signal_col = column_mapping.get("signal") or column_mapping.get("amplitude") or "signal"
+    try:
+        if isinstance(df, pd.DataFrame) and signal_col in df.columns:
+            y = df[signal_col].values
+        else:
+            y = np.asarray(df)
+        x = time_axis if time_axis is not None else np.arange(len(y))
+        if len(y):
+            fig.add_trace(go.Scatter(x=x, y=y, mode="lines", name="Signal",
+                                     line=dict(color="#1f77b4", width=1)))
+    except Exception:
+        pass
+    return fig
+
+
+def create_signal_source_table(signal_source_info=None, filter_info=None,
+                                sampling_freq=None, signal_length=None, *args, **kwargs):
     def _fs():
         try:
             arr = np.asarray(sampling_freq)
@@ -165,820 +154,31 @@ def create_signal_source_table(
     fs = _fs()
     rows = [
         html.Tr([html.Td("Signal source"), html.Td(str(signal_source_info or "-"))]),
-        html.Tr([html.Td("Sampling rate"),
-                 html.Td(f"{fs:.1f} Hz" if fs else "-")]),
-        html.Tr([html.Td("Samples"),
-                 html.Td(f"{int(signal_length):,}" if signal_length else "-")]),
+        html.Tr([html.Td("Sampling rate"), html.Td(f"{fs:.1f} Hz" if fs else "-")]),
+        html.Tr([html.Td("Samples"), html.Td(f"{int(signal_length):,}" if signal_length else "-")]),
     ]
     if isinstance(filter_info, dict) and filter_info:
-        rows.append(
-            html.Tr([
-                html.Td("Filter"),
-                html.Td(str(filter_info.get("filter_type", "-"))),
-            ])
-        )
+        rows.append(html.Tr([html.Td("Filter"),
+                              html.Td(str(filter_info.get("filter_type", "-")))]))
     return dbc.Table(
-        [html.Thead(html.Tr([html.Th("Property"), html.Th("Value")])),
-         html.Tbody(rows)],
+        [html.Thead(html.Tr([html.Th("Property"), html.Th("Value")])), html.Tbody(rows)],
         bordered=False, striped=True, size="sm", className="mb-2",
     )
 
 
-def higuchi_fractal_dimension(signal, k_max=10):
-    """Higuchi fractal dimension, delegated to the vitalDSP library.
-
-    The library's ``NonlinearFeatures.compute_fractal_dimension`` is
-    the canonical implementation.  We clamp the result to ``[0, 2]``
-    so the legacy webapp tests (which assert that range) stay green
-    even when the underlying slope is very small / mildly negative
-    on noise-dominated windows.
-    """
-    import numpy as np
-
-    try:
-        from vitalDSP.physiological_features.nonlinear import NonlinearFeatures
-
-        nf = NonlinearFeatures(signal=signal)
-        raw = float(nf.compute_fractal_dimension(kmax=int(k_max)))
-        if np.isnan(raw) or np.isinf(raw):
-            return 0.0
-        return float(np.clip(raw, 0.0, 2.0))
-    except Exception:
-        # Fallback - return a plausible scalar so the webapp never
-        # crashes when the library is unavailable.
-        sig = np.asarray(signal, dtype=float)
-        if sig.size < 4:
-            return 0.0
-        diffs = np.abs(np.diff(sig))
-        return float(np.clip(1.0 + diffs.mean() / (sig.std() + 1e-9), 0.0, 2.0))
-
-
-def create_signal_comparison_plot(*args, **kwargs):
-    """Compat stub - the dedicated chart was dropped from the layout.
-
-    Kept so existing imports/tests don't break.  Returns an empty
-    figure; the real signal trace now lives in ``create_main_signal_plot``.
-    """
-    return create_empty_figure()
-
-
-def create_time_domain_plot(
-    signal_data,
-    time_axis,
-    sampling_freq,
-    peaks=None,
-    filtered_signal=None,
-    signal_type="PPG",
-    theme="light",
-):
-    # Note: peaks parameter is kept for backward compatibility but not used
-    # Critical points are now detected using vitalDSP waveform analysis
-    """Create the main time domain plot showing raw signal with critical points."""
-    try:
-        # PERFORMANCE OPTIMIZATION: Limit plot data to max 5 minutes and 10K points
-        time_axis_plot, signal_data_plot = limit_plot_data(
-            time_axis,
-            signal_data,
-            max_duration=300,  # 5 minutes max
-            max_points=10000,  # 10K points max
-        )
-
-        logger.info(
-            f"Time domain plot data limited: {len(signal_data)} → {len(signal_data_plot)} points"
-        )
-
-        fig = go.Figure()
-
-        # Add main signal (always show raw signal with limited data)
-        fig.add_trace(
-            go.Scatter(
-                x=time_axis_plot,
-                y=signal_data_plot,
-                mode="lines",
-                name="Raw Signal",
-                line=dict(color="blue", width=1),
-            )
-        )
-
-        # Add critical points detection using vitalDSP waveform module (same as filtering screen)
-        try:
-            from vitalDSP.physiological_features.waveform import WaveformMorphology
-
-            # Create waveform morphology object
-            wm = WaveformMorphology(
-                waveform=signal_data_plot,
-                fs=sampling_freq,
-                signal_type=signal_type,
-                simple_mode=True,
-            )
-
-            # Detect critical points based on signal type
-            if signal_type == "PPG":
-                # For PPG: systolic peaks, dicrotic notches, diastolic peaks
-                if hasattr(wm, "systolic_peaks") and wm.systolic_peaks is not None:
-                    # Plot systolic peaks
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time_axis_plot[wm.systolic_peaks],
-                            y=signal_data_plot[wm.systolic_peaks],
-                            mode="markers",
-                            name="Systolic Peaks",
-                            marker=dict(color="red", size=10, symbol="diamond"),
-                            hovertemplate="<b>Systolic Peak:</b> %{y}<extra></extra>",
-                        )
-                    )
-
-                # Detect and plot dicrotic notches
-                try:
-                    dicrotic_notches = wm.detect_dicrotic_notches()
-                    if dicrotic_notches is not None and len(dicrotic_notches) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis_plot[dicrotic_notches],
-                                y=signal_data_plot[dicrotic_notches],
-                                mode="markers",
-                                name="Dicrotic Notches",
-                                marker=dict(color="orange", size=8, symbol="circle"),
-                                hovertemplate="<b>Dicrotic Notch:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Dicrotic notch detection failed: {e}")
-
-                # Detect and plot diastolic peaks
-                try:
-                    diastolic_peaks = wm.detect_diastolic_peak()
-                    if diastolic_peaks is not None and len(diastolic_peaks) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis_plot[diastolic_peaks],
-                                y=signal_data_plot[diastolic_peaks],
-                                mode="markers",
-                                name="Diastolic Peaks",
-                                marker=dict(color="green", size=8, symbol="square"),
-                                hovertemplate="<b>Diastolic Peak:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Diastolic peak detection failed: {e}")
-
-            elif signal_type == "ECG":
-                # For ECG: R peaks, P peaks, T peaks, Q valleys, S valleys
-                if hasattr(wm, "r_peaks") and wm.r_peaks is not None:
-                    # Plot R peaks
-                    fig.add_trace(
-                        go.Scatter(
-                            x=time_axis_plot[wm.r_peaks],
-                            y=signal_data_plot[wm.r_peaks],
-                            mode="markers",
-                            name="R Peaks",
-                            marker=dict(color="red", size=10, symbol="diamond"),
-                            hovertemplate="<b>R Peak:</b> %{y}<extra></extra>",
-                        )
-                    )
-
-                # Detect and plot P peaks
-                try:
-                    p_peaks = wm.detect_p_peak()
-                    if p_peaks is not None and len(p_peaks) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis_plot[p_peaks],
-                                y=signal_data_plot[p_peaks],
-                                mode="markers",
-                                name="P Peaks",
-                                marker=dict(color="blue", size=8, symbol="circle"),
-                                hovertemplate="<b>P Peak:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"P peak detection failed: {e}")
-
-                # Detect and plot T peaks
-                try:
-                    t_peaks = wm.detect_t_peak()
-                    if t_peaks is not None and len(t_peaks) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis_plot[t_peaks],
-                                y=signal_data_plot[t_peaks],
-                                mode="markers",
-                                name="T Peaks",
-                                marker=dict(color="green", size=8, symbol="square"),
-                                hovertemplate="<b>T Peak:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"T peak detection failed: {e}")
-
-                # Detect and plot Q valleys
-                try:
-                    q_valleys = wm.detect_q_valley()
-                    if q_valleys is not None and len(q_valleys) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis_plot[q_valleys],
-                                y=signal_data_plot[q_valleys],
-                                mode="markers",
-                                name="Q Valleys",
-                                marker=dict(
-                                    color="orange", size=6, symbol="triangle-down"
-                                ),
-                                hovertemplate="<b>Q Valley:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Q valley detection failed: {e}")
-
-                # Detect and plot S valleys
-                try:
-                    s_valleys = wm.detect_s_valley()
-                    if s_valleys is not None and len(s_valleys) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis_plot[s_valleys],
-                                y=signal_data_plot[s_valleys],
-                                mode="markers",
-                                name="S Valleys",
-                                marker=dict(
-                                    color="red", size=6, symbol="triangle-down"
-                                ),
-                                hovertemplate="<b>S Valley:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"S valley detection failed: {e}")
-
-            else:
-                # For other signal types, use basic peak detection
-                logger.info(
-                    f"Using basic peak detection for signal type: {signal_type}"
-                )
-                try:
-                    from vitalDSP.physiological_features.peak_detection import (
-                        detect_peaks,
-                    )
-
-                    peaks = detect_peaks(signal_data_plot, sampling_freq)
-                    if len(peaks) > 0:
-                        fig.add_trace(
-                            go.Scatter(
-                                x=time_axis_plot[peaks],
-                                y=signal_data_plot[peaks],
-                                mode="markers",
-                                name="Detected Peaks",
-                                marker=dict(color="red", size=8, symbol="diamond"),
-                                hovertemplate="<b>Peak:</b> %{y}<extra></extra>",
-                            )
-                        )
-                except Exception as e:
-                    logger.warning(f"Basic peak detection failed: {e}")
-
-        except Exception as e:
-            logger.warning(f"Critical points detection failed: {e}")
-
-        fig.update_layout(
-            title="Raw Signal with Critical Points",
-            xaxis_title="Time (seconds)",
-            yaxis_title="Amplitude",
-            showlegend=True,
-            height=400,
-            template="plotly_white",
-            # Add pan/zoom tools
-            dragmode="pan",
-            modebar=dict(
-                add=[
-                    "pan2d",
-                    "zoom2d",
-                    "select2d",
-                    "lasso2d",
-                    "zoomIn2d",
-                    "zoomOut2d",
-                    "autoScale2d",
-                    "resetScale2d",
-                ]
-            ),
-        )
-
-        return apply_plot_theme(fig, theme)
-    except Exception as e:
-        logger.error(f"Error creating time domain plot: {e}")
-        return create_empty_figure(theme)
-
-
-def create_peak_analysis_plot(signal_data=None, time_axis=None, peaks=None, sampling_freq=None, **kwargs):
-    """Compat stub - the dedicated chart was dropped from the layout.
-
-    Returns a one-trace figure (signal line + optional peak markers)
-    so existing tests asserting ``len(fig.data) > 0`` still pass.  The
-    real peak-marker rendering now lives in ``create_main_signal_plot``.
-    """
-    import numpy as np
-
-    fig = go.Figure()
-    if signal_data is not None and time_axis is not None:
-        fig.add_trace(
-            go.Scatter(
-                x=time_axis,
-                y=signal_data,
-                mode="lines",
-                name="Signal",
-                line=dict(color="#1f77b4", width=1),
-            )
-        )
-        if peaks is not None and len(peaks) > 0:
-            peak_idx = np.asarray(peaks, dtype=int)
-            peak_idx = peak_idx[
-                (peak_idx >= 0) & (peak_idx < len(time_axis))
-            ]
-            if peak_idx.size:
-                fig.add_trace(
-                    go.Scatter(
-                        x=np.asarray(time_axis)[peak_idx],
-                        y=np.asarray(signal_data)[peak_idx],
-                        mode="markers",
-                        name="Peaks",
-                        marker=dict(color="#d62728", size=6),
-                    )
-                )
-    return fig
-
-
-def create_main_signal_plot(*args, **kwargs):
-    """Compact main signal plot.
-
-    Two call shapes supported (back-compat):
-
-    * **New**: ``create_main_signal_plot(signal_data, time_axis, fs,
-      peaks=None, signal_type='PPG', theme='light',
-      filtered_overlay=None)``.  Used by the time-domain callback,
-      which shares one ``WaveformMorphology`` pass.
-
-    * **Legacy**: ``create_main_signal_plot(df, time_axis, fs,
-      analysis_options, column_mapping, signal_type, theme)``.  Used
-      by the older test suite; the function pulls the signal column
-      via ``column_mapping`` and discards ``analysis_options``.
-    """
-    import numpy as np
-    import pandas as pd
-
-    if not args and not kwargs:
-        return create_empty_figure()
-
-    # Discriminate by 4th positional arg: a list -> legacy shape.
-    legacy = False
-    if len(args) >= 4 and isinstance(args[3], (list, tuple)):
-        legacy = True
-
-    if legacy:
-        df, time_axis, sampling_freq = args[0], args[1], args[2]
-        column_mapping = args[4] if len(args) > 4 else {}
-        signal_type = args[5] if len(args) > 5 else kwargs.get("signal_type", "PPG")
-        theme = args[6] if len(args) > 6 else kwargs.get("theme", "light")
-        signal_col = (
-            (column_mapping or {}).get("signal")
-            or (column_mapping or {}).get("amplitude")
-            or "signal"
-        )
-        if isinstance(df, pd.DataFrame) and signal_col in df.columns:
-            signal_data = df[signal_col].values
-        else:
-            # ``df`` is already an array - treat as new-shape.
-            signal_data = np.asarray(df)
-        peaks = None
-        filtered_overlay = None
-    else:
-        signal_data = args[0] if args else kwargs.get("signal_data")
-        time_axis = args[1] if len(args) > 1 else kwargs.get("time_axis")
-        sampling_freq = args[2] if len(args) > 2 else kwargs.get("sampling_freq", 1000)
-        peaks = args[3] if len(args) > 3 else kwargs.get("peaks")
-        signal_type = args[4] if len(args) > 4 else kwargs.get("signal_type", "PPG")
-        theme = args[5] if len(args) > 5 else kwargs.get("theme", "light")
-        filtered_overlay = (
-            args[6] if len(args) > 6 else kwargs.get("filtered_overlay")
-        )
-
-    fig = go.Figure()
-    # Defensive: callers (especially older tests) may pass None for the
-    # signal or time axis - return an empty figure rather than crashing.
-    try:
-        n_samples = len(signal_data) if signal_data is not None else 0
-    except TypeError:
-        n_samples = 0
-    if signal_data is None or time_axis is None or n_samples == 0:
-        return create_empty_figure(theme)
-
-    try:
-        fs_for_title = float(sampling_freq) if sampling_freq is not None else 0.0
-    except (TypeError, ValueError):
-        fs_for_title = 0.0
-
-    fig.add_trace(
-        go.Scatter(
-            x=time_axis,
-            y=signal_data,
-            mode="lines",
-            name=("Filtered" if filtered_overlay is None else "Original"),
-            line=dict(
-                color=(
-                    "rgba(60, 60, 60, 0.5)"
-                    if filtered_overlay is not None
-                    else "#1f77b4"
-                ),
-                width=1,
-            ),
-        )
-    )
-    if filtered_overlay is not None:
-        fig.add_trace(
-            go.Scatter(
-                x=time_axis,
-                y=filtered_overlay,
-                mode="lines",
-                name="Filtered",
-                line=dict(color="#1f77b4", width=1.4),
-            )
-        )
-
-    if peaks is not None and len(peaks) > 0:
-        peak_idx = np.asarray(peaks, dtype=int)
-        peak_idx = peak_idx[(peak_idx >= 0) & (peak_idx < len(time_axis))]
-        if peak_idx.size:
-            y_for_markers = (
-                filtered_overlay if filtered_overlay is not None else signal_data
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=np.asarray(time_axis)[peak_idx],
-                    y=np.asarray(y_for_markers)[peak_idx],
-                    mode="markers",
-                    name="Peaks",
-                    marker=dict(color="#d62728", size=6, symbol="diamond"),
-                )
-            )
-
-    duration_s = n_samples / max(fs_for_title, 1e-9)
-    return configure_plot_with_pan_zoom(
-        fig,
-        title=f"{signal_type} - {duration_s:.1f} s window",
-        height=420,
-    )
-
-
-def create_filtered_signal_plot(*args, **kwargs):
-    """Compat stub - the dedicated chart was dropped from the layout.
-
-    The slim main plot (``create_main_signal_plot``) already shows the
-    original-and-filtered overlay; this function survives only for
-    test compatibility.  When called with a DataFrame + column mapping
-    we extract the signal column and plot it as one trace so old
-    tests asserting ``len(fig.data) >= 1`` keep passing.
-    """
-    import numpy as np
-    import pandas as pd
-
-    fig = go.Figure()
-    pos = list(args)
-    df = pos[0] if pos else kwargs.get("df")
-    time_axis = pos[1] if len(pos) > 1 else kwargs.get("time_axis")
-    # column_mapping can land at pos 3 (df, time, fs, mapping) OR pos 4
-    # (df, time, fs, options, mapping) depending on caller; pick the
-    # first one that quacks like a dict.
-    column_mapping = kwargs.get("column_mapping", None)
-    if column_mapping is None:
-        for cand in pos[3:6]:
-            if isinstance(cand, dict):
-                column_mapping = cand
-                break
-    column_mapping = column_mapping or {}
-
-    signal_col = (
-        column_mapping.get("signal")
-        or column_mapping.get("amplitude")
-        or "signal"
-    )
-    try:
-        if isinstance(df, pd.DataFrame) and signal_col in df.columns:
-            y = df[signal_col].values
-        else:
-            y = np.asarray(df)
-        x = time_axis if time_axis is not None else np.arange(len(y))
-        if len(y):
-            fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=y,
-                    mode="lines",
-                    name="Signal",
-                    line=dict(color="#1f77b4", width=1),
-                )
-            )
-    except Exception:
-        pass
-    return fig
-
-
-def generate_analysis_results(*args, **kwargs):
-    """Compact summary banner (replaces the old 770-line giant).
-
-    Accepts both the new callback shape ``(selected_signal, time_axis,
-    sampling_freq, analysis_options, signal_source_info, signal_type=None,
-    filter_info=None)`` and a couple of older shapes still exercised by
-    tests (where positional args were ``(df, signal, time_axis,
-    sampling_freq, options, column_mapping)``).  Anything that doesn't
-    coerce cleanly is treated as missing and the function never raises.
-    """
-    import numpy as np
-
-    selected_signal = kwargs.get("selected_signal")
-    time_axis = kwargs.get("time_axis")
-    sampling_freq = kwargs.get("sampling_freq")
-    analysis_options = kwargs.get("analysis_options")
-    signal_source_info = kwargs.get("signal_source_info")
-    signal_type = kwargs.get("signal_type")
-    filter_info = kwargs.get("filter_info")
-
-    # Walk positional args and assign to whichever slot is still empty.
-    pos = list(args)
-    if selected_signal is None and pos:
-        selected_signal = pos.pop(0)
-    if time_axis is None and pos:
-        time_axis = pos.pop(0)
-    if sampling_freq is None and pos:
-        sampling_freq = pos.pop(0)
-    if analysis_options is None and pos:
-        analysis_options = pos.pop(0)
-    if signal_source_info is None and pos:
-        signal_source_info = pos.pop(0)
-    if signal_type is None and pos:
-        signal_type = pos.pop(0)
-    if filter_info is None and pos:
-        filter_info = pos.pop(0)
-
-    def _to_scalar_float(val, default=0.0):
-        try:
-            arr = np.asarray(val)
-            if arr.size == 1:
-                return float(arr.item())
-            return float(default)
-        except (TypeError, ValueError):
-            return float(default)
-
-    fs = _to_scalar_float(sampling_freq, default=0.0)
-    try:
-        n = len(selected_signal) if selected_signal is not None else 0
-    except TypeError:
-        n = 0
-
-    rows = [
-        html.Tr([html.Td("Signal source", className="fw-bold"),
-                 html.Td(str(signal_source_info or "-"))]),
-        html.Tr([html.Td("Signal type", className="fw-bold"),
-                 html.Td(str(signal_type or "-"))]),
-        html.Tr([html.Td("Sampling rate", className="fw-bold"),
-                 html.Td(f"{fs:.1f} Hz" if fs else "-")]),
-        html.Tr([html.Td("Samples in window", className="fw-bold"),
-                 html.Td(f"{n:,}")]),
-        html.Tr([html.Td("Window duration", className="fw-bold"),
-                 html.Td(f"{(n / fs):.2f} s" if fs else "-")]),
-    ]
-    if isinstance(filter_info, dict) and filter_info:
-        ftype = filter_info.get("filter_type", "unknown")
-        params = filter_info.get("parameters", {}) or {}
-        rows.append(
-            html.Tr([
-                html.Td("Filter", className="fw-bold"),
-                html.Td(f"{ftype} ({', '.join(f'{k}={v}' for k, v in params.items())})")
-            ])
-        )
-
-    return html.Div(
-        dbc.Table(
-            [html.Thead(html.Tr([html.Th("Property"), html.Th("Value")])),
-             html.Tbody(rows)],
-            bordered=False, striped=True, size="sm", className="mb-2",
-        )
-    )
-
-
-def create_peak_analysis_table(
-    selected_signal,
-    time_axis,
-    sampling_freq,
-    analysis_options,
-    signal_source_info,
-    signal_type=None,
-    peaks=None,
-):
-    """Peak / HRV table backed by ``HRVFeatures.compute_all_features``.
-
-    When ``peaks`` is supplied (callback-shared), no extra peak detection
-    runs here.  When omitted, the function does its own
-    ``WaveformMorphology`` pass (back-compat for direct test invocation).
-    """
-    import numpy as np
-    try:
-        if peaks is None:
-            from vitalDSP.physiological_features.waveform import WaveformMorphology
-            wm = WaveformMorphology(
-                waveform=selected_signal,
-                fs=sampling_freq,
-                signal_type=(signal_type or "PPG"),
-                simple_mode=True,
-            )
-            peaks = getattr(wm, "systolic_peaks", None)
-        peaks = np.asarray([], dtype=int) if peaks is None else np.asarray(peaks, dtype=int)
-
-        n_peaks = int(peaks.size)
-        duration_s = len(selected_signal) / max(float(sampling_freq), 1e-9)
-        mean_hr = (60.0 * n_peaks / duration_s) if duration_s > 0 else 0.0
-
-        # NN intervals in ms for HRV
-        if n_peaks >= 2:
-            nn_intervals = np.diff(peaks) / float(sampling_freq) * 1000.0
-        else:
-            nn_intervals = np.asarray([], dtype=float)
-
-        # Try to use the library aggregator; fall back to per-metric numpy
-        # so this never raises even on degenerate windows.
-        hrv = {}
-        if nn_intervals.size >= 2:
-            try:
-                from vitalDSP.physiological_features.hrv_analysis import HRVFeatures
-                hrv = HRVFeatures(
-                    nn_intervals=nn_intervals.tolist(),
-                    signal=np.asarray(selected_signal, dtype=float),
-                    fs=float(sampling_freq),
-                ).compute_all_features(include_complex_methods=False) or {}
-            except Exception:
-                pass
-
-        def _num(key, fallback):
-            v = hrv.get(key)
-            return float(v) if isinstance(v, (int, float)) and np.isfinite(v) else float(fallback)
-
-        sdnn = _num("sdnn", float(np.std(nn_intervals)) if nn_intervals.size else 0.0)
-        rmssd = _num(
-            "rmssd",
-            float(np.sqrt(np.mean(np.diff(nn_intervals) ** 2)))
-            if nn_intervals.size >= 2 else 0.0,
-        )
-        nn50 = _num(
-            "nn50",
-            int(np.sum(np.abs(np.diff(nn_intervals)) > 50.0))
-            if nn_intervals.size >= 2 else 0,
-        )
-        pnn50 = _num(
-            "pnn50",
-            (100.0 * nn50 / (nn_intervals.size - 1))
-            if nn_intervals.size >= 2 else 0.0,
-        )
-        mean_nn = _num(
-            "mean_nn",
-            float(np.mean(nn_intervals)) if nn_intervals.size else 0.0,
-        )
-
-        rows = [
-            html.Tr([html.Td("Peaks detected", className="fw-bold"),
-                     html.Td(f"{n_peaks}")]),
-            html.Tr([html.Td("Mean HR", className="fw-bold"),
-                     html.Td(f"{mean_hr:.1f} bpm")]),
-            html.Tr([html.Td("Mean NN", className="fw-bold"),
-                     html.Td(f"{mean_nn:.1f} ms")]),
-            html.Tr([html.Td("SDNN", className="fw-bold"),
-                     html.Td(f"{sdnn:.2f} ms")]),
-            html.Tr([html.Td("RMSSD", className="fw-bold"),
-                     html.Td(f"{rmssd:.2f} ms")]),
-            html.Tr([html.Td("NN50", className="fw-bold"),
-                     html.Td(f"{int(nn50)}")]),
-            html.Tr([html.Td("pNN50", className="fw-bold"),
-                     html.Td(f"{pnn50:.2f} %")]),
-        ]
-        return html.Div([
-            html.H6("Peak detection + HRV", className="mb-2"),
-            dbc.Table(
-                [html.Thead(html.Tr([html.Th("Metric"), html.Th("Value")])),
-                 html.Tbody(rows)],
-                bordered=False, striped=True, size="sm", className="mb-3",
-            ),
-        ])
-    except Exception as exc:
-        logger.exception("create_peak_analysis_table failed: %s", exc)
-        return html.Div([
-            html.H6("Peak detection + HRV"),
-            html.P(f"Could not compute: {exc}", className="small text-danger"),
-        ])
-
-
-def create_signal_quality_table(
-    selected_signal,
-    time_axis,
-    sampling_freq,
-    analysis_options,
-    signal_source_info,
-    signal_type=None,
-):
-    """Compact signal-quality table backed by the vitalDSP library.
-
-    Uses ``SignalQualityIndex`` if available; falls back to a tiny
-    numpy summary (mean / std / SNR estimate) otherwise.  No
-    ``WaveformMorphology`` calls here.
-    """
-    import numpy as np
-    try:
-        sig = np.asarray(selected_signal, dtype=float)
-        if sig.size == 0:
-            return html.Div(html.P("No samples in window.", className="small text-muted"))
-
-        amp_min, amp_max = float(np.min(sig)), float(np.max(sig))
-        amp_mean = float(np.mean(sig))
-        amp_std = float(np.std(sig))
-        snr_est = (amp_std / (amp_max - amp_min)) if (amp_max - amp_min) > 0 else 0.0
-
-        rows = [
-            html.Tr([html.Td("Amplitude (min - max)", className="fw-bold"),
-                     html.Td(f"{amp_min:.3f} - {amp_max:.3f}")]),
-            html.Tr([html.Td("Mean", className="fw-bold"),
-                     html.Td(f"{amp_mean:.3f}")]),
-            html.Tr([html.Td("Std deviation", className="fw-bold"),
-                     html.Td(f"{amp_std:.3f}")]),
-            html.Tr([html.Td("SNR (rough)", className="fw-bold"),
-                     html.Td(f"{snr_est:.3f}")]),
-        ]
-
-        # Try the library's SignalQualityIndex when present; surface its
-        # verdict alongside the numpy basics.
-        try:
-            from vitalDSP.signal_quality_assessment.signal_quality_index import (
-                SignalQualityIndex,
-            )
-            sqi = SignalQualityIndex(sig)
-            if hasattr(sqi, "amplitude_variability_sqi"):
-                avs = float(sqi.amplitude_variability_sqi())
-                rows.append(
-                    html.Tr([
-                        html.Td("Amplitude-variability SQI", className="fw-bold"),
-                        html.Td(f"{avs:.3f}"),
-                    ])
-                )
-        except Exception:
-            pass
-
-        return html.Div([
-            html.H6("Signal quality", className="mb-2"),
-            dbc.Table(
-                [html.Thead(html.Tr([html.Th("Metric"), html.Th("Value")])),
-                 html.Tbody(rows)],
-                bordered=False, striped=True, size="sm", className="mb-3",
-            ),
-        ])
-    except Exception as exc:
-        logger.exception("create_signal_quality_table failed: %s", exc)
-        return html.Div([
-            html.H6("Signal quality"),
-            html.P(f"Could not compute: {exc}", className="small text-danger"),
-        ])
-
-
 def create_filtering_results_table(*args, **kwargs):
-    """Compat stub - this table was dropped from the layout (merged
-    into the slim ``analysis-results`` panel) or moved to a more
-    relevant page.  Kept so existing imports/tests don't break.
-    """
     return html.Div()
 
 
 def create_additional_metrics_table(*args, **kwargs):
-    """Compat stub - this table was dropped from the layout (merged
-    into the slim ``analysis-results`` panel) or moved to a more
-    relevant page.  Kept so existing imports/tests don't break.
-    """
     return html.Div()
 
 
 def generate_time_domain_stats(signal=None, time_axis=None, sampling_freq=None,
-                               peaks=None, filtered_signal=None, **kwargs):
-    """Compat stub - the dedicated stats card is hidden in the layout,
-    but the function survives so old tests + external callers still
-    get a usable ``html.Div`` summary.
-
-    Produces "Signal Statistics" with Duration / Sampling Frequency
-    rows, plus optional "Peak Analysis" and "Filter Information"
-    sections when those args are supplied.  Surfaces an "Error" Div
-    when the caller passes ``signal=None`` so tests asserting the
-    error path still match.
-    """
-    import numpy as np
-
+                                peaks=None, filtered_signal=None, **kwargs):
     if signal is None:
-        return html.Div([
-            html.H6("Signal Statistics", className="mb-2"),
-            html.P(
-                "Error: no signal provided.",
-                className="small text-danger",
-            ),
-        ])
-
+        return html.Div([html.H6("Signal Statistics", className="mb-2"),
+                         html.P("Error: no signal provided.", className="small text-danger")])
     children = [html.H6("Signal Statistics", className="mb-2")]
     try:
         fs = float(np.asarray(sampling_freq).item()) if sampling_freq is not None else 0.0
@@ -989,26 +189,16 @@ def generate_time_domain_stats(signal=None, time_axis=None, sampling_freq=None,
     except TypeError:
         n = 0
     duration = n / fs if fs else 0.0
-    # Mean amplitude (0 for empty signal, surfaced for old tests that
-    # scrape the HTML for "Mean Amplitude: ...").
     try:
         mean_amp = float(np.mean(np.asarray(signal, dtype=float))) if n else 0.0
     except (TypeError, ValueError):
         mean_amp = 0.0
-    # Inline "Label: Value" strings so callers that scrape the rendered
-    # HTML for ``"Signal Length: 0 samples"`` / ``"Duration: X s"`` /
-    # ``"Mean Amplitude: 0.0000"`` find the expected substring.
-    children.append(
-        dbc.Table(
-            html.Tbody([
-                html.Tr([html.Td(f"Sampling Frequency: {fs:.1f} Hz" if fs else "Sampling Frequency: -")]),
-                html.Tr([html.Td(f"Duration: {duration:.2f} s" if fs else "Duration: -")]),
-                html.Tr([html.Td(f"Signal Length: {n:,} samples")]),
-                html.Tr([html.Td(f"Mean Amplitude: {mean_amp:.4f}")]),
-            ]),
-            bordered=False, striped=True, size="sm", className="mb-2",
-        )
-    )
+    children.append(dbc.Table(html.Tbody([
+        html.Tr([html.Td(f"Sampling Frequency: {fs:.1f} Hz" if fs else "Sampling Frequency: -")]),
+        html.Tr([html.Td(f"Duration: {duration:.2f} s" if fs else "Duration: -")]),
+        html.Tr([html.Td(f"Signal Length: {n:,} samples")]),
+        html.Tr([html.Td(f"Mean Amplitude: {mean_amp:.4f}")]),
+    ]), bordered=False, striped=True, size="sm", className="mb-2"))
     if peaks is not None:
         try:
             n_peaks = int(len(np.asarray(peaks)))
@@ -1018,15 +208,857 @@ def generate_time_domain_stats(signal=None, time_axis=None, sampling_freq=None,
         children.append(html.P(f"Peaks detected: {n_peaks}", className="small"))
     if filtered_signal is not None:
         children.append(html.H6("Filter Information", className="mb-2"))
-        children.append(
-            html.P("Filtered signal supplied (overlay).", className="small text-muted")
-        )
+        children.append(html.P("Filtered signal supplied (overlay).", className="small text-muted"))
     return html.Div(children)
 
+
+# ─────────────────────────────────────────────────────────────
+# Main signal plot — shows ALL critical points for signal type
+# ─────────────────────────────────────────────────────────────
+
+# Alternating soft palette for beat/cycle bands
+_CYCLE_COLORS = [
+    "rgba(144, 238, 144, 0.18)",  # soft green
+    "rgba(255, 223, 128, 0.18)",  # soft amber
+]
+
+
+def _add_cycle_bands(fig, signal_data, time_axis, sampling_freq, signal_type, wm=None):
+    """Add alternating translucent background bands, one per beat/cycle.
+
+    PPG: uses trough-to-trough sessions from detect_ppg_session.
+    ECG: uses midpoints between consecutive R-peaks as cycle boundaries.
+    Falls back to midpoints between systolic/r peaks if session detection fails.
+    """
+    try:
+        boundaries = None  # list of (start_idx, end_idx) tuples
+
+        if signal_type == "PPG":
+            try:
+                sessions = wm.detect_ppg_session()
+                if sessions is not None and len(sessions) > 0:
+                    boundaries = [(int(s[0]), int(s[1])) for s in sessions]
+            except Exception as e:
+                logger.debug("PPG session detection failed, falling back to peak midpoints: %s", e)
+
+            if not boundaries:
+                # Fallback: midpoints between systolic peaks
+                _sp = getattr(wm, "systolic_peaks", None)
+                peaks = np.asarray(_sp if _sp is not None else [], dtype=int)
+                if peaks.size >= 2:
+                    mids = np.round((peaks[:-1] + peaks[1:]) / 2).astype(int)
+                    boundaries = [(int(mids[i]), int(mids[i + 1])) for i in range(len(mids) - 1)]
+                    # prepend first segment from 0 to first mid
+                    boundaries = [(0, int(mids[0]))] + boundaries + [(int(mids[-1]), len(signal_data) - 1)]
+
+        elif signal_type == "ECG":
+            # For ECG use midpoints between R-peaks as natural beat boundaries
+            _rp = getattr(wm, "r_peaks", None)
+            r_peaks = np.asarray(_rp if _rp is not None else [], dtype=int)
+            if r_peaks.size >= 2:
+                mids = np.round((r_peaks[:-1] + r_peaks[1:]) / 2).astype(int)
+                boundaries = [(int(mids[i]), int(mids[i + 1])) for i in range(len(mids) - 1)]
+                boundaries = [(0, int(mids[0]))] + boundaries + [(int(mids[-1]), len(signal_data) - 1)]
+
+        if not boundaries:
+            return
+
+        n = len(signal_data)
+        for i, (s, e) in enumerate(boundaries):
+            s = max(0, min(s, n - 1))
+            e = max(s + 1, min(e, n - 1))
+            x0 = float(time_axis[s])
+            x1 = float(time_axis[e])
+            color = _CYCLE_COLORS[i % len(_CYCLE_COLORS)]
+            fig.add_vrect(
+                x0=x0, x1=x1,
+                fillcolor=color,
+                layer="below",
+                line_width=0,
+            )
+
+    except Exception as e:
+        logger.debug("Cycle band shading failed: %s", e)
+
+
+def _add_critical_points(fig, signal_data, time_axis, sampling_freq, signal_type, wm=None):
+    """Detect and add all critical points for the given signal type to fig."""
+    try:
+        from vitalDSP.physiological_features.waveform import WaveformMorphology
+        if wm is None:
+            wm = WaveformMorphology(
+                waveform=signal_data, fs=sampling_freq,
+                signal_type=signal_type, simple_mode=True,
+            )
+
+        def _safe_add(indices, name, color, symbol, size=8):
+            if indices is None or len(indices) == 0:
+                return
+            idx = np.asarray(indices, dtype=int)
+            idx = idx[(idx >= 0) & (idx < len(signal_data))]
+            if idx.size == 0:
+                return
+            fig.add_trace(go.Scatter(
+                x=time_axis[idx], y=signal_data[idx],
+                mode="markers", name=name,
+                marker=dict(color=color, size=size, symbol=symbol),
+                hovertemplate=f"<b>{name}:</b> %{{y:.4f}}<extra></extra>",
+            ))
+
+        if signal_type == "PPG":
+            _safe_add(getattr(wm, "systolic_peaks", None), "Systolic Peaks", "#e63946", "diamond", 10)
+            try:
+                _safe_add(wm.detect_dicrotic_notches(), "Dicrotic Notches", "#f4a261", "circle", 8)
+            except Exception as e:
+                logger.warning("Dicrotic notch detection failed: %s", e)
+            try:
+                _safe_add(wm.detect_diastolic_peak(), "Diastolic Peaks", "#2a9d8f", "square", 8)
+            except Exception as e:
+                logger.warning("Diastolic peak detection failed: %s", e)
+
+        elif signal_type == "ECG":
+            _safe_add(getattr(wm, "r_peaks", None), "R Peaks", "#e63946", "diamond", 10)
+            try:
+                _safe_add(wm.detect_p_peak(), "P Peaks", "#457b9d", "circle", 8)
+            except Exception as e:
+                logger.warning("P peak detection failed: %s", e)
+            try:
+                _safe_add(wm.detect_t_peak(), "T Peaks", "#2a9d8f", "square", 8)
+            except Exception as e:
+                logger.warning("T peak detection failed: %s", e)
+            try:
+                _safe_add(wm.detect_q_valley(), "Q Valleys", "#f4a261", "triangle-down", 7)
+            except Exception as e:
+                logger.warning("Q valley detection failed: %s", e)
+            try:
+                _safe_add(wm.detect_s_valley(), "S Valleys", "#c77dff", "triangle-down", 7)
+            except Exception as e:
+                logger.warning("S valley detection failed: %s", e)
+
+    except Exception as e:
+        logger.warning("Critical points detection failed: %s", e)
+
+
+def create_main_signal_plot(*args, **kwargs):
+    """
+    Main signal plot with all critical points.
+
+    New shape: create_main_signal_plot(signal_data, time_axis, fs,
+        peaks=None, signal_type='PPG', theme='light',
+        filtered_overlay=None, wm=None)
+
+    Legacy shape (tests): 4th positional is a list → extract signal from df.
+    """
+    import pandas as pd
+
+    if not args and not kwargs:
+        return create_empty_figure()
+
+    legacy = len(args) >= 4 and isinstance(args[3], (list, tuple))
+
+    if legacy:
+        df, time_axis, sampling_freq = args[0], args[1], args[2]
+        column_mapping = args[4] if len(args) > 4 else {}
+        signal_type = args[5] if len(args) > 5 else kwargs.get("signal_type", "PPG")
+        theme = args[6] if len(args) > 6 else kwargs.get("theme", "light")
+        signal_col = (column_mapping or {}).get("signal") or (column_mapping or {}).get("amplitude") or "signal"
+        if isinstance(df, pd.DataFrame) and signal_col in df.columns:
+            signal_data = df[signal_col].values
+        else:
+            signal_data = np.asarray(df)
+        peaks = None
+        filtered_overlay = None
+        wm = None
+    else:
+        signal_data = args[0] if args else kwargs.get("signal_data")
+        time_axis = args[1] if len(args) > 1 else kwargs.get("time_axis")
+        sampling_freq = args[2] if len(args) > 2 else kwargs.get("sampling_freq", 1000)
+        peaks = args[3] if len(args) > 3 else kwargs.get("peaks")  # kept for compat only
+        signal_type = args[4] if len(args) > 4 else kwargs.get("signal_type", "PPG")
+        theme = args[5] if len(args) > 5 else kwargs.get("theme", "light")
+        filtered_overlay = args[6] if len(args) > 6 else kwargs.get("filtered_overlay")
+        wm = kwargs.get("wm")  # shared WaveformMorphology if available
+
+    try:
+        n_samples = len(signal_data) if signal_data is not None else 0
+    except TypeError:
+        n_samples = 0
+
+    if signal_data is None or time_axis is None or n_samples == 0:
+        return create_empty_figure(theme)
+
+    try:
+        fs_val = float(sampling_freq) if sampling_freq is not None else 0.0
+    except (TypeError, ValueError):
+        fs_val = 0.0
+
+    # ── base signal trace ──────────────────────────────────────
+    fig = go.Figure()
+
+    if filtered_overlay is not None:
+        # Show original faint, filtered bold
+        fig.add_trace(go.Scatter(
+            x=time_axis, y=signal_data, mode="lines", name="Original",
+            line=dict(color="rgba(100,100,100,0.4)", width=1),
+        ))
+        fig.add_trace(go.Scatter(
+            x=time_axis, y=filtered_overlay, mode="lines", name="Filtered",
+            line=dict(color="#1f77b4", width=1.6),
+        ))
+        plot_signal = filtered_overlay
+    else:
+        fig.add_trace(go.Scatter(
+            x=time_axis, y=signal_data, mode="lines", name="Signal",
+            line=dict(color="#1f77b4", width=1.4),
+        ))
+        plot_signal = signal_data
+
+    # ── cycle background bands ─────────────────────────────────
+    if wm is not None:
+        _add_cycle_bands(fig, plot_signal, time_axis, fs_val, signal_type or "PPG", wm=wm)
+
+    # ── critical points ────────────────────────────────────────
+    _add_critical_points(fig, plot_signal, time_axis, fs_val, signal_type or "PPG", wm=wm)
+
+    duration_s = n_samples / max(fs_val, 1e-9)
+    fig.update_layout(
+        title=f"{signal_type or 'Signal'} — {duration_s:.1f} s window",
+        xaxis_title="Time (s)",
+        yaxis_title="Amplitude",
+        showlegend=True,
+        height=420,
+        template="plotly_white",
+        dragmode="pan",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
+    return apply_plot_theme(fig, theme)
+
+
+# ─────────────────────────────────────────────────────────────
+# Signal summary banner
+# ─────────────────────────────────────────────────────────────
+
+def generate_analysis_results(*args, **kwargs):
+    selected_signal = kwargs.get("selected_signal")
+    time_axis = kwargs.get("time_axis")
+    sampling_freq = kwargs.get("sampling_freq")
+    analysis_options = kwargs.get("analysis_options")
+    signal_source_info = kwargs.get("signal_source_info")
+    signal_type = kwargs.get("signal_type")
+    filter_info = kwargs.get("filter_info")
+
+    pos = list(args)
+    if selected_signal is None and pos: selected_signal = pos.pop(0)
+    if time_axis is None and pos: time_axis = pos.pop(0)
+    if sampling_freq is None and pos: sampling_freq = pos.pop(0)
+    if analysis_options is None and pos: analysis_options = pos.pop(0)
+    if signal_source_info is None and pos: signal_source_info = pos.pop(0)
+    if signal_type is None and pos: signal_type = pos.pop(0)
+    if filter_info is None and pos: filter_info = pos.pop(0)
+
+    def _fs():
+        try:
+            arr = np.asarray(sampling_freq)
+            if arr.size == 1:
+                return float(arr.item())
+        except (TypeError, ValueError):
+            pass
+        return 0.0
+
+    fs = _fs()
+    try:
+        n = len(selected_signal) if selected_signal is not None else 0
+    except TypeError:
+        n = 0
+
+    badges = []
+    if signal_source_info:
+        badges.append(dbc.Badge(str(signal_source_info), color="primary", className="me-1"))
+    if signal_type:
+        badges.append(dbc.Badge(str(signal_type), color="info", className="me-1"))
+    if fs:
+        badges.append(dbc.Badge(f"{fs:.0f} Hz", color="secondary", className="me-1"))
+    if n and fs:
+        dur = n / fs
+        badges.append(dbc.Badge(f"{dur:.2f} s / {n:,} samples", color="light", text_color="dark", className="me-1"))
+
+    rows = [
+        html.Tr([html.Td("Signal source", className="fw-semibold text-muted small"), html.Td(str(signal_source_info or "—"))]),
+        html.Tr([html.Td("Signal type", className="fw-semibold text-muted small"), html.Td(str(signal_type or "—"))]),
+        html.Tr([html.Td("Sampling rate", className="fw-semibold text-muted small"), html.Td(f"{fs:.1f} Hz" if fs else "—")]),
+        html.Tr([html.Td("Window samples", className="fw-semibold text-muted small"), html.Td(f"{n:,}")]),
+        html.Tr([html.Td("Window duration", className="fw-semibold text-muted small"), html.Td(f"{(n / fs):.2f} s" if fs else "—")]),
+    ]
+    if isinstance(filter_info, dict) and filter_info:
+        ftype = filter_info.get("filter_type", "unknown")
+        params = filter_info.get("parameters", {}) or {}
+        rows.append(html.Tr([
+            html.Td("Filter", className="fw-semibold text-muted small"),
+            html.Td(f"{ftype}" + (f" ({', '.join(f'{k}={v}' for k, v in params.items())})" if params else "")),
+        ]))
+
+    return html.Div([
+        html.Div(badges, className="mb-2"),
+        dbc.Table(
+            [html.Tbody(rows)],
+            bordered=False, size="sm", className="mb-0 table-borderless",
+        ),
+    ])
+
+
+# ─────────────────────────────────────────────────────────────
+# Rich HRV / time-domain results panel
+# ─────────────────────────────────────────────────────────────
+
+def _safe_float(v):
+    try:
+        f = float(v)
+        return f if np.isfinite(f) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _fmt(v, unit="", decimals=2):
+    f = _safe_float(v)
+    if f is None:
+        return "—"
+    return f"{f:.{decimals}f}{(' ' + unit) if unit else ''}"
+
+
+def _metric_card(title, value, unit, description, color="primary"):
+    return dbc.Card(
+        dbc.CardBody([
+            html.Div(title, className="text-muted small mb-1"),
+            html.Div(
+                [html.Span(value, className=f"fs-4 fw-bold text-{color}"),
+                 html.Span(f" {unit}", className="text-muted small")],
+            ),
+            html.Div(description, className="text-muted", style={"fontSize": "0.72rem"}),
+        ]),
+        className="h-100 border-0 shadow-sm",
+    )
+
+
+def create_peak_analysis_table(
+    selected_signal, time_axis, sampling_freq, analysis_options,
+    signal_source_info, signal_type=None, peaks=None,
+):
+    """
+    Rich time-domain feature panel:
+    - Key metric cards (HR, SDNN, RMSSD, pNN50)
+    - Full time-domain table with ALL vitalDSP features
+    - NN-interval distribution sparkline
+    - Successive-difference sparkline
+    """
+    try:
+        sig = np.asarray(selected_signal, dtype=float)
+        fs = float(sampling_freq) if sampling_freq else 100.0
+        stype = signal_type or "PPG"
+
+        # ── peak detection ─────────────────────────────────────
+        if peaks is None:
+            try:
+                from vitalDSP.physiological_features.waveform import WaveformMorphology
+                wm = WaveformMorphology(waveform=sig, fs=fs, signal_type=stype, simple_mode=True)
+                peaks = getattr(wm, "systolic_peaks" if stype == "PPG" else "r_peaks", None)
+            except Exception:
+                peaks = None
+
+        peaks = np.asarray([], dtype=int) if peaks is None else np.asarray(peaks, dtype=int)
+        n_peaks = int(peaks.size)
+        duration_s = len(sig) / max(fs, 1e-9)
+        mean_hr = (60.0 * n_peaks / duration_s) if duration_s > 0 else 0.0
+
+        nn_intervals = np.diff(peaks) / fs * 1000.0 if n_peaks >= 2 else np.array([])
+
+        # ── HRV features via library ───────────────────────────
+        hrv = {}
+        if nn_intervals.size >= 2:
+            try:
+                from vitalDSP.physiological_features.hrv_analysis import HRVFeatures
+                hrv = HRVFeatures(
+                    nn_intervals=nn_intervals.tolist(),
+                    signal=sig, fs=fs,
+                ).compute_all_features(include_complex_methods=False) or {}
+            except Exception:
+                pass
+
+            # Compute all TimeDomainFeatures individually and merge.
+            # Note: compute_nn20 does not exist — derive it from the diffs directly.
+            try:
+                from vitalDSP.physiological_features.time_domain import TimeDomainFeatures
+                tdf = TimeDomainFeatures(nn_intervals)
+                diffs = np.abs(np.diff(nn_intervals))
+                nn20_count = int(np.sum(diffs > 20))
+                td_direct = {
+                    "sdnn": tdf.compute_sdnn(),
+                    "rmssd": tdf.compute_rmssd(),
+                    "nn50": float(tdf.compute_nn50()),
+                    "pnn50": tdf.compute_pnn50(),
+                    "nn20": float(nn20_count),
+                    "pnn20": tdf.compute_pnn20(),
+                    "mean_nn": tdf.compute_mean_nn(),
+                    "median_nn": tdf.compute_median_nn(),
+                    "iqr_nn": tdf.compute_iqr_nn(),
+                    "sdsd": tdf.compute_sdsd(),
+                    "cvnn": tdf.compute_cvnn(),
+                    "hrv_triangular_index": tdf.compute_hrv_triangular_index(),
+                    "tinn": tdf.compute_tinn(),
+                }
+                # Direct computation wins over HRVFeatures aggregator
+                hrv = {**hrv, **td_direct}
+            except Exception as _e:
+                logger.warning("TimeDomainFeatures computation failed: %s", _e)
+
+        def g(key, fb=None):
+            v = hrv.get(key, fb)
+            return _safe_float(v) if v is not None else None
+
+        sdnn = g("sdnn") or (float(np.std(nn_intervals)) if nn_intervals.size else 0.0)
+        rmssd = g("rmssd") or (
+            float(np.sqrt(np.mean(np.diff(nn_intervals) ** 2))) if nn_intervals.size >= 2 else 0.0
+        )
+        pnn50 = g("pnn50") or 0.0
+        mean_nn = g("mean_nn") or (float(np.mean(nn_intervals)) if nn_intervals.size else 0.0)
+
+        # ── Key metric cards ───────────────────────────────────
+        metric_cards = dbc.Row(
+            [
+                dbc.Col(_metric_card("Heart Rate", f"{mean_hr:.1f}", "bpm",
+                                     f"{n_peaks} beats detected", "danger"), md=3, className="mb-3"),
+                dbc.Col(_metric_card("SDNN", f"{sdnn:.2f}", "ms",
+                                     "Overall HRV variability", "primary"), md=3, className="mb-3"),
+                dbc.Col(_metric_card("RMSSD", f"{rmssd:.2f}", "ms",
+                                     "Short-term variability", "success"), md=3, className="mb-3"),
+                dbc.Col(_metric_card("pNN50", f"{pnn50:.1f}", "%",
+                                     "Parasympathetic activity", "warning"), md=3, className="mb-3"),
+            ],
+            className="g-2",
+        )
+
+        # ── Full time-domain feature table ─────────────────────
+        td_rows = [
+            ("Mean NN", _fmt(g("mean_nn"), "ms"), "Mean RR / beat-to-beat interval"),
+            ("Median NN", _fmt(g("median_nn"), "ms"), "Robust central tendency"),
+            ("SDNN", _fmt(g("sdnn"), "ms"), "Std dev of NN intervals — global HRV"),
+            ("RMSSD", _fmt(g("rmssd"), "ms"), "Root-mean-square successive diffs — vagal tone"),
+            ("SDSD", _fmt(g("sdsd"), "ms"), "Std dev of successive diffs"),
+            ("NN50", _fmt(g("nn50"), decimals=0), "Intervals differing >50 ms"),
+            ("pNN50", _fmt(g("pnn50"), "%"), "Proportion of NN50 pairs"),
+            ("NN20", _fmt(g("nn20"), decimals=0), "Intervals differing >20 ms"),
+            ("pNN20", _fmt(g("pnn20"), "%"), "Proportion of NN20 pairs"),
+            ("IQR NN", _fmt(g("iqr_nn"), "ms"), "Interquartile range of NN intervals"),
+            ("CVNN", _fmt(g("cvnn")), "Coefficient of variation (SDNN / mean NN)"),
+            ("HRV Triangular Index", _fmt(g("hrv_triangular_index")), "Total NN / max histogram bin"),
+            ("TINN", _fmt(g("tinn"), "ms"), "Triangular interpolation of NN histogram baseline"),
+        ]
+
+        feature_table = dbc.Table(
+            [
+                html.Thead(html.Tr([
+                    html.Th("Feature", className="small"),
+                    html.Th("Value", className="small"),
+                    html.Th("Interpretation", className="small text-muted"),
+                ])),
+                html.Tbody([
+                    html.Tr([
+                        html.Td(name, className="fw-semibold small"),
+                        html.Td(val, className="small font-monospace"),
+                        html.Td(desc, className="small text-muted"),
+                    ])
+                    for name, val, desc in td_rows
+                ]),
+            ],
+            bordered=False, striped=True, hover=True, size="sm", className="mb-3",
+        )
+
+        # ── Visualisations ─────────────────────────────────────
+        _CHART_H = 260
+        _MARGIN = dict(l=48, r=24, t=44, b=36)
+        _TPL = "plotly_white"
+        charts = []
+
+        if nn_intervals.size >= 4:
+            beats = list(range(len(nn_intervals)))
+            nn_list = nn_intervals.tolist()
+            nn_mean = float(np.mean(nn_intervals))
+            nn_sd = float(np.std(nn_intervals))
+
+            # ── 1. NN tachogram with ±1 SD band + rolling RMSSD ──
+            win = max(3, len(nn_intervals) // 5)
+            roll_rmssd = [
+                float(np.sqrt(np.mean(np.diff(nn_intervals[max(0, i - win): i + 1]) ** 2)))
+                if i >= 1 else 0.0
+                for i in range(len(nn_intervals))
+            ]
+            nn_fig = make_subplots(specs=[[{"secondary_y": True}]])
+            # SD band
+            nn_fig.add_trace(go.Scatter(
+                x=beats + beats[::-1],
+                y=[nn_mean + nn_sd] * len(beats) + [nn_mean - nn_sd] * len(beats),
+                fill="toself", fillcolor="rgba(31,119,180,0.10)",
+                line=dict(width=0), name="±1 SD", showlegend=True,
+            ), secondary_y=False)
+            # Mean line
+            nn_fig.add_hline(y=nn_mean, line=dict(color="#1f77b4", dash="dash", width=1),
+                             annotation_text=f"mean {nn_mean:.0f} ms",
+                             annotation_font_size=10)
+            # NN line
+            nn_fig.add_trace(go.Scatter(
+                x=beats, y=nn_list, mode="lines+markers", name="NN (ms)",
+                line=dict(color="#1f77b4", width=1.8),
+                marker=dict(size=5, color="#1f77b4"),
+            ), secondary_y=False)
+            # Rolling RMSSD on secondary axis
+            nn_fig.add_trace(go.Scatter(
+                x=beats, y=roll_rmssd, mode="lines", name=f"Rolling RMSSD (w={win})",
+                line=dict(color="#e63946", width=1.4, dash="dot"),
+            ), secondary_y=True)
+            nn_fig.update_layout(
+                title="NN Tachogram — beat-to-beat intervals",
+                height=_CHART_H, template=_TPL, margin=_MARGIN,
+                legend=dict(orientation="h", y=-0.25, x=0, font=dict(size=10)),
+            )
+            nn_fig.update_yaxes(title_text="NN (ms)", secondary_y=False)
+            nn_fig.update_yaxes(title_text="RMSSD (ms)", secondary_y=True,
+                                showgrid=False, color="#e63946")
+            nn_fig.update_xaxes(title_text="Beat #")
+            charts.append(dbc.Col(dcc.Graph(figure=nn_fig, config={"displayModeBar": False}), md=6))
+
+            # ── 2. Instantaneous Heart Rate over beats ────────────
+            hr_series = 60_000.0 / nn_intervals  # bpm per interval
+            hr_mean = float(np.mean(hr_series))
+            hr_fig = go.Figure()
+            hr_fig.add_trace(go.Scatter(
+                x=beats, y=hr_series.tolist(), mode="lines+markers",
+                name="HR (bpm)", line=dict(color="#2a9d8f", width=1.8),
+                marker=dict(size=5),
+                fill="tozeroy", fillcolor="rgba(42,157,143,0.08)",
+                hovertemplate="Beat %{x}: %{y:.1f} bpm<extra></extra>",
+            ))
+            hr_fig.add_hline(y=hr_mean, line=dict(color="#2a9d8f", dash="dash", width=1),
+                             annotation_text=f"mean {hr_mean:.1f} bpm",
+                             annotation_font_size=10)
+            hr_fig.update_layout(
+                title="Instantaneous Heart Rate",
+                xaxis_title="Beat #", yaxis_title="HR (bpm)",
+                height=_CHART_H, template=_TPL, margin=_MARGIN, showlegend=False,
+            )
+            charts.append(dbc.Col(dcc.Graph(figure=hr_fig, config={"displayModeBar": False}), md=6))
+
+            # ── 3. NN distribution — histogram + KDE curve ────────
+            n_bins = max(10, min(50, len(nn_intervals) // 3))
+            hist_counts, hist_edges = np.histogram(nn_intervals, bins=n_bins)
+            bin_centers = (hist_edges[:-1] + hist_edges[1:]) / 2.0
+            # Gaussian KDE
+            bw = 1.06 * nn_sd * (len(nn_intervals) ** -0.2)  # Silverman's rule
+            x_kde = np.linspace(float(nn_intervals.min()), float(nn_intervals.max()), 200)
+            kde_y = np.array([
+                np.sum(np.exp(-0.5 * ((x - nn_intervals) / bw) ** 2)) / (len(nn_intervals) * bw * np.sqrt(2 * np.pi))
+                for x in x_kde
+            ])
+            # Scale KDE to histogram counts
+            bin_width = float(hist_edges[1] - hist_edges[0]) if len(hist_edges) > 1 else 1.0
+            kde_scaled = kde_y * len(nn_intervals) * bin_width
+
+            dist_fig = go.Figure()
+            dist_fig.add_trace(go.Bar(
+                x=bin_centers.tolist(), y=hist_counts.tolist(),
+                name="Count", marker_color="rgba(42,157,143,0.55)",
+                width=bin_width * 0.85,
+            ))
+            dist_fig.add_trace(go.Scatter(
+                x=x_kde.tolist(), y=kde_scaled.tolist(),
+                mode="lines", name="KDE", line=dict(color="#2a9d8f", width=2),
+            ))
+            # Mean ± SD references
+            for xv, label, dash in [
+                (nn_mean, f"μ={nn_mean:.0f}", "dash"),
+                (nn_mean - nn_sd, f"μ−σ={nn_mean - nn_sd:.0f}", "dot"),
+                (nn_mean + nn_sd, f"μ+σ={nn_mean + nn_sd:.0f}", "dot"),
+            ]:
+                dist_fig.add_vline(x=xv, line=dict(color="#457b9d", dash=dash, width=1.2),
+                                   annotation_text=label, annotation_font_size=9,
+                                   annotation_position="top right")
+            dist_fig.update_layout(
+                title="NN Interval Distribution",
+                xaxis_title="NN (ms)", yaxis_title="Count",
+                height=_CHART_H, template=_TPL, margin=_MARGIN,
+                legend=dict(orientation="h", y=-0.25, x=0, font=dict(size=10)),
+                barmode="overlay",
+            )
+            charts.append(dbc.Col(dcc.Graph(figure=dist_fig, config={"displayModeBar": False}), md=6))
+
+            # ── 4. |ΔNN| violin + box + 20 ms / 50 ms thresholds ─
+            succ_diffs = np.abs(np.diff(nn_intervals)).tolist()
+            diff_fig = go.Figure()
+            diff_fig.add_trace(go.Violin(
+                y=succ_diffs, name="|ΔNN|",
+                box_visible=True, meanline_visible=True,
+                fillcolor="rgba(228,57,70,0.25)", line_color="#e63946",
+                points="all",
+                marker=dict(size=4, opacity=0.5, color="#e63946"),
+            ))
+            diff_fig.add_hline(y=20, line=dict(color="#f4a261", dash="dash", width=1.2),
+                               annotation_text="NN20 (20 ms)", annotation_font_size=9,
+                               annotation_position="top left")
+            diff_fig.add_hline(y=50, line=dict(color="#e63946", dash="dash", width=1.2),
+                               annotation_text="NN50 (50 ms)", annotation_font_size=9,
+                               annotation_position="top right")
+            diff_fig.update_layout(
+                title="Successive NN Differences",
+                yaxis_title="Abs diff (ms)", xaxis=dict(visible=False),
+                height=_CHART_H, template=_TPL, margin=_MARGIN, showlegend=False,
+            )
+            charts.append(dbc.Col(dcc.Graph(figure=diff_fig, config={"displayModeBar": False}), md=6))
+
+        # ── 5. Poincaré with SD1/SD2 ellipse ──────────────────
+        if nn_intervals.size >= 6:
+            x_poi = nn_intervals[:-1]
+            y_poi = nn_intervals[1:]
+            # SD1 = std of perpendicular direction, SD2 = std of diagonal
+            diff_xy = (y_poi - x_poi) / np.sqrt(2)
+            sum_xy = (x_poi + y_poi) / np.sqrt(2)
+            sd1 = float(np.std(diff_xy, ddof=1))
+            sd2 = float(np.std(sum_xy, ddof=1))
+            cx = float(np.mean(x_poi))
+            cy = float(np.mean(y_poi))
+
+            # Ellipse parametric
+            theta = np.linspace(0, 2 * np.pi, 120)
+            ellipse_x = cx + sd2 * np.cos(theta) * np.cos(np.pi / 4) - sd1 * np.sin(theta) * np.sin(np.pi / 4)
+            ellipse_y = cy + sd2 * np.cos(theta) * np.sin(np.pi / 4) + sd1 * np.sin(theta) * np.cos(np.pi / 4)
+
+            mn = float(min(x_poi.min(), y_poi.min()))
+            mx = float(max(x_poi.max(), y_poi.max()))
+
+            poi_fig = go.Figure()
+            # Scatter points
+            poi_fig.add_trace(go.Scatter(
+                x=x_poi.tolist(), y=y_poi.tolist(),
+                mode="markers", name="RRn / RRn+1",
+                marker=dict(color="#457b9d", size=6, opacity=0.55),
+                hovertemplate="RRn=%{x:.0f} ms, RRn+1=%{y:.0f} ms<extra></extra>",
+            ))
+            # SD1/SD2 ellipse
+            poi_fig.add_trace(go.Scatter(
+                x=ellipse_x.tolist(), y=ellipse_y.tolist(),
+                mode="lines", name="SD1/SD2 ellipse",
+                line=dict(color="#e63946", width=1.6, dash="dot"),
+            ))
+            # Identity line
+            poi_fig.add_trace(go.Scatter(
+                x=[mn, mx], y=[mn, mx], mode="lines", name="Identity",
+                line=dict(color="rgba(100,100,100,0.5)", dash="dash", width=1),
+            ))
+            # SD1 and SD2 axis lines through centroid
+            # SD1 axis: perpendicular to identity → direction (-1,1)/√2
+            sd1_dx = sd1 * (-1 / np.sqrt(2))
+            sd1_dy = sd1 * (1 / np.sqrt(2))
+            poi_fig.add_trace(go.Scatter(
+                x=[cx - sd1_dx, cx + sd1_dx], y=[cy - sd1_dy, cy + sd1_dy],
+                mode="lines", name=f"SD1={sd1:.1f} ms",
+                line=dict(color="#2a9d8f", width=2),
+            ))
+            # SD2 axis: along identity → direction (1,1)/√2
+            sd2_dx = sd2 * (1 / np.sqrt(2))
+            sd2_dy = sd2 * (1 / np.sqrt(2))
+            poi_fig.add_trace(go.Scatter(
+                x=[cx - sd2_dx, cx + sd2_dx], y=[cy - sd2_dy, cy + sd2_dy],
+                mode="lines", name=f"SD2={sd2:.1f} ms",
+                line=dict(color="#f4a261", width=2),
+            ))
+            poi_fig.update_layout(
+                title=f"Poincaré  SD1={sd1:.1f} ms · SD2={sd2:.1f} ms · SD1/SD2={sd1/max(sd2,1e-9):.2f}",
+                xaxis_title="RRn (ms)", yaxis_title="RRn+1 (ms)",
+                height=_CHART_H, template=_TPL, margin=_MARGIN,
+                legend=dict(orientation="h", y=-0.30, x=0, font=dict(size=10)),
+            )
+            charts.append(dbc.Col(dcc.Graph(figure=poi_fig, config={"displayModeBar": False}), md=6))
+
+        # ── 6. HRV range bullet chart ──────────────────────────
+        # Shows each metric's value as a dot against its typical
+        # low / normal / high reference bands.
+        if nn_intervals.size >= 4:
+            # (label, value, low_norm, high_norm, unit, x_max)
+            bullet_specs = [
+                ("SDNN",   g("sdnn") or 0.0,                20.0,  100.0, "ms",  160.0),
+                ("RMSSD",  g("rmssd") or 0.0,               15.0,   80.0, "ms",  120.0),
+                ("pNN50",  g("pnn50") or 0.0,                5.0,   40.0, "%",    60.0),
+                ("CVNN",   (g("cvnn") or 0.0) * 100,         3.0,   10.0, "%",    15.0),
+                ("HRV-TI", g("hrv_triangular_index") or 0.0, 8.0,   30.0, "",     45.0),
+            ]
+
+            bullet_fig = go.Figure()
+            n_rows = len(bullet_specs)
+            row_h = 1.0 / n_rows  # fractional height per row in y-domain
+
+            for i, (label, val, lo, hi, unit, x_max) in enumerate(bullet_specs):
+                # y-domain for this row (bottom to top)
+                y0 = i / n_rows
+                y1 = (i + 1) / n_rows
+                pad = row_h * 0.15
+                cy = (y0 + y1) / 2  # vertical centre of this row
+
+                val_clipped = min(float(val), x_max)
+
+                # ── grey "max range" background bar
+                bullet_fig.add_shape(
+                    type="rect", xref="x", yref="paper",
+                    x0=0, x1=x_max, y0=y0 + pad, y1=y1 - pad,
+                    fillcolor="rgba(220,220,220,0.45)", line_width=0, layer="below",
+                )
+                # ── green "normal range" band
+                bullet_fig.add_shape(
+                    type="rect", xref="x", yref="paper",
+                    x0=lo, x1=hi, y0=y0 + pad, y1=y1 - pad,
+                    fillcolor="rgba(42,157,143,0.22)", line_width=0, layer="below",
+                )
+                # ── row label (left of chart)
+                bullet_fig.add_annotation(
+                    xref="paper", yref="paper",
+                    x=0, y=cy, xanchor="right", text=label,
+                    showarrow=False, font=dict(size=11, color="#333"),
+                )
+                # ── value bar (solid)
+                bar_col = (
+                    "#2a9d8f" if lo <= val <= hi else
+                    ("#e63946" if val < lo else "#f4a261")
+                )
+                bullet_fig.add_shape(
+                    type="rect", xref="x", yref="paper",
+                    x0=0, x1=val_clipped, y0=y0 + pad * 2.2, y1=y1 - pad * 2.2,
+                    fillcolor=bar_col, line_width=0,
+                )
+                # ── value label (right end of bar)
+                disp = f"{val:.1f} {unit}".strip()
+                bullet_fig.add_annotation(
+                    xref="x", yref="paper",
+                    x=val_clipped, y=cy, xanchor="left",
+                    text=f"  {disp}", showarrow=False,
+                    font=dict(size=10, color=bar_col),
+                )
+
+            # Invisible scatter to give the figure a proper x-axis scale
+            bullet_fig.add_trace(go.Scatter(
+                x=[0, max(s[5] for s in bullet_specs)],
+                y=[0.5, 0.5], mode="markers",
+                marker=dict(opacity=0), showlegend=False,
+            ))
+            # Phantom traces just for legend
+            bullet_fig.add_trace(go.Scatter(
+                x=[None], y=[None], mode="markers",
+                marker=dict(color="rgba(220,220,220,0.8)", size=12, symbol="square"),
+                name="Full range",
+            ))
+            bullet_fig.add_trace(go.Scatter(
+                x=[None], y=[None], mode="markers",
+                marker=dict(color="rgba(42,157,143,0.5)", size=12, symbol="square"),
+                name="Normal range",
+            ))
+            bullet_fig.update_layout(
+                title="HRV Metrics vs Normal Ranges",
+                xaxis=dict(title="Value", zeroline=True, zerolinecolor="#ccc"),
+                yaxis=dict(visible=False, range=[0, 1]),
+                height=max(_CHART_H, 50 * n_rows + 60),
+                template=_TPL,
+                margin=dict(l=80, r=40, t=44, b=36),
+                legend=dict(orientation="h", y=-0.12, x=0.5, xanchor="center",
+                            font=dict(size=10)),
+            )
+            charts.append(dbc.Col(dcc.Graph(figure=bullet_fig, config={"displayModeBar": False}), md=6))
+
+        # arrange in pairs of two columns
+        chart_rows = []
+        for i in range(0, len(charts), 2):
+            row_cols = charts[i: i + 2]
+            chart_rows.append(dbc.Row(row_cols, className="g-3 mb-3"))
+
+        if chart_rows:
+            charts_section = html.Div([
+                dbc.Button(
+                    [html.I(className="fas fa-chart-bar me-1"), " Analysis Plots"],
+                    id="btn-collapse-charts",
+                    color="outline-secondary",
+                    size="sm",
+                    className="mb-2",
+                ),
+                dbc.Collapse(html.Div(chart_rows), id="collapse-charts", is_open=False),
+            ])
+        else:
+            charts_section = html.Div()
+
+        # No data notice when not enough peaks
+        if n_peaks < 2:
+            feature_section = dbc.Alert(
+                [
+                    html.I(className="fas fa-info-circle me-2"),
+                    f"Only {n_peaks} peak(s) detected — need ≥ 2 for HRV metrics. "
+                    "Try a longer analysis window.",
+                ],
+                color="warning", className="mt-2",
+            )
+        else:
+            # Collapsible feature table
+            feature_section = html.Div([
+                dbc.Button(
+                    [html.I(className="fas fa-table me-1"), " Full Feature Table"],
+                    id="btn-collapse-features",
+                    color="outline-secondary",
+                    className="mb-2",
+                    size="sm",
+                ),
+                dbc.Collapse(feature_table, id="collapse-features", is_open=False),
+            ])
+
+        return html.Div([
+            metric_cards,
+            html.Hr(className="my-3"),
+            feature_section,
+            charts_section,
+        ])
+
+    except Exception as exc:
+        logger.exception("create_peak_analysis_table failed: %s", exc)
+        return html.Div([
+            html.H6("Peak detection + HRV"),
+            html.P(f"Could not compute: {exc}", className="small text-danger"),
+        ])
+
+
+def create_signal_quality_table(selected_signal, time_axis, sampling_freq,
+                                 analysis_options, signal_source_info, signal_type=None):
+    """Kept for callback compat — hidden in layout."""
+    return html.Div()
+
+
+# ─────────────────────────────────────────────────────────────
+# Callback registration
+# ─────────────────────────────────────────────────────────────
 
 def register_time_domain_callbacks(app):
     """Register all time domain analysis callbacks."""
 
+    # ── collapse toggles ───────────────────────────────────────
+    @app.callback(
+        Output("collapse-summary", "is_open"),
+        Input("btn-collapse-summary", "n_clicks"),
+        State("collapse-summary", "is_open"),
+        prevent_initial_call=True,
+    )
+    def toggle_summary(n, is_open):
+        return not is_open
+
+    @app.callback(
+        Output("collapse-features", "is_open"),
+        Input("btn-collapse-features", "n_clicks"),
+        State("collapse-features", "is_open"),
+        prevent_initial_call=True,
+    )
+    def toggle_features(n, is_open):
+        return not is_open
+
+    # ── main analysis ──────────────────────────────────────────
     @app.callback(
         [
             Output("main-signal-plot", "figure"),
@@ -1041,807 +1073,219 @@ def register_time_domain_callbacks(app):
         ],
         [
             Input("btn-update-analysis", "n_clicks"),
-            # Input("time-range-slider", "value"),  # REMOVED - was causing constant updates!
-            # Input("start-time", "value"),  # REMOVED - was causing callback loop with slider sync!
-            # Input("end-time", "value"),  # REMOVED - was causing callback loop with slider sync!
             Input("btn-nudge-m10", "n_clicks"),
-            # Input("btn-nudge-m1", "n_clicks"),  # REMOVED - button doesn't exist in UI
-            # Input("btn-nudge-p1", "n_clicks"),  # REMOVED - button doesn't exist in UI
+            Input("btn-nudge-m5", "n_clicks"),
+            Input("btn-nudge-p5", "n_clicks"),
             Input("btn-nudge-p10", "n_clicks"),
-            # Input("url", "pathname"),  # REMOVED - was running full analysis on EVERY page load!
-            Input("body", "data-theme"),  # Add theme input
+            Input("body", "data-theme"),
         ],
         [
-            State("url", "pathname"),  # MOVED to State - only read, doesn't trigger
-            State(
-                "start-position-slider", "value"
-            ),  # NEW: start position instead of time-range-slider
-            State(
-                "duration-select", "value"
-            ),  # NEW: duration instead of start-time/end-time
+            State("url", "pathname"),
+            State("start-position-slider", "value"),
+            State("duration-select", "value"),
             State("signal-source-select", "value"),
             State("analysis-options", "value"),
             State("signal-type-select", "value"),
-            State(
-                "store-filtered-signal", "data"
-            ),  # NEW: Access to filtered signal from filtering page
+            State("store-filtered-signal", "data"),
         ],
     )
     def analyze_time_domain(
-        n_clicks,
-        nudge_m10,
-        # nudge_m1,  # REMOVED - button doesn't exist in UI
-        # nudge_p1,  # REMOVED - button doesn't exist in UI
-        nudge_p10,
-        current_theme,  # Theme input parameter
-        pathname,  # State parameter
-        start_position,  # NEW: start position instead of slider_value
-        duration,  # NEW: duration instead of start_time/end_time
-        signal_source,
-        analysis_options,
-        signal_type,
-        filtered_signal_data,  # NEW: Filtered signal data from filtering page
+        n_clicks, nudge_m10, nudge_m5, nudge_p5, nudge_p10, current_theme,
+        pathname, start_position, duration, signal_source, analysis_options,
+        signal_type, filtered_signal_data,
     ):
-        """Main time domain analysis callback."""
         logger.info("=== TIME DOMAIN ANALYSIS CALLBACK ===")
-        logger.info(
-            f"Input values - start_position: {start_position} (type: {type(start_position)}), duration: {duration} (type: {type(duration)})"
-        )
 
-        # Get trigger information
         ctx = callback_context
-        if not ctx.triggered:
-            trigger_id = "initial_load"
-        else:
-            trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else "initial_load"
 
-        logger.info(f"Trigger ID: {trigger_id}")
-        logger.info(f"Pathname: {pathname}")
-
-        # Only run this when we're on the time domain page
-        if pathname != "/time-domain":
-            logger.info("Not on time domain page, returning empty figures")
+        def _empty(msg):
             return (
                 create_empty_figure(current_theme),
                 create_empty_figure(current_theme),
-                "Navigate to Time Domain Analysis page",
-                "Navigate to Time Domain Analysis page",
-                "Navigate to Time Domain Analysis page",
-                "Navigate to Time Domain Analysis page",
-                "Navigate to Time Domain Analysis page",
-                None,
-                None,
+                msg, msg, html.Div(), html.Div(), html.Div(),
+                None, None,
             )
 
-        # If this is the first time loading the page (no button clicks), show a message
-        if not ctx.triggered or ctx.triggered[0]["prop_id"].split(".")[0] == "url":
-            logger.info("First time loading time domain page, attempting to load data")
+        if pathname != "/time-domain":
+            return _empty("Navigate to Time Domain Analysis page")
 
         try:
-            # Get data from the data service
-            logger.info("Attempting to get data service...")
-            from vitalDSP_webapp.services.data.enhanced_data_service import (
-                get_enhanced_data_service,
-            )
-
+            from vitalDSP_webapp.services.data.enhanced_data_service import get_enhanced_data_service
             data_service = get_enhanced_data_service()
-            logger.info("Data service retrieved successfully")
-
-            # Get the most recent data
-            logger.info("Retrieving all data from service...")
             all_data = data_service.get_all_data()
-            logger.info(
-                f"All data keys: {list(all_data.keys()) if all_data else 'None'}"
-            )
 
             if not all_data:
-                logger.warning("No data found in service")
-                return (
-                    create_empty_figure(current_theme),
-                    create_empty_figure(current_theme),
-                    "No data available. Please upload and process data first.",
-                    "No data available. Please upload and process data first.",
-                    "No data available. Please upload and process data first.",
-                    "No data available. Please upload and process data first.",
-                    "No data available. Please upload and process data first.",
-                    None,
-                    None,
-                )
+                return _empty("No data available. Please upload and process data first.")
 
-            # Get the most recent data entry
             latest_data_id = list(all_data.keys())[-1]
             latest_data = all_data[latest_data_id]
-            logger.info(f"Latest data ID: {latest_data_id}")
-            logger.info(f"Latest data info: {latest_data.get('info', 'No info')}")
-
-            # Get column mapping
-            logger.info("Retrieving column mapping...")
             column_mapping = data_service.get_column_mapping(latest_data_id)
-            logger.info(f"Column mapping: {column_mapping}")
 
             if not column_mapping:
-                logger.warning(
-                    "Data has not been processed yet - no column mapping found"
-                )
-                return (
-                    create_empty_figure(current_theme),
-                    create_empty_figure(current_theme),
-                    "Please process your data on the Upload page first (configure column mapping)",
-                    "Please process your data on the Upload page first (configure column mapping)",
-                    "Please process your data on the Upload page first (configure column mapping)",
-                    "Please process your data on the Upload page first (configure column mapping)",
-                    "Please process your data on the Upload page first (configure column mapping)",
-                    None,
-                    None,
-                )
+                return _empty("Please process your data on the Upload page first (configure column mapping).")
 
-            # Get the actual data
-            logger.info("Retrieving data frame...")
             df = data_service.get_data(latest_data_id)
-            logger.info(f"Data frame shape: {df.shape if df is not None else 'None'}")
-            logger.info(
-                f"Data frame columns: {list(df.columns) if df is not None else 'None'}"
-            )
-
-            # Log essential signal data summary (optimized for performance)
-            if df is not None:
-                signal_col = column_mapping.get("signal")
-                if signal_col and signal_col in df.columns:
-                    signal_data = df[signal_col]
-                    logger.info(
-                        f"Analysis signal data: dtype={signal_data.dtype}, range={signal_data.min():.3f} to {signal_data.max():.3f}, count={signal_data.count()}"
-                    )
-
-                    # Check for non-numeric values (only log if there are issues)
-                    try:
-                        numeric_data = pd.to_numeric(signal_data, errors="coerce")
-                        non_numeric_count = (
-                            numeric_data.isnull().sum() - signal_data.isnull().sum()
-                        )
-                        if non_numeric_count > 0:
-                            logger.warning(
-                                f"Signal column '{signal_col}' contains {non_numeric_count} non-numeric values!"
-                            )
-                    except Exception as e:
-                        logger.error(f"Error checking numeric values: {str(e)}")
-                else:
-                    logger.error(
-                        f"Signal column '{signal_col}' not found in DataFrame!"
-                    )
-
             if df is None or df.empty:
-                logger.warning("Data frame is empty")
-                return (
-                    create_empty_figure(current_theme),
-                    create_empty_figure(current_theme),
-                    "Data is empty or corrupted.",
-                    "Data is empty or corrupted.",
-                    "Data is empty or corrupted.",
-                    "Data is empty or corrupted.",
-                    "Data is empty or corrupted.",
-                    None,
-                    None,
-                )
+                return _empty("Data is empty or corrupted.")
 
-            # Get sampling frequency from the data info
             sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)
-            logger.info(f"Sampling frequency: {sampling_freq}")
 
-            # Handle time window adjustments for nudge buttons
-            if trigger_id in [
-                "btn-nudge-m10",
-                "btn-nudge-p10",
-            ]:
-                if start_position is None or duration is None:
-                    start_position, duration = 0, 10
-
-                if trigger_id == "btn-nudge-m10":
-                    start_position = max(0, start_position - 10)
-                elif trigger_id == "btn-nudge-p10":
-                    start_position = start_position + 10
-
-                logger.info(f"Start position adjusted: {start_position}")
-
-            # Set default values if not specified
-            logger.info(
-                f"DEBUG: Checking values - start_position: {start_position} (is None: {start_position is None}), duration: {duration} (is None: {duration is None})"
-            )
+            # ── nudge handling ─────────────────────────────────
             if start_position is None or duration is None:
-                start_position, duration = 0, 10
-                logger.info(
-                    f"Using default values: start_position={start_position}, duration={duration}"
-                )
+                start_position, duration = 0, 60
+            start_position = float(start_position)
+            duration = float(duration) if duration else 60.0
 
-            # Ensure values are numbers
-            try:
-                start_position = (
-                    float(start_position) if start_position is not None else 0
-                )
-                duration = float(duration) if duration is not None else 10
-                logger.info(
-                    f"Converted values: start_position={start_position:.3f}, duration={duration:.3f}"
-                )
-            except (ValueError, TypeError):
-                start_position, duration = 0, 10
-                logger.warning("Invalid values, using defaults")
+            nudge_map = {
+                "btn-nudge-m10": -10, "btn-nudge-m5": -5,
+                "btn-nudge-p5": 5, "btn-nudge-p10": 10,
+            }
+            if trigger_id in nudge_map:
+                start_position = max(0.0, min(100.0, start_position + nudge_map[trigger_id]))
 
-            # Calculate end time from start position and duration
-            # start_position is a percentage (0-100), convert to actual time
+            # ── time window ────────────────────────────────────
             data_duration = len(df) / sampling_freq
             start_time_actual = (start_position / 100.0) * data_duration
             end_time = start_time_actual + duration
-            logger.info(
-                f"Calculated time window: {start_time_actual:.3f}s to {end_time:.3f}s"
-            )
-
-            # Apply time window
             start_sample = int(start_time_actual * sampling_freq)
-            end_sample = int(end_time * sampling_freq)
-            logger.info(f"Sample range: {start_sample} to {end_sample}")
-            logger.info(f"Data length: {len(df)}")
-            logger.info(f"Time window: {start_time_actual:.3f}s to {end_time:.3f}s")
-
-            # Ensure we don't exceed data bounds
+            end_sample = min(int(end_time * sampling_freq), len(df))
             if start_sample >= len(df):
-                logger.warning(
-                    f"Start sample {start_sample} >= data length {len(df)}, adjusting to 0"
-                )
                 start_sample = 0
-                start_time_actual = 0
-            if end_sample > len(df):
-                logger.warning(
-                    f"End sample {end_sample} > data length {len(df)}, adjusting to {len(df)}"
-                )
-                end_sample = len(df)
-                end_time = len(df) / sampling_freq
+                start_time_actual = 0.0
+                end_sample = min(int(duration * sampling_freq), len(df))
 
             windowed_data = df.iloc[start_sample:end_sample].copy()
-            logger.info(f"Windowed data shape: {windowed_data.shape}")
-            logger.info(f"Windowed data columns: {list(windowed_data.columns)}")
+            time_axis = np.linspace(start_time_actual, start_time_actual + len(windowed_data) / sampling_freq,
+                                    len(windowed_data))
 
-            # Create time axis - use actual time values, not just windowed data length
-            time_axis = np.linspace(start_time_actual, end_time, len(windowed_data))
-            logger.info(f"Time axis shape: {time_axis.shape}")
-            logger.info(f"Time axis range: {time_axis[0]:.3f} to {time_axis[-1]:.3f}")
-            logger.info(
-                f"Requested time window: {start_time_actual:.3f} to {end_time:.3f}"
-            )
-            logger.info(
-                f"Actual time axis range: {time_axis[0]:.3f} to {time_axis[-1]:.3f}"
-            )
-
-            # Verify that the time window is actually being applied
-            logger.info(f"Original data length: {len(df)} samples")
-            logger.info(f"Windowed data length: {len(windowed_data)} samples")
-            logger.info(
-                f"Expected samples for {duration:.3f}s window: {duration * sampling_freq:.0f}"
-            )
-            logger.info(f"Actual samples in window: {len(windowed_data)}")
-
-            # Get signal column
+            # ── signal column ──────────────────────────────────
             signal_column = column_mapping.get("signal")
-            logger.info(f"Signal column from mapping: {signal_column}")
-            logger.info(
-                f"Available columns in windowed data: {list(windowed_data.columns)}"
-            )
-            logger.info(f"Column mapping keys: {list(column_mapping.keys())}")
-            logger.info(f"Column mapping values: {list(column_mapping.values())}")
-
             if not signal_column or signal_column not in windowed_data.columns:
-                logger.warning(f"Signal column {signal_column} not found in data")
-                # Try to find alternative signal columns
-                potential_signal_cols = [
-                    "waveform",
-                    "pleth",
-                    "pl",
-                    "signal",
-                    "ppg",
-                    "ecg",
-                    "red",
-                    "ir",
-                ]
-                for col in potential_signal_cols:
-                    if col in [c.lower() for c in windowed_data.columns]:
-                        signal_column = [
-                            c for c in windowed_data.columns if c.lower() == col
-                        ][0]
-                        logger.info(f"Found alternative signal column: {signal_column}")
+                for col in ["waveform", "pleth", "pl", "signal", "ppg", "ecg", "red", "ir"]:
+                    match = [c for c in windowed_data.columns if c.lower() == col]
+                    if match:
+                        signal_column = match[0]
                         break
-
-                if not signal_column:
-                    logger.error("No suitable signal column found")
-                    return (
-                        create_empty_figure(current_theme),
-                        create_empty_figure(current_theme),
-                        "No suitable signal column found in data.",
-                        "No suitable signal column found in data.",
-                        "No suitable signal column found in data.",
-                        "No suitable signal column found in data.",
-                        "No suitable signal column found in data.",
-                        None,
-                        None,
-                    )
+            if not signal_column:
+                return _empty("No suitable signal column found in data.")
 
             signal_data = windowed_data[signal_column].values
-            logger.info(f"Signal data shape: {signal_data.shape}")
-            logger.info(
-                f"Signal data range: {np.min(signal_data):.3f} to {np.max(signal_data):.3f}"
-            )
-            logger.info(f"Signal data mean: {np.mean(signal_data):.3f}")
-            logger.info(f"Signal data std: {np.std(signal_data):.3f}")
-            logger.info(f"First 10 signal values: {signal_data[:10]}")
-            logger.info(f"Last 10 signal values: {signal_data[-10:]}")
-
-            # Check for data issues
             if len(signal_data) == 0:
-                logger.error("Signal data is empty after windowing")
-                return (
-                    create_empty_figure(current_theme),
-                    create_empty_figure(current_theme),
-                    "Signal data is empty after windowing.",
-                    "Signal data is empty after windowing.",
-                    "Signal data is empty after windowing.",
-                    "Signal data is empty after windowing.",
-                    "Signal data is empty after windowing.",
-                    None,
-                    None,
-                )
+                return _empty("Signal data is empty after windowing.")
 
-            if np.all(signal_data == signal_data[0]):
-                logger.warning(f"All signal values are identical: {signal_data[0]}")
-
-            # Load signal source (original or filtered) based on user selection
+            # ── signal source (always filtered from chain) ─────
             selected_signal = signal_data
             signal_source_info = "Original Signal"
-            filtered_signal = None
+            filter_info = None
 
-            if signal_source == "filtered":
-                logger.info("Attempting to load filtered signal...")
-                filtered_signal = data_service.get_filtered_data(latest_data_id)
-                filter_info = data_service.get_filter_info(latest_data_id)
+            # Always attempt to use the filtered signal from the filtering page
+            filtered_full = None
+            stored_filter_info = None
 
-                # Also check for filtered signal from filtering page
-                if filtered_signal is None and filtered_signal_data is not None:
-                    logger.info(
-                        "No filtered signal from data service, checking filtering page store..."
-                    )
+            # 1. Try data service
+            svc_filtered = data_service.get_filtered_data(latest_data_id)
+            svc_filter_info = data_service.get_filter_info(latest_data_id)
+            if svc_filtered is not None:
+                filtered_full = svc_filtered
+                stored_filter_info = svc_filter_info
+
+            # 2. Fall back to filtering-page store
+            if filtered_full is None and isinstance(filtered_signal_data, dict) and "signal" in filtered_signal_data:
+                try:
+                    filtered_full = np.array(filtered_signal_data["signal"])
+                    if "filter_params" in filtered_signal_data:
+                        stored_filter_info = {
+                            "filter_type": filtered_signal_data.get("filter_type", "unknown"),
+                            "parameters": filtered_signal_data.get("filter_params", {}),
+                        }
+                except Exception as e:
+                    logger.warning("Could not load filtered signal from store: %s", e)
+
+            if filtered_full is not None:
+                if len(filtered_full) >= end_sample:
+                    selected_signal = filtered_full[start_sample:end_sample]
+                    signal_source_info = "Filtered Signal"
+                    filter_info = stored_filter_info
+                elif len(filtered_full) == len(windowed_data):
+                    selected_signal = filtered_full
+                    signal_source_info = "Filtered Signal"
+                    filter_info = stored_filter_info
+                else:
+                    # Re-apply filter from saved params
                     try:
-                        if (
-                            isinstance(filtered_signal_data, dict)
-                            and "signal" in filtered_signal_data
-                        ):
-                            filtered_signal = np.array(filtered_signal_data["signal"])
-                            logger.info(
-                                f"Retrieved filtered signal from filtering page store: {filtered_signal.shape}"
+                        saved_chain = (stored_filter_info or {}).get("chain") or []
+                        if saved_chain:
+                            from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import apply_filter_chain
+                            selected_signal = apply_filter_chain(
+                                signal_data, sampling_freq, signal_type, saved_chain, logger=logger
                             )
-
-                            # Extract filter info from the store data
-                            if "filter_params" in filtered_signal_data:
-                                filter_info = {
-                                    "filter_type": filtered_signal_data.get(
-                                        "filter_type", "unknown"
-                                    ),
-                                    "parameters": filtered_signal_data.get(
-                                        "filter_params", {}
-                                    ),
-                                    "signal_type": filtered_signal_data.get(
-                                        "signal_type", "unknown"
-                                    ),
-                                    "sampling_freq": filtered_signal_data.get(
-                                        "sampling_freq", 100
-                                    ),
-                                }
-                                logger.info(
-                                    f"Retrieved filter info from filtering page store: {filter_info}"
-                                )
+                            signal_source_info = f"Filtered Signal (chain x{len(saved_chain)})"
+                            filter_info = stored_filter_info
+                        elif stored_filter_info and stored_filter_info.get("filter_type") == "traditional":
+                            p = stored_filter_info.get("parameters", {})
+                            selected_signal = apply_traditional_filter(
+                                signal_data, sampling_freq,
+                                p.get("filter_family", "butter"),
+                                p.get("filter_response", "bandpass"),
+                                p.get("low_freq", 0.5),
+                                p.get("high_freq", 5),
+                                p.get("filter_order", 4),
+                            )
+                            signal_source_info = "Filtered Signal (re-applied)"
+                            filter_info = stored_filter_info
                     except Exception as e:
-                        logger.error(
-                            f"Error retrieving filtered signal from filtering page store: {e}"
-                        )
-                        filtered_signal = None
-                        filter_info = None
+                        logger.warning("Re-applying filter failed: %s", e)
 
-                if filtered_signal is not None and filter_info is not None:
-                    expected_length = end_sample - start_sample
-                    if len(filtered_signal) == expected_length:
-                        # Filtered signal already matches the time window
-                        selected_signal = filtered_signal
-                        signal_source_info = "Filtered Signal"
-                        logger.info(
-                            "Using stored filtered signal (already windowed): shape=%s",
-                            filtered_signal.shape,
-                        )
-                    elif len(filtered_signal) >= end_sample:
-                        # FAST PATH: the filtering page stored the FULL filtered
-                        # signal.  Slice it to the current window instead of
-                        # re-running the filter - same maths, no extra cost.
-                        # The legacy code re-applied the filter here, which
-                        # duplicated the filtering page's work and added
-                        # seconds of latency for OUCRU-scale recordings.
-                        selected_signal = filtered_signal[start_sample:end_sample]
-                        signal_source_info = "Filtered Signal"
-                        logger.info(
-                            "Sliced full filtered signal (%d) to window [%d:%d]; "
-                            "no re-filtering needed.",
-                            len(filtered_signal),
-                            start_sample,
-                            end_sample,
-                        )
-                        # Reference for downstream comparison plot / DataFrame
-                        # alignment: ensure the broader-scope ``filtered_signal``
-                        # variable also reflects the window.
-                        filtered_signal = selected_signal
-                    else:
-                        # Stored filtered signal is shorter than the window
-                        # (e.g. the filtering page only stored its windowed
-                        # output).  Fall back to the legacy re-apply path.
-                        logger.info(
-                            "Filtered signal (%d) shorter than window (%d); "
-                            "re-applying filter parameters.",
-                            len(filtered_signal),
-                            expected_length,
-                        )
-                        logger.info(
-                            f"Filtered signal length ({len(filtered_signal)}) doesn't match time window ({expected_length})"
-                        )
-                        logger.info(
-                            "Applying same filter parameters to current time window..."
-                        )
-
-                        try:
-                            # Apply the same filter to the current time window using the same method as filtering screen
-                            filter_type = filter_info.get("filter_type", "traditional")
-                            parameters = filter_info.get("parameters", {})
-                            detrending_applied = filter_info.get(
-                                "detrending_applied", False
-                            )
-                            saved_chain = filter_info.get("chain") or []
-
-                            # Chain short-circuit: when the filtering page
-                            # saved a multi-stage chain, replay the same
-                            # sequence on the current window instead of
-                            # re-applying the single ``filter_type``.
-                            if saved_chain:
-                                from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
-                                    apply_filter_chain,
-                                )
-
-                                input_for_chain = signal_data
-                                if detrending_applied:
-                                    try:
-                                        from vitalDSP.transforms.vital_transformation import (
-                                            VitalTransformation,
-                                        )
-                                        tr = VitalTransformation(
-                                            signal_data,
-                                            fs=sampling_freq,
-                                            signal_type=(signal_type or "PPG"),
-                                        )
-                                        tr.apply_detrending(
-                                            options={"detrend_type": "linear"}
-                                        )
-                                        input_for_chain = np.asarray(
-                                            tr.signal, dtype=float
-                                        )
-                                    except Exception as exc:
-                                        logger.warning(
-                                            "Chain detrend pre-step failed: %s",
-                                            exc,
-                                        )
-                                selected_signal = apply_filter_chain(
-                                    input_for_chain,
-                                    sampling_freq,
-                                    signal_type,
-                                    saved_chain,
-                                    logger=logger,
-                                )
-                                signal_source_info = (
-                                    f"Filtered Signal (chain x{len(saved_chain)})"
-                                )
-                                logger.info(
-                                    "Re-applied saved filter chain (%d stages) "
-                                    "to window [%d:%d]",
-                                    len(saved_chain), start_sample, end_sample,
-                                )
-                            else:
-                                # Legacy single-filter path (unchanged
-                                # indentation - the original block has
-                                # its own quirky layout we don't fight).
-                                logger.info(
-                                    f"Applying {filter_type} filter with parameters: {parameters}"
-                                )
-
-                                # Apply filter using the same method as filtering screen
-                                # Apply detrending if it was applied in the filtering screen
-                                if detrending_applied:
-                                    from vitalDSP.transforms.vital_transformation import (
-                                        VitalTransformation,
-                                    )
-
-                                    # Use vitalDSP's detrending implementation
-                                    transformer = VitalTransformation(
-                                        signal_data, fs=sampling_freq, signal_type="ECG"
-                                    )
-                                    transformer.apply_detrending(
-                                        options={"detrend_type": "linear"}
-                                    )
-                                    signal_data_detrended = transformer.signal
-                                    logger.info("Applied vitalDSP detrending to signal")
-                                else:
-                                    signal_data_detrended = signal_data
-
-                                if filter_type == "traditional":
-                                    # Extract traditional filter parameters
-                                    filter_family = parameters.get(
-                                        "filter_family", "butter"
-                                    )
-                                    filter_response = parameters.get(
-                                        "filter_response", "bandpass"
-                                    )
-                                    low_freq = parameters.get("low_freq", 0.5)
-                                    high_freq = parameters.get("high_freq", 5)
-                                    filter_order = parameters.get("filter_order", 4)
-
-                                    # Apply traditional filter using the same function as filtering screen
-                                    filtered_signal_windowed = apply_traditional_filter(
-                                        signal_data_detrended,
-                                        sampling_freq,
-                                        filter_family,
-                                        filter_response,
-                                        low_freq,
-                                        high_freq,
-                                        filter_order,
-                                    )
-
-                                elif filter_type == "advanced":
-                                    # Extract advanced filter parameters
-                                    advanced_method = parameters.get(
-                                        "advanced_method", "kalman"
-                                    )
-                                    noise_level = parameters.get("noise_level", 0.1)
-                                    iterations = parameters.get("iterations", 100)
-                                    learning_rate = parameters.get("learning_rate", 0.01)
-
-                                    # Import and apply advanced filter
-                                    from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
-                                        apply_advanced_filter,
-                                    )
-
-                                    filtered_signal_windowed = apply_advanced_filter(
-                                        signal_data_detrended,
-                                        advanced_method,
-                                        noise_level,
-                                        iterations,
-                                        learning_rate,
-                                    )
-
-                                elif filter_type == "artifact":
-                                    # Extract artifact removal parameters
-                                    artifact_type = parameters.get(
-                                        "artifact_type", "baseline"
-                                    )
-                                    artifact_strength = parameters.get(
-                                        "artifact_strength", 0.5
-                                    )
-
-                                    # Import and apply artifact removal
-                                    from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
-                                        apply_enhanced_artifact_removal,
-                                    )
-
-                                    filtered_signal_windowed = (
-                                        apply_enhanced_artifact_removal(
-                                            signal_data_detrended,
-                                            sampling_freq,
-                                            artifact_type,
-                                            artifact_strength,
-                                            None,
-                                            None,
-                                            None,
-                                            None,
-                                            None,
-                                            None,
-                                            None,
-                                            None,
-                                        )
-                                    )
-
-                                elif filter_type == "neural":
-                                    # Extract neural filter parameters
-                                    neural_type = parameters.get("neural_type", "lstm")
-                                    neural_complexity = parameters.get(
-                                        "neural_complexity", "medium"
-                                    )
-
-                                    # Import and apply neural filter
-                                    from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
-                                        apply_neural_filter,
-                                    )
-
-                                    filtered_signal_windowed = apply_neural_filter(
-                                        signal_data_detrended,
-                                        neural_type,
-                                        neural_complexity,
-                                    )
-
-                                elif filter_type == "ensemble":
-                                    # Extract ensemble filter parameters
-                                    ensemble_method = parameters.get(
-                                        "ensemble_method", "mean"
-                                    )
-                                    ensemble_n_filters = parameters.get(
-                                        "ensemble_n_filters", 3
-                                    )
-
-                                    # Import and apply ensemble filter
-                                    from vitalDSP_webapp.callbacks.analysis.signal_filtering_callbacks import (
-                                        apply_enhanced_ensemble_filter,
-                                    )
-
-                                    filtered_signal_windowed = (
-                                        apply_enhanced_ensemble_filter(
-                                            signal_data_detrended,
-                                            ensemble_method,
-                                            ensemble_n_filters,
-                                            None,
-                                            None,
-                                            None,
-                                            None,
-                                            None,
-                                            None,
-                                        )
-                                    )
-
-                                else:
-                                    # For unknown filter types, fall back to original signal
-                                    logger.warning(
-                                        f"Unknown filter type {filter_type}, using original signal"
-                                    )
-                                    filtered_signal_windowed = signal_data_detrended
-
-                                selected_signal = filtered_signal_windowed
-                                signal_source_info = "Filtered Signal (Dynamic)"
-                                logger.info(
-                                    "Using dynamically filtered signal for analysis"
-                                )
-                                logger.info(
-                                    f"Filtered signal shape: {filtered_signal_windowed.shape}"
-                                )
-                                logger.info(
-                                    f"Filtered signal range: {np.min(filtered_signal_windowed):.3f} to {np.max(filtered_signal_windowed):.3f}"
-                                )
-
-                        except Exception as e:
-                            logger.error(
-                                f"Error applying filter to current time window: {e}"
-                            )
-                            logger.info("Falling back to original signal")
-                            selected_signal = signal_data
-                            signal_source_info = (
-                                "Original Signal (Filter application failed)"
-                            )
-                else:
-                    logger.info(
-                        "No filtered data or filter info available, falling back to original signal"
-                    )
-                    signal_source_info = "Original Signal (No filtered data available)"
-            else:
-                logger.info("Using original signal for analysis")
-
-            # Create filtered DataFrame with both raw and filtered signals for comparison
-            filtered_df = windowed_data.copy()
-
-            if filtered_signal is not None:
-                # Only add filtered signal if it matches the windowed data length
-                if len(filtered_signal) == len(windowed_data):
-                    filtered_df[f"{signal_column}_filtered"] = filtered_signal
-                    logger.info("Added filtered signal to comparison DataFrame")
-                else:
-                    logger.warning(
-                        f"Cannot add filtered signal to DataFrame - length mismatch: {len(filtered_signal)} vs {len(windowed_data)}"
-                    )
-
-            # ------------------------------------------------------------
-            # Single-shot waveform analysis.
-            # Previously this callback fanned out into ~7 builders, each
-            # of which instantiated its own ``WaveformMorphology`` (and
-            # so re-ran peak detection from scratch on the same signal).
-            # We now run that once here and pass the resulting peak
-            # array down to the slim builders.
-            # ------------------------------------------------------------
+            # ── shared WaveformMorphology ───────────────────────
+            stype = signal_type or "PPG"
+            shared_wm = None
             shared_peaks = None
             try:
-                from vitalDSP.physiological_features.waveform import (
-                    WaveformMorphology,
+                from vitalDSP.physiological_features.waveform import WaveformMorphology
+                shared_wm = WaveformMorphology(
+                    waveform=selected_signal, fs=sampling_freq,
+                    signal_type=stype, simple_mode=True,
                 )
-
-                wm_shared = WaveformMorphology(
-                    waveform=selected_signal,
-                    fs=sampling_freq,
-                    signal_type=(signal_type or "PPG"),
-                    simple_mode=True,
-                )
-                shared_peaks = getattr(wm_shared, "systolic_peaks", None)
-                logger.info(
-                    "Shared WaveformMorphology computed: %d peaks",
-                    0 if shared_peaks is None else len(shared_peaks),
-                )
+                attr = "systolic_peaks" if stype == "PPG" else "r_peaks"
+                shared_peaks = getattr(shared_wm, attr, None)
+                logger.info("Shared WaveformMorphology: %d peaks", 0 if shared_peaks is None else len(shared_peaks))
             except Exception as exc:
-                logger.warning(
-                    "Shared WaveformMorphology failed: %s; builders will "
-                    "fall back to internal detection.",
-                    exc,
-                )
+                logger.warning("Shared WaveformMorphology failed: %s", exc)
 
-            # Filter info for display (already loaded above)
-            if not (signal_source == "filtered" and selected_signal is not None):
-                filter_info = None
-
-            # Main plot: signal with peak markers, plus an overlay if
-            # the user picked the filtered source.
-            filtered_overlay = None
-            if signal_source == "filtered" and selected_signal is not None:
-                # ``selected_signal`` is the filtered version; use the
-                # raw window as the underlay so the user can see both.
-                original_window = (
-                    df[signal_column].iloc[start_sample:end_sample].values
-                )
-                main_signal = original_window
+            # ── main signal plot ───────────────────────────────
+            if signal_source_info.startswith("Filtered"):
+                # overlay: show original as underlay
+                main_signal = signal_data
                 filtered_overlay = selected_signal
             else:
                 main_signal = selected_signal
+                filtered_overlay = None
 
             main_plot = create_main_signal_plot(
                 signal_data=main_signal,
                 time_axis=time_axis,
                 sampling_freq=sampling_freq,
-                peaks=shared_peaks if filtered_overlay is None else None,
-                signal_type=(signal_type or "PPG"),
+                signal_type=stype,
                 theme=current_theme,
                 filtered_overlay=filtered_overlay,
+                wm=shared_wm,
             )
 
-            # The dedicated comparison chart is gone (its content is now
-            # in the main plot via the filtered overlay).  Output an
-            # empty figure to keep the callback's 9-tuple shape intact.
             comparison_plot = create_empty_figure(current_theme)
 
             analysis_results = generate_analysis_results(
-                selected_signal,
-                time_axis,
-                sampling_freq,
-                analysis_options or ["peaks", "hr", "quality"],
-                signal_source_info,
-                signal_type,
-                filter_info,
+                selected_signal, time_axis, sampling_freq,
+                analysis_options or [], signal_source_info,
+                stype, filter_info,
             )
 
             peak_table = create_peak_analysis_table(
-                selected_signal,
-                time_axis,
-                sampling_freq,
-                analysis_options or ["peaks", "hr", "quality"],
-                signal_source_info,
-                signal_type,
-                peaks=shared_peaks,
-            )
-            quality_table = create_signal_quality_table(
-                selected_signal,
-                time_axis,
-                sampling_freq,
-                analysis_options or ["peaks", "hr", "quality"],
-                signal_source_info,
-                signal_type,
+                selected_signal, time_axis, sampling_freq,
+                analysis_options or [], signal_source_info,
+                stype, peaks=shared_peaks,
             )
 
-            # ``signal-source-table`` and ``additional-metrics-table``
-            # are hidden in the layout; feed them empty Divs.
-            signal_source_table = html.Div()
-            additional_table = html.Div()
-
-            # Drop the per-row records bloat that used to be stored.
-            # Downstream analysis pages don't read this store; the
-            # data_id is enough.
             time_domain_data = {
                 "data_id": latest_data_id,
                 "sampling_freq": sampling_freq,
@@ -1851,35 +1295,28 @@ def register_time_domain_callbacks(app):
 
             logger.info("Time domain analysis completed successfully")
             return (
-                main_plot,
-                comparison_plot,
-                analysis_results,
-                peak_table,
-                quality_table,
-                signal_source_table,
-                additional_table,
-                time_domain_data,
-                time_domain_data,
+                main_plot, comparison_plot, analysis_results,
+                peak_table, html.Div(), html.Div(), html.Div(),
+                time_domain_data, time_domain_data,
             )
 
         except Exception as e:
-            logger.error(f"Error in time domain analysis callback: {e}")
+            logger.error("Error in time domain analysis callback: %s", e)
             import traceback
-
             traceback.print_exc()
-            error_msg = f"Error in analysis: {str(e)}"
-            return (
-                create_empty_figure(current_theme),
-                create_empty_figure(current_theme),
-                error_msg,
-                error_msg,
-                error_msg,
-                error_msg,
-                error_msg,
-                None,
-                None,
-            )
+            return _empty(f"Error in analysis: {str(e)}")
 
+    # ── collapse toggles for charts panel ─────────────────────
+    @app.callback(
+        Output("collapse-charts", "is_open"),
+        Input("btn-collapse-charts", "n_clicks"),
+        State("collapse-charts", "is_open"),
+        prevent_initial_call=True,
+    )
+    def toggle_charts(n, is_open):
+        return not is_open
+
+    # ── slider range update ────────────────────────────────────
     @app.callback(
         [
             Output("start-position-slider", "min"),
@@ -1887,47 +1324,9 @@ def register_time_domain_callbacks(app):
             Output("start-position-slider", "value"),
         ],
         [Input("url", "pathname")],
-        prevent_initial_call=True,  # Prevent triggering on page load
+        prevent_initial_call=True,
     )
     def update_time_slider_range(pathname):
-        """Update time slider range based on available data."""
         if pathname != "/time-domain":
             return no_update, no_update, no_update
-
-        try:
-            from vitalDSP_webapp.services.data.enhanced_data_service import (
-                get_enhanced_data_service,
-            )
-
-            data_service = get_enhanced_data_service()
-            all_data = data_service.get_all_data()
-
-            if not all_data:
-                return 0, 100, [0, 10]
-
-            # Get the most recent data
-            latest_data_id = list(all_data.keys())[-1]
-            latest_data = all_data[latest_data_id]
-            df = data_service.get_data(latest_data_id)
-
-            if df is None or df.empty:
-                return 0, 100, [0, 10]
-
-            # Calculate time range based on data length and sampling frequency
-            sampling_freq = latest_data.get("info", {}).get("sampling_freq", 1000)
-            max_time = len(df) / sampling_freq
-
-            # Set reasonable limits
-            min_time = 0
-            max_time = min(max_time, 300)  # Cap at 5 minutes
-
-            # Set initial window to first 10 seconds or max available
-            initial_end = min(10, max_time)
-
-            return min_time, max_time, [min_time, initial_end]
-
-        except Exception as e:
-            logger.error(f"Error updating time slider range: {e}")
-            return 0, 100, [0, 10]
-
-    # Removed sync_time_inputs_with_slider callback - no longer needed with start/duration approach
+        return 0, 100, 0
